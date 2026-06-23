@@ -7,6 +7,7 @@ import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js"
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
+import { getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/propVisualAttachments.js";
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
  * Iso props use this; domain key/bake helpers live below.
@@ -118,12 +119,23 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom 
     // uses the robust step/limit algorithm baked into propSpriteCache.quantizeView().
     const { keyDx, keyDy } = propSpriteCache.quantizeView(dx, dy);
     const basePhysicsKey = getBaseSpriteCacheKey(prop, { quantizeAngleIndex, buildRollOrientKey });
+    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
+    const attachmentPart = attachmentKey ? `_${attachmentKey}` : "";
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
     const customPart = customKey ? `_${customKey}` : "";
     const pixelSize = resolvePropPixelSizeForProp(prop);
     const pixelKey = pixelSize ? `_px${pixelSize}` : "";
     const zoomKey = `_z${quantizePropBakeZoom(zoom)}`;
-    return `${renderKey}${customPart}_${basePhysicsKey}_${keyDx}_${keyDy}_${animFrame}${pixelKey}${zoomKey}`;
+    return `${renderKey}${customPart}_${basePhysicsKey}${attachmentPart}_${keyDx}_${keyDy}_${animFrame}${pixelKey}${zoomKey}`;
+}
+function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
+    if (!propRecipes) return;
+    for (let i = 0; i < attachments.length; i++) {
+        const prop = attachments[i];
+        const childRenderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
+        const childDraw = propRecipes[childRenderKey];
+        if (childDraw) childDraw(ctx, prop, px, py);
+    }
 }
 /**
  * @param {object} spec
@@ -132,18 +144,21 @@ export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom 
  * @param {number} spec.py
  * @param {string} spec.renderKey
  * @param {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} spec.draw
+ * @param {Record<string, PropDrawRecipe>} [spec.propRecipes]
  * @param {number} [spec.animFrame]
  * @param {number} [spec.zoom]
  */
-export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame = 0, zoom = 1 }) {
+export function getOrBakePropSprite({ prop, px, py, renderKey, draw, propRecipes = null, animFrame = 0, zoom = 1 }) {
     const key = buildPropSpriteKey(prop, px, py, renderKey, animFrame, zoom);
     return propSpriteCache.getOrBake(key, () => {
         const dx = prop.x - px;
         const dy = prop.y - py;
         const { dx: qDx, dy: qDy } = propSpriteCache.quantizeView(dx, dy);
-        const stageR = resolveBodyRadius(prop);
+        const parentFacing = quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing);
         const footprint = propFootprintHalfExtents(prop);
-        const worldDiameter = Math.max(stageR * 2, footprint.x * 2, footprint.y * 2);
+        const baseR = Math.max(resolveBodyRadius(prop), footprint.x, footprint.y);
+        const stageR = Math.max(baseR, resolveVisualAttachmentBakeRadius(prop, parentFacing));
+        const worldDiameter = stageR * 2;
         const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
@@ -152,9 +167,12 @@ export function getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame =
         const ctx = canvas.getContext("2d");
         const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX, anchorY });
         stageProp.radius = resolveBodyRadius(prop);
+        const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
+        drawVisualAttachmentList(ctx, attachments.before, propRecipes, anchorX - qDx, anchorY - qDy);
         draw(ctx, stageProp, anchorX - qDx, anchorY - qDy);
+        drawVisualAttachmentList(ctx, attachments.after, propRecipes, anchorX - qDx, anchorY - qDy);
         ctx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
     });

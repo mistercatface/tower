@@ -16,7 +16,7 @@ export class PropRenderer {
         if (!draw) return;
         const animFrame = options.animFrame ?? 0;
         const zoom = options.zoom ?? 1;
-        const sprite = getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame, zoom });
+        const sprite = getOrBakePropSprite({ prop, px, py, renderKey, draw, propRecipes: this.propRecipes, animFrame, zoom });
         const viewport = { x: px, y: py };
         const modifier = resolveSpriteDrawModifier(prop, viewport);
         blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);

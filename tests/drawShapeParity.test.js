@@ -9,9 +9,11 @@ import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPri
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Canvas/viewQuantize.js";
+import { buildPropSpriteKey } from "../Libraries/Canvas/QuantizedSpriteCache.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
 import { resolveVectorPropSpec } from "../Libraries/Render/vectorProp.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
+import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Libraries/Props/propVisualAttachments.js";
 loadPropAssets();
 const cacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
 const polygonVisuals = {
@@ -92,5 +94,50 @@ describe("draw shape parity", () => {
         applyPropBoxFootprint(plank, 64, 8);
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
         assert.equal(resolvePropQuantizeSteps(plank).facing, 128);
+    });
+    it("flee ball declares a render-only tri wedge facing attachment", () => {
+        const attachment = getPropAsset("flee_ball").visuals.attachments[0];
+        assert.equal(attachment.id, "movement_arrow");
+        assert.equal(attachment.propId, "tri_wedge");
+        assert.equal(attachment.heading, "velocity");
+        assert.equal(attachment.offsetSpace, "parentRadius");
+        assert.equal(attachment.inheritTint, true);
+    });
+    it("visual attachments resolve from quantized velocity heading", () => {
+        const prop = new WorldProp(0, 0, "flee_ball", 0);
+        prop.vx = 0;
+        prop.vy = 25;
+        const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX: 50, anchorY: 60 });
+        const qHeading = quantizeAngle(Math.atan2(prop.vy, prop.vx), resolvePropQuantizeSteps(prop).facing);
+        const attachments = resolveVisualAttachmentProps(stageProp);
+        assert.equal(attachments.before.length, 0);
+        assert.equal(attachments.after.length, 1);
+        const child = attachments.after[0];
+        assert.equal(child instanceof WorldProp, false);
+        assert.equal(child.type, "tri_wedge");
+        assert.ok(Math.abs(child.x - 50) < 1e-6);
+        assert.ok(Math.abs(child.y - (60 + resolveBodyRadius(prop) * 1.65)) < 1e-6);
+        assert.ok(Math.abs(child.facing - (qHeading - Math.PI / 2)) < 1e-6);
+        assert.ok(child.radius < new WorldProp(0, 0, "tri_wedge", 0).radius);
+    });
+    it("visual attachments scale and offset from parent radius", () => {
+        const small = new WorldProp(0, 0, "flee_ball", 0);
+        const large = new WorldProp(0, 0, "flee_ball", 0);
+        setCirclePropRadius(large, resolveBodyRadius(small) * 2);
+        small.vx = 30;
+        large.vx = 30;
+        const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(small, { quantizeAngle, quantizeRollQuat, anchorX: 0, anchorY: 0 })).after[0];
+        const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(large, { quantizeAngle, quantizeRollQuat, anchorX: 0, anchorY: 0 })).after[0];
+        assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
+        assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
+    });
+    it("visual attachments expand bake bounds and facing cache keys", () => {
+        const right = new WorldProp(0, 0, "flee_ball", 0);
+        const down = new WorldProp(0, 0, "flee_ball", 0);
+        right.vx = 10;
+        down.vy = 10;
+        const parentRadius = resolveBodyRadius(right);
+        assert.ok(resolveVisualAttachmentBakeRadius(right, 0) > parentRadius);
+        assert.notEqual(buildPropSpriteKey(right, 0, 0, "flee_ball"), buildPropSpriteKey(down, 0, 0, "flee_ball"));
     });
 });
