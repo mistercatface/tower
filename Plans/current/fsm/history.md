@@ -239,7 +239,7 @@ All zero hits in `*.js`. Deleted flow `checkReachability`.
 
 # Part 1 — AI consumer cleanup
 
-**Status:** Passes A–F complete ✅ · Pass G (grep + doc sync) open
+**Status:** Passes A–G complete ✅
 
 **Why:** Phase 1 fixed reach dialect; snake and flee were still copy-paste forks (decision models, memory, perception, ~500-line twin intent adapters). Flee imported generic derives from `snakeDecisionModel.js`.
 
@@ -251,13 +251,31 @@ All zero hits in `*.js`. Deleted flow `checkReachability`.
 
 | Pass | Work | Bar |
 |------|------|-----|
-| **A — Inventory** | Renamed misnamed `agentPopulationRegistry.js` → `agentRelationship.js` (dead — zero importers) | no behavior change |
+| **A — Inventory** | Misnamed `agentRelationship.js` orphan (never wired; real registry is `AI/agents/agentPopulationRegistry.js`) | deleted Pass G |
 | **B — Generic derives** | `deriveThreatState`, `deriveAllyState`, `targetEvents` → `Libraries/AI/`; deleted `deriveFleeAgentThreatState` | flee imports AI only |
 | **C — Intent memory** | `createAgentIntentMemory.js`; deleted `snakeIntentMemory.js`, `fleeIntentMemory.js` | two call sites; snake `filterAllyForEngagement: true` |
 | **D — Perception** | `agentIntentPerception.js`; deleted `snakeIntent.js`, `fleeWorldPerception.js` | one `perceiveAgentIntentWorld` |
 | **E — Decision dedupe** | `intentPolicy.js`, `hungerEffort.js`, `scoreFleeIntent.js` | helpers out of both `*DecisionModel.js` |
 | **F — Intent adapter** | `createGroundNavIntentAdapter.js` + reach/route/latch/effects helpers | species adapters ~100 lines each |
-| **G — Gate** | grep + doc sync | commands in [`fsmbfs.md`](fsmbfs.md) |
+| **G — Gate** | grep + orphan cleanup + doc sync | all gates clean; 75 tests |
+
+### Pass G — gate run (2026-06-23)
+
+**Orphan cleanup:** deleted `agentRelationship.js` (Pass A misname; zero importers — live registry is `Libraries/AI/agents/agentPopulationRegistry.js`). Pass C/D deletions (`snakeIntentMemory`, `fleeIntentMemory`, `snakeIntent`, `fleeWorldPerception`) already off disk.
+
+**Grep gates** (zero hits in `Libraries/` on disk):
+
+```text
+preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCandidate|aggregateThreatSeverity
+buildNavReachHorizon|resolveSnakeReachConfig|resolveReachSteps|checkReachability
+Libraries/AI/decision
+from.*snakeDecisionModel in fleeAgent/
+duplicate pushTargetEvents|policyReasonForTarget|intentPolicy in *DecisionModel.js
+```
+
+**Tests:** 75 pass — `snakeForageIntent`, `snakeDecisionModel`, `snakeIntent`, `fleeAgentDecision`, `agentAllyPerception`.
+
+**Next (plan only):** Pass H unified decision engine — see [`fsmbfs.md` § Part 1.5](fsmbfs.md#part-15--pass-h--unified-decision-engine-plan-only).
 
 ### Pass D bugfix
 
@@ -280,6 +298,7 @@ Mode sets (`seek_prey` vs `seek_enemy`), engagement publish (snake), `regroupSiz
 | `snakeIntent.js` | 25 |
 | `fleeWorldPerception.js` | 20 |
 | `deriveFleeAgentThreatState` (wrapper) | — |
+| `agentRelationship.js` | 8 (Pass G — orphan) |
 
 ### Added (7 modules — after consolidation merge)
 
@@ -341,7 +360,9 @@ Reduced Part 1 file sprawl — **8 files deleted**, helpers folded into owners:
 
 ---
 
-## Part 1 — grep gates (Pass G)
+## Part 1 — grep gates (Pass G) ✅
+
+Recorded 2026-06-23 — see [Pass G gate run](#pass-g--gate-run-2026-06-23) above.
 
 ```bash
 rg 'preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCandidate' --glob '*.js'
@@ -349,6 +370,8 @@ rg 'buildNavReachHorizon|resolveSnakeReachConfig|Libraries/AI/decision/' --glob 
 rg "from.*snakeDecisionModel" Libraries/Game/snake/fleeAgent --glob '*.js'
 rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentPolicy" Libraries/Game/snake --glob '*DecisionModel.js'
 ```
+
+All clean on disk in `Libraries/`.
 
 ---
 
@@ -359,6 +382,6 @@ rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentP
 - [x] One perception entry (`agentIntentPerception.js`)
 - [x] Decision policy/hunger/flee helpers shared
 - [x] Intent adapter shell; species files ~100 lines
-- [ ] Pass G grep run recorded
-- [ ] Optional consolidation backlog if file count matters
+- [x] Pass G grep run recorded (2026-06-23)
+- [x] Consolidation backlog merged (8 micro-files)
 

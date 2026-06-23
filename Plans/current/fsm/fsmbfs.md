@@ -5,8 +5,9 @@
 | | |
 |--|--|
 | **Phase 1** | Reach dialect ✅ — [`history.md`](history.md#phase-1-reachsteps) |
-| **Part 1** | Passes A–F ✅ · **Pass G** (grep + doc sync) — [`history.md`](history.md#part-1-ai-consumer-cleanup) |
-| **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Pass G** |
+| **Part 1** | Passes A–G ✅ — [`history.md`](history.md#part-1-ai-consumer-cleanup) |
+| **Part 1.5** | **Pass H** — unified decision engine (plan below) — optional before Part 2 |
+| **Part 2** | Flow locomotion 2a → 2b → 3 — **unblocked** (Pass G ✅) |
 
 ---
 
@@ -165,15 +166,80 @@ rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentP
 
 ## Part 1 — done (archive)
 
-Snake/flee dedupe: generic derives, memory, perception, decision helpers, intent adapter shell. Full pass log, file ledger, and honest verdict: [`history.md` § Part 1`](history.md#part-1-ai-consumer-cleanup).
-
-**Open:** Pass G — run grep gates above; confirm no stale imports of deleted modules.
+Snake/flee dedupe: generic derives, memory, perception, decision helpers, intent adapter shell. Full pass log, file ledger, Pass G gates, and honest verdict: [`history.md` § Part 1`](history.md#part-1-ai-consumer-cleanup).
 
 ---
 
-## Part 2 — Flow locomotion (gated on Pass G)
+## Part 1.5 — Pass H — unified decision engine (plan only)
 
-**Do not start** until Part 1 gates pass. Decision reach stays on `navReachHorizon` — flow fields **steer**, sync BFS **scores**.
+**Do not start until Pass G ✅.** Not a framework folder, not a scoring DSL, not `Libraries/AI/decision/`.
+
+**Problem:** `snakeDecisionModel.js` (~227 lines) and `fleeDecisionModel.js` (~191 lines) still duplicate the same pipeline — blackboard assembly → `scoreCandidateSet` → `pickBestScoreKey` → `policyForScoredMode` → snapshot. Weights/pressure already live in `Config/games/snake.js`; the copy-paste is structural, not tuning.
+
+**Payoff:** one `buildAgentDecisionContext` + mode/scorer registration. Snake and flee each supply **2–3 scorer functions** and **one blackboard hook** (snake: ally engagement filter; flee: prey→enemy alias). Target **~300 duplicate lines removed** without new micro-modules.
+
+### Bar
+
+| Rule | Detail |
+|------|--------|
+| **One engine file** | e.g. `Libraries/AI/agents/buildAgentDecisionContext.js` — owns blackboard skeleton, event push, score loop, snapshot shape |
+| **Species wiring ≤ ~50 lines each** | `snakeDecisionModel.js` / `fleeDecisionModel.js` become spec tables + hooks only |
+| **No new micro-modules** | Unless **both** species import them in the same PR |
+| **No framework package** | No `Libraries/AI/decision/`, no `{ createDecisionFramework }`, no config resolver chain |
+| **Tuning stays in config** | `decisionWeights`, `decisionPressure`, `fleeAgent.*` — not a JSON scoring DSL |
+| **Tests unchanged semantics** | Same `buildSnakeDecisionContext` / `buildFleeDecisionContext` exports; 75+ intent/decision tests green |
+
+### What moves into the engine (shared)
+
+```text
+visible / remembered / known assembly (parametric slot names)
+pushTargetEvents + routeEvents + TARGET_LOST guards
+scoreCandidateSet → pickBestScoreKey → intentPolicy
+decisionSnapshot scaffold (events, routeStatus, candidateScores, sprintIntent slot)
+deriveThreatState + deriveAllyState wiring (already shared)
+```
+
+### What stays in species files (by design)
+
+| Snake | Flee |
+|-------|------|
+| Modes: `seek_prey`, `seek_ally` | Modes: `seek_enemy`, `seek_ally` |
+| `resolveKnownAlly` + `isAgentEngaged` hook | `prey` → `enemy` alias on visible/known |
+| `scorePreyDetail`, `scoreSeekAllyDetail` (leadworthy, size factor) | `scoreEnemyDetail`, `scoreFlee` (outnumbered bonus), flee `scoreSeekAllyDetail` |
+| `deriveSnakeHungerState`, `deriveSprintIntent`, engagement publish | `deriveFleeHungerState`, `deriveFleeSprintIntent` |
+| `deriveSnakeEngagementState` on snapshot | — |
+
+### Species spec shape (sketch)
+
+```javascript
+export const snakeDecisionSpec = {
+    config: () => getSnakeGameConfig(),
+    modes: ["flee", "seek_prey", "seek_food", "seek_ally", "explore"],
+    slots: { threat: "threat", prey: "prey", food: "food", ally: "ally" },
+    resolveKnown: resolveKnownAlly,
+    scorers: { flee: scoreRiskAdjustedFlee, seek_prey: scorePreyDetail, /* … */ },
+    deriveHunger: deriveSnakeHungerState,
+    deriveSprint: deriveSprintIntent,
+    afterPick: (bb, intent) => { bb.facts.engagementState = deriveSnakeEngagementState(bb, intent); },
+};
+```
+
+Flee spec mirrors with `enemy` slot, flee scorers, no engagement hook.
+
+### Pass H review bar
+
+- [ ] One engine file; species files ≤ ~50 lines each
+- [ ] Net negative LOC (~−300 target)
+- [ ] No `Libraries/AI/decision/` · no scoring DSL · no resolver getters
+- [ ] Both `buildSnakeDecisionContext` and `buildFleeDecisionContext` still exported
+- [ ] All intent/decision tests green
+- [ ] Grep gates in this doc still clean
+
+---
+
+## Part 2 — Flow locomotion (unblocked)
+
+Decision reach stays on `navReachHorizon` — flow fields **steer**, sync BFS **scores**.
 
 ### 2a — Flee via backward flow
 
@@ -218,9 +284,10 @@ One cost field from weighted sources — replaces `pickFleeCell` + `resolveFleeP
 ### Dependency
 
 ```text
-Part 1 (Pass G) ──gate──► 2a flee flow
-                            ├──► 2b hybrid HPA+flow
-                            └──► 3 blended fields
+Part 1 (Pass G) ✅ ──► 2a flee flow
+                         ├──► 2b hybrid HPA+flow
+                         └──► 3 blended fields
+Pass H (optional) ── parallel, no reach regression
 ```
 
 Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundNavBehavior.js`, `cellTargetHpaNav.js`
@@ -231,11 +298,17 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 ### Part 1
 
-- [x] Passes A–F — see [`history.md`](history.md#part-1-ai-consumer-cleanup)
-- [ ] Pass G grep gates (commands above)
-- [x] Optional consolidation backlog — 8 micro-files merged (see history)
+- [x] Passes A–G — see [`history.md`](history.md#part-1-ai-consumer-cleanup)
+- [x] Pass G grep gates (2026-06-23 — clean on disk; 75 intent/decision tests)
+- [x] Consolidation backlog — 8 micro-files merged (see history)
 
-### Part 2 (blocked)
+### Part 1.5 (Pass H — plan only)
+
+- [ ] One `buildAgentDecisionContext` engine file
+- [ ] Species wiring ≤ ~50 lines each; ~−300 duplicate LOC
+- [ ] No framework folder / scoring DSL / new micro-modules without dual import
+
+### Part 2
 
 - [ ] 2a: flee steers from flow sample
 - [ ] 2b: snake seek HPA waypoint + local flow
