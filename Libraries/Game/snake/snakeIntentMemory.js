@@ -1,4 +1,5 @@
 import { createTargetMemory, targetFromMemoryRecord } from "../../AI/memory/targetMemory.js";
+import { isSnakeFollowableTarget } from "./snakeFollowActivity.js";
 const SNAKE_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
 function targetFromRecord(record, state) {
     if (!record) return null;
@@ -13,19 +14,23 @@ export function createSnakeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90
     return {
         update(seeker, state, visibleWorld) {
             const grid = state.obstacleGrid;
+            const session = state.sandbox?.snakeGame;
+            const followableAlly = visibleWorld.ally && session && isSnakeFollowableTarget(session, visibleWorld.ally.id) ? visibleWorld.ally : null;
             memory.observe("threat", visibleWorld.threat, seeker, grid);
             memory.observe("prey", visibleWorld.prey, seeker, grid);
             memory.observe("food", visibleWorld.food, seeker, grid);
-            memory.observe("ally", visibleWorld.ally, seeker, grid);
+            memory.observe("ally", followableAlly, seeker, grid);
         },
         enrichWorld(state, visibleWorld) {
+            const session = state.sandbox?.snakeGame;
             const preyRecord = memory.record("prey");
             const foodRecord = memory.record("food");
             const allyRecord = memory.record("ally");
             const threat = visibleWorld.threat ?? targetFromRecord(memory.record("threat"), state);
             const prey = visibleWorld.prey ?? targetFromRecord(preyRecord, state);
             const food = visibleWorld.food ?? targetFromRecord(foodRecord, state);
-            const ally = visibleWorld.ally ?? targetFromRecord(allyRecord, state);
+            let ally = visibleWorld.ally ?? targetFromRecord(allyRecord, state);
+            if (ally && session && !isSnakeFollowableTarget(session, ally.id)) ally = null;
             return {
                 ...visibleWorld,
                 threat,
