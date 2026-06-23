@@ -1,12 +1,16 @@
-# FSM reach — phase 1 history (`reachSteps`)
+# FSM reach — history
+
+**Active plan:** [`fsmbfs.md`](fsmbfs.md) — hygiene law + Part 2 flow locomotion
+
+**Sibling docs:** [`../normalization.md`](../normalization.md) · [`../stupid.md`](../stupid.md) · [`../passthrough.md`](../passthrough.md) · [`../objects.md`](../objects.md) · [`../frame.md`](../frame.md)
+
+---
+
+# Phase 1 — `reachSteps`
 
 **Status:** complete ✅ (Passes 1–5)
 
-**Active plan:** [`fsmbfs.md`](fsmbfs.md) · Part 1 dedupe + Part 2 flow locomotion
-
-**Goal (achieved):** Delete every exported distance field (`preyDist`, `foodDist`, `allyDist`, `threatDist`, `enemyDist`, `lastDistanceCells`) and replace with **one dialect**: **`reachSteps`** — octile nav path steps on `NavTopology`, same unit for utility cost, threat severity, cohesion gates, pack distance, and debug.
-
-**Sibling docs:** [`../normalization.md`](../normalization.md) · [`../stupid.md`](../stupid.md) · [`../passthrough.md`](../passthrough.md) · [`../objects.md`](../objects.md) · [`../frame.md`](../frame.md)
+**Goal (achieved):** Delete every exported distance field and replace with **one dialect**: **`reachSteps`** — octile nav path steps on `NavTopology`.
 
 **Supersedes:** “wire `FlowFieldWindow.checkReachability` for utility scorers” in [`../../AI.md`](../../AI.md#future-local-flow-horizons). Decision reach = **`navReachHorizon.js`** only.
 
@@ -230,3 +234,136 @@ All zero hits in `*.js`. Deleted flow `checkReachability`.
 - [x] No `*Dist` grep hits in `Libraries/`
 - [x] Net line count negative (phase 1 scope)
 - [x] `checkReachability` deleted from flow types
+
+---
+
+# Part 1 — AI consumer cleanup
+
+**Status:** Passes A–F complete ✅ · Pass G (grep + doc sync) open
+
+**Why:** Phase 1 fixed reach dialect; snake and flee were still copy-paste forks (decision models, memory, perception, ~500-line twin intent adapters). Flee imported generic derives from `snakeDecisionModel.js`.
+
+**Goal (achieved):** One shared module per duplicated concept; species files hold modes/scorers/blackboard shape only; flee imports `Libraries/AI/` not snake for generics.
+
+---
+
+## Part 1 — passes
+
+| Pass | Work | Bar |
+|------|------|-----|
+| **A — Inventory** | Renamed misnamed `agentPopulationRegistry.js` → `agentRelationship.js` (dead — zero importers) | no behavior change |
+| **B — Generic derives** | `deriveThreatState`, `deriveAllyState`, `targetEvents` → `Libraries/AI/`; deleted `deriveFleeAgentThreatState` | flee imports AI only |
+| **C — Intent memory** | `createAgentIntentMemory.js`; deleted `snakeIntentMemory.js`, `fleeIntentMemory.js` | two call sites; snake `filterAllyForEngagement: true` |
+| **D — Perception** | `agentIntentPerception.js`; deleted `snakeIntent.js`, `fleeWorldPerception.js` | one `perceiveAgentIntentWorld` |
+| **E — Decision dedupe** | `intentPolicy.js`, `hungerEffort.js`, `scoreFleeIntent.js` | helpers out of both `*DecisionModel.js` |
+| **F — Intent adapter** | `createGroundNavIntentAdapter.js` + reach/route/latch/effects helpers | species adapters ~100 lines each |
+| **G — Gate** | grep + doc sync | commands in [`fsmbfs.md`](fsmbfs.md) |
+
+### Pass D bugfix
+
+`reachStepsForMode`: do not use committed `pathLen: 0` before a route exists. Trust path length only when `hasRoute && pathLen > 0`, or when `destReached`. Fixed regroup integration test (snake dropped `seek_ally` on second tick).
+
+### Stay in game adapters (by design)
+
+Mode sets (`seek_prey` vs `seek_enemy`), engagement publish (snake), `regroupSizeFactor`, flee pack options, species blackboard builders, `policyForScoredMode` mode tables.
+
+---
+
+## Part 1 — file ledger
+
+### Deleted
+
+| File | ~Lines |
+|------|-------:|
+| `snakeIntentMemory.js` | 61 |
+| `fleeIntentMemory.js` | 53 |
+| `snakeIntent.js` | 25 |
+| `fleeWorldPerception.js` | 20 |
+| `deriveFleeAgentThreatState` (wrapper) | — |
+
+### Added (15 modules, ~435 lines)
+
+| Module | Lines | Consumers |
+|--------|------:|-----------|
+| `AI/agents/deriveThreatState.js` | 7 | snake + flee decision |
+| `AI/agents/deriveAllyState.js` | 17 | snake + flee decision |
+| `AI/agentIntent/targetEvents.js` | 15 | snake + flee decision |
+| `AI/memory/createAgentIntentMemory.js` | 66 | snake + flee intent |
+| `AI/agentIntent/intentPolicy.js` | 9 | snake + flee decision |
+| `AI/utility/hungerEffort.js` | 10 | snake + flee decision |
+| `AI/agents/scoreFleeIntent.js` | 9 | snake + flee decision |
+| `Game/snake/agentIntentPerception.js` | 22 | snake + flee intent |
+| `Game/snake/agentReachSteps.js` | 18 | ground-nav adapter |
+| `Game/snake/createGroundNavIntentAdapter.js` | 129 | snake + flee intent |
+| `Game/snake/getGroundNavFsmSnapshot.js` | 32 | snake autosim/HUD only |
+| `AI/agentIntent/readAgentRouteStatus.js` | 14 | **adapter only** |
+| `AI/agentIntent/createBrainArrivalStamper.js` | 18 | **adapter only** |
+| `AI/agentIntent/createFleeIntentLatch.js` | 34 | **adapter only** |
+| `AI/agentIntent/createCellTargetIntentEffects.js` | 35 | **adapter only** |
+
+### Shrunk (representative)
+
+| File | Before | After | Δ |
+|------|-------:|------:|--:|
+| `createSnakeForageIntent.js` | 268 | 98 | −170 |
+| `createFleeExploreIntent.js` | 235 | 103 | −132 |
+| `snakeDecisionModel.js` | 288 | 230 | −58 |
+| `fleeDecisionModel.js` | 221 | 194 | −27 |
+
+**Rough net:** ~550 lines removed from duplicates/deletions, ~435 in new modules → **~−115 lines**, **+15 files**.
+
+---
+
+## Part 1 — verdict
+
+| Hygiene rule | Result |
+|--------------|--------|
+| Net negative LOC | **Marginal yes** (~−115) — not the big win phase 1 was |
+| No passthrough layers | **Yes** — no resolver getters, no `{ stepsTo }` objects, no dist on memory |
+| One factory per concept | **Yes** for memory, perception, adapter shell |
+| Both consumers same PR | **Yes** for B–F extracts |
+| Delete > add files | **No** — **+15 files** is the main smell |
+| No framework folder | **Yes** — no `Libraries/AI/decision/` |
+
+**What went well:** Real duplication gone. Flee no longer imports snake for generics. Twin ~500-line intent adapters collapsed to ~100-line species wiring. Reach dialect untouched. Tests green (99+ in intent/decision suites).
+
+**What violated the spirit of hygiene:** Pass F split four helpers that only `createGroundNavIntentAdapter.js` calls into separate files (`readAgentRouteStatus`, `createBrainArrivalStamper`, `createFleeIntentLatch`, `createCellTargetIntentEffects`). Same for `getGroundNavFsmSnapshot.js` (snake-only). Letter of the law (“concrete file, not barrel”) was followed; **file-count budget** was not.
+
+**Could have been worse:** No `createDecisionFramework`, no config resolver chain, no second reach dialect, no fake services. The adapter factory is one real factory, not a passthrough stack.
+
+---
+
+## Consolidation backlog (optional)
+
+Merge when touching these areas — do **not** do a standalone “cleanup PR” unless net file count drops:
+
+1. **Into `createGroundNavIntentAdapter.js`:** `readAgentRouteStatus`, `createBrainArrivalStamper`, `createFleeIntentLatch`, `createCellTargetIntentEffects` (~100 lines total).
+2. **Into `createGroundNavIntentAdapter.js` or snake forage file:** `getGroundNavFsmSnapshot.js` (snake-only).
+3. **Into `targetEvents.js`:** `intentPolicy.js` (both policy helpers, ~18 lines).
+4. **Into `utilityScoring.js` or one `hungerScoring.js`:** `hungerEffort.js` + `scoreFleeIntent.js` if flee/snake remain only consumers.
+
+**Do not merge:** `deriveThreatState`, `deriveAllyState`, `createAgentIntentMemory`, `agentIntentPerception`, `agentReachSteps` — each has clear dual-consumer or game-layer boundary justification.
+
+---
+
+## Part 1 — grep gates (Pass G)
+
+```bash
+rg 'preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCandidate' --glob '*.js'
+rg 'buildNavReachHorizon|resolveSnakeReachConfig|Libraries/AI/decision/' --glob '*.js'
+rg "from.*snakeDecisionModel" Libraries/Game/snake/fleeAgent --glob '*.js'
+rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentPolicy" Libraries/Game/snake --glob '*DecisionModel.js'
+```
+
+---
+
+## Part 1 review bar
+
+- [x] Flee does not import `snakeDecisionModel.js`
+- [x] One intent memory factory
+- [x] One perception entry (`agentIntentPerception.js`)
+- [x] Decision policy/hunger/flee helpers shared
+- [x] Intent adapter shell; species files ~100 lines
+- [ ] Pass G grep run recorded
+- [ ] Optional consolidation backlog if file count matters
+

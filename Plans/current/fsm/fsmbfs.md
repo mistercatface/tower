@@ -4,9 +4,9 @@
 
 | | |
 |--|--|
-| **Phase 1** | Reach dialect done ✅ — [`history.md`](history.md) |
-| **Part 1** | Pass A–F ✅ · **Pass G next** |
-| **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Part 1 grep gates pass** |
+| **Phase 1** | Reach dialect ✅ — [`history.md`](history.md#phase-1-reachsteps) |
+| **Part 1** | Passes A–F ✅ · **Pass G** (grep + doc sync) — [`history.md`](history.md#part-1-ai-consumer-cleanup) |
+| **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Pass G** |
 
 ---
 
@@ -25,8 +25,7 @@ This work spans AI, navigation, and game adapters. The spoke docs below are **bi
 | [`../normalization.md`](../normalization.md) | One dialect end-to-end; one shared module per duplicated pattern; structural wins not micro-opts; Part 1 before flow locomotion |
 | [`../objects.md`](../objects.md) | Hot path = module scratch + generation stamp; **zero** per-tick `{ stepsTo() }`, opts bags, `new TypedArray` in decision tick |
 | [`../frame.md`](../frame.md) | Shared sync pattern: **sync once · read many** — like `viewport`, not a returned handle object |
-| [`inventory.md`](inventory.md) | Pass A symbol map — duplication line refs for Pass B–F |
-| [`history.md`](history.md) | Phase 1 shipped contract — **do not regress** |
+| [`history.md`](history.md) | Shipped phase 1 + Part 1 archive — **do not regress** |
 | [`../../AI.md`](../../AI.md#future-local-flow-horizons) | Generic loop in `Libraries/AI`; species facts/scorers in game adapters |
 | [`../../pathfinding.md`](../../pathfinding.md) | Flow infra detail; HPA + flow hybrid notes for Part 2 |
 
@@ -41,6 +40,7 @@ A function, object, param, or layer that exists **only to forward data the calle
 - Threading the same config through 3 functions when `getSnakeGameConfig()` at the read site works
 - Factory that returns one closure and nothing else
 - Second blackboard layer (`visible.*Dist`, `remembered.*Dist`, `known.*Dist`) for the same fact
+- **One-export micro-files** whose only caller is another module in the same PR (inline or merge — see Part 1 review in [`history.md`](history.md#part-1-verdict))
 
 **Fix pattern:** compute at the boundary · pass scalars/records once · delete the copies.
 
@@ -60,6 +60,7 @@ From [`../stupid.md`](../stupid.md) — same class of mistakes that already burn
 | Per-agent `FlowFieldWindow` for **utility scoring** | Sync BFS for decisions; flow windows **Part 2 locomotion only** |
 | Mock `{ stepsTo: () => N }` in tests | Real `syncNavReachHorizon` or stub `reachSteps` on context |
 | One-export barrels (`import from "../AI/foo/index.js"`) | Import owning module directly |
+| Pass F-style file sprawl (5 helpers × 1 consumer) | Merge into the factory file that owns the call site |
 
 ### Normalization rules (this plan)
 
@@ -69,6 +70,7 @@ Perception and memory: targets only — never distance.
 One factory per duplicated concept (memory, perception options, intent adapter shell).
 One threat derive, one ally derive — species-neutral names in Libraries/AI.
 Flee must not import generic code from snakeDecisionModel.js.
+Prefer fewer files over “perfect” folder purity when only one caller exists.
 ```
 
 | Need | Read from |
@@ -98,8 +100,6 @@ Per agent per decision tick:
 
 ### Sync-once pattern ([`../frame.md`](../frame.md))
 
-Shared helpers extracted in Part 1 follow the same contract as draw pass:
-
 | Good | Bad |
 |------|-----|
 | `readAgentRouteStatus(locomotion, agent, state)` — one function, two callers | Copy-pasted 20-line closure in snake + flee |
@@ -108,7 +108,7 @@ Shared helpers extracted in Part 1 follow the same contract as draw pass:
 
 ### Frozen — decision reach (phase 1, do not regress)
 
-Authoritative detail: [`history.md`](history.md).
+Authoritative detail: [`history.md`](history.md#the-rule-frozen--do-not-regress).
 
 - **Module:** `Libraries/Navigation/navReachHorizon.js` only for decision reach BFS
 - **Write site:** intent adapter only — `facts.reachSteps` on blackboard
@@ -124,9 +124,11 @@ rg 'preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCa
 rg 'buildNavReachHorizon|resolveSnakeReachConfig|resolveReachSteps|checkReachability' --glob '*.js'
 rg 'Libraries/AI/decision' --glob '*.js'
 
-# part 1 stench
-rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fleeAgent --glob '*.js'
-# must be zero — flee uses Libraries/AI only
+# part 1 — flee must not import snake decision model
+rg "from.*snakeDecisionModel" Libraries/Game/snake/fleeAgent --glob '*.js'
+
+# part 1 — no duplicate helpers left in decision models
+rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentPolicy" Libraries/Game/snake --glob '*DecisionModel.js'
 ```
 
 | Banned | Why |
@@ -143,8 +145,9 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 
 ### Extract rule (Part 1 dedupe)
 
-- **OK:** `Libraries/AI/agents/deriveThreatState.js`, `Libraries/AI/agentIntent/routeEvents.js`, `Libraries/AI/memory/createAgentIntentMemory.js`, `Libraries/Game/snake/agentReachSteps.js` (game-layer modes)
-- **Not OK:** `Libraries/AI/decision/` directory · index barrels · `{ createDecisionFramework }` · config resolver getters · passthrough context builders
+- **OK when both consumers import:** `deriveThreatState`, `deriveAllyState`, `targetEvents`, `createAgentIntentMemory`, `intentPolicy`, `hungerEffort`, `createGroundNavIntentAdapter`
+- **Inline next time:** helpers with a single caller (Pass F route/latch/effects split — see consolidation backlog in [`history.md`](history.md#consolidation-backlog-optional))
+- **Not OK:** `Libraries/AI/decision/` · index barrels · `{ createDecisionFramework }` · config resolver getters · passthrough context builders
 
 **Same PR:** both `createSnakeForageIntent` and `createFleeExploreIntent` (and both decision models) must import every new shared module in the PR that introduces it.
 
@@ -156,56 +159,19 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 - [ ] Reach still computed once at intent adapter; flow not used for scoring
 - [ ] Both consumers updated if touching shared AI code
 - [ ] Tests: real `syncNavReachHorizon` or stub `reachSteps` on context — not mock horizon objects
+- [ ] New file count justified — merge single-consumer helpers into owner module
 
 ---
 
-## Part 1 — AI consumer cleanup
+## Part 1 — done (archive)
 
-**Why first:** Phase 1 fixed reach, but snake and flee are still copy-paste forks. ~~Flee imports generic derives from `snakeDecisionModel.js`~~ (Pass B ✅). Intent adapters ~90% identical. Flow locomotion needs a clean intent/loco boundary.
+Snake/flee dedupe: generic derives, memory, perception, decision helpers, intent adapter shell. Full pass log, file ledger, and honest verdict: [`history.md` § Part 1`](history.md#part-1-ai-consumer-cleanup).
 
-### Stench inventory
-
-| Smell | Where | Fix |
-|-------|-------|-----|
-| Flee imports snake for generic derives | ~~`fleeDecisionModel.js`~~ ✅ Pass B | `deriveThreatState`, `deriveAllyState`, `targetEvents` in `Libraries/AI/` |
-| Duplicated decision helpers | ~~`pushTargetEvents`~~ ✅ Pass B; ~~`policyReasonForTarget`, `intentPolicy`, hunger/food/flee scorers~~ ✅ Pass E; still open: `policyForScoredMode` | Pass E ✅ / species mode tables stay local |
-| Twin intent memory | ~~`snakeIntentMemory.js`, `fleeIntentMemory.js`~~ ✅ Pass C | `Libraries/AI/memory/createAgentIntentMemory.js` |
-| Twin perception wrappers | ~~`snakeIntent.js`, `fleeWorldPerception.js`~~ ✅ Pass D | `agentIntentPerception.js` |
-| ~270-line twin intent adapters | ~~`createSnakeForageIntent.js`, `createFleeExploreIntent.js`~~ ✅ Pass F | `createGroundNavIntentAdapter.js`; species files ~110 lines |
-| `reachStepsForMode` ×2 | ~~both adapters~~ ✅ Pass F | `agentReachSteps.js` |
-| Misnamed file | ~~`agentPopulationRegistry.js`~~ → `agentRelationship.js` ✅ Pass A | **dead code** — zero importers; delete or wire in Pass D |
-| `deriveFleeAgentThreatState` | ~~thin wrapper~~ ✅ deleted Pass B | — |
-
-**Stay in game adapters:** mode sets (`seek_prey` vs `seek_enemy`), engagement publish (snake), `regroupSizeFactor`, flee pack options, species blackboard shapes.
-
-### Passes
-
-| Pass | Work | Bar |
-|------|------|-----|
-| **A — Inventory** ✅ | Renamed `agentPopulationRegistry.js` → `agentRelationship.js`; symbol map in [`inventory.md`](inventory.md) | no behavior change |
-| **B — Generic derives** ✅ | `deriveThreatState`, `deriveAllyState`, `targetEvents` → `Libraries/AI/`; deleted `deriveFleeAgentThreatState` | flee imports AI only — verified |
-| **C — Intent memory** ✅ | `createAgentIntentMemory.js`; deleted species memory files | two call sites |
-| **D — Perception** ✅ | `agentIntentPerception.js`; deleted species wrapper files; fixed `reachStepsForMode` pathLen-0 latch bug | one options builder + `perceiveAgentIntentWorld` |
-| **E — Decision dedupe** ✅ | `intentPolicy.js`, `hungerEffort.js`, `scoreFleeIntent.js` | net −LOC; grep gate clean on policy/hunger helpers |
-| **F — Intent adapter** ✅ | `createGroundNavIntentAdapter.js`, `agentReachSteps.js`, shared route/latch/effects helpers | species files ~110 lines; `reachStepsForMode` once |
-| **G — Gate + docs** | Tests + doc sync | grep gates below |
-
-### Grep gates (before Part 2)
-
-```bash
-rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fleeAgent --glob '*.js'
-# zero — flee uses Libraries/AI only
-
-rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentPolicy" Libraries/Game/snake --glob '*DecisionModel.js'
-# zero or moved to AI
-
-rg 'buildNavReachHorizon|resolveSnakeReachConfig|Libraries/AI/decision/' --glob '*.js'
-rg 'preyDist|foodDist|allyDist|threatDist|enemyDist|lastDistanceCells|reachForCandidate' --glob '*.js'
-```
+**Open:** Pass G — run grep gates above; confirm no stale imports of deleted modules.
 
 ---
 
-## Part 2 — Flow locomotion (gated on Part 1)
+## Part 2 — Flow locomotion (gated on Pass G)
 
 **Do not start** until Part 1 gates pass. Decision reach stays on `navReachHorizon` — flow fields **steer**, sync BFS **scores**.
 
@@ -252,9 +218,9 @@ One cost field from weighted sources — replaces `pickFleeCell` + `resolveFleeP
 ### Dependency
 
 ```text
-Part 1 ──gate──► 2a flee flow
-                    ├──► 2b hybrid HPA+flow
-                    └──► 3 blended fields
+Part 1 (Pass G) ──gate──► 2a flee flow
+                            ├──► 2b hybrid HPA+flow
+                            └──► 3 blended fields
 ```
 
 Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundNavBehavior.js`, `cellTargetHpaNav.js`
@@ -263,17 +229,13 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 ## Review bar
 
-### Part 1 (open)
+### Part 1
 
-- [x] Pass A inventory — [`inventory.md`](inventory.md)
-- [x] Pass B — flee does not import generic derives from `snakeDecisionModel.js`
-- [x] Pass C — one intent memory factory
-- [x] Pass D — one perception options builder (`agentIntentPerception.js`)
-- [ ] Pass E — decision model dedupe
-- [ ] Net −LOC across snake+flee pair
-- [ ] Part 1 grep gates pass
+- [x] Passes A–F — see [`history.md`](history.md#part-1-ai-consumer-cleanup)
+- [ ] Pass G grep gates (commands above)
+- [ ] Optional: merge Pass F micro-files per consolidation backlog
 
-### Part 2 (blocked on Part 1)
+### Part 2 (blocked)
 
 - [ ] 2a: flee steers from flow sample
 - [ ] 2b: snake seek HPA waypoint + local flow
