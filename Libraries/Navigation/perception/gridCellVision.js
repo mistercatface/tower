@@ -1,5 +1,5 @@
 import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
-import { createNavGraphViewFromTopology } from "../navGraph.js";
+import { navTopologyGraphCanStep } from "../NavTopology.js";
 import { gridCellLosCacheKey } from "./gridCellVisionSession.js";
 const HEADING_SPEED_MIN = 0.25;
 export function resolveObserverHeading(prop) {
@@ -11,7 +11,6 @@ export function resolveObserverHeading(prop) {
 }
 export function hasGridCellLineOfSight(navTopology, col0, row0, col1, row1) {
     const grid = navTopology.grid;
-    const graph = createNavGraphViewFromTopology(navTopology);
     if (!cellInRect(col1, row1, grid.cols, grid.rows)) return false;
     if (col0 === col1 && row0 === row1) return true;
     let x = col0;
@@ -35,7 +34,7 @@ export function hasGridCellLineOfSight(navTopology, col0, row0, col1, row1) {
             ny = y + sy;
         }
         if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
-        if (!graph.canStep(x, y, nx, ny)) return false;
+        if (!navTopologyGraphCanStep(navTopology, x, y, nx, ny)) return false;
         x = nx;
         y = ny;
     }

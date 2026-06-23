@@ -1,7 +1,17 @@
 import { isAgentEngaged } from "../../AI/agents/agentEngagement.js";
 import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
 import { buildAgentDecisionContext, buildAgentDecisionFrame, pickAgentIntentPolicy } from "../../AI/agents/buildAgentDecisionContext.js";
-import { costPerCellForHunger, foodHungerScoreValue, hungerKey, netScoreDetail, scoreCandidateSet, scoreRiskAdjustedFlee } from "../../AI/utility/utilityScoring.js";
+import {
+    costPerCellForHunger,
+    foodHungerScoreValue,
+    hungerKey,
+    netScoreDetail,
+    netScoreOnly,
+    resetScoreDetailScratch,
+    SCORE_ABSENT,
+    scoreCandidateSet,
+    scoreRiskAdjustedFlee,
+} from "../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "./snakeEngagement.js";
 const SCORE_ORDER = ["flee", "seek_prey", "seek_food", "seek_ally", "explore"];
@@ -34,7 +44,7 @@ function preyValueForHunger(weights, pressure, hungerState) {
 }
 function scorePreyDetail(ctx, weights, pressure) {
     const prey = ctx.known.prey;
-    if (!prey) return { net: -Infinity };
+    if (!prey) return SCORE_ABSENT;
     const hunger = ctx.hungerState;
     let value = preyValueForHunger(weights, pressure, hunger);
     const isPreySnake = prey.type === "snake_head";
@@ -45,7 +55,7 @@ function scorePreyDetail(ctx, weights, pressure) {
     return netScoreDetail(value, ctx.reachSteps.prey, costPerCellForHunger(pressure, hunger));
 }
 function scoreFoodDetail(ctx, weights, pressure) {
-    if (!ctx.known.food) return { net: -Infinity };
+    if (!ctx.known.food) return SCORE_ABSENT;
     const hunger = ctx.hungerState;
     const value = foodHungerScoreValue(weights, pressure, hunger);
     return netScoreDetail(value, ctx.reachSteps.food, costPerCellForHunger(pressure, hunger));
@@ -60,16 +70,16 @@ function regroupSizeFactor(segmentCount, cohesion) {
 }
 function scoreSeekAllyDetail(ctx, weights, pressure) {
     const ally = ctx.known.ally;
-    if (!ally) return { net: -Infinity };
-    if (!ctx.allyState?.leadworthy) return { net: -Infinity };
-    if (ctx.known.threat) return { net: -Infinity };
+    if (!ally) return SCORE_ABSENT;
+    if (!ctx.allyState?.leadworthy) return SCORE_ABSENT;
+    if (ctx.known.threat) return SCORE_ABSENT;
     const hunger = ctx.hungerState;
-    if (!hunger?.satisfied) return { net: -Infinity };
+    if (!hunger?.satisfied) return SCORE_ABSENT;
     const cohesion = getSnakeGameConfig().factionCohesion ?? {};
     const sizeFactor = regroupSizeFactor(ctx.seekerSegmentCount, cohesion);
-    if (sizeFactor <= 0) return { net: -Infinity };
+    if (sizeFactor <= 0) return SCORE_ABSENT;
     const allyReach = ctx.reachSteps.ally;
-    if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 3)) return { net: -Infinity };
+    if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 3)) return SCORE_ABSENT;
     let value = (weights.seek_ally ?? weights.explore) + (cohesion.satisfiedBonus ?? 50);
     value *= sizeFactor;
     const allyCount = ctx.known.allyCount ?? 1;
@@ -77,12 +87,13 @@ function scoreSeekAllyDetail(ctx, weights, pressure) {
     return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hunger));
 }
 export function scoreSnakeIntentCandidateDetails(ctx, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
+    resetScoreDetailScratch();
     return {
-        flee: { net: scoreRiskAdjustedFlee(ctx, weights, pressure) },
+        flee: netScoreOnly(scoreRiskAdjustedFlee(ctx, weights, pressure)),
         seek_prey: scorePreyDetail(ctx, weights, pressure),
         seek_food: scoreFoodDetail(ctx, weights, pressure),
         seek_ally: scoreSeekAllyDetail(ctx, weights, pressure),
-        explore: { value: weights.explore, reach: null, cost: 0, net: weights.explore },
+        explore: netScoreDetail(weights.explore, null, 0),
     };
 }
 export function scoreSnakeIntentCandidates(ctx, weights, pressure) {

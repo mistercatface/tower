@@ -76,6 +76,10 @@ export class NavTopology {
         if (!frame || !topology) return false;
         return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
     }
+    /** Same step test as {@link createNavGraphViewFromTopology} `.canStep` — no graph view allocation. */
+    graphCanStep(fromCol, fromRow, toCol, toRow) {
+        return navTopologyGraphCanStep(this, fromCol, fromRow, toCol, toRow);
+    }
     /** Cardinal / vertex step — belt mouths, map-gen heuristics. */
     canStepCardinal(fromCol, fromRow, toCol, toRow) {
         const cardinalOpen = this.navCardinalOpen;
@@ -151,4 +155,14 @@ function ensureLocalBakeArena(grid) {
 export function invalidateGridLocalNavBake(grid) {
     localBakeArenas.delete(grid);
     if (grid._navTopologyRef?.invalidateLocalBake) grid._navTopologyRef.invalidateLocalBake();
+}
+/** @param {NavTopology} navTopology */
+export function navTopologyGraphCanStep(navTopology, fromCol, fromRow, toCol, toRow) {
+    const cardinalOpen = navTopology.navCardinalOpen;
+    const vertexPassability = navTopology.vertexPassability;
+    if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow);
+    const frame = navTopology.frame;
+    const topology = navTopology.topology;
+    if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
+    return false;
 }

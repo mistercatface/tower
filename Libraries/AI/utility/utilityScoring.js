@@ -1,7 +1,29 @@
+export const SCORE_ABSENT = Object.freeze({ net: -Infinity });
+const DETAIL_SCRATCH = Array.from({ length: 8 }, () => ({ value: 0, reach: null, cost: 0, net: 0 }));
+let detailScratchIndex = 0;
+export function resetScoreDetailScratch() {
+    detailScratchIndex = 0;
+}
+export function allocScoreDetail() {
+    return DETAIL_SCRATCH[detailScratchIndex++];
+}
+export function netScoreDetailInto(out, value, reach, costPerUnit) {
+    out.value = value;
+    out.reach = reach;
+    out.cost = reach == null ? 0 : costPerUnit * reach;
+    out.net = value - out.cost;
+    return out;
+}
 export function netScoreDetail(value, reach, costPerUnit) {
-    const cost = reach == null ? 0 : costPerUnit * reach;
-    const net = value - cost;
-    return { value, reach, cost, net };
+    return netScoreDetailInto(allocScoreDetail(), value, reach, costPerUnit);
+}
+export function netScoreOnly(net) {
+    const out = allocScoreDetail();
+    out.value = 0;
+    out.reach = null;
+    out.cost = 0;
+    out.net = net;
+    return out;
 }
 export function hungerKey(hungerState) {
     return hungerState?.state ?? "hungry";
