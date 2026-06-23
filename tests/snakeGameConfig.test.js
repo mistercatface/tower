@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
-import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing, resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, applySnakeHeadGameplay, getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing, resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
+import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { KineticSession } from "../GameState/KineticSession.js";
+import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { getKineticRollConfig } from "../Libraries/Sandbox/kineticRollActuator.js";
 
 describe("snakeGameConfig", () => {
     it("derives segment spacing from segment prop diameter and linkSlack", () => {
@@ -33,6 +39,17 @@ describe("snakeGameConfig", () => {
         assert.equal(getSnakeGameConfig().eatMargin, 4);
         assert.equal(resolveSnakeSegmentSpacing(), 4 * 2 * 1.1);
         assert.equal(resolveSnakeEatRadius(), 4 + 2 + 4);
+        applySnakeGameConfig();
+    });
+
+    it("applySnakeHeadGameplay copies headMaxSpeed onto the head prop strategy", () => {
+        applySnakeGameConfig({ headMaxSpeed: 95 });
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 256, 256);
+        const state = { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
+        const head = spawnPlacedSandboxProp(state, 80, 80, "snake_head");
+        applySnakeHeadGameplay(head);
+        assert.equal(getKineticRollConfig(head).maxSpeed, 95);
         applySnakeGameConfig();
     });
 });

@@ -7,6 +7,9 @@ import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { buildReplanParams } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+
 describe("node worker shim", () => {
     it("runs HpaPathWorker nav topology sync", async () => {
         assert.equal(typeof Worker, "function");
@@ -44,6 +47,20 @@ describe("node worker shim", () => {
         assert.ok(navigation.topology.isReady());
         assert.ok(navigation.topology.topology);
         await terminateWorkerNavigation(navigation);
+    });
+    it("createWorkerNavigation syncs worker arena on commitEdit", async () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 512, 512);
+        const nav = await createWorkerNavigation(grid);
+        const revision0 = nav.topology.wallRevision;
+        grid.grid[colRowToIndex(8, 8, grid.cols)] = 1;
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        await nav.commitEdit({ startCol: 7, endCol: 9, startRow: 7, endRow: 9 });
+        assert.ok(nav.topology.wallRevision > revision0);
+        assert.equal(nav.syncedTopologyKey(), nav.topologyKey());
+        assert.ok(nav.topology.isReady());
+        assert.ok(nav.topology.topology);
+        await terminateWorkerNavigation(nav);
     });
     it("runs a real worker HPA replan request", async () => {
         const grid = new WorldObstacleGrid(16);

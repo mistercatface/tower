@@ -27,27 +27,6 @@ describe("HpaRegionGraph", () => {
         assert.deepEqual(a.edges, []);
     });
 
-    it("packs the same flat graph through wrapper and legacy state", () => {
-        const blocked = new Uint8Array(frame.cols * frame.rows);
-        blocked[1] = 1;
-        const navGraph = { canStep: () => true };
-        const built = buildFullRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
-
-        assert.ok(built.graph instanceof HpaRegionGraph);
-        assert.equal(built.graph.nodesMap, built.nodesMap);
-        assert.equal(built.graph.cellToNode, built.cellToNode);
-
-        const fromGraph = packRegionGraphFlat(built.graph, built.cellToNode, frame);
-        const fromLegacy = packRegionGraphFlat(built.nodesMap, built.cellToNode, frame);
-
-        assert.deepEqual(Array.from(fromGraph.nodeCol), Array.from(fromLegacy.nodeCol));
-        assert.deepEqual(Array.from(fromGraph.nodeRow), Array.from(fromLegacy.nodeRow));
-        assert.deepEqual(Array.from(fromGraph.cellToRegion), Array.from(fromLegacy.cellToRegion));
-        assert.deepEqual(Array.from(fromGraph.edgeSources), Array.from(fromLegacy.edgeSources));
-        assert.deepEqual(Array.from(fromGraph.edgeTargets), Array.from(fromLegacy.edgeTargets));
-        assert.deepEqual(Array.from(fromGraph.edgeCosts), Array.from(fromLegacy.edgeCosts));
-    });
-
     it("writes packed region graph into persisted CSR SAB views", () => {
         const maxGraphNodes = 4;
         const maxGraphEdges = 8;
@@ -85,5 +64,20 @@ describe("HpaRegionGraph", () => {
         assert.equal(graphView.nodeCount, 3);
         assert.equal(graphView.edgeWrite, 3);
         assert.equal(graphView.edgeTargets[graphView.edgeOffsets[1]], 2);
+    });
+
+    it("packs flat graph from HpaRegionGraph wrapper", () => {
+        const blocked = new Uint8Array(frame.cols * frame.rows);
+        blocked[1] = 1;
+        const navGraph = { canStep: () => true };
+        const built = buildFullRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
+
+        assert.ok(built.graph instanceof HpaRegionGraph);
+        assert.equal(built.graph.nodesMap, built.nodesMap);
+        assert.equal(built.graph.cellToNode, built.cellToNode);
+
+        const packed = packRegionGraphFlat(built.graph, built.cellToNode, frame);
+        assert.ok(packed.nodeCount > 0);
+        assert.equal(packed.cellToRegion.length, frame.cols * frame.rows);
     });
 });

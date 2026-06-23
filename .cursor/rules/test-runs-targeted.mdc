@@ -10,7 +10,7 @@ Do **not** run `npm test` or belt/pathfinding tests as a default wrap-up after u
 ## Skip by default
 
 - No full `npm test` at the end of every task unless the user asks or the change clearly needs it.
-- Do **not** run `tests/hpaBeltNav.test.js` or `tests/puzzleTemplateBeltCrate.test.js` unless the work touches pathfinding, HPA nav, floor belts, or belt puzzle templates.
+- Do **not** run `tests/floorBeltCell.test.js` or `tests/puzzleTemplateBeltCrate.test.js` unless the work touches pathfinding, HPA nav, floor belts, or belt puzzle templates.
 - Do **not** mention known pre-existing belt test failures — they are expected baseline noise, not a regression signal.
 
 ## When to run tests
