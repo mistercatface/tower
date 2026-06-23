@@ -121,14 +121,16 @@ function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fl
     splitSnakeAtStruckSegment(state, snakeGame, chainInstance.headId, struckSegmentId, victimMembers, deathImpact);
     return true;
 }
+function squidDuelSpeedOk(relSpeed, config) {
+    return relSpeed >= Math.min(config.splitImpulseThreshold, 10);
+}
 function tryResolveBrainRam(state, snakeGame, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, bodyA, bodyB, relSpeed, config, resolverId) {
     if (!matchesBrainRamResolver(traitsA, resolverId) || !matchesBrainRamResolver(traitsB, resolverId)) return false;
     if (areTeammates(snakeGame, instanceA.headId, instanceB.headId, state)) return false;
-    if (relSpeed < config.splitImpulseThreshold) return false;
     const aLeader = bodyA.id === instanceA.headId;
     const bLeader = bodyB.id === instanceB.headId;
-    if (!aLeader && !bLeader) return false;
-    if (aLeader && bLeader) {
+    if (!aLeader && !bLeader) {
+        if (!squidDuelSpeedOk(relSpeed, config)) return false;
         const victims = classifyFleeRamVictims(contacts, i);
         if (victims.killA) {
             const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
@@ -140,13 +142,22 @@ function tryResolveBrainRam(state, snakeGame, spatialFrame, contacts, i, instanc
         }
         return victims.killA || victims.killB;
     }
-    if (aLeader) {
-        const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
-        instanceB.die(state, snakeGame, null, deathImpact);
-        return true;
+    if (aLeader && bLeader) {
+        if (!squidDuelSpeedOk(relSpeed, config)) return false;
+        const victims = classifyFleeRamVictims(contacts, i);
+        if (victims.killA) {
+            const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
+            instanceA.die(state, snakeGame, null, impactA);
+        }
+        if (victims.killB) {
+            const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
+            instanceB.die(state, snakeGame, null, impactB);
+        }
+        return victims.killA || victims.killB;
     }
-    const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
-    instanceA.die(state, snakeGame, null, deathImpact);
+    const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, bLeader ? bodyB.id : bodyA.id, bLeader ? bodyB : bodyA, relSpeed);
+    if (bLeader) instanceB.die(state, snakeGame, null, deathImpact);
+    else instanceA.die(state, snakeGame, null, deathImpact);
     return true;
 }
 function tryResolveHeadStrikeRam(state, snakeGame, spatialFrame, contacts, i, strikerInstance, strikerBody, victimInstance, victimTraits, victimBody, relSpeed, config, splitLinks) {
@@ -201,7 +212,8 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         )
             continue;
         if (tryResolveBrainRam(state, snakeGame, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, pair.bodyA, pair.bodyB, relSpeed, config, "squidVsSquid")) continue;
-        if (isChainCombatTopology(traitsA) && isChainCombatTopology(traitsB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
+        const bothSquidDuel = matchesBrainRamResolver(traitsA, "squidVsSquid") && matchesBrainRamResolver(traitsB, "squidVsSquid");
+        if (!bothSquidDuel && isChainCombatTopology(traitsA) && isChainCombatTopology(traitsB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
         const distSq = headDistSq(state, instanceA.headId, instanceB.headId);
         const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state, distSq);
         const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state, distSq);
