@@ -11,8 +11,10 @@ import { wireSnakeTestGame, registerSnakeTestInstance, createWiredSnakeAutosim, 
 import { resolveFocusedAgentDebugContext } from "../Libraries/Game/snake/resolveFocusedAgentDebugContext.js";
 import { appendSnakeGameOverlayCommands } from "../Libraries/Game/snake/appendSnakeGameOverlayCommands.js";
 import { appendFocusedAgentPathPreviewCommands } from "../Libraries/Game/snake/focusedAgentPathOverlays.js";
+import { appendFocusedAgentTargetOverlayCommands, resolveCommittedTargetWorld } from "../Libraries/Game/snake/focusedAgentTargetOverlays.js";
+import { appendFocusedAgentVisibleEntityOverlayCommands } from "../Libraries/Game/snake/focusedAgentVisibleEntityOverlays.js";
 
-describe("focused agent path overlay", () => {
+describe("focused agent debug overlays", () => {
     it("resolveFocusedAgentDebugContext exposes path overlay for snake autosim and flee instance", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
@@ -56,7 +58,55 @@ describe("focused agent path overlay", () => {
         assert.ok(out.every((cmd) => cmd.kind !== "arrowHead"));
     });
 
-    it("appendSnakeGameOverlayCommands emits path preview only when enabled", async () => {
+    it("appendFocusedAgentTargetOverlayCommands marks committed entity target in red", async () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(4);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        const snakeGame = state.sandbox.snakeGame;
+        const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
+        const autosim = snakeGame.autosimsByHeadId.get(snake.chain.head.id);
+        autosim.start();
+        const prey = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId });
+        const ctx = resolveFocusedAgentDebugContext(state, snake.chain.head.id);
+        const target = resolveCommittedTargetWorld(state, {
+            mode: "seek_prey",
+            targetId: prey.chain.head.id,
+            destination: autosim.getDestination(),
+        });
+        assert.equal(target?.kind, "entity");
+        const out = [];
+        appendFocusedAgentTargetOverlayCommands(out, state, {
+            ...ctx,
+            getIntentTarget: () => ({ mode: "seek_prey", targetId: prey.chain.head.id, destination: null }),
+        });
+        assert.equal(out.length, 1);
+        assert.match(out[0].stroke, /255,\s*80,\s*80/);
+    });
+
+    it("appendFocusedAgentVisibleEntityOverlayCommands does not advance sim tick", async () => {
+        applySnakeGameConfig({ showFocusedAgentDebug: true });
+        resetKineticConstraintIds(5);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        const snakeGame = state.sandbox.snakeGame;
+        const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
+        createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
+        spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
+        const ctx = resolveFocusedAgentDebugContext(state, snake.chain.head.id);
+        const simTickBefore = snakeGame.simTick;
+        const out = [];
+        appendFocusedAgentVisibleEntityOverlayCommands(out, state, ctx);
+        assert.equal(snakeGame.simTick, simTickBefore);
+        assert.ok(out.every((cmd) => cmd.kind === "circleFillStroke"));
+        assert.ok(out.every((cmd) => cmd.kind !== "aabb"));
+    });
+
+    it("appendSnakeGameOverlayCommands emits path and target ring only when enabled", async () => {
         applySnakeGameConfig({ showFocusedAgentDebug: true });
         resetKineticConstraintIds(3);
         const { state } = await createSnakeGameHarnessState();
@@ -68,5 +118,6 @@ describe("focused agent path overlay", () => {
         const commands = [];
         appendSnakeGameOverlayCommands(commands, state, { focusedHeadId: snake.chain.head.id });
         assert.ok(commands.every((cmd) => cmd.kind === "polyline" || cmd.kind === "circleFillStroke" || commands.length === 0));
+        assert.ok(commands.every((cmd) => cmd.kind !== "aabb"));
     });
 });
