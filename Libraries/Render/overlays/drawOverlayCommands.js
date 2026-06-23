@@ -49,7 +49,7 @@ function drawAimSegmentCommand(ctx, cmd) {
     }
     ctx.restore();
 }
-export function drawOverlayCommands(ctx, commands, px = 0, py = 0, zoom = 1) {
+export function drawOverlayCommands(ctx, commands, viewport) {
     if (!commands.length) return;
     ctx.save();
     for (let i = 0; i < commands.length; i++) {
@@ -74,18 +74,7 @@ export function drawOverlayCommands(ctx, commands, px = 0, py = 0, zoom = 1) {
                 worldX = (cmd.minX + cmd.maxX) * 0.5;
                 worldY = (cmd.minY + cmd.maxY) * 0.5;
             }
-            drawCachedOverlayGlyph(
-                ctx,
-                worldX,
-                worldY,
-                px,
-                py,
-                renderKey,
-                customKey,
-                worldSpan,
-                (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommand(bakeCtx, bakeAnchorX, bakeAnchorY, cmd),
-                zoom,
-            );
+            drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommand(bakeCtx, bakeAnchorX, bakeAnchorY, cmd));
             continue;
         }
         if (cmd.kind === "aabb") {

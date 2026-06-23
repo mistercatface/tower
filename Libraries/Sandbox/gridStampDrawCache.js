@@ -246,8 +246,8 @@ export function syncPassageEdgeStampDrawCache(state, grid) {
     state.sandbox._passageEdgeDrawCache = next;
     return next;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} gameState @param {import("../Viewport/Viewport.js").Viewport} viewport @param {number} px @param {number} py @param {object[]} out */
-export function collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py, out) {
+/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} gameState @param {import("../Viewport/Viewport.js").Viewport} viewport @param {object[]} out */
+export function collectForcefieldEdgeDrawables(grid, gameState, viewport, out) {
     if (!grid.cols || !grid.edgeStore.passageEdgeCount || !gameState.sandbox) return;
     const cached = syncPassageEdgeStampDrawCache(gameState, grid);
     if (!cached?.edges.length) return;
@@ -258,7 +258,7 @@ export function collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py
         if (!viewport.circleInBounds(item.midX, item.midY, item.proxy.radius, "props")) continue;
         const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
         if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
-        item.proxy._distSq = (item.midX - px) ** 2 + (item.midY - py) ** 2;
+        item.proxy._distSq = (item.midX - viewport.x) ** 2 + (item.midY - viewport.y) ** 2;
         out.push(item.proxy);
     }
 }

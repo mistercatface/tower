@@ -34,13 +34,13 @@ export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds, wa
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
  * @param {import("../../Viewport/Viewport.js").Viewport} viewport
- * @param {number} viewerX
- * @param {number} viewerY
  * @param {object[]} out
  */
-export function collectStaticGridWallDrawables(obstacleGrid, viewport, viewerX, viewerY, out, wallDamageRevision = 0) {
+export function collectStaticGridWallDrawables(obstacleGrid, viewport, out, wallDamageRevision = 0) {
     out.length = 0;
     const bounds = viewport.bounds("structure");
+    const viewerX = viewport.x;
+    const viewerY = viewport.y;
     const wallGridRevision = obstacleGrid.wallGridRevision;
     if (!wallGridDrawCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds, wallDamageRevision)) {
         collectVoxelWallFacesInAabb(obstacleGrid, bounds, sGeomCache.faces);

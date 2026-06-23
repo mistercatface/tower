@@ -218,15 +218,16 @@ const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} worldX
  * @param {number} worldY
- * @param {number} px
- * @param {number} py
+ * @param {import("../Viewport/Viewport.js").Viewport} viewport
  * @param {string} renderKey
  * @param {string} customKey
  * @param {number} worldSpan
  * @param {OverlayDrawRecipe} draw
- * @param {number} [zoom]
  */
-export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1) {
+export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, draw) {
+    const px = viewport.x;
+    const py = viewport.y;
+    const zoom = viewport.zoom;
     let key = BigInt(internSpriteKeyPart(renderKey));
     key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
     key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
@@ -258,9 +259,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, c
  * @param {number} [animFrame]
  */
 export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0) {
-    const px = viewport.x;
-    const py = viewport.y;
     const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
-    const modifier = resolveSpriteDrawModifier(prop, px, py);
+    const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }

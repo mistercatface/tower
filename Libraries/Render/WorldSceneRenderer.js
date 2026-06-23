@@ -48,8 +48,6 @@ export class WorldSceneRenderer {
      * @param {import("../Viewport/Viewport.js").Viewport} viewport
      */
     drawFloorProps(ctx, input, viewport) {
-        const px = viewport.x;
-        const py = viewport.y;
         drawFloorOccupancyBelts(ctx, input.gameState, viewport);
         drawFloorOccupancyPowerSources(ctx, input.gameState, viewport);
         const visibleObjects = this.visibleDrawables;
@@ -57,36 +55,36 @@ export class WorldSceneRenderer {
         const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { hitTest: "aabb", filterId: "floor", match: (p) => p.strategy?.renderMode === "floor" });
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
-            prop._distSq = (prop.x - px) ** 2 + (prop.y - py) ** 2;
+            prop._distSq = (prop.x - viewport.x) ** 2 + (prop.y - viewport.y) ** 2;
             visibleObjects.push(prop);
         }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i], viewport);
     }
-    _appendVisible3dProps(input, viewport, px, py) {
+    _appendVisible3dProps(input, viewport) {
         const visibleObjects = this.visibleDrawables;
         const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { filterId: "3d", match: (p) => p.strategy?.renderMode === "3d" });
         for (let i = 0; i < props.length; i++) {
             const p = props[i];
-            p._distSq = (p.x - px) ** 2 + (p.y - py) ** 2;
+            p._distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
             visibleObjects.push(p);
         }
     }
-    _appendVisibleStaticGridWalls(input, viewport, px, py) {
+    _appendVisibleStaticGridWalls(input, viewport) {
         const wallDamageRevision = getGridWallDamageSession(input.gameState)?.damageRevision ?? 0;
-        collectStaticGridWallDrawables(input.obstacleGrid, viewport, px, py, this.staticGridDrawables, wallDamageRevision);
-        collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, px, py, this.staticGridEdgeRailDrawables, wallDamageRevision);
+        collectStaticGridWallDrawables(input.obstacleGrid, viewport, this.staticGridDrawables, wallDamageRevision);
+        collectStaticGridEdgeRailDrawables(input.obstacleGrid, viewport, this.staticGridEdgeRailDrawables, wallDamageRevision);
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < this.staticGridDrawables.length; i++) visibleObjects.push(this.staticGridDrawables[i]);
         for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) visibleObjects.push(this.staticGridEdgeRailDrawables[i]);
     }
-    _appendVisibleForcefieldEdges(input, viewport, px, py) {
+    _appendVisibleForcefieldEdges(input, viewport) {
         const grid = input.obstacleGrid;
         const gameState = input.gameState;
         if (!grid || !gameState) return;
         const drawables = this.forcefieldEdgeDrawables;
         drawables.length = 0;
-        collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py, drawables);
+        collectForcefieldEdgeDrawables(grid, gameState, viewport, drawables);
         const visibleObjects = this.visibleDrawables;
         for (let i = 0; i < drawables.length; i++) visibleObjects.push(drawables[i]);
     }
@@ -98,11 +96,9 @@ export class WorldSceneRenderer {
         wallCtx.damageTintRatio = resolveWallDamageTintRatioForDrawable(getGridWallDamageSession(gameState), drawable);
     }
     draw3DBuildings(ctx, input, viewport, options = {}) {
-        const px = viewport.x;
-        const py = viewport.y;
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
-        this._appendVisible3dProps(input, viewport, px, py);
+        this._appendVisible3dProps(input, viewport);
         const skipWalls = options.skipWalls === true;
         if (!skipWalls) {
             const wallCtx = this.wallCtx;
@@ -115,9 +111,9 @@ export class WorldSceneRenderer {
             wallCtx.skipWallCaps = options.skipWallCaps === true;
             wallCtx.cacheObj = null;
             wallCtx.atlasFaceId = undefined;
-            this._appendVisibleStaticGridWalls(input, viewport, px, py);
+            this._appendVisibleStaticGridWalls(input, viewport);
         }
-        this._appendVisibleForcefieldEdges(input, viewport, px, py);
+        this._appendVisibleForcefieldEdges(input, viewport);
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];

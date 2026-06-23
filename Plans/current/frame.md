@@ -163,20 +163,20 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 
 ### Step 2 — Projection + walls (delete camera copies)
 
-- [ ] `IsometricProjection`, `propMesh`, `ProjectedWallDraw`, ground/animated surface: take **`viewport`**, not `ElevationCamera`
-- [ ] Delete `elevationCameraFrom*`, `wallPassCamera`, `sStructureRoofCamera`
-- [ ] Unify prop + wall strength → always `viewport.perspectiveStrength`
+- [x] `IsometricProjection`, `propMesh`, `ProjectedWallDraw`, ground/animated surface: take **`viewport`**, not `ElevationCamera`
+- [x] Delete `elevationCameraFrom*`, `wallPassCamera`, `sStructureRoofCamera`
+- [x] Unify prop + wall strength → always `viewport.perspectiveStrength`
 
 ### Step 3 — Cache + all callers (single PR — do not split)
 
-- [ ] `drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame?)`
-- [ ] `drawCachedOverlayGlyph(…, viewport, …)`
-- [ ] Update **every** caller same commit:
+- [x] `drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame?)`
+- [x] `drawCachedOverlayGlyph(…, viewport, …)`
+- [x] Update **every** caller same commit:
   - `WorldSceneRenderer`
   - `gridStampDrawCache.js`
   - `preview.js` / overlay draw
-- [ ] Remove all `const px = viewport.x` at draw entry points except inside cache/unpack helpers
-- [ ] Grep gate: zero `drawCachedPropSprite(.*, px, py` at call sites
+- [x] Remove all `const px = viewport.x` at draw entry points except inside cache/unpack helpers
+- [x] Grep gate: zero `drawCachedPropSprite(.*, px, py` at call sites
 
 ### Step 4 — wallCtx + renderer cleanup
 
