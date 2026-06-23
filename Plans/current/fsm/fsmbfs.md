@@ -5,7 +5,7 @@
 | | |
 |--|--|
 | **Phase 1** | Reach dialect done ✅ — [`history.md`](history.md) |
-| **Part 1** | Pass A–E ✅ · **Pass F next** |
+| **Part 1** | Pass A–F ✅ · **Pass G next** |
 | **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Part 1 grep gates pass** |
 
 ---
@@ -171,8 +171,8 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 | Duplicated decision helpers | ~~`pushTargetEvents`~~ ✅ Pass B; ~~`policyReasonForTarget`, `intentPolicy`, hunger/food/flee scorers~~ ✅ Pass E; still open: `policyForScoredMode` | Pass E ✅ / species mode tables stay local |
 | Twin intent memory | ~~`snakeIntentMemory.js`, `fleeIntentMemory.js`~~ ✅ Pass C | `Libraries/AI/memory/createAgentIntentMemory.js` |
 | Twin perception wrappers | ~~`snakeIntent.js`, `fleeWorldPerception.js`~~ ✅ Pass D | `agentIntentPerception.js` |
-| ~270-line twin intent adapters | `createSnakeForageIntent.js`, `createFleeExploreIntent.js` | shared shell: route/reach/arrival/latch/effects |
-| `reachStepsForMode` ×2 | both adapters | once — `Libraries/Game/snake/agentReachSteps.js` or shared adapter helper |
+| ~270-line twin intent adapters | ~~`createSnakeForageIntent.js`, `createFleeExploreIntent.js`~~ ✅ Pass F | `createGroundNavIntentAdapter.js`; species files ~110 lines |
+| `reachStepsForMode` ×2 | ~~both adapters~~ ✅ Pass F | `agentReachSteps.js` |
 | Misnamed file | ~~`agentPopulationRegistry.js`~~ → `agentRelationship.js` ✅ Pass A | **dead code** — zero importers; delete or wire in Pass D |
 | `deriveFleeAgentThreatState` | ~~thin wrapper~~ ✅ deleted Pass B | — |
 
@@ -187,7 +187,7 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 | **C — Intent memory** ✅ | `createAgentIntentMemory.js`; deleted species memory files | two call sites |
 | **D — Perception** ✅ | `agentIntentPerception.js`; deleted species wrapper files; fixed `reachStepsForMode` pathLen-0 latch bug | one options builder + `perceiveAgentIntentWorld` |
 | **E — Decision dedupe** ✅ | `intentPolicy.js`, `hungerEffort.js`, `scoreFleeIntent.js` | net −LOC; grep gate clean on policy/hunger helpers |
-| **F — Intent adapter** | Shared shell; species files <120 lines | `reachStepsForMode` once |
+| **F — Intent adapter** ✅ | `createGroundNavIntentAdapter.js`, `agentReachSteps.js`, shared route/latch/effects helpers | species files ~110 lines; `reachStepsForMode` once |
 | **G — Gate + docs** | Tests + doc sync | grep gates below |
 
 ### Grep gates (before Part 2)

@@ -160,7 +160,27 @@ Both use `requireSnakeVisionFrame`, `getSnakeGameConfig`, `resolveAgentRelations
 
 ---
 
-## Pass F — Intent adapter (inline duplicates)
+## Pass F — Intent adapter ✅
+
+**Shipped:**
+
+| Module | Exports |
+|--------|---------|
+| `Libraries/Game/snake/createGroundNavIntentAdapter.js` | shared perceive/sync/latch/FSM wiring factory |
+| `Libraries/Game/snake/agentReachSteps.js` | `reachStepsForMode`, `buildAgentReachSteps` |
+| `Libraries/Game/snake/getGroundNavFsmSnapshot.js` | snake HUD/autosim FSM snapshot |
+| `Libraries/AI/agentIntent/readAgentRouteStatus.js` | locomotion route snapshot |
+| `Libraries/AI/agentIntent/createBrainArrivalStamper.js` | spatial brain arrival on cell enter |
+| `Libraries/AI/agentIntent/createFleeIntentLatch.js` | `createFleeIntentLatch`, `applyFleePolicyLatch` |
+| `Libraries/AI/agentIntent/createCellTargetIntentEffects.js` | shared seek/explore/flee effects + context |
+
+**Species files:** `createSnakeForageIntent.js` (~113 lines), `createFleeExploreIntent.js` (~110 lines) — modes, reach slot maps, decision context, flee destination, transition reasons only.
+
+**Grep gate:** no inline `reachStepsForMode` / `readRouteStatus` / `stampArrivalOnCellEnter` in species adapters.
+
+---
+
+## Pass F — Intent adapter (reference)
 
 Both `createSnakeForageIntent.js` and `createFleeExploreIntent.js`:
 
