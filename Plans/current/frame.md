@@ -21,7 +21,7 @@ Pass viewport. Read viewport. Nothing else.
 | Tier cull / screen map | `viewport` methods |
 | Iso frustum height | `viewport.cameraHeight` |
 | Iso extrusion strength | `viewport.perspectiveStrength` |
-| Scene (entities, grid, surfaces) | `input` or `state` — **not** viewport |
+| Scene (entities, grid, surfaces) | `state` — **not** viewport |
 
 **No second struct.** No unpacking `viewport` into locals at every draw entry. No threading the same three scalars alongside viewport.
 
@@ -80,12 +80,12 @@ Only **`perspectiveStrength`** is read outside `Viewport`. The base is config in
 ### Draw stack — viewport in, no scalar copies out
 
 ```text
-drawDebrisProps(ctx, input, viewport)
-drawFloorProps(ctx, input, viewport)
-draw3DBuildings(ctx, input, viewport, options?)
+drawDebrisProps(ctx, state, viewport)
+drawFloorProps(ctx, state, viewport)
+draw3DBuildings(ctx, state, viewport, options?)
 drawFloorOccupancyBelts(ctx, state, viewport)
 drawOverlayCommands(ctx, commands, viewport)
-drawProjectedWallFace(ctx, p1, p2, viewport, input, wallFaceScratch)
+drawProjectedWallFace(ctx, p1, p2, viewport, state, wallFaceScratch)
 ```
 
 ### Cache boundary — one unpack site
@@ -142,7 +142,7 @@ Delete **`ElevationCamera.js`** factories. Tests (`losShadowHarness`) stub a **`
 
 ```text
 viewport     — camera + cull (already has everything wall projection needs)
-input        — worldSurfaces, proceduralSurfaceDraw, gameState
+state        — worldSurfaces, obstacleGrid, entityRegistry, sandbox
 wallFaceScratch — reused per face: wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId, damageTintRatio
 ```
 
@@ -183,7 +183,13 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 - [x] Wall draw → `(viewport, input, wallFaceScratch)`; deleted `WallDrawContext.js`
 - [x] Inline `createStructureDrawPass` — deleted `StructureDrawPass.js`; mode switch in `Renderer.drawWorldSceneStructure`
 - [x] `WorldSceneRenderer` drops settings ctor param → static import of `gameWorldSurfaceSettings` in wall draw
-- [ ] Optional later: collapse `worldSceneDrawInput` → `draw*(ctx, state, viewport)`
+- [x] Optional: collapse `worldSceneDrawInput` → `draw*(ctx, state, viewport)`
+
+---
+
+## Status
+
+**Frame migration complete (Steps 1–4 + draw-input collapse).** Next cleanup: [`stupid.md`](stupid.md) P3 catalog duplication · [`passthrough.md`](passthrough.md) Tier 1 getters · [`library_defaults.md`](library_defaults.md).
 
 ---
 
@@ -202,19 +208,20 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 | `Libraries/Sandbox/gridStampDrawCache.js` | viewport-only |
 | `Libraries/Render/overlays/drawOverlayCommands.js` | viewport |
 | `Libraries/Render/Structure3D/*` | viewport + input + face scratch; no wallCtx |
-| `Render/Render.js` | inline structure draw by render mode |
+| `Render/Render.js` | `draw*(ctx, state, viewport)`; no draw-input bag |
 | `Apps/Editor/ui/preview.js` | viewport on overlay draw |
 
 ---
 
 ## Review bar
 
-- [ ] Draw/projection imports **`Viewport`**, not `GamePerspective` / `ElevationCamera`
-- [ ] Zero `elevationCameraFrom`, `wallPassCamera`, `activePerspective`, `resolveStructurePerspectiveStrength`
-- [ ] Zero `drawCachedPropSprite` call sites passing `px, py` as args
-- [ ] Zero `const px = viewport.x` in `WorldSceneRenderer` draw methods (only inside cache)
-- [ ] Zero `bindDrawSession` / draw side-channels
-- [ ] `perspectiveStrength` written only in `Viewport._recompute()`
+- [x] Draw/projection reads `viewport`, not `GamePerspective` / `ElevationCamera`
+- [x] Zero `elevationCameraFrom`, `wallPassCamera`, `activePerspective`, `resolveStructurePerspectiveStrength`
+- [x] Zero `drawCachedPropSprite` call sites passing `px, py` as args
+- [x] Zero `const px = viewport.x` in `WorldSceneRenderer` draw methods (only inside cache)
+- [x] Zero `bindDrawSession` / draw side-channels
+- [x] `perspectiveStrength` written only in `Viewport._recompute()`
+- [x] Zero `worldSceneDrawInput` / `syncWorldSceneDrawInput`
 
 ---
 

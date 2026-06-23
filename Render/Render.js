@@ -1,6 +1,5 @@
 import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
-import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
@@ -22,17 +21,6 @@ export class Renderer {
         this.ctx = ctx;
         this.sceneHooks = options.sceneHooks ?? {};
         this.render3D = new WorldSceneRenderer();
-        this.worldSceneDrawInput = {
-            worldSurfaces: null,
-            proceduralSurfaceDraw: {
-                surfaceSeed: 0,
-                surfaceProfileOverride: null,
-                boundGameState: null,
-                resolveProfileAt(x, y) {
-                    return resolveSurfaceProfileAtCoords(this.boundGameState, x, y);
-                },
-            },
-        };
         this._worldRenderMode = WORLD_RENDER_MODE_DEFAULT;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
@@ -40,34 +28,20 @@ export class Renderer {
             { zIndex: 71, fn: (state) => this.drawWorldSceneBloom(state) },
         ];
     }
-    /** @param {import("../GameState/GameState.js").GameState} state */
-    syncWorldSceneDrawInput(state) {
-        kineticSpatial.begin(state);
-        const input = this.worldSceneDrawInput;
-        input.entityRegistry = state.entityRegistry;
-        input.spatialFrame = kineticSpatial;
-        input.worldSurfaces = state.worldSurfaces;
-        input.obstacleGrid = state.obstacleGrid;
-        input.gameState = state;
-        const surfaceDraw = input.proceduralSurfaceDraw;
-        surfaceDraw.boundGameState = state;
-        surfaceDraw.surfaceSeed = state.worldSurfaces.worldSurfaceSeed ?? 0;
-        surfaceDraw.surfaceProfileOverride = state.worldSurfaces.surfaceProfileOverride ?? null;
-    }
     /** Ground tiles and debris props — zIndex -5. */
     drawWorldSceneBackdrop(state, viewport) {
         state.worldSurfaces.drawGround(this.ctx, state, viewport);
         this.sceneHooks.drawGroundOverlays?.(state, viewport, this.ctx);
-        this.render3D.drawDebrisProps(this.ctx, this.worldSceneDrawInput, viewport);
+        this.render3D.drawDebrisProps(this.ctx, state, viewport);
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {
         if (this._worldRenderMode === WORLD_RENDER_MODE_FLAT2D) {
             state.worldSurfaces.drawFlatWallRails(this.ctx, state, viewport);
-            this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport, { skipWalls: true });
+            this.render3D.draw3DBuildings(this.ctx, state, viewport, { skipWalls: true });
             return;
         }
-        this.render3D.draw3DBuildings(this.ctx, this.worldSceneDrawInput, viewport);
+        this.render3D.draw3DBuildings(this.ctx, state, viewport);
         state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
         drawDamagedVoxelRoofOverlays(this.ctx, state, viewport);
     }
@@ -95,7 +69,7 @@ export class Renderer {
         this.simulationPipeline = pipeline.map((p) => p.fn);
     }
     renderSimulationScene(state, viewport) {
-        this.syncWorldSceneDrawInput(state);
+        kineticSpatial.begin(state);
         const surfaceSettings = gameWorldSurfaceSettings;
         viewport.configureDrawBounds(surfaceSettings.viewQueryPadPx, surfaceSettings.viewPaddingPx);
         this.ctx.save();

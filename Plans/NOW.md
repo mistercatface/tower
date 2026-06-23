@@ -10,7 +10,17 @@
 
 ## Current task
 
-_(empty — pick one item from Next and move it here)_
+**Frame + draw-input collapse — done.** See [`frame.md`](current/frame.md), [`stupid.md`](current/stupid.md), [`passthrough.md`](current/passthrough.md).
+
+---
+
+## Next (refactor)
+
+From structural cleanup queue:
+
+1. **Prop catalog passthrough** — delete `loadPropAssets` / `getPropAsset` / twin maps · [`stupid.md`](current/stupid.md) P3-2
+2. **Library defaults getters** · [`library_defaults.md`](current/library_defaults.md)
+3. **Sandbox behavior registry threading** · [`passthrough.md`](current/passthrough.md) Tier 3
 
 ---
 

@@ -9,6 +9,7 @@ import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { applyProjectedCapDamageOverlay, applyProjectedWallFaceDamageOverlay } from "./wallDamageDraw.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
+import { surfaceProfileDefaults } from "../../Procedural/SurfaceProfileProvider.js";
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
@@ -56,23 +57,24 @@ function computeFaceCornerElevated(out, u, v, faceBottom, faceTop) {
     out.x = bx + (tx - bx) * v;
     out.y = by + (ty - by) * v;
 }
-function resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj) {
+function resolveWallProfileId(state, wallCx, wallCy, cacheObj) {
     if (cacheObj?.surfaceProfileId) return cacheObj.surfaceProfileId;
     let profileId = cacheObj && cacheObj._cachedProfileId ? cacheObj._cachedProfileId : null;
-    if (!profileId || proceduralSurfaceDraw.surfaceProfileOverride) {
-        profileId = proceduralSurfaceDraw.resolveProfileAt(wallCx, wallCy);
-        if (cacheObj && !proceduralSurfaceDraw.surfaceProfileOverride) cacheObj._cachedProfileId = profileId;
+    const override = state.worldSurfaces?.surfaceProfileOverride;
+    if (!profileId || override) {
+        profileId = override ?? surfaceProfileDefaults.defaultId;
+        if (cacheObj && !override) cacheObj._cachedProfileId = profileId;
     }
     return profileId;
 }
-function resolveWallFaceAtlas(p1, p2, input, face) {
-    const { worldSurfaces, proceduralSurfaceDraw } = input;
+function resolveWallFaceAtlas(p1, p2, state, face) {
+    const worldSurfaces = state.worldSurfaces;
     const { wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId } = face;
     const settings = worldSurfaces.settings;
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(proceduralSurfaceDraw, wallCx, wallCy, cacheObj);
-    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, proceduralSurfaceDraw, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
+    const profileId = resolveWallProfileId(state, wallCx, wallCy, cacheObj);
+    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, state, { profileId, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
     if (!baked) return null;
     const canvas = baked.canvases[0];
     if (!canvas || canvas.isPlaceholder) return "solid";
@@ -144,9 +146,9 @@ function resolveWallFaceSubdiv(face, atlas, viewport) {
     }
     return subdiv;
 }
-function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, input, face) {
+function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face) {
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    const atlas = resolveWallFaceAtlas(p1, p2, input, face);
+    const atlas = resolveWallFaceAtlas(p1, p2, state, face);
     if (atlas === null) return;
     if (atlas === "solid") {
         ctx.fillStyle = fillStyle;
@@ -189,18 +191,18 @@ function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
     drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3]);
     drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3]);
 }
-export function drawProjectedRailWallCap(ctx, box, viewport, input, face) {
-    const { worldSurfaces, proceduralSurfaceDraw, gameState } = input;
+export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
+    const worldSurfaces = state.worldSurfaces;
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     projectRailWallTopCornersInto(sCapCorners, box, viewport);
-    if (!proceduralSurfaceDraw || !gameState) {
+    if (!worldSurfaces) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
         return;
     }
-    const profileId = resolveWallProfileId(proceduralSurfaceDraw, box.cx, box.cy, face.cacheObj);
-    railWallCapUvCornersInto(sCapUv, gameState.obstacleGrid, box);
-    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, gameState, profileId, sCapSrc);
+    const profileId = resolveWallProfileId(state, box.cx, box.cy, face.cacheObj);
+    railWallCapUvCornersInto(sCapUv, state.obstacleGrid, box);
+    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, state, profileId, sCapSrc);
     if (!capCanvas) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
@@ -209,22 +211,22 @@ export function drawProjectedRailWallCap(ctx, box, viewport, input, face) {
     blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
     if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
 }
-export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, viewport, input, face) {
-    const { worldSurfaces, proceduralSurfaceDraw, gameState } = input;
+export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, viewport, state, face) {
+    const worldSurfaces = state.worldSurfaces;
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     projectRailWallTopCornersInto(
         sCapCorners,
         { outerP1x: minX, outerP1y: minY, outerP2x: maxX, outerP2y: minY, innerP2x: maxX, innerP2y: maxY, innerP1x: minX, innerP1y: maxY, wallCapHeight: z },
         viewport,
     );
-    if (!proceduralSurfaceDraw || !gameState) {
+    if (!worldSurfaces) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
         return;
     }
     const cx = (minX + maxX) * 0.5;
     const cy = (minY + maxY) * 0.5;
-    const profileId = resolveWallProfileId(proceduralSurfaceDraw, cx, cy, face.cacheObj);
+    const profileId = resolveWallProfileId(state, cx, cy, face.cacheObj);
     sCapUv0.x = minX;
     sCapUv0.y = minY;
     sCapUv1.x = maxX;
@@ -233,7 +235,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, viewp
     sCapUv2.y = maxY;
     sCapUv3.x = minX;
     sCapUv3.y = maxY;
-    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, z, gameState, profileId, sCapSrc);
+    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, z, state, profileId, sCapSrc);
     if (!capCanvas) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
@@ -242,15 +244,14 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, viewp
     blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
     if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
 }
-export function drawProjectedWallFace(ctx, p1, p2, viewport, input, face) {
+export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
     const { wallHeight, wallBaseZ, damageTintRatio = 0 } = face;
-    const { proceduralSurfaceDraw } = input;
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const topZ = wallBaseZ + wallHeight;
     const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, viewport, sFaceBottom);
     const faceTop = projectWallFaceBandInto(p1, p2, topZ, viewport, sharedScratchFace);
     traceProjectedFaceBand(ctx, faceBottom, faceTop);
-    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, input, face);
+    if (state.worldSurfaces) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

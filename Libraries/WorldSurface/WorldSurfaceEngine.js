@@ -59,7 +59,7 @@ export class WorldSurfaceEngine {
                 }
             }
     }
-    ensureWallAtlas(key, p1, p2, columns, proceduralSurfaceDraw, wallHeight = null, profileId = null) {
+    ensureWallAtlas(key, p1, p2, columns, surfaceSeed, wallHeight, profileId) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
         const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
@@ -71,14 +71,14 @@ export class WorldSurfaceEngine {
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
         const wallCenterX = (p1.x + p2.x) / 2;
         const wallCenterY = (p1.y + p2.y) / 2;
-        const bakeProfileId = profileId ?? proceduralSurfaceDraw.resolveProfileAt(wallCenterX, wallCenterY);
+        const bakeProfileId = profileId;
         return this._scheduleBake(key, () =>
             TileWorkerCoordinator.requestWallAtlasBake({
                 width: canvasWidth,
                 height: canvasHeight,
                 p1,
                 p2,
-                seed: proceduralSurfaceDraw.surfaceSeed,
+                seed: surfaceSeed,
                 profileId: bakeProfileId,
                 ...bakeFrameRange.first(),
                 centerX: wallCenterX,
@@ -157,17 +157,17 @@ export class WorldSurfaceEngine {
     /**
      * @param {{ x: number, y: number }} p1
      * @param {{ x: number, y: number }} p2
+     * @param {object} state
      * @param {{
      *   profileId: string,
-     *   proceduralSurfaceDraw: import("../../Libraries/Render/WorldSceneTypes.js").ProceduralSurfaceDrawContext,
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
      *   atlasFaceId?: string,
      * }} options
      */
-    getOrEnsureWallAtlas(p1, p2, options) {
-        const { profileId, proceduralSurfaceDraw, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
-        const seed = proceduralSurfaceDraw.surfaceSeed;
+    getOrEnsureWallAtlas(p1, p2, state, options) {
+        const { profileId, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
+        const seed = state.worldSurfaces.worldSurfaceSeed ?? 0;
         const rev = getSurfaceProfileRevision(profileId);
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
         if (cacheObj) {
@@ -175,12 +175,12 @@ export class WorldSurfaceEngine {
             if (stash && stash.profileId === profileId && stash.rev === rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && this.surfaceCache.get(stash.key) === stash.canvases)
                 return stash;
         }
-        const { key, wrappedP1, wrappedP2 } = buildWallAtlasCacheKey(p1, p2, proceduralSurfaceDraw, profileId, wallHeightKey, this.settings);
+        const { key, wrappedP1, wrappedP2 } = buildWallAtlasCacheKey(p1, p2, seed, profileId, wallHeightKey, this.settings);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
             if (columns.length === 0) return null;
-            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, proceduralSurfaceDraw, wallHeight, profileId);
+            canvases = this.ensureWallAtlas(key, wrappedP1, wrappedP2, columns, seed, wallHeight, profileId);
             if (!canvases || canvases.length === 0) return null;
         }
         const resolved = { key, wrappedP1, wrappedP2, canvases, profileId, rev, seed, wallHeightKey };

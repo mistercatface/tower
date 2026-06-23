@@ -6,7 +6,7 @@ Same class of stupid as `bootPerspective`, `resolvePerspectiveConfig(null)`, and
 
 **Not this doc:** domain feature tuning that is not game-definition boot (belt force, button radius, LOS shadow alpha). Those stay colocated with the feature; rename to `DEFAULT_*` without `LIBRARY_` if needed.
 
-See also: [`stupid.js`](stupid.js) P1-4, P1-5 · [`frame.md`](frame.md) perspective slice (done).
+See also: [`stupid.md`](stupid.md) P1-4, P1-5 · [`frame.md`](frame.md) perspective slice (done).
 
 ---
 
@@ -145,5 +145,5 @@ Should **not** import baseline constants from `Libraries/`.
 ## Doc cleanup after code lands
 
 - `Plans/rendering.md` — remove `perspectiveDefaults.js` reference
-- `Plans/current/stupid.js` — add LD-* cross-ref or mark P1-4 follow-up done when grep clean
+- `Plans/current/stupid.md` — add LD-* cross-ref or mark P1-4 follow-up done when grep clean
 - `.cursor/rules/*` — no `LIBRARY_*` in examples

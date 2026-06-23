@@ -93,7 +93,7 @@ Physics bodies live in Float32 slabs; wall queries still use **ephemeral Map + a
 
 Good: `_candidateScratch`, `_kindSetScratch` for filtering.
 
-Bad: cache miss → `result = []` + pushes; `spatialGen` bumps on both sim `begin` and render `syncWorldSceneDrawInput`, so render tier often sees a fresh generation.
+Bad: cache miss → `result = []` + pushes; `spatialGen` bumps on both sim `begin` and render `kineticSpatial.begin(state)`, so render tier often sees a fresh generation.
 
 Scratch for **candidates** is correct; **result arrays** could be pooled per query slot.
 

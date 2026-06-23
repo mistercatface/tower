@@ -41,6 +41,6 @@ function runFloorTriggers(state, prop, when, ctx) {
 export const floorPropEffectPass = {
     zIndex: 10.5,
     draw(state, viewport, ctx, renderer) {
-        renderer.render3D.drawFloorProps(ctx, renderer.worldSceneDrawInput, viewport);
+        renderer.render3D.drawFloorProps(ctx, state, viewport);
     },
 };
