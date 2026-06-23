@@ -49,7 +49,7 @@ function internedPropPhysicsKey(prop) {
  *
  * @param {{ maxItems?: number }} [options]
  */
-export function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
+function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
     const baked = createBakedSpriteCache({ maxItems });
     const telemetry = { requests: 0, misses: 0, evictions: 0, uniqueKeys: new Set() };
     const originalOnEvict = baked.cache.onEvict;
@@ -153,7 +153,7 @@ function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
  * @param {number} [zoom]
  * @param {Record<string, PropDrawRecipe>} [propRecipes]
  */
-export function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
+function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
     const dx = prop.x - px;
     const dy = prop.y - py;
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
@@ -224,7 +224,7 @@ const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
  * @param {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} spec.draw
  * @param {number} [spec.zoom]
  */
-export function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1 }) {
+function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1 }) {
     let key = BigInt(internSpriteKeyPart(renderKey));
     key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
     key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
@@ -259,9 +259,6 @@ export function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, cust
 export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, { zoom = 1 } = {}) {
     const sprite = getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom });
     blitAnchoredSprite(ctx, sprite, worldX, worldY);
-}
-export function clearOverlaySpriteCache() {
-    overlaySpriteCache.clear();
 }
 /** @typedef {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */
 /**

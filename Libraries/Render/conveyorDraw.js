@@ -2,15 +2,6 @@ import { rotateXY, transformPoint2DInto } from "../Math/Poly2D.js";
 import { drawBox } from "./Props3D/SolidDraw.js";
 import { projectPropVertex } from "./Props3D/propMesh.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";
-/**
- * Returns a unique cache key part based on the conveyor's animation frame.
- * @param {object} prop
- * @returns {string}
- */
-export function getConveyorSpriteCacheKey(prop) {
-    const frame = Math.floor((prop.ageMs ?? 0) / 60) % 8;
-    return `f${frame}`;
-}
 /** @returns {import("./Props3D/PropRenderer.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
     const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride, chevronColors: chevronColorsOverride } = options;

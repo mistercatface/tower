@@ -5,10 +5,6 @@ export class PropRenderer {
     constructor(propRecipes = {}) {
         this.propRecipes = propRecipes;
     }
-    /** @param {Record<string, PropDrawRecipe>} propRecipes */
-    setPropRecipes(propRecipes) {
-        this.propRecipes = propRecipes ?? {};
-    }
     drawProp(ctx, prop, px, py, zoom = 1, animFrame = 0) {
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = this.propRecipes[renderKey];

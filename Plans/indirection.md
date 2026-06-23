@@ -30,81 +30,17 @@ Was: `PropRenderer.drawProp` called `getOrBakePropSprite` + `blitAnchoredSprite`
 
 Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for one parity test. Removed both symbols; `BigInt` pack inlined in `getOrBakePropSprite`. Test asserts attachment facing keys via `getVisualAttachmentSpriteCacheKey` instead.
 
----
+### Tier 1 #5–#11 — dead exports / unexported bake layer ✅
 
-## Tier 1 — Render / sprite cache
+- **`getOrBakeOverlaySprite`** — module-private; only `drawCachedOverlayGlyph` calls it
+- **`getOrBakePropSprite`** — module-private; only `drawCachedPropSprite` calls it
+- **`clearOverlaySpriteCache`** — deleted; `clearPropSpriteCache()` already clears overlay + intern
+- **`createQuantizedSpriteCache`** — module-private factory
+- **`drawCachedPropSprite` `modifier` opt** — removed with positional API (#9)
+- **`getConveyorSpriteCacheKey`** — deleted from `conveyorDraw.js`; belts use `animFrame` on `drawCachedPropSprite`
+- **`setPropRecipes`** — deleted from `PropRenderer` and `WorldSceneRenderer`; recipes set in constructor only
 
-### 5. `getOrBakeOverlaySprite` — exported, one internal caller
-
-**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`
-
-**What:** Exported bake API. Only caller: `drawCachedOverlayGlyph` in the same file.
-
-**Why it's bullshit:** Suggests a second overlay entry point. There isn’t one.
-
-**Fix:** Stop exporting; module-private bake helper behind `drawCachedOverlayGlyph`.
-
----
-
-### 6. `getOrBakePropSprite` — exported bake layer (still open)
-
-**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`
-
-**What:** Exported bake API. Only production caller is `drawCachedPropSprite` in the same file (~~PropRenderer imported it directly~~ — fixed in #2).
-
-**Why it's bullshit:** Callers should use `drawCachedPropSprite`; exported bake suggests a second entry point.
-
-**Fix:** Unexport; keep module-private behind `drawCachedPropSprite`.
-
----
-
-### 7. `clearOverlaySpriteCache` — dead export
-
-**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`
-
-**What:** Clears overlay LRU only. **Zero importers.** `clearPropSpriteCache()` already clears overlay cache + intern table.
-
-**Fix:** Delete `clearOverlaySpriteCache`.
-
----
-
-### 8. `createQuantizedSpriteCache` — exported factory, zero external use
-
-**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`
-
-**What:** Exported. Only used to construct module-private `propSpriteCache` and `overlaySpriteCache` in the same file.
-
-**Why it's bullshit:** “Future generic cache” export that never got a second consumer.
-
-**Fix:** Unexport; module-local factory.
-
----
-
-### 9. ~~`drawCachedPropSprite` — `modifier` opt never used~~ ✅
-
-Removed with positional API — `modifier` override never had callers.
-
----
-
-### 10. `getConveyorSpriteCacheKey` — dead export
-
-**Where:** `Libraries/Render/conveyorDraw.js`
-
-**What:** Returns `` `f${animFrame}` ``. Zero importers. Belt animation uses `animFrame` arg on `drawCachedPropSprite` + proxy `getCustomSpriteCacheKey` in `gridStampDrawCache.js` instead.
-
-**Why it's bullshit:** Leftover from before grid stamp cache; comment still implies it’s the belt key path.
-
-**Fix:** Delete function + export.
-
----
-
-### 11. `setPropRecipes` — dead mutators on two classes
-
-**Where:** `PropRenderer.setPropRecipes`, `WorldSceneRenderer.setPropRecipes`
-
-**What:** Recipes injected once via `WorldSceneRenderer` constructor (`Render/Render.js`). No call sites for either setter.
-
-**Fix:** Delete both methods.
+**Tier 1 complete.** Public prop/overlay draw surface: `drawCachedPropSprite`, `drawCachedOverlayGlyph`, `clearPropSpriteCache`, plus cache key constants.
 
 ---
 
@@ -270,25 +206,23 @@ Removed with positional API — `modifier` override never had callers.
 
 ## Fix order (suggested)
 
-**Done:** Tier 1 #1–#4, floor `{ px, py }` scalars, positional `drawCachedPropSprite`.
+**Done:** Tier 1 complete (#1–#11).
 
-**Next (recommended): dead exports batch** — #7, #10, #11, #12, #16, #17, #23. Pure deletes, no behavior change, clears grep noise in ~15 minutes.
+**Next (recommended): Tier 2 dead exports** — #12, then #13–#15 inlines.
 
 **Then pick one thread:**
 
 | Thread | Items | Why |
 |--------|-------|-----|
-| **Render tidy** | #6, #3, #5 | Unexport bake helpers, prop key pack inline |
 | **WorldSurface** | #18, #19 | Orphan clip/projection + duplicated chunk blit |
 | **Floor layer** | #21 remainder | Collapse `floorOccupancy` guards into `gridStampDrawCache` |
+| **Barrels / orphans** | #23–#25 | Delete unused index files |
 
-1. ~~**Render path collapse** — #1, #2~~ ✅
-2. **Dead exports** — #7, #8, #10, #11, #12, #16, #17, #23
-3. **Same-file inlines** — #3, #5, #13, #14, #15, #22
-4. **Render tidy** — #6
-5. **WorldSurface clip/projection cleanup** — #18, #19
-6. **Floor wrapper merge** — #21
-7. **Barrel trim** — #24, #25
+1. ~~**Tier 1 — render / sprite cache**~~ ✅
+2. **Tier 2 overlay commands** — #12–#15
+3. **Tier 3 WorldSurface** — #16–#19
+4. **Tier 4 floor** — #21–#22
+5. **Tier 5 barrels** — #23–#25
 
 ---
 

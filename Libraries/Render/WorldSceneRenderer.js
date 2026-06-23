@@ -40,10 +40,6 @@ export class WorldSceneRenderer {
             damageTintRatio: 0,
         };
     }
-    /** @param {Record<string, PropDrawRecipe>} propRecipes */
-    setPropRecipes(propRecipes) {
-        this.props.setPropRecipes(propRecipes);
-    }
     /**
      * @param {CanvasRenderingContext2D} ctx
      * @param {WorldSceneDrawInput} input
