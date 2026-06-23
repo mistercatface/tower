@@ -32,20 +32,11 @@ Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch
 
 ---
 
-### 2. Ground chunk draw — `createAabb()` + pass literal per chunk
+### 2. Ground chunk draw — `createAabb()` + pass literal per chunk ✅
 
-**Where:** `Libraries/WorldSurface/WorldSurfaceEngine.js` — chunk loop in ground draw
+**Where:** `Libraries/WorldSurface/WorldSurfaceEngine.js` — `drawGroundChunks`
 
-**Hot because:** All visible chunks every frame (zoom 5 = many chunks).
-
-Each chunk:
-
-- Full `pass = { chunkCol, chunkRow, … }` object (~12 fields)
-- `chunkWorldAabbInto(createAabb(), …)` — **new AABB object per chunk**
-
-There is already `chunkWorldAabbScratch()` in `GridCoords.js` documented for sequential chunk use. This loop ignores it and calls `createAabb()` instead.
-
-**Smell:** Classic “we have the right tool, wrong call site.” One module-level `pass` + one AABB scratch would zero this.
+**Done:** Engine-owned `groundChunkDrawPass` + `groundChunkPassAabb` + `groundChunkPassCamera`; `chunkWorldAabbInto` + `elevationCameraFromViewportInto`; pass mutation only when `zLevel > 0` (ground blit skips pass entirely).
 
 ---
 
@@ -205,7 +196,7 @@ The AffineTexture / `drawImageQuad` work (positional args, no `sBlitQuad` scratc
 ## Suggested fix order (ROI)
 
 1. ~~**Floor belts** — copy forcefield revision cache, stop per-cell proxies~~ ✅
-2. **Chunk draw** — use existing AABB scratch + one pass struct
+2. ~~**Chunk draw** — use existing AABB scratch + one pass struct~~ ✅
 3. **`gridToWorldInto`** — unlock fixes across belts, path overlay, steering
 4. **Wall bucket cache** — stop clearing Map + `[]` every frame; align with slab philosophy
 5. **Hoist sim hooks + sleep visited** — cheap, same mindset as removing `{ bleedPx: 1 }` objects

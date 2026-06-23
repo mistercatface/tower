@@ -11,7 +11,7 @@ import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSur
 import { projectHorizontalSurfaceCornersInto, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { chunkWorldAabbInto } from "../Spatial/grid/GridCoords.js";
-import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
+import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
@@ -35,6 +35,22 @@ export class WorldSurfaceEngine {
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this._buildChunkPayload = hooks.buildChunkPayload ?? null;
         this.chunkDrawBounds = createAabb();
+        this.groundChunkPassAabb = createAabb();
+        this.groundChunkPassCamera = {};
+        this.groundChunkDrawPass = {
+            chunkCol: 0,
+            chunkRow: 0,
+            originX: 0,
+            originY: 0,
+            sizePx: 0,
+            zLevel: 0,
+            viewport: null,
+            obstacleGrid: null,
+            settings: null,
+            state: null,
+            chunkAabb: this.groundChunkPassAabb,
+            camera: this.groundChunkPassCamera,
+        };
     }
     clear() {
         this.surfaceCache.clear();
@@ -256,7 +272,15 @@ export class WorldSurfaceEngine {
         const maxChunkCol = worldToChunkCol(bounds.maxX - 1, obstacleGrid.minX, chunkSizePx);
         const minChunkRow = worldToChunkRow(bounds.minY, obstacleGrid.minY, chunkSizePx);
         const maxChunkRow = worldToChunkRow(bounds.maxY - 1, obstacleGrid.minY, chunkSizePx);
-        const passCamera = elevationCameraFromViewport(viewport);
+        elevationCameraFromViewportInto(this.groundChunkPassCamera, viewport);
+        const pass = this.groundChunkDrawPass;
+        pass.viewport = viewport;
+        pass.obstacleGrid = obstacleGrid;
+        pass.settings = this.settings;
+        pass.state = state;
+        pass.zLevel = zLevel;
+        pass.sizePx = chunkSizePx;
+        pass.camera = this.groundChunkPassCamera;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
@@ -274,40 +298,32 @@ export class WorldSurfaceEngine {
                 const canvas = canvases[0];
                 if (canvas?.isPlaceholder) continue;
                 if (!isDrawableBakedSurface(canvas)) continue;
-                /** @type {import("./ChunkDrawPass.js").ChunkDrawPass} */
-                const pass = {
-                    chunkCol,
-                    chunkRow,
-                    originX,
-                    originY,
-                    sizePx: chunkSizePx,
-                    zLevel,
-                    viewport,
-                    obstacleGrid,
-                    settings: this.settings,
-                    state,
-                    chunkAabb: chunkWorldAabbInto(createAabb(), originX, originY, chunkSizePx),
-                    camera: passCamera,
-                };
-                if (zLevel > 0) {
-                    ctx.save();
-                    if (staticRoofDraw) {
-                        const drawCanvas = this.getStaticRoofDrawCanvas(pass, canvas, payload);
-                        if (!drawCanvas || drawCanvas.isPlaceholder) {
-                            ctx.restore();
-                            continue;
-                        }
-                        const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, pass);
-                        drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
-                    } else if (flatWallRails) {
-                        if (!clipChunkToFlatWallFootprints(ctx, pass)) {
-                            ctx.restore();
-                            continue;
-                        }
-                        drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                if (zLevel === 0) {
+                    drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                    continue;
+                }
+                pass.chunkCol = chunkCol;
+                pass.chunkRow = chunkRow;
+                pass.originX = originX;
+                pass.originY = originY;
+                chunkWorldAabbInto(this.groundChunkPassAabb, originX, originY, chunkSizePx);
+                ctx.save();
+                if (staticRoofDraw) {
+                    const drawCanvas = this.getStaticRoofDrawCanvas(pass, canvas, payload);
+                    if (!drawCanvas || drawCanvas.isPlaceholder) {
+                        ctx.restore();
+                        continue;
                     }
-                    ctx.restore();
-                } else drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                    const corners = projectHorizontalSurfaceCornersInto(sRoofChunkCorners, pass);
+                    drawProjectedHorizontalChunk(ctx, drawCanvas, corners, this.settings);
+                } else if (flatWallRails) {
+                    if (!clipChunkToFlatWallFootprints(ctx, pass)) {
+                        ctx.restore();
+                        continue;
+                    }
+                    drawBakedTexture(ctx, canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                }
+                ctx.restore();
             }
     }
 }
