@@ -21,19 +21,20 @@ const editorSceneHooks = {
     simulationEffectPasses: [
         floorPropEffectPass,
         {
-            zIndex: 8,
-            draw(state, viewport, ctx) {
-                if (!state.losShadowEnabled || !state.obstacleGrid) return;
-                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid);
-            },
-        },
-        {
             // After floor stamps (10.5), before draw3DBuildings props/walls (70).
             zIndex: 15,
             draw(_state, viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
                 if (!controller) return;
                 drawOverlayCommands(ctx, controller.collectOverlayCommands(), { px: viewport.x, py: viewport.y, zoom: viewport.zoom });
+            },
+        },
+        {
+            // After structure (70), bloom (71), and entity layers (100) — darkness over the full scene.
+            zIndex: 110,
+            draw(state, viewport, ctx) {
+                if (!state.losShadowEnabled || !state.obstacleGrid) return;
+                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid);
             },
         },
     ],

@@ -18,6 +18,6 @@ export const WORLD_SURFACE_DEFAULTS = {
     wallSubdivNearPx: 80,
     wallSubdivFarPx: 320,
     floorShadow: "#12161c",
-    bloom: { enabled: false, blur: 2 },
+    bloom: { enabled: true, blur: 2 },
     animationBakeMaxFrames: null,
 };
