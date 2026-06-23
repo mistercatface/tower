@@ -11,6 +11,7 @@ When reviving a module, copy or wire it deliberately — do not re-export from p
 | `sharedEdges/`                               | Worker-backed coplanar wall-edge detection; culled interior faces via `wall.sharedEdges[]`                   | You want interior face culling on sim-wall segments again                                              |
 | `sceneCompiler/`                             | Retained `RenderScene` + `SceneCompiler` for sim-wall faces/roofs; chunk roof clip + segment damage overlays | You want compile-once wall geometry in a spatial scene graph instead of per-frame `WorldSceneRenderer` |
 | `canvasInput/`                               | Unified `CanvasInputController` (pointer + wheel + pinch + keyboard)                                         | You want one input owner instead of ad-hoc `canvasPointer` bindings                                    |
+| `LosShadow/`                                 | Camera-centered LOS darkness mask + wall shadow wedges (superseded by active `Libraries/Render/losShadow/`) | Reference only — use active module                                                                     |
 | `Render/Deprecated/SharedEdgeWorkerEntry.js` | Worker entry for shared-edge SAB jobs                                                                        | Reviving `sharedEdges/`                                                                                |
 
 ## Shared edges
