@@ -38,17 +38,6 @@ function clearSpriteKeyIntern() {
 function packZoomKeyBucket(zoom) {
     return Math.round(quantizePropBakeZoom(zoom) * 8);
 }
-function packPropSpriteKey(renderKeyId, customKeyId, physicsKeyId, attachmentKeyId, viewBucket, animFrame, pixelSize, zoomBucket) {
-    let key = BigInt(renderKeyId);
-    key = (key << 20n) | BigInt(customKeyId);
-    key = (key << 20n) | BigInt(physicsKeyId);
-    key = (key << 20n) | BigInt(attachmentKeyId);
-    key = (key << 12n) | BigInt(viewBucket);
-    key = (key << 16n) | BigInt(animFrame & 0xffff);
-    key = (key << 16n) | BigInt(pixelSize & 0xffff);
-    key = (key << 16n) | BigInt(zoomBucket & 0xffff);
-    return key;
-}
 const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex, buildRollOrientKey };
 function internedPropPhysicsKey(prop) {
     const key = getBaseSpriteCacheKey(prop, PROP_SPRITE_KEY_DEPS);
@@ -145,31 +134,6 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_STAGE_PADDING = 40;
-/**
- * @param {object} prop
- * @param {number} px
- * @param {number} py
- * @param {string} renderKey
- * @param {number} [animFrame]
- * @param {number} [zoom]
- */
-export function buildPropSpriteKey(prop, px, py, renderKey, animFrame = 0, zoom = 1) {
-    const dx = prop.x - px;
-    const dy = prop.y - py;
-    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
-    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
-    const pixelSize = resolvePropPixelSizeForProp(prop);
-    return packPropSpriteKey(
-        internSpriteKeyPart(renderKey),
-        internSpriteKeyPart(customKey),
-        internedPropPhysicsKey(prop),
-        internSpriteKeyPart(attachmentKey),
-        packQuantizedViewBucket(dx, dy),
-        animFrame,
-        pixelSize ?? 0,
-        packZoomKeyBucket(zoom),
-    );
-}
 function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
     if (!propRecipes) return;
     for (let i = 0; i < attachments.length; i++) {
@@ -190,10 +154,20 @@ function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
  * @param {Record<string, PropDrawRecipe>} [propRecipes]
  */
 export function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
-    const key = buildPropSpriteKey(prop, px, py, renderKey, animFrame, zoom);
+    const dx = prop.x - px;
+    const dy = prop.y - py;
+    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
+    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
+    const pixelSize = resolvePropPixelSizeForProp(prop);
+    let key = BigInt(internSpriteKeyPart(renderKey));
+    key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
+    key = (key << 20n) | BigInt(internedPropPhysicsKey(prop));
+    key = (key << 20n) | BigInt(internSpriteKeyPart(attachmentKey));
+    key = (key << 12n) | BigInt(packQuantizedViewBucket(dx, dy));
+    key = (key << 16n) | BigInt(animFrame & 0xffff);
+    key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
+    key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     return propSpriteCache.getOrBake(key, () => {
-        const dx = prop.x - px;
-        const dy = prop.y - py;
         const qDx = quantizedViewAxisOffset(dx);
         const qDy = quantizedViewAxisOffset(dy);
         const parentFacing = quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing);

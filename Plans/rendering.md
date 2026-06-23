@@ -295,7 +295,7 @@ A different lens from the feature tiers below: which **CS graphics building bloc
 
 | Item | Status | % | Notes / modules |
 |------|--------|---|-----------------|
-| `animFrame` cache bucket | ✅ | 80 | `buildPropSpriteKey` |
+| `animFrame` cache bucket | ✅ | 80 | `getOrBakePropSprite` key pack |
 | Conveyor belt cycle | ✅ | 80 | 8-frame, `gameTime/60 % 8` |
 | Animated surface zones (flipbooks) | ✅ | 75 | `animatedSurfaceDraw.js` |
 | Worker flipbook bake (frame cap) | ✅ | 70 | `animatedSurfaceFlipbook.js` |

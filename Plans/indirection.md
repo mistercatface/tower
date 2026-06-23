@@ -24,35 +24,15 @@ Was: `drawFloorOccupancyBelts/PowerSources(..., { px, py })` → gridStampDrawCa
 
 ### Two prop blit paths — `PropRenderer` through `drawCachedPropSprite` (Tier 1 #2)
 
-Was: `PropRenderer.drawProp` called `getOrBakePropSprite` + `blitAnchoredSprite` directly because `drawCachedPropSprite` did not forward `propRecipes` (visual attachment bakes). Now `drawCachedPropSprite` accepts `propRecipes` in opts; `PropRenderer.drawProp` is a lookup + one `drawCachedPropSprite` call. Grid stamps and world props share the same blit path.
+Was: `PropRenderer.drawProp` called `getOrBakePropSprite` + `blitAnchoredSprite` directly because `drawCachedPropSprite` did not forward `propRecipes`. Now one path: `drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, animFrame, zoom, propRecipes)` — positional scalars, no opts object.
+
+### Prop sprite key split + test export (Tier 1 #3, #4)
+
+Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for one parity test. Removed both symbols; `BigInt` pack inlined in `getOrBakePropSprite`. Test asserts attachment facing keys via `getVisualAttachmentSpriteCacheKey` instead.
 
 ---
 
 ## Tier 1 — Render / sprite cache
-
-### 3. `buildPropSpriteKey` + `packPropSpriteKey` — same sin as overlay had
-
-**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`
-
-**What:** `buildPropSpriteKey` gathers intern ids + view bucket; `packPropSpriteKey` bit-packs into `BigInt`. Production has **one** caller: `getOrBakePropSprite`. Overlay’s twin layers were removed; prop side still has both.
-
-**Why it's bullshit:** `packPropSpriteKey` is not reused. Split only made sense as copy-paste symmetry with overlay — overlay fix never carried over.
-
-**Fix:** Inline pack into `getOrBakePropSprite` (or into `buildPropSpriteKey` if tests still need a key helper). Drop `packPropSpriteKey`.
-
----
-
-### 4. `buildPropSpriteKey` — exported for one test
-
-**Where:** export in `QuantizedSpriteCache.js`; sole external import `tests/drawShapeParity.test.js`
-
-**What:** Production only uses it inside `getOrBakePropSprite`. Export exists so one parity test can compare facing keys.
-
-**Why it's bullshit:** Test hook leaked onto production module surface. No gameplay caller imports it.
-
-**Fix:** Unexport; test via bake/cache behavior or a test-local helper.
-
----
 
 ### 5. `getOrBakeOverlaySprite` — exported, one internal caller
 
@@ -290,7 +270,7 @@ Removed with positional API — `modifier` override never had callers.
 
 ## Fix order (suggested)
 
-**Done:** Tier 1 #1 (`drawWorldProp`), floor `{ px, py }` object on belt draw, Tier 1 #2 (one prop blit path via `drawCachedPropSprite`).
+**Done:** Tier 1 #1–#4, floor `{ px, py }` scalars, positional `drawCachedPropSprite`.
 
 **Next (recommended): dead exports batch** — #7, #10, #11, #12, #16, #17, #23. Pure deletes, no behavior change, clears grep noise in ~15 minutes.
 

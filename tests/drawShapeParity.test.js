@@ -9,10 +9,9 @@ import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPri
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/Angle.js";
-import { buildPropSpriteKey } from "../Libraries/Canvas/QuantizedSpriteCache.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
-import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Libraries/Props/propVisualAttachments.js";
+import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/propVisualAttachments.js";
 loadPropAssets();
 const cacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
 const polygonVisuals = {
@@ -132,6 +131,9 @@ describe("draw shape parity", () => {
         down.vy = 10;
         const parentRadius = resolveBodyRadius(right);
         assert.ok(resolveVisualAttachmentBakeRadius(right, 0) > parentRadius);
-        assert.notEqual(buildPropSpriteKey(right, 0, 0, "flee_ball"), buildPropSpriteKey(down, 0, 0, "flee_ball"));
+        assert.notEqual(
+            getVisualAttachmentSpriteCacheKey(right, { quantizeAngleIndex }),
+            getVisualAttachmentSpriteCacheKey(down, { quantizeAngleIndex }),
+        );
     });
 });
