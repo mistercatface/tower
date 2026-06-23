@@ -14,6 +14,35 @@ See also: `[passthrough.md](passthrough.md)` · `[frame.md](frame.md)` · `[libr
 
 **Not stupid:** per-frame sim state (`entityRegistry`, `obstacleGrid`, `viewport`); persistence boundaries; worker SAB / nav topology.
 
+**Stupid:** leaving deprecated API shape in production because tests still import the old name — see [Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims).
+
+---
+
+## Tests follow the dialect — never ship compatibility shims
+
+**Rule:** production code picks **one** dialect per concept. Tests use that dialect or get updated **in the same PR**. Never add prod-side aliases, adapter returns, or dual-shape wrappers so tests can lag.
+
+### Stupid pattern
+
+| Stupid | Example | Why |
+|--------|---------|-----|
+| **Thin alias export** | `buildSnakeDecisionContext` returns `{ blackboard, decisionSnapshot }` built from new `decisionContext` “for tests” | Keeps dead frame alive; tests never migrate; next pass edits the shim instead of the test |
+| **“Land prod first”** | H2a ships new handle; grep allows `blackboard` in `tests/` until H2d | Two dialects permanently; same as half the draw stack on `viewport` and half on `px/py/zoom` |
+| **Wrapper re-export file** | Keep `snakeDecisionModel.js` as 15-line forwarder after logic moved | File exists only for import paths; delete the file and fix imports |
+| **Fallback reader** | `readThreatState(world)` → `blackboard ?? decisionSnapshot` | Resolver theater — pick one handle |
+| **Test-only prod API** | Export `createSnakeDecisionBlackboard` after blackboard deleted | Test convenience becomes permanent surface area |
+
+### Do instead
+
+1. **Same PR:** change prod + every test that touched the old shape.
+2. **Rewrite assertions** against the new handle (`decisionContext.known.threat`, not `blackboard.facts.known.threat`).
+3. **Delete** old exports when nothing in `Libraries/` uses them — if only tests break, **fix the tests**.
+4. **Delete obsolete tests** that only assert passthrough shape (e.g. “snapshot has same events reference as blackboard”) — not prod shims.
+
+We already did this for props (`loadPropAssets` / `setPropCatalog` deleted; tests import `PropCatalog` directly — P0). Decision frame (H2) and draw frame ([viewport case history](#case-history--viewport-frame-px--py--zoom--elevationcamera)) are the same rule.
+
+**Grep (when a pass declares a dead dialect):** zero hits in **`Libraries/` and `tests/`** — not “Libraries clean, tests later.”
+
 ---
 
 ## Case history — viewport frame (`px` / `py` / `zoom` / `ElevationCamera`)
@@ -44,6 +73,7 @@ Iso projection, wall faces, prop mesh extrusion, overlay glyphs, and grid stamp 
 3. **Passthrough sync bags** — `syncWorldSceneDrawInput` copied handles the draw methods already had via `state`. Extra indirection, no logic, drift when a field moved on `state` but not the bag.
 4. **Unpack-at-entry antipattern** — `const px = viewport.x` at the top of every draw method looked tidy but meant **N unpack sites** that could disagree after a pan. The cache boundary should unpack once; callers should pass the handle.
 5. **Side-channel binds** — `Viewport.bindDrawSession()` tried to sneak `px/py` to recipes without threading params. Hidden global state, untestable, broke when draw order changed.
+6. **Compatibility shims for tests** — keeping `ElevationCamera` or dual `{ blackboard, decisionSnapshot }` returns so tests did not need updating in the same PR. **Tests migrate with the frame** — see [Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims).
 
 Same class of mistake as `*Dist` threaded perception → memory → blackboard (see `[fsm/history.md](fsm/history.md)`): **copy the fact at every layer instead of sync once · read many**.
 
@@ -66,7 +96,7 @@ Pass viewport. Read viewport. Nothing else.
 
 **Grep gates (still enforced):** zero `elevationCameraFrom`, `wallPassCamera`, `wallCtx`, `worldSceneDrawInput`, `drawCachedPropSprite(…, px, py` at call sites. Full checklist: `[frame.md](frame.md#review-bar)`.
 
-**Pattern for AI work:** same as `syncNavReachHorizon` + `createGroundNavIntentAdapter` — compute frame facts **once at the boundary**, pass the handle, delete the copies. Pass H decision engine is the next application of that rule to blackboard/scoring.
+**Pattern for AI work:** same as `syncNavReachHorizon` + `createGroundNavIntentAdapter` — compute frame facts **once at the boundary**, pass the handle, delete the copies. Pass H2 collapses `blackboard`/`decisionSnapshot` to `decisionContext` — **no test accommodation aliases** ([Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims)).
 
 ---
 
@@ -157,5 +187,8 @@ rg elevationCameraFrom
 rg wallCtx
 rg worldPropAssets
 rg setPropCatalog
+# when a migration pass declares a dialect dead (e.g. H2a):
+rg 'decisionSnapshot|blackboard\.facts'
+rg 'createSnakeDecisionBlackboard|buildSnakeDecisionContext'
 ```
 

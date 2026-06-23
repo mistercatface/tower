@@ -15,6 +15,8 @@
 
 **Every pass on this plan is a deletion pass dressed as cleanup.** Pick one dialect, one write site, one factory per duplicated concept. Net **negative** line count. If the diff adds layers, getters, barrels, or copy-paste with a new filename — **stop**.
 
+**Tests migrate with the dialect — same PR, no shims.** When a handle or API is deleted (`blackboard`, `decisionSnapshot`, `ElevationCamera`, `getPropAsset`), **update every test in that PR**. Never leave production aliases, adapter wrappers, or dual-shape returns so old test imports keep working. Deprecated dialect in `Libraries/` because `tests/` still says `blackboard` is the same bug as keeping `px/py/zoom` in draw code because tests never got updated. If a test only asserts obsolete shape, **delete or rewrite the test** — do not preserve the obsolete shape in prod. See [`../stupid.md`](../stupid.md#tests-follow-the-dialect--never-ship-compatibility-shims).
+
 This work spans AI, navigation, and game adapters. The spoke docs below are **binding**. Re-read the relevant rows before opening a PR.
 
 ### Authority docs
@@ -63,6 +65,7 @@ From [`../stupid.md`](../stupid.md) — same class of mistakes that already burn
 | `checkReachability` on flow types for decisions | Deleted — use `navReachHorizon.js` |
 | Per-agent `FlowFieldWindow` for **utility scoring** | Sync BFS for decisions; flow windows **Part 2 locomotion only** |
 | Mock `{ stepsTo: () => N }` in tests | Real `syncNavReachHorizon` or stub `reachSteps` on context |
+| **Compatibility shims / “thin aliases” so tests keep old imports or old object shape** | **Migrate tests in the same PR** — delete shim; see [`../stupid.md`](../stupid.md#tests-follow-the-dialect--never-ship-compatibility-shims) |
 | One-export barrels (`import from "../AI/foo/index.js"`) | Import owning module directly |
 | Pass F-style file sprawl (5 helpers × 1 consumer) | Merge into the factory file that owns the call site |
 
@@ -150,6 +153,7 @@ rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentP
 | New folder with one consumer | Wait for two importers or inline |
 | Copy-paste helper to “shared” file without deleting both copies | Net LOC must drop |
 | Generic slot pipeline / BT layer | Deferred — not this plan |
+| **Prod aliases for deprecated API “until tests catch up”** | Tests catch up **in the same PR** or the migration is not done |
 
 ### Extract rule (Part 1 dedupe)
 
@@ -167,6 +171,7 @@ rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentP
 - [ ] Reach still computed once at intent adapter; flow not used for scoring
 - [ ] Both consumers updated if touching shared AI code
 - [ ] Tests: real `syncNavReachHorizon` or stub `reachSteps` on context — not mock horizon objects
+- [ ] **No compatibility shims** — tests updated to new dialect in same PR; zero deprecated names in `Libraries/` **and** `tests/` when pass bar says so
 - [ ] New file count justified — merge single-consumer helpers into owner module
 
 ---
@@ -233,8 +238,9 @@ Raw `visibleWorld` / `memoryWorld` exist **only** as inputs to the single build 
 | `blackboard.facts.visible` / `.remembered` | unpacking `px/py/zoom` at every draw entry |
 | `buildVisible` / `buildRemembered` / `buildKnown` in species JS | `elevationCameraFrom*` factories |
 | `readThreatState` fallback across two bags | resolver picking which camera copy |
-| `snakeDecisionModel.js` / `fleeDecisionModel.js` with scorers | N/A — config at use site |
+| `snakeDecisionModel.js` / `fleeDecisionModel.js` with scorers | config at use site — **delete files in H2d** |
 | Free-form scorer expressions in JSON | resolver theater — **named scorer IDs only** |
+| **`buildSnakeDecisionContext` wrappers that rebuild `{ blackboard, decisionSnapshot }`** | test accommodation shim — **banned** |
 | `Libraries/AI/decision/` package | unchanged ban |
 
 ### Target shape — one object
@@ -333,34 +339,36 @@ fleeAgent: {
 
 | File | After |
 |------|-------|
-| `snakeDecisionModel.js` | **Delete** or ≤15 lines: re-export `buildSnakeDecisionContext` wrapping `buildDecisionContext(getSnakeGameConfig().decision, input)` for test stability |
-| `fleeDecisionModel.js` | Same for `fleeAgent.decision` |
-| `Config/games/snake.js` | owns both decision tables |
+| `snakeDecisionModel.js` | **Deleted** in H2d — no re-exports |
+| `fleeDecisionModel.js` | **Deleted** in H2d — no re-exports |
+| `Config/games/snake.js` | owns both `decision` tables |
+| Tests | import `buildDecisionContext` + config; assert `decisionContext` shape only |
 
 ### Migration steps — one PR per step, tests green each time
 
-#### H2a — Collapse the frame (behavior-neutral)
+#### H2a — Collapse the frame
 
-**Bar:** one object; no sync between siblings.
+**Bar:** one object; no sync between siblings; **tests and prod on `decisionContext` in the same PR** — no interim aliases.
 
-1. Rename merge: `buildAgentDecisionContext` returns flat `decisionContext` (keep `known`, drop `facts.visible`/`facts.remembered` — keep `memoryActive` flags for policy reasons).
-2. `createGroundNavIntentAdapter`: `lastDecisionContext = buildDecisionContext(...)`; `world = { decisionContext }`.
-3. Replace all reads:
-   - `world.blackboard.facts.known.*` → `world.decisionContext.known.*`
-   - `world.decisionSnapshot.*` → `world.decisionContext.*`
-   - delete `readThreatState` fallback — `decisionContext.threatState` only
+1. `buildAgentDecisionContext` → returns flat **`decisionContext`** only (drop `facts.visible`/`facts.remembered`; add `memoryActive` flags for policy reasons).
+2. `createGroundNavIntentAdapter`: `world = { decisionContext }`; delete `lastBlackboard` / `lastDecisionSnapshot` split — one `lastDecisionContext`.
+3. Replace **all** reads in `Libraries/` and `tests/`:
+   - `blackboard.facts.known.*` / `decisionSnapshot.*` → `decisionContext.*`
+   - delete `readThreatState` — `decisionContext.threatState` only
    - delete `decisionSnapshot.events = blackboard.events`
-4. Thin aliases (optional, delete in H2d): `buildSnakeDecisionContext` returns `{ blackboard: { facts: ctx, events: ctx.events }, decisionSnapshot: ctx }` **only if** needed to land H2a without touching every test in one commit — remove in H2d.
+4. Update tests that import `createSnakeDecisionBlackboard`, `pickSnakeIntentPolicy`, `buildSnakeDecisionContext`, etc. to use `decisionContext` helpers or call sites on the adapter — **rewrite assertions**, do not wrap old shape.
+5. Delete deprecated exports (`createSnakeDecisionBlackboard`, `{ blackboard, decisionSnapshot }` return) in this PR — not a follow-up.
 
-**Touches:** `createGroundNavIntentAdapter.js`, `createSnakeForageIntent.js`, `createFleeExploreIntent.js`, `resolveFleePackOptions.js`, tests, debug overlays if any.
+**Forbidden in H2a:** `buildSnakeDecisionContext` returning a fake `{ blackboard, decisionSnapshot }` bag; grep exceptions for `tests/`; “land prod first, fix tests in H2d”.
 
-**Grep gate:**
+**Touches:** `buildAgentDecisionContext.js`, `createGroundNavIntentAdapter.js`, `createSnakeForageIntent.js`, `createFleeExploreIntent.js`, `resolveFleePackOptions.js`, `snakeDecisionModel.js`, `fleeDecisionModel.js`, **all** tests under `tests/*Decision*`, `tests/*Intent*`, `tests/agentAlly*`, `tests/snakeEngagement*`, `tests/fleePack*`, debug overlays.
+
+**Grep gate (Libraries + tests — zero hits):**
 
 ```bash
-rg 'decisionSnapshot' Libraries/Game/snake --glob '*.js'
-rg 'blackboard\.facts' Libraries/Game/snake --glob '*.js'
+rg 'decisionSnapshot|blackboard\.facts|createSnakeDecisionBlackboard|createFleeDecisionBlackboard' --glob '*.js'
 rg 'readThreatState' --glob '*.js'
-# target: zero in Libraries/Game after H2a (tests may lag until H2d)
+rg '\{ blackboard, decisionSnapshot \}' --glob '*.js'
 ```
 
 #### H2b — Slot schema from config
@@ -381,11 +389,12 @@ rg 'readThreatState' --glob '*.js'
 
 #### H2d — Delete species decision models
 
-**Bar:** config + engine only; tests import engine or config.
+**Bar:** config + engine only.
 
-1. Delete `snakeDecisionModel.js` / `fleeDecisionModel.js` or reduce to re-exports.
-2. Update tests to call `buildDecisionContext(snakeDecisionConfig, input)` or keep thin `buildSnakeDecisionContext` wrapper in `snakeGameConfig.js`.
-3. Update `fsmbfs.md` / `history.md`; add stupid.md cross-ref under decision frame case history.
+1. **Delete** `snakeDecisionModel.js` and `fleeDecisionModel.js`.
+2. Adapter calls `buildDecisionContext(getSnakeGameConfig().decision, input)` / `fleeAgent.decision` directly.
+3. Tests import `buildDecisionContext` from engine + config — no deleted filenames, no wrapper exports.
+4. Update `fsmbfs.md` / `history.md`; add decision-frame case history to [`../stupid.md`](../stupid.md).
 
 ### Dependency
 
@@ -411,8 +420,8 @@ Part 2 steering may read `decisionContext.known.threat` — must not introduce a
 ### Verify after ship
 
 ```bash
-rg 'decisionSnapshot' Libraries --glob '*.js'
-rg 'blackboard\.facts\.(visible|remembered)' Libraries --glob '*.js'
+rg 'decisionSnapshot|blackboard\.facts' --glob '*.js'
+rg 'createSnakeDecisionBlackboard|buildSnakeDecisionContext|buildFleeDecisionContext' tests --glob '*.js'  # after H2d: zero snakeDecisionModel imports
 rg 'buildVisible|buildRemembered|buildKnown' Libraries/Game/snake --glob '*Decision*.js'
 rg 'function scorePreyDetail|function scoreSeekAllyDetail|function scoreEnemyDetail' Libraries/Game/snake
 rg 'Libraries/AI/decision' --glob '*.js'
@@ -420,7 +429,7 @@ rg 'Libraries/AI/decision' --glob '*.js'
 
 ---
 
-## Part 2 — Flow locomotion (unblocked)
+## Part 2 — Flow locomotion (gated on H2a)
 
 Decision reach stays on `navReachHorizon` — flow fields **steer**, sync BFS **scores**.
 
@@ -492,7 +501,7 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 ### Part 1.6 (Pass H2 — decision frame)
 
-- [ ] H2a: one `decisionContext`; no `blackboard`/`decisionSnapshot` pair
+- [ ] H2a: one `decisionContext`; tests migrated same PR; zero `blackboard`/`decisionSnapshot` in Libraries **and** tests
 - [ ] H2b: slot merge from `Config/games/snake.js`
 - [ ] H2c: scorer registry + mode table; hunger/sprint from config
 - [ ] H2d: delete species `*DecisionModel.js` scorers (config + engine only)
