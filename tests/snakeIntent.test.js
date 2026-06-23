@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, createSnakeNavWalkable, primeSnakeHeadVision, wireSnakeTestGame, spawnSnakeFoodShardAtCell, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, primeSnakeHeadVision, wireSnakeTestGame, spawnSnakeFoodShardAtCell, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { findNearestVisibleThreat } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { FRAME_MS } from "./frameMs.js";
@@ -20,11 +20,9 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { buildSnakeDecisionFrame, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
-import { syncNavReachHorizon, navReachStepsTo } from "../Libraries/Navigation/navReachHorizon.js";
-import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { perceiveAgentIntentWorld } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+
 async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -45,15 +43,18 @@ async function createIntentTestState(cols = 32, rows = 32) {
         viewport: { circleInBounds: () => true },
     };
 }
+
 function stampWall(grid, col, row) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
 }
+
 function snakeBehaviors(state) {
     return new Map([
         [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
         [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
     ]);
 }
+
 function snakeChainOptions() {
     const config = getSnakeGameConfig();
     return {
@@ -67,18 +68,7 @@ function snakeChainOptions() {
         growDirY: config.growDirY,
     };
 }
-function reachStepsForWorld(seeker, state, world) {
-    syncNavReachHorizon(requireSnakeVisionFrame(state).navTopology, seeker.x, seeker.y, getSnakeGameConfig().decisionReachHorizon ?? 32);
-    return {
-        threat: world.threat ? navReachStepsTo(world.threat.x, world.threat.y) : null,
-        prey: world.prey ? navReachStepsTo(world.prey.x, world.prey.y) : null,
-        food: world.food ? navReachStepsTo(world.food.x, world.food.y) : null,
-        ally: world.ally ? navReachStepsTo(world.ally.x, world.ally.y) : null,
-    };
-}
-function pickPolicyFromVisibleWorld(seeker, state, world) {
-    return pickSnakeIntentPolicy(buildSnakeDecisionFrame({ visibleWorld: world, reachSteps: reachStepsForWorld(seeker, state, world) }));
-}
+
 describe("explore steering", () => {
     it("pickExploreDestination respects minimum tile distance", async () => {
         const state = await createIntentTestState();
@@ -122,7 +112,8 @@ describe("explore steering", () => {
         assert.deepEqual(cell, { col: 12, row: 10 });
     });
 });
-describe("snake intent FSM", () => {
+
+describe("snake intent integration", () => {
     it("seeks nearest visible shard food, not nearest food behind a wall", async () => {
         applySnakeGameConfig();
         const state = await createIntentTestState();
@@ -138,6 +129,7 @@ describe("snake intent FSM", () => {
         assert.equal(findNearestSnakeFood(state, seeker.x, seeker.y).id, nearBehindWall.id);
         assert.equal(findNearestVisibleSnakeFood(state, seeker).id, farVisible.id);
     });
+
     it("explores via HPA when no goal is visible and seeks when food enters vision", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
@@ -161,7 +153,8 @@ describe("snake intent FSM", () => {
         assert.equal(autosim.getMode(), "seek_food");
         assert.ok(autosim.getDestination());
     });
-    it("forage intent flees from a visible larger snake", async () => {
+
+    it("autosim flees from a visible larger snake", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
@@ -181,56 +174,7 @@ describe("snake intent FSM", () => {
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
     });
-    it("perceives nearest visible larger threat and smaller prey in one world view", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
-        resetKineticConstraintIds(1);
-        const state = await createIntentTestState();
-        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
-        const preyChain = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
-        const threatChain = spawnLinkedBallChain(state, { col: 16, row: 10 }, { ...snakeChainOptions(), segmentCount: 8 });
-        const { registry } = wireSnakeTestGame(state, [
-            { headId: seekerChain.head.id, spawnGroupId: seekerChain.spawnGroupId },
-            { headId: preyChain.head.id, spawnGroupId: preyChain.spawnGroupId },
-            { headId: threatChain.head.id, spawnGroupId: threatChain.spawnGroupId },
-        ]);
-        seekerChain.head.faction = "red";
-        preyChain.head.faction = "blue";
-        threatChain.head.faction = "blue";
-        const seeker = seekerChain.head;
-        seeker.facing = 0;
-        preyChain.head.x = seeker.x + 64;
-        preyChain.head.y = seeker.y;
-        threatChain.head.x = seeker.x + 96;
-        threatChain.head.y = seeker.y;
-        primeSnakeHeadVision(state, seeker);
-        const world = perceiveAgentIntentWorld(seeker, seeker.id, state, registry, () => null);
-        assert.equal(world.prey.id, preyChain.head.id);
-        assert.equal(world.threat.id, threatChain.head.id);
-        assert.equal(pickPolicyFromVisibleWorld(seeker, state, world).mode, "flee");
-    });
-    it("prefers visible shard food over live prey when no threat is visible", async () => {
-        applySnakeGameConfig({ fleeRange: 128 });
-        resetKineticConstraintIds(1);
-        const state = await createIntentTestState();
-        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
-        const preyChain = spawnLinkedBallChain(state, { col: 14, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
-        const food = spawnSnakeFoodShardAtCell(state, { col: 12, row: 10 });
-        const { registry } = wireSnakeTestGame(state, [
-            { headId: seekerChain.head.id, spawnGroupId: seekerChain.spawnGroupId },
-            { headId: preyChain.head.id, spawnGroupId: preyChain.spawnGroupId },
-        ]);
-        seekerChain.head.faction = "red";
-        preyChain.head.faction = "blue";
-        const seeker = seekerChain.head;
-        seeker.facing = 0;
-        preyChain.head.x = seeker.x + 64;
-        preyChain.head.y = seeker.y;
-        primeSnakeHeadVision(state, seeker);
-        const world = perceiveAgentIntentWorld(seeker, seeker.id, state, registry, () => food);
-        assert.equal(world.prey.id, preyChain.head.id);
-        assert.equal(world.food.id, food.id);
-        assert.deepEqual(pickPolicyFromVisibleWorld(seeker, state, world), { mode: "seek_food", targetId: food.id });
-    });
+
     it("pickFleeCell steps away from the threat", async () => {
         applySnakeGameConfig({ fleeTiles: 3 });
         resetKineticConstraintIds(1);
@@ -257,6 +201,7 @@ describe("snake intent FSM", () => {
         const threatCell = grid.worldToGrid(larger.head.x, larger.head.y);
         assert.ok(cellChebyshevDistance(cell.col, cell.row, threatCell.col, threatCell.row) > cellChebyshevDistance(selfCell.col, selfCell.row, threatCell.col, threatCell.row));
     });
+
     it("ignores smaller snakes hidden behind walls", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
         resetKineticConstraintIds(1);

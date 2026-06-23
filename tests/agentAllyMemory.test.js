@@ -10,8 +10,11 @@ import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeA
 import { createAgentIntentMemory } from "../Libraries/AI/memory/createAgentIntentMemory.js";
 import { buildSnakeDecisionContext } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { buildFleeDecisionContext } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
-import { publishAgentEngagement } from "../Libraries/AI/agents/agentEngagement.js";
+import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/agentEngagement.js";
+import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { deriveSnakeEngagementState } from "../Libraries/Game/snake/snakeEngagement.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+
 function chainOptions(segmentCount) {
     const config = getSnakeGameConfig();
     return {
@@ -25,8 +28,46 @@ function chainOptions(segmentCount) {
         growDirY: config.growDirY,
     };
 }
-describe("ally intent memory and blackboard", () => {
-    it("snake intent memory retains ally after line of sight is lost", async () => {
+
+describe("agent engagement", () => {
+    it("publishAgentEngagement stores state on session", () => {
+        const session = createSnakeAgentSession({}, { registry: { aliveByHeadId: new Map() }, navWalkable: null, speciesById: new Map() });
+        const engagement = { active: true, salience: ["food"], mode: "seek_food" };
+        publishAgentEngagement(session, 5, engagement);
+        assert.deepEqual(readAgentEngagement(session, 5), engagement);
+        assert.equal(isAgentEngaged(session, 5), true);
+        assert.equal(isAgentEngaged(session, 6), false);
+    });
+
+    it("deriveSnakeEngagementState marks seek_food with visible food as active", () => {
+        const ctx = buildSnakeDecisionContext({
+            visibleWorld: { threat: null, prey: null, food: { id: 1 }, ally: null, allyCount: 0, allyCentroid: null },
+        });
+        const engagement = deriveSnakeEngagementState(ctx, { mode: "seek_food", targetId: 1 });
+        assert.equal(engagement.active, true);
+        assert.equal(engagement.mode, "seek_food");
+        assert.deepEqual(engagement.salience, ["food"]);
+    });
+
+    it("deriveSnakeEngagementState marks explore and seek_ally as inactive", () => {
+        const ctx = buildSnakeDecisionContext({
+            visibleWorld: { threat: null, prey: null, food: { id: 1 }, ally: null, allyCount: 0, allyCentroid: null },
+        });
+        assert.equal(deriveSnakeEngagementState(ctx, { mode: "explore" }).active, false);
+        assert.equal(deriveSnakeEngagementState(ctx, { mode: "seek_ally", targetId: 2 }).active, false);
+    });
+
+    it("deriveSnakeEngagementState requires acting on salient target for active modes", () => {
+        const ctx = buildSnakeDecisionContext({
+            visibleWorld: { threat: null, prey: null, food: { id: 1 }, ally: null, allyCount: 0, allyCentroid: null },
+        });
+        assert.equal(deriveSnakeEngagementState(ctx, { mode: "seek_prey" }).active, false);
+        assert.equal(deriveSnakeEngagementState(ctx, { mode: "flee" }).active, false);
+    });
+});
+
+describe("ally intent memory", () => {
+    it("retains ally after line of sight is lost", async () => {
         applySnakeGameConfig({ intentMemory: { allyTtlTicks: 2 } });
         resetKineticConstraintIds(1);
         const { state } = await createSnakeGameHarnessState();
@@ -54,7 +95,8 @@ describe("ally intent memory and blackboard", () => {
         enriched = memory.enrichWorld(state, empty);
         assert.equal(enriched.ally, null);
     });
-    it("snake decision snapshot surfaces allyState from memory", () => {
+
+    it("surfaces allyState from memory on decision context", () => {
         applySnakeGameConfig();
         const visibleWorld = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null };
         const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyCount: 1, allyCentroid: null };
@@ -64,7 +106,8 @@ describe("ally intent memory and blackboard", () => {
         assert.equal(ctx.allyState.visible, false);
         assert.ok(ctx.events.includes("ALLY_REMEMBERED"));
     });
-    it("flee intent memory and decision snapshot retain ally facts", async () => {
+
+    it("flee agent retains ally facts through memory", async () => {
         applySnakeGameConfig({ intentMemory: { allyTtlTicks: 3 } });
         resetKineticConstraintIds(2);
         const { state } = await createSnakeGameHarnessState();

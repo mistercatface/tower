@@ -4,6 +4,7 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snak
 import { SNAKE_HUNGRY_EXPLORE_TINT, SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
 import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSnakeHungerState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
+import { createModePolicyLatch } from "../Libraries/AI/agentIntent/policyHysteresis.js";
 const CELL = 16;
 function world({ threat = null, prey = null, food = null, ally = null, allyCount = 0, allyCentroid = null } = {}) {
     return { threat, prey, food, ally, allyCount, allyCentroid };
@@ -29,7 +30,7 @@ function context(visibleWorld, opts = {}) {
 function snake(id, extra = {}) {
     return { id, x: 0, y: 0, isDead: false, ...extra };
 }
-function blackboard(visibleWorld, opts = {}) {
+function decisionFrame(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
     return buildSnakeDecisionFrame({ visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), ...rest });
 }
@@ -66,8 +67,8 @@ describe("snake intent scoring parity (PR2)", () => {
             { in: world(), mode: "explore" },
         ];
         for (const c of cases) {
-            const bb = blackboard(c.in);
-            assert.equal(pickSnakeIntentPolicy(bb).mode, c.mode);
+            const frame = decisionFrame(c.in);
+            assert.equal(pickSnakeIntentPolicy(frame).mode, c.mode);
         }
     });
     it("stores candidate scores and chosen reason on the snapshot", () => {
@@ -78,7 +79,7 @@ describe("snake intent scoring parity (PR2)", () => {
         assert.equal(ctx.chosenReason, null);
     });
     it("absent candidates score -Infinity so explore wins by default", () => {
-        const scores = scoreSnakeIntentCandidates(blackboard(world()));
+        const scores = scoreSnakeIntentCandidates(decisionFrame(world()));
         assert.equal(scores.flee, -Infinity);
         assert.equal(scores.seek_prey, -Infinity);
         assert.equal(scores.seek_food, -Infinity);
@@ -86,8 +87,8 @@ describe("snake intent scoring parity (PR2)", () => {
         assert.ok(Number.isFinite(scores.explore));
     });
     it("keeps memory reasons for remembered targets", () => {
-        const bb = blackboard(world(), { memoryWorld: { prey: snake(5) }, memorySource: { prey: true }, reachSteps: { prey: 5, food: null, ally: null, threat: null } });
-        const policy = pickSnakeIntentPolicy(bb);
+        const frame = decisionFrame(world(), { memoryWorld: { prey: snake(5) }, memorySource: { prey: true }, reachSteps: { prey: 5, food: null, ally: null, threat: null } });
+        const policy = pickSnakeIntentPolicy(frame);
         assert.equal(policy.mode, "seek_prey");
         assert.equal(policy.reason, "prey_memory");
     });
@@ -328,5 +329,24 @@ describe("snake seek_ally cohesion (4c)", () => {
         const aw = allyWorld("ally1", 2);
         const ctx = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: aw.reachSteps });
         assert.equal(ctx.chosenIntent.mode, "explore");
+    });
+});
+
+describe("policy hysteresis", () => {
+    it("holds a latched mode for minimum ticks before releasing", () => {
+        const latch = createModePolicyLatch({ mode: "flee", minTicks: 2, holdReason: "flee_hysteresis" });
+        assert.deepEqual(latch.apply({ mode: "flee", targetId: null }), { mode: "flee", targetId: null });
+        assert.equal(latch.apply({ mode: "seek_food", targetId: 1 }).mode, "flee");
+        assert.equal(latch.apply({ mode: "seek_food", targetId: 1 }).mode, "flee");
+        assert.equal(latch.apply({ mode: "seek_food", targetId: 1 }).mode, "seek_food");
+    });
+    it("keeps holding while release conditions fail", () => {
+        let safe = false;
+        const latch = createModePolicyLatch({ mode: "flee", minTicks: 1, canRelease: () => safe });
+        latch.apply({ mode: "flee", targetId: null });
+        assert.equal(latch.apply({ mode: "explore", targetId: null }).mode, "flee");
+        assert.equal(latch.apply({ mode: "explore", targetId: null }).mode, "flee");
+        safe = true;
+        assert.equal(latch.apply({ mode: "explore", targetId: null }).mode, "explore");
     });
 });
