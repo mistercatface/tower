@@ -2,7 +2,6 @@ import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offsc
 import { blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase } from "../../Canvas/maskCompositor.js";
 import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
 import { collectExposedWallEdgesInAabb } from "../../Spatial/grid/gridCellTopology.js";
-import { elevationCameraFromViewport } from "../../Spatial/iso/ElevationCamera.js";
 import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
 import { forEachLosShadowQuadInRange } from "./losShadowEdges.js";
 import { collectRailWallShadowEdgesInAabb } from "./railWallShadowEdges.js";
@@ -23,14 +22,10 @@ function resolveLightZ(obstacleGrid, options) {
     const heightCells = options.lightHeightCells ?? LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT;
     return heightCells * obstacleGrid.cellSize;
 }
-function resolveShadowCamera(viewport, options) {
-    return options.camera ?? elevationCameraFromViewport(viewport, options.cameraHeight ?? viewport.cameraHeight);
-}
 export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, options = {}) {
     const visionTiles = options.visionTiles ?? LOS_SHADOW_VISION_TILES_DEFAULT;
     const lightZ = resolveLightZ(obstacleGrid, options);
     const overlayAlpha = options.overlayAlpha ?? LOS_SHADOW_OVERLAY_ALPHA;
-    const camera = resolveShadowCamera(viewport, options);
     const lightX = viewport.x;
     const lightY = viewport.y;
     const range = visionTiles * obstacleGrid.cellSize;
@@ -42,7 +37,7 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     cutOutRadialSoftDisc(overlayCtx, screenLight.x, screenLight.y, screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {
         let hasShadows = false;
-        forEachLosShadowQuadInRange(sEdgeScratch, lightX, lightY, range, lightZ, viewport, camera, sQuadScratch, (flatVerts, vertCount) => {
+        forEachLosShadowQuadInRange(sEdgeScratch, lightX, lightY, range, lightZ, viewport, sQuadScratch, (flatVerts, vertCount) => {
             traceWoundFlatQuad(pathCtx, flatVerts, vertCount);
             hasShadows = true;
         });

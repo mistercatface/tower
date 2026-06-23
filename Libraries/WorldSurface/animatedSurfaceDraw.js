@@ -2,7 +2,6 @@ import { resolveSurfaceProfile } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
 import { drawBakedTexture, drawProjectedHorizontalChunk, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
-import { elevationCameraFromViewport } from "../Spatial/iso/ElevationCamera.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 import { releaseAnimatedSurfaceFlipbook } from "./animatedSurfaceFlipbook.js";
 const sPatchCorners = [
@@ -42,9 +41,9 @@ function resolveFlipbookFrameIndex(flipbook, gameTime) {
  * @param {import("./animatedSurfaceFlipbook.js").AnimatedSurfacePatchBake} patch
  * @param {number} frameIndex
  * @param {number} zLevel
- * @param {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @param {import("../Viewport/Viewport.js").Viewport} viewport
  */
-function drawAnimatedPatch(ctx, patch, frameIndex, zLevel, camera) {
+function drawAnimatedPatch(ctx, patch, frameIndex, zLevel, viewport) {
     const canvas = patch.frames[Math.min(patch.frames.length - 1, Math.max(0, frameIndex))];
     if (!isDrawableBakedSurface(canvas)) return;
     const { minX, minY, maxX, maxY } = patch.bounds;
@@ -54,7 +53,7 @@ function drawAnimatedPatch(ctx, patch, frameIndex, zLevel, camera) {
         drawBakedTexture(ctx, canvas, minX, minY, worldW, worldH);
         return;
     }
-    const corners = projectWorldAabbCornersInto(sPatchCorners, minX, minY, maxX, maxY, zLevel, camera);
+    const corners = projectWorldAabbCornersInto(sPatchCorners, minX, minY, maxX, maxY, zLevel, viewport);
     drawProjectedHorizontalChunk(ctx, canvas, corners);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAnimatedSurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
@@ -62,10 +61,9 @@ export function drawAnimatedSurfaceZone(ctx, zone, state, viewport) {
     if (!zone?.profileId || !zone.flipbook || !viewport) return;
     if (!viewport.aabbInBounds(zone.aabb, "clip")) return;
     const frameIndex = resolveFlipbookFrameIndex(zone.flipbook, state.gameTime ?? 0);
-    const camera = elevationCameraFromViewport(viewport);
-    drawAnimatedPatch(ctx, zone.flipbook.play, frameIndex, 0, camera);
+    drawAnimatedPatch(ctx, zone.flipbook.play, frameIndex, 0, viewport);
     const railBands = zone.flipbook.railBands;
-    for (let i = 0; i < railBands.length; i++) drawAnimatedPatch(ctx, railBands[i], frameIndex, zone.railHeight, camera);
+    for (let i = 0; i < railBands.length; i++) drawAnimatedPatch(ctx, railBands[i], frameIndex, zone.railHeight, viewport);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

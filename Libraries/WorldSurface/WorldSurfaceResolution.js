@@ -25,7 +25,7 @@ export function drawProjectedHorizontalChunk(ctx, canvas, corners) {
     if (!isDrawableBakedSurface(canvas)) return;
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3]);
 }
-export function drawProjectedHorizontalChunkAt(ctx, canvas, originX, originY, sizePx, zLevel, camera) {
-    projectWorldAabbCornersInto(sProjectedChunkCorners, originX, originY, originX + sizePx, originY + sizePx, zLevel, camera);
+export function drawProjectedHorizontalChunkAt(ctx, canvas, originX, originY, sizePx, zLevel, viewport) {
+    projectWorldAabbCornersInto(sProjectedChunkCorners, originX, originY, originX + sizePx, originY + sizePx, zLevel, viewport);
     drawProjectedHorizontalChunk(ctx, canvas, sProjectedChunkCorners);
 }

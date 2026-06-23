@@ -9,13 +9,12 @@ import { projectWorldPointToScreenInto } from "../Libraries/Spatial/iso/Isometri
 import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/iso/shadowProjection.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
-import { makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
+import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
 describe("projectWorldPointToScreenInto", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
-        const camera = makeTestCamera(128, 128, 160, 1);
         const out = { x: 0, y: 0 };
-        projectWorldPointToScreenInto(out, viewport, camera, 64, 64, 0);
+        projectWorldPointToScreenInto(out, viewport, 64, 64, 0);
         const flat = viewport.worldToScreen(64, 64);
         assertNear(out.x, flat.x);
         assertNear(out.y, flat.y);
@@ -46,18 +45,16 @@ describe("shadowGroundContactXY", () => {
 describe("shadowProjection", () => {
     it("projectWallShadowQuadScreenInto anchors near edge at projected roof height", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
-        const camera = makeTestCamera(128, 128, 160, 1);
         const out = new Float32Array(8);
-        projectWallShadowQuadScreenInto(out, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreenInto(out, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
         const outFlat = new Float32Array(8);
-        projectWallShadowQuadScreenInto(outFlat, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 0);
+        projectWallShadowQuadScreenInto(outFlat, viewport, 72, 40, 16, 64, 64, 80, 64, 0);
         assert.ok(out[1] !== outFlat[1], "roof near edge should differ from flat floor edge when wall has height");
     });
     it("projectWallShadowQuadScreenInto keeps floor corners under edge when light equals wall top", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
-        const camera = makeTestCamera(128, 128, 160, 1);
         const out = new Float32Array(8);
-        projectWallShadowQuadScreenInto(out, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreenInto(out, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
         const floor1 = viewport.worldToScreen(64, 64);
         const floor2 = viewport.worldToScreen(80, 64);
         assertNear(out[6], floor1.x);
@@ -67,11 +64,10 @@ describe("shadowProjection", () => {
     });
     it("projectWallShadowQuadScreenInto extrudes floor corners when light is above wall top", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
-        const camera = makeTestCamera(128, 128, 160, 1);
         const outLow = new Float32Array(8);
         const outHigh = new Float32Array(8);
-        projectWallShadowQuadScreenInto(outLow, viewport, camera, 72, 40, 16, 64, 64, 80, 64, 16);
-        projectWallShadowQuadScreenInto(outHigh, viewport, camera, 72, 40, 32, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreenInto(outLow, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreenInto(outHigh, viewport, 72, 40, 32, 64, 64, 80, 64, 16);
         const spreadLow = Math.hypot(outLow[6] - outLow[0], outLow[7] - outLow[1]);
         const spreadHigh = Math.hypot(outHigh[6] - outHigh[0], outHigh[7] - outHigh[1]);
         assert.ok(spreadHigh > spreadLow, "higher light should cast a longer screen wedge");
@@ -158,10 +154,9 @@ describe("losShadowEdges", () => {
         const edges = [];
         collectExposedWallEdgesInAabb(grid, 0, 0, 256, 256, edges);
         const viewport = makeTestViewport(128, 128);
-        const camera = makeTestCamera(128, 128);
         const scratch = new Float32Array(8);
         const quads = [];
-        forEachLosShadowQuadInRange(edges, 72, 40, 80, 16, viewport, camera, scratch, (flat, count) => {
+        forEachLosShadowQuadInRange(edges, 72, 40, 80, 16, viewport, scratch, (flat, count) => {
             quads.push(Array.from(flat.slice(0, count * 2)));
         });
         assert.equal(quads.length, edges.length);
@@ -173,7 +168,7 @@ describe("composeLosShadowMask", () => {
         stampWallRect(grid, 10, 10, 2, 2);
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const mask = createMockCanvas2d(400, 400);
-        composeLosShadowMask(mask, 400, 400, viewport, grid, { visionTiles: 8, lightHeightCells: 1, camera: makeTestCamera(128, 128) });
+        composeLosShadowMask(mask, 400, 400, viewport, grid, { visionTiles: 8, lightHeightCells: 1 });
         const gcoOps = mask.ops.filter((o) => o.op === "gco").map((o) => o.value);
         assert.ok(gcoOps.includes("destination-out"));
         assert.ok(gcoOps.includes("source-over"));
@@ -187,7 +182,7 @@ describe("drawLosShadowOverlay", () => {
         const grid = makeTestObstacleGrid(32, 32);
         const viewport = makeTestViewport(128, 128);
         const ctx = createMockCanvas2d(400, 400);
-        drawLosShadowOverlay(ctx, viewport, grid, { visionTiles: 8, camera: makeTestCamera(128, 128) });
+        drawLosShadowOverlay(ctx, viewport, grid, { visionTiles: 8 });
         assert.ok(ctx.ops.some((o) => o.op === "drawImage"));
         assert.equal(
             ctx.ops.some((o) => o.op === "gco" && o.value === "destination-out"),

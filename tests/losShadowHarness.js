@@ -18,11 +18,7 @@ export function stampRailWallEdge(grid, col, row, side, capHeightLevel = 1, thic
     grid.stampCellEdge(col, row, side, capHeightLevel, thicknessLevel);
 }
 
-export function makeTestCamera(viewerX, viewerY, cameraHeight = 160, strength = 1) {
-    return { viewerX, viewerY, cameraHeight, strength };
-}
-
-export function makeTestViewport(x, y, halfW = 200, halfH = 200, zoom = 1) {
+export function makeTestViewport(x, y, halfW = 200, halfH = 200, zoom = 1, cameraHeight = 160, perspectiveStrength = 1) {
     const bounds = { minX: x - halfW, minY: y - halfH, maxX: x + halfW, maxY: y + halfH };
     const cx = halfW * zoom;
     const cy = halfH * zoom;
@@ -32,6 +28,8 @@ export function makeTestViewport(x, y, halfW = 200, halfH = 200, zoom = 1) {
         zoom,
         cx,
         cy,
+        cameraHeight,
+        perspectiveStrength,
         bounds(tier) {
             return bounds;
         },

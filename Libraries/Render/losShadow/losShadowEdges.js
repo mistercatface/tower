@@ -20,7 +20,7 @@ export function edgeSegmentOutsideCircle(edge, centerX, centerY, rangeSq) {
     return dx * dx + dy * dy > rangeSq;
 }
 
-export function forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, camera, quadScratch, emitQuad) {
+export function forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, quadScratch, emitQuad) {
     const rSq = range * range;
     for (let i = 0; i < edges.length; i++) {
         const edge = edges[i];
@@ -30,7 +30,7 @@ export function forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ
         const dx = lightX - closestX;
         const dy = lightY - closestY;
         if (dx * dx + dy * dy > rSq) continue;
-        projectWallShadowQuadScreenInto(quadScratch, viewport, camera, lightX, lightY, lightZ, edge.x1, edge.y1, edge.x2, edge.y2, edge.wallTopZ, range * 2);
+        projectWallShadowQuadScreenInto(quadScratch, viewport, lightX, lightY, lightZ, edge.x1, edge.y1, edge.x2, edge.y2, edge.wallTopZ, range * 2);
         emitQuad(quadScratch, 4);
     }
 }

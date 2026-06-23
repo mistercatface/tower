@@ -9,7 +9,6 @@ import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import { worldPropRecipes } from "../Props/PropCatalog.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources, collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
-import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {
     /** @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
     constructor(settings) {
@@ -18,7 +17,6 @@ export class WorldSceneRenderer {
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];
         this.forcefieldEdgeDrawables = [];
-        this.wallPassCamera = { viewerX: 0, viewerY: 0, cameraHeight: 0, strength: 0 };
         this.wallCtx = {
             viewport: null,
             worldSurfaces: null,
@@ -30,7 +28,6 @@ export class WorldSceneRenderer {
             wallCapHeight: 0,
             cacheObj: null,
             worldBounds: null,
-            camera: this.wallPassCamera,
             skipWallCaps: false,
             damageTintRatio: 0,
         };
@@ -108,7 +105,6 @@ export class WorldSceneRenderer {
         this._appendVisible3dProps(input, viewport, px, py);
         const skipWalls = options.skipWalls === true;
         if (!skipWalls) {
-            elevationCameraFromViewportInto(this.wallPassCamera, viewport);
             const wallCtx = this.wallCtx;
             wallCtx.viewport = viewport;
             wallCtx.worldSurfaces = input.worldSurfaces;

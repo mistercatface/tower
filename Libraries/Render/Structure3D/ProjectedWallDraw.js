@@ -35,12 +35,12 @@ export function traceProjectedFaceBand(ctx, faceBottom, faceTop) {
  * @param {{ x: number, y: number }} p1
  * @param {{ x: number, y: number }} p2
  * @param {number} z
- * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @param {import("../../Viewport/Viewport.js").Viewport} viewport
  * @param {ProjectedWallBand} out
  */
-export function projectWallFaceBandInto(p1, p2, z, camera, out) {
-    projectWorldPointInto(sBandPoint0, p1.x, p1.y, z, camera);
-    projectWorldPointInto(sBandPoint1, p2.x, p2.y, z, camera);
+export function projectWallFaceBandInto(p1, p2, z, viewport, out) {
+    projectWorldPointInto(sBandPoint0, p1.x, p1.y, z, viewport);
+    projectWorldPointInto(sBandPoint1, p2.x, p2.y, z, viewport);
     out.proj1X = sBandPoint0.x;
     out.proj1Y = sBandPoint0.y;
     out.proj2X = sBandPoint1.x;
@@ -113,13 +113,13 @@ function resolveWallFaceAtlas(p1, p2, wallCtx) {
  * @property {number} alphaBase
  * @property {number} alphaBandMax
  */
-function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, camera) {
+function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, viewport) {
     const cellSize = settings.cellSize;
-    const topZ = Math.min(wallBaseZ + bandHeight, camera.cameraHeight - 1);
-    const alphaBandMax = resolveElevationAlpha(topZ, camera);
-    const alphaBase = resolveElevationAlpha(wallBaseZ, camera);
+    const topZ = Math.min(wallBaseZ + bandHeight, viewport.cameraHeight - 1);
+    const alphaBandMax = resolveElevationAlpha(topZ, viewport);
+    const alphaBase = resolveElevationAlpha(wallBaseZ, viewport);
     if (alphaBandMax <= alphaBase) return null;
-    const dist = Math.hypot(wallCx - camera.viewerX, wallCy - camera.viewerY);
+    const dist = Math.hypot(wallCx - viewport.x, wallCy - viewport.y);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = bandHeight / cellSize;
     return {
@@ -130,20 +130,20 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
         alphaBandMax,
     };
 }
-function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, worldBounds) {
+function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, worldBounds) {
     const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
     const alphaSpan = alphaBandMax - alphaBase;
     const rowStep = bandHeight / subdivY;
-    const cameraHeight = camera.cameraHeight;
+    const cameraHeight = viewport.cameraHeight;
     const visibleRows = Math.min(subdivY, Math.ceil((cameraHeight - wallBaseZ) / rowStep));
     for (let row = 0; row < visibleRows; row++) {
         const bottomZ = wallBaseZ + row * rowStep;
         let topZ = wallBaseZ + (row + 1) * rowStep;
         if (bottomZ >= cameraHeight) break;
         if (topZ >= cameraHeight) topZ = cameraHeight - 1;
-        const v0 = (resolveElevationAlpha(bottomZ, camera) - alphaBase) / alphaSpan;
-        const v1 = (resolveElevationAlpha(topZ, camera) - alphaBase) / alphaSpan;
+        const v0 = (resolveElevationAlpha(bottomZ, viewport) - alphaBase) / alphaSpan;
+        const v1 = (resolveElevationAlpha(topZ, viewport) - alphaBase) / alphaSpan;
         const sy0 = (bottomZ / capHeight) * capPx;
         const sy1 = (topZ / capHeight) * capPx;
         for (let col = 0; col < subdivX; col++) {
@@ -158,19 +158,19 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
         }
     }
 }
-function resolveWallFaceSubdiv(wallCtx, atlas, camera) {
+function resolveWallFaceSubdiv(wallCtx, atlas, viewport) {
     const cacheObj = wallCtx.cacheObj;
     const faceId = wallCtx.atlasFaceId ?? "side";
-    const subdivKey = `${faceId}|${atlas.edgeLen}|${camera.viewerX}|${camera.viewerY}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
+    const subdivKey = `${faceId}|${atlas.edgeLen}|${viewport.x}|${viewport.y}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
     if (cacheObj && cacheObj._faceSubdivKey === subdivKey) return cacheObj._faceSubdiv;
-    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, camera);
+    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, viewport);
     if (cacheObj) {
         cacheObj._faceSubdivKey = subdivKey;
         cacheObj._faceSubdiv = subdiv;
     }
     return subdiv;
 }
-function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
+function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, viewport) {
     const atlas = resolveWallFaceAtlas(p1, p2, wallCtx);
     if (atlas === null) return;
     if (atlas === "solid") {
@@ -178,13 +178,13 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
         ctx.fill();
         return;
     }
-    const subdiv = resolveWallFaceSubdiv(wallCtx, atlas, camera);
+    const subdiv = resolveWallFaceSubdiv(wallCtx, atlas, viewport);
     if (!subdiv) {
         ctx.fillStyle = wallCtx.fillStyle;
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds);
+    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, wallCtx.worldBounds);
 }
 const sCapSrc0 = { x: 0, y: 0 };
 const sCapSrc1 = { x: 0, y: 0 };
@@ -201,14 +201,14 @@ const sCapUv = [sCapUv0, sCapUv1, sCapUv2, sCapUv3];
  * Order: outerP1 → outerP2 → innerP2 → innerP1.
  * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} out4
  * @param {{ outerP1x: number, outerP1y: number, outerP2x: number, outerP2y: number, innerP1x: number, innerP1y: number, innerP2x: number, innerP2y: number, wallCapHeight: number }} box
- * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
+ * @param {import("../../Viewport/Viewport.js").Viewport} viewport
  */
-export function projectRailWallTopCornersInto(out4, box, camera) {
+export function projectRailWallTopCornersInto(out4, box, viewport) {
     const z = box.wallCapHeight;
-    projectWorldPointInto(out4[0], box.outerP1x, box.outerP1y, z, camera);
-    projectWorldPointInto(out4[1], box.outerP2x, box.outerP2y, z, camera);
-    projectWorldPointInto(out4[2], box.innerP2x, box.innerP2y, z, camera);
-    projectWorldPointInto(out4[3], box.innerP1x, box.innerP1y, z, camera);
+    projectWorldPointInto(out4[0], box.outerP1x, box.outerP1y, z, viewport);
+    projectWorldPointInto(out4[1], box.outerP2x, box.outerP2y, z, viewport);
+    projectWorldPointInto(out4[2], box.innerP2x, box.innerP2y, z, viewport);
+    projectWorldPointInto(out4[3], box.innerP1x, box.innerP1y, z, viewport);
     return out4;
 }
 function fillProjectedCapPolygon(ctx, corners, fillStyle) {
@@ -228,8 +228,8 @@ function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedRailWallCap(ctx, box, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
-    projectRailWallTopCornersInto(sCapCorners, box, camera);
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, viewport, gameState } = wallCtx;
+    projectRailWallTopCornersInto(sCapCorners, box, viewport);
     if (!proceduralSurfaceDraw || !gameState) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
@@ -257,11 +257,11 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallCtx) {
-    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, camera, gameState } = wallCtx;
+    const { worldSurfaces, proceduralSurfaceDraw, fillStyle, viewport, gameState } = wallCtx;
     projectRailWallTopCornersInto(
         sCapCorners,
         { outerP1x: minX, outerP1y: minY, outerP2x: maxX, outerP2y: minY, innerP2x: maxX, innerP2y: maxY, innerP1x: minX, innerP1y: maxY, wallCapHeight: z },
-        camera,
+        viewport,
     );
     if (!proceduralSurfaceDraw || !gameState) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
@@ -296,12 +296,12 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
  * @param {WallDrawContext} wallCtx
  */
 export function drawProjectedWallFace(ctx, p1, p2, wallCtx) {
-    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, camera, damageTintRatio = 0 } = wallCtx;
+    const { wallHeight, wallBaseZ, proceduralSurfaceDraw, fillStyle, viewport, damageTintRatio = 0 } = wallCtx;
     const topZ = wallBaseZ + wallHeight;
-    const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, camera, sFaceBottom);
-    const faceTop = projectWallFaceBandInto(p1, p2, topZ, camera, sharedScratchFace);
+    const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, viewport, sFaceBottom);
+    const faceTop = projectWallFaceBandInto(p1, p2, topZ, viewport, sharedScratchFace);
     traceProjectedFaceBand(ctx, faceBottom, faceTop);
-    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera);
+    if (proceduralSurfaceDraw) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, viewport);
     else {
         ctx.fillStyle = fillStyle;
         ctx.fill();

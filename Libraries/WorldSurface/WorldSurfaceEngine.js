@@ -9,7 +9,6 @@ import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
-import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
@@ -29,7 +28,6 @@ export class WorldSurfaceEngine {
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this._buildChunkPayload = hooks.buildChunkPayload ?? null;
         this.chunkDrawBounds = createAabb();
-        this.groundChunkPassCamera = {};
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkSizePx: 0, minChunkCol: 0, maxChunkCol: 0, minChunkRow: 0, maxChunkRow: 0 };
         this._resolvedChunkCanvas = { canvas: null, payload: null };
@@ -307,9 +305,7 @@ export class WorldSurfaceEngine {
         const frame = this._beginVisibleChunkDraw();
         if (!frame) return;
         const ctx = d.ctx;
-        const camera = this.groundChunkPassCamera;
-        elevationCameraFromViewportInto(camera, frame.viewport);
-        const { obstacleGrid, chunkSizePx, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow } = frame;
+        const { obstacleGrid, chunkSizePx, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow, viewport } = frame;
         const resolved = this._resolvedChunkCanvas;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
@@ -326,7 +322,7 @@ export class WorldSurfaceEngine {
                         ctx.restore();
                         continue;
                     }
-                    drawProjectedHorizontalChunkAt(ctx, drawCanvas, originX, originY, chunkSizePx, zLevel, camera);
+                    drawProjectedHorizontalChunkAt(ctx, drawCanvas, originX, originY, chunkSizePx, zLevel, viewport);
                 } else {
                     if (!clipChunkToFlatWallFootprints(ctx, obstacleGrid, originX, originY, chunkSizePx, zLevel)) {
                         ctx.restore();

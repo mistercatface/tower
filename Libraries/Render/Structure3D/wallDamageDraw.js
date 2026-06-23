@@ -48,9 +48,8 @@ const sRoofCorners = [
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} state
  * @param {import("../../Viewport/Viewport.js").Viewport} viewport
- * @param {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  */
-export function drawDamagedVoxelRoofOverlays(ctx, state, viewport, camera) {
+export function drawDamagedVoxelRoofOverlays(ctx, state, viewport) {
     const session = getGridWallDamageSession(state);
     if (!session?.entries.size) return;
     const grid = state.obstacleGrid;
@@ -79,7 +78,7 @@ export function drawDamagedVoxelRoofOverlays(ctx, state, viewport, camera) {
                 innerP1y: cellBounds.maxY,
                 wallCapHeight: z,
             },
-            camera,
+            viewport,
         );
         applyProjectedCapDamageOverlay(ctx, sRoofCorners, ratio);
     }
