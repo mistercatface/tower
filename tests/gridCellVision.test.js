@@ -8,7 +8,6 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { appendGridCellVisionOverlayCommands } from "../Libraries/Navigation/perception/gridCellVisionOverlay.js";
 async function createVisionGrid(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -151,23 +150,6 @@ describe("grid cell vision", () => {
         });
         nextFrame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 2);
-        terminateWorkerNavigation(ctx.nav);
-    });
-});
-describe("grid cell vision overlay", () => {
-    it("emits one cached highlight per visible cell", async () => {
-        const ctx = await createVisionGrid();
-        const origin = cellCenter(ctx.grid, 4, 8);
-        const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 96);
-        const out = [];
-        appendGridCellVisionOverlayCommands(out, { grid: ctx.grid, cells });
-        assert.equal(out.length, cells.length);
-        for (let i = 0; i < out.length; i++) {
-            assert.equal(out[i].kind, "aabb");
-            assert.equal(out[i].maxX - out[i].minX, ctx.grid.cellSize);
-            assert.equal(out[i].maxY - out[i].minY, ctx.grid.cellSize);
-            assert.ok(!out[i].cache);
-        }
         terminateWorkerNavigation(ctx.nav);
     });
 });

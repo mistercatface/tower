@@ -8,7 +8,6 @@ import { createSnakeAgentSession, spawnSpeciesBatch, validateAliveAgents, tickAl
 import { SNAKE_GAME_SPECIES } from "./species/index.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";
-import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
@@ -147,18 +146,18 @@ export async function setupSnakeGame(state) {
             state.sandbox.controller?.session?.clearSelection();
             hud.update();
         },
-        appendOverlayCommands(out, gameState) {
-            appendSnakeGameOverlayCommands(out, gameState, { focusedHeadId: cameraCycler.focusedId });
-        },
         getSegmentCount,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
             validateAliveAgents(snakeGame, state);
             snakeGame._batchingPerception = true;
-            beginSnakePerceptionFrame(state);
-            tickAliveAgents(snakeGame, state, dtMs);
-            endSnakePerceptionFrame(state);
-            snakeGame._batchingPerception = false;
+            try {
+                beginSnakePerceptionFrame(state);
+                tickAliveAgents(snakeGame, state, dtMs);
+                endSnakePerceptionFrame(state);
+            } finally {
+                snakeGame._batchingPerception = false;
+            }
             hud.update();
         },
         applyContactSideEffects(tick, contacts) {

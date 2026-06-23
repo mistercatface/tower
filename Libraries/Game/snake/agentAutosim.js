@@ -12,7 +12,7 @@ import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
-import { canAgentEatSnakeFood, findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision, isSnakeShardFood } from "./snakeFood.js";
+import { canAgentEatSnakeFood, findNearestVisibleSnakeFoodForFrame, isSnakeShardFood } from "./snakeFood.js";
 import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "./agentMetabolism.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
@@ -101,10 +101,8 @@ export function createAgentAutosim(
         if (eatRadius != null) return eatRadius;
         return resolveSnakeEatRadius(config, resolveLeaderRadius(state, profileId, leaderId));
     };
-    const resolveVisibleFood = (seeker, gameState, visionContext = null) =>
-        visionContext
-            ? findNearestVisibleSnakeFoodFromVision(gameState, seeker, visionContext.frame, visionContext.vision, visionContext.visionRange)
-            : findNearestVisibleSnakeFood(gameState, seeker, resolvedVisionRange);
+    const resolveVisibleFood = (seeker, gameState, perceptionContext) =>
+        findNearestVisibleSnakeFoodForFrame(gameState, seeker, perceptionContext.frame, perceptionContext.visionRange);
     const resolveSeeker = () => state.entityRegistry.getLive(leaderId);
     const resolveChainTailProp = () => {
         const members = chainMemberProps(state, leaderId);
