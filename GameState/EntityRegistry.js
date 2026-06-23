@@ -67,12 +67,27 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
     const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
     return centerDistSq <= r * r;
 }
-/** @param {QueryViewCriteria} criteria */
-function filterKey(criteria) {
+const WORLD_PROP_KIND_HASH = hashString("worldProp");
+/** @param {string[]} kinds @returns {number} */
+function kindsQueryHash(kinds) {
+    if (kinds.length === 1 && kinds[0] === "worldProp") return WORLD_PROP_KIND_HASH;
+    let h = kinds.length;
+    for (let i = 0; i < kinds.length; i++) h = mixHash4(h, hashString(kinds[i]), 0, 0);
+    return h;
+}
+/** @param {AabbEntityHitTest} hitTest @returns {number} */
+function hitTestQueryHash(hitTest) {
+    if (hitTest === "circle") return 1;
+    if (hitTest === "aabb") return 2;
+    if (hitTest === "center") return 3;
+    return hashString(hitTest);
+}
+/** @param {{ kinds?: string[], filterId?: string, hitTest?: AabbEntityHitTest }} criteria @returns {number} */
+function filterQueryHash(criteria) {
     const kinds = criteria.kinds ?? EMPTY_KINDS;
     const filterId = criteria.filterId ?? "";
     const hitTest = criteria.hitTest ?? "circle";
-    return `${kinds.join(",")}|${filterId}|${hitTest}`;
+    return mixHash4(kindsQueryHash(kinds), filterId ? hashString(filterId) : 0, hitTestQueryHash(hitTest), 0);
 }
 /**
  * @typedef {Object} QueryViewCacheEntry
@@ -81,23 +96,22 @@ function filterKey(criteria) {
  * @property {number} membershipGen
  * @property {number} boundsHash
  * @property {number} filterHash
- * @property {string} filterKey
  * @property {number} minX
  * @property {number} minY
  * @property {number} maxX
  * @property {number} maxY
  */
-/** @param {QueryViewCacheEntry | undefined} entry @param {number} spatialGen @param {number} membershipGen @param {Aabb2D} bounds @param {number} boundsHash @param {number} filterHash @param {string} filterKey */
-function queryViewCacheMatches(entry, spatialGen, membershipGen, bounds, boundsHash, filterHash, filterKey) {
+/** @param {QueryViewCacheEntry | undefined} entry @param {number} spatialGen @param {number} membershipGen @param {Aabb2D} bounds @param {number} boundsHash @param {number} filterHash */
+function queryViewCacheMatches(entry, spatialGen, membershipGen, bounds, boundsHash, filterHash) {
     if (!entry) return false;
     if (entry.spatialGen !== spatialGen || entry.membershipGen !== membershipGen) return false;
-    if (entry.filterHash !== filterHash || entry.filterKey !== filterKey) return false;
+    if (entry.filterHash !== filterHash) return false;
     if (entry.boundsHash !== boundsHash) return false;
     return entry.minX === bounds.minX && entry.minY === bounds.minY && entry.maxX === bounds.maxX && entry.maxY === bounds.maxY;
 }
-/** @param {object[]} result @param {number} spatialGen @param {number} membershipGen @param {Aabb2D} bounds @param {number} boundsHash @param {number} filterHash @param {string} filterKey @returns {QueryViewCacheEntry} */
-function makeQueryViewCacheEntry(result, spatialGen, membershipGen, bounds, boundsHash, filterHash, filterKey) {
-    return { result, spatialGen, membershipGen, boundsHash, filterHash, filterKey, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+/** @param {object[]} result @param {number} spatialGen @param {number} membershipGen @param {Aabb2D} bounds @param {number} boundsHash @param {number} filterHash @returns {QueryViewCacheEntry} */
+function makeQueryViewCacheEntry(result, spatialGen, membershipGen, bounds, boundsHash, filterHash) {
+    return { result, spatialGen, membershipGen, boundsHash, filterHash, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
 }
 /** @param {number} spatialGen @param {number} membershipGen @param {number} boundsHash @param {number} filterHash */
 function queryViewCacheKey(spatialGen, membershipGen, boundsHash, filterHash) {
@@ -220,29 +234,27 @@ export class EntityRegistry {
         const spatialGen = spatialFrame?.frameId ?? -1;
         const bounds = criteria.bounds;
         const boundsHash = aabbHash(bounds);
-        const filterKeyStr = filterKey(criteria);
-        const filterHash = hashString(filterKeyStr);
+        const filterHash = filterQueryHash(criteria);
         const cacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, filterHash);
         const cached = this._queryCache.get(cacheKey);
-        if (queryViewCacheMatches(cached, spatialGen, this.membershipGen, bounds, boundsHash, filterHash, filterKeyStr)) return cached.result;
+        if (queryViewCacheMatches(cached, spatialGen, this.membershipGen, bounds, boundsHash, filterHash)) return cached.result;
         let result;
         if (criteria.match && criteria.filterId) {
-            const baseFilterKeyStr = filterKey({ kinds, hitTest });
-            const baseFilterHash = hashString(baseFilterKeyStr);
+            const baseFilterHash = filterQueryHash({ kinds, hitTest });
             const baseCacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, baseFilterHash);
             const baseCached = this._queryCache.get(baseCacheKey);
-            if (queryViewCacheMatches(baseCached, spatialGen, this.membershipGen, bounds, boundsHash, baseFilterHash, baseFilterKeyStr)) {
+            if (queryViewCacheMatches(baseCached, spatialGen, this.membershipGen, bounds, boundsHash, baseFilterHash)) {
                 result = this._borrowQueryResultBuffer(criteria.filterId);
                 for (let i = 0; i < baseCached.result.length; i++) {
                     const ref = baseCached.result[i];
                     if (criteria.match(ref)) result.push(ref);
                 }
-                this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash, filterKeyStr));
+                this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash));
                 return result;
             }
         }
         result = this._queryInAabb(bounds, kinds, criteria.match, hitTest, spatialFrame, criteria.filterId);
-        this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash, filterKeyStr));
+        this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash));
         return result;
     }
     /**
