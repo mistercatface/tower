@@ -2,12 +2,11 @@ import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Motion/applyDamping.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
-import { initWorldPropShape, withPropStrategyDefaults } from "../Libraries/Props/propStrategy.js";
+import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";
 import { applyChunkGeometryToProp, applyShardGeometryToProp } from "../Libraries/Props/propFracture.js";
 import { GLASS_FRACTURE_COOLDOWN_STEPS } from "../Libraries/Props/glassFracture.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
-import { worldPropDefinitions } from "../Libraries/Props/PropCatalog.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { isKinematicallyActive } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
@@ -18,18 +17,12 @@ import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
 import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
 import propCatalog from "../Assets/props/index.js";
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
-function buildWorldPropStrategy(type) {
-    const def = worldPropDefinitions[type];
-    if (!def) return withPropStrategyDefaults({});
-    const { spawn, ...strategyFields } = def;
-    return withPropStrategyDefaults({ ...strategyFields });
-}
 export class WorldProp extends Entity {
     constructor(x, y, type, facing = null) {
         super(x, y, 0, false);
         this.type = type;
-        this.strategy = buildWorldPropStrategy(type);
         const asset = propCatalog[type];
+        this.strategy = buildWorldPropStrategyFromAsset(asset);
         this.height = asset?.visuals?.world?.height ?? 12;
         this.vx = 0;
         this.vy = 0;

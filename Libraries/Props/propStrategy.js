@@ -5,7 +5,7 @@ import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
-/** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategy). */
+/** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
@@ -89,4 +89,14 @@ export function getPropStageBakeState(prop, deps) {
 }
 export function withPropStrategyDefaults(strategy) {
     return { ...PROP_STRATEGY_DEFAULTS, ...strategy };
+}
+export function buildWorldPropStrategyFromAsset(asset) {
+    if (!asset?.physics) return withPropStrategyDefaults({});
+    const { spawn, renderMode, ...strategy } = asset.physics;
+    return withPropStrategyDefaults({
+        render3DKey: asset.id,
+        renderMode: renderMode ?? "3d",
+        inspectKey: null,
+        ...strategy,
+    });
 }

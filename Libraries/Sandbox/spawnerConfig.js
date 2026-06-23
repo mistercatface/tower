@@ -1,7 +1,6 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { applyDragLaunchVelocity } from "./dragLaunch.js";
-import { worldPropDefinitions  } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { DRAG_LAUNCH_DEFAULTS } from "./dragLaunch.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
@@ -58,7 +57,7 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
 }
 /** @returns {string[]} */
 export function listSpawnerSpawnPropIds() {
-    return Object.keys(worldPropDefinitions)
+    return Object.keys(propCatalog)
         .filter((id) => {
             const asset = propCatalog[id];
             return isSandboxSpawnable(asset) && !isSpawnerProp(asset);

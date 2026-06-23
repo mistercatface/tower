@@ -4,7 +4,7 @@ import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
-import { worldPropRecipes } from "../Props/PropCatalog.js";
+import propCatalog from "../../Assets/props/index.js";
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources, collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
@@ -93,7 +93,7 @@ export class WorldSceneRenderer {
     }
     _drawProp(ctx, prop, viewport) {
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
-        const draw = worldPropRecipes[renderKey];
+        const draw = propCatalog[renderKey]?.drawRecipe;
         if (!draw) return;
         drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
     }

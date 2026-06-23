@@ -1,5 +1,5 @@
 import { quantizeAngle, quantizeAngleIndex } from "../Math/Angle.js";
-import { worldPropRecipes } from "../Props/PropCatalog.js";
+import propCatalog from "../../Assets/props/index.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "../Render/spriteDrawModifier.js";
 import { acquireOffscreenCanvas } from "./offscreenCanvas.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
@@ -139,7 +139,7 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
     for (let i = 0; i < attachments.length; i++) {
         const child = attachments[i];
         const childRenderKey = child.getRender3DKey?.() ?? child.strategy?.render3DKey;
-        const childDraw = worldPropRecipes[childRenderKey];
+        const childDraw = propCatalog[childRenderKey]?.drawRecipe;
         if (childDraw) childDraw(ctx, child, viewport);
     }
 }

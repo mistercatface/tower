@@ -3,8 +3,7 @@ import { quantizeAngle } from "../Math/Angle.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { rotateXY } from "../Math/Poly2D.js";
 import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
-import { worldPropDefinitions  } from "./PropCatalog.js";
-import { initWorldPropShape, propFootprintHalfExtents, resolvePropQuantizeSteps, withPropStrategyDefaults } from "./propStrategy.js";
+import { buildWorldPropStrategyFromAsset, initWorldPropShape, propFootprintHalfExtents, resolvePropQuantizeSteps } from "./propStrategy.js";
 import propCatalog from "../../Assets/props/index.js";
 /**
  * Asset-level fixed child visuals. These are render-only and never become
@@ -43,9 +42,9 @@ function resolveAttachmentOffsetScale(parentProp, cfg) {
     return cfg.offsetSpace === "parentRadius" ? resolveBodyRadius(parentProp) : 1;
 }
 function buildVirtualPropStrategy(type) {
-    const def = worldPropDefinitions[type];
-    if (!def) return null;
-    return withPropStrategyDefaults({ ...def });
+    const asset = propCatalog[type];
+    if (!asset) return null;
+    return buildWorldPropStrategyFromAsset(asset);
 }
 function scaleVirtualPropShape(prop, scale) {
     if (scale === 1) return;

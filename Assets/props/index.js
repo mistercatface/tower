@@ -22,6 +22,8 @@ import corridor from "./corridor/corridor.asset.js";
 import snake_head from "./snake_head/snake_head.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
 import poolBalls from "./poolBalls.js";
+import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/primitives/index.js";
+
 const catalog = {
     ball,
     flipper_left,
@@ -48,4 +50,28 @@ const catalog = {
     snake_shard,
     ...poolBalls,
 };
+
+function registerPropDrawRecipe(asset) {
+    if (asset.physics?.renderMode === "none") {
+        asset.drawRecipe = () => {};
+        return;
+    }
+    if (typeof asset.draw === "function") {
+        asset.drawRecipe = asset.draw;
+        return;
+    }
+    if (asset.primitive) {
+        const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
+        if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
+        asset.drawRecipe = builder(asset.visuals);
+        return;
+    }
+    throw new Error(`Asset "${asset.id}" must define draw or primitive`);
+}
+
+for (const asset of Object.values(catalog)) {
+    if (!asset.physics) throw new Error(`Asset "${asset.id}" must include physics`);
+    registerPropDrawRecipe(asset);
+}
+
 export default catalog;
