@@ -41,7 +41,11 @@ function createDecisionSpec(profileId) {
         ...(DECISION_EXTENSIONS[profileId] ?? {}),
     };
 }
-const DECISION_SPECS = Object.freeze({ [AGENT_PROFILE.snake]: createDecisionSpec(AGENT_PROFILE.snake), [AGENT_PROFILE.flee]: createDecisionSpec(AGENT_PROFILE.flee) });
+const DECISION_SPECS = Object.freeze({
+    [AGENT_PROFILE.snake]: createDecisionSpec(AGENT_PROFILE.snake),
+    [AGENT_PROFILE.flee]: createDecisionSpec(AGENT_PROFILE.flee),
+    [AGENT_PROFILE.squid]: createDecisionSpec(AGENT_PROFILE.squid),
+});
 export function resolveAgentDecisionSpec(profileId) {
     const spec = DECISION_SPECS[profileId];
     if (!spec) throw new Error(`unknown agent decision profile: ${profileId}`);

@@ -176,5 +176,22 @@ export function applyFleeAgentGameplay(head) {
     if (flee.accel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: flee.accel };
     if (flee.friction != null) head.strategy.friction = flee.friction;
 }
+
+export function applySquidBrainGameplay(brain) {
+    const squid = getSnakeGameConfig().agentProfiles[AGENT_PROFILE.squid];
+    brain._brainSyncPass = 0;
+    if (squid.brainMaxSpeed != null) brain.strategy.groundNav = { ...brain.strategy.groundNav, maxSpeed: squid.brainMaxSpeed };
+    if (squid.brainAccel != null) brain.strategy.groundNav = { ...brain.strategy.groundNav, accel: squid.brainAccel };
+    if (squid.brainFriction != null) brain.strategy.friction = squid.brainFriction;
+}
+
+export function applySquidSegmentGameplay(segment) {
+    const squid = getSnakeGameConfig().agentProfiles[AGENT_PROFILE.squid];
+    if (squid.segmentFriction != null) segment.strategy.friction = squid.segmentFriction;
+    if (squid.segmentDensity != null) {
+        segment.strategy.density = squid.segmentDensity;
+        if (segment.strategy.isKinetic) syncKineticRigidBody(segment);
+    }
+}
 // Ensure defaults are normalized on module load (compat aliases for tests).
 normalizeLegacyConfig(activeSnakeGameConfig);

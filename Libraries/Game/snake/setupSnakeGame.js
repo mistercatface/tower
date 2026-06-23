@@ -17,6 +17,7 @@ import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
+import { spawnSquidsInScene } from "./squid/spawnSquidsInScene.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
@@ -31,15 +32,22 @@ export async function setupSnakeGame(state) {
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
-    let fleeSpawnExclude = new Set();
+    let spawnExclude = new Set();
     for (let i = 0; i < scene.snakes.length; i++) {
         const occupied = scene.snakes[i].occupiedIndices;
         if (!occupied) continue;
-        for (const idx of occupied) fleeSpawnExclude.add(idx);
+        for (const idx of occupied) spawnExclude.add(idx);
     }
-    const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, fleeSpawnExclude.size ? fleeSpawnExclude : null);
+    const squids = spawnSquidsInScene(state, scene.navWalkable, { excludeIndices: spawnExclude.size ? spawnExclude : null });
+    for (let i = 0; i < squids.length; i++) {
+        const occupied = squids[i].occupiedIndices;
+        if (!occupied) continue;
+        for (const idx of occupied) spawnExclude.add(idx);
+    }
+    const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, spawnExclude.size ? spawnExclude : null);
     const spawnPlan = [
         { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ headId: s.chain.head.id, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
+        { species: "squid", spawnCtxs: squids.map((s) => ({ headId: s.pack.brain.id, spawnGroupId: s.pack.spawnGroupId, navWalkable: scene.navWalkable })) },
         { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ headId: f.pack.head.id, spawnGroupId: f.pack.spawnGroupId })) },
     ];
     for (let i = 0; i < spawnPlan.length; i++) {

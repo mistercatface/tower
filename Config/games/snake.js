@@ -21,6 +21,22 @@ const SNAKE_INTENT = {
     attachDecisionToPerceiveWorld: false,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true, session: true },
 };
+const SQUID_INTENT = {
+    reachSlots: { threat: { targetKey: "threat", mode: "flee" }, prey: { targetKey: "prey", mode: "seek_prey" }, food: { targetKey: "food", mode: "seek_food" } },
+    committedSlots: ["prey", "food"],
+    seekModes: ["seek_food", "seek_prey"],
+    huntMode: "seek_prey",
+    perceiveSource: "visible",
+    fleeHeldOn: "any",
+    clearMemoryOnIntentClear: false,
+    filterAllyForEngagement: false,
+    fleePackBlend: false,
+    fleeExploreFallback: false,
+    publishEngagement: false,
+    returnShape: "fsmSnapshot",
+    attachDecisionToPerceiveWorld: false,
+    decisionFields: { seekerFaction: true, seekerSegmentCount: true },
+};
 const FLEE_INTENT = {
     reachSlots: {
         threat: { targetKey: "threat", mode: "flee" },
@@ -44,9 +60,11 @@ const FLEE_INTENT = {
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 48,
+    snakeCount: 5,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 256,
+    boidCount: 5,
+    /** Center-brained squid chains (0 disables). */
+    squidCount: 128,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,
@@ -209,6 +227,64 @@ export const SNAKE_GAME_DEFAULTS = {
                 },
             },
             intent: FLEE_INTENT,
+        },
+        squid: {
+            bodyPropId: "ball",
+            brainPropId: "snake_head",
+            segmentCount: 3,
+            armSegmentCount: 1,
+            linkSlack: 1.0,
+            growDirX: -1,
+            growDirY: 0,
+            brainMaxSpeed: 180,
+            brainFriction: 2.25,
+            brainAccel: 160,
+            segmentFriction: 2.5,
+            segmentDensity: 0.001,
+            minAliveSegmentCount: 2,
+            metabolism: { hungerDrainMs: 15_000, foodValue: 0.5 },
+            rivalBand: { maxSegmentGap: 2 },
+            scoringEnv: { effortFallback: true },
+            hungerBands: [
+                { id: "satisfied", min: 0.66 },
+                { id: "hungry", min: 0.33 },
+                { id: "desperate", min: 0 },
+            ],
+            decisionWeights: { flee: 360, prey: 400, food: 320, explore: 100 },
+            factionCohesion: { referenceSegmentCount: 3 },
+            decisionPressure: {
+                foodHungerBonus: 320,
+                preyDesperationBonus: 280,
+                enemySnakePreyValue: 1200,
+                riskTolerance: { satisfied: 0.1, hungry: 0.45, desperate: 0.8 },
+                effort: { costPerCell: { satisfied: 28, hungry: 22, desperate: 8 }, preyValue: { satisfied: 160, hungry: 320, desperate: 580 } },
+            },
+            sprint: {
+                fleeSeverity: 0.5,
+                speedMultiplier: 1.35,
+                accelMultiplier: 1.35,
+                hungerDrainMultiplier: 2.2,
+                rules: [
+                    { mode: "flee", rule: "severeOrLethalThreat", want: true, reason: "escape" },
+                    { mode: "seek_food", rule: "severeNonLethalThreat", want: true, reason: "feed" },
+                    { mode: "seek_prey", rule: "always", want: true, reason: "attack" },
+                ],
+            },
+            decision: {
+                scoreOrder: ["flee", "seek_prey", "seek_food", "explore"],
+                targetLost: { seek_prey: "prey", seek_food: "food" },
+                remembered: [{ key: "threat" }, { key: "prey" }, { key: "food" }],
+                eventTargets: ["threat", "prey", "food"],
+                slots: { threat: {}, prey: {}, food: {} },
+                fields: {},
+                modes: {
+                    flee: { scorer: "riskAdjustedFlee" },
+                    seek_prey: { scorer: "preyWithEffort", slot: "prey" },
+                    seek_food: { scorer: "foodWithHunger", slot: "food" },
+                    explore: { scorer: "constant", weightKey: "explore" },
+                },
+            },
+            intent: SQUID_INTENT,
         },
     },
 };
