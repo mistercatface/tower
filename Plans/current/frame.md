@@ -154,10 +154,12 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 
 ### Step 1 — Viewport + boot (behavior-neutral for draw if old paths still read globals briefly)
 
-- [ ] Add `cameraHeight`, `_perspectiveStrengthBase`, `perspectiveStrength` to `Viewport`
-- [ ] Compute `perspectiveStrength` in `_recompute()`; delete resolver/cache on viewport
-- [ ] `installEditorDefaults` writes `state.viewport`; delete `activePerspective` hot-path reads
-- [ ] Trim `GamePerspective.js` to boot helpers only (`resolvePerspectiveConfig`, defaults)
+- [x] Add `cameraHeight`, `_perspectiveStrengthBase`, `perspectiveStrength` to `Viewport`
+- [x] Compute `perspectiveStrength` in `_recompute()`; delete resolver/cache on viewport
+- [x] `installEditorDefaults` writes `state.viewport`; delete `activePerspective` hot-path reads
+- [x] Trim `GamePerspective.js` to boot helpers only (`resolvePerspectiveConfig`, defaults)
+
+**Step 1 note:** prop recipes `(ctx, prop, viewport)`. Bake uses `ctx.translate` + world `stageProp` coords; projection reads `viewport` only. No `_drawViewport` side channel.
 
 ### Step 2 — Projection + walls (delete camera copies)
 

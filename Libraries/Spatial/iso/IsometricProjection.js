@@ -3,7 +3,6 @@
 import { angleDelta } from "../../Math/Angle.js";
 import { radiusAtT, scaleAtHeight } from "../../Math/Interpolate.js";
 import { rectCorners } from "../../Math/Poly2D.js";
-import { elevationCameraFromViewer } from "./ElevationCamera.js";
 export { radiusAtT, scaleAtHeight };
 /**
  * Radial extrusion factor for a world point at elevation height.
@@ -84,10 +83,10 @@ export function projectWorldAabbCornersInto(out4, minX, minY, maxX, maxY, height
     projectWorldPointInto(out4[3], minX, maxY, height, camera);
     return out4;
 }
-export function projectVertical(objX, objY, viewerX, viewerY, height) {
-    const camera = elevationCameraFromViewer(viewerX, viewerY);
-    const dx = objX - viewerX;
-    const dy = objY - viewerY;
+export function projectVertical(objX, objY, height, viewport) {
+    const camera = { viewerX: viewport.x, viewerY: viewport.y, cameraHeight: viewport.cameraHeight, strength: viewport.perspectiveStrength };
+    const dx = objX - viewport.x;
+    const dy = objY - viewport.y;
     const dist = Math.hypot(dx, dy);
     const alpha = resolveElevationAlpha(height, camera);
     const top = projectWorldPointAtHeight(objX, objY, height, camera);

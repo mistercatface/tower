@@ -4,7 +4,7 @@ import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import { worldPropAssets } from "../PropCatalog.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
-    return (ctx, prop, px, py) => {
+    return (ctx, prop, viewport) => {
         const shape = prop.shape ?? prop.getShape?.();
         if (shape?.type !== "Polygon") return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
@@ -33,6 +33,6 @@ export function createPolygonPrimitive(visuals) {
             topCross,
         };
         const parts = getEntityCollisionParts(prop);
-        for (let i = 0; i < parts.length; i++) drawExtrudedConvexPolygon(ctx, prop, px, py, { ...drawOpts, localVerts: parts[i].vertices });
+        for (let i = 0; i < parts.length; i++) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[i].vertices });
     };
 }

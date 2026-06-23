@@ -9,8 +9,9 @@ import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/Angle.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
-import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/propVisualAttachments.js";
+import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
+import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
 const cacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
 const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa", bottom: "#444", stroke: "#222" },
@@ -66,7 +67,14 @@ describe("draw shape parity", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         const draw = createPolygonPrimitive(polygonVisuals);
-        draw(createMockCtx(), prop, 100, 100);
+        const viewport = {
+            x: 100,
+            y: 100,
+            zoom: 1,
+            cameraHeight: DEFAULT_CAMERA_HEIGHT,
+            perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
+        };
+        draw(createMockCtx(), prop, viewport);
         assert.equal(prop.getShape().vertices[1].x, 12);
         assert.equal(prop.getShape().vertices[2].y, 5);
     });
@@ -104,8 +112,8 @@ describe("draw shape parity", () => {
         const child = attachments.after[0];
         assert.equal(child instanceof WorldProp, false);
         assert.equal(child.type, "tri_wedge");
-        assert.ok(Math.abs(child.x - 50) < 1e-6);
-        assert.ok(Math.abs(child.y - (60 + resolveBodyRadius(prop) * 1.65)) < 1e-6);
+        assert.ok(Math.abs(child.x) < 1e-6);
+        assert.ok(Math.abs(child.y - resolveBodyRadius(prop) * 1.65) < 1e-6);
         assert.ok(Math.abs(child.facing - (qHeading - Math.PI / 2)) < 1e-6);
         assert.ok(child.radius < new WorldProp(0, 0, "tri_wedge", 0).radius);
     });

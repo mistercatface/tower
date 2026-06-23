@@ -135,24 +135,25 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
 // ─── Iso prop preset ─────────────────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_STAGE_PADDING = 40;
-function drawVisualAttachmentList(ctx, attachments, px, py) {
+function drawVisualAttachmentList(ctx, attachments, viewport) {
     for (let i = 0; i < attachments.length; i++) {
-        const prop = attachments[i];
-        const childRenderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
+        const child = attachments[i];
+        const childRenderKey = child.getRender3DKey?.() ?? child.strategy?.render3DKey;
         const childDraw = worldPropRecipes[childRenderKey];
-        if (childDraw) childDraw(ctx, prop, px, py);
+        if (childDraw) childDraw(ctx, child, viewport);
     }
 }
 /**
  * @param {object} prop
- * @param {number} px
- * @param {number} py
+ * @param {import("../Viewport/Viewport.js").Viewport} viewport
  * @param {string} renderKey
- * @param {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} draw
+ * @param {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} draw
  * @param {number} [animFrame]
- * @param {number} [zoom]
  */
-function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1) {
+function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
+    const px = viewport.x;
+    const py = viewport.y;
+    const zoom = viewport.zoom ?? 1;
     const dx = prop.x - px;
     const dy = prop.y - py;
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
@@ -185,9 +186,10 @@ function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom 
         const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
-        drawVisualAttachmentList(ctx, attachments.before, anchorX - qDx, anchorY - qDy);
-        draw(ctx, stageProp, anchorX - qDx, anchorY - qDy);
-        drawVisualAttachmentList(ctx, attachments.after, anchorX - qDx, anchorY - qDy);
+        ctx.translate(anchorX - prop.x, anchorY - prop.y);
+        drawVisualAttachmentList(ctx, attachments.before, viewport);
+        draw(ctx, stageProp, viewport);
+        drawVisualAttachmentList(ctx, attachments.after, viewport);
         ctx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
     });
@@ -244,21 +246,21 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, c
     });
     blitAnchoredSprite(ctx, sprite, worldX, worldY);
 }
-/** @typedef {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} PropDrawRecipe */
+/** @typedef {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} PropDrawRecipe */
 /**
  * Mandatory draw path for iso/grid stamps and world props (except 3D building walls).
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} prop
- * @param {number} px
- * @param {number} py
+ * @param {import("../Viewport/Viewport.js").Viewport} viewport
  * @param {string} renderKey
  * @param {PropDrawRecipe} draw
  * @param {number} [animFrame]
- * @param {number} [zoom]
  */
-export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, animFrame = 0, zoom = 1) {
-    const sprite = getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame, zoom);
+export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0) {
+    const px = viewport.x;
+    const py = viewport.y;
+    const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
     const modifier = resolveSpriteDrawModifier(prop, px, py);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }

@@ -2,7 +2,7 @@ import { fillCircle, strokeCircle } from "../Canvas/CanvasPath.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
 /** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createButtonFloorDraw() {
-    return (ctx, prop) => {
+    return (ctx, prop, viewport) => {
         const radius = prop.radius;
         const pressed = prop._buttonDrawPressed === true;
         const lineScale = getCanvasLineScale(ctx);

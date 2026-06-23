@@ -79,8 +79,8 @@ export function getPropStageBakeState(prop, deps) {
     const footprint = propFootprintHalfExtents(prop);
     return {
         ...prop,
-        x: anchorX,
-        y: anchorY,
+        x: prop.x,
+        y: prop.y,
         radius: prop.radius,
         halfExtents: footprint,
         facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),

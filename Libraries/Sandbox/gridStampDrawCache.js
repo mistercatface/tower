@@ -55,17 +55,17 @@ function drawDirectionalArrow(ctx, x, y, ax, ay, size, fillStyle) {
     ctx.fill();
 }
 /** @type {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
-const forcefieldEdgeDraw = (ctx, prop, px, py) => {
+const forcefieldEdgeDraw = (ctx, prop, viewport) => {
     const { mode, powered, tripped, allowedSide } = prop._forcefield;
     const l1x = prop._l1x;
     const l1y = prop._l1y;
     const l2x = prop._l2x;
     const l2y = prop._l2y;
     const lineScale = getCanvasLineScale(ctx);
-    const p1Base = projectPropVertex(prop, px, py, l1x, l1y, 0);
-    const p1Top = projectPropVertex(prop, px, py, l1x, l1y, FORCEFIELD_HEIGHT);
-    const p2Base = projectPropVertex(prop, px, py, l2x, l2y, 0);
-    const p2Top = projectPropVertex(prop, px, py, l2x, l2y, FORCEFIELD_HEIGHT);
+    const p1Base = projectPropVertex(prop, viewport, l1x, l1y, 0);
+    const p1Top = projectPropVertex(prop, viewport, l1x, l1y, FORCEFIELD_HEIGHT);
+    const p2Base = projectPropVertex(prop, viewport, l2x, l2y, 0);
+    const p2Top = projectPropVertex(prop, viewport, l2x, l2y, FORCEFIELD_HEIGHT);
     ctx.save();
     ctx.lineCap = "round";
     if (powered) {
@@ -81,7 +81,7 @@ const forcefieldEdgeDraw = (ctx, prop, px, py) => {
             }
         else if (mode === PASSAGE_MODE.OneWay) {
             const { x: ax, y: ay } = gridSideOutwardVector(allowedSide);
-            const sideDot = (px - prop.x) * ax + (py - prop.y) * ay;
+            const sideDot = (viewport.x - prop.x) * ax + (viewport.y - prop.y) * ay;
             if (sideDot < 0) {
                 glowColor = "rgba(34, 197, 94, 0.25)";
                 strokeColor = "#22c55e";
@@ -99,8 +99,8 @@ const forcefieldEdgeDraw = (ctx, prop, px, py) => {
         ctx.closePath();
         ctx.fill();
         for (const h of [2.0, 5.0, 8.0]) {
-            const beamStart = projectPropVertex(prop, px, py, l1x, l1y, h);
-            const beamEnd = projectPropVertex(prop, px, py, l2x, l2y, h);
+            const beamStart = projectPropVertex(prop, viewport, l1x, l1y, h);
+            const beamEnd = projectPropVertex(prop, viewport, l2x, l2y, h);
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 3.5 * lineScale;
             ctx.globalAlpha = 0.6;
@@ -121,8 +121,8 @@ const forcefieldEdgeDraw = (ctx, prop, px, py) => {
         ctx.lineWidth = 1.2 * lineScale;
         ctx.setLineDash([4 * lineScale, 5 * lineScale]);
         for (const h of [2.0, 5.0, 8.0]) {
-            const beamStart = projectPropVertex(prop, px, py, l1x, l1y, h);
-            const beamEnd = projectPropVertex(prop, px, py, l2x, l2y, h);
+            const beamStart = projectPropVertex(prop, viewport, l1x, l1y, h);
+            const beamEnd = projectPropVertex(prop, viewport, l2x, l2y, h);
             ctx.beginPath();
             ctx.moveTo(beamStart.x, beamStart.y);
             ctx.lineTo(beamEnd.x, beamEnd.y);
@@ -149,7 +149,7 @@ const forcefieldEdgeDraw = (ctx, prop, px, py) => {
     ctx.fill();
     if (mode === PASSAGE_MODE.OneWay) {
         const { x: ax, y: ay } = gridSideOutwardVector(allowedSide);
-        const arrowCenter = projectPropVertex(prop, px, py, 0, 0, 5.0);
+        const arrowCenter = projectPropVertex(prop, viewport, 0, 0, 5.0);
         drawDirectionalArrow(ctx, arrowCenter.x, arrowCenter.y, ax, ay, 6 * lineScale, powered ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.45)");
     }
     ctx.restore();
@@ -262,8 +262,8 @@ export function collectForcefieldEdgeDrawables(grid, gameState, viewport, px, py
         out.push(item.proxy);
     }
 }
-export function drawForcefieldEdgeProp(ctx, proxy, px, py) {
-    drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
+export function drawForcefieldEdgeProp(ctx, proxy, viewport) {
+    drawCachedPropSprite(ctx, proxy, viewport, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
 }
 export function clearGridStampDrawCaches(state) {
     if (!state.sandbox) return;
@@ -297,36 +297,36 @@ export function syncFloorOccupancyStampDrawCache(state, grid) {
     state.sandbox._floorOccupancyStampDrawCache = next;
     return next;
 }
-function drawCachedFloorOccupancyBelts(ctx, viewport, px, py, gameTime, cached) {
+function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
     const animFrame = Math.floor(gameTime / 60) % 8;
     const belts = cached.belts;
     for (let i = 0; i < belts.length; i++) {
         const item = belts[i];
         if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
         item.proxy.ageMs = gameTime;
-        drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy._gridStamp.kind), animFrame);
+        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy._gridStamp.kind), animFrame);
     }
 }
-function drawCachedFloorOccupancyPowerSources(ctx, viewport, px, py, cached, state) {
+function drawCachedFloorOccupancyPowerSources(ctx, viewport, cached, state) {
     const powerSources = cached.powerSources;
     for (let i = 0; i < powerSources.length; i++) {
         const item = powerSources[i];
         if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
         item.proxy._powerSource.energized = isPassagePowerSourceEnergized(state, item.col, item.row);
-        drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.PassagePowerSource, passagePowerSourceDraw);
+        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.PassagePowerSource, passagePowerSourceDraw);
     }
 }
-export function drawFloorOccupancyBelts(ctx, state, viewport, px, py) {
+export function drawFloorOccupancyBelts(ctx, state, viewport) {
     const grid = state.obstacleGrid;
     if (!grid.floorStore.hasAny()) return;
     const cached = syncFloorOccupancyStampDrawCache(state, grid);
     if (!cached?.belts.length) return;
-    drawCachedFloorOccupancyBelts(ctx, viewport, px, py, state.gameTime, cached);
+    drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);
 }
-export function drawFloorOccupancyPowerSources(ctx, state, viewport, px, py) {
+export function drawFloorOccupancyPowerSources(ctx, state, viewport) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
     const cached = syncFloorOccupancyStampDrawCache(state, grid);
     if (!cached?.powerSources.length) return;
-    drawCachedFloorOccupancyPowerSources(ctx, viewport, px, py, cached, state);
+    drawCachedFloorOccupancyPowerSources(ctx, viewport, cached, state);
 }

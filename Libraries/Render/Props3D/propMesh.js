@@ -1,6 +1,4 @@
 import { traceClosedPolygonCount } from "../../Canvas/CanvasPath.js";
-import { elevationCameraFromViewer } from "../../Spatial/iso/ElevationCamera.js";
-import { activePerspective } from "../../../Core/GamePerspective.js";
 import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 /** @type {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} */
 const sPropCamera = { viewerX: 0, viewerY: 0, cameraHeight: 0, strength: 0 };
@@ -14,13 +12,7 @@ const sProjectedVerts = [
 function ensureProjectedVertScratch(count) {
     while (sProjectedVerts.length < count) sProjectedVerts.push({ x: 0, y: 0 });
 }
-/**
- * Iso-project a local prop vertex (ground origin at prop base, z = height above ground).
- *
- * @param {{ x: number, y: number, depth?: number }} out
- * @returns {typeof out}
- */
-export function projectPropVertexInto(out, prop, px, py, lx, ly, lz) {
+export function projectPropVertexInto(out, prop, viewport, lx, ly, lz) {
     const wx = prop.x + lx;
     const wy = prop.y + ly;
     if (Math.abs(lz) <= 0.001) {
@@ -29,17 +21,18 @@ export function projectPropVertexInto(out, prop, px, py, lx, ly, lz) {
         out.depth = lz;
         return out;
     }
-    Object.assign(sPropCamera, elevationCameraFromViewer(px, py));
+    sPropCamera.viewerX = viewport.x;
+    sPropCamera.viewerY = viewport.y;
+    sPropCamera.cameraHeight = viewport.cameraHeight;
+    sPropCamera.strength = viewport.perspectiveStrength;
     projectWorldPointInto(out, wx, wy, lz, sPropCamera);
-    out.depth = lz + Math.hypot(wx - px, wy - py) * 0.001;
+    out.depth = lz + Math.hypot(wx - viewport.x, wy - viewport.y) * 0.001;
     return out;
 }
-/** @returns {{ x: number, y: number, depth: number }} Allocates — prefer `projectPropVertexInto`. */
-export function projectPropVertex(prop, px, py, lx, ly, lz) {
-    return projectPropVertexInto({ x: 0, y: 0, depth: 0 }, prop, px, py, lx, ly, lz);
+export function projectPropVertex(prop, viewport, lx, ly, lz) {
+    return projectPropVertexInto({ x: 0, y: 0, depth: 0 }, prop, viewport, lx, ly, lz);
 }
-/** Cull back-facing mesh triangles using 3D face normal vs camera position. */
-export function isPropMeshFaceVisible(prop, px, py, verts3d) {
+export function isPropMeshFaceVisible(prop, viewport, verts3d) {
     const v0 = verts3d[0];
     const v1 = verts3d[1];
     const v2 = verts3d[2];
@@ -55,17 +48,17 @@ export function isPropMeshFaceVisible(prop, px, py, verts3d) {
     const cx = prop.x + (v0.lx + v1.lx + v2.lx) / 3;
     const cy = prop.y + (v0.ly + v1.ly + v2.ly) / 3;
     const cz = (v0.z + v1.z + v2.z) / 3;
-    const vx = px - cx;
-    const vy = py - cy;
-    const vz = activePerspective.cameraHeight - cz;
+    const vx = viewport.x - cx;
+    const vy = viewport.y - cy;
+    const vz = viewport.cameraHeight - cz;
     return nx * vx + ny * vy + nz * vz > 0;
 }
-export function drawPropMeshFace(ctx, prop, px, py, verts3d, fill, stroke, lineWidth) {
+export function drawPropMeshFace(ctx, prop, viewport, verts3d, fill, stroke, lineWidth) {
     const count = verts3d.length;
     ensureProjectedVertScratch(count);
     for (let i = 0; i < count; i++) {
         const v = verts3d[i];
-        projectPropVertexInto(sProjectedVerts[i], prop, px, py, v.lx, v.ly, v.z);
+        projectPropVertexInto(sProjectedVerts[i], prop, viewport, v.lx, v.ly, v.z);
     }
     ctx.fillStyle = fill;
     ctx.beginPath();

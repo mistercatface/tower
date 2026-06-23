@@ -1,4 +1,15 @@
-import { extrudeBox, extrudeConvexFootprint, pointOnFrustum, radiusAtT, getHeightSlice, getRadialSilhouette, traceVisibleArc, isFaceTowardViewer, createSideGradient, projectVertical } from "../../Spatial/iso/IsometricProjection.js";
+import {
+    extrudeBox,
+    extrudeConvexFootprint,
+    pointOnFrustum,
+    radiusAtT,
+    getHeightSlice,
+    getRadialSilhouette,
+    traceVisibleArc,
+    isFaceTowardViewer,
+    createSideGradient,
+    projectVertical,
+} from "../../Spatial/iso/IsometricProjection.js";
 import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -11,8 +22,8 @@ export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth })
     ctx.fill();
     ctx.stroke();
 }
-function isFaceVisible(px, py, originX, originY, edgeMidX, edgeMidY) {
-    return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, px, py);
+function isFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
+    return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
 function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors) {
     const sil = getRadialSilhouette(projection, baseRadius, resolvedTop);
@@ -30,18 +41,18 @@ function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colo
     ctx.fillStyle = createSideGradient(ctx, baseLeft, baseRight, viewAngle + Math.PI, colors);
     ctx.fill();
 }
-export function drawExtrudedRadial(ctx, prop, px, py, options) {
+export function drawExtrudedRadial(ctx, prop, viewport, options) {
     const baseRadius = options.baseRadius ?? options.radius;
     const { topRadius, height, facing = prop.facing, colors } = options;
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
+    const projection = projectVertical(prop.x, prop.y, height, viewport);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
     drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors);
     return { projection, orientAngle: facing };
 }
-export function drawRadialBand(ctx, prop, px, py, options) {
+export function drawRadialBand(ctx, prop, viewport, options) {
     const baseRadius = options.baseRadius ?? options.radius;
     const { topRadius = null, height = DEFAULT_PROP_HEIGHT, t0, t1, fill, stroke, lineWidth = 0.8, facing = prop.facing, segments = RADIAL_SEGMENTS } = options;
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
+    const projection = projectVertical(prop.x, prop.y, height, viewport);
     const resolvedTop = topRadius === 0 ? 0 : (topRadius ?? baseRadius * (1 + projection.alpha));
     const { cx, cy } = projection;
     for (let i = 0; i < segments; i++) {
@@ -49,7 +60,7 @@ export function drawRadialBand(ctx, prop, px, py, options) {
         const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
         const edgeMidX = (pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0).x + pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1).x) / 2;
         const edgeMidY = (pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0).y + pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1).y) / 2;
-        if (!isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) continue;
+        if (!isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) continue;
         const p0a = pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0);
         const p0b = pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1);
         const p1a = pointOnFrustum(projection, baseRadius, resolvedTop, t1, a0);
@@ -92,11 +103,10 @@ function drawBoxSideFace(ctx, face, originX, originY, colors, { stroke, lineWidt
 export function drawBox(
     ctx,
     prop,
-    px,
-    py,
+    viewport,
     { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
+    const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const box = extrudeBox(projection, halfSize, facing);
     const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
@@ -106,7 +116,7 @@ export function drawBox(
     for (const face of box.faces) {
         const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
         const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
+        if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
         else backFaces.push(face);
     }
     const baseGrad = ctx.createLinearGradient(box.baseCorners[0].x, box.baseCorners[0].y, box.baseCorners[2].x, box.baseCorners[2].y);
@@ -147,11 +157,10 @@ export function drawBox(
 export function drawExtrudedConvexPolygon(
     ctx,
     prop,
-    px,
-    py,
+    viewport,
     { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
-    const projection = projectVertical(prop.x, prop.y, px, py, height);
+    const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const body = extrudeConvexFootprint(projection, localVerts, facing);
     const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
@@ -161,7 +170,7 @@ export function drawExtrudedConvexPolygon(
     for (const face of body.faces) {
         const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
         const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (isFaceVisible(px, py, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
+        if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
         else backFaces.push(face);
     }
     const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);

@@ -42,11 +42,8 @@ export class WorldSceneRenderer {
      * @param {WorldSceneDrawOptions} [options]
      */
     drawDebrisProps(ctx, input, viewport, options = {}) {
-        const px = viewport.x;
-        const py = viewport.y;
-        const zoom = viewport.zoom ?? 1;
         const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { filterId: "debris", match: (p) => p.strategy?.renderMode === "debris" });
-        for (let i = 0; i < props.length; i++) this._drawProp(ctx, props[i], px, py, zoom);
+        for (let i = 0; i < props.length; i++) this._drawProp(ctx, props[i], viewport);
     }
     /**
      * @param {CanvasRenderingContext2D} ctx
@@ -56,9 +53,8 @@ export class WorldSceneRenderer {
     drawFloorProps(ctx, input, viewport) {
         const px = viewport.x;
         const py = viewport.y;
-        const zoom = viewport.zoom;
-        drawFloorOccupancyBelts(ctx, input.gameState, viewport, px, py);
-        drawFloorOccupancyPowerSources(ctx, input.gameState, viewport, px, py);
+        drawFloorOccupancyBelts(ctx, input.gameState, viewport);
+        drawFloorOccupancyPowerSources(ctx, input.gameState, viewport);
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { hitTest: "aabb", filterId: "floor", match: (p) => p.strategy?.renderMode === "floor" });
@@ -68,7 +64,7 @@ export class WorldSceneRenderer {
             visibleObjects.push(prop);
         }
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
-        for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i], px, py, zoom);
+        for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i], viewport);
     }
     _appendVisible3dProps(input, viewport, px, py) {
         const visibleObjects = this.visibleDrawables;
@@ -107,7 +103,6 @@ export class WorldSceneRenderer {
     draw3DBuildings(ctx, input, viewport, options = {}) {
         const px = viewport.x;
         const py = viewport.y;
-        const zoom = viewport.zoom ?? 1;
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         this._appendVisible3dProps(input, viewport, px, py);
@@ -130,8 +125,8 @@ export class WorldSceneRenderer {
         visibleObjects.sort((a, b) => b._distSq - a._distSq);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy) this._drawProp(ctx, obj, px, py, zoom);
-            else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, px, py);
+            if (obj.strategy) this._drawProp(ctx, obj, viewport);
+            else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, viewport);
             else if (obj.p1) {
                 this._bindWallDrawable(this.wallCtx, obj, input.gameState);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, this.wallCtx);
@@ -141,10 +136,10 @@ export class WorldSceneRenderer {
             }
         }
     }
-    _drawProp(ctx, prop, px, py, zoom) {
+    _drawProp(ctx, prop, viewport) {
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = worldPropRecipes[renderKey];
         if (!draw) return;
-        drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, 0, zoom);
+        drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
     }
 }

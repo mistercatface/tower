@@ -114,7 +114,7 @@ function buildPipeElbowMesh(spec, facing) {
     return [...buildFlangeMesh(spec.flangeRadius, spec.flangeHeight, facing), ...yawed];
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
-export function drawPipeElbow(ctx, prop, px, py, options) {
+export function drawPipeElbow(ctx, prop, viewport, options) {
     const asset = worldPropAssets[prop.type];
     const spec = getPipeElbowSpec(prop, asset);
     const facing = prop.facing ?? 0;
@@ -126,18 +126,18 @@ export function drawPipeElbow(ctx, prop, px, py, options) {
     const backFaces = [];
     const frontFaces = [];
     for (const face of mesh)
-        if (isPropMeshFaceVisible(prop, px, py, face.verts)) frontFaces.push(face);
+        if (isPropMeshFaceVisible(prop, viewport, face.verts)) frontFaces.push(face);
         else backFaces.push(face);
     const drawPass = (faces) => {
         const sorted = [...faces].sort((a, b) => a.depth - b.depth);
-        for (const face of sorted) drawPropMeshFace(ctx, prop, px, py, face.verts, panelFill[face.panel] ?? colors.side.mid, stroke, lineWidth);
+        for (const face of sorted) drawPropMeshFace(ctx, prop, viewport, face.verts, panelFill[face.panel] ?? colors.side.mid, stroke, lineWidth);
     };
     drawPass(backFaces);
     drawPass(frontFaces);
 }
 /** @param {object} visuals */
 export function createPipeElbowPrimitive(visuals) {
-    return (ctx, prop, px, py) => {
-        drawPipeElbow(ctx, prop, px, py, { colors: resolveVisualOverrideColorTree(prop, visuals.colors), lineWidth: visuals.lineWidth ?? 0.9 });
+    return (ctx, prop, viewport) => {
+        drawPipeElbow(ctx, prop, viewport, { colors: resolveVisualOverrideColorTree(prop, visuals.colors), lineWidth: visuals.lineWidth ?? 0.9 });
     };
 }

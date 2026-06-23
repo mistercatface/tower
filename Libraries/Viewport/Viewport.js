@@ -1,7 +1,7 @@
-import { LIBRARY_MIN_WORLD_SPAN } from "../Spatial/iso/perspectiveDefaults.js";
 import { ViewBounds } from "./ViewBounds.js";
 export { VIEW_BOUNDS_PROPS_PAD_PX } from "./ViewBounds.js";
-/** 2D world camera: pan, zoom, and screen/world coordinate transforms. */
+const MIN_WORLD_SPAN = 10;
+/** 2D world camera: pan, zoom, screen/world mapping, iso elevation knobs. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
         this._x = x;
@@ -15,13 +15,15 @@ export class Viewport {
         this.halfH = 0;
         this.invZoom = 1;
         this.viewBounds = new ViewBounds();
-        this.structurePerspectiveWorldSpan = LIBRARY_MIN_WORLD_SPAN;
-        this.structurePerspectiveReferenceSpan = LIBRARY_MIN_WORLD_SPAN;
-        this.structurePerspectiveStrength = undefined;
-        this._structurePerspectiveConfigGen = undefined;
         Object.defineProperty(this, "x", { get: () => this._x, set: (v) => this._setPosition(v, this._y) });
         Object.defineProperty(this, "y", { get: () => this._y, set: (v) => this._setPosition(this._x, v) });
         Object.defineProperty(this, "zoom", { get: () => this._zoom, set: (v) => this._setZoom(v) });
+        this._recompute();
+    }
+    applyPerspectiveConfig(config) {
+        this.cameraHeight = config.cameraHeight;
+        this._perspectiveStrengthBase = config.strength;
+        this._recompute();
     }
     configureDrawBounds(viewQueryPadPx, viewPaddingPx) {
         if (this.viewBounds.configurePads(viewQueryPadPx, viewPaddingPx)) this._recompute();
@@ -42,9 +44,9 @@ export class Viewport {
         this.halfH = h / (2 * this._zoom);
         this.invZoom = 1 / this._zoom;
         this.viewBounds.recompute(this._x, this._y, this.halfW, this.halfH);
-        this.structurePerspectiveWorldSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
-        this.structurePerspectiveReferenceSpan = Math.max(LIBRARY_MIN_WORLD_SPAN, this.getVisualRadius() * 2);
-        this.structurePerspectiveStrength = undefined;
+        const worldSpan = Math.max(MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
+        const referenceSpan = Math.max(MIN_WORLD_SPAN, this.getVisualRadius() * 2);
+        this.perspectiveStrength = (this._perspectiveStrengthBase * referenceSpan) / worldSpan;
     }
     bounds(tier) {
         return this.viewBounds.bounds(tier);

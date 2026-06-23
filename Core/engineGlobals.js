@@ -1,6 +1,6 @@
 import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
 import { mergeObjectTree, replaceRecordContents } from "../Libraries/Config/mergeConfig.js";
-import { activePerspective, bumpPerspectiveConfigGeneration, resolvePerspectiveConfig } from "./GamePerspective.js";
+import { resolvePerspectiveConfig } from "./GamePerspective.js";
 import { activeProceduralDesign, resolveProceduralDesignConfig, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { physicsSettings, LIBRARY_PHYSICS_DEFAULTS } from "../Libraries/Motion/physicsDefaults.js";
@@ -10,10 +10,8 @@ import { surfaceProfileDefaults } from "../Libraries/Procedural/SurfaceProfilePr
 import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
-
 const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;
-
 /** Editor boot — merges editor profile into module-level settings, then wires live worldSurfaces. */
 export function installEditorDefaults(state) {
     const profile = { id: "editor", proceduralDesign: { surfaceProfileId: EDITOR_DEFAULT_SURFACE_PROFILE_ID } };
@@ -23,13 +21,10 @@ export function installEditorDefaults(state) {
     }
     activeProceduralDesign.current = resolveProceduralDesignConfig(profile);
     surfaceProfileDefaults.defaultId = activeProceduralDesign.current?.defaultSurfaceProfileId ?? EDITOR_DEFAULT_SURFACE_PROFILE_ID;
-    const prevCameraHeight = activePerspective.cameraHeight;
-    Object.assign(activePerspective, resolvePerspectiveConfig(profile));
-    bumpPerspectiveConfigGeneration();
-    replaceGameWorldSurfaceSettings({
-        wallHeightCells: profile.worldSurface?.wallHeightCells,
-        ...resolveProceduralBakeSettings(profile),
-    });
+    const perspective = resolvePerspectiveConfig(profile);
+    const prevCameraHeight = state.viewport.cameraHeight;
+    state.viewport.applyPerspectiveConfig(perspective);
+    replaceGameWorldSurfaceSettings({ wallHeightCells: profile.worldSurface?.wallHeightCells, ...resolveProceduralBakeSettings(profile) });
     replaceRecordContents(collisionSettings, mergeObjectTree(LIBRARY_COLLISION_DEFAULTS, profile?.collisionSettings));
     replaceRecordContents(physicsSettings, mergeObjectTree(LIBRARY_PHYSICS_DEFAULTS, profile?.physicsSettings));
     const facing = profile?.propQuantizeSteps?.facing;
@@ -42,7 +37,7 @@ export function installEditorDefaults(state) {
     const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cellSize", "cellsPerChunk"];
     const bakeSettingsChanged =
         keysToCheck.some((key) => prev[key] !== settings[key]) ||
-        prevCameraHeight !== activePerspective.cameraHeight ||
+        prevCameraHeight !== state.viewport.cameraHeight ||
         JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
     void TileWorkerCoordinator.syncBakeConstants(settings);

@@ -21,7 +21,8 @@ export function createConveyorDraw(options = {}) {
         mid: "#1e1e1e",
         dark: "#141414",
     };
-    return (ctx, prop, px, py) => {
+    return (ctx, prop, viewport) => {
+        const subProp = (x, y, facing) => ({ x, y, facing });
         const hx = prop.halfExtents?.x ?? 8;
         const hy = prop.halfExtents?.y ?? 8;
         const lineScale = getCanvasLineScale(ctx);
@@ -33,8 +34,8 @@ export function createConveyorDraw(options = {}) {
             const sin = Math.sin(angle);
             // 1. Draw the belt bed (middle part)
             const beltHalfW = hy - 1.5; // 6.5
-            const beltProp = { x: prop.x, y: prop.y, facing: angle };
-            drawBox(ctx, beltProp, px, py, {
+            const beltProp = subProp(prop.x, prop.y, angle);
+            drawBox(ctx, beltProp, viewport, {
                 halfSize: { x: hx, y: beltHalfW },
                 height: 2,
                 facing: angle,
@@ -46,7 +47,7 @@ export function createConveyorDraw(options = {}) {
             // 2. Draw the moving belt texture/arrows on the top face (z = 2)
             function projectLocal(lx, ly, lz) {
                 const r = rotateXY(lx, ly, cos, sin);
-                return projectPropVertex(prop, px, py, r.x, r.y, lz);
+                return projectPropVertex(prop, viewport, r.x, r.y, lz);
             }
             ctx.save();
             ctx.beginPath();
@@ -105,8 +106,8 @@ export function createConveyorDraw(options = {}) {
             // 3. Draw the side rails
             const leftOffset = -7.25;
             const left = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, 0, leftOffset, cos, sin);
-            const leftRailProp = { x: left.x, y: left.y, facing: angle };
-            drawBox(ctx, leftRailProp, px, py, {
+            const leftRailProp = subProp(left.x, left.y, angle);
+            drawBox(ctx, leftRailProp, viewport, {
                 halfSize: { x: hx, y: 0.75 },
                 height: 3.5,
                 facing: angle,
@@ -117,8 +118,8 @@ export function createConveyorDraw(options = {}) {
             });
             const rightOffset = 7.25;
             const right = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, 0, rightOffset, cos, sin);
-            const rightRailProp = { x: right.x, y: right.y, facing: angle };
-            drawBox(ctx, rightRailProp, px, py, {
+            const rightRailProp = subProp(right.x, right.y, angle);
+            drawBox(ctx, rightRailProp, viewport, {
                 halfSize: { x: hx, y: 0.75 },
                 height: 3.5,
                 facing: angle,
@@ -148,7 +149,7 @@ export function createConveyorDraw(options = {}) {
             const lx_b1 = 0;
             const ly_b1 = 0.75;
             const r_b1 = offsetWorld(lx_b1, ly_b1);
-            const prop_b1 = { x: prop.x + r_b1.x, y: prop.y + r_b1.y, facing: angle + Math.PI / 2 };
+            const prop_b1 = subProp(prop.x + r_b1.x, prop.y + r_b1.y, angle + Math.PI / 2);
             drawList.push({
                 type: "belt",
                 prop: prop_b1,
@@ -157,13 +158,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
-                distSq: (prop_b1.x - px) ** 2 + (prop_b1.y - py) ** 2,
+                distSq: (prop_b1.x - viewport.x) ** 2 + (prop_b1.y - viewport.y) ** 2,
             });
             // Belt bed segment 2 (horizontal-ish relative to facing)
             const lx_b2 = 0.75;
             const ly_b2 = 0;
             const r_b2 = offsetWorld(lx_b2, ly_b2);
-            const prop_b2 = { x: prop.x + r_b2.x, y: prop.y + r_b2.y, facing: angle };
+            const prop_b2 = subProp(prop.x + r_b2.x, prop.y + r_b2.y, angle);
             drawList.push({
                 type: "belt",
                 prop: prop_b2,
@@ -172,13 +173,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
-                distSq: (prop_b2.x - px) ** 2 + (prop_b2.y - py) ** 2,
+                distSq: (prop_b2.x - viewport.x) ** 2 + (prop_b2.y - viewport.y) ** 2,
             });
             // Outer rail 1 (along West edge)
             const lx_r1 = -7.25;
             const ly_r1 = 0;
             const r_r1 = offsetWorld(lx_r1, ly_r1);
-            const prop_r1 = { x: prop.x + r_r1.x, y: prop.y + r_r1.y, facing: angle + Math.PI / 2 };
+            const prop_r1 = subProp(prop.x + r_r1.x, prop.y + r_r1.y, angle + Math.PI / 2);
             drawList.push({
                 type: "rail",
                 prop: prop_r1,
@@ -187,13 +188,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (prop_r1.x - px) ** 2 + (prop_r1.y - py) ** 2,
+                distSq: (prop_r1.x - viewport.x) ** 2 + (prop_r1.y - viewport.y) ** 2,
             });
             // Outer rail 2 (along North edge)
             const lx_r2 = 0;
             const ly_r2 = -7.25;
             const r_r2 = offsetWorld(lx_r2, ly_r2);
-            const prop_r2 = { x: prop.x + r_r2.x, y: prop.y + r_r2.y, facing: angle };
+            const prop_r2 = subProp(prop.x + r_r2.x, prop.y + r_r2.y, angle);
             drawList.push({
                 type: "rail",
                 prop: prop_r2,
@@ -202,13 +203,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (prop_r2.x - px) ** 2 + (prop_r2.y - py) ** 2,
+                distSq: (prop_r2.x - viewport.x) ** 2 + (prop_r2.y - viewport.y) ** 2,
             });
             // Inner rail (bottom-right corner)
             const lx_ri = 7.25;
             const ly_ri = 7.25;
             const r_ri = offsetWorld(lx_ri, ly_ri);
-            const prop_ri = { x: prop.x + r_ri.x, y: prop.y + r_ri.y, facing: angle };
+            const prop_ri = subProp(prop.x + r_ri.x, prop.y + r_ri.y, angle);
             drawList.push({
                 type: "rail",
                 prop: prop_ri,
@@ -217,14 +218,14 @@ export function createConveyorDraw(options = {}) {
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (prop_ri.x - px) ** 2 + (prop_ri.y - py) ** 2,
+                distSq: (prop_ri.x - viewport.x) ** 2 + (prop_ri.y - viewport.y) ** 2,
             });
         } else {
             // Belt bed segment 1 (vertical-ish relative to facing)
             const lx_b1 = 0;
             const ly_b1 = -0.75;
             const r_b1 = offsetWorld(lx_b1, ly_b1);
-            const prop_b1 = { x: prop.x + r_b1.x, y: prop.y + r_b1.y, facing: angle + Math.PI / 2 };
+            const prop_b1 = subProp(prop.x + r_b1.x, prop.y + r_b1.y, angle + Math.PI / 2);
             drawList.push({
                 type: "belt",
                 prop: prop_b1,
@@ -233,13 +234,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
-                distSq: (prop_b1.x - px) ** 2 + (prop_b1.y - py) ** 2,
+                distSq: (prop_b1.x - viewport.x) ** 2 + (prop_b1.y - viewport.y) ** 2,
             });
             // Belt bed segment 2 (horizontal-ish)
             const lx_b2 = 0.75;
             const ly_b2 = 0;
             const r_b2 = offsetWorld(lx_b2, ly_b2);
-            const prop_b2 = { x: prop.x + r_b2.x, y: prop.y + r_b2.y, facing: angle };
+            const prop_b2 = subProp(prop.x + r_b2.x, prop.y + r_b2.y, angle);
             drawList.push({
                 type: "belt",
                 prop: prop_b2,
@@ -248,13 +249,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
-                distSq: (prop_b2.x - px) ** 2 + (prop_b2.y - py) ** 2,
+                distSq: (prop_b2.x - viewport.x) ** 2 + (prop_b2.y - viewport.y) ** 2,
             });
             // Outer rail 1 (along West edge)
             const lx_r1 = -7.25;
             const ly_r1 = 0;
             const r_r1 = offsetWorld(lx_r1, ly_r1);
-            const prop_r1 = { x: prop.x + r_r1.x, y: prop.y + r_r1.y, facing: angle + Math.PI / 2 };
+            const prop_r1 = subProp(prop.x + r_r1.x, prop.y + r_r1.y, angle + Math.PI / 2);
             drawList.push({
                 type: "rail",
                 prop: prop_r1,
@@ -263,13 +264,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (prop_r1.x - px) ** 2 + (prop_r1.y - py) ** 2,
+                distSq: (prop_r1.x - viewport.x) ** 2 + (prop_r1.y - viewport.y) ** 2,
             });
             // Outer rail 2 (along South edge)
             const lx_r2 = 0;
             const ly_r2 = 7.25;
             const r_r2 = offsetWorld(lx_r2, ly_r2);
-            const prop_r2 = { x: prop.x + r_r2.x, y: prop.y + r_r2.y, facing: angle };
+            const prop_r2 = subProp(prop.x + r_r2.x, prop.y + r_r2.y, angle);
             drawList.push({
                 type: "rail",
                 prop: prop_r2,
@@ -278,13 +279,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (prop_r2.x - px) ** 2 + (prop_r2.y - py) ** 2,
+                distSq: (prop_r2.x - viewport.x) ** 2 + (prop_r2.y - viewport.y) ** 2,
             });
             // Inner rail (top-right corner)
             const lx_ri = 7.25;
             const ly_ri = -7.25;
             const r_ri = offsetWorld(lx_ri, ly_ri);
-            const prop_ri = { x: prop.x + r_ri.x, y: prop.y + r_ri.y, facing: angle };
+            const prop_ri = subProp(prop.x + r_ri.x, prop.y + r_ri.y, angle);
             drawList.push({
                 type: "rail",
                 prop: prop_ri,
@@ -293,13 +294,13 @@ export function createConveyorDraw(options = {}) {
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
-                distSq: (prop_ri.x - px) ** 2 + (prop_ri.y - py) ** 2,
+                distSq: (prop_ri.x - viewport.x) ** 2 + (prop_ri.y - viewport.y) ** 2,
             });
         }
         // Depth sort: draw furthest boxes first
         drawList.sort((a, b) => b.distSq - a.distSq);
         for (const item of drawList)
-            drawBox(ctx, item.prop, px, py, {
+            drawBox(ctx, item.prop, viewport, {
                 halfSize: item.halfSize,
                 height: item.height,
                 facing: item.prop.facing,
@@ -310,7 +311,7 @@ export function createConveyorDraw(options = {}) {
             });
         function projectLocal(lx, ly, lz) {
             const r = rotateXY(lx, ly, cos, sin);
-            return projectPropVertex(prop, px, py, r.x, r.y, lz);
+            return projectPropVertex(prop, viewport, r.x, r.y, lz);
         }
         // 4. Clip and draw moving treads & chevrons on curved belt surface
         ctx.save();

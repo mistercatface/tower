@@ -60,7 +60,7 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, exte
     return mesh;
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
-export function drawFlipperPaddle(ctx, prop, px, py, options) {
+export function drawFlipperPaddle(ctx, prop, viewport, options) {
     const asset = worldPropAssets[prop.type];
     const spec = getFlipperSpec(prop, asset);
     const length = spec.length;
@@ -83,11 +83,11 @@ export function drawFlipperPaddle(ctx, prop, px, py, options) {
     const backFaces = [];
     const frontFaces = [];
     for (const face of mesh)
-        if (isPropMeshFaceVisible(prop, px, py, face.verts)) frontFaces.push(face);
+        if (isPropMeshFaceVisible(prop, viewport, face.verts)) frontFaces.push(face);
         else backFaces.push(face);
     const drawPass = (faces) => {
         const sorted = [...faces].sort((a, b) => a.depth - b.depth);
-        for (const face of sorted) drawPropMeshFace(ctx, prop, px, py, face.verts, panelFill[face.panel] ?? colors.side.mid, stroke, lineWidth);
+        for (const face of sorted) drawPropMeshFace(ctx, prop, viewport, face.verts, panelFill[face.panel] ?? colors.side.mid, stroke, lineWidth);
     };
     drawPass(backFaces);
     drawPass(frontFaces);
@@ -95,9 +95,9 @@ export function drawFlipperPaddle(ctx, prop, px, py, options) {
 /** @param {object} visuals */
 export function createFlipperPrimitive(visuals) {
     const { world, colors, activeColors } = visuals;
-    return (ctx, prop, px, py) => {
+    return (ctx, prop, viewport) => {
         const active = prop._flipperTarget === "active" || prop._flipperButtonPressed;
         const base = active && activeColors ? activeColors : colors;
-        drawFlipperPaddle(ctx, prop, px, py, { world, colors: resolveVisualOverrideColorTree(prop, base), lineWidth: visuals.lineWidth ?? 0.9 });
+        drawFlipperPaddle(ctx, prop, viewport, { world, colors: resolveVisualOverrideColorTree(prop, base), lineWidth: visuals.lineWidth ?? 0.9 });
     };
 }

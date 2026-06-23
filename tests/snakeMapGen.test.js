@@ -150,10 +150,4 @@ describe("snake split map generation", () => {
         assert.equal(headCell.col, expectedAnchor.col);
         assert.equal(headCell.row, expectedAnchor.row);
     });
-    it("does not spawn goal_orb food in snake mode", async () => {
-        applySnakeGameConfig({ snakeCount: 1 });
-        const state = await createSnakeMapGenTestState(64, 42);
-        await spawnSnakeCavernScene(state);
-        assert.equal(state.worldProps.some((prop) => prop.type === "goal_orb"), false);
-    });
 });

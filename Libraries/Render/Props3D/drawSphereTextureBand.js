@@ -17,12 +17,12 @@ import { drawSphereTexturePatch } from "../SurfaceTexturing/drawSphereTexturePat
  *   uvBleed?: number,
  * }} [options]
  */
-export function drawSphereTextureBand(ctx, prop, px, py, img, options = {}) {
+export function drawSphereTextureBand(ctx, prop, viewport, img, options = {}) {
     const vMin = options.vMin ?? 0.35;
     const vMax = options.vMax ?? 0.65;
     const phiMid = Math.PI * (vMin + vMax) * 0.5;
     const phiHalf = Math.PI * (vMax - vMin) * 0.5;
-    drawSphereTexturePatch(ctx, prop, px, py, img, {
+    drawSphereTexturePatch(ctx, prop, viewport, img, {
         baseRadius: options.baseRadius,
         phiCenter: phiMid,
         phiHalf,

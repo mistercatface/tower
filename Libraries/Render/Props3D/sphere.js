@@ -18,7 +18,7 @@ const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF98
  *   lineWidth?: number,
  * }} [options]
  */
-export function drawSphere(ctx, prop, px, py, options = {}) {
+export function drawSphere(ctx, prop, viewport, options = {}) {
     const radius = options.baseRadius ?? resolveBodyRadius(prop);
     const panelCount = Math.max(3, options.panelCount ?? 6);
     const latBands = Math.max(3, options.latBands ?? 5);
@@ -32,13 +32,13 @@ export function drawSphere(ctx, prop, px, py, options = {}) {
     const backFaces = [];
     const frontFaces = [];
     for (const face of mesh)
-        if (isPropMeshFaceVisible(prop, px, py, face.verts)) frontFaces.push(face);
+        if (isPropMeshFaceVisible(prop, viewport, face.verts)) frontFaces.push(face);
         else backFaces.push(face);
     const drawPass = (faces) => {
         const sorted = [...faces].sort((a, b) => a.depth - b.depth);
         for (const face of sorted) {
             const fill = getFaceColor ? getFaceColor(face) : panelColors[face.panel % panelColors.length];
-            drawPropMeshFace(ctx, prop, px, py, face.verts, fill, stroke, lineWidth);
+            drawPropMeshFace(ctx, prop, viewport, face.verts, fill, stroke, lineWidth);
         }
     };
     drawPass(backFaces);

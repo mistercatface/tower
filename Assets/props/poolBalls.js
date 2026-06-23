@@ -68,11 +68,11 @@ function getPoolBallLabelImage(poolBall, radius, compact) {
 }
 /** @param {object} visuals */
 export function createPoolBallDraw(visuals) {
-    return (ctx, prop, px, py) => {
+    return (ctx, prop, viewport) => {
         const poolBall = prop.poolBall ?? visuals.defaultPoolBall;
         const radius = prop.radius;
         const compact = radius < 6;
-        drawSphere(ctx, prop, px, py, {
+        drawSphere(ctx, prop, viewport, {
             baseRadius: radius,
             panelCount: visuals.panelCount,
             latBands: visuals.latBands,
@@ -83,7 +83,7 @@ export function createPoolBallDraw(visuals) {
         if (!poolBall || !visuals.showLabels) return;
         const label = getPoolBallLabelImage(poolBall, radius, compact);
         if (!label) return;
-        drawSphereTexturePatch(ctx, prop, px, py, label, {
+        drawSphereTexturePatch(ctx, prop, viewport, label, {
             baseRadius: radius,
             phiCenter: Math.PI * 0.5,
             thetaCenter: 0,

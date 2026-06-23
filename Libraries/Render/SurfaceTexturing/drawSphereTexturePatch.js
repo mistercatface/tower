@@ -16,9 +16,9 @@ function borrowProjectedSphereCell(index) {
  * @param {number} py
  * @param {object[]} verts
  */
-function isSphereQuadVisible(prop, px, py, verts) {
+function isSphereQuadVisible(prop, viewport, verts) {
     const [v00, v01, v11, v10] = verts;
-    return isPropMeshFaceVisible(prop, px, py, [v00, v01, v11]) || isPropMeshFaceVisible(prop, px, py, [v00, v11, v10]);
+    return isPropMeshFaceVisible(prop, viewport, [v00, v01, v11]) || isPropMeshFaceVisible(prop, viewport, [v00, v11, v10]);
 }
 /**
  * @param {ReturnType<typeof borrowProjectedSphereCell>} out
@@ -27,17 +27,17 @@ function isSphereQuadVisible(prop, px, py, verts) {
  * @param {number} px
  * @param {number} py
  */
-function projectSphereCellInto(out, cell, prop, px, py) {
+function projectSphereCellInto(out, cell, prop, viewport) {
     const [v00, v01, v11, v10] = cell.verts;
     out.depth = cell.depth;
     out.u0 = cell.u0;
     out.u1 = cell.u1;
     out.v0 = cell.v0;
     out.v1 = cell.v1;
-    projectPropVertexInto(out.d0, prop, px, py, v00.lx, v00.ly, v00.z);
-    projectPropVertexInto(out.d1, prop, px, py, v01.lx, v01.ly, v01.z);
-    projectPropVertexInto(out.d2, prop, px, py, v11.lx, v11.ly, v11.z);
-    projectPropVertexInto(out.d3, prop, px, py, v10.lx, v10.ly, v10.z);
+    projectPropVertexInto(out.d0, prop, viewport, v00.lx, v00.ly, v00.z);
+    projectPropVertexInto(out.d1, prop, viewport, v01.lx, v01.ly, v01.z);
+    projectPropVertexInto(out.d2, prop, viewport, v11.lx, v11.ly, v11.z);
+    projectPropVertexInto(out.d3, prop, viewport, v10.lx, v10.ly, v10.z);
     return out;
 }
 /**
@@ -68,7 +68,7 @@ function projectSphereCellInto(out, cell, prop, px, py) {
  *   uvBleed?: number,
  * }} [options]
  */
-export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
+export function drawSphereTexturePatch(ctx, prop, viewport, img, options = {}) {
     const radius = options.baseRadius ?? resolveBodyRadius(prop);
     const rollQuat = prop.rollQuat ?? IDENTITY_ROLL_QUAT;
     const phiCenter = options.phiCenter ?? Math.PI * 0.5;
@@ -102,8 +102,8 @@ export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
     let projectedCount = 0;
     for (let i = 0; i < rawCells.length; i++) {
         const cell = rawCells[i];
-        if (!isSphereQuadVisible(prop, px, py, cell.verts)) continue;
-        projectSphereCellInto(borrowProjectedSphereCell(projectedCount), cell, prop, px, py);
+        if (!isSphereQuadVisible(prop, viewport, cell.verts)) continue;
+        projectSphereCellInto(borrowProjectedSphereCell(projectedCount), cell, prop, viewport);
         projectedCount++;
     }
     sProjectedSphereCells.length = projectedCount;
