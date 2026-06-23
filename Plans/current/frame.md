@@ -189,7 +189,7 @@ AFTER
 | `Libraries/Canvas/QuantizedSpriteCache.js` | `drawCachedPropSprite/Glyph` take `pass` |
 | `Libraries/Render/spriteDrawModifier.js` | Confirm scalar `px, py` from pass |
 | `Libraries/Sandbox/gridStampDrawCache.js` | `drawFloorOccupancy*(ctx, state, pass)` |
-| `Libraries/Sandbox/drawForcefields.js` | collect + draw use `pass` |
+| `Libraries/Sandbox/drawForcefields.js` | merged into `gridStampDrawCache.js` |
 | `Libraries/Render/overlays/drawOverlayCommands.js` | `drawOverlayCommands(ctx, commands, pass)` |
 | `Libraries/Render/Structure3D/WallDrawContext.js` | Slim typedef; split frame vs per-face scratch |
 | `Libraries/Render/Structure3D/ProjectedWallDraw.js` | Read from pass + face scratch |

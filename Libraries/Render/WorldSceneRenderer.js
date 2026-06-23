@@ -7,8 +7,7 @@ import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from 
 /** @typedef {import("./Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import { worldPropRecipes } from "../Props/PropCatalog.js";
-import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources } from "../Sandbox/gridStampDrawCache.js";
-import { collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/drawForcefields.js";
+import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources, collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { elevationCameraFromViewportInto } from "../Spatial/iso/ElevationCamera.js";
 export class WorldSceneRenderer {

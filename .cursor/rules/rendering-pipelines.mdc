@@ -59,7 +59,7 @@ PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAn
 
 ### Add a new grid/floor visual
 
-1. **Recipe** colocated with the domain (`drawForcefields.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
+1. **Recipe** colocated with the domain (`gridStampDrawCache.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
 2. **`GRID_STAMP_RENDER_KEY`** entry in `QuantizedSpriteCache.js` (only if new topology family).
 3. **Minimal prop proxy** at world anchor with **`getCustomSpriteCacheKey()`** for dynamic buckets.
 4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?)`. Attachment child recipes use `worldPropRecipes` from `PropCatalog.js` inside the cache bake.
@@ -82,7 +82,7 @@ Grid stamps anchored to **floor cells** or **cell edges** must not allocate prox
 2. **Stable proxies** — create once at sync time via `Object.create(proto)` with **`getCustomSpriteCacheKey` on the prototype**, not a per-cell closure.
 3. **Per frame** — viewport cull cached items, mutate only dynamic fields on the cached proxy (`ageMs`, `_powerSource.energized`, `_forcefield.tripped`, …), then **`drawCachedPropSprite`**.
 
-Shared helpers: **`Libraries/Sandbox/gridStampDrawCache.js`** (floor belts + passage power). Forcefields: **`drawForcefields.js`** (`_passageEdgeDrawCache`). New per-cell stamps should follow the same shape or extend `gridStampDrawCache.js`.
+Shared module: **`Libraries/Sandbox/gridStampDrawCache.js`** — floor belts, passage power, passage forcefield edges (`floorOccupancyStampDrawCacheKey`, `passageEdgeDrawCacheKey`). New per-cell stamps should follow the same shape or extend this module.
 
 ```javascript
 // ❌ — per-frame proxy + closure in viewport loop

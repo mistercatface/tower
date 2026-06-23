@@ -226,7 +226,7 @@ export const ITEMS = [
     },
     {
         id: "P3-4",
-        priority: "p3",
+        priority: "done",
         title: "drawForcefields.js not on gridStampDrawCache pattern",
         stupid: "Separate collect + draw path with proxy proto; belts/power already unified in gridStampDrawCache.",
         fix: "gamechangers.md G1 — merge forcefield stamps into gridStampDrawCache.js, same as floor belts.",
@@ -283,7 +283,7 @@ export const ITEMS = [
     },
 ];
 /** Suggested knock-down order — each item should shrink files/params/objects like DONE-1. */
-export const ORDER = ["P2-1", "P2-3", "P2-5", "P2-4", "P3-2", "P3-3", "P3-4", "P4-1"];
+export const ORDER = ["P2-1", "P2-3", "P2-5", "P2-4", "P3-2", "P3-3", "P4-1"];
 /** Grep helpers (run after fixes to verify shrinkage). */
 export const VERIFY = {
     loadPropAssets: "rg loadPropAssets",

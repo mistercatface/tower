@@ -24,9 +24,9 @@ Cross-cutting refactors with **subsystem-wide payoff** — same spirit as bounds
 
 ---
 
-## G1 — Forcefields on the belt cache pattern
+## G1 — Forcefields on the belt cache pattern ✅
 
-**Where:** `Libraries/Sandbox/gridStampDrawCache.js` ✅ · `Libraries/Sandbox/drawForcefields.js` ⚠️
+**Where:** `Libraries/Sandbox/gridStampDrawCache.js`
 
 ### Problem
 
@@ -55,8 +55,8 @@ Forcefields already revision-cache and cull — but **`syncPassageEdgeDrawCache`
 
 ### Review bar
 
-- [ ] No `createForcefieldDrawProxy()` returning fresh `{ x, y, getCustomSpriteCacheKey() {…} }` literals on sync.
-- [ ] One place documents all grid-stamp sync keys (`gridNavEpoch.js` + stamp module).
+- [x] No `createForcefieldDrawProxy()` returning fresh `{ x, y, getCustomSpriteCacheKey() {…} }` literals on sync.
+- [x] One place documents all grid-stamp sync keys (`gridNavEpoch.js` + stamp module).
 
 ---
 
