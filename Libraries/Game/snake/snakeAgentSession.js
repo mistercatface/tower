@@ -45,11 +45,11 @@ export function stopAllAgents(session, state) {
         if (def?.stop) def.stop(instance, state);
     }
 }
-export function resolveAgentRelationship(session, seekerId, targetId, state) {
+export function resolveAgentRelationship(session, seekerId, targetId, state, distSq = null) {
     const seekerMeta = session.registry.aliveByHeadId.get(seekerId);
     const targetMeta = session.registry.aliveByHeadId.get(targetId);
     if (!seekerMeta || !targetMeta) return "neutral";
-    return resolveRelationshipFromProfile(seekerMeta.species, targetMeta.species, seekerId, targetId, state);
+    return resolveRelationshipFromProfile(seekerMeta.species, targetMeta.species, seekerId, targetId, state, undefined, distSq);
 }
 export function spawnSpeciesBatch(session, state, speciesId, spawnCtxs) {
     const def = session.speciesById.get(speciesId);

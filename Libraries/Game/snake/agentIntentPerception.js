@@ -9,7 +9,8 @@ export function resolveAgentPerceptionOptions(state, visionRange = null) {
     return {
         readVisionFrame: requireSnakeVisionFrame,
         agentRange: shared.fleeRange ?? resolved.range,
-        resolveRelationship: (selfHeadId, headId, gameState) => (snakeGame ? resolveAgentRelationship(snakeGame, selfHeadId, headId, gameState) : "neutral"),
+        resolveRelationship: (selfHeadId, headId, gameState, _registry, distSq) =>
+            snakeGame ? resolveAgentRelationship(snakeGame, selfHeadId, headId, gameState, distSq) : "neutral",
     };
 }
 export function perceiveAgentIntentWorldInto(out, seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange = null) {

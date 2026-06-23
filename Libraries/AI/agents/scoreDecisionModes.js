@@ -6,10 +6,18 @@ const GUARDS = {
     notDesperate: (ctx) => ctx.hungerTier === "desperate",
     requiresLeadworthy: (ctx) => !ctx.allyState?.leadworthy,
     requiresSatisfied: (ctx) => ctx.hungerTier !== "satisfied",
+    preyTooFar: (ctx, modeDef) => {
+        const slot = modeDef?.slot ?? "prey";
+        const prey = ctx.known[slot];
+        if (!prey) return false;
+        const reach = ctx.reachSteps?.[slot];
+        const max = modeDef?.maxPreyReach ?? 3;
+        return !Number.isFinite(reach) || reach > max;
+    },
 };
-function blockedByGuards(ctx, guards) {
+function blockedByGuards(ctx, guards, modeDef) {
     if (!guards) return false;
-    for (let i = 0; i < guards.length; i++) if (GUARDS[guards[i]]?.(ctx)) return true;
+    for (let i = 0; i < guards.length; i++) if (GUARDS[guards[i]]?.(ctx, modeDef)) return true;
     return false;
 }
 function regroupSizeFactor(segmentCount, cohesion) {
@@ -97,7 +105,7 @@ function applyMods(detail, ctx, modeDef, weights, pressure, env) {
     return out;
 }
 function scoreMode(ctx, modeDef, weights, pressure, env) {
-    if (blockedByGuards(ctx, modeDef.guards)) return SCORE_ABSENT;
+    if (blockedByGuards(ctx, modeDef.guards, modeDef)) return SCORE_ABSENT;
     const scoreFn = SCORERS[modeDef.scorer];
     if (!scoreFn) throw new Error(`unknown decision scorer: ${modeDef.scorer}`);
     return applyMods(scoreFn(ctx, modeDef, weights, pressure, env), ctx, modeDef, weights, pressure, env);

@@ -33,12 +33,18 @@ function resolveSizeBandRelationship(state, seekerId, targetId, rule, profile, c
     const targetSegs = readSegmentCount(state, targetId, rule.targetSegmentCountAs ?? rule.segmentCountAs ?? "path");
     return resolveSizeBand(seekerSegs, targetSegs, maxGap);
 }
-/** Resolve seeker→target relationship from seeker profile config. */
-export function resolveRelationshipFromProfile(seekerProfileId, targetSpeciesId, seekerId, targetId, state, config = getSnakeGameConfig()) {
+function resolveProximityRelationship(rule, profile, config, distSq) {
+    const range = rule.range ?? profile.attackRange ?? config.shared?.lethalThreatRange ?? 48;
+    if (distSq == null) return rule.far ?? "neutral";
+    return distSq <= range * range ? rule.near : rule.far ?? "neutral";
+}
+/** Resolve seeker→target relationship from seeker profile config. distSq optional for proximity rules. */
+export function resolveRelationshipFromProfile(seekerProfileId, targetSpeciesId, seekerId, targetId, state, config = getSnakeGameConfig(), distSq = null) {
     const profile = getAgentProfile(seekerProfileId, config);
     const rule = profile.relationships?.[targetSpeciesId];
     if (rule == null) return "neutral";
     if (typeof rule === "string") return rule;
+    if (rule.type === "proximity") return resolveProximityRelationship(rule, profile, config, distSq);
     if (rule.type === "faction") {
         const { seekerFaction, targetFaction } = readFactions(state, seekerId, targetId);
         return resolveFactionRelationship(seekerFaction, targetFaction, rule);

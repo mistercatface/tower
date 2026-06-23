@@ -36,7 +36,7 @@ export function classifyAgentVision(
         const dy = head.y - seeker.y;
         const distSq = dx * dx + dy * dy;
         if (distSq > rangeSq) continue;
-        const relationship = resolveRelationship(selfHeadId, headId, state, registry);
+        const relationship = resolveRelationship(selfHeadId, headId, state, registry, distSq);
         if (relationship === "neutral") continue;
         const targetCol = navTopology.grid.worldCol(head.x);
         const targetRow = navTopology.grid.worldRow(head.y);
