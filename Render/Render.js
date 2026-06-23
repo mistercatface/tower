@@ -39,8 +39,8 @@ export class Renderer {
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.drawWorldSceneStructure(state, viewport) },
+            { zIndex: 71, fn: (state) => this.drawWorldSceneBloom(state) },
         ];
-        if (WORLD_SURFACE_DEFAULTS.bloom.enabled) this.effectPasses.push({ zIndex: 71, fn: (state) => this.drawWorldSceneBloom(state) });
     }
     /** @param {import("../GameState/GameState.js").GameState} state */
     syncWorldSceneDrawInput(state) {
@@ -73,9 +73,9 @@ export class Renderer {
         this._worldRenderMode = normalized;
         this.structureDrawPass = createStructureDrawPass(normalized, this);
     }
-    /** Full-canvas bloom — zIndex 71 when enabled. */
+    /** Full-canvas bloom — zIndex 71; gated by state.worldBloomEnabled at draw time. */
     drawWorldSceneBloom(state) {
-        if (state.worldBloomEnabled === false) return;
+        if (!state.worldBloomEnabled) return;
         const { blur } = WORLD_SURFACE_DEFAULTS.bloom;
         this.ctx.save();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);

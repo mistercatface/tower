@@ -1,4 +1,5 @@
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { applyZoomControl, directZoomMapping } from "../../Viewport/index.js";
 function hudToggleButton(label, dataAttr) {
     return `<button type="button" class="snake-hud-toggle" ${dataAttr}><span class="snake-hud-value" style="font-size: 16px;">${label}</span></button>`;
 }
@@ -6,7 +7,7 @@ function formatShadowStrengthLabel(strength) {
     if (strength <= 0) return "Off";
     return `${Math.round(strength * 100)}%`;
 }
-export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null, renderModeControl = null, shadowSliderControl = null, blurToggleControl = null, onVisualSettingChange = null } = {}) {
+export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null, renderModeControl = null, shadowSliderControl = null, blurToggleControl = null, zoomControl = null, onVisualSettingChange = null } = {}) {
     const stage = document.querySelector("#gameStage");
     const root = document.createElement("div");
     root.className = "snake-hud";
@@ -18,9 +19,11 @@ export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null
     const shadowPanel = shadowSliderControl
         ? '<div class="snake-hud-panel snake-hud-slider-panel"><span class="snake-hud-label">Shadows</span><div class="snake-hud-slider-row"><input type="range" class="snake-hud-slider" data-snake-shadow-slider min="0" max="100" step="1" value="0" aria-label="Shadow darkness"><span class="snake-hud-slider-value" data-snake-shadow-value>Off</span></div></div>'
         : "";
+    const zoomPanel = zoomControl ? '<div class="snake-hud-panel snake-hud-slider-panel snake-hud-zoom-panel" data-snake-zoom-host></div>' : "";
     root.innerHTML =
         '<div class="snake-hud-panel"><span class="snake-hud-label">Focused</span><span class="snake-hud-value" data-snake-name>—</span></div>' +
         shadowPanel +
+        zoomPanel +
         (toggles.length ? `<div class="snake-hud-toggles">${toggles.join("")}</div>` : "");
     stage.appendChild(root);
     const nameEl = root.querySelector("[data-snake-name]");
@@ -82,6 +85,21 @@ export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null
         shadowSliderEl.addEventListener("input", () => applyShadowSlider(Number(shadowSliderEl.value)));
         syncShadowSlider();
     }
+    const zoomHost = zoomControl ? root.querySelector("[data-snake-zoom-host]") : null;
+    const zoomControlHandle =
+        zoomHost && zoomControl
+            ? applyZoomControl(zoomHost, {
+                  inject: true,
+                  prefix: "Zoom",
+                  ...directZoomMapping({ min: zoomControl.min, max: zoomControl.max, step: 0.05 }),
+                  getZoom: zoomControl.getZoom,
+                  setZoom: (value) => {
+                      zoomControl.setZoom(value);
+                      onVisualSettingChange?.();
+                  },
+              })
+            : null;
+    zoomControlHandle?.refresh();
     function syncOverlayToggle() {
         const enabled = getSnakeGameConfig().showFocusedAgentDebug === true;
         overlayToggleEl.classList.toggle("is-on", enabled);
@@ -103,6 +121,7 @@ export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null
                     lastName = name;
                 }
             }
+            zoomControlHandle?.refresh();
         },
         destroy() {
             root.remove();

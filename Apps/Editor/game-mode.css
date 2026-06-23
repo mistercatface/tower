@@ -1,5 +1,7 @@
 /* Runtime game mode — square canvas, centered, no editor chrome (?game=...) */
 
+@import url('../../Libraries/Viewport/zoomControl.css');
+
 body.shell-game {
     align-items: stretch;
     justify-content: stretch;
@@ -222,4 +224,27 @@ body.shell-game .snake-hud-slider-value {
 
 body.shell-game .snake-hud-slider.is-off + .snake-hud-slider-value {
     color: rgba(245, 247, 251, 0.45);
+}
+
+body.shell-game .snake-hud-zoom-panel {
+    min-width: 168px;
+}
+
+body.shell-game .snake-hud-zoom-panel .viewport-zoom-control {
+    width: 100%;
+    font-size: 13px;
+    color: rgba(245, 247, 251, 0.72);
+}
+
+body.shell-game .snake-hud-zoom-panel .viewport-zoom-control-prefix {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(245, 247, 251, 0.62);
+}
+
+body.shell-game .snake-hud-zoom-panel .viewport-zoom-control-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f5f7fb;
 }

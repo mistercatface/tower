@@ -18,9 +18,11 @@ import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerce
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
+import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
+    state.losShadowStrength = 0.95;
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const registry = createAgentPopulationRegistry();
@@ -110,12 +112,23 @@ export async function setupSnakeGame(state) {
                 state.worldBloomEnabled = enabled;
             },
         },
+        zoomControl: {
+            min: TILELAB_ZOOM_MIN,
+            max: GAME_MODE_ZOOM_MAX,
+            getZoom() {
+                return state.viewport.zoom;
+            },
+            setZoom(zoom) {
+                state.viewport.zoom = zoom;
+            },
+        },
         onVisualSettingChange: markLabViewDirty,
     });
     cameraCycler.setFocusedId(centerSnake.chain.head.id);
     cameraCycler.bindInput();
     hud.update();
     return {
+        initialViewportZoom: GAME_MODE_ZOOM_DEFAULT,
         snakes: scene.snakes,
         getFocusedHeadId: () => cameraCycler.focusedId,
         getFocusedSnakeHead: resolveFocusedHeadProp,
