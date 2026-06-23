@@ -20,17 +20,5 @@ export function perceiveAgentWorld(seeker, selfHeadId, state, registry, resolveV
     const visionContext = { frame, vision, visionRange: resolved };
     const agents = classifyVisibleAgentsFromVision(seeker, selfHeadId, state, registry, frame, vision, { visionRange: resolved, agentRange: range, resolveRelationship });
     const food = resolveVisibleFood(seeker, state, visionContext);
-    const foodDist = food ? Math.hypot(food.x - seeker.x, food.y - seeker.y) / frame.navTopology.grid.cellSize : null;
-    return {
-        threat: agents.threat,
-        prey: agents.prey,
-        ally: agents.ally,
-        food,
-        threatDist: agents.threatDist,
-        preyDist: agents.preyDist,
-        allyDist: agents.allyDist,
-        foodDist,
-        allyCount: agents.allyCount,
-        allyCentroid: agents.allyCentroid,
-    };
+    return { threat: agents.threat, prey: agents.prey, ally: agents.ally, food, allyCount: agents.allyCount, allyCentroid: agents.allyCentroid, threatCount: agents.threatCount };
 }

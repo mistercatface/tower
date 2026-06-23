@@ -11,6 +11,7 @@ import { createSnakeIntentMemory } from "../Libraries/Game/snake/snakeIntentMemo
 import { createFleeIntentMemory } from "../Libraries/Game/snake/fleeAgent/fleeIntentMemory.js";
 import { buildSnakeDecisionContext } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { buildFleeDecisionContext } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
+import { publishAgentEngagement } from "../Libraries/AI/agents/agentEngagement.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 function chainOptions(segmentCount) {
     const config = getSnakeGameConfig();
@@ -32,14 +33,15 @@ describe("ally intent memory and blackboard", () => {
         const { state } = await createSnakeGameHarnessState();
         const seeker = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions(5));
         const ally = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
-        wireSnakeTestGame(state, [
+        const { snakeGame } = wireSnakeTestGame(state, [
             { headId: seeker.head.id, spawnGroupId: seeker.spawnGroupId },
             { headId: ally.head.id, spawnGroupId: ally.spawnGroupId },
         ]);
+        publishAgentEngagement(snakeGame, ally.head.id, { active: true, salience: ["food"], mode: "seek_food" });
         seeker.head.faction = "red";
         ally.head.faction = "red";
         const memory = createSnakeIntentMemory(getSnakeGameConfig().intentMemory);
-        const visible = { threat: null, prey: null, food: null, ally: ally.head, allyDist: 64, allyCount: 1, allyCentroid: { x: ally.head.x, y: ally.head.y } };
+        const visible = { threat: null, prey: null, food: null, ally: ally.head, allyCount: 1, allyCentroid: { x: ally.head.x, y: ally.head.y } };
         const empty = { ...visible, ally: null, allyCount: 0, allyCentroid: null };
         memory.update(seeker.head, state, visible);
         memory.update(seeker.head, state, empty);
@@ -56,7 +58,7 @@ describe("ally intent memory and blackboard", () => {
     it("snake decision snapshot surfaces allyState from memory", () => {
         applySnakeGameConfig();
         const visibleWorld = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null };
-        const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyDist: 90, allyCount: 1, allyCentroid: null };
+        const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyCount: 1, allyCentroid: null };
         const { decisionSnapshot, blackboard } = buildSnakeDecisionContext({ visibleWorld, memoryWorld, memorySource: { ally: true } });
         assert.equal(blackboard.facts.known.ally.id, 42);
         assert.equal(decisionSnapshot.allyState.remembered, true);
@@ -77,11 +79,9 @@ describe("ally intent memory and blackboard", () => {
             threat: null,
             food: null,
             ally: allyPack.head,
-            allyDist: 64,
             allyCount: 1,
             allyCentroid: { x: allyPack.head.x, y: allyPack.head.y },
             threatCount: 0,
-            aggregateThreatSeverity: 0,
         };
         memory.update(seekerPack.head, state, visible);
         const enriched = memory.enrichWorld(state, { ...visible, ally: null, allyCount: 0, allyCentroid: null });

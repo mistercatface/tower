@@ -4,13 +4,16 @@ import { createTargetMemory, targetFromMemoryRecord } from "../Libraries/AI/memo
 
 const grid = {
     cellSize: 10,
-    worldToGrid(x, y) {
-        return { col: Math.floor(x / 10), row: Math.floor(y / 10) };
+    worldCol(x) {
+        return Math.floor(x / 10);
+    },
+    worldRow(y) {
+        return Math.floor(y / 10);
     },
 };
 
 describe("target memory", () => {
-    it("records target facts with distance and cell snapshots", () => {
+    it("records target facts with cell snapshots", () => {
         const memory = createTargetMemory(["food"], { food: 3 });
         memory.observe("food", { id: 7, x: 30, y: 40 }, { x: 0, y: 0 }, grid);
         assert.deepEqual(memory.snapshot().food, {
@@ -20,8 +23,6 @@ describe("target memory", () => {
             ageTicks: 0,
             ttlTicks: 3,
             confidence: 1,
-            lastDistance: 50,
-            lastDistanceCells: 5,
         });
     });
 

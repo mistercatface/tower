@@ -295,7 +295,7 @@ Only if you want an isolated test before touching decision models: extract `reac
 
 ---
 
-## Pass 3 — Strip perception + memory distances (deletion pass)
+## Pass 3 — Strip perception + memory distances (deletion pass) ✅
 
 Pure passthrough removal — no new APIs.
 

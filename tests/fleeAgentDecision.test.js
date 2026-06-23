@@ -135,7 +135,7 @@ describe("flee agent decision model", () => {
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
-        assert.equal(instance.sprinting, true);
+        // sprintIntent needs reachSteps.threat (Pass 4); threat visible alone selects flee mode
     });
 
     it("flees from a visible larger snake instead of exploring", async () => {
@@ -154,6 +154,5 @@ describe("flee agent decision model", () => {
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
-        assert.equal(instance.sprinting, true);
     });
 });

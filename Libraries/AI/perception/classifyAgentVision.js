@@ -1,7 +1,4 @@
 import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
-function threatSeverityForDist(dist, fleeRange) {
-    return Math.max(0, Math.min(1, (fleeRange - dist) / fleeRange));
-}
 /**
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
@@ -28,7 +25,6 @@ export function classifyAgentVision(
     let bestPreyDistSq = Infinity;
     let bestAllyDistSq = Infinity;
     let threatCount = 0;
-    let aggregateThreatSeverity = 0;
     let allyCount = 0;
     let allyCentroidX = 0;
     let allyCentroidY = 0;
@@ -57,9 +53,7 @@ export function classifyAgentVision(
         }
         const isThreat = relationship === "threat";
         if (isThreat) {
-            const dist = Math.sqrt(distSq);
             threatCount++;
-            aggregateThreatSeverity += threatSeverityForDist(dist, range);
             if (distSq < bestThreatDistSq) {
                 bestThreatDistSq = distSq;
                 threat = head;
@@ -71,16 +65,5 @@ export function classifyAgentVision(
         bestPreyDistSq = distSq;
         prey = head;
     }
-    return {
-        threat,
-        prey,
-        ally,
-        threatDist: threat ? Math.sqrt(bestThreatDistSq) : null,
-        preyDist: prey ? Math.sqrt(bestPreyDistSq) / navTopology.grid.cellSize : null,
-        allyDist: ally ? Math.sqrt(bestAllyDistSq) / navTopology.grid.cellSize : null,
-        threatCount,
-        aggregateThreatSeverity,
-        allyCount,
-        allyCentroid: allyCount > 0 ? { x: allyCentroidX / allyCount, y: allyCentroidY / allyCount } : null,
-    };
+    return { threat, prey, ally, threatCount, allyCount, allyCentroid: allyCount > 0 ? { x: allyCentroidX / allyCount, y: allyCentroidY / allyCount } : null };
 }
