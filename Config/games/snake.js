@@ -23,8 +23,9 @@ export const SNAKE_GAME_DEFAULTS = {
         initialHunger: 0.85,
         metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        /** High-speed flee head rams kill flee agents, including friendly fire. */
+        /** High-speed flee head rams kill flee agents, including friendly fire and blindsides. */
         ramDeathSpeed: 35,
+        ram: { deathSpeed: 35, attackerMinSpeed: 18 },
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
         decisionWeights: { flee: 400, enemy: 420, food: 360, seek_ally: 280, explore: 100 },
         /** Same-faction flee ball regroup when safe (seek_ally mode). */

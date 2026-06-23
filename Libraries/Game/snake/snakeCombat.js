@@ -61,15 +61,33 @@ function fleeSnakeContactPair(instanceA, instanceB, bodyA, bodyB) {
     if (instanceB instanceof FleeAgentInstance && instanceA instanceof SnakeInstance) return { fleeInstance: instanceB, snakeInstance: instanceA, fleeBody: bodyB, snakeBody: bodyA };
     return null;
 }
+function classifyFleeRamVictims(contacts, i, config) {
+    const nx = contacts.dynamic.nx[i];
+    const ny = contacts.dynamic.ny[i];
+    const attackA = contacts.dynamic.preVxA[i] * nx + contacts.dynamic.preVyA[i] * ny;
+    const attackB = -(contacts.dynamic.preVxB[i] * nx + contacts.dynamic.preVyB[i] * ny);
+    const ramConfig = config.fleeAgent?.ram ?? {};
+    const attackerMinSpeed = ramConfig.attackerMinSpeed ?? 18;
+    const aStrikesB = attackA >= attackerMinSpeed;
+    const bStrikesA = attackB >= attackerMinSpeed;
+    if (aStrikesB && bStrikesA) return { killA: true, killB: true };
+    return { killA: bStrikesA, killB: aStrikesB };
+}
 function tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, bodyA, bodyB, relSpeed, config) {
     if (!(instanceA instanceof FleeAgentInstance) || !(instanceB instanceof FleeAgentInstance)) return false;
     if (bodyA.id !== instanceA.headId || bodyB.id !== instanceB.headId) return false;
-    const threshold = config.fleeAgent?.ramDeathSpeed ?? config.splitImpulseThreshold;
+    const threshold = config.fleeAgent?.ram?.deathSpeed ?? config.fleeAgent?.ramDeathSpeed ?? config.splitImpulseThreshold;
     if (relSpeed < threshold) return false;
-    const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
-    const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
-    instanceA.die(state, snakeGame, null, impactA);
-    instanceB.die(state, snakeGame, null, impactB);
+    const victims = classifyFleeRamVictims(contacts, i, config);
+    if (!victims.killA && !victims.killB) return false;
+    if (victims.killA) {
+        const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
+        instanceA.die(state, snakeGame, null, impactA);
+    }
+    if (victims.killB) {
+        const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
+        instanceB.die(state, snakeGame, null, impactB);
+    }
     return true;
 }
 function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fleeInstance, snakeInstance, fleeBody, snakeBody, relSpeed, config, splitLinks) {

@@ -23,13 +23,13 @@ function registerFleeCombatAgent(state, snakeGame, cell, faction) {
     return { pack, instance };
 }
 
-function resolveFleeHeadCollision(state, snakeGame, left, right) {
+function resolveFleeHeadCollision(state, snakeGame, left, right, { leftVx = 80, leftVy = 0, rightVx = -80, rightVy = 0 } = {}) {
     const leftHead = left.pack.head;
     const rightHead = right.pack.head;
-    leftHead.vx = 80;
-    leftHead.vy = 0;
-    rightHead.vx = -80;
-    rightHead.vy = 0;
+    leftHead.vx = leftVx;
+    leftHead.vy = leftVy;
+    rightHead.vx = rightVx;
+    rightHead.vy = rightVy;
     leftHead.x = rightHead.x - leftHead.radius - rightHead.radius + 2;
     leftHead.y = rightHead.y;
     const tick = attachKineticTestTickFromState(state, [leftHead, rightHead], 50);
@@ -87,7 +87,20 @@ describe("flee agent escape combat", () => {
         assert.ok(snakeGame.registry.deadHeadIds.has(delta.pack.head.id));
     });
 
-    it("same-team flee head ram is friendly fire and kills both agents", async () => {
+    it("opposing flee team blindside kills only the struck agent", async () => {
+        applySnakeGameConfig({ fleeAgent: { ram: { deathSpeed: 30, attackerMinSpeed: 18 } } });
+        resetKineticConstraintIds(63);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        const snakeGame = state.sandbox.snakeGame;
+        const striker = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
+        const victim = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "delta");
+        resolveFleeHeadCollision(state, snakeGame, striker, victim, { leftVx: 80, rightVx: 0 });
+        assert.equal(striker.instance.lifecycle, "alive");
+        assert.equal(victim.instance.lifecycle, "dead");
+    });
+
+    it("same-team flee head-on ram is friendly fire and kills both agents", async () => {
         applySnakeGameConfig({ fleeAgent: { ramDeathSpeed: 30 } });
         resetKineticConstraintIds(62);
         const { state } = await createSnakeGameHarnessState();
@@ -98,5 +111,31 @@ describe("flee agent escape combat", () => {
         resolveFleeHeadCollision(state, snakeGame, left, right);
         assert.equal(left.instance.lifecycle, "dead");
         assert.equal(right.instance.lifecycle, "dead");
+    });
+
+    it("same-team flee blindside is friendly fire and kills only the struck teammate", async () => {
+        applySnakeGameConfig({ fleeAgent: { ram: { deathSpeed: 30, attackerMinSpeed: 18 } } });
+        resetKineticConstraintIds(64);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        const snakeGame = state.sandbox.snakeGame;
+        const striker = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
+        const victim = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "charlie");
+        resolveFleeHeadCollision(state, snakeGame, striker, victim, { leftVx: 80, rightVx: 0 });
+        assert.equal(striker.instance.lifecycle, "alive");
+        assert.equal(victim.instance.lifecycle, "dead");
+    });
+
+    it("low-speed flee head contact does not kill either agent", async () => {
+        applySnakeGameConfig({ fleeAgent: { ram: { deathSpeed: 30, attackerMinSpeed: 18 } } });
+        resetKineticConstraintIds(65);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        const snakeGame = state.sandbox.snakeGame;
+        const left = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
+        const right = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "delta");
+        resolveFleeHeadCollision(state, snakeGame, left, right, { leftVx: 12, rightVx: 0 });
+        assert.equal(left.instance.lifecycle, "alive");
+        assert.equal(right.instance.lifecycle, "alive");
     });
 });
