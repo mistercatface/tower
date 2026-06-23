@@ -2,7 +2,6 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 import { resolveAgentRelationship } from "./snakeAgentSession.js";
 import { perceiveAgentWorld, findNearestVisibleThreat as findAgentThreat } from "../../AI/perception/agentWorldPerception.js";
-import { isSnakeFollowableTarget } from "./snakeFollowActivity.js";
 export function resolveSnakeAgentPerceptionOptions(state, visionRange = null) {
     const config = getSnakeGameConfig();
     const resolved = visionRange ?? config.visionRange;
@@ -11,7 +10,6 @@ export function resolveSnakeAgentPerceptionOptions(state, visionRange = null) {
         readVisionFrame: requireSnakeVisionFrame,
         agentRange: config.fleeRange ?? resolved.range,
         resolveRelationship: (selfHeadId, headId, state) => (snakeGame ? resolveAgentRelationship(snakeGame, selfHeadId, headId, state) : "neutral"),
-        isAllyFollowable: snakeGame ? (headId) => isSnakeFollowableTarget(snakeGame, headId) : null,
     };
 }
 export function perceiveSnakeIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange) {

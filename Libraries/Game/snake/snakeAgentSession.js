@@ -1,5 +1,5 @@
 export function createSnakeAgentSession(state, { registry, navWalkable, speciesById }) {
-    return { registry, speciesById, instancesByHeadId: registry.instancesByHeadId, autosimsByHeadId: new Map(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
+    return { registry, speciesById, instancesByHeadId: registry.instancesByHeadId, autosimsByHeadId: new Map(), engagementByHeadId: new Map(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
 }
 export function registerAgentInstance(session, speciesId, instance) {
     const def = session.speciesById.get(speciesId);

@@ -158,7 +158,13 @@ body.shell-game .snake-hud-food-fill {
     transition: transform 120ms linear;
 }
 
-body.shell-game .snake-hud-camera-toggle {
+body.shell-game .snake-hud-toggles {
+    display: flex;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+body.shell-game .snake-hud-toggle {
     pointer-events: auto;
     cursor: pointer;
     min-width: 88px;
@@ -173,11 +179,16 @@ body.shell-game .snake-hud-camera-toggle {
     text-align: left;
 }
 
-body.shell-game .snake-hud-camera-toggle.is-ball-focus {
+body.shell-game .snake-hud-toggle.is-on {
+    border-color: rgba(120, 220, 255, 0.65);
+    box-shadow: 0 0 12px rgba(120, 220, 255, 0.28);
+}
+
+body.shell-game .snake-hud-toggle.is-ball-focus {
     border-color: rgba(255, 112, 67, 0.65);
     box-shadow: 0 0 12px rgba(255, 112, 67, 0.28);
 }
 
-body.shell-game .snake-hud-camera-toggle .snake-hud-value {
+body.shell-game .snake-hud-toggle .snake-hud-value {
     font-size: 18px;
 }

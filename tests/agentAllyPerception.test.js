@@ -12,7 +12,8 @@ import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js
 import { perceiveFleeAgentWorld } from "../Libraries/Game/snake/fleeAgent/fleeWorldPerception.js";
 import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
+import { publishAgentEngagement } from "../Libraries/AI/agents/agentEngagement.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, primeSnakeHeadVision, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 
 loadPropAssets();
 
@@ -47,14 +48,6 @@ function registerFlee(state, snakeGame, pack) {
     return instance;
 }
 
-function stubAllyAutosim(mode, targetId = 1) {
-    return { getMode: () => mode, getTargetId: () => targetId };
-}
-
-function wireActiveAllyAutosim(snakeGame, headId, mode, targetId = 1) {
-    snakeGame.autosimsByHeadId.set(headId, stubAllyAutosim(mode, targetId));
-}
-
 describe("ally perception", () => {
     it("snake perceives nearest visible same-faction ally", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
@@ -64,14 +57,12 @@ describe("ally perception", () => {
         const allyNear = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
         const allyFar = spawnLinkedBallChain(state, { col: 18, row: 10 }, chainOptions(3));
         const enemy = spawnLinkedBallChain(state, { col: 12, row: 14 }, chainOptions(3));
-        const { snakeGame, registry } = wireSnakes(state, [
+        const { registry } = wireSnakes(state, [
             { chain: seeker, faction: "red" },
             { chain: allyNear, faction: "red" },
             { chain: allyFar, faction: "red" },
             { chain: enemy, faction: "blue" },
         ]);
-        wireActiveAllyAutosim(snakeGame, allyNear.head.id, "seek_food", 100);
-        wireActiveAllyAutosim(snakeGame, allyFar.head.id, "seek_prey", 101);
         seeker.head.facing = 0;
         allyNear.head.x = seeker.head.x + 64;
         allyNear.head.y = seeker.head.y;
@@ -138,7 +129,7 @@ describe("ally perception", () => {
             { chain: seeker, faction: "red" },
             { chain: ally, faction: "red" },
         ]);
-        wireActiveAllyAutosim(snakeGame, ally.head.id, "seek_food", 999);
+        publishAgentEngagement(snakeGame, ally.head.id, { active: true, salience: ["food"], mode: "seek_food" });
         const autosim = createWiredSnakeAutosim(state, { headId: seeker.head.id, initialFoodFraction: 0.9 });
         seeker.head.facing = 0;
         ally.head.x = seeker.head.x + 64;
@@ -160,7 +151,7 @@ describe("ally perception", () => {
             { chain: seeker, faction: "red" },
             { chain: ally, faction: "red" },
         ]);
-        wireActiveAllyAutosim(snakeGame, ally.head.id, "explore", null);
+        publishAgentEngagement(snakeGame, ally.head.id, { active: false, salience: [], mode: "explore" });
         const autosim = createWiredSnakeAutosim(state, { headId: seeker.head.id, initialFoodFraction: 0.9 });
         seeker.head.facing = 0;
         ally.head.x = seeker.head.x + 64;
@@ -181,7 +172,7 @@ describe("ally perception", () => {
             { chain: seeker, faction: "red" },
             { chain: ally, faction: "red" },
         ]);
-        wireActiveAllyAutosim(snakeGame, ally.head.id, "seek_ally", seeker.head.id);
+        publishAgentEngagement(snakeGame, ally.head.id, { active: false, salience: [], mode: "seek_ally" });
         const autosim = createWiredSnakeAutosim(state, { headId: seeker.head.id, initialFoodFraction: 0.9 });
         seeker.head.facing = 0;
         ally.head.x = seeker.head.x + 64;

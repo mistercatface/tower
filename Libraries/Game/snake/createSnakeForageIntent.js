@@ -3,6 +3,7 @@ import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js"
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { buildSnakeDecisionContext, deriveSprintIntent } from "./snakeDecisionModel.js";
+import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
@@ -79,7 +80,10 @@ export function createSnakeForageIntent({
             foodFraction: resolveHunger ? resolveHunger() : null,
             seekerFaction: agent.faction,
             seekerSegmentCount: resolveSegmentCount ? resolveSegmentCount() : null,
+            session: state.sandbox?.snakeGame ?? null,
         });
+        const snakeGame = state.sandbox?.snakeGame;
+        if (snakeGame) publishAgentEngagement(snakeGame, selfHeadId, decisionContext.blackboard.facts.engagementState);
         lastBlackboard = decisionContext.blackboard;
         lastDecisionSnapshot = decisionContext.decisionSnapshot;
         return decisionContext;

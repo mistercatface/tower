@@ -13,7 +13,7 @@ export function classifyAgentVision(
     registry,
     frame,
     vision,
-    { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true, isAllyFollowable = null } = {},
+    { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true } = {},
 ) {
     const navTopology = frame.navTopology;
     const visionSession = frame.visionSession;
@@ -45,7 +45,6 @@ export function classifyAgentVision(
         const targetCell = navTopology.grid.worldToGrid(head.x, head.y);
         if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCell.col, targetCell.row)) continue;
         if (relationship === "ally") {
-            if (isAllyFollowable && !isAllyFollowable(headId)) continue;
             allyCount++;
             allyCentroidX += head.x;
             allyCentroidY += head.y;
