@@ -356,7 +356,29 @@ Reduced Part 1 file sprawl — **8 files deleted**, helpers folded into owners:
 | `intentPolicy.js` | `targetEvents.js` |
 | `hungerEffort.js`, `scoreFleeIntent.js` | `utilityScoring.js` |
 
-**Part 1 net modules after merge:** 7 added files (was 15) — `deriveThreatState`, `deriveAllyState`, `targetEvents`, `createAgentIntentMemory`, `agentIntentPerception`, `agentReachSteps`, `createGroundNavIntentAdapter`.
+**Part 1 net modules after merge:** 7 added files — `deriveThreatState`, `deriveAllyState`, `targetEvents`, `createAgentIntentMemory`, `agentIntentPerception`, `agentReachSteps`, `createGroundNavIntentAdapter`.
+
+**Pass H (+1 module):** `buildAgentDecisionContext.js` — both species import; species decision models hold spec + scorers only.
+
+---
+
+## Pass H — unified decision engine
+
+**Status:** ✅ complete
+
+**Engine:** `Libraries/AI/agents/buildAgentDecisionContext.js` — `createAgentDecisionBlackboard(spec, input)`, `pickAgentIntentPolicy`, `buildAgentDecisionContext(spec, input)`.
+
+**Species specs:**
+
+| | Snake | Flee |
+|--|-------|------|
+| **Hook** | `resolveKnownAlly` + engagement `afterPick` | prey→`enemy` alias in visible/remembered/known |
+| **Scorers** | prey, food, seek_ally (leadworthy + size factor) | flee (+ outnumbered), enemy, food, seek_ally |
+| **Lines** | 170 (was 227) | 150 (was 191) |
+
+**Tests:** 91 pass — snake/flee decision, intent, engagement, ally memory/metabolism.
+
+**Bar met:** no `Libraries/AI/decision/` · no scoring DSL · one engine file · both consumers same PR.
 
 ---
 
