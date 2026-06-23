@@ -69,8 +69,7 @@ export function syncFloorOccupancyStampDrawCache(state, grid) {
     state.sandbox._floorOccupancyStampDrawCache = next;
     return next;
 }
-export function drawCachedFloorOccupancyBelts(ctx, viewport, camera, gameTime, cached, beltDrawForKind) {
-    const { px, py } = camera;
+export function drawCachedFloorOccupancyBelts(ctx, viewport, px, py, gameTime, cached, beltDrawForKind) {
     const animFrame = Math.floor(gameTime / 60) % 8;
     const belts = cached.belts;
     for (let i = 0; i < belts.length; i++) {
@@ -80,8 +79,7 @@ export function drawCachedFloorOccupancyBelts(ctx, viewport, camera, gameTime, c
         drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy._gridStamp.kind), { animFrame });
     }
 }
-export function drawCachedFloorOccupancyPowerSources(ctx, viewport, camera, cached, isEnergized, draw) {
-    const { px, py } = camera;
+export function drawCachedFloorOccupancyPowerSources(ctx, viewport, px, py, cached, isEnergized, draw) {
     const powerSources = cached.powerSources;
     for (let i = 0; i < powerSources.length; i++) {
         const item = powerSources[i];

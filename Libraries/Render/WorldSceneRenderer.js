@@ -66,8 +66,8 @@ export class WorldSceneRenderer {
         const px = viewport.x;
         const py = viewport.y;
         const zoom = viewport.zoom;
-        drawFloorOccupancyBelts(ctx, input.gameState, viewport, { px, py });
-        drawFloorOccupancyPowerSources(ctx, input.gameState, viewport, { px, py });
+        drawFloorOccupancyBelts(ctx, input.gameState, viewport, px, py);
+        drawFloorOccupancyPowerSources(ctx, input.gameState, viewport, px, py);
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         const props = queryPropsInView(input.entityRegistry, viewport, input.spatialFrame, { hitTest: "aabb", filterId: "floor", match: (p) => p.strategy?.renderMode === "floor" });

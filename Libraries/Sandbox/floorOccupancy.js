@@ -110,7 +110,7 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
     for (let i = 0; i < kineticBodies.length; i++) {
         const entity = kineticBodies[i];
         const col = grid.worldCol(entity.x);
-    const row = grid.worldRow(entity.y);
+        const row = grid.worldRow(entity.y);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = col + row * grid.cols;
         if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
@@ -120,19 +120,19 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         applyKineticAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
 }
-export function drawFloorOccupancyBelts(ctx, state, viewport, camera) {
+export function drawFloorOccupancyBelts(ctx, state, viewport, px, py) {
     const grid = state.obstacleGrid;
     if (!grid.floorStore.hasAny()) return;
     const cached = syncFloorOccupancyStampDrawCache(state, grid);
     if (!cached?.belts.length) return;
-    drawCachedFloorOccupancyBelts(ctx, viewport, camera, state.gameTime, cached, beltDrawForKind);
+    drawCachedFloorOccupancyBelts(ctx, viewport, px, py, state.gameTime, cached, beltDrawForKind);
 }
-export function drawFloorOccupancyPowerSources(ctx, state, viewport, camera) {
+export function drawFloorOccupancyPowerSources(ctx, state, viewport, px, py) {
     const grid = state.obstacleGrid;
     if (!grid.cols) return;
     const cached = syncFloorOccupancyStampDrawCache(state, grid);
     if (!cached?.powerSources.length) return;
-    drawCachedFloorOccupancyPowerSources(ctx, viewport, camera, cached, (col, row) => isPassagePowerSourceEnergized(state, col, row), passagePowerSourceDraw);
+    drawCachedFloorOccupancyPowerSources(ctx, viewport, px, py, cached, (col, row) => isPassagePowerSourceEnergized(state, col, row), passagePowerSourceDraw);
 }
 export function clearFloorOverlayAt(state, col, row) {
     const grid = state.obstacleGrid;
@@ -176,7 +176,7 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
         const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
         if (!isFloorBeltKind(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
         const col = grid.worldCol(globalCol * cellSize + half);
-    const row = grid.worldRow(globalRow * cellSize + half);
+        const row = grid.worldRow(globalRow * cellSize + half);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(col, row)) continue;
         const idx = colRowToIndex(col, row, grid.cols);
@@ -235,7 +235,7 @@ export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize
     for (let i = 0; i < powerSources.length; i++) {
         const { col: globalCol, row: globalRow, defaultPowered } = powerSources[i];
         const col = grid.worldCol(globalCol * cellSize + half);
-    const row = grid.worldRow(globalRow * cellSize + half);
+        const row = grid.worldRow(globalRow * cellSize + half);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         if (grid.isBlocked(col, row)) continue;
         if (grid.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, grid.cols))) continue;
