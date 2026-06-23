@@ -6,7 +6,7 @@ import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "../snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../../AI/identity/agentIdentity.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
-import { FLEE_AGENT_MEMBER_COUNT, resolveFleeAgentForwardDir, spawnFleeAgent } from "./spawnFleeAgent.js";
+import { FLEE_AGENT_MEMBER_COUNT, resolveFleeAgentForwardDir, spawnFleeAgent } from "../spawnAgentChain.js";
 function resolveFleeAgentTeamForIndex(config, index) {
     const flee = getAgentProfile(AGENT_PROFILE.flee, config);
     const teams = flee.teams;

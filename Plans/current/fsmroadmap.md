@@ -73,7 +73,11 @@ Shipped. See history.
 
 #### 6.1–6.5 ✅ (see audit above)
 
-#### 6.6 — Delete interim runtime layer ← **NEXT**
+#### 6.6 — Delete interim runtime layer ✅
+
+Shipped: tests/harness migrated to `createAgentAutosim`, `createAgentInstance`, `spawnAgentChain.js`, `agentMetabolism.js`, `resolvePackSteeringOptions.js`. Deleted 9 shim files (`snakeAutosim.js`, squid autosim/metabolism/scale/spawn shims, flee metabolism/spawn/pack/eat shims). Stripped `createAliveSnakeInstance`, `createFleeAgentInstance`, `createSnakeBrain` aliases.
+
+#### 6.7 — Config dialect pass ← **NEXT**
 
 **One PR. Migrate tests first, then delete. No "Libraries clean, tests later."**
 
@@ -186,11 +190,11 @@ rg 'applySnakeGameConfig\(\{ headMaxSpeed|applySnakeGameConfig\(\{ fleeAgent' te
 ### Step 6 done when
 
 - Adding agent #4 = `agentProfiles` block + scene spawn count — no new Instance/Autosim/Metabolism/Species files.
-- 6.6 + 6.7 grep gates green.
+- 6.6 ✅ · 6.7 grep gates green.
 - Net negative LOC across step 6 (expect ~12–15 files deleted, ~0 new runtime files).
 - **`fleeAgent/` and `squid/` folders** contain only scene spawners + flee presentation/intent (decision layer) — no runtime shims.
 
-**Gate for flow locomotion:** Step 6.6 **and** 6.7 merged. Do not start flow while compat aliases or passthrough autosim paths exist — next agent will wire flow into the wrong fork.
+**Gate for flow locomotion:** Step 6.7 merged (6.6 ✅). Do not start flow while compat aliases exist.
 
 ---
 
@@ -258,6 +262,6 @@ rg 'applySnakeGameConfig\(\{ headMaxSpeed|applySnakeGameConfig\(\{ fleeAgent' te
 | Config | `Config/games/snake.js` |
 | Reach (frozen) | `Libraries/Navigation/navReachHorizon.js` |
 
-**Delete in 6.6:** see table above (12 files + 2 species orphans).
+**Deleted in 6.6:** `snakeAutosim.js`, `squid/squidAutosim.js`, `squid/squidMetabolism.js`, `squid/squidScale.js`, `squid/spawnSquidChain.js`, `fleeAgent/fleeMetabolism.js`, `fleeAgent/spawnFleeAgent.js`, `fleeAgent/resolveFleePackOptions.js`, `fleeAgent/eatFleeAgentFood.js`.
 
 **Fix in 6.7:** `snakeGameConfig.js` compat layer · duplicate config keys · `applyAgentGameplay` fallbacks · stale plan docs.

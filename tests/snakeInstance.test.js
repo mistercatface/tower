@@ -13,7 +13,7 @@ import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Gam
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
 import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { AgentInstance, createAliveSnakeInstance, getAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance, createAgentInstance, getAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
@@ -133,7 +133,7 @@ describe("AgentInstance (snake)", () => {
         }
     });
 
-    it("createAliveSnakeInstance registers in snakeGame maps", () => {
+    it("createAgentInstance registers in snakeGame maps", () => {
         applySnakeGameConfig({ segmentCount: 3 });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -141,7 +141,8 @@ describe("AgentInstance (snake)", () => {
         const registry = createAgentPopulationRegistry();
         const session = createSnakeAgentSession(state, { registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
         state.sandbox.snakeGame = session;
-        const instance = createAliveSnakeInstance(state, {
+        const instance = createAgentInstance(state, {
+            profileId: AGENT_PROFILE.snake,
             headId: pack.chain.head.id,
             spawnGroupId: pack.chain.spawnGroupId,
             navWalkable: createSnakeNavWalkable(state),

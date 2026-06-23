@@ -4,8 +4,7 @@ import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeStartRadius
 import { pickSnakeChainSpawnCell } from "../snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../../AI/identity/agentIdentity.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
-import { spawnSquidChain } from "./spawnSquidChain.js";
-
+import { spawnSquidChain } from "../spawnAgentChain.js";
 function pickSquidSpawnCell(spawnPool, navWalkable, state, { excludeIndices, rng = Math.random }) {
     const config = getSnakeGameConfig();
     const profile = getAgentProfile(AGENT_PROFILE.squid, config);
@@ -13,16 +12,8 @@ function pickSquidSpawnCell(spawnPool, navWalkable, state, { excludeIndices, rng
     const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
     const growDirX = profile.growDirX ?? -1;
     const growDirY = profile.growDirY ?? 0;
-    return pickSnakeChainSpawnCell(spawnPool, navWalkable, state, {
-        segmentCount,
-        spacing,
-        growDirX,
-        growDirY,
-        excludeIndices,
-        rng,
-    });
+    return pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices, rng });
 }
-
 export function spawnSquidsInScene(state, navWalkable, { excludeIndices = null, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
     const count = config.squidCount ?? 0;

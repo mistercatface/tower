@@ -8,7 +8,8 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
-import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
+import { createAgentAutosim } from "../Libraries/Game/snake/agentAutosim.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
@@ -196,7 +197,7 @@ describe("snake combat min length", () => {
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
-        const predatorAutosim = createSnakeAutosim(state, { headId: predator.chain.head.id, navWalkable: state.sandbox.snakeGame.navWalkable });
+        const predatorAutosim = createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: predator.chain.head.id, navWalkable: state.sandbox.snakeGame.navWalkable });
         autosimsByHeadId.set(predator.chain.head.id, predatorAutosim);
         const registry = state.sandbox.snakeGame.registry;
         const preyMembers = getOrderedChainMemberIds(state, prey.chain.head.id);

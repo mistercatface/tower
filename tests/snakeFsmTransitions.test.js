@@ -15,7 +15,8 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { createGroundNavAgentIntent } from "../Libraries/Game/snake/createGroundNavAgentIntent.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
-import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
+import { createAgentAutosim } from "../Libraries/Game/snake/agentAutosim.js";
+import { createAgentBrain } from "../Libraries/Game/snake/agentBrain.js";
 import { FRAME_MS } from "./frameMs.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.js";
@@ -117,7 +118,7 @@ function createMockIntent(state, selfHeadId, registry) {
     const headNav = mockHeadNav();
     const head = state.entityRegistry.getLive(selfHeadId);
     applyAgentGameplay(AGENT_PROFILE.snake, head, "leader");
-    const { brain, sync } = createSnakeBrain();
+    const { brain, sync } = createAgentBrain();
     const intent = createGroundNavAgentIntent({
         profileId: AGENT_DECISION_PROFILE.snake,
         brain,
@@ -536,13 +537,13 @@ describe("snake FSM transitions", () => {
         assert.equal(redAutosim.getDestination().targetId, blue.head.id);
         assert.equal(blueAutosim.getDestination().targetId, red.head.id);
     });
-    it("createSnakeAutosim requires a wired registry", async () => {
+    it("createAgentAutosim requires a wired registry", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         const stubNavWalkable = { cells: () => [], has: () => false, pick: () => null, filterInBounds: () => [], rebake: () => {} };
-        assert.throws(() => createSnakeAutosim(state, { headId: chain.head.id, navWalkable: stubNavWalkable }), /registry/);
+        assert.throws(() => createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: chain.head.id, navWalkable: stubNavWalkable }), /registry/);
     });
     it("satisfied snake ignores same-team smaller snake but hunts opposite-team smaller snake (Red vs Blue)", async () => {
         applySnakeGameConfig({ fleeRange: 128 });

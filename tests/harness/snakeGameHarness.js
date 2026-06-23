@@ -12,7 +12,8 @@ import { createDirectGroundNavBehavior } from "../../Libraries/Sandbox/groundNav
 import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeAutosim } from "../../Libraries/Game/snake/snakeAutosim.js";
+import { createAgentAutosim } from "../../Libraries/Game/snake/agentAutosim.js";
+import { AGENT_PROFILE } from "../../Libraries/AI/agents/agentProfile.js";
 import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
 import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFracture.js";
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -20,7 +21,6 @@ import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkab
 import { createSnakeAgentSession, registerAgentInstance } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js";
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
-import { AGENT_PROFILE } from "../../Libraries/AI/agents/agentProfile.js";
 import { AgentInstance, getAgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
@@ -73,7 +73,7 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
 }
 export function createWiredSnakeAutosim(state, options) {
     wireSnakeTestNavSession(state);
-    const autosim = createSnakeAutosim(state, { ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
+    const autosim = createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: options.headId, ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
     const instance = getAgentInstance(state.sandbox.snakeGame, options.headId);
     if (instance) {
         instance.autosim = autosim;

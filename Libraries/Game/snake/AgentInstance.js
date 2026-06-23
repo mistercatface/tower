@@ -245,9 +245,3 @@ export function createAgentInstance(state, { profileId, headId, spawnGroupId, na
     instance.syncMembersFromGraph(state);
     return instance;
 }
-export function createAliveSnakeInstance(state, { headId, spawnGroupId, navWalkable, ...autosimOptions }) {
-    return createAgentInstance(state, { profileId: AGENT_PROFILE.snake, headId, spawnGroupId, navWalkable, ...autosimOptions });
-}
-export function createFleeAgentInstance(state, { headId, spawnGroupId, navWalkable = null }) {
-    return createAgentInstance(state, { profileId: AGENT_PROFILE.flee, headId, spawnGroupId, navWalkable });
-}

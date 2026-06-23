@@ -4,8 +4,9 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
-import { createFleeAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
@@ -15,7 +16,7 @@ import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstan
 
 function registerFleeCombatAgent(state, snakeGame, cell, faction) {
     const pack = spawnFleeAgent(state, cell, { faction });
-    const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+    const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
     registerAgentInstance(snakeGame, "flee_agent", instance);
     return { pack, instance };
 }
@@ -44,7 +45,7 @@ describe("flee agent escape combat", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         instance.sprinting = true;

@@ -4,9 +4,10 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { createFleeAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { createAgentIntentMemory } from "../Libraries/AI/memory/createAgentIntentMemory.js";
 import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/agentEngagement.js";
@@ -113,8 +114,8 @@ describe("ally intent memory", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
         const allyPack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
-        registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId }));
-        registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
         const memory = createAgentIntentMemory(getSnakeGameConfig().intentMemory);
         const visible = {
             threat: null,

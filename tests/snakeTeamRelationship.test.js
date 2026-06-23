@@ -6,8 +6,9 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
-import { createFleeAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 
 function chainOptions(segmentCount) {
@@ -108,7 +109,7 @@ describe("resolveAgentRelationship team hunting", () => {
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const fleeInstance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
         const smallSnake = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
         registerSnakeTestInstance(state, snakeGame, { headId: smallSnake.head.id, spawnGroupId: smallSnake.spawnGroupId });
@@ -125,7 +126,7 @@ describe("resolveAgentRelationship team hunting", () => {
         const charlieB = spawnFleeAgent(state, { col: 12, row: 10 }, { faction: "charlie" });
         const delta = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "delta" });
         for (const pack of [charlieA, charlieB, delta]) {
-            const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+            const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
             registerAgentInstance(snakeGame, "flee_agent", instance);
         }
         assert.equal(resolveAgentRelationship(snakeGame, charlieA.head.id, charlieB.head.id, state), "ally");

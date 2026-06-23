@@ -11,7 +11,6 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createSnakeAutosim } from "../Libraries/Game/snake/snakeAutosim.js";
 import { findSnakeFoodProp } from "../Libraries/Game/snake/snakeFood.js";
 import { FRAME_MS } from "./frameMs.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";

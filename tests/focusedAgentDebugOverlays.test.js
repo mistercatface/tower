@@ -3,8 +3,9 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
-import { createFleeAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { wireSnakeTestGame, registerSnakeTestInstance, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 import { resolveFocusedAgentDebugContext } from "../Libraries/Game/snake/resolveFocusedAgentDebugContext.js";
@@ -27,7 +28,7 @@ describe("focused agent debug overlays", () => {
         registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
         const fleePack = spawnFleeAgent(state, { col: 12, row: 10 });
-        const fleeInstance = createFleeAgentInstance(state, { headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
         fleeInstance.start(state);
 

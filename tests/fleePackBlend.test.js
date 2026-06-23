@@ -3,29 +3,30 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
-import { resolveFleePackOptions } from "../Libraries/Game/snake/fleeAgent/resolveFleePackOptions.js";
+import { resolvePackSteeringOptions } from "../Libraries/Game/snake/resolvePackSteeringOptions.js";
 import { buildAgentDecisionFrameFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
-import { createFleeAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 
 const openNav = { has: () => true };
 
 describe("flee pack blend (4d)", () => {
-    it("resolveFleePackOptions returns null without allies", () => {
+    it("resolvePackSteeringOptions returns null without allies", () => {
         applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35 } } });
         const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
-        assert.equal(resolveFleePackOptions(bb), null);
+        assert.equal(resolvePackSteeringOptions(bb), null);
     });
 
-    it("resolveFleePackOptions uses ally centroid when allies are known", () => {
+    it("resolvePackSteeringOptions uses ally centroid when allies are known", () => {
         applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35, maxPackDistCells: 16 } } });
         const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { ally: { id: 2, x: 80, y: 40 }, allyCount: 1, allyCentroid: { x: 80, y: 40 } },
         });
-        assert.deepEqual(resolveFleePackOptions(bb), { packAnchor: { x: 80, y: 40 }, packBlend: 0.35, maxPackDistCells: 16 });
+        assert.deepEqual(resolvePackSteeringOptions(bb), { packAnchor: { x: 80, y: 40 }, packBlend: 0.35, maxPackDistCells: 16 });
     });
 
     it("pickFleeCell biases toward pack anchor while still fleeing the threat", () => {
@@ -60,9 +61,9 @@ describe("flee pack blend (4d)", () => {
         });
         const fleePack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
         const allyPack = spawnFleeAgent(state, { col: 10, row: 6 }, { faction: "bravo" });
-        const instance = createFleeAgentInstance(state, { headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
+        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        registerAgentInstance(snakeGame, "flee_agent", createFleeAgentInstance(state, { headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
         instance.start(state);
         const predator = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId });
@@ -76,7 +77,7 @@ describe("flee pack blend (4d)", () => {
         assert.equal(instance.intent.getMode(), "flee");
         const snapshot = instance.intent.getDecisionContext();
         assert.ok((snapshot.allyState?.count ?? 0) >= 1);
-        const packOptions = resolveFleePackOptions({
+        const packOptions = resolvePackSteeringOptions({
             known: {
                 ally: snapshot.allyState.ally,
                 allyCount: snapshot.allyState.count,

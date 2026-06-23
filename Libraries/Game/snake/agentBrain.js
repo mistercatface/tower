@@ -11,5 +11,3 @@ export function createAgentBrain(visionRangeOverride) {
     });
     return { brain, sync };
 }
-/** @deprecated use createAgentBrain */
-export const createSnakeBrain = createAgentBrain;
