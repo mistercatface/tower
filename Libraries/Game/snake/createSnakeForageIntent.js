@@ -1,7 +1,7 @@
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
-import { buildSnakeDecisionContext } from "../../AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../../AI/agents/gameDecisionContext.js";
 import { createGroundNavIntentAdapter, getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 const SNAKE_REACH_SLOTS = {
@@ -44,7 +44,7 @@ export function createSnakeForageIntent({
         intentMemoryOptions: { ...config.intentMemory, filterAllyForEngagement: true },
         reachSlots: SNAKE_REACH_SLOTS,
         buildDecisionContext: ({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps }) =>
-            buildSnakeDecisionContext({
+            buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, {
                 visibleWorld: visible,
                 memoryWorld,
                 memorySource: memoryWorld.memorySource,

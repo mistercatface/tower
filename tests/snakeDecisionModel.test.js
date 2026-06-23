@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { buildSnakeDecisionContext, buildSnakeDecisionFrame, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionContextFor, buildAgentDecisionFrameFor, pickAgentIntentPolicyFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
 import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
 import { bandFromThresholds } from "../Libraries/AI/agents/bandFromThresholds.js";
@@ -34,14 +34,14 @@ function inferReachSteps(visibleWorld, { committedTarget, routeStatus, memoryWor
 }
 function context(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return buildSnakeDecisionContext({ visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), cellSize: CELL, ...rest });
+    return buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), cellSize: CELL, ...rest });
 }
 function snake(id, extra = {}) {
     return { id, x: 0, y: 0, isDead: false, ...extra };
 }
 function decisionFrame(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return buildSnakeDecisionFrame({ visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), ...rest });
+    return buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), ...rest });
 }
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {
@@ -76,7 +76,7 @@ describe("snake intent scoring parity (PR2)", () => {
         ];
         for (const c of cases) {
             const frame = decisionFrame(c.in);
-            assert.equal(pickSnakeIntentPolicy(frame).mode, c.mode);
+            assert.equal(pickAgentIntentPolicyFor(AGENT_DECISION_PROFILE.snake, frame).mode, c.mode);
         }
     });
     it("stores candidate scores and chosen reason on the snapshot", () => {
@@ -87,7 +87,7 @@ describe("snake intent scoring parity (PR2)", () => {
         assert.equal(ctx.chosenReason, null);
     });
     it("absent candidates score -Infinity so explore wins by default", () => {
-        const scores = scoreSnakeIntentCandidates(decisionFrame(world()));
+        const scores = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.snake, decisionFrame(world()));
         assert.equal(scores.flee, -Infinity);
         assert.equal(scores.seek_prey, -Infinity);
         assert.equal(scores.seek_food, -Infinity);
@@ -96,7 +96,7 @@ describe("snake intent scoring parity (PR2)", () => {
     });
     it("keeps memory reasons for remembered targets", () => {
         const frame = decisionFrame(world(), { memoryWorld: { prey: snake(5) }, memorySource: { prey: true }, reachSteps: { prey: 5, food: null, ally: null, threat: null } });
-        const policy = pickSnakeIntentPolicy(frame);
+        const policy = pickAgentIntentPolicyFor(AGENT_DECISION_PROFILE.snake, frame);
         assert.equal(policy.mode, "seek_prey");
         assert.equal(policy.reason, "prey_memory");
     });

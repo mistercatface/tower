@@ -6,7 +6,7 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { setFleeHunger } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
-import { buildFleeDecisionContext, scoreFleeIntentCandidateDetails } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionContextFor, scoreAgentIntentCandidateDetails, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
@@ -49,7 +49,7 @@ describe("flee agent decision model", () => {
 
     it("explores when only smaller snakes are visible and no food", () => {
         applySnakeGameConfig();
-        const ctx = buildFleeDecisionContext({
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
             visibleWorld: { threat: null, food: null, ally: null, allyCount: 0, threatCount: 0 },
             foodFraction: 0.55,
         });
@@ -60,7 +60,7 @@ describe("flee agent decision model", () => {
     it("seek_ally beats explore when a visible ally is present and hunger is satisfied", () => {
         applySnakeGameConfig();
         const ally = mockTarget("ally1");
-        const ctx = buildFleeDecisionContext({
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
             visibleWorld: {
                 threat: null,
                 food: null,
@@ -100,7 +100,7 @@ describe("flee agent decision model", () => {
 
     it("flee beats explore when a visible threat is present", () => {
         applySnakeGameConfig();
-        const ctx = buildFleeDecisionContext({
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
             visibleWorld: { threat: mockTarget("t1"), food: null, threatCount: 1 },
             reachSteps: fleeReach({ threat: 4 }),
             foodFraction: 0.55,
@@ -123,7 +123,7 @@ describe("flee agent decision model", () => {
             threatState,
             events: [],
         };
-        const scores = scoreFleeIntentCandidateDetails(ctx);
+        const scores = scoreAgentIntentCandidateDetails(AGENT_DECISION_PROFILE.flee, ctx);
         assert.ok(scores.flee.net > scores.explore.net);
     });
 

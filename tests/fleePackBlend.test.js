@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { resolveFleePackOptions } from "../Libraries/Game/snake/fleeAgent/resolveFleePackOptions.js";
-import { buildSnakeDecisionFrame } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionFrameFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
@@ -16,13 +16,13 @@ const openNav = { has: () => true };
 describe("flee pack blend (4d)", () => {
     it("resolveFleePackOptions returns null without allies", () => {
         applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35 } } });
-        const bb = buildSnakeDecisionFrame({ visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
+        const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
         assert.equal(resolveFleePackOptions(bb), null);
     });
 
     it("resolveFleePackOptions uses ally centroid when allies are known", () => {
         applySnakeGameConfig({ fleeAgent: { factionCohesion: { fleePackBlend: 0.35, maxPackDistCells: 16 } } });
-        const bb = buildSnakeDecisionFrame({
+        const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { ally: { id: 2, x: 80, y: 40 }, allyCount: 1, allyCentroid: { x: 80, y: 40 } },
         });
         assert.deepEqual(resolveFleePackOptions(bb), { packAnchor: { x: 80, y: 40 }, packBlend: 0.35, maxPackDistCells: 16 });
