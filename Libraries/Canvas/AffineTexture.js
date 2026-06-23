@@ -69,20 +69,7 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
     ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
     ctx.setTransform(currentTransform);
 }
-/**
- * @typedef {Object} ImageQuadBlit
- * @property {CanvasImageSource} img
- * @property {number} sx0
- * @property {number} sy0
- * @property {number} sx1
- * @property {number} sy1
- * @property {{ x: number, y: number }} d0
- * @property {{ x: number, y: number }} d1
- * @property {{ x: number, y: number }} d2
- * @property {{ x: number, y: number }} d3
- */
-export function drawImageQuad(ctx, quad) {
-    const { img, sx0, sy0, sx1, sy1, d0, d1, d2, d3 } = quad;
+export function drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, d0, d1, d2, d3) {
     const diag02 = (d2.x - d0.x) ** 2 + (d2.y - d0.y) ** 2;
     const diag13 = (d3.x - d1.x) ** 2 + (d3.y - d1.y) ** 2;
     if (diag13 < diag02) {

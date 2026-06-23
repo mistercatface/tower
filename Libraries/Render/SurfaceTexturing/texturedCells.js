@@ -75,6 +75,6 @@ export function drawTexturedQuadCells(ctx, cells, img) {
     cells.sort((a, b) => b.depth - a.depth);
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        drawImageQuad(ctx, { img, sx0: cell.sx0, sy0: cell.sy0, sx1: cell.sx1, sy1: cell.sy1, d0: cell.d0, d1: cell.d1, d2: cell.d2, d3: cell.d3 });
+        drawImageQuad(ctx, img, cell.sx0, cell.sy0, cell.sx1, cell.sy1, cell.d0, cell.d1, cell.d2, cell.d3);
     }
 }

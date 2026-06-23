@@ -30,5 +30,5 @@ export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorl
  */
 export function drawProjectedHorizontalChunk(ctx, canvas, corners, settings) {
     if (!isDrawableBakedSurface(canvas)) return;
-    drawImageQuad(ctx, { img: canvas, sx0: 0, sy0: 0, sx1: canvas.width, sy1: canvas.height, d0: corners[0], d1: corners[1], d2: corners[2], d3: corners[3] });
+    drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3]);
 }
