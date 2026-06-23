@@ -1,3 +1,4 @@
+import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
 import { buildVisionCellSet, collectVisibleGridCells, isPointVisibleFromHeadVision, resolveObserverHeading } from "./gridCellVision.js";
 export const OBSERVER_VIEW_RADIUS_SCALE = 2;
 let visionFullBuildCount = 0;
@@ -11,46 +12,31 @@ function observerVisionPoseKey(observer, navTopology, visionRange) {
     const grid = navTopology.grid;
     const col = grid.worldCol(observer.x);
     const row = grid.worldRow(observer.y);
-    return { wallRevision: navTopology.wallRevision, col, row, range: visionRange.range };
+    return { navKey: gridNavCacheKey(grid), col, row, range: visionRange.range };
 }
 function observerVisionCacheMatches(cache, key) {
-    return cache.wallRevision === key.wallRevision && cache.col === key.col && cache.row === key.row && cache.range === key.range;
+    return cache.navKey === key.navKey && cache.col === key.col && cache.row === key.row && cache.range === key.range;
 }
-function lookupHeadVisionCache(observer, navTopology, visionRange, { force = false, perceptionTick = null, onScreen = true, brainSyncOffScreenInterval = 1 }) {
+function lookupHeadVisionCache(observer, navTopology, visionRange, { force = false, perceptionTick = null }) {
     if (force) return null;
     const cache = observer._observerVisionCache;
     if (!cache) return null;
     const key = observerVisionPoseKey(observer, navTopology, visionRange);
     if (!observerVisionCacheMatches(cache, key)) return null;
     if (perceptionTick != null && cache.perceptionTick === perceptionTick) return cache;
-    if (!onScreen && brainSyncOffScreenInterval > 1 && perceptionTick != null && perceptionTick % brainSyncOffScreenInterval !== 0) return cache;
     return null;
 }
 function buildHeadVision(observer, navTopology, visionRange, visionSession, { perceptionTick = null } = {}) {
     const key = observerVisionPoseKey(observer, navTopology, visionRange);
     visionFullBuildCount++;
     const cells = collectVisibleGridCells(navTopology, observer.x, observer.y, visionRange.range, visionSession);
-    const next = {
-        wallRevision: key.wallRevision,
-        col: key.col,
-        row: key.row,
-        originCol: key.col,
-        originRow: key.row,
-        heading: resolveObserverHeading(observer),
-        range: visionRange.range,
-        perceptionTick,
-        cells,
-    };
+    const next = { navKey: key.navKey, col: key.col, row: key.row, originCol: key.col, originRow: key.row, heading: resolveObserverHeading(observer), range: visionRange.range, perceptionTick, cells };
     observer._observerVisionCache = next;
     return next;
 }
 function resolveObserverViewportSync(viewport, observer, brainSyncOffScreenInterval) {
     const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
     return { onScreen, brainSyncOffScreenInterval };
-}
-function headVisionLookupFor(frame, observer) {
-    const viewSync = resolveObserverViewportSync(frame.viewport, observer, frame.brainSyncOffScreenInterval);
-    return { ...viewSync, perceptionTick: frame.tickId };
 }
 export function queryGridCellVision(observer, candidates, { range, navTopology, visionSession = null }) {
     const visionRange = { range };
@@ -79,11 +65,10 @@ export function createObserverVisionFrame({ tickId, navTopology, visionSession, 
             return onScreen || agent._brainSyncPass % brainSyncOffScreenInterval === 0;
         },
         readHeadVision(observer, visionRangeOverride = visionRange) {
-            return lookupHeadVisionCache(observer, navTopology, visionRangeOverride, headVisionLookupFor(frame, observer));
+            return lookupHeadVisionCache(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
         },
         ensureHeadVision(observer, visionRangeOverride = visionRange) {
-            const lookup = headVisionLookupFor(frame, observer);
-            const cached = lookupHeadVisionCache(observer, navTopology, visionRangeOverride, lookup);
+            const cached = lookupHeadVisionCache(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
             if (cached) return cached;
             return buildHeadVision(observer, navTopology, visionRangeOverride, visionSession, { perceptionTick: frame.tickId });
         },
