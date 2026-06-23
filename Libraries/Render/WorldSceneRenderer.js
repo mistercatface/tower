@@ -31,7 +31,6 @@ export class WorldSceneRenderer {
             proceduralSurfaceDraw: null,
             gameState: null,
             fillStyle: "",
-            bleedPx: 0,
             wallHeight: 0,
             wallBaseZ: 0,
             wallCapHeight: 0,
@@ -141,7 +140,6 @@ export class WorldSceneRenderer {
             wallCtx.proceduralSurfaceDraw = input.proceduralSurfaceDraw;
             wallCtx.gameState = input.gameState;
             wallCtx.fillStyle = this.settings.floorShadow;
-            wallCtx.bleedPx = this.settings.wallTextureBleedPx;
             wallCtx.worldBounds = viewport.bounds("chunks");
             wallCtx.skipWallCaps = options.skipWallCaps === true;
             wallCtx.cacheObj = null;

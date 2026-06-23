@@ -25,7 +25,6 @@ const sCapCorners = [
     { x: 0, y: 0 },
 ];
 const sBlitQuad = { img: null, sx0: 0, sy0: 0, sx1: 0, sy1: 0, d0: sCorner0, d1: sCorner1, d2: sCorner2, d3: sCorner3 };
-const sBlitQuadOpts = { bleedPx: 1 };
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceQuad(ctx, { x: faceBottom.proj1X, y: faceBottom.proj1Y }, { x: faceTop.proj1X, y: faceTop.proj1Y }, { x: faceTop.proj2X, y: faceTop.proj2Y }, { x: faceBottom.proj2X, y: faceBottom.proj2Y });
@@ -134,7 +133,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
         alphaBandMax,
     };
 }
-function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, worldBounds, bleedPx) {
+function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, worldBounds) {
     const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
     const alphaSpan = alphaBandMax - alphaBase;
@@ -142,7 +141,6 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
     const cameraHeight = camera.cameraHeight;
     const visibleRows = Math.min(subdivY, Math.ceil((cameraHeight - wallBaseZ) / rowStep));
     sBlitQuad.img = canvas;
-    sBlitQuadOpts.bleedPx = bleedPx;
     for (let row = 0; row < visibleRows; row++) {
         const bottomZ = wallBaseZ + row * rowStep;
         let topZ = wallBaseZ + (row + 1) * rowStep;
@@ -164,7 +162,7 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wor
             sBlitQuad.sy0 = sy0;
             sBlitQuad.sx1 = u1 * canvas.width;
             sBlitQuad.sy1 = sy1;
-            drawImageQuad(ctx, sBlitQuad, sBlitQuadOpts);
+            drawImageQuad(ctx, sBlitQuad);
         }
     }
 }
@@ -194,7 +192,7 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, wallCtx, camera) {
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds, wallCtx.bleedPx);
+    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, camera, wallCtx.worldBounds);
 }
 const sCapSrc0 = { x: 0, y: 0 };
 const sCapSrc1 = { x: 0, y: 0 };
@@ -221,10 +219,9 @@ function fillProjectedCapPolygon(ctx, corners, fillStyle) {
     ctx.fillStyle = fillStyle;
     ctx.fill();
 }
-function blitHorizontalCapSample(ctx, dest4, src4, canvas, bleedPx) {
-    sBlitQuadOpts.bleedPx = bleedPx;
-    drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3], sBlitQuadOpts);
-    drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3], sBlitQuadOpts);
+function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
+    drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3]);
+    drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3]);
 }
 function assignCapSampleSrc(sample) {
     sCapSrc0.x = sample.src[0].x;
@@ -259,7 +256,7 @@ export function drawProjectedRailWallCap(ctx, box, wallCtx) {
         return;
     }
     assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, wallCtx.bleedPx);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas);
     if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
 }
 /**
@@ -300,7 +297,7 @@ export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, wallC
         return;
     }
     assignCapSampleSrc(sample);
-    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas, wallCtx.bleedPx);
+    blitHorizontalCapSample(ctx, sCapCorners, [sCapSrc0, sCapSrc1, sCapSrc2, sCapSrc3], sample.canvas);
     if (wallCtx.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, wallCtx.damageTintRatio);
 }
 /**

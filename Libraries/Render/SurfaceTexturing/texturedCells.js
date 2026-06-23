@@ -69,14 +69,12 @@ export function gatherTexturedQuadCells(rawCells, img, uvBleed = 2, { collectHul
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ depth: number, sx0: number, sy0: number, sx1: number, sy1: number, d0: object, d1: object, d2: object, d3: object }[]} cells
  * @param {CanvasImageSource} img
- * @param {{ bleedPx?: number, screenBleed?: number, underlay?: string | null }} [options]
  */
-export function drawTexturedQuadCells(ctx, cells, img, options = {}) {
+export function drawTexturedQuadCells(ctx, cells, img) {
     if (!cells.length) return;
     cells.sort((a, b) => b.depth - a.depth);
-    const textureOpts = { underlay: options.underlay ?? null, bleedPx: options.bleedPx ?? options.screenBleed ?? 0 };
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        drawImageQuad(ctx, { img, sx0: cell.sx0, sy0: cell.sy0, sx1: cell.sx1, sy1: cell.sy1, d0: cell.d0, d1: cell.d1, d2: cell.d2, d3: cell.d3 }, textureOpts);
+        drawImageQuad(ctx, { img, sx0: cell.sx0, sy0: cell.sy0, sx1: cell.sx1, sy1: cell.sy1, d0: cell.d0, d1: cell.d1, d2: cell.d2, d3: cell.d3 });
     }
 }

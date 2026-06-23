@@ -92,7 +92,6 @@ export function createPoolBallDraw(visuals) {
             subSegments: visuals.labelSubSegments,
             radiusInflate: 1,
             uvBleed: 1,
-            screenBleed: 0,
         });
     };
 }

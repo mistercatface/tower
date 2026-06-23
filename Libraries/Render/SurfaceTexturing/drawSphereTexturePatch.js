@@ -44,8 +44,7 @@ function projectSphereCellInto(out, cell, prop, px, py) {
  * Map an image onto a rolled spherical patch in world iso space.
  * Uses the same quad + affine texture path as inspect cylindrical labels.
  *
- * Prefer `capAngle` for circular decals (pool numbers). Quads sit on the sphere at
- * radiusInflate=1 — no outward shell, no screen bleed (that was causing the funnel).
+ * Prefer `capAngle` for circular decals (pool numbers).
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} prop
@@ -67,7 +66,6 @@ function projectSphereCellInto(out, cell, prop, px, py) {
  *   subTheta?: number,
  *   radiusInflate?: number,
  *   uvBleed?: number,
- *   screenBleed?: number,
  * }} [options]
  */
 export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
@@ -110,5 +108,5 @@ export function drawSphereTexturePatch(ctx, prop, px, py, img, options = {}) {
     }
     sProjectedSphereCells.length = projectedCount;
     const cells = gatherTexturedQuadCells(sProjectedSphereCells, img, options.uvBleed ?? 1);
-    drawTexturedQuadCells(ctx, cells, img, { bleedPx: options.screenBleed ?? 0 });
+    drawTexturedQuadCells(ctx, cells, img);
 }
