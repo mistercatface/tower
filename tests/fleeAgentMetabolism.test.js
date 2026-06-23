@@ -11,6 +11,8 @@ import { createFleeMetabolism, getFleeHunger, setFleeHunger, tickFleeMetabolism 
 import { resolveFleeAgentEatRadius } from "../Libraries/Game/snake/fleeAgent/eatFleeAgentFood.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell, primeSnakeHeadVision, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -155,7 +157,7 @@ describe("flee agent metabolism", () => {
     });
     it("deriveSprintIntent wants sprint on lethal flee when hunger allows", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 } }, lethalThreatRange: 48 });
-        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         const ctx = { threatState: { lethal: true, severity: 1 }, hungerTier: "hungry", foodFraction: 0.5 };
         assert.equal(deriveSprintIntent("flee", ctx, sprint).want, true);
         assert.equal(deriveSprintIntent("explore", ctx, sprint).want, false);

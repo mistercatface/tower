@@ -3,51 +3,45 @@ import { bandFromThresholds } from "./bandFromThresholds.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { deriveThreatState } from "./deriveThreatState.js";
 import { scoreCandidateSet } from "../utility/utilityScoring.js";
-import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
+import { getThreatConfig } from "../../Game/snake/snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "../../Game/snake/snakeEngagement.js";
-export const AGENT_DECISION_PROFILE = Object.freeze({ snake: "snake", flee: "flee_agent" });
-function resolveProfileBundle(profileId) {
-    const config = getSnakeGameConfig();
-    if (profileId === AGENT_DECISION_PROFILE.snake) return config;
-    if (profileId === AGENT_DECISION_PROFILE.flee) return config.fleeAgent;
-    throw new Error(`unknown agent decision profile: ${profileId}`);
+import { AGENT_PROFILE, getAgentProfile } from "./agentProfile.js";
+export { AGENT_PROFILE as AGENT_DECISION_PROFILE };
+function buildScoringEnv(profile) {
+    const env = { cohesion: profile.factionCohesion ?? {} };
+    if (profile.scoringEnv?.effortFallback) env.effortFallback = profile.decisionPressure;
+    if (profile.scoringEnv?.sprint) env.sprint = profile.sprint;
+    return env;
 }
-function buildScoringEnv(profileId) {
-    const config = getSnakeGameConfig();
-    if (profileId === AGENT_DECISION_PROFILE.snake) return { effortFallback: config.decisionPressure, cohesion: config.factionCohesion ?? {} };
-    const flee = config.fleeAgent;
-    return { sprint: flee.sprint, cohesion: flee.factionCohesion ?? {} };
-}
-function createDecisionSpec(profileId) {
-    const bundle = () => resolveProfileBundle(profileId);
-    const spec = {
-        decisionSchema: () => bundle().decision,
-        hungerBands: () => bundle().hungerBands,
-        threatConfig: () => getSnakeGameConfig(),
-        weights: () => bundle().decisionWeights,
-        pressure: () => bundle().decisionPressure,
-        scoringEnv: () => buildScoringEnv(profileId),
-        sprintConfig: () => bundle().sprint,
-    };
-    if (profileId === AGENT_DECISION_PROFILE.snake) {
-        spec.allySession = (input) => input.session ?? null;
-        spec.extraFacts = (input) => ({
+const DECISION_EXTENSIONS = {
+    [AGENT_PROFILE.snake]: {
+        allySession: (input) => input.session ?? null,
+        extraFacts: (input) => ({
             safetyState: input.safetyState,
             recentFailures: input.recentFailures ?? [],
             seekerFaction: input.seekerFaction,
             seekerSegmentCount: input.seekerSegmentCount,
             engagementState: null,
-        });
-        spec.afterPick = (ctx, chosenIntent) => {
+        }),
+        afterPick: (ctx, chosenIntent) => {
             ctx.engagementState = deriveSnakeEngagementState(ctx, chosenIntent);
-        };
-    }
-    return spec;
+        },
+    },
+};
+function createDecisionSpec(profileId) {
+    const profile = () => getAgentProfile(profileId);
+    return {
+        decisionSchema: () => profile().decision,
+        hungerBands: () => profile().hungerBands,
+        threatConfig: () => getThreatConfig(),
+        weights: () => profile().decisionWeights,
+        pressure: () => profile().decisionPressure,
+        scoringEnv: () => buildScoringEnv(profile()),
+        sprintConfig: () => profile().sprint,
+        ...(DECISION_EXTENSIONS[profileId] ?? {}),
+    };
 }
-const DECISION_SPECS = Object.freeze({
-    [AGENT_DECISION_PROFILE.snake]: createDecisionSpec(AGENT_DECISION_PROFILE.snake),
-    [AGENT_DECISION_PROFILE.flee]: createDecisionSpec(AGENT_DECISION_PROFILE.flee),
-});
+const DECISION_SPECS = Object.freeze({ [AGENT_PROFILE.snake]: createDecisionSpec(AGENT_PROFILE.snake), [AGENT_PROFILE.flee]: createDecisionSpec(AGENT_PROFILE.flee) });
 export function resolveAgentDecisionSpec(profileId) {
     const spec = DECISION_SPECS[profileId];
     if (!spec) throw new Error(`unknown agent decision profile: ${profileId}`);

@@ -13,8 +13,8 @@ describe("snakeGameConfig", () => {
     it("derives segment spacing from segment prop diameter and linkSlack", () => {
         applySnakeGameConfig();
         const spacing = resolveSnakeSegmentSpacing();
-        assert.equal(spacing, 4 * 2 * SNAKE_GAME_DEFAULTS.linkSlack);
-        assert.equal(resolveSnakeSegmentSpacing(getSnakeGameConfig(), 2), 2 * 2 * SNAKE_GAME_DEFAULTS.linkSlack);
+        assert.equal(spacing, 4 * 2 * SNAKE_GAME_DEFAULTS.agentProfiles.snake.linkSlack);
+        assert.equal(resolveSnakeSegmentSpacing(getSnakeGameConfig(), 2), 2 * 2 * SNAKE_GAME_DEFAULTS.agentProfiles.snake.linkSlack);
     });
 
     it("derives eat radius from segment, goal prop radii, and eat margin", () => {

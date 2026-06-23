@@ -11,6 +11,7 @@ import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 
 const CELL = 16;
 function sprintCtx(overrides = {}) {
@@ -27,13 +28,13 @@ function mockTarget(id) {
 describe("flee agent decision model", () => {
     it("deriveSprintIntent blocks flee sprint when hunger is critically low", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 }, decisionPressure: { sprintFleeMinHunger: 0.1 } } });
-        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         assert.equal(deriveSprintIntent("flee", sprintCtx({ threatState: { lethal: true, severity: 1 }, hungerTier: "desperate", foodFraction: 0.05 }), sprint).want, false);
     });
 
     it("deriveSprintIntent sprints on flee when threat is severe enough", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5 } } });
-        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         const result = deriveSprintIntent("flee", sprintCtx({ threatState: { lethal: false, severity: 0.6 }, hungerTier: "hungry", foodFraction: 0.6 }), sprint);
         assert.equal(result.want, true);
         assert.equal(result.reason, "escape");
@@ -41,7 +42,7 @@ describe("flee agent decision model", () => {
 
     it("deriveSprintIntent only sprints on seek_food when desperate", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.4 } } });
-        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        const sprint = getAgentProfile(AGENT_DECISION_PROFILE.flee).sprint;
         const threat = { lethal: false, severity: 0.5 };
         assert.equal(deriveSprintIntent("seek_food", sprintCtx({ threatState: threat, hungerTier: "hungry", foodFraction: 0.5 }), sprint).want, false);
         assert.equal(deriveSprintIntent("seek_food", sprintCtx({ threatState: threat, hungerTier: "desperate", foodFraction: 0.2 }), sprint).want, true);

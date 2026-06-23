@@ -12,7 +12,9 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createSnakeForageIntent } from "../Libraries/Game/snake/createSnakeForageIntent.js";
+import { createGroundNavAgentIntent } from "../Libraries/Game/snake/createGroundNavAgentIntent.js";
+import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -114,7 +116,8 @@ function createMockIntent(state, selfHeadId, registry) {
     const head = state.entityRegistry.getLive(selfHeadId);
     applySnakeHeadGameplay(head);
     const { brain, sync } = createSnakeBrain();
-    const intent = createSnakeForageIntent({
+    const intent = createGroundNavAgentIntent({
+        profileId: AGENT_DECISION_PROFILE.snake,
         brain,
         sync,
         headNav,
@@ -480,7 +483,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_prey");
         autosim.tick(FRAME_MS);
         assert.equal(autosim.isSprinting(), true);
-        assert.equal(hunter.head.strategy.groundNav.maxSpeed, baseSpeed * getSnakeGameConfig().sprint.speedMultiplier);
+        assert.equal(hunter.head.strategy.groundNav.maxSpeed, baseSpeed * getAgentProfile(AGENT_DECISION_PROFILE.snake).sprint.speedMultiplier);
     });
     it("a min-length snake never sprints, even fleeing a lethal threat (PR10)", async () => {
         applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 64 });

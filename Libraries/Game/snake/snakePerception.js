@@ -1,13 +1,14 @@
 import { beginGridVisionTick } from "../../Navigation/perception/gridCellVisionSession.js";
 import { createObserverVisionFrame, getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 function refreshObserverVisionFrame(state) {
     const config = getSnakeGameConfig();
+    const shared = getSharedConfig(config);
     state.nav.observerVisionFrame = createObserverVisionFrame({
         tickId: state.sandbox.snakeGame.simTick,
         navTopology: state.nav.topology,
         visionSession: state.nav.gridCellVisionSession,
-        visionRange: config.visionRange,
+        visionRange: shared.visionRange,
         viewport: state.viewport,
         brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
     });

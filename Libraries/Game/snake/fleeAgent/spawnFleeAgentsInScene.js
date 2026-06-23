@@ -5,10 +5,12 @@ import { linkedChainOccupiedCellIndices } from "../../../Sandbox/spawnLinkedBall
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "../snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../../AI/identity/agentIdentity.js";
+import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
 import { FLEE_AGENT_MEMBER_COUNT, resolveFleeAgentForwardDir, spawnFleeAgent } from "./spawnFleeAgent.js";
 function resolveFleeAgentTeamForIndex(config, index) {
-    const teams = config.fleeAgent?.teams;
-    if (!Array.isArray(teams) || teams.length === 0) return { faction: config.fleeAgent?.faction, color: "#2ecc71" };
+    const flee = getAgentProfile(AGENT_PROFILE.flee, config);
+    const teams = flee.teams;
+    if (!Array.isArray(teams) || teams.length === 0) return { faction: flee.faction, color: "#2ecc71" };
     return teams[index % teams.length] ?? teams[0];
 }
 function isValidFleeAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices }) {
