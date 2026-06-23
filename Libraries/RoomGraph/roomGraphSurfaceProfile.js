@@ -1,17 +1,17 @@
 import { listShippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { surfaceProfileDefaults, surfaceProfileKnown } from "../Procedural/SurfaceProfileProvider.js";
 import { appendSelectField } from "../UI/paramFields.js";
 import { getRoomGraph, getRoomLink, pickRoomNodeAt } from "./roomGraphStore.js";
 /** @param {string | null | undefined} value @returns {string | null} */
 export function normalizeAuthoredSurfaceProfileId(value) {
     if (value == null || value === "") return null;
     const id = String(value);
-    if (!getSurfaceProfileProvider().hasProfile(id)) return null;
+    if (!surfaceProfileKnown(id)) return null;
     return id;
 }
 export function surfaceProfileSelectOptions() {
-    const defaultId = getSurfaceProfileProvider().defaultId;
+    const defaultId = surfaceProfileDefaults.defaultId;
     return [{ value: "", label: `(default: ${defaultId})` }, ...listShippedSurfaceProfileIds().map((id) => ({ value: id, label: id }))];
 }
 /** @param {HTMLElement} body @param {string} label @param {string | null | undefined} value @param {(profileId: string | null) => void} onChange */

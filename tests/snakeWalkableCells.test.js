@@ -12,7 +12,7 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
-import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { gridSettings } from "../Config/world.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
@@ -34,7 +34,7 @@ async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
         sandbox: new SandboxWorldState(),
         entityRegistry: new EntityRegistry(),
         worldProps: [],
-        worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
+        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {}, clearBakeCache: () => {} },
         nav: navigation,
     };
 }

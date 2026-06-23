@@ -10,7 +10,7 @@ import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigation
 import { cellInRect } from "../Libraries/Spatial/grid/GridUtils.js";
 import { countNavWalkableFlags } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -33,7 +33,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         sandbox: new SandboxWorldState(),
         entityRegistry: new EntityRegistry(),
         worldProps: [],
-        worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
+        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {}, clearBakeCache: () => {} },
         nav: navigation,
     };
 }

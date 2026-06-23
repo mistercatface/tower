@@ -3,14 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, tryFractureKineticContact } from "../Libraries/Props/propFracture.js";
-import {
-    GLASS_MAX_SHARDS_PER_SHATTER,
-    GLASS_MAX_SLIVER_ASPECT,
-    measureGlassShard,
-    minShardAreaForPolygon,
-    shatterGlassFootprint,
-    shatterGlassPolygon,
-} from "../Libraries/Props/glassFracture.js";
+import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT, measureGlassShard, minShardAreaForPolygon, shatterGlassFootprint, shatterGlassPolygon } from "../Libraries/Props/glassFracture.js";
 import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";

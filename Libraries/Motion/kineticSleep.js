@@ -1,8 +1,8 @@
-import { getCollisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { isKinematicallyActive, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
 import { shareKineticIsland } from "./kineticIslands.js";
 export function kineticSleepFramesRequired() {
-    return getCollisionSettings().kineticSleep.frames;
+    return collisionSettings.kineticSleep.frames;
 }
 export function isKinetic(entity) {
     return Boolean(entity?.strategy?.isKinetic);

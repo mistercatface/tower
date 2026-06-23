@@ -1,5 +1,5 @@
 import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
-import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
+import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 /**
  * @param {object} prop
@@ -17,7 +17,7 @@ export function groundNavArrivedAtTarget(prop, targetWorld, targetCellCol, targe
 }
 /** @param {object} state @param {object} prop @param {number} stopRadius */
 export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
-    const hpaNav = getPhysicsSettings().groundNavHpa;
+    const hpaNav = physicsSettings.groundNavHpa;
     return { ...state.nav.settings, pathWaypointArrival: Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor), arrivalDistance: stopRadius };
 }
 /**

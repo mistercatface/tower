@@ -1,5 +1,5 @@
 import { gridSettings, worldSpanPx } from "../Config/world.js";
-import { FLOW_FIELD_WORKER_URL, HPA_WORKER_URL, getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { FLOW_FIELD_WORKER_URL, HPA_WORKER_URL, gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
@@ -20,7 +20,7 @@ export class SharedGameState {
         const session = new HpaPathSession(worker);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows), this.obstacleGrid, FLOW_FIELD_WORKER_URL, worker);
         this.nav = new NavRuntime({ grid: this.obstacleGrid, worker, session, flowFieldGrid: this.flowFieldGrid, settings: navigationSettings });
-        this.worldSurfaces = new WorldSurfaceSystem(getGameWorldSurfaceSettings());
+        this.worldSurfaces = new WorldSurfaceSystem(gameWorldSurfaceSettings);
         this.viewport = null;
         this.lastTime = 0;
         this.gameTime = 0;

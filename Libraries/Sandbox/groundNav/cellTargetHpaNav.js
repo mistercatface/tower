@@ -1,4 +1,4 @@
-import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
+import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
@@ -257,7 +257,7 @@ export function createCellTargetHpaNav(state) {
         lastReplanReason = null;
         lastTargetDistance = null;
         lastTargetLos = null;
-        const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
+        const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
         const grid = state.obstacleGrid;
         const arrivalWorld = terminalWorld ?? destWorld;
         const arrived = exactArrival

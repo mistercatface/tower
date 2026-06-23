@@ -1,7 +1,6 @@
 /**
  * Library baseline — games override via `gameDefinition.collisionSettings`, project via Config.
  */
-import { mergeObjectTree } from "../Config/mergeConfig.js";
 /** @typedef {typeof LIBRARY_COLLISION_DEFAULTS} LibraryCollisionSettings */
 export const LIBRARY_COLLISION_DEFAULTS = {
     kineticIterations: 4,
@@ -24,10 +23,4 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     /** Resting contacts skip re-solve iterations after warm-start. */
     kineticResting: { normalVelocityEpsilon: 0.05, tangentVelocityEpsilon: 0.05 },
 };
-let activeCollisionSettings = structuredClone(LIBRARY_COLLISION_DEFAULTS);
-export function getCollisionSettings() {
-    return activeCollisionSettings;
-}
-export function applyGameCollisionSettings(definition) {
-    activeCollisionSettings = structuredClone(mergeObjectTree(LIBRARY_COLLISION_DEFAULTS, definition?.collisionSettings));
-}
+export const collisionSettings = structuredClone(LIBRARY_COLLISION_DEFAULTS);

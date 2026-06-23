@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Math/Poly2D.js";
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
@@ -77,10 +77,10 @@ export function kineticFootprintArea(body) {
     return Math.PI * r * r;
 }
 export function kineticDensity(body) {
-    return body.strategy?.density ?? getCollisionSettings().material.densityDefault;
+    return body.strategy?.density ?? collisionSettings.material.densityDefault;
 }
 export function kineticMassFromFootprint(body) {
-    const minMass = getCollisionSettings().material.minMass;
+    const minMass = collisionSettings.material.minMass;
     return Math.max(minMass, kineticDensity(body) * kineticFootprintArea(body));
 }
 export function kineticInertiaFromBody(body) {

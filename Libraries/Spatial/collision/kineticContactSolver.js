@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Collision/collisionDefaults.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import {
     gatherKineticCandidatePairs,
@@ -114,7 +114,7 @@ function applyCachedContactImpulse(contacts, i) {
     slab.w[physIdB] += jn * contacts.dynamic.rBn[i] * contacts.static.invIB[i] - jt * contacts.dynamic.rBt[i] * contacts.static.invIB[i];
 }
 function warmStartKineticContacts(contacts) {
-    const settings = getCollisionSettings();
+    const settings = collisionSettings;
     const decay = settings.kineticWarmStartDecay;
     let restingCount = 0;
     for (let i = 0; i < contacts.count; i++) {
@@ -379,7 +379,7 @@ function applyContactImpulse(contacts, i, slab, iterMaxImpulse) {
 function solveKineticContactVelocities(contacts, iterations, restingCount) {
     const slab = kineticDynamicSlab;
     const count = contacts.count;
-    const { contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
+    const { contactImpulseEpsilon } = collisionSettings.kineticEarlyOut;
     let iterationsRun = 0;
     let solveMaxImpulse = 0;
     for (let iter = 0; iter < iterations; iter++) {

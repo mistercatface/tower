@@ -1,4 +1,3 @@
-import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfileProvider.js";
 /**
  * @typedef {object} ProceduralDesignConfig
  * @property {string} [surfaceProfileId] — shorthand: start node + default + start strategy
@@ -7,8 +6,7 @@ import { getSurfaceProfileProvider } from "../Libraries/Procedural/SurfaceProfil
  * @property {Record<string, string>} [surfaceProfileByStrategy]
  * @property {number|null} [animationBakeMaxFrames] — cap animated surface flipbook length
  */
-/** @type {ProceduralDesignConfig | null} */
-let activeProceduralDesign = null;
+export const activeProceduralDesign = { current: null };
 /**
  * @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition
  * @returns {ProceduralDesignConfig | null}
@@ -29,7 +27,7 @@ export function resolveProceduralDesignConfig(definition) {
  * @param {{ layer?: number, strategy?: string }} args
  */
 export function resolveActiveSurfaceProfileId({ layer = 0, strategy } = {}) {
-    const game = activeProceduralDesign;
+    const game = activeProceduralDesign.current;
     if (!game) throw new Error("No active proceduralDesign — set gameDefinition.proceduralDesign");
     if (strategy && game.surfaceProfileByStrategy?.[strategy]) return game.surfaceProfileByStrategy[strategy];
     if (layer === 0) {
@@ -50,19 +48,4 @@ export function resolveProceduralBakeSettings(definition) {
     const raw = definition?.proceduralDesign;
     if (!raw || raw.animationBakeMaxFrames === undefined) return {};
     return { animationBakeMaxFrames: raw.animationBakeMaxFrames };
-}
-/** @param {import("./GameDefinitionTypes.js").EngineProfile} definition */
-export function applyGameProceduralDesign(definition) {
-    activeProceduralDesign = resolveProceduralDesignConfig(definition);
-    if (!isSurfaceProfileProviderInstalled()) return;
-    const nextDefault = activeProceduralDesign?.defaultSurfaceProfileId;
-    if (nextDefault) getSurfaceProfileProvider().setDefaultProfileId(nextDefault);
-}
-function isSurfaceProfileProviderInstalled() {
-    try {
-        getSurfaceProfileProvider();
-        return true;
-    } catch {
-        return false;
-    }
 }

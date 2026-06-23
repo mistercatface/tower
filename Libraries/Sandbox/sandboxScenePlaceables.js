@@ -98,7 +98,7 @@ const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+            const row = grid.worldRow(worldY);
             if (!canStampFloorBeltAt(state, col, row)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!applyFloorCellEdit(state, col, row, kind, 0)) return false;
@@ -127,7 +127,7 @@ const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+            const row = grid.worldRow(worldY);
             if (!stampPassagePowerSourceAt(state, col, row, false)) return false;
             ctx.placement.touchFloorPlacement(col, row);
             ctx.pickSelection({ kind: "floor", col, row });
@@ -208,7 +208,7 @@ const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+            const row = grid.worldRow(worldY);
             expandGridForRoomNodeFootprint(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows);
             const node = stampRoomNodeAt(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows, undefined, ctx.spawnRoomNodeSurfaceProfileId);
             if (!node) return false;
@@ -233,7 +233,7 @@ const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+            const row = grid.worldRow(worldY);
             const stamped = stampBeltCratePuzzleAt(state, col, row, ctx.spawnPuzzleAreaCols, ctx.spawnPuzzleAreaRows);
             if (!stamped) return false;
             ctx.placement.touchRoomNodePlacement(stamped.roomA.id);

@@ -1,6 +1,6 @@
 import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
-import { getPhysicsSettings } from "../Motion/physicsDefaults.js";
+import { physicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { maySnakeHeadReceiveRoll } from "../Game/snake/snakeSteeringLease.js";
 export function snapMoveTargetToCellCenter(grid, world) {
@@ -10,7 +10,7 @@ export function snapMoveTargetToCellCenter(grid, world) {
     return { world: grid.gridToWorld(col, row), col, row };
 }
 export function getKineticRollConfig(prop, overrides = {}) {
-    return { ...getPhysicsSettings().groundNavRoll, ...prop.strategy.groundNav, ...overrides };
+    return { ...physicsSettings.groundNavRoll, ...prop.strategy.groundNav, ...overrides };
 }
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;

@@ -41,7 +41,7 @@ export function createSandboxRoomGraphSession(
         pickRoomNodeAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
+            const row = grid.worldRow(worldY);
             const node = pickRoomNodeAt(state, col, row);
             if (!node) return false;
             pickSelection({ kind: "roomNode", id: node.id });

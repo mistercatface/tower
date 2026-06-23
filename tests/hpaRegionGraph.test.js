@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildFullRegionGraph, HpaRegionGraph, packRegionGraphFlat } from "../Libraries/Pathfinding/hpaRegionGraph.js";
-import {
-    createHpaWorkerSabPools,
-    growHpaCellToRegionSab,
-    PersistedHpaGraphWriter,
-} from "../Libraries/Pathfinding/hpaWorkerSab.js";
+import { createHpaWorkerSabPools, growHpaCellToRegionSab, PersistedHpaGraphWriter } from "../Libraries/Pathfinding/hpaWorkerSab.js";
 
 const frame = { cols: 3, rows: 2, minX: 0, minY: 0, cellSize: 1 };
 

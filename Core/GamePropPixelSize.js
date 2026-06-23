@@ -8,8 +8,10 @@ import { LIBRARY_DEFAULT_BAKE_PIXEL_SIZE } from "../Libraries/Motion/bodyDefault
  * @property {number | null} [propPixelSize] — target bake diameter for small props; null = 1:1 world bake
  */
 export const defaultPropPixelSize = LIBRARY_DEFAULT_BAKE_PIXEL_SIZE;
-/** @type {number | null} */
-let activePropPixelSize = null;
+export let propPixelSize = null;
+export function setPropPixelSize(value) {
+    propPixelSize = value;
+}
 /** @param {object} [prop] */
 export function hasEntityPropPixelSize(prop) {
     const value = prop?.strategy?.propPixelSize;
@@ -18,18 +20,13 @@ export function hasEntityPropPixelSize(prop) {
 /** Entity `strategy.propPixelSize` is the bake diameter; game default floors at world size. */
 export function resolvePropPixelSizeForProp(prop) {
     if (hasEntityPropPixelSize(prop)) return prop.strategy.propPixelSize;
-    return activePropPixelSize;
+    return propPixelSize;
 }
 /** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function resolvePropPixelSize(definition) {
     const value = definition?.propPixelSize;
     if (typeof value === "number" && value > 0) return value;
     return defaultPropPixelSize;
-}
-/** @param {import("./GameDefinitionTypes.js").EngineProfile} definition */
-export function applyGamePropPixelSize(definition) {
-    activePropPixelSize = resolvePropPixelSize(definition);
-    clearPropSpriteCache();
 }
 /** Quantize zoom for prop bake cache keys — eighth-step buckets. */
 export function quantizePropBakeZoom(zoom) {
@@ -42,7 +39,7 @@ export function quantizePropBakeZoom(zoom) {
  * @param {boolean} [entityOverride] — per-prop bake diameter (no world-size floor)
  * @param {number} [zoom] — viewport zoom so bake density tracks on-screen size
  */
-export function resolvePropBakeScale(worldDiameter, pixelSize = activePropPixelSize, entityOverride = false, zoom = 1) {
+export function resolvePropBakeScale(worldDiameter, pixelSize = propPixelSize, entityOverride = false, zoom = 1) {
     if (!pixelSize || worldDiameter <= 0) return 1;
     const viewZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
     const screenDiameter = worldDiameter * viewZoom;

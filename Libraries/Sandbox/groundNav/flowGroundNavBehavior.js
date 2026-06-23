@@ -1,4 +1,4 @@
-import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
+import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
 import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
 import { driveFlowGroundNav } from "./driveFlowGroundNav.js";
@@ -29,7 +29,7 @@ export function createFlowGroundNavBehavior(state) {
     };
     const tickProp = (prop, run, dt) => {
         if (!run.targetWorld) return;
-        const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
+        const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
         const steerTarget = resolveSteerTarget(run, prop);
         const flowFieldGrid = state.flowFieldGrid;
         const topologyKey = state.nav.topologyKey();

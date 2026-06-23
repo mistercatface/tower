@@ -12,7 +12,6 @@
  *
  * See also: .cursor/rules/browser-static-catalog.mdc
  */
-
 /** What we fixed — copy this pattern everywhere below. */
 export const MODEL = {
     before: [
@@ -35,7 +34,6 @@ export const MODEL = {
         "Worker SAB / nav topology — runtime alloc, not static catalog",
     ],
 };
-
 /**
  * @typedef {Object} StupidItem
  * @property {string} id
@@ -46,7 +44,6 @@ export const MODEL = {
  * @property {string[]} files — primary touch points
  * @property {number} [callSites] — grep order-of-magnitude
  */
-
 /** @type {StupidItem[]} */
 export const ITEMS = [
     // ─── DONE (reference) ───────────────────────────────────────────────────
@@ -56,14 +53,8 @@ export const ITEMS = [
         title: "propRecipes threaded + PropRenderer class",
         stupid: "Startup draw map passed as ctor arg / fn param / getter through render stack.",
         fix: "worldPropRecipes import at bake/draw sites. Deleted PropRenderer.js.",
-        files: [
-            "Libraries/Render/Props3D/PropRenderer.js (deleted)",
-            "Libraries/Render/WorldSceneRenderer.js",
-            "Libraries/Canvas/QuantizedSpriteCache.js",
-            "Render/Render.js",
-        ],
+        files: ["Libraries/Render/Props3D/PropRenderer.js (deleted)", "Libraries/Render/WorldSceneRenderer.js", "Libraries/Canvas/QuantizedSpriteCache.js", "Render/Render.js"],
     },
-
     // ─── P0 — prop catalog still pretending to "load" ───────────────────────
     {
         id: "P0-1",
@@ -108,12 +99,11 @@ export const ITEMS = [
         files: ["tests/**/*.test.js", "tests/harness/snakeGameHarness.js"],
         callSites: 55,
     },
-
     // ─── P1 — boot singleton / install / apply theater ──────────────────────
     {
         id: "P1-1",
-        priority: "p1",
-        title: "getGameWorldSurfaceSettings() lazy singleton",
+        priority: "done",
+        title: "gameWorldSurfaceSettings lazy singleton",
         stupid: "let gameWorldSurfaceSettings = null; get() auto-creates if missing. Settings come from Config/world.js — static after installEditorDefaults.",
         fix: "export const gameWorldSurfaceSettings = createGameWorldSurfaceSettings(...) from Render/WorldSurfaceBootstrap.js after one install call, OR import merged settings from Config directly. Delete lazy null branch.",
         files: ["Render/WorldSurfaceBootstrap.js", "Render/Render.js", "Core/engineGlobals.js"],
@@ -121,22 +111,16 @@ export const ITEMS = [
     },
     {
         id: "P1-2",
-        priority: "p1",
+        priority: "done",
         title: "SurfaceProfileProvider class + getSurfaceProfileProvider()",
         stupid: "Class registry + activeProvider singleton + install/get throws. Shipped profiles already exported as surfaceProceduralProfiles in Config/procedural/profiles.js.",
         fix: "export const surfaceProfiles = surfaceProceduralProfiles; export let defaultSurfaceProfileId; import profiles[id] at bake/draw sites. Runtime registerRuntime() only if editor actually adds profiles mid-session (verify — probably not; refresh).",
-        files: [
-            "Libraries/Procedural/SurfaceProfileProvider.js",
-            "Config/procedural/bootstrap.js",
-            "Config/procedural/profiles.js",
-            "Core/engineGlobals.js",
-            "Render/WorldSurface/TileWorkerEntry.js",
-        ],
+        files: ["Libraries/Procedural/SurfaceProfileProvider.js", "Config/procedural/bootstrap.js", "Config/procedural/profiles.js", "Core/engineGlobals.js", "Render/WorldSurface/TileWorkerEntry.js"],
         callSites: 20,
     },
     {
         id: "P1-3",
-        priority: "p1",
+        priority: "done",
         title: "installGameSurfaceProfileProvider wrapper",
         stupid: "Thin wrapper around installSurfaceProfileProvider that reads game definition — one more boot hop.",
         fix: "engineGlobals.installEditorDefaults writes defaultSurfaceProfileId + uses static profile map directly.",
@@ -144,7 +128,7 @@ export const ITEMS = [
     },
     {
         id: "P1-4",
-        priority: "p1",
+        priority: "done",
         title: "applyGame* / getCollisionSettings / getPhysicsSettings / getActivePerspective",
         stupid: "Parallel pattern: let activeX; applyGameX at boot; getX() on every hot read. Same as prop catalog getters.",
         fix: "export let collisionSettings (or export const after installEditorDefaults merges once). Import collisionSettings.kineticIterations — no getter. One boot merge in engineGlobals, not scattered get() calls.",
@@ -160,13 +144,12 @@ export const ITEMS = [
     },
     {
         id: "P1-5",
-        priority: "p1",
+        priority: "done",
         title: "installEditorDefaults(state) writes 8 module globals",
         stupid: "Single function that mutates half the engine via apply/install pairs — hideous boot orchestration that exists because nothing is just imported.",
         fix: "After collapsing P1-*: engine.js imports Config + merged exports; installEditorDefaults shrinks to worker URL + state.worldSurfaces.settings assign only (true runtime wiring).",
         files: ["Core/engineGlobals.js", "Apps/Editor/engine.js"],
     },
-
     // ─── P2 — render "context" bags and pass factories ──────────────────────
     {
         id: "P2-1",
@@ -198,12 +181,7 @@ export const ITEMS = [
         title: "wallCtx 15-field bag + _bindWallDrawable per drawable",
         stupid: "Separate frame dialect for walls vs props. Mutate wallCtx fields for every wall/rail in sort loop.",
         fix: "WorldSceneDrawPass (frame.md): one camera struct; wall draw reads pass + small per-drawable scratch. Collapse wallPassCamera into pass.",
-        files: [
-            "Libraries/Render/WorldSceneRenderer.js",
-            "Libraries/Render/Structure3D/ProjectedWallDraw.js",
-            "Libraries/Render/Structure3D/StaticGridEdgeRailDraw.js",
-            "Plans/current/frame.md",
-        ],
+        files: ["Libraries/Render/WorldSceneRenderer.js", "Libraries/Render/Structure3D/ProjectedWallDraw.js", "Libraries/Render/Structure3D/StaticGridEdgeRailDraw.js", "Plans/current/frame.md"],
     },
     {
         id: "P2-5",
@@ -217,11 +195,10 @@ export const ITEMS = [
         id: "P2-6",
         priority: "p2",
         title: "WorldSceneRenderer(settings) ctor param",
-        stupid: "Passes getGameWorldSurfaceSettings() into renderer ctor — static config as instance field.",
+        stupid: "Passes gameWorldSurfaceSettings into renderer ctor — static config as instance field.",
         fix: "import { gameWorldSurfaceSettings } from WorldSurfaceBootstrap (or Config) inside draw methods that need floorShadow / wall tuning.",
         files: ["Libraries/Render/WorldSceneRenderer.js", "Render/Render.js"],
     },
-
     // ─── P3 — asset lookup in hot paths / duplicate catalogs ────────────────
     {
         id: "P3-1",
@@ -255,7 +232,6 @@ export const ITEMS = [
         fix: "gamechangers.md G1 — merge forcefield stamps into gridStampDrawCache.js, same as floor belts.",
         files: ["Libraries/Sandbox/drawForcefields.js", "Libraries/Sandbox/gridStampDrawCache.js", "Plans/current/gamechangers.md"],
     },
-
     // ─── P4 — thin getters, dead files, test harness duplication ──────────
     {
         id: "P4-1",
@@ -296,7 +272,6 @@ export const ITEMS = [
         fix: "Import behavior modules directly; filter asset.sandbox.behaviors against static BEHAVIOR_BY_ID map exported from one module — no registeredBehaviors param threading.",
         files: ["Libraries/Sandbox/sandboxCapabilities.js", "Libraries/SandboxEditor/createSandboxController.js"],
     },
-
     // ─── P4 — barrels still importing through index ─────────────────────────
     {
         id: "P4-6",
@@ -307,22 +282,8 @@ export const ITEMS = [
         files: ["Libraries/Pause/index.js", "Apps/Editor/engine.js"],
     },
 ];
-
 /** Suggested knock-down order — each item should shrink files/params/objects like DONE-1. */
-export const ORDER = [
-    "P1-1",
-    "P1-4",
-    "P1-2",
-    "P2-1",
-    "P2-3",
-    "P2-5",
-    "P2-4",
-    "P3-2",
-    "P3-3",
-    "P3-4",
-    "P4-1",
-];
-
+export const ORDER = ["P2-1", "P2-3", "P2-5", "P2-4", "P3-2", "P3-3", "P3-4", "P4-1"];
 /** Grep helpers (run after fixes to verify shrinkage). */
 export const VERIFY = {
     loadPropAssets: "rg loadPropAssets",

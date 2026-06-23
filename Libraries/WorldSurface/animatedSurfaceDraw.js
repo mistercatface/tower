@@ -1,4 +1,4 @@
-import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { resolveSurfaceProfile } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
 import { drawBakedTexture, drawProjectedHorizontalChunk, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
@@ -33,7 +33,7 @@ export function disposeAnimatedSurfaceZone(zone) {
 /** @param {import("./animatedSurfaceFlipbook.js").AnimatedSurfaceFlipbook} flipbook @param {number} gameTime */
 function resolveFlipbookFrameIndex(flipbook, gameTime) {
     if (!flipbook.animated || flipbook.play.frames.length <= 1) return 0;
-    const profile = getSurfaceProfileProvider().getProfile(flipbook.profileId);
+    const profile = resolveSurfaceProfile(flipbook.profileId);
     const sourceFrame = animationFrameIndex(profile.animation, { gameTime });
     return bakeSlotForSourceFrame(sourceFrame, flipbook.bakeFrameCount, flipbook.sourceFrameCount);
 }

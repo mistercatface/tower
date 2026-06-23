@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { dotXY } from "../Math/Vec2.js";
 /**
  * Two-body impulse exchange at a SAT contact (kinetic prop pairs).
@@ -15,7 +15,7 @@ import { dotXY } from "../Math/Vec2.js";
  * @param {{ nx: number, ny: number, overlap: number, cx?: number, cy?: number }} collisionInfo
  * @param {number} [restitution]
  */
-export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = getCollisionSettings().restitution.rigidBody) {
+export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = collisionSettings.restitution.rigidBody) {
     const nx = collisionInfo.nx;
     const ny = collisionInfo.ny;
     const cx = collisionInfo.cx !== undefined ? collisionInfo.cx : p1.x + nx * (collisionInfo.overlap / 2);

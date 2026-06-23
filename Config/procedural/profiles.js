@@ -1,5 +1,5 @@
-import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { resolveActiveSurfaceProfileId } from "../../Core/GameProceduralDesign.js";
+import { resolveSurfaceProfile, runtimeSurfaceProfiles, shippedSurfaceProfileIds } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import cyberGrid from "./storage/cyberGrid.js";
 import toxicSludge from "./storage/toxicSludge.js";
 import neonWireframe from "./storage/neonWireframe.js";
@@ -36,13 +36,13 @@ export const surfaceProceduralProfiles = {
 };
 /** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
 export function registerRuntimeSurfaceProfile(profileId, profile) {
-    getSurfaceProfileProvider().registerRuntime(profileId, profile);
+    runtimeSurfaceProfiles[profileId] = profile;
 }
 export function getSurfaceProceduralProfile(profileId) {
-    return getSurfaceProfileProvider().getProfile(profileId);
+    return resolveSurfaceProfile(profileId);
 }
 export function listShippedSurfaceProfileIds() {
-    return getSurfaceProfileProvider().listShippedIds();
+    return shippedSurfaceProfileIds();
 }
 export function resolveSurfaceProfileId(args) {
     return resolveActiveSurfaceProfileId(args);

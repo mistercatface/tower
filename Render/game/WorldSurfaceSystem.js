@@ -1,11 +1,11 @@
 import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { getGameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 import { drawRoomGraphFloorPatches } from "../../Libraries/RoomGraph/roomGraphFloorDraw.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
-    constructor(settings = getGameWorldSurfaceSettings()) {
+    constructor(settings = gameWorldSurfaceSettings) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel, profileId) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel, profileId) });
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;

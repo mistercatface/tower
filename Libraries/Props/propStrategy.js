@@ -1,4 +1,4 @@
-import { getDefaultPropQuantizeSteps } from "./propRenderDefaults.js";
+import { propQuantizeSteps } from "./propRenderDefaults.js";
 import { initFractureFootprint } from "./propFracture.js";
 import { boxLocalFootprint, convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
@@ -57,7 +57,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
     return Math.min(FACING_STEPS_MAX, scaled);
 }
 export function resolvePropQuantizeSteps(prop) {
-    const defaults = getDefaultPropQuantizeSteps();
+    const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;
     const derivedFacing = deriveFacingStepsFromFootprint(prop, defaults.facing);
     const facing = override?.facing ?? derivedFacing;

@@ -1,6 +1,6 @@
+import { resolveSurfaceProfile } from "../Procedural/SurfaceProfileProvider.js";
 import { minCornerAabb } from "../Math/Aabb2D.js";
-import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
-import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 import { resolveAnimationBakeFrameCounts } from "./bake/SurfaceBakeHelpers.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
@@ -88,8 +88,8 @@ async function bakePatch(bounds, zLevel, profileId, seed, frameCount, bakeFrameC
  * }} spec
  */
 export async function bakeAnimatedSurfaceFlipbook({ play, bounds, railHeight = 0, profileId, surfaceAnimation = false, seed }) {
-    const settings = getGameWorldSurfaceSettings();
-    const profile = getSurfaceProfileProvider().getProfile(profileId);
+    const settings = gameWorldSurfaceSettings;
+    const profile = resolveSurfaceProfile(profileId);
     const { sourceTotal, bakeTotal } = resolveAnimationBakeFrameCounts(profile, settings);
     const animated = Boolean(surfaceAnimation && profile?.animation);
     const frameCount = animated ? bakeTotal : 1;

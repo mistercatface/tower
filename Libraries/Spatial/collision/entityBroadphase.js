@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Collision/collisionDefaults.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
@@ -13,7 +13,7 @@ import {
 } from "./kineticBodySlab.js";
 import { getEntityCollisionParts } from "./SatCollision.js";
 function kineticActivity() {
-    return getCollisionSettings().kineticActivity;
+    return collisionSettings.kineticActivity;
 }
 export function kineticNeighborQueryPad() {
     return kineticActivity().neighborQueryPad;

@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-    assetHasTintableColors,
-    resolveVisualOverrideColorTree,
-    resolveVisualOverridePanels,
-    setPropVisualTint,
-    visualOverrideCacheKey,
-} from "../Libraries/Color/visualOverride.js";
+import { assetHasTintableColors, resolveVisualOverrideColorTree, resolveVisualOverridePanels, setPropVisualTint, visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Libraries/Color/tintPresets.js";
 

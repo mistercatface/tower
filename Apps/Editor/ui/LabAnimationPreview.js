@@ -3,7 +3,7 @@ import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasR
 import { paintPixelArea } from "../../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { resolveBakeProfile, getAnimationDuration } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { minCornerAabb } from "../../../Libraries/Math/Aabb2D.js";
-import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let animationCanvasResize = null;
@@ -104,7 +104,7 @@ export function initAnimationPreview(canvas, getProfileConfig) {
  */
 function drawFrame(ctx, canvas, baseProfile, gameTime) {
     const resolvedProfile = resolveBakeProfile(baseProfile, "__labAnimPreview__", { gameTime });
-    const { cellSize } = getGameWorldSurfaceSettings();
+    const { cellSize } = gameWorldSurfaceSettings;
     const { bounds, play } = previewLayout;
     const surfaceBakeScale = canvas.width / PREVIEW_RAIL_BAND.size;
     ctx.fillStyle = "#080a0e";

@@ -1,13 +1,5 @@
 import { normalizeXY } from "../../Math/Vec2.js";
-import {
-    overlayCachedArrowHead,
-    overlayCachedFlowDirectionArrow,
-    overlayCachedPathDebugNode,
-    overlayCachedPathDestination,
-    overlayCachedSelectionRing,
-    overlayCircleStroke,
-    overlayPolyline,
-} from "./overlayCommands.js";
+import { overlayCachedArrowHead, overlayCachedFlowDirectionArrow, overlayCachedPathDebugNode, overlayCachedPathDestination, overlayCachedSelectionRing, overlayCircleStroke, overlayPolyline } from "./overlayCommands.js";
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 /** @typedef {Object} PathOverlayData
  * @property {"direct" | "hpa" | "flow"} mode

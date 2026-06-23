@@ -13,19 +13,7 @@ import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellT
 import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/grid/gridNavEpoch.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import {
-    MAP_GEN_KINDS,
-    applyMapGenShapeMask,
-    forEachGlobalCellInMapGenBounds,
-    getInnerRadiusCells,
-    getMapGenBoundsAabb,
-    getMapGenBoundsCenterWorld,
-    getMapGenBoundsStampExtent,
-    isGlobalCellInMapGenBounds,
-    migrateMapGenBoundsForMode,
-    syncMapGenBoundsFromPlay,
-    getMapGenBoundsConfig,
-} from "../../../Libraries/Sandbox/mapGenBounds.js";
+import { MAP_GEN_KINDS, applyMapGenShapeMask, forEachGlobalCellInMapGenBounds, getInnerRadiusCells, getMapGenBoundsAabb, getMapGenBoundsCenterWorld, getMapGenBoundsStampExtent, isGlobalCellInMapGenBounds, migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, getMapGenBoundsConfig } from "../../../Libraries/Sandbox/mapGenBounds.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 const CLEAR_CIRCLE_BOUNDS = createAabb();
 /** @param {number} cells */

@@ -1,20 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
-import {
-    obstacleEpochReplanDue,
-    obstacleReplanAllowed,
-    idlePathReplanReason,
-    idlePathReplanAllowed,
-    trackNavStuck,
-    offPathReplanDue,
-    sandboxReplanReason,
-    sandboxReplanAllowed,
-    replanPriorityFor,
-    REPLAN_PRIORITY_TARGET,
-    REPLAN_PRIORITY_VISIBLE,
-    REPLAN_PRIORITY_STUCK_OFFSCREEN,
-} from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { obstacleEpochReplanDue, obstacleReplanAllowed, idlePathReplanReason, idlePathReplanAllowed, trackNavStuck, offPathReplanDue, sandboxReplanReason, sandboxReplanAllowed, replanPriorityFor, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { createHpaGroundNavSession } from "../Libraries/Sandbox/groundNav/hpaGroundNavSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { HpaReplanRequest } from "../Libraries/Pathfinding/hpaPathRequest.js";

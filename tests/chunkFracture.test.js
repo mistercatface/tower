@@ -2,15 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { measureGlassShard } from "../Libraries/Props/glassFracture.js";
-import {
-    bakeChunkOutline,
-    buildGeometryFromChunkParts,
-    cellSizeForBoxExtents,
-    chunkCellCount,
-    chunkCollisionPartsArea,
-    mergeChunkCollisionRects,
-    rectGridParts,
-} from "../Libraries/Props/chunkFracture.js";
+import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/chunkFracture.js";
 import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
 import { fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
 import { WorldProp } from "../Entities/WorldProp.js";

@@ -3,7 +3,7 @@ import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/Profil
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallSurfaceDraw } from "../../../Libraries/Sandbox/wallDamageInvalidation.js";
-import { getGameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { drawAnimatedSurfaceZones } from "../../../Libraries/WorldSurface/animatedSurfaceDraw.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
@@ -106,7 +106,7 @@ export function applyLabWorldRenderMode(state) {
     getLabRenderer(state.editor.canvas, state.editor.ctx, state).applyWorldRenderMode(state.worldRenderMode);
 }
 function getLabRenderer(canvas, ctx, state) {
-    const settings = getGameWorldSurfaceSettings();
+    const settings = gameWorldSurfaceSettings;
     if (!labRenderer || labRenderer.canvas !== canvas || labRendererSettings !== settings) {
         labRenderer = new Renderer(canvas, ctx, { sceneHooks: editorSceneHooks });
         labRendererSettings = settings;

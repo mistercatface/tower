@@ -10,7 +10,7 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { collectNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickNavWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
-import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 async function createWallDeleteTestState() {
     const config = createDefaultMapGenBoundsConfig();
     config.boundsCol = 0;
@@ -30,7 +30,7 @@ async function createWallDeleteTestState() {
         obstacleGrid: grid,
         editor: { cavernConfig: config },
         sandbox: {},
-        worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
+        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} },
         nav: navigation,
         get notifyCount() {
             return notifyCount;

@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-    createGridWallDamageSession,
-    resolveWallDamageTintRatio,
-    resolveWallDamageTintRatioForDrawable,
-} from "../Libraries/Sandbox/gridWallDamage.js";
+import { createGridWallDamageSession, resolveWallDamageTintRatio, resolveWallDamageTintRatioForDrawable } from "../Libraries/Sandbox/gridWallDamage.js";
 import { invalidateWallDamageDraw } from "../Libraries/Sandbox/wallDamageInvalidation.js";
 import { wallDamageMultiplyFillStyle } from "../Libraries/Render/Structure3D/wallDamageDraw.js";
 import { wallGridDrawCacheHit } from "../Libraries/Render/Structure3D/StaticGridWallDraw.js";

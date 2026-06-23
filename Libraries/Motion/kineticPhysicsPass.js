@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
@@ -39,11 +39,11 @@ export function runKineticPhysics(tick, dt, hooks) {
     for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);
     frame.syncActiveKineticBodies();
     const activeBodies = frame._activeKineticBodies;
-    const { maxStepPx, maxSubsteps } = getCollisionSettings().motionSubsteps;
+    const { maxStepPx, maxSubsteps } = collisionSettings.motionSubsteps;
     const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     const subDtSec = subDt / 1000;
-    const { velocityEpsilonSq } = getCollisionSettings().kineticEarlyOut;
+    const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
     let substepsRun = steps;
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
@@ -52,7 +52,7 @@ export function runKineticPhysics(tick, dt, hooks) {
         runCollisionPipeline(tick, { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects });
         const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
         const solverStats = world.kinetic.kineticSolverStats;
-        const constraintsStable = !solverStats || solverStats.outerIterations < getCollisionSettings().kineticConstraints.iterations;
+        const constraintsStable = !solverStats || solverStats.outerIterations < collisionSettings.kineticConstraints.iterations;
         if (s + 1 < steps && maxSpeedSq <= velocityEpsilonSq && constraintsStable) {
             substepsRun = s + 1;
             break;

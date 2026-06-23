@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyMass.js";
 import { worldAnchorFromBody, worldAnchorFromSlab } from "./constraintAnchors.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
@@ -591,8 +591,8 @@ function solveKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
     if (slab.activeCount === 0) return;
     const spatialFrame = tick.frame;
-    const constraintSettings = getCollisionSettings().kineticConstraints;
-    const { contactImpulseEpsilon } = getCollisionSettings().kineticEarlyOut;
+    const constraintSettings = collisionSettings.kineticConstraints;
+    const { contactImpulseEpsilon } = collisionSettings.kineticEarlyOut;
     warmStartKineticConstraintSlab();
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;

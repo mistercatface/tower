@@ -1,4 +1,4 @@
-import { getSurfaceProfileProvider } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { runtimeSurfaceProfiles } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
@@ -55,7 +55,7 @@ export class TileSurfaceWorker {
         return bakeWallAtlasCanvases(payload, this.bakeSession);
     }
     registerRuntimeProfile(payload) {
-        getSurfaceProfileProvider().registerRuntime(payload.profileId, payload.profile);
+        runtimeSurfaceProfiles[payload.profileId] = payload.profile;
         invalidateProfileScratch(payload.profileId);
         return [];
     }

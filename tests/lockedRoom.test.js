@@ -10,17 +10,7 @@ import { cellToGlobalColRow } from "../Libraries/Spatial/grid/gridCellTopology.j
 import { addButtonLink } from "../Libraries/Sandbox/buttonLinks.js";
 import { isButtonEntity } from "../Libraries/Sandbox/buttonInput.js";
 import { resolveLockedRoomEgressLayout } from "../Libraries/RoomGraph/roomGraphLockedRoom.js";
-import {
-    assertLockedExitSealed,
-    assertLockedRoomEgressPlacements,
-    assertLockedRoomSealed,
-    bakeLinkedLockedRoomFixture,
-    createRoomBakeTestState,
-    getLockedRoomBake,
-    holdLockedRoomButton,
-    refreshPassagePower,
-    releaseLockedRoomButton,
-} from "./lockedRoomHarness.js";
+import { assertLockedExitSealed, assertLockedRoomEgressPlacements, assertLockedRoomSealed, bakeLinkedLockedRoomFixture, createRoomBakeTestState, getLockedRoomBake, holdLockedRoomButton, refreshPassagePower, releaseLockedRoomButton } from "./lockedRoomHarness.js";
 import { makeHorizontalFixture } from "./corridorHarness.js";
 describe("locked room egress layout", () => {
     it("places power on the wall beside the mouth and forcefield on the exit edge", async () => {

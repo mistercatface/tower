@@ -3,16 +3,7 @@ import { SearchState } from "../../Pathfinding/SearchState.js";
 import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-import {
-    createCellIndexLayout,
-    globalCellIdx,
-    gridCellLayout,
-    layoutAbsCellIndex,
-    layoutAbsToLocalCell,
-    layoutContainsAbsCell,
-    layoutLocalCellIndex,
-    layoutLocalToAbsCell,
-} from "../../Spatial/grid/GridUtils.js";
+import { createCellIndexLayout, globalCellIdx, gridCellLayout, layoutAbsCellIndex, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
 import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 export function railMazeBeltZoneGridBounds(grid, railConfig) {

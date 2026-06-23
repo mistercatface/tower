@@ -7,25 +7,14 @@ import { LIBRARY_DEFAULT_CAMERA_HEIGHT, LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, LI
  * @property {PerspectiveViewerSource} [viewerSource]
  */
 export const DEFAULT_PERSPECTIVE = { cameraHeight: LIBRARY_DEFAULT_CAMERA_HEIGHT, strength: LIBRARY_DEFAULT_PERSPECTIVE_STRENGTH, viewerSource: "player" };
-/** @type {PerspectiveConfig} */
-let activePerspective = { ...DEFAULT_PERSPECTIVE };
-/** Bumped when perspective config changes so viewport strength caches invalidate. */
-let perspectiveConfigGeneration = 0;
-export function getActivePerspective() {
-    return activePerspective;
-}
+export const activePerspective = { ...DEFAULT_PERSPECTIVE };
+export let perspectiveConfigGeneration = 0;
 /** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
 export function resolvePerspectiveConfig(definition) {
     return { ...DEFAULT_PERSPECTIVE, ...definition?.perspective };
 }
-/**
- * @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition
- * @returns {PerspectiveConfig}
- */
-export function applyGamePerspective(definition) {
-    activePerspective = resolvePerspectiveConfig(definition);
+export function bumpPerspectiveConfigGeneration() {
     perspectiveConfigGeneration++;
-    return activePerspective;
 }
 /**
  * Zoom-scaled structure perspective (walls + roofs). Cached on viewport until pan/zoom or perspective config changes.

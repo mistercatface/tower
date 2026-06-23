@@ -1,7 +1,5 @@
 import { gridSettings, WORLD_SURFACE_DEFAULTS, worldSpanPx } from "../Config/world.js";
 import { createWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
-/** @type {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings | null} */
-let gameWorldSurfaceSettings = null;
 const surfaceDefaults = WORLD_SURFACE_DEFAULTS;
 function resolveWallSurface(overrides, cellSize) {
     const wallHeightCells = overrides.wallHeightCells ?? surfaceDefaults.wallHeightCells;
@@ -31,13 +29,8 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         floorShadow: overrides.floorShadow ?? surfaceDefaults.floorShadow,
     });
 }
-/** @returns {import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} */
-export function getGameWorldSurfaceSettings() {
-    if (!gameWorldSurfaceSettings) gameWorldSurfaceSettings = createGameWorldSurfaceSettings();
-    return gameWorldSurfaceSettings;
-}
-/** @param {Parameters<typeof createGameWorldSurfaceSettings>[0]} [overrides] */
-export function installGameWorldSurfaceSettings(overrides) {
+export let gameWorldSurfaceSettings = createGameWorldSurfaceSettings();
+export function replaceGameWorldSurfaceSettings(overrides = {}) {
     gameWorldSurfaceSettings = createGameWorldSurfaceSettings(overrides);
 }
 export const TILE_WORKER_URL = new URL("./WorldSurface/TileWorkerEntry.js", import.meta.url);

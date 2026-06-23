@@ -2,16 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
-import {
-    applyPendingWallDamage,
-    computeWallImpactDamage,
-    createGridWallDamage,
-    flushPendingWallDamage,
-    queueWallHits,
-    resolveKineticWallDamage,
-    resolveWallDamageTarget,
-    wallDamageKey,
-} from "../Libraries/Sandbox/gridWallDamage.js";
+import { applyPendingWallDamage, computeWallImpactDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { isRailWallEdge } from "../Libraries/Spatial/grid/CellEdge.js";
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
@@ -19,14 +10,14 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
-import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 const WALL_DAMAGE = resolveSnakeWallDamageConfig();
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
     const navigation = await createWorkerNavigation(grid);
-    const state = { obstacleGrid: grid, sandbox: {}, worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} }, navigation };
+    const state = { obstacleGrid: grid, sandbox: {}, worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} }, navigation };
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return state;
 }

@@ -1,4 +1,4 @@
-import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
+import { resolveSurfaceProfile, runtimeSurfaceProfiles, shippedSurfaceProfileIds, surfaceProfileKnown } from "../Procedural/SurfaceProfileProvider.js";
 import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
@@ -51,16 +51,15 @@ export class TileSurfaceWorkerClient {
     }
     _ensureRuntimeProfileOnWorkers(profileId) {
         if (!profileId) return this._whenWorkersReady(() => {});
-        const provider = getSurfaceProfileProvider();
-        if (provider.listShippedIds().includes(profileId)) return this._whenWorkersReady(() => {});
-        if (!provider.hasProfile(profileId)) return Promise.reject(new Error(`Unknown surface procedural profile: ${profileId}`));
+        if (shippedSurfaceProfileIds().includes(profileId)) return this._whenWorkersReady(() => {});
+        if (!surfaceProfileKnown(profileId)) return Promise.reject(new Error(`Unknown surface procedural profile: ${profileId}`));
         if (this.registeredRuntimeProfileIds.has(profileId)) return this.workerReady;
-        return this.registerRuntimeProfile(profileId, provider.getProfile(profileId));
+        return this.registerRuntimeProfile(profileId, resolveSurfaceProfile(profileId));
     }
     _requestProfileBake(type, payload, tier) {
         const profileId = payload.profileId;
         return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            const profile = getSurfaceProfileProvider().getProfile(profileId);
+            const profile = resolveSurfaceProfile(profileId);
             const normalized = withBakeFrameRange(payload, profile);
             return this._sendRequest(type, normalized, tier);
         });
@@ -87,14 +86,14 @@ export class TileSurfaceWorkerClient {
     requestHorizontalPatchBake(payload) {
         const profileId = payload.profileId;
         return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            const profile = getSurfaceProfileProvider().getProfile(profileId);
+            const profile = resolveSurfaceProfile(profileId);
             const normalized = withBakeFrameRange(payload, profile);
             const tier = (normalized.frameCount ?? 1) > 1 && !isFirstFrameRange(normalized) ? TILE_BAKE_TIER.ANIMATION : TILE_BAKE_TIER.STATIC;
             return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH, normalized, tier);
         });
     }
     registerRuntimeProfile(profileId, profile) {
-        getSurfaceProfileProvider().registerRuntime(profileId, profile);
+        runtimeSurfaceProfiles[profileId] = profile;
         bumpSurfaceProfileRevision(profileId);
         this._ensureStarted();
         this.registeredRuntimeProfileIds.add(profileId);

@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Collision/collisionDefaults.js";
 import { allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./entityBroadphase.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
@@ -77,13 +77,13 @@ function kineticPairRestitution(bodyA, bodyB) {
     const r1 = bodyA.strategy?.pairRestitution;
     const r2 = bodyB.strategy?.pairRestitution;
     if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
-    return r1 ?? r2 ?? getCollisionSettings().restitution.kineticPair;
+    return r1 ?? r2 ?? collisionSettings.restitution.kineticPair;
 }
 function kineticPairFriction(bodyA, bodyB) {
     const f1 = pairMaterialFriction(bodyA);
     const f2 = pairMaterialFriction(bodyB);
     if (f1 != null && f2 != null) return Math.sqrt(f1 * f2);
-    return f1 ?? f2 ?? getCollisionSettings().pairFriction;
+    return f1 ?? f2 ?? collisionSettings.pairFriction;
 }
 function writePairMaterial(pairs, index, bodyA, bodyB) {
     pairs.static.restitution[index] = kineticPairRestitution(bodyA, bodyB);

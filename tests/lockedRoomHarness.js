@@ -6,7 +6,7 @@ import button_floor from "../Assets/props/button_floor/button_floor.asset.js";
 import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavGraphViewFromTopology } from "../Libraries/Navigation/navGraph.js";
 import { isPassagePowered } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -49,7 +49,7 @@ export async function createRoomBakeTestState(cols = 64, rows = 64) {
         worldProps: [],
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
-        worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {} },
+        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} },
         nav: createNavRuntime(grid),
     };
 }

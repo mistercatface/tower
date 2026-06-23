@@ -1,6 +1,6 @@
 import { traceClosedPolygonCount } from "../../Canvas/CanvasPath.js";
 import { elevationCameraFromViewer } from "../../Spatial/iso/ElevationCamera.js";
-import { getActivePerspective } from "../../../Core/GamePerspective.js";
+import { activePerspective } from "../../../Core/GamePerspective.js";
 import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
 /** @type {import("../../Spatial/iso/ElevationCamera.js").ElevationCamera} */
 const sPropCamera = { viewerX: 0, viewerY: 0, cameraHeight: 0, strength: 0 };
@@ -57,7 +57,7 @@ export function isPropMeshFaceVisible(prop, px, py, verts3d) {
     const cz = (v0.z + v1.z + v2.z) / 3;
     const vx = px - cx;
     const vy = py - cy;
-    const vz = getActivePerspective().cameraHeight - cz;
+    const vz = activePerspective.cameraHeight - cz;
     return nx * vx + ny * vy + nz * vz > 0;
 }
 export function drawPropMeshFace(ctx, prop, px, py, verts3d, fill, stroke, lineWidth) {

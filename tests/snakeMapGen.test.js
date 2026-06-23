@@ -13,7 +13,7 @@ import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigation
 import { createNavGraphViewFromTopology } from "../Libraries/Navigation/navGraph.js";
 import { cellInRect, colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);
@@ -33,7 +33,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
         sandbox: new SandboxWorldState(),
         entityRegistry: new EntityRegistry(),
         worldProps: [],
-        worldSurfaces: { settings: getGameWorldSurfaceSettings(), invalidateGridBounds: () => {}, clearBakeCache: () => {} },
+        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {}, clearBakeCache: () => {} },
         nav: navigation,
     };
 }

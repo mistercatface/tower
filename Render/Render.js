@@ -1,4 +1,4 @@
-import { getGameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
+import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { resolveSurfaceProfileAtCoords } from "./game/surfaceProfileResolver.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
@@ -21,7 +21,7 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = ctx;
         this.sceneHooks = options.sceneHooks ?? {};
-        this.render3D = new WorldSceneRenderer(getGameWorldSurfaceSettings());
+        this.render3D = new WorldSceneRenderer(gameWorldSurfaceSettings);
         this.worldSceneDrawInput = {
             worldSurfaces: null,
             proceduralSurfaceDraw: {
@@ -93,7 +93,7 @@ export class Renderer {
     }
     renderSimulationScene(state, viewport) {
         this.syncWorldSceneDrawInput(state);
-        const surfaceSettings = getGameWorldSurfaceSettings();
+        const surfaceSettings = gameWorldSurfaceSettings;
         viewport.configureDrawBounds(surfaceSettings.viewQueryPadPx, surfaceSettings.viewPaddingPx);
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);

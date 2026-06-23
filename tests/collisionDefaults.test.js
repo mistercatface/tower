@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getCollisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 
 describe("collision defaults", () => {
     it("deep-merges nested overrides without dropping sibling defaults", () => {
         withCollisionSettings({ kineticConstraints: { iterations: 8 }, kineticEarlyOut: { velocityEpsilonSq: 0.01 } }, () => {
-            const settings = getCollisionSettings();
+            const settings = collisionSettings;
             assert.equal(settings.kineticConstraints.iterations, 8);
             assert.equal(settings.kineticConstraints.velocityBias, LIBRARY_COLLISION_DEFAULTS.kineticConstraints.velocityBias);
             assert.equal(settings.kineticEarlyOut.velocityEpsilonSq, 0.01);

@@ -6,13 +6,7 @@ import { floorBeltFacingFromIndex, FLOOR_CELL_KIND } from "../Libraries/Spatial/
 import { writeNavFloorCell } from "../Libraries/Spatial/grid/navGridMutations.js";
 import { commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import {
-    canStepPath,
-    createNavGraphView,
-    createNavGraphViewWithLocalBake,
-    validateBeltChain,
-    snapNavGraphGoalCell,
-} from "../Libraries/Navigation/navGraph.js";
+import { canStepPath, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGraphGoalCell } from "../Libraries/Navigation/navGraph.js";
 import { snapNavGoalCell } from "../Libraries/Navigation/snapNavGoal.js";
 import { isBeltRailEdge } from "../Libraries/Spatial/grid/CellEdge.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";

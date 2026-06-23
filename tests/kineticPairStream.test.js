@@ -3,12 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
-import {
-    allowsKineticCollisionPair,
-    pairBroadphaseOverlap,
-    pairBroadphaseOverlapSnapshotted,
-    snapshotActiveBroadphaseBounds,
-} from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";

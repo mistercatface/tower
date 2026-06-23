@@ -1,4 +1,4 @@
-import { getCollisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Collision/collisionDefaults.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
@@ -53,10 +53,10 @@ function bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls)
  */
 export function runCollisionPipeline(
     tick,
-    { resolveWalls, kineticIterations = getCollisionSettings().kineticIterations, applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts) } = {},
+    { resolveWalls, kineticIterations = collisionSettings.kineticIterations, applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts) } = {},
 ) {
     const frame = tick.frame;
-    const { velocityEpsilonSq, constraintErrorEpsilon } = getCollisionSettings().kineticEarlyOut;
+    const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
     if (hasActiveBodies)

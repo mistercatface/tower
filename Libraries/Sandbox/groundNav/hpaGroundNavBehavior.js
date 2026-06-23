@@ -1,4 +1,4 @@
-import { getPhysicsSettings } from "../../Motion/physicsDefaults.js";
+import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
 import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
@@ -42,7 +42,7 @@ export function createHpaGroundNavBehavior(state) {
     const tickProp = (prop, run, dtMs) => {
         if (!run.targetWorld) return;
         const grid = state.obstacleGrid;
-        const config = getKineticRollConfig(prop, { stopRadius: getPhysicsSettings().groundNavHpa.stopRadius });
+        const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
         if (groundNavArrivedAtTarget(prop, run.targetWorld, run.targetCellCol, run.targetCellRow, grid, config.stopRadius)) {
             releaseMoveTarget(prop, run);
             return;

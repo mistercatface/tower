@@ -1,38 +1,48 @@
 import { SURFACE_PROFILE_ID } from "../Config/procedural/profileIds.js";
-import { applyGamePerspective, getActivePerspective } from "./GamePerspective.js";
-import { applyGameProceduralDesign, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
-import { applyGameCollisionSettings } from "../Libraries/Collision/collisionDefaults.js";
-import { applyGamePhysicsSettings } from "../Libraries/Motion/physicsDefaults.js";
-import { applyGamePropPixelSize } from "./GamePropPixelSize.js";
-import { applyGamePropQuantizeSettings } from "../Libraries/Props/propRenderDefaults.js";
-import { installGameSurfaceProfileProvider } from "../Config/procedural/bootstrap.js";
-import { getGameWorldSurfaceSettings, installGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
+import { mergeObjectTree, replaceRecordContents } from "../Libraries/Config/mergeConfig.js";
+import { activePerspective, bumpPerspectiveConfigGeneration, resolvePerspectiveConfig } from "./GamePerspective.js";
+import { activeProceduralDesign, resolveProceduralDesignConfig, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
+import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { physicsSettings, LIBRARY_PHYSICS_DEFAULTS } from "../Libraries/Motion/physicsDefaults.js";
+import { setPropPixelSize, resolvePropPixelSize } from "./GamePropPixelSize.js";
+import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../Libraries/Props/propRenderDefaults.js";
+import { surfaceProfileDefaults } from "../Libraries/Procedural/SurfaceProfileProvider.js";
+import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
+
 const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;
-/** Editor boot — one place for app constants; writes shared module globals once. */
+
+/** Editor boot — merges editor profile into module-level settings, then wires live worldSurfaces. */
 export function installEditorDefaults(state) {
     const profile = { id: "editor", proceduralDesign: { surfaceProfileId: EDITOR_DEFAULT_SURFACE_PROFILE_ID } };
-    installGameSurfaceProfileProvider(profile);
     if (!workersConfigured) {
         configureTileWorkerCoordinator({ workerUrl: TILE_WORKER_URL });
         workersConfigured = true;
     }
-    applyGameProceduralDesign(profile);
-    const prevCameraHeight = getActivePerspective().cameraHeight;
-    applyGamePerspective(profile);
-    installGameWorldSurfaceSettings({ wallHeightCells: profile.worldSurface?.wallHeightCells, ...resolveProceduralBakeSettings(profile) });
-    applyGameCollisionSettings(profile);
-    applyGamePhysicsSettings(profile);
-    applyGamePropQuantizeSettings(profile);
-    applyGamePropPixelSize(profile);
+    activeProceduralDesign.current = resolveProceduralDesignConfig(profile);
+    surfaceProfileDefaults.defaultId = activeProceduralDesign.current?.defaultSurfaceProfileId ?? EDITOR_DEFAULT_SURFACE_PROFILE_ID;
+    const prevCameraHeight = activePerspective.cameraHeight;
+    Object.assign(activePerspective, resolvePerspectiveConfig(profile));
+    bumpPerspectiveConfigGeneration();
+    replaceGameWorldSurfaceSettings({
+        wallHeightCells: profile.worldSurface?.wallHeightCells,
+        ...resolveProceduralBakeSettings(profile),
+    });
+    replaceRecordContents(collisionSettings, mergeObjectTree(LIBRARY_COLLISION_DEFAULTS, profile?.collisionSettings));
+    replaceRecordContents(physicsSettings, mergeObjectTree(LIBRARY_PHYSICS_DEFAULTS, profile?.physicsSettings));
+    const facing = profile?.propQuantizeSteps?.facing;
+    replaceRecordContents(propQuantizeSteps, { facing: facing != null ? facing : LIBRARY_PROP_QUANTIZE_STEPS.facing });
+    setPropPixelSize(resolvePropPixelSize(profile));
+    clearPropSpriteCache();
     const worldSurfaces = state.worldSurfaces;
-    const settings = getGameWorldSurfaceSettings();
+    const settings = gameWorldSurfaceSettings;
     const prev = worldSurfaces.settings;
     const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cellSize", "cellsPerChunk"];
     const bakeSettingsChanged =
         keysToCheck.some((key) => prev[key] !== settings[key]) ||
-        prevCameraHeight !== getActivePerspective().cameraHeight ||
+        prevCameraHeight !== activePerspective.cameraHeight ||
         JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
     void TileWorkerCoordinator.syncBakeConstants(settings);

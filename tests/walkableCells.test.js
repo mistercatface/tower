@@ -2,18 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
-import {
-    collectWalkableCells,
-    collectNavWalkableCells,
-    createNavWalkableAccess,
-    getNavWalkableCellIndex,
-    getNavWalkableCells,
-    isNavWalkableCellAt,
-    patchNavWalkableCellIndex,
-    pickWalkableCell,
-    pickNavWalkableCell,
-    pickRandomWalkableCell,
-} from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { collectWalkableCells, collectNavWalkableCells, createNavWalkableAccess, getNavWalkableCellIndex, getNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, pickRandomWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { readNavWalkableFlag } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";

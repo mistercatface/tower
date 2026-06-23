@@ -1,6 +1,6 @@
+import { resolveSurfaceProfile, surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
@@ -67,8 +67,7 @@ export class BakeSession {
 export const globalBakeSession = new BakeSession();
 function resolvePaintProfile(profileOrId) {
     if (profileOrId != null && typeof profileOrId === "object") return profileOrId;
-    const provider = getSurfaceProfileProvider();
-    return provider.getProfile(profileOrId ?? provider.defaultId);
+    return resolveSurfaceProfile(profileOrId ?? surfaceProfileDefaults.defaultId);
 }
 function resolveBakeRequestProfile(req) {
     return req.resolvePayload ? resolveBakeProfile(req.baseProfile, req.profileKey, req.resolvePayload) : resolvePaintProfile(req.profileOrId);
@@ -195,9 +194,8 @@ function getFirstAnimatedMotifIndex(profile) {
 }
 /** @param {object} payload */
 export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) {
-    const provider = getSurfaceProfileProvider();
-    const profileId = payload.profileId ?? provider.defaultId;
-    const baseProfile = provider.getProfile(profileId);
+    const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
+    const baseProfile = resolveSurfaceProfile(profileId);
     const useResolver = Boolean(baseProfile.animation);
     if (useResolver) payload.frameIndex = 0;
     const { width, height, seed } = payload;
@@ -224,9 +222,8 @@ function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSiz
 }
 /** Bake a static ground-chunk canvas (frame 0 when the profile has a timeline). */
 export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession) {
-    const provider = getSurfaceProfileProvider();
-    const profileId = payload.profileId ?? provider.defaultId;
-    const baseProfile = provider.getProfile(profileId);
+    const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
+    const baseProfile = resolveSurfaceProfile(profileId);
     const { chunkCol, chunkRow, minX, minY, seed } = payload;
     const { cellSize, cellsPerChunk, surfaceBakeScale } = getTileWorkerBakeConstants();
     const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, surfaceBakeScale);
@@ -253,9 +250,8 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
 export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
     if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
-    const provider = getSurfaceProfileProvider();
-    const profileId = payload.profileId ?? provider.defaultId;
-    const baseProfile = provider.getProfile(profileId);
+    const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
+    const baseProfile = resolveSurfaceProfile(profileId);
     const { frameStart, frameCount } = payload;
     const { originX, originY, worldWidth, worldHeight, seed } = payload;
     const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
