@@ -11,6 +11,17 @@ export function isSnakeShardFood(prop) {
 export function isSnakeFoodTarget(prop) {
     return isSnakeShardFood(prop) || isSnakeFracturableDeadSegment(prop);
 }
+export function canAgentEatSnakeFood(seeker, food) {
+    if (!seeker || !food || food.isDead || !isSnakeFoodTarget(food)) return false;
+    const seekerFaction = seeker.faction ?? null;
+    const foodFaction = food.faction ?? null;
+    if (!foodFaction) return true;
+    if (!seekerFaction) return true;
+    return seekerFaction !== foodFaction;
+}
+function isEdibleSnakeFoodForSeeker(seeker, food) {
+    return food !== seeker && canAgentEatSnakeFood(seeker, food);
+}
 function snakeWorldBoundsInto(out, state) {
     const grid = state.obstacleGrid;
     out.minX = grid.minX;
@@ -37,7 +48,7 @@ export function findNearestVisibleSnakeFoodFromVision(state, seeker, frame, visi
     let bestDist = Infinity;
     for (let i = 0; i < candidates.length; i++) {
         const food = candidates[i];
-        if (food === seeker || food.isDead) continue;
+        if (!isEdibleSnakeFoodForSeeker(seeker, food)) continue;
         if (!isPointVisibleFromHeadVision(food.x, food.y, seeker.x, seeker.y, vision.originCol, vision.originRow, visionRange.range, cellSet, frame.navTopology, frame.visionSession)) continue;
         const dist = Math.hypot(food.x - seeker.x, food.y - seeker.y);
         if (dist < bestDist) {
@@ -54,7 +65,7 @@ export function collectVisibleSnakeFoodFromVision(state, seeker, frame, vision, 
     const visible = [];
     for (let i = 0; i < candidates.length; i++) {
         const food = candidates[i];
-        if (food === seeker || food.isDead) continue;
+        if (!isEdibleSnakeFoodForSeeker(seeker, food)) continue;
         if (!isPointVisibleFromHeadVision(food.x, food.y, seeker.x, seeker.y, vision.originCol, vision.originRow, visionRange.range, cellSet, frame.navTopology, frame.visionSession)) continue;
         visible.push(food);
     }

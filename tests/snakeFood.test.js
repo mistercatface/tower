@@ -5,7 +5,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { countLiveSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
+import { countLiveSnakeFood, canAgentEatSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
 import { wireSnakeTestGame, wireSnakeTestNavSession, primeSnakeHeadVision, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -83,13 +83,65 @@ describe("snake visible shard food parity", () => {
         applySnakeGameConfig();
         const state = await createFoodQueryState();
         const config = getSnakeGameConfig();
-        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
-        const carcassChain = spawnLinkedBallChain(state, { col: 6, row: 8 }, chainOptions(config));
+        const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 8 }, { ...chainOptions(config), faction: "red" });
+        const carcassChain = spawnLinkedBallChain(state, { col: 6, row: 8 }, { ...chainOptions(config), faction: "blue" });
         const carcassSegment = carcassChain.tail;
         markSnakeSegmentsFracturable(state, [carcassSegment.id]);
         const seeker = seekerChain.head;
         seeker.facing = Math.PI;
         primeSnakeHeadVision(state, seeker);
         assert.equal(findNearestVisibleSnakeFood(state, seeker).id, carcassSegment.id);
+    });
+});
+
+describe("snake food allegiance", () => {
+    it("blocks same-faction snakes from eating ally or self shards", async () => {
+        applySnakeGameConfig();
+        const state = await createFoodQueryState();
+        const config = getSnakeGameConfig();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
+        const seeker = chain.head;
+        seeker.faction = "red";
+        const allyShard = spawnSnakeFoodShardAtCell(state, { col: 6, row: 8 });
+        allyShard.faction = "red";
+        const enemyShard = spawnSnakeFoodShardAtCell(state, { col: 8, row: 8 });
+        enemyShard.faction = "blue";
+        assert.equal(canAgentEatSnakeFood(seeker, allyShard), false);
+        assert.equal(canAgentEatSnakeFood(seeker, enemyShard), true);
+        seeker.facing = Math.PI;
+        primeSnakeHeadVision(state, seeker);
+        assert.equal(findNearestVisibleSnakeFood(state, seeker).id, enemyShard.id);
+    });
+
+    it("lets flee agents eat snake shards but not same-faction flee corpses", async () => {
+        applySnakeGameConfig();
+        const state = await createFoodQueryState();
+        const config = getSnakeGameConfig();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
+        const seeker = chain.head;
+        seeker.faction = "bravo";
+        const allyShard = spawnSnakeFoodShardAtCell(state, { col: 4, row: 8 });
+        allyShard.faction = "bravo";
+        const redShard = spawnSnakeFoodShardAtCell(state, { col: 6, row: 8 });
+        redShard.faction = "red";
+        const blueShard = spawnSnakeFoodShardAtCell(state, { col: 8, row: 8 });
+        blueShard.faction = "blue";
+        assert.equal(canAgentEatSnakeFood(seeker, allyShard), false);
+        assert.equal(canAgentEatSnakeFood(seeker, redShard), true);
+        assert.equal(canAgentEatSnakeFood(seeker, blueShard), true);
+        seeker.facing = Math.PI;
+        primeSnakeHeadVision(state, seeker);
+        assert.equal(findNearestVisibleSnakeFood(state, seeker).id, blueShard.id);
+    });
+
+    it("still treats neutral shards as edible for snakes", async () => {
+        applySnakeGameConfig();
+        const state = await createFoodQueryState();
+        const config = getSnakeGameConfig();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
+        const seeker = chain.head;
+        seeker.faction = "red";
+        const neutralShard = spawnSnakeFoodShardAtCell(state, { col: 6, row: 8 });
+        assert.equal(canAgentEatSnakeFood(seeker, neutralShard), true);
     });
 });

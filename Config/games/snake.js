@@ -4,9 +4,9 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    snakeCount: 64,
+    snakeCount: 160,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 160,
+    boidCount: 320,
     fleeAgent: {
         bodyPropId: "flee_ball",
         faction: "bravo",

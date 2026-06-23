@@ -10,7 +10,7 @@ import { getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } 
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision, isSnakeShardFood } from "./snakeFood.js";
+import { canAgentEatSnakeFood, findNearestVisibleSnakeFood, findNearestVisibleSnakeFoodFromVision, isSnakeShardFood } from "./snakeFood.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
@@ -138,6 +138,7 @@ export function createSnakeAutosim(state, { headId, navWalkable, eatRadius, ball
         }
     };
     const eatFoodShard = (seeker, food, _dt, members = null) => {
+        if (!canAgentEatSnakeFood(seeker, food)) return;
         const grid = state.obstacleGrid;
         const foodCell = grid.worldToGrid(food.x, food.y);
         brain.stampArrival(foodCell.col, foodCell.row);
