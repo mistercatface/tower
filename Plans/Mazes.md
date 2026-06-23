@@ -4,15 +4,19 @@ Progress tracker and **computer-science index** for maze generation: spanning tr
 
 **Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔗 owned by another doc · 🔜 planned
 
-**Related docs (overlap OK for now — consolidate later):**
+**Naming / voxel vs rail:** [glossary.md](./glossary.md) (summary) · full checklist below.
 
-- 🔗 [`procedural.md`](procedural.md) — end-to-end procgen pipeline, room graph model, corridor **solver bridge**, bake-to-geometry, world scale
+**Related docs:**
+
+- 🔗 [`procedural.md`](procedural.md) — world-gen **pipeline**: room graph, corridor solver bridge, bake-to-geometry, world scale
 - 🔗 [`pathfinding.md`](pathfinding.md) — corridor A\*, HPA, `canStep` / boundary graph
 - 🔗 [`rendering.md`](rendering.md) — wall atlas (voxel fill) vs edge-rail draw (boundary graph)
 
 ---
 
-## The confusion: voxel fill vs rail walls (read this first)
+## The confusion: voxel fill vs rail walls
+
+See [glossary.md](./glossary.md#voxel-fill-vs-rail-walls) for the short version. Full detail:
 
 Two different **geometry roles** on the same four-way **cell-edge graph**. Mixing the names is why rails “look like shit” when treated as chunky voxels.
 

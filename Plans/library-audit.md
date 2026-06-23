@@ -5,28 +5,15 @@ This is the cross-cutting index for the engine. It answers two questions:
 - **Where does this concern live?**
 - **Is this engine/library code, sandbox tooling, or snake-game-specific code?**
 
-Spoke docs stay authoritative for feature progress: [physics](./physics.md), [pathfinding](./pathfinding.md), [rendering](./rendering.md), [procedural](./procedural.md), and [AI](./AI.md). This audit keeps the folder map and naming traps current.
+Spoke docs stay authoritative for feature progress: [physics](./physics.md), [pathfinding](./pathfinding.md), [rendering](./rendering.md), [procedural](./procedural.md), [Mazes](./Mazes.md), and [AI](./AI.md). This audit keeps the folder map current.
 
 **Legend:** ✅ shipped and wired · 🟡 partial / scaffolding · ⬜ inert or not behaviorally wired · 🔗 cross-cutting foundation.
 
 ---
 
-## 1. Naming traps — read first
+## 1. Naming traps
 
-| You see… | It actually is… | Do not confuse it with… |
-|---|---|---|
-| `Libraries/Procedural/Motifs`, `Fields`, `Noise` | Surface texture synthesis for floors/walls | Geometry generation, which lives in `Libraries/CA`, `Libraries/RoomGraph`, and `Libraries/Procedural/Mazes` |
-| `Libraries/Procedural/Mazes` | Geometry/layout helpers for rail mazes, belt corridors, split layouts, walkable indexes | Texture motifs under `Libraries/Procedural/Motifs` |
-| `Spatial/iso/IsometricProjection.js` | Camera-relative radial elevation projection | True fixed isometric mode, which is still future rendering work |
-| `prop.strategy` | WorldProp capability/config pattern: physics, render keys, sandbox affordances | AI strategy / GOAP / objectives, which are not implemented |
-| `target` in `snakeFood` or ground nav | A movement target or food/carcass prop | AI objective / strategic goal |
-| `Libraries/FSM/transition.js` | Generic enter/exit transition helper for prop lifecycle-style FSMs | Agent intent FSM, now `Libraries/AI/agentIntent/createAgentIntent.js` |
-| `Libraries/AI/brain` | Spatial cell memory plus nav-step penalty producer | Entity target memory, now `Libraries/AI/memory/targetMemory.js` |
-| `navStepPenalty.js` x2 | `AI/brain/navStepPenalty.js` builds penalties; `Pathfinding/navStepPenalty.js` consumes them in A* | A duplicate implementation |
-| `Libraries/Navigation` | Runtime nav wiring, perception, steering, topology sync | Search algorithms, which live in `Libraries/Pathfinding` |
-| `Libraries/Motion` | Integration, constraints, solver, wall resolution | Collision detection, which lives in `Libraries/Spatial/collision` |
-| `Libraries/WorldSurface` | Chunk floor/wall texture-atlas baking | Per-prop surface texturing in `Libraries/Render/SurfaceTexturing` |
-| `Libraries/Sandbox` | Mixed engine-facing sandbox systems: nav behaviors, chains, floor systems, snapshots, map-gen UI | Snake game rules in `Libraries/Game/snake` |
+→ **[glossary.md](./glossary.md)** — canonical list (procedural×3, voxel vs rail, code paths). Don't duplicate here.
 
 ---
 

@@ -4,13 +4,15 @@ Progress tracker for world/level generation: seeded RNG → cavern carving → r
 
 **Legend:** ✅ shipped · 🟡 partial · ⬜ not started · 🔗 owned by another doc (referenced here) · 🔜 planned
 
+**Naming / doc map:** [glossary.md](./glossary.md) — read before “procedural” or maze discussions.
+
 **Overall engine maturity:** ~**40%** of a full procedural level-generation stack. The honest one-liner: **strong procedural *resolution*, weak procedural *authorship***. The engine is excellent at turning authored-or-seeded *inputs* into real grid geometry (cellular-automata caverns, corridor A* bake, locked-room mechanisms, one puzzle template) — but it does **not** yet *decide* a level layout from a seed. Room placement is manual; there's no dungeon-graph generator, no WFC/BSP, and no unified world seed. The bones (seeded RNG, stamp/bake pipeline, expandable grid) are solid; the brain that arranges rooms is missing.
 
 ---
 
 ## Scope & ownership (read this first — it's why the docs stop overlapping)
 
-These roadmaps bleed into each other. The rule: **each doc owns one layer; shared concerns are `🔗` references, not duplicated content.** This doc owns **generation of gameplay geometry and content layout**. It explicitly does **not** own:
+These roadmaps bleed into each other. The rule: **each doc owns one layer; shared concerns are `🔗` references, not duplicated content.** This doc owns **generation of gameplay geometry and content layout** (the **world-gen pipeline**). Layout **algorithms** (R-DFS, V-CA, belt post-process, …) → 🔗 [Mazes.md](./Mazes.md). It explicitly does **not** own:
 
 | Concern | Owner | Why it's not here |
 |---|---|---|
@@ -19,8 +21,9 @@ These roadmaps bleed into each other. The rule: **each doc owns one layer; share
 | **Drawing** generated geometry (walls, floor textures) | 🔗 `rendering.md` Tiers 6, 8 | Wall atlas + surface texturing are render pipelines |
 | Procedural **surface textures** (Perlin/Voronoi in `Libraries/Procedural/`) | 🔗 `rendering.md` Tier 8 | Confusingly named — that's *texture synthesis*, a visual concern |
 | The **grid** representation (`canStep`, nav epoch) | 🔗 `pathfinding.md` Tier 0 | Generation *writes to* the grid; it doesn't define it |
+| Layout **algorithms** (spanning trees, maze post-process) | 🔗 [Mazes.md](./Mazes.md) | This doc owns bake pipeline; Mazes owns CS generator catalog |
 
-> **Naming trap:** `Libraries/Procedural/` (Perlin noise, Voronoi motifs) is for **surface textures**, *not* level geometry. "Procedural" in *this* doc means **world/level geometry & content** — caverns, rooms, corridors, puzzles, placement. Don't conflate them.
+> **Naming trap:** see [glossary.md](./glossary.md) — `Libraries/Procedural/` (Perlin noise, Voronoi motifs) is **surface textures**, not level geometry.
 
 So the boundary in one sentence: **this doc carves and arranges space; rendering draws it, pathfinding routes through it, AI judges it.**
 

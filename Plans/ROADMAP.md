@@ -2,6 +2,8 @@
 
 This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own domain detail; this file owns the dashboard, cross-engine comparison, cross-cutting foundations, and grab-list.
 
+**Start here for naming:** [glossary.md](./glossary.md) · **Active queue:** [NOW.md](./NOW.md)
+
 **Design constraints:** Canvas 2D only · single-threaded sim plus Web Worker offload · uniform grid as the shared substrate · bake-and-blit rendering caches · seeded determinism where wired.
 
 **Legend:** ✅ shipped · 🟡 partial / scaffolding · ⬜ not started · ▶ next ship.
@@ -15,7 +17,7 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | **Physics** | ~75% | v1 rigid-body sandbox is maintenance-ready; warm-starting, islands, distance constraints, wall/fracture hooks | sequential impulse PGS, SAT, uniform-grid broadphase, island sleep | gameplay-driven joints / CCD only when needed | [physics.md](./physics.md) |
 | **Pathfinding** | ~56% | pro-grade grid search + HPA/flow workers; missing smoothing and crowd layer | octile A*, HPA* Voronoi regions, flow-field BFS, SAB workers | funnel / string-pull smoothing | [pathfinding.md](./pathfinding.md) |
 | **Rendering** | ~52% | radial pseudo-3D core is strong; no shadows/lighting pass yet | camera-relative elevation projection, painter sort, bake/blit LRU | projected drop shadows | [rendering.md](./rendering.md) |
-| **Procedural** | ~42% | strong bake/resolution; weak authorship/generator layer | CA caves, room-graph bake, cardinal corridor A* | unified root seed | [procedural.md](./procedural.md) |
+| **Procedural** | ~42% | strong bake/resolution; weak authorship/generator layer | CA caves, room-graph bake, cardinal corridor A* | unified root seed | [procedural.md](./procedural.md) · algorithms → [Mazes.md](./Mazes.md) |
 | **AI** | ~52% | two intent consumers (snake + flee); team hunting, ally perception/memory, flee `seek_ally`; shared classifier + utility scoring | FSM, utility scoring, TTL target memory, faction relationships | cohesion 4c/4d; local flow horizons for reach/crowd | [AI.md](./AI.md) |
 
 **Overall engine maturity: ~56%** _(manual unweighted roll-up)._ Recent AI work: flee agents as a second full intent consumer, faction relationship rules, ally perception/memory, and flee regroup (`seek_ally`). Pathfinding flow fields remain strong but are not yet wired into snake/flee decision or locomotion loops.
@@ -202,7 +204,7 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 ### Procedural
 
 - [x] CA caves, room-graph bake, corridor solver, locked-room and puzzle template bakes.
-- [x] `Procedural/Mazes` adds maze/corridor/split helpers.
+- [x] `Procedural/Mazes` adds maze/corridor/split helpers — algorithm catalog → [Mazes.md](./Mazes.md).
 - [ ] ▶ Unified root seed.
 - [ ] Room-graph generator v1.
 
@@ -239,6 +241,8 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 
 ## 7. Active tasks available to grab
 
+See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer strategic grab-list.
+
 ### Highest strategic overlap
 
 1. **Cohesion 4c/4d** — snake regroup + flee pack flee; builds on shipped ally memory and `seek_ally`.
@@ -262,14 +266,15 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 
 ## 8. Limitations
 
-- Maturity percentages are manual and approximate.
+- Maturity percentages are **manual snapshots** — not auto-computed from tier checkboxes. Prefer spoke tier status or [NOW.md](./NOW.md) for what to work on next.
 - This hub intentionally summarizes; spoke docs hold detail.
 - The docs should be refreshed when a generic package lands from a snake proving-ground feature.
+- Naming traps and doc boundaries → [glossary.md](./glossary.md).
 
 ---
 
 ## 9. Spokes
 
-[physics.md](./physics.md) · [pathfinding.md](./pathfinding.md) · [rendering.md](./rendering.md) · [procedural.md](./procedural.md) · [AI.md](./AI.md) · [library-audit.md](./library-audit.md)
+[glossary.md](./glossary.md) · [NOW.md](./NOW.md) · [physics.md](./physics.md) · [pathfinding.md](./pathfinding.md) · [rendering.md](./rendering.md) · [procedural.md](./procedural.md) · [Mazes.md](./Mazes.md) · [AI.md](./AI.md) · [library-audit.md](./library-audit.md)
 
 *Last updated: team hunting + flee `seek_ally` (AI ~52%); local flow horizon direction documented in AI.md and pathfinding grab-list.*
