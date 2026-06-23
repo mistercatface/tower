@@ -6,6 +6,11 @@ import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "../snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../../AI/identity/agentIdentity.js";
 import { FLEE_AGENT_MEMBER_COUNT, resolveFleeAgentForwardDir, spawnFleeAgent } from "./spawnFleeAgent.js";
+function resolveFleeAgentTeamForIndex(config, index) {
+    const teams = config.fleeAgent?.teams;
+    if (!Array.isArray(teams) || teams.length === 0) return { faction: config.fleeAgent?.faction, color: "#2ecc71" };
+    return teams[index % teams.length] ?? teams[0];
+}
 function isValidFleeAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices }) {
     const { col, row } = anchorCell;
     if (!navWalkable.has(col, row)) return false;
@@ -48,8 +53,9 @@ export function spawnFleeAgentsInScene(state, navWalkable, { excludeIndices = nu
                 excludeIndices: occupied,
                 rng,
             });
-        const pack = spawnFleeAgent(state, anchorCell, { forwardDir });
-        setAgentIdentity(pack.head.id, { name: pickRandomName(rng), color: "#2ecc71" });
+        const team = resolveFleeAgentTeamForIndex(config, i);
+        const pack = spawnFleeAgent(state, anchorCell, { forwardDir, faction: team.faction });
+        setAgentIdentity(pack.head.id, { name: pickRandomName(rng), color: team.color ?? "#2ecc71" });
         agents.push({ pack });
         for (const idx of linkedChainOccupiedCellIndices([pack.head], state.obstacleGrid)) occupied.add(idx);
     }

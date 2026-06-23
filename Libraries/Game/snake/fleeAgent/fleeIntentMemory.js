@@ -1,5 +1,5 @@
 import { createTargetMemory, targetFromMemoryRecord } from "../../../AI/memory/targetMemory.js";
-const FLEE_MEMORY_KINDS = ["threat", "food", "ally"];
+const FLEE_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
 function targetFromRecord(record, state) {
     if (!record) return null;
     if (record.id != null) {
@@ -8,27 +8,32 @@ function targetFromRecord(record, state) {
     }
     return targetFromMemoryRecord(record);
 }
-export function createFleeIntentMemory({ threatTtlTicks = 45, foodTtlTicks = 180, allyTtlTicks = 60 } = {}) {
-    const memory = createTargetMemory(FLEE_MEMORY_KINDS, { threat: threatTtlTicks, food: foodTtlTicks, ally: allyTtlTicks });
+export function createFleeIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60 } = {}) {
+    const memory = createTargetMemory(FLEE_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks });
     return {
         update(seeker, state, visibleWorld) {
             const grid = state.obstacleGrid;
             memory.observe("threat", visibleWorld.threat, seeker, grid);
+            memory.observe("prey", visibleWorld.prey, seeker, grid);
             memory.observe("food", visibleWorld.food, seeker, grid);
             memory.observe("ally", visibleWorld.ally, seeker, grid);
         },
         enrichWorld(state, visibleWorld) {
+            const preyRecord = memory.record("prey");
             const foodRecord = memory.record("food");
             const allyRecord = memory.record("ally");
             const threat = visibleWorld.threat ?? targetFromRecord(memory.record("threat"), state);
+            const prey = visibleWorld.prey ?? targetFromRecord(preyRecord, state);
             const food = visibleWorld.food ?? targetFromRecord(foodRecord, state);
             const ally = visibleWorld.ally ?? targetFromRecord(allyRecord, state);
             return {
                 ...visibleWorld,
                 threat,
+                prey,
                 food,
                 ally,
                 threatDist: visibleWorld.threat ? visibleWorld.threatDist : (memory.record("threat")?.lastDistanceCells ?? null),
+                preyDist: visibleWorld.prey ? visibleWorld.preyDist : (preyRecord?.lastDistanceCells ?? null),
                 foodDist: visibleWorld.food ? visibleWorld.foodDist : (foodRecord?.lastDistanceCells ?? null),
                 allyDist: visibleWorld.ally ? visibleWorld.allyDist : (allyRecord?.lastDistanceCells ?? null),
                 allyCount: visibleWorld.ally ? (visibleWorld.allyCount ?? 1) : ally ? 1 : 0,
@@ -36,7 +41,7 @@ export function createFleeIntentMemory({ threatTtlTicks = 45, foodTtlTicks = 180
                 threatCount: visibleWorld.threatCount ?? 0,
                 aggregateThreatSeverity: visibleWorld.aggregateThreatSeverity ?? 0,
                 memory: this.snapshot(),
-                memorySource: { threat: !visibleWorld.threat && !!threat, food: !visibleWorld.food && !!food, ally: !visibleWorld.ally && !!ally },
+                memorySource: { threat: !visibleWorld.threat && !!threat, prey: !visibleWorld.prey && !!prey, food: !visibleWorld.food && !!food, ally: !visibleWorld.ally && !!ally },
             };
         },
         snapshot() {

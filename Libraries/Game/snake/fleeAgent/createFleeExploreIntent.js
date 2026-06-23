@@ -72,6 +72,7 @@ export function createFleeExploreIntent({
         if (id == null) return null;
         const known = world.blackboard.facts.known;
         if (known.food?.id === id) return known.food;
+        if (known.enemy?.id === id) return known.enemy;
         if (known.ally?.id === id) return known.ally;
         return null;
     };
@@ -158,11 +159,11 @@ export function createFleeExploreIntent({
             if (policy?.reason) return policy.reason;
             if (nextMode === "flee") return "threat_visible";
             if (prevMode === "flee") return "threat_clear";
-            if (prevMode === "seek_food" && nextMode !== prevMode) return "target_lost";
+            if ((prevMode === "seek_enemy" || prevMode === "seek_food") && nextMode !== prevMode) return "target_lost";
             if (prevMode === "seek_ally" && nextMode !== prevMode) return "target_lost";
             return `mode_${nextMode}`;
         },
-        states: { explore: createExploreIntentState(), seek_food: createSeekIntentState(), seek_ally: createSeekIntentState(), flee: createFleeIntentState() },
+        states: { explore: createExploreIntentState(), seek_enemy: createSeekIntentState(), seek_food: createSeekIntentState(), seek_ally: createSeekIntentState(), flee: createFleeIntentState() },
         modeExitDelayTicks: { flee: 30 },
         createEffects: createFleeEffects,
         createContext: createFleeContext,

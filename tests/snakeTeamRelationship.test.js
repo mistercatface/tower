@@ -119,6 +119,23 @@ describe("resolveAgentRelationship team hunting", () => {
         assert.equal(resolveAgentRelationship(snakeGame, pack.head.id, smallSnake.head.id, state), "threat");
     });
 
+    it("same-faction flee agents are allies and opposite teams are prey", async () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(8);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const charlieA = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "charlie" });
+        const charlieB = spawnFleeAgent(state, { col: 12, row: 10 }, { faction: "charlie" });
+        const delta = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "delta" });
+        for (const pack of [charlieA, charlieB, delta]) {
+            const instance = createFleeAgentInstance(state, { headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+            registerAgentInstance(snakeGame, "flee_agent", instance);
+        }
+        assert.equal(resolveAgentRelationship(snakeGame, charlieA.head.id, charlieB.head.id, state), "ally");
+        assert.equal(resolveAgentRelationship(snakeGame, charlieA.head.id, delta.head.id, state), "prey");
+        assert.equal(resolveAgentRelationship(snakeGame, delta.head.id, charlieA.head.id, state), "prey");
+    });
+
     it("missing faction is neutral", async () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(7);

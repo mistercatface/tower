@@ -13,7 +13,7 @@ export function resolveFleeAgentPerceptionOptions(state, visionRange = null) {
     };
 }
 export function classifyFleeVisibleAgentsFromVision(seeker, selfHeadId, state, registry, frame, vision, { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship }) {
-    return classifyAgentVision(seeker, selfHeadId, state, registry, frame, vision, { visionRange, agentRange, resolveRelationship, trackPrey: false });
+    return classifyAgentVision(seeker, selfHeadId, state, registry, frame, vision, { visionRange, agentRange, resolveRelationship, trackPrey: true });
 }
 export function perceiveFleeAgentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange, { readVisionFrame, agentRange, resolveRelationship }) {
     const frame = readVisionFrame(state);

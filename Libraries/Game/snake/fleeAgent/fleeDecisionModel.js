@@ -26,6 +26,7 @@ export function deriveFleeSprintIntent(mode, threatState, hungerState = null) {
         if (foodFraction < sprintFleeMin) return { want: false, reason: "starving" };
         if (threatState && !threatState.lethal && threatState.severity >= sprint.fleeSeverity && hungerState?.desperate) return { want: true, reason: "race" };
     }
+    if (mode === "seek_enemy") return { want: true, reason: "attack" };
     return { want: false, reason: "none" };
 }
 function fleeWeights() {
@@ -81,8 +82,10 @@ function intentPolicy(mode, targetId, reason = null) {
 function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memorySource = null, committedTarget = null, routeStatus = null, hungerState = null, threatState = null }) {
     const visible = {
         threat: visibleWorld.threat,
+        enemy: memorySource?.prey ? null : (visibleWorld.prey ?? null),
         food: visibleWorld.food,
         threatDist: visibleWorld.threatDist ?? null,
+        enemyDist: memorySource?.prey ? null : visibleWorld.prey ? (visibleWorld.preyDist ?? null) : null,
         foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
         threatCount: visibleWorld.threatCount ?? 0,
         aggregateThreatSeverity: visibleWorld.aggregateThreatSeverity ?? 0,
@@ -93,8 +96,10 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
     };
     const remembered = {
         threat: memorySource?.threat ? (memoryWorld?.threat ?? null) : null,
+        enemy: memorySource?.prey ? (memoryWorld?.prey ?? null) : null,
         food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
         ally: memorySource?.ally ? (memoryWorld?.ally ?? null) : null,
+        enemyDist: memorySource?.prey ? (memoryWorld?.preyDist ?? null) : null,
         foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
         allyDist: memorySource?.ally ? (memoryWorld?.allyDist ?? null) : null,
         allyCount: memorySource?.ally ? (memoryWorld?.allyCount ?? 1) : 0,
@@ -102,9 +107,11 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
     };
     const known = {
         threat: visibleWorld.threat ?? remembered.threat,
+        enemy: visible.enemy ?? remembered.enemy,
         food: visibleWorld.food ?? remembered.food,
         ally: visibleWorld.ally ?? remembered.ally,
         threatDist: visible.threatDist,
+        enemyDist: visible.enemy ? visible.enemyDist : remembered.enemyDist,
         foodDist: visible.food ? visible.foodDist : remembered.foodDist,
         allyDist: visible.ally ? visible.allyDist : remembered.allyDist,
         threatCount: visible.threatCount ?? 0,
@@ -114,8 +121,10 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
     };
     const events = routeEvents(routeStatus);
     pushTargetEvents(events, "threat", visibleWorld.threat, remembered.threat);
+    pushTargetEvents(events, "enemy", visible.enemy ?? visibleWorld.prey, remembered.enemy);
     pushTargetEvents(events, "food", visibleWorld.food, remembered.food);
     pushTargetEvents(events, "ally", visible.ally ?? visibleWorld.ally, remembered.ally);
+    if (!known.enemy && committedTarget?.mode === "seek_enemy") events.push("TARGET_LOST");
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
     if (!known.ally && committedTarget?.mode === "seek_ally") events.push("TARGET_LOST");
     return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, allyState: deriveAllyState(visibleWorld, known, memorySource) }, events };
@@ -143,6 +152,12 @@ function scoreFoodDetail(blackboard, weights, pressure) {
     if (threat && !threat.lethal && threat.severity >= sprint.fleeSeverity) value -= pressure.sprintFoodCostPenalty ?? 0;
     return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
 }
+function scoreEnemyDetail(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.enemy) return { net: -Infinity };
+    if (blackboard.facts.known.threat) return { net: -Infinity };
+    const value = weights.enemy ?? weights.explore;
+    return netScoreDetail(value, reachForCandidate(blackboard, "seek_enemy", "enemy"), costPerCellForHunger(pressure, blackboard.facts.hungerState));
+}
 function scoreSeekAllyDetail(blackboard, weights, pressure) {
     const ally = blackboard.facts.known.ally;
     if (!ally) return { net: -Infinity };
@@ -162,10 +177,11 @@ function scoreSeekAllyDetail(blackboard, weights, pressure) {
 function scoreExplore(weights) {
     return weights.explore;
 }
-const FLEE_INTENT_SCORE_ORDER = ["flee", "seek_food", "seek_ally", "explore"];
+const FLEE_INTENT_SCORE_ORDER = ["flee", "seek_enemy", "seek_food", "seek_ally", "explore"];
 export function scoreFleeIntentCandidateDetails(blackboard, weights = fleeWeights(), pressure = fleePressure()) {
     return {
         flee: { net: scoreFlee(blackboard, weights, pressure) },
+        seek_enemy: scoreEnemyDetail(blackboard, weights, pressure),
         seek_food: scoreFoodDetail(blackboard, weights, pressure),
         seek_ally: scoreSeekAllyDetail(blackboard, weights, pressure),
         explore: { value: weights.explore, reach: null, cost: 0, net: scoreExplore(weights) },
@@ -173,6 +189,7 @@ export function scoreFleeIntentCandidateDetails(blackboard, weights = fleeWeight
 }
 function policyForScoredMode(blackboard, mode) {
     if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(blackboard, "threat"));
+    if (mode === "seek_enemy") return intentPolicy("seek_enemy", blackboard.facts.known.enemy.id, policyReasonForTarget(blackboard, "enemy"));
     if (mode === "seek_food") return intentPolicy("seek_food", blackboard.facts.known.food.id, policyReasonForTarget(blackboard, "food"));
     if (mode === "seek_ally") return intentPolicy("seek_ally", blackboard.facts.known.ally.id, policyReasonForTarget(blackboard, "ally"));
     return { mode: "explore", targetId: null };
@@ -200,6 +217,7 @@ export function buildFleeDecisionContext({
         hungerState,
         threatState,
         allyState: blackboard.facts.allyState,
+        enemy: blackboard.facts.known.enemy,
         routeStatus,
         committedTarget,
         candidateScores: scoredCandidates.candidateScores,

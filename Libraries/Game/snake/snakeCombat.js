@@ -61,6 +61,17 @@ function fleeSnakeContactPair(instanceA, instanceB, bodyA, bodyB) {
     if (instanceB instanceof FleeAgentInstance && instanceA instanceof SnakeInstance) return { fleeInstance: instanceB, snakeInstance: instanceA, fleeBody: bodyB, snakeBody: bodyA };
     return null;
 }
+function tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, bodyA, bodyB, relSpeed, config) {
+    if (!(instanceA instanceof FleeAgentInstance) || !(instanceB instanceof FleeAgentInstance)) return false;
+    if (bodyA.id !== instanceA.headId || bodyB.id !== instanceB.headId) return false;
+    const threshold = config.fleeAgent?.ramDeathSpeed ?? config.splitImpulseThreshold;
+    if (relSpeed < threshold) return false;
+    const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
+    const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
+    instanceA.die(state, snakeGame, null, impactA);
+    instanceB.die(state, snakeGame, null, impactB);
+    return true;
+}
 function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fleeInstance, snakeInstance, fleeBody, snakeBody, relSpeed, config, splitLinks) {
     if (!fleeInstance.sprinting || relSpeed < config.splitImpulseThreshold) return false;
     if (fleeInstance.intent?.getMode?.() !== "flee") return false;
@@ -103,6 +114,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         const instanceB = memberToInstance.get(pair.bodyB.id);
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+        if (tryResolveFleeAgentHeadRam(state, snakeGame, spatialFrame, contacts, i, instanceA, instanceB, pair.bodyA, pair.bodyB, relSpeed, config)) continue;
         const fleeSnakePair = fleeSnakeContactPair(instanceA, instanceB, pair.bodyA, pair.bodyB);
         if (
             fleeSnakePair &&
@@ -122,13 +134,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
             )
         )
             continue;
-        if (
-            instanceA instanceof SnakeInstance &&
-            instanceB instanceof SnakeInstance &&
-            pair.bodyA.id === instanceA.headId &&
-            pair.bodyB.id === instanceB.headId
-        )
-            continue;
+        if (instanceA instanceof SnakeInstance && instanceB instanceof SnakeInstance && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
         const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state);
         const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state);
         if (relationshipAB === "prey" || relationshipBA === "prey") {

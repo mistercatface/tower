@@ -47,6 +47,7 @@ export const fleeAgentSpecies = {
             const seekerFaction = seekerHead?.faction ?? null;
             const targetFaction = targetHead?.faction ?? null;
             if (seekerFaction && targetFaction && seekerFaction === targetFaction) return "ally";
+            if (seekerFaction && targetFaction && seekerFaction !== targetFaction) return "prey";
         }
         return "neutral";
     },

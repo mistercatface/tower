@@ -7,7 +7,9 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snak
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { resolveFleeAgentForwardDir, spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
+import { spawnFleeAgentsInScene } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgentsInScene.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
+import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
@@ -59,6 +61,31 @@ describe("flee agent spawn", () => {
         assert.equal(pack.head.type, "flee_ball");
     });
 
+    it("batch spawns flee agents split across configured teams and colors", async () => {
+        resetKineticConstraintIds(10);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig({
+            boidCount: 4,
+            fleeAgent: {
+                teams: [
+                    { faction: "charlie", color: "#f1c40f" },
+                    { faction: "delta", color: "#2ecc71" },
+                ],
+            },
+        });
+        const agents = spawnFleeAgentsInScene(state, snakeGame.navWalkable, { rng: () => 0.5 });
+        assert.equal(agents.length, 4);
+        assert.deepEqual(
+            agents.map((agent) => agent.pack.head.faction),
+            ["charlie", "delta", "charlie", "delta"],
+        );
+        assert.deepEqual(
+            agents.map((agent) => getAgentIdentity(agent.pack.head.id).color),
+            ["#f1c40f", "#2ecc71", "#f1c40f", "#2ecc71"],
+        );
+    });
+
     it("scales ball radius to snake start radius", async () => {
         resetKineticConstraintIds(2);
         const { state } = await createSnakeGameHarnessState();
@@ -86,6 +113,27 @@ describe("flee agent spawn", () => {
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
     });
+
+    it("starts, ticks, and seeks a visible opposing flee team", async () => {
+        resetKineticConstraintIds(11);
+        const { state } = await createSnakeGameHarnessState();
+        wireSnakeTestGame(state);
+        applySnakeGameConfig({ startRadius: 2 });
+        const snakeGame = state.sandbox.snakeGame;
+        const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "charlie" });
+        const targetPack = spawnFleeAgent(state, { col: 12, row: 10 }, { faction: "delta" });
+        const seeker = createFleeAgentInstance(state, { headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId });
+        const target = createFleeAgentInstance(state, { headId: targetPack.head.id, spawnGroupId: targetPack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", seeker);
+        registerAgentInstance(snakeGame, "flee_agent", target);
+        seeker.start(state);
+        target.start(state);
+        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().visionRange);
+        seeker.tick(state, 16);
+        assert.equal(seeker.intent.getMode(), "seek_enemy");
+        assert.equal(seeker.intent.getTargetId(), targetPack.head.id);
+    });
+
     it("shatters flee agent on predator snake head ram", async () => {
         applySnakeGameConfig({ splitImpulseThreshold: 30 });
         resetKineticConstraintIds(4);
