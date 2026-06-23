@@ -5,7 +5,7 @@
 | | |
 |--|--|
 | **Phase 1** | Reach dialect done ✅ — [`history.md`](history.md) |
-| **Part 1** | AI consumer dedupe — **next**, gates Part 2 |
+| **Part 1** | Pass A ✅ inventory · **Pass B next** — see [`inventory.md`](inventory.md) |
 | **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Part 1 grep gates pass** |
 
 ---
@@ -25,7 +25,8 @@ This work spans AI, navigation, and game adapters. The spoke docs below are **bi
 | [`../normalization.md`](../normalization.md) | One dialect end-to-end; one shared module per duplicated pattern; structural wins not micro-opts; Part 1 before flow locomotion |
 | [`../objects.md`](../objects.md) | Hot path = module scratch + generation stamp; **zero** per-tick `{ stepsTo() }`, opts bags, `new TypedArray` in decision tick |
 | [`../frame.md`](../frame.md) | Shared sync pattern: **sync once · read many** — like `viewport`, not a returned handle object |
-| [`history.md`](history.md) | Phase 1 shipped contract — `reachSteps`, blackboard shape, Pass 1–5, **do not regress** |
+| [`inventory.md`](inventory.md) | Pass A symbol map — duplication line refs for Pass B–F |
+| [`history.md`](history.md) | Phase 1 shipped contract — **do not regress** |
 | [`../../AI.md`](../../AI.md#future-local-flow-horizons) | Generic loop in `Libraries/AI`; species facts/scorers in game adapters |
 | [`../../pathfinding.md`](../../pathfinding.md) | Flow infra detail; HPA + flow hybrid notes for Part 2 |
 
@@ -172,7 +173,7 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 | Twin perception wrappers | `snakeIntent.js`, `fleeWorldPerception.js` | one `resolveAgentPerceptionOptions` |
 | ~270-line twin intent adapters | `createSnakeForageIntent.js`, `createFleeExploreIntent.js` | shared shell: route/reach/arrival/latch/effects |
 | `reachStepsForMode` ×2 | both adapters | once — `Libraries/Game/snake/agentReachSteps.js` or shared adapter helper |
-| Misnamed file | `agentPopulationRegistry.js` (exports `getAgentRelationship`) | rename → `agentRelationship.js` |
+| Misnamed file | ~~`agentPopulationRegistry.js`~~ → `agentRelationship.js` ✅ Pass A | **dead code** — zero importers; delete or wire in Pass D |
 | `deriveFleeAgentThreatState` | thin wrapper | delete after neutral import |
 | Pass 4 incomplete | `routeEvents` moved; `pushTargetEvents` not | finish Pass B |
 
@@ -182,7 +183,7 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 
 | Pass | Work | Bar |
 |------|------|-----|
-| **A — Inventory** | Rename misnamed files; symbol list | no behavior change |
+| **A — Inventory** ✅ | Renamed `agentPopulationRegistry.js` → `agentRelationship.js`; symbol map in [`inventory.md`](inventory.md) | no behavior change |
 | **B — Generic derives** | Move threat/ally/route/target events → `Libraries/AI/` | flee does not import snake decision model for generics |
 | **C — Intent memory** | Single factory; delete species memory files | two call sites |
 | **D — Perception** | Merge options builders | one `resolve*PerceptionOptions` body |
@@ -265,7 +266,8 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 ### Part 1 (open)
 
-- [ ] Flee does not import generic derives from `snakeDecisionModel.js`
+- [x] Pass A inventory — [`inventory.md`](inventory.md)
+- [ ] Pass B — flee does not import generic derives from `snakeDecisionModel.js`
 - [ ] One intent memory factory; one perception options builder
 - [ ] Intent adapter shared shell; species files materially shorter
 - [ ] Net −LOC across snake+flee pair
