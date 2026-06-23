@@ -114,6 +114,7 @@ export const SNAKE_GAME_DEFAULTS = {
             combat: { topology: "chain", canSplit: true, victimOfFleeEscapeRam: true, victimOfHeadStrikeRam: true, preyHeadRamImmuneLeader: true },
             relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey", squid: { type: "sizeBand", sameFaction: "neutral", targetSegmentCountAs: "component" } },
             species: { retireNavOnDeath: true, pressureDiagnostics: true },
+            gameplay: { leader: { maxSpeed: 250, accel: 200, friction: 2.0, brainSyncPass: true }, body: { friction: 2.25, density: 0.001 } },
             scoringEnv: { effortFallback: true },
             hungerBands: [
                 { id: "satisfied", min: 0.66 },
@@ -174,6 +175,7 @@ export const SNAKE_GAME_DEFAULTS = {
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
             relationships: { snake: "threat", squid: "threat", flee_agent: { type: "faction", same: "ally", different: "prey" } },
             species: {},
+            gameplay: { leader: { maxSpeed: 100, accel: 200 } },
             teams: [
                 { faction: "charlie", color: "#f1c40f" },
                 { faction: "delta", color: "#2ecc71" },
@@ -248,6 +250,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 squid: { type: "sizeBand", sameFaction: "neutral", segmentCountAs: "component" },
             },
             species: { fracturableBeforeShatter: true, removeNonStruckSegments: true },
+            gameplay: { leader: { maxSpeed: 180, accel: 160, friction: 2.25, brainSyncPass: true }, body: { friction: 2.5, density: 0.001 } },
             linkSlack: 1.0,
             growDirX: -1,
             growDirY: 0,

@@ -11,7 +11,8 @@ import { commitGridNavEdit, commitGridNavEditUnion } from "../../Sandbox/gridNav
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
-import { applySnakeHeadGameplay, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
+import { applyAgentGameplay } from "./applyAgentGameplay.js";
+import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
@@ -201,8 +202,8 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
     });
     setAgentIdentity(chain.head.id, { name, color: tintHex });
     applySnakeChainTint(chain.members, tintHex);
-    applySnakeHeadGameplay(chain.head);
-    for (let i = 1; i < chain.members.length; i++) applySnakeSegmentGameplay(chain.members[i]);
+    applyAgentGameplay(AGENT_PROFILE.snake, chain.head, "leader");
+    for (let i = 1; i < chain.members.length; i++) applyAgentGameplay(AGENT_PROFILE.snake, chain.members[i], "body");
     const occupiedIndices = new Set(excludeIndices ?? []);
     const occupied = linkedChainOccupiedCellIndices(chain.members, state.obstacleGrid);
     for (const idx of occupied) occupiedIndices.add(idx);

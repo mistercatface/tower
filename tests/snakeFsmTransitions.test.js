@@ -17,7 +17,9 @@ import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionConte
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { createSnakeAutosim, createSnakeBrain } from "../Libraries/Game/snake/snakeAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
-import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing, applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
 import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
@@ -114,7 +116,7 @@ function createMockIntent(state, selfHeadId, registry) {
     const navWalkable = snakeGameNavWalkable(state);
     const headNav = mockHeadNav();
     const head = state.entityRegistry.getLive(selfHeadId);
-    applySnakeHeadGameplay(head);
+    applyAgentGameplay(AGENT_PROFILE.snake, head, "leader");
     const { brain, sync } = createSnakeBrain();
     const intent = createGroundNavAgentIntent({
         profileId: AGENT_DECISION_PROFILE.snake,
@@ -473,7 +475,7 @@ describe("snake FSM transitions", () => {
             { chain: hunter, faction: "red" },
             { chain: prey, faction: "blue" },
         ]);
-        applySnakeHeadGameplay(hunter.head);
+        applyAgentGameplay(AGENT_PROFILE.snake, hunter.head, "leader");
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;

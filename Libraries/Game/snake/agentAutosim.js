@@ -6,7 +6,8 @@ import { createGroundNavAgentIntent } from "./createGroundNavAgentIntent.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
-import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius, applySnakeSegmentGameplay } from "./snakeGameConfig.js";
+import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
+import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "./snakeScale.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
@@ -166,7 +167,7 @@ export function createAgentAutosim(
             exportType: SNAKE_CHAIN_EXPORT_TYPE,
         });
         copySnakeChainTintFromHead(state, leaderId, newTail);
-        applySnakeSegmentGameplay(newTail);
+        applyAgentGameplay(AGENT_PROFILE.snake, newTail, "body");
     };
     const feedAndGrow = (value, members) => {
         let pending = feedSnakeMetabolism(metabolism, value);

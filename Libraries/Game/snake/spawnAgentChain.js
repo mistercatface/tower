@@ -1,15 +1,7 @@
 import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
-import {
-    getSnakeGameConfig,
-    resolveSnakeSegmentSpacing,
-    resolveSnakeStartRadius,
-    applyFleeAgentGameplay,
-    applySnakeHeadGameplay,
-    applySnakeSegmentGameplay,
-    applySquidBrainGameplay,
-    applySquidSegmentGameplay,
-} from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { applyAgentGameplayForIndex } from "./applyAgentGameplay.js";
 export const FLEE_AGENT_EXPORT_TYPE = "flee_agent";
 export const SQUID_CHAIN_EXPORT_TYPE = "squid";
 export function resolveProfileLeaderIndex(profile) {
@@ -24,6 +16,12 @@ function resolveChainExportType(profileId, profile, options) {
     if (profileId === AGENT_PROFILE.flee) return FLEE_AGENT_EXPORT_TYPE;
     if (profileId === AGENT_PROFILE.squid) return SQUID_CHAIN_EXPORT_TYPE;
     return options.exportType ?? null;
+}
+function onChainSegmentSpawned(profileId, leaderIndex) {
+    return (prop, index) => {
+        prop.strategy.canChain = true;
+        applyAgentGameplayForIndex(profileId, prop, index, leaderIndex);
+    };
 }
 function buildChainSpawnSpec(profileId, config, options = {}) {
     const profile = getAgentProfile(profileId, config);
@@ -51,33 +49,16 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
             ...base,
             headPropId: options.headPropId ?? config.headPropId,
             bodyPropId: options.bodyPropId ?? config.segmentPropId,
-            onSegmentSpawned: (prop, index) => {
-                prop.strategy.canChain = true;
-                if (index === 0) applySnakeHeadGameplay(prop);
-                else applySnakeSegmentGameplay(prop);
-            },
+            onSegmentSpawned: onChainSegmentSpawned(profileId, leaderIndex),
         };
     if (profileId === AGENT_PROFILE.flee)
-        return {
-            ...base,
-            segmentCount: 1,
-            leaderIndex: 0,
-            bodyPropId: options.bodyPropId ?? profile.bodyPropId,
-            onSegmentSpawned: (prop) => {
-                prop.strategy.canChain = true;
-                applyFleeAgentGameplay(prop);
-            },
-        };
+        return { ...base, segmentCount: 1, leaderIndex: 0, bodyPropId: options.bodyPropId ?? profile.bodyPropId, onSegmentSpawned: onChainSegmentSpawned(profileId, 0) };
     if (profileId === AGENT_PROFILE.squid)
         return {
             ...base,
             leaderPropId: options.leaderPropId ?? profile.brainPropId ?? profile.bodyPropId,
             bodyPropId: options.bodyPropId ?? profile.bodyPropId,
-            onSegmentSpawned: (prop, index) => {
-                prop.strategy.canChain = true;
-                if (index === leaderIndex) applySquidBrainGameplay(prop);
-                else applySquidSegmentGameplay(prop);
-            },
+            onSegmentSpawned: onChainSegmentSpawned(profileId, leaderIndex),
         };
     throw new Error(`spawnGameAgentChain: unsupported profile ${profileId}`);
 }

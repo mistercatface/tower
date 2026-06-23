@@ -1,7 +1,5 @@
-import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
 import { mergeObjectTree } from "../../Config/mergeConfig.js";
-import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import propCatalog from "../../../Assets/props/index.js";
 const LEGACY_SHARED_KEYS = [
     "visionRange",
@@ -154,44 +152,6 @@ export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
 }
 export function resolveSnakeWallDamageConfig(config = getSnakeGameConfig()) {
     return { ...config.wallDamage, minStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED, referenceMaxSpeed: config.wallDamage.referenceMaxSpeed };
-}
-export function applySnakeHeadGameplay(head) {
-    const snake = getSnakeGameConfig().agentProfiles.snake;
-    head._brainSyncPass = 0;
-    if (snake.headMaxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: snake.headMaxSpeed };
-    if (snake.headAccel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: snake.headAccel };
-    if (snake.headFriction != null) head.strategy.friction = snake.headFriction;
-}
-export function applySnakeSegmentGameplay(segment) {
-    const snake = getSnakeGameConfig().agentProfiles.snake;
-    if (snake.segmentFriction != null) segment.strategy.friction = snake.segmentFriction;
-    if (snake.segmentDensity != null) {
-        segment.strategy.density = snake.segmentDensity;
-        if (segment.strategy.isKinetic) syncKineticRigidBody(segment);
-    }
-}
-export function applyFleeAgentGameplay(head) {
-    const flee = getSnakeGameConfig().agentProfiles[AGENT_PROFILE.flee];
-    if (flee.maxSpeed != null) head.strategy.groundNav = { ...head.strategy.groundNav, maxSpeed: flee.maxSpeed };
-    if (flee.accel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: flee.accel };
-    if (flee.friction != null) head.strategy.friction = flee.friction;
-}
-
-export function applySquidBrainGameplay(brain) {
-    const squid = getSnakeGameConfig().agentProfiles[AGENT_PROFILE.squid];
-    brain._brainSyncPass = 0;
-    if (squid.brainMaxSpeed != null) brain.strategy.groundNav = { ...brain.strategy.groundNav, maxSpeed: squid.brainMaxSpeed };
-    if (squid.brainAccel != null) brain.strategy.groundNav = { ...brain.strategy.groundNav, accel: squid.brainAccel };
-    if (squid.brainFriction != null) brain.strategy.friction = squid.brainFriction;
-}
-
-export function applySquidSegmentGameplay(segment) {
-    const squid = getSnakeGameConfig().agentProfiles[AGENT_PROFILE.squid];
-    if (squid.segmentFriction != null) segment.strategy.friction = squid.segmentFriction;
-    if (squid.segmentDensity != null) {
-        segment.strategy.density = squid.segmentDensity;
-        if (segment.strategy.isKinetic) syncKineticRigidBody(segment);
-    }
 }
 // Ensure defaults are normalized on module load (compat aliases for tests).
 normalizeLegacyConfig(activeSnakeGameConfig);
