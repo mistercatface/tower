@@ -133,6 +133,22 @@ export class EntityRegistry {
         this._candidateSeenIds = new Set();
         /** Reused kind filter — cleared each top-level view query. */
         this._kindSetScratch = new Set();
+        /** Reused result buffers per filterId — do not retain references across calls. */
+        this._resultSlotByFilterId = Object.create(null);
+    }
+    /**
+     * Registry-owned query result buffer. Cleared on each borrow.
+     * Re-entrant queries (depth > 1) fall back to a fresh array.
+     * @param {string | undefined} filterId
+     * @returns {object[]}
+     */
+    _borrowQueryResultBuffer(filterId) {
+        if (this._viewQueryDepth > 1) return [];
+        const key = filterId ?? "";
+        let buf = this._resultSlotByFilterId[key];
+        if (!buf) buf = this._resultSlotByFilterId[key] = [];
+        buf.length = 0;
+        return buf;
     }
     /** @param {string} kind @param {object} ref */
     register(kind, ref) {
@@ -188,10 +204,11 @@ export class EntityRegistry {
      * @returns {object[]}
      */
     queryInAabbStrict(bounds, options = {}) {
-        return this._queryInAabb(bounds, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", null);
+        return this._queryInAabb(bounds, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", null, undefined);
     }
     /**
      * View/cull query — spatial broadphase when fresh, then entity-vs-AABB filter on candidates.
+     * Returned array is registry-owned; do not retain references across frames or query calls.
      *
      * @param {QueryViewCriteria} criteria
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
@@ -215,7 +232,7 @@ export class EntityRegistry {
             const baseCacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, baseFilterHash);
             const baseCached = this._queryCache.get(baseCacheKey);
             if (queryViewCacheMatches(baseCached, spatialGen, this.membershipGen, bounds, boundsHash, baseFilterHash, baseFilterKeyStr)) {
-                result = [];
+                result = this._borrowQueryResultBuffer(criteria.filterId);
                 for (let i = 0; i < baseCached.result.length; i++) {
                     const ref = baseCached.result[i];
                     if (criteria.match(ref)) result.push(ref);
@@ -224,7 +241,7 @@ export class EntityRegistry {
                 return result;
             }
         }
-        result = this._queryInAabb(bounds, kinds, criteria.match, hitTest, spatialFrame);
+        result = this._queryInAabb(bounds, kinds, criteria.match, hitTest, spatialFrame, criteria.filterId);
         this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash, filterKeyStr));
         return result;
     }
@@ -234,17 +251,17 @@ export class EntityRegistry {
      * @param {((ref: object) => boolean) | undefined} match
      * @param {AabbEntityHitTest} hitTest
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore | null | undefined} spatialFrame
+     * @param {string | undefined} filterId
      * @returns {object[]}
      */
-    _queryInAabb(bounds, kinds, match, hitTest, spatialFrame) {
+    _queryInAabb(bounds, kinds, match, hitTest, spatialFrame, filterId) {
         this._viewQueryDepth++;
         const kindSet = this._kindSetForQuery(kinds);
         const candidates = this._viewQueryDepth === 1 ? this._candidateScratch : [];
         candidates.length = 0;
         try {
             this._fillViewCandidates(candidates, bounds, kindSet, spatialFrame);
-            /** @type {object[]} */
-            const result = [];
+            const result = this._borrowQueryResultBuffer(filterId);
             for (let i = 0; i < candidates.length; i++) {
                 const ref = candidates[i];
                 if (ref.isDead) continue;

@@ -122,7 +122,7 @@ Fixed result buffers per known **`filterId`** slot; callers must not retain resu
 
 - [ ] Cache miss does not allocate new `[]` for hot filterIds (`debris`, `floor`, `3d`, `overlay`).
 
-**See:** [`objects.md`](objects.md) Tier 2 #7.
+**Detail:** [`queryview-pooling.md`](queryview-pooling.md) · perf → [`objects.md`](objects.md) Tier 2 #7.
 
 ---
 

@@ -97,7 +97,7 @@ Bad: cache miss → `result = []` + pushes; `spatialGen` bumps on both sim `begi
 
 Scratch for **candidates** is correct; **result arrays** could be pooled per query slot.
 
-**Outline:** [`gamechangers.md`](gamechangers.md) G4.
+**Outline:** [`queryview-pooling.md`](queryview-pooling.md) · [`gamechangers.md`](gamechangers.md) G4.
 ---
 
 ### 8. Overlay command rebuild — new array + Set + command objects

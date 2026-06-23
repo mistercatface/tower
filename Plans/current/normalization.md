@@ -86,6 +86,8 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 **Touches:** 1 file + call sites that mutate returned arrays. **Payoff:** render pass under entity-heavy scenes.
 
+**Detail:** [`queryview-pooling.md`](queryview-pooling.md) — registry-internal; **not** a call-site normalization (render already mostly goes through `queryPropsInView`).
+
 ---
 
 ## Tier 3 — Grid edit / invalidation spine (partially done)
