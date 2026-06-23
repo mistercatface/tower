@@ -11,11 +11,11 @@ import { clipToPath, traceCircle } from "../Canvas/CanvasPath.js";
  *   drawY?: number,
  * }} SpriteDrawModifier
  */
-/** @param {object} entity @param {object} viewport @returns {SpriteDrawModifier | null} */
-export function resolveSpriteDrawModifier(entity, viewport) {
+/** @param {object} entity @param {number} px @param {number} py @returns {SpriteDrawModifier | null} */
+export function resolveSpriteDrawModifier(entity, px, py) {
     const fn = entity.currentState?.resolveSpriteDrawModifier;
     if (!fn) return null;
-    return fn.call(entity.currentState, entity, viewport);
+    return fn.call(entity.currentState, entity, px, py);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {SpriteDrawModifier | null | undefined} modifier */
 export function prepModifiedBlit(ctx, modifier) {

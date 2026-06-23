@@ -270,6 +270,6 @@ export function clearOverlaySpriteCache() {
  */
 export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, { animFrame = 0, zoom = 1, modifier = null } = {}) {
     const sprite = getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame, zoom });
-    const resolvedModifier = modifier ?? resolveSpriteDrawModifier(prop, { x: px, y: py });
+    const resolvedModifier = modifier ?? resolveSpriteDrawModifier(prop, px, py);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, resolvedModifier);
 }

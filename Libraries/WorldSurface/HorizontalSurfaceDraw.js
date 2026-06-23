@@ -1,6 +1,6 @@
 /**
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
- * Elevated-chunk draw helpers live in ChunkDrawPass.js.
+ * Elevated-chunk clip helpers live in ChunkDrawPass.js.
  */
 export { projectHorizontalSurfaceCornersInto, clipChunkToBlockedCells, clipChunkToStaticEdgeRails, clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";

@@ -1,4 +1,11 @@
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
+import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
+const sProjectedChunkCorners = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+];
 /** @typedef {import("./WorldSurfaceSettings.js").WorldSurfaceSettings} WorldSurfaceSettings */
 /** @param {WorldSurfaceSettings} settings */
 export function getSurfaceBakeScale(settings) {
@@ -31,4 +38,9 @@ export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorl
 export function drawProjectedHorizontalChunk(ctx, canvas, corners, settings) {
     if (!isDrawableBakedSurface(canvas)) return;
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3]);
+}
+export function drawProjectedHorizontalChunkAt(ctx, canvas, originX, originY, sizePx, zLevel, camera, settings) {
+    if (!isDrawableBakedSurface(canvas)) return;
+    projectWorldAabbCornersInto(sProjectedChunkCorners, originX, originY, originX + sizePx, originY + sizePx, zLevel, camera);
+    drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, sProjectedChunkCorners[0], sProjectedChunkCorners[1], sProjectedChunkCorners[2], sProjectedChunkCorners[3]);
 }
