@@ -17,6 +17,7 @@ import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
+import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
@@ -93,14 +94,23 @@ export async function setupSnakeGame(state) {
                 return WORLD_RENDER_MODE_LABELS[mode];
             },
         },
-        shadowToggleControl: {
+        shadowSliderControl: {
             get() {
-                return state.losShadowEnabled;
+                return state.losShadowStrength;
             },
-            set(enabled) {
-                state.losShadowEnabled = enabled;
+            set(strength) {
+                state.losShadowStrength = strength;
             },
         },
+        blurToggleControl: {
+            get() {
+                return state.worldBloomEnabled;
+            },
+            set(enabled) {
+                state.worldBloomEnabled = enabled;
+            },
+        },
+        onVisualSettingChange: markLabViewDirty,
     });
     cameraCycler.setFocusedId(centerSnake.chain.head.id);
     cameraCycler.bindInput();

@@ -33,8 +33,8 @@ const editorSceneHooks = {
             // After structure (70), bloom (71), and entity layers (100) — darkness over the full scene.
             zIndex: 110,
             draw(state, viewport, ctx) {
-                if (!state.losShadowEnabled || !state.obstacleGrid) return;
-                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid);
+                if (!state.losShadowStrength || !state.obstacleGrid) return;
+                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid, { overlayAlpha: state.losShadowStrength });
             },
         },
     ],

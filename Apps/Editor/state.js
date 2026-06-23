@@ -2,6 +2,7 @@ import { SharedGameState } from "../../GameState/SharedGameState.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { isEmptyCellBounds } from "../../Libraries/DataStructures/CellRect.js";
+import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";
 /** Square canvas pixel defaults — main map, map overview, animation preview. */
 export const EDITOR_CANVAS_DEFAULTS = {
@@ -16,7 +17,8 @@ export class TileLabGameState extends SharedGameState {
         this.mapSeed = rand;
         this.floorSeed = rand;
         this.worldRenderMode = "flat2d";
-        this.losShadowEnabled = false;
+        this.losShadowStrength = 0;
+        this.worldBloomEnabled = WORLD_SURFACE_DEFAULTS.bloom.enabled;
         this.viewport = new Viewport(0, 0, 1);
         this.nav.setPruneSeedResolver((grid, bounds) => {
             if (bounds && !isEmptyCellBounds(bounds)) {

@@ -2,26 +2,39 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 function hudToggleButton(label, dataAttr) {
     return `<button type="button" class="snake-hud-toggle" ${dataAttr}><span class="snake-hud-value" style="font-size: 16px;">${label}</span></button>`;
 }
-export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null, renderModeControl = null, shadowToggleControl = null } = {}) {
+function formatShadowStrengthLabel(strength) {
+    if (strength <= 0) return "Off";
+    return `${Math.round(strength * 100)}%`;
+}
+export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null, renderModeControl = null, shadowSliderControl = null, blurToggleControl = null, onVisualSettingChange = null } = {}) {
     const stage = document.querySelector("#gameStage");
     const root = document.createElement("div");
     root.className = "snake-hud";
     const toggles = [];
     if (renderModeControl) toggles.push(hudToggleButton("2D", "data-snake-render-mode-toggle"));
-    if (shadowToggleControl) toggles.push(hudToggleButton("Shadows", "data-snake-shadow-toggle"));
+    if (blurToggleControl) toggles.push(hudToggleButton("Blur", "data-snake-blur-toggle"));
     if (onCycleCamera) toggles.push(hudToggleButton("Switch Camera", "data-snake-camera-toggle"));
     toggles.push(hudToggleButton("Overlay", "data-snake-overlay-toggle"));
+    const shadowPanel = shadowSliderControl
+        ? '<div class="snake-hud-panel snake-hud-slider-panel"><span class="snake-hud-label">Shadows</span><div class="snake-hud-slider-row"><input type="range" class="snake-hud-slider" data-snake-shadow-slider min="0" max="100" step="1" value="0" aria-label="Shadow darkness"><span class="snake-hud-slider-value" data-snake-shadow-value>Off</span></div></div>'
+        : "";
     root.innerHTML =
         '<div class="snake-hud-panel"><span class="snake-hud-label">Focused</span><span class="snake-hud-value" data-snake-name>—</span></div>' +
+        shadowPanel +
         (toggles.length ? `<div class="snake-hud-toggles">${toggles.join("")}</div>` : "");
     stage.appendChild(root);
     const nameEl = root.querySelector("[data-snake-name]");
     const renderModeToggleEl = renderModeControl ? root.querySelector("[data-snake-render-mode-toggle]") : null;
     const renderModeLabelEl = renderModeToggleEl?.querySelector(".snake-hud-value") ?? null;
-    const shadowToggleEl = shadowToggleControl ? root.querySelector("[data-snake-shadow-toggle]") : null;
+    const blurToggleEl = blurToggleControl ? root.querySelector("[data-snake-blur-toggle]") : null;
+    const shadowSliderEl = shadowSliderControl ? root.querySelector("[data-snake-shadow-slider]") : null;
+    const shadowValueEl = shadowSliderControl ? root.querySelector("[data-snake-shadow-value]") : null;
     const cameraToggleEl = onCycleCamera ? root.querySelector("[data-snake-camera-toggle]") : null;
     const overlayToggleEl = root.querySelector("[data-snake-overlay-toggle]");
     if (cameraToggleEl && onCycleCamera) cameraToggleEl.addEventListener("click", onCycleCamera);
+    function notifyVisualChange() {
+        onVisualSettingChange?.();
+    }
     function syncRenderModeToggle() {
         if (!renderModeToggleEl || !renderModeControl || !renderModeLabelEl) return;
         const mode = renderModeControl.get();
@@ -33,21 +46,41 @@ export function mountSnakeHud({ onCycleCamera = null, getFocusedSnakeName = null
         renderModeToggleEl.addEventListener("click", () => {
             renderModeControl.cycle();
             syncRenderModeToggle();
+            notifyVisualChange();
         });
         syncRenderModeToggle();
     }
-    function syncShadowToggle() {
-        if (!shadowToggleEl || !shadowToggleControl) return;
-        const enabled = shadowToggleControl.get() === true;
-        shadowToggleEl.classList.toggle("is-on", enabled);
-        shadowToggleEl.setAttribute("aria-pressed", enabled ? "true" : "false");
+    function syncBlurToggle() {
+        if (!blurToggleEl || !blurToggleControl) return;
+        const enabled = blurToggleControl.get() === true;
+        blurToggleEl.classList.toggle("is-on", enabled);
+        blurToggleEl.setAttribute("aria-pressed", enabled ? "true" : "false");
     }
-    if (shadowToggleEl && shadowToggleControl) {
-        shadowToggleEl.addEventListener("click", () => {
-            shadowToggleControl.set(!shadowToggleControl.get());
-            syncShadowToggle();
+    if (blurToggleEl && blurToggleControl) {
+        blurToggleEl.addEventListener("click", () => {
+            blurToggleControl.set(!blurToggleControl.get());
+            syncBlurToggle();
+            notifyVisualChange();
         });
-        syncShadowToggle();
+        syncBlurToggle();
+    }
+    function syncShadowSlider() {
+        if (!shadowSliderEl || !shadowValueEl || !shadowSliderControl) return;
+        const strength = shadowSliderControl.get();
+        shadowSliderEl.value = String(Math.round(strength * 100));
+        shadowValueEl.textContent = formatShadowStrengthLabel(strength);
+        shadowSliderEl.classList.toggle("is-off", strength <= 0);
+    }
+    function applyShadowSlider(value) {
+        if (!shadowSliderControl) return;
+        const strength = Math.max(0, Math.min(1, value / 100));
+        shadowSliderControl.set(strength);
+        syncShadowSlider();
+        notifyVisualChange();
+    }
+    if (shadowSliderEl && shadowSliderControl) {
+        shadowSliderEl.addEventListener("input", () => applyShadowSlider(Number(shadowSliderEl.value)));
+        syncShadowSlider();
     }
     function syncOverlayToggle() {
         const enabled = getSnakeGameConfig().showFocusedAgentDebug === true;

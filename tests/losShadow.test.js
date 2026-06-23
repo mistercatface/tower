@@ -10,7 +10,6 @@ import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libra
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestCamera, makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
-
 describe("projectWorldPointToScreenInto", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
@@ -197,10 +196,13 @@ describe("drawLosShadowOverlay", () => {
     });
 });
 describe("losShadow render gate", () => {
-    it("simulation pass skips draw when losShadowEnabled is false", () => {
-        const state = { losShadowEnabled: false, obstacleGrid: makeTestObstacleGrid(8, 8) };
+    it("simulation pass skips draw when losShadowStrength is 0", () => {
+        const state = { losShadowStrength: 0, obstacleGrid: makeTestObstacleGrid(8, 8) };
         const ctx = createMockCanvas2d(400, 400);
-        if (state.losShadowEnabled && state.obstacleGrid) drawLosShadowOverlay(ctx, makeTestViewport(0, 0), state.obstacleGrid);
-        assert.equal(ctx.ops.some((o) => o.op === "drawImage"), false);
+        if (state.losShadowStrength && state.obstacleGrid) drawLosShadowOverlay(ctx, makeTestViewport(0, 0), state.obstacleGrid);
+        assert.equal(
+            ctx.ops.some((o) => o.op === "drawImage"),
+            false,
+        );
     });
 });

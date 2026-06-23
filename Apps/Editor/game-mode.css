@@ -63,7 +63,9 @@ body.shell-game .snake-hud {
     top: 12px;
     left: 12px;
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+    max-width: calc(100% - 24px);
     pointer-events: none;
     z-index: 2;
     font-family: system-ui, sans-serif;
@@ -187,4 +189,37 @@ body.shell-game .snake-hud-toggle.is-ball-focus {
 
 body.shell-game .snake-hud-toggle .snake-hud-value {
     font-size: 18px;
+}
+
+body.shell-game .snake-hud-slider-panel {
+    pointer-events: auto;
+    min-width: 148px;
+}
+
+body.shell-game .snake-hud-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.shell-game .snake-hud-slider {
+    flex: 1;
+    min-width: 0;
+    height: 4px;
+    margin: 0;
+    accent-color: rgba(120, 220, 255, 0.95);
+    cursor: pointer;
+}
+
+body.shell-game .snake-hud-slider-value {
+    min-width: 36px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: right;
+    color: rgba(245, 247, 251, 0.72);
+}
+
+body.shell-game .snake-hud-slider.is-off + .snake-hud-slider-value {
+    color: rgba(245, 247, 251, 0.45);
 }
