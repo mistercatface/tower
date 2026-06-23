@@ -2,8 +2,7 @@ import { createExploreIntentState, createFleeIntentState, createSeekIntentState 
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
 import { buildSnakeDecisionContext, deriveSprintIntent } from "./snakeDecisionModel.js";
-import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
-import { getGroundNavFsmSnapshot } from "./getGroundNavFsmSnapshot.js";
+import { createGroundNavIntentAdapter, getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 const SNAKE_REACH_SLOTS = {
     threat: { targetKey: "threat", mode: "flee" },

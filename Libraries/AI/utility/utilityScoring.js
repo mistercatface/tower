@@ -3,6 +3,25 @@ export function netScoreDetail(value, reach, costPerUnit) {
     const net = value - cost;
     return { value, reach, cost, net };
 }
+export function hungerKey(hungerState) {
+    return hungerState?.state ?? "hungry";
+}
+export function costPerCellForHunger(pressure, hungerState) {
+    return pressure.effort.costPerCell[hungerKey(hungerState)];
+}
+export function foodHungerScoreValue(weights, pressure, hunger) {
+    const deficit = hunger ? 1 - hunger.foodFraction : 0;
+    return weights.food + pressure.foodHungerBonus * deficit;
+}
+export function scoreRiskAdjustedFlee(blackboard, weights, pressure) {
+    if (!blackboard.facts.known.threat) return -Infinity;
+    const threat = blackboard.facts.threatState;
+    if (!threat || threat.lethal) return Infinity;
+    const hunger = blackboard.facts.hungerState;
+    const riskTolerance = hunger ? (pressure.riskTolerance[hunger.state] ?? 0) : 0;
+    if (riskTolerance <= 0) return Infinity;
+    return weights.flee * threat.severity * (1 - riskTolerance);
+}
 export function pickBestScoreKey(candidateScores, order) {
     let chosenKey = order[0];
     let chosenScore = -Infinity;

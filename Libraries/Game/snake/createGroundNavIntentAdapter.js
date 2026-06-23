@@ -1,14 +1,143 @@
 import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
-import { createBrainArrivalStamper } from "../../AI/agentIntent/createBrainArrivalStamper.js";
-import { createCellTargetIntentContext, createCellTargetIntentEffects } from "../../AI/agentIntent/createCellTargetIntentEffects.js";
-import { applyFleePolicyLatch, createFleeIntentLatch } from "../../AI/agentIntent/createFleeIntentLatch.js";
-import { readAgentRouteStatus } from "../../AI/agentIntent/readAgentRouteStatus.js";
+import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { syncNavReachHorizon } from "../../Navigation/navReachHorizon.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { buildAgentReachSteps } from "./agentReachSteps.js";
 import { perceiveAgentIntentWorld } from "./agentIntentPerception.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
+function readAgentRouteStatus(locomotion, agent, state) {
+    const dest = locomotion.getDestination();
+    const status = locomotion.getStatus(agent, state);
+    const grid = state.obstacleGrid;
+    return {
+        hasDestination: !!dest,
+        hasRoute: status.hasRoute,
+        replanPending: status.replanPending,
+        routeFailed: !!dest && locomotion.needsRetry(agent, state),
+        destReached: !!dest && (locomotion.hasArrivedAtDest(agent, grid) || locomotion.hasReachedDest(agent, grid)),
+        stuckFrames: status.stuckFrames,
+        pathLen: status.pathLen,
+    };
+}
+function createBrainArrivalStamper(brain) {
+    let lastArrivalCol = null;
+    let lastArrivalRow = null;
+    return {
+        stamp(agent, grid) {
+            const col = grid.worldCol(agent.x);
+            const row = grid.worldRow(agent.y);
+            if (col === lastArrivalCol && row === lastArrivalRow) return;
+            lastArrivalCol = col;
+            lastArrivalRow = row;
+            brain.stampArrival(col, row);
+        },
+        reset() {
+            lastArrivalCol = null;
+            lastArrivalRow = null;
+        },
+    };
+}
+function readThreatState(world) {
+    return world.blackboard?.facts?.threatState ?? world.decisionSnapshot?.threatState;
+}
+function createFleeIntentLatch(config) {
+    const fleeHysteresis = config.fleeHysteresis;
+    return createModePolicyLatch({
+        mode: "flee",
+        minTicks: fleeHysteresis.minTicks,
+        holdReason: "flee_hysteresis",
+        refreshWhen: ({ world }) => {
+            const threat = readThreatState(world);
+            return threat?.lethal || threat?.severity >= fleeHysteresis.refreshAtSeverity;
+        },
+        canRelease: ({ world }) => {
+            const threat = readThreatState(world);
+            return !threat || (!threat.lethal && threat.severity <= fleeHysteresis.exitThreatSeverity);
+        },
+    });
+}
+function applyFleePolicyLatch({ world, fleeLatch, currentMode, deriveSprintIntent, fleeHeldOn = "flee" }) {
+    const chosen = world.decisionSnapshot.chosenIntent;
+    const policy = fleeLatch.apply(chosen, { world, currentMode });
+    if (policy !== chosen) {
+        if (fleeHeldOn === "any" || policy.mode === "flee") world.blackboard.events.push("FLEE_HELD");
+        world.decisionSnapshot.events = world.blackboard.events;
+        world.decisionSnapshot.chosenIntent = policy;
+        world.decisionSnapshot.chosenReason = policy.reason ?? null;
+        world.decisionSnapshot.targetId = policy.targetId ?? null;
+        world.decisionSnapshot.sprintIntent = deriveSprintIntent(policy.mode, world.decisionSnapshot);
+    }
+    world.decisionSnapshot.policyLatch = { flee: fleeLatch.snapshot() };
+    return policy;
+}
+function createCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination }) {
+    return ({ agent, state, mode, world, targetId }) => ({
+        clearDestination() {
+            locomotion.clearDestination(agent, state);
+        },
+        setExploreDestination() {
+            const cell = resolveExploreCell(agent, state, brain.spatial, rng);
+            if (cell) locomotion.setExplore(agent, state, cell);
+            return cell;
+        },
+        setSeekDestination(target) {
+            if (!target) return;
+            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(mode, agent, target, state) : seekArrivalRadius;
+            const options = typeof seekOptions === "object" && seekOptions !== null ? seekOptions : { arrivalRadius: seekOptions };
+            locomotion.setSeek(agent, state, target, { ...options, targetId });
+        },
+        updateSeekTarget(target) {
+            if (!target) return;
+            locomotion.updateSeekTarget(agent, state, target, { targetId });
+        },
+        setFleeDestination(avoidCell = null) {
+            return setFleeDestination({ agent, state, world, avoidCell, locomotion });
+        },
+    });
+}
+function createCellTargetIntentContext({ locomotion, resolveCommittedTarget }) {
+    return (ctx) => ({
+        ...ctx,
+        grid: ctx.state.obstacleGrid,
+        dest: locomotion.getDestination(),
+        target: resolveCommittedTarget(ctx.targetId, ctx.world),
+        fleeTarget: ctx.world.blackboard.facts.known.threat,
+        locomotion,
+    });
+}
+export function getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastBlackboard, lastDecisionSnapshot }) {
+    const loco = locomotion.getStatus(agent, state);
+    const dest = locomotion.getDestination();
+    let replanReason = null;
+    if (loco.lastReplanReason) replanReason = loco.lastReplanReason;
+    else if (loco.replanPending) replanReason = "pending";
+    else if (dest && !loco.hasRoute) replanReason = "no_route";
+    return {
+        mode: intent.getMode(),
+        destCell: dest ? { col: dest.col, row: dest.row } : null,
+        pathLen: loco.pathLen,
+        replanReason,
+        navPhase: loco.navPhase,
+        routeGoal: loco.routeGoal,
+        terminalGoal: loco.terminalGoal,
+        routeCommitFrames: loco.routeCommitFrames,
+        routeId: loco.routeId,
+        lastAcceptedRouteReason: loco.lastAcceptedRouteReason,
+        lastAcceptedPathLen: loco.lastAcceptedPathLen,
+        lastAcceptedProgressIdx: loco.lastAcceptedProgressIdx,
+        lastAcceptedTarget: loco.lastAcceptedTargetX == null || loco.lastAcceptedTargetY == null ? null : { x: loco.lastAcceptedTargetX, y: loco.lastAcceptedTargetY },
+        targetDistance: loco.targetDistance,
+        targetLos: loco.targetLos,
+        stuckFrames: loco.stuckFrames,
+        vx: agent.vx,
+        vy: agent.vy,
+        lastTransition: intent.getLastTransitionReason(),
+        intentMemory: intentMemory.snapshot(),
+        intentEvents: lastBlackboard?.events ?? [],
+        decision: lastDecisionSnapshot,
+    };
+}
 export function createGroundNavIntentAdapter({
     brain,
     sync,

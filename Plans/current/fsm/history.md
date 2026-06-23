@@ -281,36 +281,30 @@ Mode sets (`seek_prey` vs `seek_enemy`), engagement publish (snake), `regroupSiz
 | `fleeWorldPerception.js` | 20 |
 | `deriveFleeAgentThreatState` (wrapper) | — |
 
-### Added (15 modules, ~435 lines)
+### Added (7 modules — after consolidation merge)
 
-| Module | Lines | Consumers |
-|--------|------:|-----------|
-| `AI/agents/deriveThreatState.js` | 7 | snake + flee decision |
-| `AI/agents/deriveAllyState.js` | 17 | snake + flee decision |
-| `AI/agentIntent/targetEvents.js` | 15 | snake + flee decision |
-| `AI/memory/createAgentIntentMemory.js` | 66 | snake + flee intent |
-| `AI/agentIntent/intentPolicy.js` | 9 | snake + flee decision |
-| `AI/utility/hungerEffort.js` | 10 | snake + flee decision |
-| `AI/agents/scoreFleeIntent.js` | 9 | snake + flee decision |
-| `Game/snake/agentIntentPerception.js` | 22 | snake + flee intent |
-| `Game/snake/agentReachSteps.js` | 18 | ground-nav adapter |
-| `Game/snake/createGroundNavIntentAdapter.js` | 129 | snake + flee intent |
-| `Game/snake/getGroundNavFsmSnapshot.js` | 32 | snake autosim/HUD only |
-| `AI/agentIntent/readAgentRouteStatus.js` | 14 | **adapter only** |
-| `AI/agentIntent/createBrainArrivalStamper.js` | 18 | **adapter only** |
-| `AI/agentIntent/createFleeIntentLatch.js` | 34 | **adapter only** |
-| `AI/agentIntent/createCellTargetIntentEffects.js` | 35 | **adapter only** |
+| Module | Consumers |
+|--------|-----------|
+| `AI/agents/deriveThreatState.js` | snake + flee decision |
+| `AI/agents/deriveAllyState.js` | snake + flee decision |
+| `AI/agentIntent/targetEvents.js` | snake + flee decision (+ policy helpers) |
+| `AI/memory/createAgentIntentMemory.js` | snake + flee intent |
+| `Game/snake/agentIntentPerception.js` | snake + flee intent |
+| `Game/snake/agentReachSteps.js` | ground-nav adapter |
+| `Game/snake/createGroundNavIntentAdapter.js` | snake + flee intent (+ inlined route/latch/effects/fsm) |
+
+Also extended (not new files): `utilityScoring.js` — hunger effort + flee risk scorer.
 
 ### Shrunk (representative)
 
 | File | Before | After | Δ |
 |------|-------:|------:|--:|
-| `createSnakeForageIntent.js` | 268 | 98 | −170 |
-| `createFleeExploreIntent.js` | 235 | 103 | −132 |
-| `snakeDecisionModel.js` | 288 | 230 | −58 |
-| `fleeDecisionModel.js` | 221 | 194 | −27 |
+| `createSnakeForageIntent.js` | 268 | ~98 | −170 |
+| `createFleeExploreIntent.js` | 235 | ~103 | −132 |
+| `snakeDecisionModel.js` | 288 | ~230 | −58 |
+| `fleeDecisionModel.js` | 221 | ~194 | −27 |
 
-**Rough net:** ~550 lines removed from duplicates/deletions, ~435 in new modules → **~−115 lines**, **+15 files**.
+**Rough net:** ~550 lines removed from duplicates/deletions; **+7 new modules** (was +15 before merge); line count still ~−115 vs pre–Part 1.
 
 ---
 
@@ -322,27 +316,28 @@ Mode sets (`seek_prey` vs `seek_enemy`), engagement publish (snake), `regroupSiz
 | No passthrough layers | **Yes** — no resolver getters, no `{ stepsTo }` objects, no dist on memory |
 | One factory per concept | **Yes** for memory, perception, adapter shell |
 | Both consumers same PR | **Yes** for B–F extracts |
-| Delete > add files | **No** — **+15 files** is the main smell |
+| Delete > add files | **Fixed post-merge** — +7 modules (was +15); 8 micro-files inlined |
 | No framework folder | **Yes** — no `Libraries/AI/decision/` |
 
 **What went well:** Real duplication gone. Flee no longer imports snake for generics. Twin ~500-line intent adapters collapsed to ~100-line species wiring. Reach dialect untouched. Tests green (99+ in intent/decision suites).
 
-**What violated the spirit of hygiene:** Pass F split four helpers that only `createGroundNavIntentAdapter.js` calls into separate files (`readAgentRouteStatus`, `createBrainArrivalStamper`, `createFleeIntentLatch`, `createCellTargetIntentEffects`). Same for `getGroundNavFsmSnapshot.js` (snake-only). Letter of the law (“concrete file, not barrel”) was followed; **file-count budget** was not.
+**What violated the spirit of hygiene (fixed):** Pass F initially split single-consumer helpers into separate files — merged back into `createGroundNavIntentAdapter.js`, `targetEvents.js`, and `utilityScoring.js`.
 
 **Could have been worse:** No `createDecisionFramework`, no config resolver chain, no second reach dialect, no fake services. The adapter factory is one real factory, not a passthrough stack.
 
 ---
 
-## Consolidation backlog (optional)
+## Consolidation backlog ✅ (merged)
 
-Merge when touching these areas — do **not** do a standalone “cleanup PR” unless net file count drops:
+Reduced Part 1 file sprawl — **8 files deleted**, helpers folded into owners:
 
-1. **Into `createGroundNavIntentAdapter.js`:** `readAgentRouteStatus`, `createBrainArrivalStamper`, `createFleeIntentLatch`, `createCellTargetIntentEffects` (~100 lines total).
-2. **Into `createGroundNavIntentAdapter.js` or snake forage file:** `getGroundNavFsmSnapshot.js` (snake-only).
-3. **Into `targetEvents.js`:** `intentPolicy.js` (both policy helpers, ~18 lines).
-4. **Into `utilityScoring.js` or one `hungerScoring.js`:** `hungerEffort.js` + `scoreFleeIntent.js` if flee/snake remain only consumers.
+| Was | Now |
+|-----|-----|
+| `readAgentRouteStatus`, `createBrainArrivalStamper`, `createFleeIntentLatch`, `createCellTargetIntentEffects`, `getGroundNavFsmSnapshot` | private helpers + `getGroundNavFsmSnapshot` export in `createGroundNavIntentAdapter.js` |
+| `intentPolicy.js` | `targetEvents.js` |
+| `hungerEffort.js`, `scoreFleeIntent.js` | `utilityScoring.js` |
 
-**Do not merge:** `deriveThreatState`, `deriveAllyState`, `createAgentIntentMemory`, `agentIntentPerception`, `agentReachSteps` — each has clear dual-consumer or game-layer boundary justification.
+**Part 1 net modules after merge:** 7 added files (was 15) — `deriveThreatState`, `deriveAllyState`, `targetEvents`, `createAgentIntentMemory`, `agentIntentPerception`, `agentReachSteps`, `createGroundNavIntentAdapter`.
 
 ---
 

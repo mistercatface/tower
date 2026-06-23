@@ -145,8 +145,8 @@ rg "^function pushTargetEvents|^function policyReasonForTarget|^function intentP
 
 ### Extract rule (Part 1 dedupe)
 
-- **OK when both consumers import:** `deriveThreatState`, `deriveAllyState`, `targetEvents`, `createAgentIntentMemory`, `intentPolicy`, `hungerEffort`, `createGroundNavIntentAdapter`
-- **Inline next time:** helpers with a single caller (Pass F route/latch/effects split — see consolidation backlog in [`history.md`](history.md#consolidation-backlog-optional))
+- **OK when both consumers import:** `deriveThreatState`, `deriveAllyState`, `targetEvents` (incl. policy helpers), `createAgentIntentMemory`, `utilityScoring` (incl. hunger/flee scorers), `createGroundNavIntentAdapter`
+- **Merged:** Pass F micro-files inlined into adapter / `targetEvents` / `utilityScoring` — see [`history.md`](history.md#consolidation-backlog--merged)
 - **Not OK:** `Libraries/AI/decision/` · index barrels · `{ createDecisionFramework }` · config resolver getters · passthrough context builders
 
 **Same PR:** both `createSnakeForageIntent` and `createFleeExploreIntent` (and both decision models) must import every new shared module in the PR that introduces it.
@@ -233,7 +233,7 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 - [x] Passes A–F — see [`history.md`](history.md#part-1-ai-consumer-cleanup)
 - [ ] Pass G grep gates (commands above)
-- [ ] Optional: merge Pass F micro-files per consolidation backlog
+- [x] Optional consolidation backlog — 8 micro-files merged (see history)
 
 ### Part 2 (blocked)
 

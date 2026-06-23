@@ -1,11 +1,8 @@
 import { isAgentEngaged } from "../../AI/agents/agentEngagement.js";
 import { deriveAllyState } from "../../AI/agents/deriveAllyState.js";
 import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
-import { pushTargetEvents, routeEvents } from "../../AI/agentIntent/targetEvents.js";
-import { intentPolicy, policyReasonForTarget } from "../../AI/agentIntent/intentPolicy.js";
-import { scoreRiskAdjustedFlee } from "../../AI/agents/scoreFleeIntent.js";
-import { costPerCellForHunger, foodHungerScoreValue, hungerKey } from "../../AI/utility/hungerEffort.js";
-import { netScoreDetail, pickBestScoreKey, scoreCandidateSet } from "../../AI/utility/utilityScoring.js";
+import { pushTargetEvents, routeEvents, intentPolicy, policyReasonForTarget } from "../../AI/agentIntent/targetEvents.js";
+import { costPerCellForHunger, foodHungerScoreValue, hungerKey, netScoreDetail, pickBestScoreKey, scoreCandidateSet, scoreRiskAdjustedFlee } from "../../AI/utility/utilityScoring.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "./snakeEngagement.js";
 export function deriveSnakeHungerState(foodFraction) {
