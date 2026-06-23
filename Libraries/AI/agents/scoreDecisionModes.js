@@ -1,0 +1,109 @@
+import { costPerCellForHunger, foodHungerScoreValue, netScoreDetail, netScoreOnly, resetScoreDetailScratch, SCORE_ABSENT, scoreRiskAdjustedFlee } from "../utility/utilityScoring.js";
+const GUARDS = {
+    notSatisfied: (ctx) => ctx.hungerTier === "satisfied",
+    noThreat: (ctx) => !!ctx.known.threat,
+    notDesperate: (ctx) => ctx.hungerTier === "desperate",
+    requiresLeadworthy: (ctx) => !ctx.allyState?.leadworthy,
+    requiresSatisfied: (ctx) => ctx.hungerTier !== "satisfied",
+};
+function blockedByGuards(ctx, guards) {
+    if (!guards) return false;
+    for (let i = 0; i < guards.length; i++) if (GUARDS[guards[i]]?.(ctx)) return true;
+    return false;
+}
+function regroupSizeFactor(segmentCount, cohesion) {
+    const count = segmentCount ?? cohesion.referenceSegmentCount ?? 3;
+    const ref = cohesion.referenceSegmentCount ?? 3;
+    const max = cohesion.maxSegmentScale ?? 12;
+    if (count <= ref) return 1;
+    if (count >= max) return 0;
+    return 1 - (count - ref) / (max - ref);
+}
+function preyValueForHunger(weights, pressure, hungerTier, effortFallback) {
+    const effort = pressure.effort ?? effortFallback?.effort;
+    return effort?.preyValue?.[hungerTier ?? "hungry"] ?? weights.prey;
+}
+const SCORERS = {
+    riskAdjustedFlee(ctx, _modeDef, weights, pressure) {
+        return netScoreOnly(scoreRiskAdjustedFlee(ctx, weights, pressure));
+    },
+    preyWithEffort(ctx, modeDef, weights, pressure, env) {
+        const prey = ctx.known[modeDef.slot];
+        if (!prey) return SCORE_ABSENT;
+        const hungerTier = ctx.hungerTier;
+        let value = preyValueForHunger(weights, pressure, hungerTier, env.effortFallback);
+        const isPreySnake = prey.type === "snake_head";
+        const seekerFaction = ctx.seekerFaction;
+        if (isPreySnake && seekerFaction && prey.faction && prey.faction !== seekerFaction) value = pressure.enemySnakePreyValue ?? weights.prey + 1000;
+        else if (hungerTier === "desperate" && (!ctx.known.food || ctx.routeStatus?.routeFailed)) value += pressure.preyDesperationBonus ?? 0;
+        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, hungerTier));
+    },
+    foodWithHunger(ctx, modeDef, weights, pressure, env) {
+        if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        let value = foodHungerScoreValue(weights, pressure, ctx.foodFraction);
+        const sprint = env.sprint;
+        const threat = ctx.threatState;
+        if (sprint && threat && !threat.lethal && threat.severity >= sprint.fleeSeverity) value -= pressure.sprintFoodCostPenalty ?? 0;
+        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+    },
+    reachTarget(ctx, modeDef, weights, pressure) {
+        if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const weightKey = modeDef.weightKey ?? modeDef.slot;
+        const value = weights[weightKey] ?? weights.explore;
+        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+    },
+    regroupAlly(ctx, modeDef, weights, pressure, env) {
+        const slot = modeDef.slot;
+        const ally = ctx.known[slot];
+        if (!ally) return SCORE_ABSENT;
+        const cohesion = env.cohesion ?? {};
+        const hungerTier = ctx.hungerTier;
+        const allyReach = ctx.reachSteps[slot];
+        if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 3)) return SCORE_ABSENT;
+        let value = weights.seek_ally ?? weights.explore;
+        if (modeDef.cohesion === "snake") {
+            const sizeFactor = regroupSizeFactor(ctx.seekerSegmentCount, cohesion);
+            if (sizeFactor <= 0) return SCORE_ABSENT;
+            value = (weights.seek_ally ?? weights.explore) + (cohesion.satisfiedBonus ?? 50);
+            value *= sizeFactor;
+            const allyCount = ctx.known.allyCount ?? 1;
+            if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? 15) * sizeFactor;
+        } else {
+            if (hungerTier === "satisfied") value += cohesion.satisfiedBonus ?? pressure.allySatisfiedBonus ?? 60;
+            const allyCount = ctx.known.allyCount ?? 1;
+            if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? pressure.allyPackBonus ?? 20);
+        }
+        return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hungerTier));
+    },
+    constant(_ctx, modeDef, weights) {
+        const weightKey = modeDef.weightKey ?? "explore";
+        return netScoreDetail(weights[weightKey], null, 0);
+    },
+};
+const MODS = {
+    outnumberedFlee(detail, ctx, _modeDef, _weights, pressure) {
+        if (!Number.isFinite(detail.net)) return detail;
+        const threatCount = ctx.known.threatCount ?? 1;
+        if (threatCount <= 1) return detail;
+        return netScoreOnly(detail.net * (1 + (threatCount - 1) * (pressure.outnumberedFleeBonus ?? 0)));
+    },
+};
+function applyMods(detail, ctx, modeDef, weights, pressure, env) {
+    const mods = modeDef.mods;
+    if (!mods) return detail;
+    let out = detail;
+    for (let i = 0; i < mods.length; i++) out = MODS[mods[i]](out, ctx, modeDef, weights, pressure, env);
+    return out;
+}
+function scoreMode(ctx, modeDef, weights, pressure, env) {
+    if (blockedByGuards(ctx, modeDef.guards)) return SCORE_ABSENT;
+    const scoreFn = SCORERS[modeDef.scorer];
+    if (!scoreFn) throw new Error(`unknown decision scorer: ${modeDef.scorer}`);
+    return applyMods(scoreFn(ctx, modeDef, weights, pressure, env), ctx, modeDef, weights, pressure, env);
+}
+export function scoreDecisionCandidateDetails(ctx, schema, weights, pressure, env = {}) {
+    resetScoreDetailScratch();
+    const details = {};
+    for (const mode of schema.scoreOrder) details[mode] = scoreMode(ctx, schema.modes[mode], weights, pressure, env);
+    return details;
+}

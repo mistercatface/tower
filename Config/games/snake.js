@@ -46,6 +46,13 @@ export const SNAKE_GAME_DEFAULTS = {
                 allyCount: { visible: { from: "allyCount", default: 0, ifMemory: { key: "ally", use: 0 } }, known: { visibleIfSlot: "ally", fromVisible: "allyCount", fromRemembered: "allyCount" } },
                 allyCentroid: { visible: { from: "allyCentroid", default: null, ifMemory: { key: "ally", use: null } }, known: { fromVisible: "allyCentroid" } },
             },
+            modes: {
+                flee: { scorer: "riskAdjustedFlee", mods: ["outnumberedFlee"] },
+                seek_enemy: { scorer: "reachTarget", slot: "enemy", weightKey: "enemy", guards: ["noThreat"] },
+                seek_food: { scorer: "foodWithHunger", slot: "food", guards: ["notSatisfied"] },
+                seek_ally: { scorer: "regroupAlly", slot: "ally", cohesion: "flee", guards: ["noThreat", "notDesperate"] },
+                explore: { scorer: "constant", weightKey: "explore" },
+            },
         },
     },
     segmentCount: 3,
@@ -163,6 +170,13 @@ export const SNAKE_GAME_DEFAULTS = {
                 visible: { from: "allyCentroid", default: null },
                 known: { anchorSlot: "ally", matchWorldSlot: "ally", fromVisible: "allyCentroid", whenMissing: null, whenNoMatch: null },
             },
+        },
+        modes: {
+            flee: { scorer: "riskAdjustedFlee" },
+            seek_prey: { scorer: "preyWithEffort", slot: "prey" },
+            seek_food: { scorer: "foodWithHunger", slot: "food" },
+            seek_ally: { scorer: "regroupAlly", slot: "ally", cohesion: "snake", guards: ["requiresLeadworthy", "requiresSatisfied", "noThreat"] },
+            explore: { scorer: "constant", weightKey: "explore" },
         },
     },
 };

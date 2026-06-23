@@ -2,6 +2,7 @@ import { buildAgentEventTargets } from "./buildAgentEventTargets.js";
 import { deriveAllyState } from "./deriveAllyState.js";
 import { deriveThreatState } from "./deriveThreatState.js";
 import { mergeSlotsFromSchema } from "./mergeSlotsFromSchema.js";
+import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { pushTargetEvents, routeEvents, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
 import { pickBestScoreKey, scoreCandidateSet } from "../utility/utilityScoring.js";
 const EMPTY_AGENT_REACH_STEPS = Object.freeze({ threat: null, prey: null, enemy: null, food: null, ally: null });
@@ -44,7 +45,8 @@ export function buildAgentDecisionContext(spec, input) {
     const ctx = buildAgentDecisionFrame(spec, { ...input, foodFraction, hungerTier, threatState });
     const weights = spec.weights();
     const pressure = spec.pressure();
-    const scoredCandidates = scoreCandidateSet(spec.scoreDetails(ctx, weights, pressure), schema.scoreOrder);
+    const env = spec.scoringEnv?.() ?? {};
+    const scoredCandidates = scoreCandidateSet(scoreDecisionCandidateDetails(ctx, schema, weights, pressure, env), schema.scoreOrder);
     const pickPolicy = input.pickPolicy ?? ((frame, scores) => pickAgentIntentPolicy(frame, scores, spec));
     const chosenIntent = pickPolicy(ctx, scoredCandidates.candidateScores);
     spec.afterPick?.(ctx, chosenIntent, input);

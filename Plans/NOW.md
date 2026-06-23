@@ -10,7 +10,7 @@
 
 ## Current task
 
-**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) step 2 next (scorer registry)
+**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) step 3 next (band tables)
 
 Reach + flat `decisionContext` already shipped ✅
 

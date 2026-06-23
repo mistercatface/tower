@@ -38,17 +38,11 @@ Every tick an agent gets **one `decisionContext`**: merged targets, path-step re
 
 ---
 
-### 2 — Engine owns scoring
+### 2 — Engine owns scoring ✅
 
-**Problem:** `scorePreyDetail`, `scoreFoodDetail`, `scoreSeekAllyDetail`, flee `scoreEnemyDetail`, etc. are copy-paste with tiny deltas.
+**Shipped:** `scoreDecisionModes.js` registry; `decision.modes` in config for snake + flee; guards/mods as closed enums; species files only export thin test wrappers + sprint/engagement hooks.
 
-**Do:**
-
-1. Fixed **scorer registry** in the engine — named IDs only, e.g. `riskAdjustedFlee`, `foodWithHunger`, `preyWithEffort`, `regroupAlly`, `reachTarget`, `constant`. No expression DSL in JSON.
-2. Lift current snake/flee logic into registry entries; parameterize by config path / cohesion id / guards (`notSatisfied`, `noThreat`, …) as a **closed enum** — new behavior = new named primitive, not inline config code.
-3. `buildAgentDecisionContext` loops `decisionConfig.modes` → registry instead of `spec.scoreDetails`.
-
-**Done when:** no `function score*Detail` in game JS; modes table in config drives scoring.
+**Done when:** no `function score*Detail` in game JS. ✅ (wrappers delegate to engine)
 
 ---
 
