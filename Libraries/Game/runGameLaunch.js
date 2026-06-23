@@ -1,4 +1,4 @@
-import { fitTileLabStageZoom, GAME_MODE_ZOOM_MULTIPLIER } from "../Viewport/tileLabViewportLimits.js";
+import { fitTileLabStageZoom, GAME_MODE_ZOOM_MAX, GAME_MODE_ZOOM_MULTIPLIER } from "../Viewport/tileLabViewportLimits.js";
 import { focusBlueBallAction, refreshWorldAfterGameLaunch, snapCameraToTargetAction, stampBeltCratePuzzleAction } from "./gameLaunchActions.js";
 /** @typedef {import("./gameLaunchActions.js").GameLaunchContext} GameLaunchContext */
 /** @type {Record<string, (state: object, ctx: GameLaunchContext) => void | Promise<void>>} */
@@ -7,7 +7,7 @@ const GAME_LAUNCH_ACTIONS = {
     focusBlueBall: focusBlueBallAction,
     snapCameraToTarget: snapCameraToTargetAction,
     fitPlayViewport: (state) => {
-        fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER);
+        fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER, GAME_MODE_ZOOM_MAX);
     },
 };
 /** @param {object} state @param {import("./gameLaunchers.js").GameLauncher} launcher */

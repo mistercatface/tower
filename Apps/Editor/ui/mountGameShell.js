@@ -1,7 +1,7 @@
 import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { mountGameSandbox } from "../world/gameSandbox.js";
-import { fitTileLabStageZoom, GAME_MODE_ZOOM_MULTIPLIER } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
+import { fitTileLabStageZoom, GAME_MODE_ZOOM_MAX, GAME_MODE_ZOOM_MULTIPLIER } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
 import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
 import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled } from "./preview.js";
 import { seedRuntimeLabProfile } from "./profile/ProfileEditor.js";
@@ -41,7 +41,7 @@ export async function mountGameShell(state, launcher) {
     tryLockPortraitOrientation(launcher.lockPortraitOrientation);
     const syncCanvas = () => {
         fitGameCanvasToStage(state);
-        fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER);
+        fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER, GAME_MODE_ZOOM_MAX);
         drawLabFrame(state);
     };
     syncCanvas();
@@ -54,5 +54,5 @@ export async function mountGameShell(state, launcher) {
 /** @param {import("../state.js").TileLabGameState} state */
 export function resizeGameShell(state) {
     if (!fitGameCanvasToStage(state)) return;
-    fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER);
+    fitTileLabStageZoom(state.viewport, GAME_MODE_ZOOM_MULTIPLIER, GAME_MODE_ZOOM_MAX);
 }

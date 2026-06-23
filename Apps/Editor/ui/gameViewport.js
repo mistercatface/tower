@@ -1,4 +1,5 @@
 import { setupLabViewportNavigation } from "./lab-shared.js";
+import { GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
 /** @type {((dt: number) => void) | null} */
 let tickKeyboardPan = null;
 let fittedStageWidth = -1;
@@ -22,6 +23,8 @@ export function mountGameViewport(state, onStageResize) {
         onRightDragStart: () => {
             state.appLaunch?.session?.releaseCameraFocus?.();
         },
+        minZoom: TILELAB_ZOOM_MIN,
+        maxZoom: GAME_MODE_ZOOM_MAX,
     });
     resetGameCanvasStageFit();
     const stage = document.getElementById("gameStage");

@@ -33,7 +33,7 @@ function isCameraMoveBlockedTarget(target) {
     return false;
 }
 const CAMERA_MOVE_KEYS = ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onRightDragStart = null }) {
+export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onRightDragStart = null, minZoom = 0.25, maxZoom = 2.5 } = {}) {
     const canvases = () => {
         const idList = Array.isArray(canvasId) ? canvasId : [canvasId];
         return idList.map((id) => document.getElementById(id));
@@ -56,7 +56,7 @@ export function setupLabViewportNavigation(canvasId, { getCamera, setCamera, onR
             (e) => {
                 e.preventDefault();
                 const cam = getCamera();
-                const nextZoom = Math.min(2.5, Math.max(0.25, (cam.zoom || 1) + (e.deltaY > 0 ? -0.05 : 0.05)));
+                const nextZoom = Math.min(maxZoom, Math.max(minZoom, (cam.zoom || 1) + (e.deltaY > 0 ? -0.05 : 0.05)));
                 setCamera(cam.x, cam.y, nextZoom);
             },
             { passive: false },
