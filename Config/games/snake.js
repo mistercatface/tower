@@ -62,6 +62,8 @@ export const SNAKE_GAME_DEFAULTS = {
     showFocusedAgentDebug: false,
     focusedAgentDebug: { vision: true, spatialMemory: true, path: true, agentSlots: {}, pathPreview: { cellCount: 3 }, targetRing: {} },
     visionRange: { range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
+    /** Max nav path steps for sync decision reach BFS (see Plans/current/fsmbfs.md). */
+    decisionReachHorizon: 32,
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */
     exploreMinTiles: 8,
     /** LRU grid-cell memory window per snake (vision + arrival stamps). */

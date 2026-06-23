@@ -59,3 +59,8 @@ export function applyFleeAgentGameplay(head) {
     if (flee.accel != null) head.strategy.groundNav = { ...head.strategy.groundNav, accel: flee.accel };
     if (flee.friction != null) head.strategy.friction = flee.friction;
 }
+/** Cell-based reach + threat ranges for FSM BFS scoring (Plans/current/fsmbfs.md). */
+export function resolveSnakeReachConfig(config = getSnakeGameConfig(), cellSize = 16) {
+    const fleeRangeWorld = config.fleeRange ?? config.visionRange.range;
+    return { decisionReachHorizon: config.decisionReachHorizon ?? 32, fleeRangeCells: Math.ceil(fleeRangeWorld / cellSize), lethalThreatRangeCells: Math.ceil(config.lethalThreatRange / cellSize) };
+}
