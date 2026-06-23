@@ -1,7 +1,9 @@
 # Journal
+
 Time log and milestones only. **Active queue** → [NOW.md](./NOW.md).
 
 ## MILESTONE LOG
+
 | DATE       | MILESTONE                                                                           |
 | ---------- | ----------------------------------------------------------------------------------- |
 | 2026-06-17 | **Primitives/Phyiscs Phase 1** - circle and 3+ verts covered, basic glass fractures |
@@ -16,10 +18,12 @@ Time log and milestones only. **Active queue** → [NOW.md](./NOW.md).
 ## DAILY LOG
 
 ## 06/21/2026
+
 7:25 AM - 1:14 PM: Pathfinding OOP refactor, snake FSM.
 1:14 PM to 2:42 PM: Snake fracture food.
 
 ## 06/18/2026
+
 9:13 AM: RTS interface 3 part PR.
 9:39 AM: In-game interface refactor 3 part PR.
 11:14 AM: Physics sleep/pipeline/routing 3 part PR.
@@ -29,10 +33,12 @@ Time log and milestones only. **Active queue** → [NOW.md](./NOW.md).
 3:35 PM: Prop consolidation, tinting, UI pass.
 
 ## 06/19/2026
+
 10:48 AM: Physics + snake passes
 7:27 PM: Lots of time wasted on belts. Physics + wall damage PR.
 
 ## 06/20/2026
+
 8:00 AM - 8:50 AM: ViewportBounds refactor
 8:50 AM - 9:12 AM: Generic FSM extract
 9:12 AM - 10:54 AM: Finite state refactor, HPA tweak
