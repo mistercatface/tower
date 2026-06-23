@@ -9,9 +9,7 @@ import {
     worldColInCenteredFrame,
     worldRowInCenteredFrame,
 } from "../Spatial/grid/GridCoords.js";
-import { gridReachabilityBfs } from "./gridReachabilityBfs.js";
 import { snapshotWorldCol, snapshotWorldRow } from "./GridNavSnapshot.js";
-import { FlatGridView } from "./FlatGridView.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
 export class FlowFieldWindow {
     constructor(cellSize, width, height) {
@@ -85,18 +83,6 @@ export class FlowFieldWindow {
     }
     flowRequest(targetX, targetY, range = 999999) {
         return FlowFieldRequest.fromWorld(this, targetX, targetY, range);
-    }
-    checkReachability(flowToNavIdx, navBlockedView, neighborGrid, startX, startY, targetX, targetY) {
-        if (!this.ready || !navBlockedView) return false;
-        const grid = new FlatGridView(this.cols, this.rows, { blocked: null, neighbors: neighborGrid, neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT, flowToNavIdx });
-        const startCol = this.worldCol(startX);
-        const startRow = this.worldRow(startY);
-        const targetCol = this.worldCol(targetX);
-        const targetRow = this.worldRow(targetY);
-        if (!grid.contains(startCol, startRow) || !grid.contains(targetCol, targetRow)) return false;
-        const startIdx = grid.idx(startCol, startRow);
-        const targetIdx = grid.idx(targetCol, targetRow);
-        return gridReachabilityBfs(grid, startIdx, targetIdx, (idx) => this.isFlowCellBlocked(flowToNavIdx, navBlockedView, idx));
     }
 }
 export class FlowFieldRequest {

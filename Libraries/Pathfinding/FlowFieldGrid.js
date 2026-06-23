@@ -171,9 +171,6 @@ export class FlowFieldGrid {
         if (slot === null || !this.isFlowSlotReady(slot)) return null;
         return this.flowFieldView(slot);
     }
-    checkReachability(startX, startY, targetX, targetY) {
-        return this.window.checkReachability(this.flowToNavIdx, this._navBlockedView, this.neighborGrid, startX, startY, targetX, targetY);
-    }
     clear() {
         this.flowToNavIdx.fill(-1);
         this.neighborGrid.fill(-1);

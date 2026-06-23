@@ -227,13 +227,13 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 | Flow → steering | ✅ | 80 | `flowSteering.js`, `computeFlowFieldSteering` |
 | Target field cache | ✅ | 75 | `MAX_CACHE = 100` goal slots |
 | Range-limited fields | ✅ | 70 | optional BFS `range` cap |
-| Reachability check | ✅ | 75 | `gridReachabilityBfs.js` |
+| Reachability check (flow wrapper) | — | **deleted** — was dead `checkReachability`; use `navReachHorizon.js` for AI reach |
 | Integration/cost-field blending | ⬜ | 0 | direction only, no potential-field cost blend |
 | Per-agent local flow window pool | ⬜ | 0 | sliding R-step horizon per agent; see [AI.md](./AI.md#future-local-flow-horizons) |
 
 **Branch progress: 78%**
 
-**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. The planned extension is a **small window per agent** (or pooled slots), centered on the occupied cell, with BFS capped at `range` path steps — reusing `FlowFieldWindow`, `computeFlowField`, and worker offload. **Decision-only utility reach (phase 1)** is **`navReachHorizon.js` sync BFS** — see [`current/fsmbfs.md`](current/fsmbfs.md), not flow-window `checkReachability`. Then flee-ball locomotion; then hybrid HPA waypoint + local flow execution for snakes.
+**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. Phase 1 utility reach is **`navReachHorizon.js`** ([`current/fsmbfs.md`](current/fsmbfs.md) ✅). Phase 2+: per-agent flow windows for flee/cohesion locomotion and hybrid HPA+flow execution.
 
 ---
 
