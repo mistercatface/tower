@@ -60,11 +60,9 @@ const FLEE_INTENT = {
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 5,
-    /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 5,
-    /** Center-brained squid chains (0 disables). */
-    squidCount: 128,
+    snakeCount: 64,
+    boidCount: 128,
+    squidCount: 32,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,
