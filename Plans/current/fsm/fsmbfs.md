@@ -6,8 +6,8 @@
 |--|--|
 | **Phase 1** | Reach dialect ✅ — [`history.md`](history.md#phase-1-reachsteps) |
 | **Part 1** | Passes A–G ✅ — [`history.md`](history.md#part-1-ai-consumer-cleanup) |
-| **Part 1.5** | **Pass H** ✅ — unified decision engine — [`history.md`](history.md#pass-h--unified-decision-engine) |
-| **Part 2** | Flow locomotion 2a → 2b → 3 — **unblocked** (Pass G ✅) |
+| **Part 1.5** | Pass H ✅ · **Pass H2** (decision frame) — plan below |
+| **Part 2** | Flow locomotion 2a → 2b → 3 — **gated on Pass H2a** |
 
 ---
 
@@ -41,6 +41,9 @@ A function, object, param, or layer that exists **only to forward data the calle
 - Threading the same config through 3 functions when `getSnakeGameConfig()` at the read site works
 - Factory that returns one closure and nothing else
 - Second blackboard layer (`visible.*Dist`, `remembered.*Dist`, `known.*Dist`) for the same fact
+- **`blackboard` + `decisionSnapshot` as sibling bags** (H2 — viewport/`ElevationCamera` class bug)
+- **`facts.visible` / `facts.remembered` copies of `visibleWorld` / memory** — merge once into `known`
+- **`readThreatState(world)` reading `blackboard ?? decisionSnapshot`** — one handle only
 - **One-export micro-files** whose only caller is another module in the same PR (inline or merge — see Part 1 review in [`history.md`](history.md#part-1-verdict))
 
 **Fix pattern:** compute at the boundary · pass scalars/records once · delete the copies.
@@ -76,10 +79,14 @@ Prefer fewer files over “perfect” folder purity when only one caller exists.
 
 | Need | Read from |
 |------|-----------|
-| Effort / hunt / food / ally cost | `blackboard.facts.reachSteps.*` |
-| Committed route beyond horizon | `routeStatus.pathLen` when committed target matches — inline in adapter |
-| Threat severity | `reachSteps.threat` + inline cell math + `cellSize` |
+| Effort / hunt / food / ally cost | `decisionContext.reachSteps.*` (H2+) |
+| Committed route beyond horizon | `decisionContext.routeStatus.pathLen` when committed target matches |
+| Threat severity | `decisionContext.threatState` |
+| Chosen mode / target | `decisionContext.chosenIntent` |
+| Merged targets | `decisionContext.known.*` |
 | Vision cone / nearest pick | Internal `distSq` in `classifyAgentVision` — **never exported** |
+
+**H2 frozen dialect:** one handle `decisionContext` per tick — no `blackboard` + `decisionSnapshot` pair, no `facts.visible`/`facts.remembered` copies of `visibleWorld`.
 
 **No second dialect.** No `*Dist`, `lastDistanceCells`, `reachForCandidate`, euclidean fallback when path reach is null.
 
@@ -112,7 +119,7 @@ Per agent per decision tick:
 Authoritative detail: [`history.md`](history.md#the-rule-frozen--do-not-regress).
 
 - **Module:** `Libraries/Navigation/navReachHorizon.js` only for decision reach BFS
-- **Write site:** intent adapter only — `facts.reachSteps` on blackboard
+- **Write site:** intent adapter only — `decisionContext.reachSteps` (was `facts.reachSteps` on blackboard)
 - **Topology:** `requireSnakeVisionFrame(state).navTopology` at sync site — no resolver
 - **Config:** `decisionReachHorizon` from `getSnakeGameConfig()` — no `resolveSnakeReachConfig`
 - **Flow:** `FlowFieldWindow` / worker = **Part 2 steering** — never replace sync BFS for scoring
@@ -182,6 +189,235 @@ Snake/flee dedupe: generic derives, memory, perception, decision helpers, intent
 
 **Tests:** 91 intent/decision suites green. Exports unchanged (`buildSnakeDecisionContext`, `buildFleeDecisionContext`, blackboard/score helpers).
 
+**Known gap (Pass H2):** pipeline is generic but the **frame** is not — still `blackboard` + `decisionSnapshot`, `facts.visible`/`remembered`/`known` re-copy perception, species files are spec+scorer JS. Same class of bug as pre-viewport `px/py/zoom` — see [`../stupid.md`](../stupid.md#case-history--viewport-frame-px--py--zoom--elevationcamera).
+
+---
+
+## Part 1.6 — Pass H2 — decision frame (viewport analog)
+
+**Problem:** Pass H deduped the **pipeline** but not the **handle**. Today one tick produces:
+
+```text
+visibleWorld + memoryWorld + reachSteps          ← raw inputs (fine at boundary)
+  → blackboard.facts.visible / remembered / known ← ElevationCamera copies
+  → decisionSnapshot (threatState, chosenIntent…) ← wallPassCamera copy
+  → world.{ blackboard, decisionSnapshot }       ← two handles threaded together
+```
+
+Effects read `world.blackboard.facts.known.threat`. Latch reads `world.decisionSnapshot.chosenIntent`. `readThreatState` does `blackboard ?? decisionSnapshot`. Flee latch **re-assigns** `decisionSnapshot.events = blackboard.events`. Species specs rebuild slots with `buildVisible` / `buildRemembered` / `buildKnown` — **`elevationCameraFromViewportInto` for AI**.
+
+**Goal:** one `decisionContext` built once at the adapter perceive boundary. Species differences live in **`Config/games/snake.js`** (slot schema + mode/scorer table), not `*DecisionModel.js` scorer files.
+
+### The rule (copy from [`../frame.md`](../frame.md))
+
+```text
+Pass decisionContext. Read decisionContext. Nothing else.
+```
+
+| Need | Read from |
+|------|-----------|
+| Merged target for mode | `decisionContext.known[ slot ]` |
+| Path-step effort | `decisionContext.reachSteps[ slot ]` |
+| Threat / hunger / ally derive | `decisionContext.threatState` etc. |
+| Scores + pick | `decisionContext.candidateScores`, `.chosenIntent` |
+| FSM / debug | same object — no sibling snapshot |
+| Memory reason for policy | `decisionContext.memoryActive[ slot ]` or event already pushed — **not** a full `remembered` target copy |
+
+Raw `visibleWorld` / `memoryWorld` exist **only** as inputs to the single build call inside `createGroundNavIntentAdapter` — never passed to scorers, effects, or latch.
+
+### Forbidden after H2 (grep + smell)
+
+| Banned | Viewport analog |
+|--------|-----------------|
+| `decisionSnapshot` as separate object | `wallPassCamera` |
+| `blackboard.facts.visible` / `.remembered` | unpacking `px/py/zoom` at every draw entry |
+| `buildVisible` / `buildRemembered` / `buildKnown` in species JS | `elevationCameraFrom*` factories |
+| `readThreatState` fallback across two bags | resolver picking which camera copy |
+| `snakeDecisionModel.js` / `fleeDecisionModel.js` with scorers | N/A — config at use site |
+| Free-form scorer expressions in JSON | resolver theater — **named scorer IDs only** |
+| `Libraries/AI/decision/` package | unchanged ban |
+
+### Target shape — one object
+
+Built in `buildDecisionContext(spec, input)` (grow `buildAgentDecisionContext.js` or rename in place):
+
+```javascript
+decisionContext = {
+  // merged decision frame (only read surface downstream)
+  known: { threat, prey|enemy, food, ally, threatCount?, allyCount?, allyCentroid? },
+  reachSteps: { threat, prey|enemy, food, ally },
+  routeStatus, committedTarget,
+  hungerState, threatState, allyState,
+  events,
+  candidateScores, candidateScoreDetails,
+  chosenIntent, chosenReason, targetId,
+  sprintIntent,
+  // snake-only extras on same object — not a second bag
+  engagementState?, seekerFaction?, seekerSegmentCount?,
+  memoryActive: { threat?, prey?, … },  // booleans for policyReasonForTarget — not full target copies
+}
+```
+
+Intent FSM `world` becomes `{ decisionContext }` (or `world.decisionContext` with `world` = context for minimal churn). **Delete** `{ blackboard, decisionSnapshot }` return pair.
+
+### Config — species = data (`Config/games/snake.js`)
+
+Two subtrees — same engine, different tables:
+
+```javascript
+// snake root
+decision: {
+  scoreOrder: ["flee", "seek_prey", "seek_food", "seek_ally", "explore"],
+  reachSlots: { threat: "threat", prey: "prey", food: "food", ally: "ally" },
+  targetLost: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
+  policySlot: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
+  slots: {
+    threat: { memory: "threat" },
+    prey:   { memory: "prey" },
+    food:   { memory: "food" },
+    ally:   { memory: "ally", known: "engagedAlly" },  // hook id, not inline JS
+  },
+  modes: {
+    flee:       { scorer: "riskAdjustedFlee" },
+    seek_prey:  { scorer: "preyWithEffort", slot: "prey" },
+    seek_food:  { scorer: "foodWithHunger", slot: "food" },
+    seek_ally:  { scorer: "regroupAlly", slot: "ally", cohesion: "snake" },
+    explore:    { scorer: "constant" },
+  },
+  sprint: { derive: "snake" },
+  afterPick: "snakeEngagement",
+  extraInputs: ["seekerFaction", "seekerSegmentCount", "session"],
+},
+
+// fleeAgent.decision — same keys, different values
+fleeAgent: {
+  decision: {
+    scoreOrder: ["flee", "seek_enemy", "seek_food", "seek_ally", "explore"],
+    reachSlots: { threat: "threat", enemy: "enemy", food: "food", ally: "ally" },
+    slots: {
+      threat: { memory: "threat" },
+      enemy:  { memory: "prey", visibleFrom: "prey", hideVisibleWhenMemory: true },
+      food:   { memory: "food" },
+      ally:   { memory: "ally", hideVisibleWhenMemory: true },
+    },
+    modes: {
+      flee:       { scorer: "riskAdjustedFlee", mods: ["outnumberedFlee"] },
+      seek_enemy: { scorer: "reachTarget", slot: "enemy", guards: ["noThreat"] },
+      seek_food:  { scorer: "foodWithHunger", slot: "food", guards: ["notSatisfied"], mods: ["sprintFoodPenalty"] },
+      seek_ally:  { scorer: "regroupAlly", slot: "ally", cohesion: "flee" },
+      explore:    { scorer: "constant" },
+    },
+    sprint: { derive: "flee" },
+    snapshotExtra: ["enemy"],  // expose known.enemy on context for tests/debug
+  },
+}
+```
+
+**Not a scoring DSL:** `modes.*.scorer` must be one of a **fixed registry** in the engine (`riskAdjustedFlee`, `reachTarget`, `preyWithEffort`, `foodWithHunger`, `regroupAlly`, `constant`). `guards` / `mods` are a closed enum — new behavior = new named primitive in engine, not inline config logic.
+
+### Engine work (`buildAgentDecisionContext.js`)
+
+| Add / change | Detail |
+|--------------|--------|
+| `mergeSlotsFromSchema(slots, visibleWorld, memoryWorld, hooks)` | replaces `buildVisible` / `buildRemembered` / `buildKnown` closures |
+| `knownHooks.engagedAlly` | snake ally filter (`resolveKnownAlly` logic) |
+| `scorerRegistry` | named functions; read `decisionContext` only |
+| `deriveHungerFromConfig(foodFraction, hungerConfig)` | deletes duplicate snake/flee hunger functions |
+| `deriveSprintFromConfig(mode, …, sprintTable)` | deletes duplicate sprint functions |
+| `buildDecisionContext(decisionConfig, input)` | single return — no `{ blackboard, decisionSnapshot }` |
+| `afterPick` hook table | `{ snakeEngagement }` — one function, referenced by id from config |
+
+**Delete from engine:** `createAgentDecisionBlackboard` as public API; species `spec` objects with inline closures.
+
+### Species files after H2
+
+| File | After |
+|------|-------|
+| `snakeDecisionModel.js` | **Delete** or ≤15 lines: re-export `buildSnakeDecisionContext` wrapping `buildDecisionContext(getSnakeGameConfig().decision, input)` for test stability |
+| `fleeDecisionModel.js` | Same for `fleeAgent.decision` |
+| `Config/games/snake.js` | owns both decision tables |
+
+### Migration steps — one PR per step, tests green each time
+
+#### H2a — Collapse the frame (behavior-neutral)
+
+**Bar:** one object; no sync between siblings.
+
+1. Rename merge: `buildAgentDecisionContext` returns flat `decisionContext` (keep `known`, drop `facts.visible`/`facts.remembered` — keep `memoryActive` flags for policy reasons).
+2. `createGroundNavIntentAdapter`: `lastDecisionContext = buildDecisionContext(...)`; `world = { decisionContext }`.
+3. Replace all reads:
+   - `world.blackboard.facts.known.*` → `world.decisionContext.known.*`
+   - `world.decisionSnapshot.*` → `world.decisionContext.*`
+   - delete `readThreatState` fallback — `decisionContext.threatState` only
+   - delete `decisionSnapshot.events = blackboard.events`
+4. Thin aliases (optional, delete in H2d): `buildSnakeDecisionContext` returns `{ blackboard: { facts: ctx, events: ctx.events }, decisionSnapshot: ctx }` **only if** needed to land H2a without touching every test in one commit — remove in H2d.
+
+**Touches:** `createGroundNavIntentAdapter.js`, `createSnakeForageIntent.js`, `createFleeExploreIntent.js`, `resolveFleePackOptions.js`, tests, debug overlays if any.
+
+**Grep gate:**
+
+```bash
+rg 'decisionSnapshot' Libraries/Game/snake --glob '*.js'
+rg 'blackboard\.facts' Libraries/Game/snake --glob '*.js'
+rg 'readThreatState' --glob '*.js'
+# target: zero in Libraries/Game after H2a (tests may lag until H2d)
+```
+
+#### H2b — Slot schema from config
+
+**Bar:** no `buildVisible` / `buildRemembered` / `buildKnown` in JS species files.
+
+1. Move slot tables into `Config/games/snake.js` (both snake + fleeAgent.decision).
+2. Engine `mergeSlotsFromSchema` implements: memory gating, flee `enemy`←`prey` alias, hide-visible-when-memory, snake `engagedAlly`.
+3. Delete spec closure blocks from decision model files.
+
+#### H2c — Scorer registry + mode table
+
+**Bar:** no species-local `scorePreyDetail` / `scoreSeekAllyDetail` functions.
+
+1. Implement registry entries by **lifting** current snake/flee scorers into engine (parameterized by config path / cohesion id).
+2. `buildDecisionContext` loops `decisionConfig.modes` → registry — no species `scoreDetails` function.
+3. Hunger/sprint derive from config tables.
+
+#### H2d — Delete species decision models
+
+**Bar:** config + engine only; tests import engine or config.
+
+1. Delete `snakeDecisionModel.js` / `fleeDecisionModel.js` or reduce to re-exports.
+2. Update tests to call `buildDecisionContext(snakeDecisionConfig, input)` or keep thin `buildSnakeDecisionContext` wrapper in `snakeGameConfig.js`.
+3. Update `fsmbfs.md` / `history.md`; add stupid.md cross-ref under decision frame case history.
+
+### Dependency
+
+```text
+Pass H ✅ ──► H2a collapse frame ──► H2b slot config ──► H2c scorer registry ──► H2d delete species models
+                                                                                      │
+Part 2 (flow locomotion) ◄──────────────────────────── gated on H2a minimum ──────────┘
+```
+
+Part 2 steering may read `decisionContext.known.threat` — must not introduce a third bag.
+
+### Pass H2 review bar
+
+- [ ] One `decisionContext` per tick — no `decisionSnapshot` sibling
+- [ ] No `facts.visible` / `facts.remembered` target copies — `known` + `memoryActive` only
+- [ ] Raw `visibleWorld` not passed past adapter build boundary
+- [ ] Species tables in `Config/games/snake.js`; no scorer functions in game JS
+- [ ] Scorer registry — named IDs only, no expression DSL
+- [ ] No `Libraries/AI/decision/` · net negative LOC vs post-H
+- [ ] 91+ intent/decision tests green
+- [ ] Phase 1 reach grep gates still clean
+
+### Verify after ship
+
+```bash
+rg 'decisionSnapshot' Libraries --glob '*.js'
+rg 'blackboard\.facts\.(visible|remembered)' Libraries --glob '*.js'
+rg 'buildVisible|buildRemembered|buildKnown' Libraries/Game/snake --glob '*Decision*.js'
+rg 'function scorePreyDetail|function scoreSeekAllyDetail|function scoreEnemyDetail' Libraries/Game/snake
+rg 'Libraries/AI/decision' --glob '*.js'
+```
+
 ---
 
 ## Part 2 — Flow locomotion (unblocked)
@@ -231,10 +467,8 @@ One cost field from weighted sources — replaces `pickFleeCell` + `resolveFleeP
 ### Dependency
 
 ```text
-Part 1 (Pass G) ✅ ──► 2a flee flow
-                         ├──► 2b hybrid HPA+flow
-                         └──► 3 blended fields
-Pass H (optional) ── parallel, no reach regression
+Part 1 (Pass G) ✅ ──► H2 decision frame ──► Part 2 flow (2a → 2b → 3)
+                         H2a minimum gates Part 2
 ```
 
 Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundNavBehavior.js`, `cellTargetHpaNav.js`
@@ -256,7 +490,15 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 - [x] Both `buildSnakeDecisionContext` and `buildFleeDecisionContext` exported
 - [x] 91 intent/decision tests green
 
-### Part 2
+### Part 1.6 (Pass H2 — decision frame)
+
+- [ ] H2a: one `decisionContext`; no `blackboard`/`decisionSnapshot` pair
+- [ ] H2b: slot merge from `Config/games/snake.js`
+- [ ] H2c: scorer registry + mode table; hunger/sprint from config
+- [ ] H2d: delete species `*DecisionModel.js` scorers (config + engine only)
+- [ ] Grep gates above; 91+ tests green
+
+### Part 2 (gated on H2a)
 
 - [ ] 2a: flee steers from flow sample
 - [ ] 2b: snake seek HPA waypoint + local flow
