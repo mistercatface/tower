@@ -113,6 +113,7 @@ export const SNAKE_GAME_DEFAULTS = {
             rivalBand: { maxSegmentGap: 2 },
             combat: { topology: "chain", canSplit: true, victimOfFleeEscapeRam: true, victimOfHeadStrikeRam: true, preyHeadRamImmuneLeader: true },
             relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey", squid: { type: "sizeBand", sameFaction: "neutral", targetSegmentCountAs: "component" } },
+            species: { retireNavOnDeath: true, pressureDiagnostics: true },
             scoringEnv: { effortFallback: true },
             hungerBands: [
                 { id: "satisfied", min: 0.66 },
@@ -172,6 +173,7 @@ export const SNAKE_GAME_DEFAULTS = {
             faction: "bravo",
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
             relationships: { snake: "threat", squid: "threat", flee_agent: { type: "faction", same: "ally", different: "prey" } },
+            species: {},
             teams: [
                 { faction: "charlie", color: "#f1c40f" },
                 { faction: "delta", color: "#2ecc71" },
@@ -245,6 +247,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 snake: { type: "sizeBand", sameFaction: "neutral", segmentCountAs: "component" },
                 squid: { type: "sizeBand", sameFaction: "neutral", segmentCountAs: "component" },
             },
+            species: { fracturableBeforeShatter: true, removeNonStruckSegments: true },
             linkSlack: 1.0,
             growDirX: -1,
             growDirY: 0,

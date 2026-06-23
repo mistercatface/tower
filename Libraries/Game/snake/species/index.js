@@ -1,6 +1,5 @@
-import { snakeSpecies } from "./snakeSpecies.js";
-import { fleeAgentSpecies } from "./fleeAgentSpecies.js";
-import { squidSpecies } from "./squidSpecies.js";
+import { snakeSpecies, fleeAgentSpecies, squidSpecies } from "./createAgentSpecies.js";
+export { snakeSpecies, fleeAgentSpecies, squidSpecies, createAgentSpecies } from "./createAgentSpecies.js";
 export const SNAKE_GAME_SPECIES = new Map([
     [snakeSpecies.id, snakeSpecies],
     [fleeAgentSpecies.id, fleeAgentSpecies],
