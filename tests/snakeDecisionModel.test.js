@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { SNAKE_HUNGRY_EXPLORE_TINT, SNAKE_INTENT_MODE_TINT, SNAKE_SATISFIED_EXPLORE_TINT, resolveSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
-import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, deriveSnakeThreatState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionContext, createSnakeDecisionBlackboard, deriveSnakeHungerState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
 const CELL = 16;
 function world({ threat = null, prey = null, food = null, ally = null, allyCount = 0, allyCentroid = null } = {}) {
     return { threat, prey, food, ally, allyCount, allyCentroid };
@@ -149,12 +150,12 @@ describe("committed target effort uses route length", () => {
 describe("threat severity facts (PR6)", () => {
     it("derives severity from distance and flags lethal range", () => {
         applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48 });
-        assert.equal(deriveSnakeThreatState(null, 10, CELL), null);
-        assert.equal(deriveSnakeThreatState(snake(1), null, CELL), null);
-        assert.equal(deriveSnakeThreatState(snake(1), 4, CELL).severity, 0.5);
-        assert.equal(deriveSnakeThreatState(snake(1), 8, CELL).severity, 0);
-        assert.equal(deriveSnakeThreatState(snake(1), 2, CELL).lethal, true);
-        assert.equal(deriveSnakeThreatState(snake(1), 4, CELL).lethal, false);
+        assert.equal(deriveThreatState(null, 10, CELL, getSnakeGameConfig()), null);
+        assert.equal(deriveThreatState(snake(1), null, CELL, getSnakeGameConfig()), null);
+        assert.equal(deriveThreatState(snake(1), 4, CELL, getSnakeGameConfig()).severity, 0.5);
+        assert.equal(deriveThreatState(snake(1), 8, CELL, getSnakeGameConfig()).severity, 0);
+        assert.equal(deriveThreatState(snake(1), 2, CELL, getSnakeGameConfig()).lethal, true);
+        assert.equal(deriveThreatState(snake(1), 4, CELL, getSnakeGameConfig()).lethal, false);
     });
     it("surfaces threatState on the snapshot without changing the chosen mode", () => {
         applySnakeGameConfig({ fleeRange: 128, lethalThreatRange: 48, decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } });

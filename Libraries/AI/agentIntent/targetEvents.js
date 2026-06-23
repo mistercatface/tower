@@ -1,0 +1,15 @@
+export function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
+    const upper = kind.toUpperCase();
+    if (visibleTarget) {
+        events.push(`${upper}_SEEN`);
+        return;
+    }
+    if (rememberedTarget) events.push(kind === "prey" ? "PREY_LAST_SEEN_ACTIVE" : `${upper}_REMEMBERED`);
+}
+export function routeEvents(routeStatus) {
+    const events = [];
+    if (!routeStatus) return events;
+    if (routeStatus.routeFailed) events.push("ROUTE_FAILED");
+    if (routeStatus.destReached) events.push("DEST_REACHED");
+    return events;
+}

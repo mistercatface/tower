@@ -73,7 +73,23 @@
 
 ---
 
-## Pass C — Intent memory
+## Pass B — Generic derives ✅
+
+**Shipped:**
+
+| Module | Exports |
+|--------|---------|
+| `Libraries/AI/agents/deriveThreatState.js` | `deriveThreatState(threat, reachSteps, cellSize, config)` |
+| `Libraries/AI/agents/deriveAllyState.js` | `deriveAllyState(...)` |
+| `Libraries/AI/agentIntent/targetEvents.js` | `pushTargetEvents`, `routeEvents` |
+
+**Deleted:** `deriveFleeAgentThreatState` · local copies in both decision models · flee import of `snakeDecisionModel.js`
+
+**Tests:** `snakeDecisionModel.test.js` threat derive → `deriveThreatState` + explicit config; snake + flee decision suites pass.
+
+---
+
+## Pass C — Intent memory (next)
 
 | Symbol | Snake | Flee | Notes |
 |--------|-------|------|-------|
@@ -139,7 +155,7 @@ Both `createSnakeForageIntent.js` and `createFleeExploreIntent.js`:
 
 | Module | Consumers | Pass |
 |--------|-----------|------|
-| `deriveSnakeThreatState`, `deriveAllyState`, `routeEvents` | snake + flee | B |
+| `deriveSnakeThreatState`, `deriveAllyState`, `routeEvents`, `pushTargetEvents` | snake + flee | B ✅ |
 | `snakePerception.js` / `requireSnakeVisionFrame` | snake, flee, food, HUD | D (rename later) |
 | Decision helpers listed above | snake + flee | B + E |
 

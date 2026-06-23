@@ -1,9 +1,8 @@
+import { deriveAllyState } from "../../../AI/agents/deriveAllyState.js";
+import { deriveThreatState } from "../../../AI/agents/deriveThreatState.js";
+import { pushTargetEvents, routeEvents } from "../../../AI/agentIntent/targetEvents.js";
 import { netScoreDetail, pickBestScoreKey, scoreCandidateSet } from "../../../AI/utility/utilityScoring.js";
-import { deriveSnakeThreatState, deriveAllyState, routeEvents } from "../snakeDecisionModel.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-export function deriveFleeAgentThreatState(threat, reachSteps, cellSize) {
-    return deriveSnakeThreatState(threat, reachSteps, cellSize);
-}
 export function deriveFleeHungerState(foodFraction) {
     if (foodFraction == null) return null;
     const { satisfiedAtOrAbove, desperateBelow } = getSnakeGameConfig().fleeAgent.hunger;
@@ -40,14 +39,6 @@ function hungerKey(hungerState) {
 }
 function costPerCellForHunger(pressure, hungerState) {
     return pressure.effort.costPerCell[hungerKey(hungerState)];
-}
-function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
-    const upper = kind.toUpperCase();
-    if (visibleTarget) {
-        events.push(`${upper}_SEEN`);
-        return;
-    }
-    if (rememberedTarget) events.push(`${upper}_REMEMBERED`);
 }
 function policyReasonForTarget(blackboard, kind) {
     if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
@@ -197,7 +188,7 @@ export function buildFleeDecisionContext({
     pickPolicy = pickFleeIntentPolicy,
 }) {
     const hungerState = deriveFleeHungerState(foodFraction);
-    const threatState = deriveFleeAgentThreatState(visibleWorld.threat, reachSteps?.threat, cellSize);
+    const threatState = deriveThreatState(visibleWorld.threat, reachSteps?.threat, cellSize, getSnakeGameConfig());
     const blackboard = createFleeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, reachSteps, hungerState, threatState });
     const scoredCandidates = scoreCandidateSet(scoreFleeIntentCandidateDetails(blackboard), FLEE_INTENT_SCORE_ORDER);
     const chosenIntent = pickPolicy(blackboard, scoredCandidates.candidateScores);

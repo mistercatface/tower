@@ -5,7 +5,7 @@
 | | |
 |--|--|
 | **Phase 1** | Reach dialect done ✅ — [`history.md`](history.md) |
-| **Part 1** | Pass A ✅ inventory · **Pass B next** — see [`inventory.md`](inventory.md) |
+| **Part 1** | Pass A ✅ · Pass B ✅ · **Pass C next** — [`inventory.md`](inventory.md) |
 | **Part 2** | Flow locomotion 2a → 2b → 3 — **blocked until Part 1 grep gates pass** |
 
 ---
@@ -161,21 +161,20 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 
 ## Part 1 — AI consumer cleanup
 
-**Why first:** Phase 1 fixed reach, but snake and flee are still copy-paste forks. Flee imports generic derives from `snakeDecisionModel.js`. Intent adapters ~90% identical. Flow locomotion needs a clean intent/loco boundary.
+**Why first:** Phase 1 fixed reach, but snake and flee are still copy-paste forks. ~~Flee imports generic derives from `snakeDecisionModel.js`~~ (Pass B ✅). Intent adapters ~90% identical. Flow locomotion needs a clean intent/loco boundary.
 
 ### Stench inventory
 
 | Smell | Where | Fix |
 |-------|-------|-----|
-| Flee imports snake for generic derives | `fleeDecisionModel.js` | `Libraries/AI/agents/` — `deriveThreatState`, `deriveAllyState` |
-| Duplicated decision helpers | both `*DecisionModel.js` | `pushTargetEvents`, `policyReasonForTarget`, `intentPolicy`, hunger/food scorers → `Libraries/AI/` |
+| Flee imports snake for generic derives | ~~`fleeDecisionModel.js`~~ ✅ Pass B | `deriveThreatState`, `deriveAllyState`, `targetEvents` in `Libraries/AI/` |
+| Duplicated decision helpers | `pushTargetEvents` ✅ Pass B; still open: `policyReasonForTarget`, `intentPolicy`, hunger/food scorers | Pass E |
 | Twin intent memory | `snakeIntentMemory.js`, `fleeIntentMemory.js` | `createAgentIntentMemory({ kinds, resolveAlly? })` |
 | Twin perception wrappers | `snakeIntent.js`, `fleeWorldPerception.js` | one `resolveAgentPerceptionOptions` |
 | ~270-line twin intent adapters | `createSnakeForageIntent.js`, `createFleeExploreIntent.js` | shared shell: route/reach/arrival/latch/effects |
 | `reachStepsForMode` ×2 | both adapters | once — `Libraries/Game/snake/agentReachSteps.js` or shared adapter helper |
 | Misnamed file | ~~`agentPopulationRegistry.js`~~ → `agentRelationship.js` ✅ Pass A | **dead code** — zero importers; delete or wire in Pass D |
-| `deriveFleeAgentThreatState` | thin wrapper | delete after neutral import |
-| Pass 4 incomplete | `routeEvents` moved; `pushTargetEvents` not | finish Pass B |
+| `deriveFleeAgentThreatState` | ~~thin wrapper~~ ✅ deleted Pass B | — |
 
 **Stay in game adapters:** mode sets (`seek_prey` vs `seek_enemy`), engagement publish (snake), `regroupSizeFactor`, flee pack options, species blackboard shapes.
 
@@ -184,7 +183,7 @@ rg "deriveSnakeThreatState|deriveAllyState|routeEvents" Libraries/Game/snake/fle
 | Pass | Work | Bar |
 |------|------|-----|
 | **A — Inventory** ✅ | Renamed `agentPopulationRegistry.js` → `agentRelationship.js`; symbol map in [`inventory.md`](inventory.md) | no behavior change |
-| **B — Generic derives** | Move threat/ally/route/target events → `Libraries/AI/` | flee does not import snake decision model for generics |
+| **B — Generic derives** ✅ | `deriveThreatState`, `deriveAllyState`, `targetEvents` → `Libraries/AI/`; deleted `deriveFleeAgentThreatState` | flee imports AI only — verified |
 | **C — Intent memory** | Single factory; delete species memory files | two call sites |
 | **D — Perception** | Merge options builders | one `resolve*PerceptionOptions` body |
 | **E — Decision dedupe** | Shared hunger/food/policy helpers | net −LOC in decision models |
@@ -267,8 +266,8 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 ### Part 1 (open)
 
 - [x] Pass A inventory — [`inventory.md`](inventory.md)
-- [ ] Pass B — flee does not import generic derives from `snakeDecisionModel.js`
-- [ ] One intent memory factory; one perception options builder
+- [x] Pass B — flee does not import generic derives from `snakeDecisionModel.js`
+- [ ] Pass C — one intent memory factory
 - [ ] Intent adapter shared shell; species files materially shorter
 - [ ] Net −LOC across snake+flee pair
 - [ ] Part 1 grep gates pass
