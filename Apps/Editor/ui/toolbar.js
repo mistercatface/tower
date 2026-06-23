@@ -65,16 +65,6 @@ export function initPresetSelect(profileIds) {
     }
     select.value = SURFACE_PROFILE_ID.tomatoGarden;
 }
-/** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange */
-export function bindVectorPropsToolbar(state, onChange) {
-    const input = document.getElementById("showVectorPropsAllInput");
-    if (!input) return;
-    input.checked = state.editor.forceVectorPropsAll;
-    input.addEventListener("change", () => {
-        state.editor.forceVectorPropsAll = input.checked;
-        onChange();
-    });
-}
 /** @param {import("../state.js").TileLabGameState} state @param {(mode: import("../../../Render/WorldRenderMode.js").WorldRenderMode) => void} onChange */
 export function bindWorldRenderModeToolbar(state, onChange) {
     const select = document.getElementById("worldRenderModeSelect");

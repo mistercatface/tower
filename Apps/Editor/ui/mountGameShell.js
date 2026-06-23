@@ -3,14 +3,11 @@ import { initTileLabWorld } from "../world/mapWorld.js";
 import { mountGameSandbox } from "../world/gameSandbox.js";
 import { fitTileLabStageZoom, GAME_MODE_ZOOM_MULTIPLIER } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
 import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
-import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled, markLabViewDirty } from "./preview.js";
+import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled } from "./preview.js";
 import { seedRuntimeLabProfile } from "./profile/ProfileEditor.js";
 import { fitGameCanvasToStage, mountGameViewport } from "./gameViewport.js";
-import { WORLD_RENDER_CONTROLS_HTML } from "./shellHtml.js";
-import { bindVectorPropsToolbar, bindWorldRenderModeToolbar, syncWorldRenderModeUi } from "./toolbar.js";
 const GAME_SHELL_HTML = `
 <div class="game-shell">
-    <div class="game-toolbar toolbar">${WORLD_RENDER_CONTROLS_HTML}</div>
     <div id="gameStage" class="game-stage">
         <div class="game-stage-inner"></div>
     </div>
@@ -34,11 +31,9 @@ export async function mountGameShell(state, launcher) {
     state.editor.ctx.imageSmoothingEnabled = false;
     state.editor.showMapOverview = false;
     state.editor.showAnimationPreview = false;
+    state.worldRenderMode = "flat2d";
     applyLabWorldRenderMode(state);
     setLabVignetteEnabled(true);
-    bindVectorPropsToolbar(state, markLabViewDirty);
-    bindWorldRenderModeToolbar(state, () => applyLabWorldRenderMode(state));
-    syncWorldRenderModeUi(state);
     mountLabFrameRefresh(canvas);
     seedRuntimeLabProfile(SURFACE_PROFILE_ID.poolTableFelt);
     await pushEditorProfile(state);

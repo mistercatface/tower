@@ -7,7 +7,7 @@ import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flu
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isShowLabPathDebug } from "./preview.js";
-import { initPresetSelect, bindToolbarControls, bindVectorPropsToolbar, syncWorldRenderModeUi, mountPlayAreaToolbarControls, commitPlayAreaFromToolbar } from "./toolbar.js";
+import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi, mountPlayAreaToolbarControls, commitPlayAreaFromToolbar } from "./toolbar.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
@@ -137,7 +137,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
         },
         state,
     );
-    bindVectorPropsToolbar(state, () => {});
     syncWorldRenderModeUi(state);
     fitLabStageToView(state);
     const animCanvas = document.getElementById("animationPreviewCanvas");

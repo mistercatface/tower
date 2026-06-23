@@ -10,12 +10,6 @@ import {
     SANDBOX_PATH_VISUAL_DEBUG,
     SANDBOX_PATH_VISUAL_OPTIONS,
     SANDBOX_PATH_VISUAL_LABELS,
-    resolveSandboxPropVisual,
-    setSandboxPropVisual,
-    SANDBOX_PROP_VISUAL_DEFAULT,
-    SANDBOX_PROP_VISUAL_VECTOR,
-    SANDBOX_PROP_VISUAL_OPTIONS,
-    SANDBOX_PROP_VISUAL_LABELS,
 } from "./sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget, tickSandboxCameraFollow } from "./sandboxCameraTarget.js";
 import { getSandboxBehaviorLabel, isSandboxSpawnable, isSingleWorldPropSpawnAsset, isPoolRackSpawnAsset, resolveSandboxBehaviors, SANDBOX_BEHAVIOR_LABELS } from "./sandboxCapabilities.js";

@@ -11,7 +11,6 @@ import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Canvas/viewQuantize.js";
 import { buildPropSpriteKey } from "../Libraries/Canvas/QuantizedSpriteCache.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
-import { resolveVectorPropSpec } from "../Libraries/Render/vectorProp.js";
 import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Libraries/Props/propVisualAttachments.js";
 loadPropAssets();
@@ -73,13 +72,6 @@ describe("draw shape parity", () => {
         draw(createMockCtx(), prop, 100, 100);
         assert.equal(prop.getShape().vertices[1].x, 12);
         assert.equal(prop.getShape().vertices[2].y, 5);
-    });
-    it("hex block resolves six-vertex vector overlay spec", () => {
-        const prop = new WorldProp(0, 0, "hex_block", 0.5);
-        const spec = resolveVectorPropSpec(prop, getPropAsset("hex_block"));
-        assert.equal(spec.body.kind, "polygon");
-        assert.equal(spec.body.vertices.length, 6);
-        assert.equal(spec.body.facing, 0.5);
     });
     it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
         const prop = new WorldProp(0, 0, "ball", 0);

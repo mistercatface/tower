@@ -4,9 +4,9 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    snakeCount: 5,
+    snakeCount: 50,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 640,
+    boidCount: 200,
     fleeAgent: {
         bodyPropId: "flee_ball",
         faction: "bravo",
@@ -58,8 +58,8 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
     rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
-    /** When true (default), camera-focused agent draws vision, spatial memory, and path debug overlays. */
-    showFocusedAgentDebug: true,
+    /** When true, camera-focused agent draws vision, spatial memory, and path debug overlays. */
+    showFocusedAgentDebug: false,
     focusedAgentDebug: { vision: true, spatialMemory: true, path: true, agentSlots: {}, pathPreview: { cellCount: 3 }, targetRing: {} },
     visionRange: { range: 128, cellFill: "rgba(120, 220, 255, 0.04)", visibleGoalStroke: "rgba(255, 220, 80, 0.35)", lineWidth: 1 },
     /** Explore waypoints must be at least this many grid tiles away (Chebyshev). */

@@ -7,7 +7,6 @@ import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { isButtonEntity } from "../../Sandbox/buttonInput.js";
 import { isChainLinkBall } from "../../Sandbox/chainLinks.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
-import { SANDBOX_PROP_VISUAL_LABELS, SANDBOX_PROP_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
@@ -69,13 +68,6 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
         onChange: (value) => {
             controller.setPathVisual(value, selectedProp);
-        },
-    });
-    appendSelectField(body, "Visual", {
-        value: controller.getPropVisual(selectedProp),
-        options: SANDBOX_PROP_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PROP_VISUAL_LABELS[optionId] })),
-        onChange: (value) => {
-            controller.setPropVisual(value, selectedProp);
         },
     });
 }

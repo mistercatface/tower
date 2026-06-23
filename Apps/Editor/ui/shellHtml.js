@@ -1,5 +1,4 @@
 export const WORLD_RENDER_CONTROLS_HTML = `
-        <label class="check-inline"><input id="showVectorPropsAllInput" type="checkbox"> Vector props</label>
         <label class="toolbar-select">
             Render mode
             <select id="worldRenderModeSelect">

@@ -31,10 +31,6 @@ body.shell-game .game-shell {
     width: 100%;
 }
 
-body.shell-game .game-toolbar {
-    flex: 0 0 auto;
-}
-
 body.shell-game .game-stage {
     flex: 1;
     min-height: 0;

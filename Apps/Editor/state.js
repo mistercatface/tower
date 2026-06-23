@@ -15,7 +15,7 @@ export class TileLabGameState extends SharedGameState {
         const rand = Math.floor(1 + Math.random() * 1000000000);
         this.mapSeed = rand;
         this.floorSeed = rand;
-        this.worldRenderMode = "radial";
+        this.worldRenderMode = "flat2d";
         this.viewport = new Viewport(0, 0, 1);
         this.nav.setPruneSeedResolver((grid, bounds) => {
             if (bounds && !isEmptyCellBounds(bounds)) {

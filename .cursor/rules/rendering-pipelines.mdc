@@ -45,10 +45,6 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 
 Bucket in **`getCustomSpriteCacheKey(prop)`** or **`prop.strategy.getCustomSpriteCacheKey`** (powered, tripped, anim frame, link role). Do not read uncached sim state inside the recipe without keying it.
 
-### Vector debug silhouette (optional)
-
-If sandbox **vector** visual mode should show a physics outline: extend **`resolveVectorPropPresentation`** / `vectorProp.js`. That is still bake+blit — not a separate pipeline. Default mode keeps using the prop cache recipe above.
-
 ---
 
 ## 2 — Grid stamp cache (obstacleGrid / floorStore)

@@ -17,6 +17,7 @@ import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
+import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
     const config = getSnakeGameConfig();
@@ -78,7 +79,21 @@ export async function setupSnakeGame(state) {
         if (!focusedId) return "No Target";
         return resolveAgentName(focusedId, "Snake");
     };
-    const hud = mountSnakeHud({ onCycleCamera: () => cameraCycler.cycle(), getFocusedSnakeName });
+    const hud = mountSnakeHud({
+        onCycleCamera: () => cameraCycler.cycle(),
+        getFocusedSnakeName,
+        renderModeControl: {
+            get() {
+                return normalizeWorldRenderMode(state.worldRenderMode);
+            },
+            cycle() {
+                state.worldRenderMode = normalizeWorldRenderMode(state.worldRenderMode) === WORLD_RENDER_MODE_FLAT2D ? WORLD_RENDER_MODE_RADIAL : WORLD_RENDER_MODE_FLAT2D;
+            },
+            label(mode) {
+                return WORLD_RENDER_MODE_LABELS[mode];
+            },
+        },
+    });
     cameraCycler.setFocusedId(centerSnake.chain.head.id);
     cameraCycler.bindInput();
     hud.update();

@@ -20,7 +20,7 @@ import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/Aabb2D.js";
-import { resolveSandboxPathVisual, resolveSandboxPropVisual, setSandboxPathVisual, setSandboxPropVisual } from "../Sandbox/sandboxPropMeta.js";
+import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { CameraTargetCycler } from "../Sandbox/CameraTargetCycler.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
@@ -546,13 +546,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         setPathVisual(visual, prop) {
             setSandboxPathVisual(state, prop, visual);
-            session.sync();
-        },
-        getPropVisual(prop) {
-            return resolveSandboxPropVisual(state, prop);
-        },
-        setPropVisual(visual, prop) {
-            setSandboxPropVisual(state, prop, visual);
             session.sync();
         },
         isCameraTarget(prop) {
