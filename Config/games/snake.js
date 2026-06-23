@@ -111,6 +111,7 @@ export const SNAKE_GAME_DEFAULTS = {
             maxAliveSegmentCount: 12,
             metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
             rivalBand: { maxSegmentGap: 2 },
+            combat: { topology: "chain", canSplit: true, victimOfFleeEscapeRam: true, victimOfHeadStrikeRam: true, preyHeadRamImmuneLeader: true },
             scoringEnv: { effortFallback: true },
             hungerBands: [
                 { id: "satisfied", min: 0.66 },
@@ -168,6 +169,7 @@ export const SNAKE_GAME_DEFAULTS = {
             segmentCount: 1,
             leaderIndex: 0,
             faction: "bravo",
+            combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
             teams: [
                 { faction: "charlie", color: "#f1c40f" },
                 { faction: "delta", color: "#2ecc71" },
@@ -235,6 +237,7 @@ export const SNAKE_GAME_DEFAULTS = {
             segmentCount: 3,
             leaderIndex: 1,
             armSegmentCount: 1,
+            combat: { topology: "chain", brainRamResolver: "squidVsSquid", preyHeadRamImmuneNonLeader: true },
             linkSlack: 1.0,
             growDirX: -1,
             growDirY: 0,

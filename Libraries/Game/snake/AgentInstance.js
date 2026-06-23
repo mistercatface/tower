@@ -11,6 +11,7 @@ import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
+import { getAgentCombatTraits } from "./agentCombatTraits.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
 }
@@ -19,10 +20,6 @@ export function isSquidProfile(instance) {
 }
 export function isFleeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.flee;
-}
-/** Snake or squid — multi-segment chain combat agents (not flee balls). */
-export function isMultiSegmentChainAgent(instance) {
-    return isSnakeProfile(instance) || isSquidProfile(instance);
 }
 export class AgentInstance {
     constructor({ profileId, headId, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
@@ -223,7 +220,7 @@ export class AgentInstance {
         reapAgentInstance(state, snakeGame, this, deathImpact);
     }
     splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null, deathImpact = null) {
-        if (!isSnakeProfile(this)) return null;
+        if (!getAgentCombatTraits(this.profileId).canSplit) return null;
         const members = victimMembers ?? getConnectedComponentPath(state.kinetic, this.headId);
         const strikeIndex = members.indexOf(struckSegmentId);
         if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
