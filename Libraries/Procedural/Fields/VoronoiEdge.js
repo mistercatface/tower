@@ -1,8 +1,9 @@
-import { deriveFeatureSeed, writeSeededFeatureCell } from "./SeededFeatureHash.js";
+import { hashSaltString } from "../../Math/hash.js";
+import { writeSeededFeatureCell } from "./SeededFeatureHash.js";
 const featureScratch = { fx: 0, fy: 0 };
 export class WorleyEdgeField {
     constructor(rootSeed, salt, density) {
-        this.seed = deriveFeatureSeed(rootSeed, salt);
+        this.seed = hashSaltString(rootSeed, salt);
         this.density = density;
     }
     sampleEdge(worldX, worldY) {

@@ -1,3 +1,4 @@
+import { hashSaltString } from "../../Math/hash.js";
 function lcg(seed) {
     let s = seed;
     return function () {
@@ -65,9 +66,7 @@ export class SeededNoise2D {
         this.profile = { calls: 0, hits: 0, overflows: 0 };
     }
     static fromDerived(rootSeed, salt) {
-        let h = rootSeed >>> 0 || 1;
-        for (let i = 0; i < salt.length; i++) h = Math.imul(h ^ salt.charCodeAt(i), 2654435761) >>> 0;
-        return new SeededNoise2D(h || 1);
+        return new SeededNoise2D(hashSaltString(rootSeed, salt));
     }
     setSeed(seed) {
         const next = seed >>> 0 || 1;

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { GridSiteField } from "../Libraries/Procedural/Fields/GridSiteField.js";
-import { deriveFeatureSeed, seededFeatureCell, writeSeededFeatureCell } from "../Libraries/Procedural/Fields/SeededFeatureHash.js";
+import { hashSaltString } from "../Libraries/Math/hash.js";
+import { writeSeededFeatureCell } from "../Libraries/Procedural/Fields/SeededFeatureHash.js";
 import { WorleyEdgeField, voronoiEdgeMetric } from "../Libraries/Procedural/Fields/VoronoiEdge.js";
 
 describe("SeededFeatureHash", () => {
@@ -14,13 +15,20 @@ describe("SeededFeatureHash", () => {
     });
 
     it("derives stable salted sub-seeds", () => {
-        assert.equal(deriveFeatureSeed(1234, "worley"), deriveFeatureSeed(1234, "worley"));
-        assert.notEqual(deriveFeatureSeed(1234, "worley"), deriveFeatureSeed(1234, "biome"));
+        assert.equal(hashSaltString(1234, "worley"), hashSaltString(1234, "worley"));
+        assert.notEqual(hashSaltString(1234, "worley"), hashSaltString(1234, "biome"));
     });
 
     it("returns stable jitter for the same cell and seed", () => {
-        assert.deepEqual(seededFeatureCell(-3, 4, 1), seededFeatureCell(-3, 4, 1));
-        assert.notDeepEqual(seededFeatureCell(0, 0, 42), seededFeatureCell(0, 0, 43));
+        const out = { fx: 0, fy: 0 };
+        writeSeededFeatureCell(out, -3, 4, 1);
+        const snap = { fx: out.fx, fy: out.fy };
+        writeSeededFeatureCell(out, -3, 4, 1);
+        assert.deepEqual(snap, { fx: out.fx, fy: out.fy });
+        writeSeededFeatureCell(out, 0, 0, 42);
+        const snapA = { fx: out.fx, fy: out.fy };
+        writeSeededFeatureCell(out, 0, 0, 43);
+        assert.notDeepEqual(snapA, { fx: out.fx, fy: out.fy });
     });
 });
 
@@ -30,7 +38,7 @@ describe("WorleyEdgeField", () => {
         const salt = "surface-worley";
         const density = 0.04;
         const field = new WorleyEdgeField(rootSeed, salt, density);
-        const derivedSeed = deriveFeatureSeed(rootSeed, salt);
+        const derivedSeed = hashSaltString(rootSeed, salt);
         assert.equal(field.sampleEdge(18, -33), voronoiEdgeMetric(18, -33, density, derivedSeed));
     });
 

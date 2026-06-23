@@ -1,10 +1,11 @@
-import { deriveFeatureSeed, writeSeededFeatureCell } from "./SeededFeatureHash.js";
+import { hashSaltString } from "../../Math/hash.js";
+import { writeSeededFeatureCell } from "./SeededFeatureHash.js";
 const jitterScratch = { fx: 0, fy: 0 };
 const rankScratch = { fx: 0, fy: 0 };
 export class GridSiteField {
     constructor(rootSeed, salt, cellSize = 1) {
-        this.jitterSeed = deriveFeatureSeed(rootSeed, `${salt}:jitter`);
-        this.rankSeed = deriveFeatureSeed(rootSeed, `${salt}:rank`);
+        this.jitterSeed = hashSaltString(rootSeed, `${salt}:jitter`);
+        this.rankSeed = hashSaltString(rootSeed, `${salt}:rank`);
         this.cellSize = cellSize;
     }
     writeSite(out, col, row) {
