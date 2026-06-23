@@ -7,7 +7,6 @@ import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/
 import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { getSurfaceBakeScale } from "../../WorldSurface/WorldSurfaceResolution.js";
 import { applyProjectedCapDamageOverlay, applyProjectedWallFaceDamageOverlay } from "./wallDamageDraw.js";
 export { wallFaceColumns } from "../../WorldSurface/WallFaceColumns.js";
 export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
@@ -127,7 +126,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     return {
         subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))),
         subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)),
-        capPx: capHeight * getSurfaceBakeScale(settings),
+        capPx: capHeight * settings.surfaceBakeScale,
         alphaBase,
         alphaBandMax,
     };

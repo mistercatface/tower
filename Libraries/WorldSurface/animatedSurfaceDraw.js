@@ -1,4 +1,3 @@
-import { getGameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { getSurfaceProfileProvider } from "../Procedural/SurfaceProfileProvider.js";
 import { animationFrameIndex } from "./ProfileBakeResolver.js";
 import { bakeSlotForSourceFrame } from "./AnimationFrameBake.js";
@@ -42,33 +41,31 @@ function resolveFlipbookFrameIndex(flipbook, gameTime) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {import("./animatedSurfaceFlipbook.js").AnimatedSurfacePatchBake} patch
  * @param {number} frameIndex
- * @param {import("../../Render/WorldSurfaceBootstrap.js").WorldSurfaceSettings} settings
  * @param {number} zLevel
  * @param {import("../Spatial/iso/ElevationCamera.js").ElevationCamera} camera
  */
-function drawAnimatedPatch(ctx, patch, frameIndex, settings, zLevel, camera) {
+function drawAnimatedPatch(ctx, patch, frameIndex, zLevel, camera) {
     const canvas = patch.frames[Math.min(patch.frames.length - 1, Math.max(0, frameIndex))];
     if (!isDrawableBakedSurface(canvas)) return;
     const { minX, minY, maxX, maxY } = patch.bounds;
     const worldW = maxX - minX;
     const worldH = maxY - minY;
     if (zLevel <= 0) {
-        drawBakedTexture(ctx, canvas, minX, minY, worldW, worldH, settings);
+        drawBakedTexture(ctx, canvas, minX, minY, worldW, worldH);
         return;
     }
     const corners = projectWorldAabbCornersInto(sPatchCorners, minX, minY, maxX, maxY, zLevel, camera);
-    drawProjectedHorizontalChunk(ctx, canvas, corners, settings);
+    drawProjectedHorizontalChunk(ctx, canvas, corners);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {ReturnType<typeof createAnimatedSurfaceZone>} zone @param {object} state @param {import("../Viewport/Viewport.js").Viewport} viewport */
 export function drawAnimatedSurfaceZone(ctx, zone, state, viewport) {
     if (!zone?.profileId || !zone.flipbook || !viewport) return;
     if (!viewport.aabbInBounds(zone.aabb, "clip")) return;
-    const settings = getGameWorldSurfaceSettings();
     const frameIndex = resolveFlipbookFrameIndex(zone.flipbook, state.gameTime ?? 0);
     const camera = elevationCameraFromViewport(viewport);
-    drawAnimatedPatch(ctx, zone.flipbook.play, frameIndex, settings, 0, camera);
+    drawAnimatedPatch(ctx, zone.flipbook.play, frameIndex, 0, camera);
     const railBands = zone.flipbook.railBands;
-    for (let i = 0; i < railBands.length; i++) drawAnimatedPatch(ctx, railBands[i], frameIndex, settings, zone.railHeight, camera);
+    for (let i = 0; i < railBands.length; i++) drawAnimatedPatch(ctx, railBands[i], frameIndex, zone.railHeight, camera);
 }
 /**
  * @param {CanvasRenderingContext2D} ctx

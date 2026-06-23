@@ -1,6 +1,6 @@
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
-import { bakePixelsForWorldSpan, drawBakedTexture, getSurfaceBakeScale } from "../WorldSurface/WorldSurfaceResolution.js";
+import { bakePixelsForWorldSpan, drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
 import { bakeFrameRange } from "../WorldSurface/AnimationFrameBake.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
 import { TileWorkerCoordinator } from "../WorldSurface/TileWorkerCoordinator.js";
@@ -26,7 +26,7 @@ function corridorDrawCacheKey(linkId, profileId, rev) {
 }
 /** @param {number[]} cellIndices @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} originX @param {number} originY @param {number} worldW @param {number} worldH @param {import("../WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings} settings */
 function buildCorridorFloorMaskCanvas(cellIndices, grid, originX, originY, worldW, worldH, settings) {
-    const surfaceBakeScale = getSurfaceBakeScale(settings);
+    const surfaceBakeScale = settings.surfaceBakeScale;
     const bakeW = bakePixelsForWorldSpan(worldW, surfaceBakeScale);
     const bakeH = bakePixelsForWorldSpan(worldH, surfaceBakeScale);
     const cellBakeSize = bakePixelsForWorldSpan(grid.cellSize, surfaceBakeScale);
@@ -142,7 +142,6 @@ function getCorridorFloorCanvas(engine, state, linkId, cellIndices, profileId) {
  * @param {import("../Viewport/Viewport.js").Viewport} viewport
  */
 export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
-    const settings = engine.settings;
     const nodes = listRoomNodes(state);
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
@@ -151,7 +150,7 @@ export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
         if (!viewport.aabbInBounds(aabb, "props")) continue;
         const canvas = getRoomFloorCanvas(engine, state, node);
         if (!canvas) continue;
-        drawBakedTexture(ctx, canvas, aabb.minX, aabb.minY, aabb.maxX - aabb.minX, aabb.maxY - aabb.minY, settings);
+        drawBakedTexture(ctx, canvas, aabb.minX, aabb.minY, aabb.maxX - aabb.minX, aabb.maxY - aabb.minY);
     }
     const corridors = getRoomGraph(state).bakedCorridorFloorCells;
     if (!corridors?.length) return;
@@ -163,6 +162,6 @@ export function drawRoomGraphFloorPatches(ctx, engine, state, viewport) {
         if (!draw) continue;
         const patchAabb = { minX: draw.minX, minY: draw.minY, maxX: draw.minX + draw.worldW, maxY: draw.minY + draw.worldH };
         if (!viewport.aabbInBounds(patchAabb, "props")) continue;
-        drawBakedTexture(ctx, draw.canvas, draw.minX, draw.minY, draw.worldW, draw.worldH, settings);
+        drawBakedTexture(ctx, draw.canvas, draw.minX, draw.minY, draw.worldW, draw.worldH);
     }
 }

@@ -48,11 +48,24 @@ Was: `drawCachedOverlayGlyph(..., { zoom })` → `getOrBakeOverlaySprite({ world
 
 Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom)` — bake inlined, no `getOrBakeOverlaySprite`. Cached branch in `drawOverlayCommands` resolves anchor as scalars inline. `drawOverlayCommands(ctx, commands, px, py, zoom)`.
 
+### Tier 2 overlay commands (#12–#14) ✅
+
+- **`overlayDirectionArrow`** — deleted; product uses `overlayCachedFlowDirectionArrow` only
+- **`overlayCachedAabb`** — inlined into `overlayGridCellHighlight`; export removed
+- **`overlayWireLink`** — merged into **`appendOverlayWireLink`** (single export)
+
+### Tier 3 WorldSurface (#16–#20) ✅
+
+- **`projectHorizontalSurfaceCornersInto`**, **`clipChunkToBlockedCells`**, **`clipChunkToStaticEdgeRails`** — deleted from `ChunkDrawPass.js`
+- **`HorizontalSurfaceDraw.js` ChunkDrawPass re-export line** — removed (#18)
+- **`drawProjectedHorizontalChunkAt`** — projects into scratch corners, then calls **`drawProjectedHorizontalChunk`**; unused `settings` dropped on both + **`drawBakedTexture`**
+- **`getSurfaceBakeScale`** — deleted; call sites use **`settings.surfaceBakeScale`** directly
+
 ---
 
-## Tier 2 — Overlay commands
+## Tier 2 — Overlay commands ✅
 
-### 12. `overlayDirectionArrow` — dead uncached twin
+### 12. `overlayDirectionArrow` — dead uncached twin ✅
 
 **Where:** `Libraries/Render/overlays/overlayCommands.js`
 
@@ -64,7 +77,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 13. `overlayCachedAabb` — exported, one caller in same file
+### 13. `overlayCachedAabb` — exported, one caller in same file ✅
 
 **Where:** `overlayCommands.js`
 
@@ -74,7 +87,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 14. `overlayWireLink` vs `appendOverlayWireLink`
+### 14. `overlayWireLink` vs `appendOverlayWireLink` ✅
 
 **Where:** `overlayCommands.js`
 
@@ -84,9 +97,9 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-## Tier 3 — WorldSurface / chunks
+## Tier 3 — WorldSurface / chunks ✅
 
-### 16. `projectHorizontalSurfaceCornersInto` — one-line forward, zero calls
+### 16. `projectHorizontalSurfaceCornersInto` — one-line forward, zero calls ✅
 
 **Where:** `Libraries/WorldSurface/ChunkDrawPass.js`, re-exported from `HorizontalSurfaceDraw.js`
 
@@ -96,7 +109,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 17. `clipChunkToBlockedCells` / `clipChunkToStaticEdgeRails` — dead clip variants
+### 17. `clipChunkToBlockedCells` / `clipChunkToStaticEdgeRails` — dead clip variants ✅
 
 **Where:** `ChunkDrawPass.js`, re-exported from `HorizontalSurfaceDraw.js`
 
@@ -108,7 +121,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 18. `HorizontalSurfaceDraw.js` ChunkDrawPass re-export line — unused symbols
+### 18. `HorizontalSurfaceDraw.js` ChunkDrawPass re-export line — unused symbols ✅
 
 **Where:** `Libraries/WorldSurface/HorizontalSurfaceDraw.js` line 5
 
@@ -118,7 +131,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 19. `drawProjectedHorizontalChunk` + `drawProjectedHorizontalChunkAt` — duplicated blit
+### 19. `drawProjectedHorizontalChunk` + `drawProjectedHorizontalChunkAt` — duplicated blit ✅
 
 **Where:** `Libraries/WorldSurface/WorldSurfaceResolution.js`
 
@@ -130,7 +143,7 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ---
 
-### 20. `getSurfaceBakeScale` — property passthrough
+### 20. `getSurfaceBakeScale` — property passthrough ✅
 
 **Where:** `WorldSurfaceResolution.js` — `return settings.surfaceBakeScale`
 
@@ -200,21 +213,20 @@ Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, 
 
 ## Fix order (suggested)
 
-**Done:** Tier 1 complete (#1–#11).
+**Done:** Tier 1 complete (#1–#11). Tier 2 complete (#12–#14). Tier 3 complete (#16–#20).
 
-**Next (recommended): Tier 2** — #12 delete, #13–#14 inlines.
+**Next (recommended): Tier 4** — #21 floor layer collapse, #22 dead import.
 
 **Then pick one thread:**
 
 | Thread | Items | Why |
 |--------|-------|-----|
-| **WorldSurface** | #18, #19 | Orphan clip/projection + duplicated chunk blit |
 | **Floor layer** | #21 remainder | Collapse `floorOccupancy` guards into `gridStampDrawCache` |
 | **Barrels / orphans** | #23–#25 | Delete unused index files |
 
 1. ~~**Tier 1 — render / sprite cache**~~ ✅
-2. **Tier 2 overlay commands** — #12–#14
-3. **Tier 3 WorldSurface** — #16–#19
+2. ~~**Tier 2 overlay commands**~~ ✅ — #12–#14
+3. ~~**Tier 3 WorldSurface**~~ ✅ — #16–#20
 4. **Tier 4 floor** — #21–#22
 5. **Tier 5 barrels** — #23–#25
 

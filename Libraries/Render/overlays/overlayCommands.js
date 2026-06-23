@@ -19,17 +19,14 @@ function overlayGlyphSpan(r, lineWidth = 1, extra = 0) {
 export function overlayAabb(aabb, { fill, stroke, lineWidth = 1, dash } = {}) {
     return { kind: "aabb", minX: aabb.minX, minY: aabb.minY, maxX: aabb.maxX, maxY: aabb.maxY, fill, stroke, lineWidth, dash };
 }
-export function overlayCachedAabb(aabb, style, renderKey, customKey) {
+export function overlayGridCellHighlight(aabb, cellSize, tint, style) {
     const w = aabb.maxX - aabb.minX;
     const h = aabb.maxY - aabb.minY;
     const anchorX = (aabb.minX + aabb.maxX) * 0.5;
     const anchorY = (aabb.minY + aabb.maxY) * 0.5;
     const cmd = overlayAabb(aabb, style);
-    cmd.cache = overlayCacheMeta(renderKey, customKey, Math.max(w, h), anchorX, anchorY);
+    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.GridCellHighlight, gridCellHighlightCacheKey(cellSize, tint), Math.max(w, h), anchorX, anchorY);
     return cmd;
-}
-export function overlayGridCellHighlight(aabb, cellSize, tint, style) {
-    return overlayCachedAabb(aabb, style, OVERLAY_RENDER_KEY.GridCellHighlight, gridCellHighlightCacheKey(cellSize, tint));
 }
 export function overlayCircleStroke(cx, cy, r, { stroke, lineWidth = 1, dash }) {
     return { kind: "circleStroke", cx, cy, r, stroke, lineWidth, dash };
@@ -72,26 +69,15 @@ export function overlayCachedArrowHead(x, y, dirX, dirY, { fill, headLen = 9, he
     cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.PathArrowHead, pathArrowHeadCacheKey(dirX, dirY, fill, headLen, headWidth), overlayGlyphSpan(Math.max(headLen, headWidth), 1, 2), x, y);
     return cmd;
 }
-export function overlayDirectionArrow(cx, cy, dirX, dirY, { pad = 0, len = 20, stroke, lineWidth = 2, headLen = 9, headWidth = 6 }) {
-    const startX = cx + dirX * pad;
-    const startY = cy + dirY * pad;
-    const tipX = startX + dirX * len;
-    const tipY = startY + dirY * len;
-    return [overlaySegment(startX, startY, tipX, tipY, { stroke, lineWidth }), overlayArrowHead(tipX, tipY, dirX, dirY, { fill: stroke, headLen, headWidth })];
-}
 export function overlayCachedFlowDirectionArrow(cx, cy, dirX, dirY, { pad = 0, len = 20, stroke, lineWidth = 2, headLen = 9, headWidth = 6 }) {
     const cmd = { kind: "directionArrow", cx, cy, dirX, dirY, pad, len, stroke, lineWidth, headLen, headWidth };
     cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.FlowDirectionArrow, flowDirectionArrowCacheKey(dirX, dirY, pad, len, stroke, headLen, headWidth), pad + len + headLen + lineWidth + 4, cx, cy);
     return cmd;
 }
-export function overlayWireLink(x0, y0, x1, y1, color, { lineWidth = 2, dash = [6, 4], endpointRadius = 3, live = false } = {}) {
-    const cmds = [overlaySegment(x0, y0, x1, y1, { stroke: color, lineWidth, dash })];
-    if (live) cmds.push(overlayCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }));
-    else cmds.push(overlayCachedWireEndpoint(x1, y1, endpointRadius, color));
-    return cmds;
-}
-export function appendOverlayWireLink(out, x0, y0, x1, y1, color, style) {
-    out.push(...overlayWireLink(x0, y0, x1, y1, color, style));
+export function appendOverlayWireLink(out, x0, y0, x1, y1, color, { lineWidth = 2, dash = [6, 4], endpointRadius = 3, live = false } = {}) {
+    out.push(overlaySegment(x0, y0, x1, y1, { stroke: color, lineWidth, dash }));
+    if (live) out.push(overlayCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }));
+    else out.push(overlayCachedWireEndpoint(x1, y1, endpointRadius, color));
 }
 export function overlayAimSegment(x1, y1, x2, y2, { color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
     return { kind: "aimSegment", x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };

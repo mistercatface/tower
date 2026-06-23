@@ -132,7 +132,7 @@ append*OverlayCommands(out, …)  →  buildSandboxOverlayCommands  →  collect
 | Shape | Use |
 |-------|-----|
 | **Static-ish glyph** (ring, arrowhead, cell highlight, endpoint dot, repeated marker) | Cached factory: `overlayCachedSelectionRing`, `overlayGridCellHighlight`, … — attaches **`cache: { renderKey, customKey, worldSpan }`**. Add **`OVERLAY_RENDER_KEY`** + bucket helper in `overlayCacheKeys.js` if new family. Bake body in **`overlayGlyphBake.js`**. |
-| **Live / unique geometry** (marquee rect, in-progress wire, polylines, drag-launch band, variable AABB) | Immediate factory **without** `cache`: `overlaySegment`, `overlayPolyline`, `overlayAabb`, `overlayAimSegment`. Use **`overlayWireLink(..., { live: true })`** for previews. |
+| **Live / unique geometry** (marquee rect, in-progress wire, polylines, drag-launch band, variable AABB) | Immediate factory **without** `cache`: `overlaySegment`, `overlayPolyline`, `overlayAabb`, `overlayAimSegment`. Use **`appendOverlayWireLink(..., { live: true })`** for previews. |
 
 ```javascript
 // ✅ cached selection ring

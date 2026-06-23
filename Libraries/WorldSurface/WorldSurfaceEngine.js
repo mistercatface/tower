@@ -15,7 +15,7 @@ import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, drawProjectedHorizontalChunkAt, getSurfaceBakeScale, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
+import { drawBakedTexture, drawProjectedHorizontalChunkAt, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
@@ -67,7 +67,7 @@ export class WorldSurfaceEngine {
         const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
         if (edgeLen < 0.001 || columns.length === 0) return null;
         const cellSize = this.settings.cellSize;
-        const surfaceBakeScale = getSurfaceBakeScale(this.settings);
+        const surfaceBakeScale = this.settings.surfaceBakeScale;
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
@@ -198,7 +198,7 @@ export class WorldSurfaceEngine {
      * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} outSrc4
      */
     fillHorizontalCapDrawSampleInto(worldCorners, zLevel, state, profileId, outSrc4) {
-        const surfaceBakeScale = getSurfaceBakeScale(this.settings);
+        const surfaceBakeScale = this.settings.surfaceBakeScale;
         const obstacleGrid = state.obstacleGrid;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
@@ -277,7 +277,7 @@ export class WorldSurfaceEngine {
                 const originX = obstacleGrid.minX + chunkCol * chunkSizePx;
                 const originY = obstacleGrid.minY + chunkRow * chunkSizePx;
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, 0)) continue;
-                drawBakedTexture(ctx, resolved.canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                drawBakedTexture(ctx, resolved.canvas, originX, originY, chunkSizePx, chunkSizePx);
             }
     }
     drawStaticRoofChunks() {
@@ -326,13 +326,13 @@ export class WorldSurfaceEngine {
                         ctx.restore();
                         continue;
                     }
-                    drawProjectedHorizontalChunkAt(ctx, drawCanvas, originX, originY, chunkSizePx, zLevel, camera, this.settings);
+                    drawProjectedHorizontalChunkAt(ctx, drawCanvas, originX, originY, chunkSizePx, zLevel, camera);
                 } else {
                     if (!clipChunkToFlatWallFootprints(ctx, obstacleGrid, originX, originY, chunkSizePx, zLevel)) {
                         ctx.restore();
                         continue;
                     }
-                    drawBakedTexture(ctx, resolved.canvas, originX, originY, chunkSizePx, chunkSizePx, this.settings);
+                    drawBakedTexture(ctx, resolved.canvas, originX, originY, chunkSizePx, chunkSizePx);
                 }
                 ctx.restore();
             }

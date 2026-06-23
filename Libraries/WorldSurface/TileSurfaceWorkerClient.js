@@ -6,7 +6,6 @@ import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { EMPTY_BAKE_TIMING_STATS, setTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
 import { TILE_BAKE_TIER, TileBakeScheduler } from "./TileBakeScheduler.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
-import { getSurfaceBakeScale } from "./WorldSurfaceResolution.js";
 export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0, bakeTiming: { ...EMPTY_BAKE_TIMING_STATS } };
 function withBakeFrameRange(payload, profile) {
     const sourceTotal = getAnimationFrames(profile?.animation);
@@ -103,7 +102,7 @@ export class TileSurfaceWorkerClient {
         return this.workerReady;
     }
     syncBakeConstants(settings) {
-        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: getSurfaceBakeScale(settings), metricsEnabled: settings.metricsEnabled };
+        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: settings.surfaceBakeScale, metricsEnabled: settings.metricsEnabled };
         this._ensureStarted();
         this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, constants));
         return this.workerReady;
