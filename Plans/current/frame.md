@@ -2,7 +2,7 @@
 
 Render’s **AABB moment**: one engine-owned struct per frame for camera + shared draw wiring, instead of re-reading `viewport.x/y/zoom` and threading `px, py, zoom, propRecipes` through every blit.
 
-**Sibling docs:** implementation detail for sprite APIs → `Plans/clean.md` · perf lens → `Plans/plan.md` #3 · other big wins → `Plans/gamechangers.md`
+**Sibling docs:** implementation detail for sprite APIs → `Plans/clean.md` · perf lens → [`objects.md`](objects.md) #3 · other big wins → [`gamechangers.md`](gamechangers.md)
 
 ---
 
@@ -168,14 +168,14 @@ AFTER
 
 - [ ] `preview.js`: build pass once per overlay z-index (or share renderer’s pass).
 - [ ] `drawOverlayCommands(ctx, commands, pass)`.
-- [ ] `animatedSurfaceDraw` / `losShadowOverlay`: use `pass.camera` or module scratch filled from pass (folds normalization.md #6).
+- [ ] `animatedSurfaceDraw` / `losShadowOverlay`: use `pass.camera` or module scratch filled from pass (folds [`normalization.md`](normalization.md) #6).
 
 ### Phase 5 — Cleanup
 
 - [ ] Remove dead `px, py, zoom` parameters from migrated exports.
 - [ ] Update `WorldSceneTypes.js` — document `drawPass` alongside `WorldSceneDrawInput`.
 - [ ] Update `.cursor/rules/rendering-pipelines.mdc` examples.
-- [ ] Mark `Plans/plan.md` #3 done when modifier path is pass-relative.
+- [ ] Mark [`objects.md`](objects.md) #3 done when modifier path is pass-relative.
 
 ---
 
@@ -206,7 +206,7 @@ AFTER
 
 ## Explicit non-goals
 
-- **Merged depth sort** — see `Plans/gamechangers.md` #8; easier after pass exists.
+- **Merged depth sort** — see [`gamechangers.md`](gamechangers.md) G7; easier after pass exists.
 - **Sprite cache BigInt key packing** — `Plans/clean.md` pass 2; separate PR.
 - **Opts objects** on `drawCached*` — rejected; pass is a named struct, not a per-call literal.
 - **Replacing `WorldSceneDrawInput`** — input stays for scene wiring; pass is camera-only (+ recipes).

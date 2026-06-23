@@ -2,8 +2,9 @@
 
 Read-only audit of object creation in hot paths and places where scratch objects mask allocation that should be slabs, pools, or `*Into` APIs. Scratch-as-smell when it papers over per-frame/per-cell allocation; scratch-as-solution when it is a fixed buffer at a real hot loop boundary.
 
----
+**Related:** structural fixes → [`normalization.md`](normalization.md) · frame pass → [`frame.md`](frame.md) · G1–G7 outlines → [`gamechangers.md`](gamechangers.md)
 
+---
 ## The split in this codebase
 
 Physics **did** invest in real structure-of-arrays work: `kineticDynamicSlab` / `kineticConstraintSlab` are fixed `Float32Array` arenas with slot indices, not `{ x, y, vx }` objects per body.
@@ -18,18 +19,16 @@ export const kineticDynamicSlab = {
 };
 ```
 
-Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch well; floor belts still allocate like it's 2019. That mismatch is the main story.
-
+Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch well; some grid-stamp paths still allocate on cache rebuild (forcefields — see [`gamechangers.md`](gamechangers.md) G1). Floor belts/power are fixed ✅.
 ---
 
 ## Tier 1 — High impact (every frame, scales with visible cells/props)
 
 ### 1. Floor belt / power-source draw — fresh proxy + closure per cell ✅
 
-**Where:** `Libraries/Sandbox/floorOccupancy.js` — `drawFloorOccupancyBelts`, `drawFloorOccupancyPowerSources`
+**Where:** `Libraries/Sandbox/gridStampDrawCache.js` — `drawFloorOccupancyBelts`, `drawFloorOccupancyPowerSources` (draw moved from `floorOccupancy.js` in indirection pass)
 
-**Done:** Revision-cached draw list in `Libraries/Sandbox/gridStampDrawCache.js` — stable prototype proxies, sync on `floorOccupancyStampDrawCacheKey`, per-frame viewport cull + dynamic field updates only. Rule enforced in `rendering-pipelines.mdc` §2.
-
+**Done:** Revision-cached draw list — stable prototype proxies, sync on `floorOccupancyStampDrawCacheKey`, per-frame viewport cull + dynamic field updates only. Rule enforced in `rendering-pipelines.mdc` §2.
 ---
 
 ### 2. Ground chunk draw — `createAabb()` + pass literal per chunk ✅
@@ -40,16 +39,15 @@ Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch
 
 ---
 
-### 3. Prop / grid-stamp draw — `{ x: px, y: py }` on every blit
+### 3. Prop / grid-stamp draw — `px/py/zoom` threaded on every blit
 
-**Where:** `PropRenderer.drawProp`, `QuantizedSpriteCache.drawCachedPropSprite` → `resolveSpriteDrawModifier(prop, { x: px, y: py })`
+**Where:** `PropRenderer.drawProp`, `QuantizedSpriteCache.drawCachedPropSprite`, `gridStampDrawCache`, `drawForcefields`
 
 **Hot because:** Every visible prop + every belt cell + forcefield blit, **including cache hits**.
 
-`WorldSceneRenderer` already keeps `propDrawContext` with `px/py` — but the modifier path still allocates a viewport point object per call.
+`resolveSpriteDrawModifier` already takes **scalar `px, py`** (no `{ x, y }` object). Remaining smell: **camera scalars re-read and re-passed** at every layer instead of one frame-owned struct.
 
-**Smell:** Scratch is the right fix; it's just not threaded through. One module-level viewport scratch passed into modifier resolution would match what wall draw already does with `wallPassCamera`.
-
+**Fix:** [`frame.md`](frame.md) — `WorldSceneDrawPass` filled once per sub-pass; cache reads `pass.px/py/zoom`. Aligns with `Plans/clean.md` pass 2.
 ---
 
 ### 4. Sprite cache keys — template string every lookup ✅
@@ -58,8 +56,7 @@ Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch
 
 **Hot because:** Runs on every `getOrBakePropSprite`, hit or miss.
 
-Pass 1: intern string identity parts + pack view/anim/zoom/pixel into `BigInt` keys; reuse one view-quant scratch per cache (no per-lookup `{ keyDx, keyDy }`). `getBaseSpriteCacheKey` still builds a physics string on lookup — defer stamp cache to a follow-up. Pass 2 (`drawPass`, positional bake) stays in `Plans/clean.md`.
-
+Pass 1: intern string identity parts + pack view/anim/zoom/pixel into `BigInt` keys; reuse one view-quant scratch per cache (no per-lookup `{ keyDx, keyDy }`). `getBaseSpriteCacheKey` still builds a physics string on lookup — defer stamp cache to a follow-up. Pass 2 (`drawPass`, positional bake) → [`frame.md`](frame.md) + `Plans/clean.md`.
 ---
 
 ## Tier 2 — Medium impact (sim tick, editor, or scale-dependent)
@@ -77,6 +74,7 @@ Physics bodies live in Float32 slabs; wall queries still use **ephemeral Map + a
 
 **Smell:** You built a slab broadphase for entities but wall segment gathering is still “Map of arrays, clear and refill.” Generation-stamped bucket reuse or a fixed bucket ring would match the slab investment.
 
+**Outline:** [`gamechangers.md`](gamechangers.md) G3.
 ---
 
 ### 6. `gridToWorld` / `worldToGrid` — allocating helpers everywhere ✅
@@ -99,6 +97,7 @@ Bad: cache miss → `result = []` + pushes; `spatialGen` bumps on both sim `begi
 
 Scratch for **candidates** is correct; **result arrays** could be pooled per query slot.
 
+**Outline:** [`gamechangers.md`](gamechangers.md) G4.
 ---
 
 ### 8. Overlay command rebuild — new array + Set + command objects
@@ -139,6 +138,7 @@ Island/sleep/graph walks: **`new Set()` per pass**, sometimes nested Sets.
 
 **Smell:** Same subsystem, two philosophies. `islandRoot` is already an `Int32Array` on the slab — visited tracking could be a `Uint8Array` generation stamp on `_physId` (same trick broadphase uses elsewhere) instead of Set allocation.
 
+**Outline:** [`gamechangers.md`](gamechangers.md) G5.
 ---
 
 ### 12. Floor props tick — `shapes = []` every frame
@@ -155,11 +155,9 @@ One array per tick, cleared by reallocation. Module-level buffer with `length = 
 
 | Spot | Issue |
 |------|--------|
-| `animatedSurfaceDraw.js` | `elevationCameraFromViewport()` allocates; should be `Into` like structure pass |
-| `PropRenderer` / bake miss | `{ ...prop }`, full sphere mesh + `[...faces].sort` on LRU miss — fine steady-state, painful on zoom/pan miss storms |
+| `animatedSurfaceDraw.js` | `elevationCameraFromViewport()` allocates; should be `Into` like structure pass — [`frame.md`](frame.md) Phase 4 / [`gamechangers.md`](gamechangers.md) G6 || `PropRenderer` / bake miss | `{ ...prop }`, full sphere mesh + `[...faces].sort` on LRU miss — fine steady-state, painful on zoom/pan miss storms |
 | `Render.buildSimulationPipeline` | Spread + map when entity layers change — rare, fine |
-| `WorldSceneRenderer` | Two `visibleDrawables.sort()` per frame — CPU not GC |
-| `texturedCells` / `drawSphereTexturePatch` | `borrowProjectedSphereCell` grows `{ d0..d3 }` objects once — **good** scratch pattern |
+| `WorldSceneRenderer` | Two `visibleDrawables.sort()` per frame — CPU not GC; unify after [`frame.md`](frame.md) — [`gamechangers.md`](gamechangers.md) G7 || `texturedCells` / `drawSphereTexturePatch` | `borrowProjectedSphereCell` grows `{ d0..d3 }` objects once — **good** scratch pattern |
 
 ---
 
@@ -179,8 +177,7 @@ One array per tick, cleared by reallocation. Module-level buffer with `length = 
 
 ## Summary
 
-**Heavy optimization where the type system makes it obvious (physics bodies, constraints, baked sprites), scratch-or-allocate where the domain is spatial/render (points, proxies, pass structs), and no optimization where grid iteration meets the prop cache (belts, chunk passes).**
-
+**Heavy optimization where the type system makes it obvious (physics bodies, constraints, baked sprites), scratch-or-allocate where the domain is spatial/render (points, proxies, pass structs).** Floor belt/power grid stamps and chunk ground draw are on the good side ✅; forcefield stamp sync rebuild still allocates (G1); camera threading still pre-pass (frame.md).
 The AffineTexture / `drawImageQuad` work (positional args, no `sBlitQuad` scratch) is the right *kind* of fix — eliminate pointless object plumbing at the API boundary.
 
 ---
@@ -190,9 +187,10 @@ The AffineTexture / `drawImageQuad` work (positional args, no `sBlitQuad` scratc
 1. ~~**Floor belts** — copy forcefield revision cache, stop per-cell proxies~~ ✅
 2. ~~**Chunk draw** — use existing AABB scratch + one pass struct~~ ✅
 3. ~~**`gridToWorldInto`** — unlock fixes across belts, path overlay, steering~~ ✅ (scalar `worldCol`/`gridCenterX` API instead)
-4. **Wall bucket cache** — stop clearing Map + `[]` every frame; align with slab philosophy
-5. **Hoist sim hooks + sleep visited** — cheap, same mindset as removing `{ bleedPx: 1 }` objects
+4. **Wall bucket cache** — [`gamechangers.md`](gamechangers.md) G3
+5. **Hoist sim hooks + sleep visited** — G5 + objects #10; cheap, same mindset as removing pointless per-tick objects
+6. **Frame draw pass** — [`frame.md`](frame.md) (normalization #1 / objects #3)
 
-**Render-loop ROI:** floor belts + chunk AABB.
+**Render-loop ROI:** frame pass + forcefield stamp cache (G1).
 
-**Physics/nav ROI:** wall buckets + grid `Into`.
+**Physics/nav ROI:** wall buckets (G3).

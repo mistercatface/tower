@@ -1,6 +1,6 @@
 # Normalization audit — cross-cutting patterns that unlock whole subsystems
 
-Unlike `Plans/indirection.md` (delete pointless names), this doc tracks **structural patterns** where one API shape or one engine-owned pass struct clears up dozens of call sites — the same class of win as the bounds/AABB + scalar grid work.
+Unlike the completed indirection pass (wrapper/barrel cleanup), this doc tracks **structural patterns** where one API shape or one engine-owned pass struct clears up dozens of call sites — the same class of win as the bounds/AABB + scalar grid work.
 
 **Reference win (what “big” feels like):**
 
@@ -13,9 +13,9 @@ Unlike `Plans/indirection.md` (delete pointless names), this doc tracks **struct
 
 Those weren’t micro-optimizations — they **picked one dialect** and made whole folders speak it.
 
-**Do first:** `Plans/frame.md` (frame draw pass) · quick win before that: `Plans/gamechangers.md` **G1** (forcefields → belt cache).
+**Do first:** [`frame.md`](frame.md) (frame draw pass) · quick win before that: [`gamechangers.md`](gamechangers.md) **G1** (forcefields → belt cache).
 
-**Full outlines:** `Plans/frame.md` · `Plans/gamechangers.md` (G1–G7)
+**Full outlines:** [`frame.md`](frame.md) · [`gamechangers.md`](gamechangers.md) (G1–G7)
 
 ---
 
@@ -162,7 +162,7 @@ Forcefields already have revision caching and viewport cull — but **`syncPassa
 | Overlay command pooling | Real win in editor, but **different pipeline** (command factories, not world draw). Do after drawPass if editor perf matters. |
 | Delete `animatedSurfaceZone` registry | Dead scaffold — cleanup, not normalization. |
 | First-person / fixed iso modes | New renderer branch (`Plans/rendering.md`), not consolidating overhead path. |
-| More barrels / indirection | `Plans/indirection.md` — done. |
+| More barrels / indirection | Indirection pass ✅ complete |
 
 ---
 
@@ -192,9 +192,8 @@ Forcefields already have revision caching and viewport cull — but **`syncPassa
 
 ## Related docs
 
-- `Plans/frame.md` — frame draw pass outline (Tier 1 #1)
-- `Plans/gamechangers.md` — G1–G7 implementation outlines
-- `Plans/plan.md` — allocation/scratch audit (perf lens on same spots)
+- [`frame.md`](frame.md) — frame draw pass outline (Tier 1 #1)
+- [`gamechangers.md`](gamechangers.md) — G1–G7 implementation outlines
+- [`objects.md`](objects.md) — allocation/scratch audit (perf lens on same spots)
 - `Plans/clean.md` — drawPass + sprite cache positional API (implementation spec for #1)
-- `Plans/indirection.md` — wrapper/barrel cleanup ✅ complete
 - `.cursor/rules/rendering-pipelines.mdc` — grid stamp + overlay pipeline law
