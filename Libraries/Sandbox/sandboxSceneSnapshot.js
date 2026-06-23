@@ -6,6 +6,7 @@ import { applyFloorBeltsFromGlobal, applyPassagePowerSourcesFromGlobal, listPlac
 import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, setGridPassagePowerNavKey } from "../Spatial/grid/gridNavEpoch.js";
+import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
 import {
     applyStampedForcefieldsFromGlobal,
     applyStampedGridWallsFromGlobal,
@@ -131,7 +132,7 @@ function clearSandboxSceneContent(state) {
     getSandboxEntityMeta(state).clear();
     unbakeRoomGraph(state);
     clearRoomGraph(state);
-    state.sandbox._passageEdgeDrawCache = null;
+    clearGridStampDrawCaches(state);
     setGridPassagePowerNavKey(state.obstacleGrid, "");
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */

@@ -24,32 +24,11 @@ Render and grid drawing are **inconsistent**: walls/projected draw reuse scratch
 
 ## Tier 1 — High impact (every frame, scales with visible cells/props)
 
-### 1. Floor belt / power-source draw — fresh proxy + closure per cell
+### 1. Floor belt / power-source draw — fresh proxy + closure per cell ✅
 
 **Where:** `Libraries/Sandbox/floorOccupancy.js` — `drawFloorOccupancyBelts`, `drawFloorOccupancyPowerSources`
 
-**Hot because:** `WorldSceneRenderer.drawFloorProps` → every frame, every visible belt/power cell.
-
-Per cell you get:
-
-- `grid.gridToWorld()` → new `{ x, y }`
-- Proxy literal + nested `halfExtents: { x, y }`
-- **New closure** for `getCustomSpriteCacheKey`
-- Then `drawCachedPropSprite` → more work below
-
-**Smell vs solution:** Forcefields already show the better pattern — revision-cached draw list built once on grid change (`syncPassageEdgeDrawCache` in `drawForcefields.js`), not per-frame proxy literals. Belts should use the same: cache proxies (or slot indices into a fixed proxy pool) keyed by `(col, row, kind, energized, animFrame bucket)`.
-
-Contrast (current belt path):
-
-```javascript
-const proxy = {
-    x, y, facing, radius: cellHalf,
-    halfExtents: { x: cellHalf, y: cellHalf },
-    getCustomSpriteCacheKey() { return `k${kind}`; },
-};
-```
-
-vs forcefields building `items[]` once per revision, then only iterating in view.
+**Done:** Revision-cached draw list in `Libraries/Sandbox/gridStampDrawCache.js` — stable prototype proxies, sync on `floorOccupancyStampDrawCacheKey`, per-frame viewport cull + dynamic field updates only. Rule enforced in `rendering-pipelines.mdc` §2.
 
 ---
 
@@ -225,7 +204,7 @@ The AffineTexture / `drawImageQuad` work (positional args, no `sBlitQuad` scratc
 
 ## Suggested fix order (ROI)
 
-1. **Floor belts** — copy forcefield revision cache, stop per-cell proxies
+1. ~~**Floor belts** — copy forcefield revision cache, stop per-cell proxies~~ ✅
 2. **Chunk draw** — use existing AABB scratch + one pass struct
 3. **`gridToWorldInto`** — unlock fixes across belts, path overlay, steering
 4. **Wall bucket cache** — stop clearing Map + `[]` every frame; align with slab philosophy

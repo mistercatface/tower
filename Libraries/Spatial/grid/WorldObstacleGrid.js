@@ -9,7 +9,7 @@ import { syncBeltCellToEdges, clearBeltCellEdges } from "./navGridMutations.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldToGridAtOrigin, gridToWorldAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "./gridNavEpoch.js";
 import { clearWallCells } from "./wallGridBake.js";
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
@@ -340,6 +340,7 @@ export class WorldObstacleGrid {
             (isFloorBeltKind(prevKind) || isFloorBeltKind(kind) || isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         if (edgeChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
+        bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     writeFloorBelt(col, row, facingRadians) {
@@ -365,6 +366,7 @@ export class WorldObstacleGrid {
         }
         if (isFloorBeltKind(kind) || isFloorBeltRailsKind(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         this.floorStore.clearAtIdx(idx);
+        bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     clearAllFloorCells() {
@@ -378,6 +380,7 @@ export class WorldObstacleGrid {
         }
         this.floorStore.reset(size);
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
+        bumpFloorOccupancyStampDrawRevision(this);
     }
     worldToGrid(x, y) {
         return worldToGridAtOrigin(x, y, this.minX, this.minY, this.cellSize);

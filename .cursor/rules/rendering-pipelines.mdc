@@ -74,6 +74,28 @@ forEachGridEdge(grid, (col, row, side, edge) => { ctx.beginPath(); ctx.stroke(..
 
 If the feature is **both** a grid stamp and a placeable prop, one recipe should serve both (proxy + real WorldProp asset).
 
+### Per-cell stamp draw list (mandatory)
+
+Grid stamps anchored to **floor cells** or **cell edges** must not allocate proxy objects inside a per-frame viewport loop.
+
+1. **`sync*DrawCache(state, grid)`** — rebuild a stable draw list when layout revision changes. Keys live in `gridNavEpoch.js` (`floorOccupancyStampDrawCacheKey`, `passageEdgeDrawCacheKey`, …). Call **`bumpFloorOccupancyStampDrawRevision(grid)`** (or the domain bump) on any floor-store layout edit that does not already change the key.
+2. **Stable proxies** — create once at sync time via `Object.create(proto)` with **`getCustomSpriteCacheKey` on the prototype**, not a per-cell closure.
+3. **Per frame** — viewport cull cached items, mutate only dynamic fields on the cached proxy (`ageMs`, `_powerSource.energized`, `_forcefield.tripped`, …), then **`drawCachedPropSprite`**.
+
+Shared helpers: **`Libraries/Sandbox/gridStampDrawCache.js`** (floor belts + passage power). Forcefields: **`drawForcefields.js`** (`_passageEdgeDrawCache`). New per-cell stamps should follow the same shape or extend `gridStampDrawCache.js`.
+
+```javascript
+// ❌ — per-frame proxy + closure in viewport loop
+forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
+    const proxy = { x, y, getCustomSpriteCacheKey() { return `k${kind}`; } };
+    drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw);
+});
+
+// ✅ — sync on revision, draw from cache
+syncFloorOccupancyStampDrawCache(state, grid);
+drawCachedFloorOccupancyBelts(ctx, viewport, camera, gameTime, cached, beltDrawForKind);
+```
+
 ---
 
 ## 3 — Wall atlas (building walls only)

@@ -51,6 +51,14 @@ export function isNavTopologyReady(hpaPathWorker, grid) {
 export function passageEdgeDrawCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid._passagePowerNavKey ?? ""}`;
 }
+/** Floor belt / passage-power grid-stamp draw cache key. */
+export function floorOccupancyStampDrawCacheKey(grid) {
+    return `${grid.floorNavEpoch}:${grid.cols}:${grid.rows}:${grid._floorStampDrawRevision ?? 0}`;
+}
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
+export function bumpFloorOccupancyStampDrawRevision(grid) {
+    grid._floorStampDrawRevision = ((grid._floorStampDrawRevision ?? 0) + 1) | 0;
+}
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {string} key */
 export function setGridPassagePowerNavKey(grid, key) {
     grid._passagePowerNavKey = key;
