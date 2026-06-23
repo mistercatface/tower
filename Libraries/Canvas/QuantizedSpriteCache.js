@@ -49,13 +49,6 @@ function packPropSpriteKey(renderKeyId, customKeyId, physicsKeyId, attachmentKey
     key = (key << 16n) | BigInt(zoomBucket & 0xffff);
     return key;
 }
-function packOverlaySpriteKey(renderKeyId, customKeyId, viewBucket, zoomBucket) {
-    let key = BigInt(renderKeyId);
-    key = (key << 20n) | BigInt(customKeyId);
-    key = (key << 12n) | BigInt(viewBucket);
-    key = (key << 16n) | BigInt(zoomBucket & 0xffff);
-    return key;
-}
 const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex, buildRollOrientKey };
 function internedPropPhysicsKey(prop) {
     const key = getBaseSpriteCacheKey(prop, PROP_SPRITE_KEY_DEPS);
@@ -247,18 +240,6 @@ export const OVERLAY_RENDER_KEY = {
 const OVERLAY_STAGE_PADDING = 6;
 const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
 /**
- * @param {number} worldX
- * @param {number} worldY
- * @param {number} px
- * @param {number} py
- * @param {string} renderKey
- * @param {string} customKey
- * @param {number} [zoom]
- */
-export function buildOverlaySpriteKey(worldX, worldY, px, py, renderKey, customKey, zoom = 1) {
-    return packOverlaySpriteKey(internSpriteKeyPart(renderKey), internSpriteKeyPart(customKey), packQuantizedViewBucket(worldX - px, worldY - py), packZoomKeyBucket(zoom));
-}
-/**
  * @param {object} spec
  * @param {number} spec.worldX
  * @param {number} spec.worldY
@@ -271,7 +252,10 @@ export function buildOverlaySpriteKey(worldX, worldY, px, py, renderKey, customK
  * @param {number} [spec.zoom]
  */
 export function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1 }) {
-    const key = buildOverlaySpriteKey(worldX, worldY, px, py, renderKey, customKey, zoom);
+    let key = BigInt(internSpriteKeyPart(renderKey));
+    key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
+    key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
+    key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     return overlaySpriteCache.getOrBake(key, () => {
         const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
         const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
