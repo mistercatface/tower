@@ -11,6 +11,11 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 
+const CELL = 16;
+function fleeReach(overrides = {}) {
+    return { threat: null, enemy: null, food: null, ally: null, ...overrides };
+}
+
 function mockTarget(id) {
     return { id, x: 0, y: 0, type: "snake_head", isDead: false };
 }
@@ -40,7 +45,7 @@ describe("flee agent decision model", () => {
     it("explores when only smaller snakes are visible and no food", () => {
         applySnakeGameConfig();
         const { decisionSnapshot } = buildFleeDecisionContext({
-            visibleWorld: { threat: null, food: null, ally: null, allyCount: 0, threatCount: 0, aggregateThreatSeverity: 0 },
+            visibleWorld: { threat: null, food: null, ally: null, allyCount: 0, threatCount: 0 },
             foodFraction: 0.55,
         });
         assert.equal(decisionSnapshot.chosenIntent.mode, "explore");
@@ -55,12 +60,11 @@ describe("flee agent decision model", () => {
                 threat: null,
                 food: null,
                 ally,
-                allyDist: 4,
                 allyCount: 1,
                 allyCentroid: { x: 64, y: 0 },
                 threatCount: 0,
-                aggregateThreatSeverity: 0,
             },
+            reachSteps: fleeReach({ ally: 4 }),
             foodFraction: 0.9,
         });
         assert.equal(decisionSnapshot.chosenIntent.mode, "seek_ally");
@@ -92,7 +96,8 @@ describe("flee agent decision model", () => {
     it("flee beats explore when a visible threat is present", () => {
         applySnakeGameConfig();
         const { decisionSnapshot } = buildFleeDecisionContext({
-            visibleWorld: { threat: mockTarget("t1"), threatDist: 64, food: null, threatCount: 1, aggregateThreatSeverity: 0.5 },
+            visibleWorld: { threat: mockTarget("t1"), food: null, threatCount: 1 },
+            reachSteps: fleeReach({ threat: 4 }),
             foodFraction: 0.55,
         });
         assert.equal(decisionSnapshot.chosenIntent.mode, "flee");
@@ -105,9 +110,10 @@ describe("flee agent decision model", () => {
         const threatState = { dist: 64, severity: 0.5, lethal: false };
         const blackboard = {
             facts: {
-                visible: { threat: mockTarget("t1"), food: null, threatDist: 64, foodDist: null, threatCount: 2, aggregateThreatSeverity: 0.9 },
-                remembered: { threat: null, food: null, foodDist: null },
-                known: { threat: mockTarget("t1"), food: null, threatDist: 64, foodDist: null, threatCount: 2, aggregateThreatSeverity: 0.9 },
+                visible: { threat: mockTarget("t1"), food: null, threatCount: 2 },
+                remembered: { threat: null, food: null },
+                known: { threat: mockTarget("t1"), food: null, threatCount: 2 },
+                reachSteps: fleeReach({ threat: 4 }),
                 committedTarget: null,
                 routeStatus: null,
                 hungerState,
@@ -135,7 +141,7 @@ describe("flee agent decision model", () => {
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
-        // sprintIntent needs reachSteps.threat (Pass 4); threat visible alone selects flee mode
+        assert.equal(instance.sprinting, true);
     });
 
     it("flees from a visible larger snake instead of exploring", async () => {
@@ -154,5 +160,6 @@ describe("flee agent decision model", () => {
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
+        assert.equal(instance.sprinting, true);
     });
 });

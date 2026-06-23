@@ -8,6 +8,8 @@ import { createExploreIntentState, createFleeIntentState, createSeekIntentState 
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { perceiveSnakeIntentWorld } from "./snakeIntent.js";
 import { createSnakeIntentMemory } from "./snakeIntentMemory.js";
+import { syncNavReachHorizon, navReachStepsTo } from "../../Navigation/navReachHorizon.js";
+import { requireSnakeVisionFrame } from "./snakePerception.js";
 export function createSnakeForageIntent({
     brain,
     sync,
@@ -72,12 +74,32 @@ export function createSnakeForageIntent({
         const visible = perceiveSnakeIntentWorld(agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
+        const nav = requireSnakeVisionFrame(state).navTopology;
+        syncNavReachHorizon(nav, agent.x, agent.y, config.decisionReachHorizon ?? 32);
+        const committed = intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null;
+        const routeStatus = readRouteStatus(agent, state);
+        function reachStepsForMode(target, mode) {
+            if (!target) return null;
+            if (committed?.mode === mode && committed.targetId === target.id) {
+                const pathLen = routeStatus?.pathLen;
+                if (Number.isFinite(pathLen)) return pathLen;
+            }
+            return navReachStepsTo(target.x, target.y);
+        }
+        const reachSteps = {
+            threat: reachStepsForMode(memoryWorld.threat, "flee"),
+            prey: reachStepsForMode(memoryWorld.prey, "seek_prey"),
+            food: reachStepsForMode(memoryWorld.food, "seek_food"),
+            ally: reachStepsForMode(memoryWorld.ally, "seek_ally"),
+        };
         const decisionContext = buildSnakeDecisionContext({
             visibleWorld: visible,
             memoryWorld,
             memorySource: memoryWorld.memorySource,
-            committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
-            routeStatus: readRouteStatus(agent, state),
+            committedTarget: committed,
+            routeStatus,
+            reachSteps,
+            cellSize: state.obstacleGrid.cellSize,
             foodFraction: resolveHunger ? resolveHunger() : null,
             seekerFaction: agent.faction,
             seekerSegmentCount: resolveSegmentCount ? resolveSegmentCount() : null,

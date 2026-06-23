@@ -1,8 +1,8 @@
 import { netScoreDetail, pickBestScoreKey, scoreCandidateSet } from "../../../AI/utility/utilityScoring.js";
-import { deriveSnakeThreatState, deriveAllyState } from "../snakeDecisionModel.js";
+import { deriveSnakeThreatState, deriveAllyState, routeEvents } from "../snakeDecisionModel.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
-export function deriveFleeAgentThreatState(threat, threatDist) {
-    return deriveSnakeThreatState(threat, threatDist);
+export function deriveFleeAgentThreatState(threat, reachSteps, cellSize) {
+    return deriveSnakeThreatState(threat, reachSteps, cellSize);
 }
 export function deriveFleeHungerState(foodFraction) {
     if (foodFraction == null) return null;
@@ -49,27 +49,6 @@ function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
     }
     if (rememberedTarget) events.push(`${upper}_REMEMBERED`);
 }
-function routeEvents(routeStatus) {
-    const events = [];
-    if (!routeStatus) return events;
-    if (routeStatus.routeFailed) events.push("ROUTE_FAILED");
-    if (routeStatus.destReached) events.push("DEST_REACHED");
-    return events;
-}
-function committedTargetMatches(blackboard, mode, target) {
-    const committed = blackboard.facts.committedTarget;
-    return committed?.mode === mode && committed.targetId === target?.id;
-}
-function reachForCandidate(blackboard, mode, kind) {
-    const target = blackboard.facts.known[kind];
-    if (!target) return null;
-    if (committedTargetMatches(blackboard, mode, target)) {
-        const pathLen = blackboard.facts.routeStatus?.pathLen;
-        if (Number.isFinite(pathLen)) return pathLen;
-    }
-    const dist = blackboard.facts.known[`${kind}Dist`];
-    return Number.isFinite(dist) ? dist : null;
-}
 function policyReasonForTarget(blackboard, kind) {
     if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
     return null;
@@ -79,18 +58,22 @@ function intentPolicy(mode, targetId, reason = null) {
     if (reason) policy.reason = reason;
     return policy;
 }
-function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memorySource = null, committedTarget = null, routeStatus = null, hungerState = null, threatState = null }) {
+function createFleeDecisionBlackboard({
+    visibleWorld,
+    memoryWorld = null,
+    memorySource = null,
+    committedTarget = null,
+    routeStatus = null,
+    reachSteps = null,
+    hungerState = null,
+    threatState = null,
+}) {
     const visible = {
         threat: visibleWorld.threat,
         enemy: memorySource?.prey ? null : (visibleWorld.prey ?? null),
         food: visibleWorld.food,
-        threatDist: visibleWorld.threatDist ?? null,
-        enemyDist: memorySource?.prey ? null : visibleWorld.prey ? (visibleWorld.preyDist ?? null) : null,
-        foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
         threatCount: visibleWorld.threatCount ?? 0,
-        aggregateThreatSeverity: visibleWorld.aggregateThreatSeverity ?? 0,
         ally: memorySource?.ally ? null : (visibleWorld.ally ?? null),
-        allyDist: memorySource?.ally ? null : visibleWorld.ally ? (visibleWorld.allyDist ?? null) : null,
         allyCount: memorySource?.ally ? 0 : (visibleWorld.allyCount ?? 0),
         allyCentroid: memorySource?.ally ? null : (visibleWorld.allyCentroid ?? null),
     };
@@ -99,9 +82,6 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
         enemy: memorySource?.prey ? (memoryWorld?.prey ?? null) : null,
         food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
         ally: memorySource?.ally ? (memoryWorld?.ally ?? null) : null,
-        enemyDist: memorySource?.prey ? (memoryWorld?.preyDist ?? null) : null,
-        foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
-        allyDist: memorySource?.ally ? (memoryWorld?.allyDist ?? null) : null,
         allyCount: memorySource?.ally ? (memoryWorld?.allyCount ?? 1) : 0,
         allyCentroid: null,
     };
@@ -110,15 +90,11 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
         enemy: visible.enemy ?? remembered.enemy,
         food: visibleWorld.food ?? remembered.food,
         ally: visibleWorld.ally ?? remembered.ally,
-        threatDist: visible.threatDist,
-        enemyDist: visible.enemy ? visible.enemyDist : remembered.enemyDist,
-        foodDist: visible.food ? visible.foodDist : remembered.foodDist,
-        allyDist: visible.ally ? visible.allyDist : remembered.allyDist,
         threatCount: visible.threatCount ?? 0,
-        aggregateThreatSeverity: visible.aggregateThreatSeverity ?? 0,
         allyCount: visible.ally ? visible.allyCount : remembered.allyCount,
         allyCentroid: visible.allyCentroid,
     };
+    const resolvedReachSteps = reachSteps ?? { threat: null, enemy: null, food: null, ally: null };
     const events = routeEvents(routeStatus);
     pushTargetEvents(events, "threat", visibleWorld.threat, remembered.threat);
     pushTargetEvents(events, "enemy", visible.enemy ?? visibleWorld.prey, remembered.enemy);
@@ -127,7 +103,20 @@ function createFleeDecisionBlackboard({ visibleWorld, memoryWorld = null, memory
     if (!known.enemy && committedTarget?.mode === "seek_enemy") events.push("TARGET_LOST");
     if (!known.food && committedTarget?.mode === "seek_food") events.push("TARGET_LOST");
     if (!known.ally && committedTarget?.mode === "seek_ally") events.push("TARGET_LOST");
-    return { facts: { visible, remembered, known, committedTarget, routeStatus, hungerState, threatState, allyState: deriveAllyState(visibleWorld, known, memorySource) }, events };
+    return {
+        facts: {
+            visible,
+            remembered,
+            known,
+            reachSteps: resolvedReachSteps,
+            committedTarget,
+            routeStatus,
+            hungerState,
+            threatState,
+            allyState: deriveAllyState(visibleWorld, known, memorySource, null, resolvedReachSteps.ally),
+        },
+        events,
+    };
 }
 function scoreFlee(blackboard, weights, pressure) {
     if (!blackboard.facts.known.threat) return -Infinity;
@@ -150,13 +139,13 @@ function scoreFoodDetail(blackboard, weights, pressure) {
     const threat = blackboard.facts.threatState;
     const sprint = getSnakeGameConfig().fleeAgent.sprint;
     if (threat && !threat.lethal && threat.severity >= sprint.fleeSeverity) value -= pressure.sprintFoodCostPenalty ?? 0;
-    return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, blackboard.facts.reachSteps.food, costPerCellForHunger(pressure, hunger));
 }
 function scoreEnemyDetail(blackboard, weights, pressure) {
     if (!blackboard.facts.known.enemy) return { net: -Infinity };
     if (blackboard.facts.known.threat) return { net: -Infinity };
     const value = weights.enemy ?? weights.explore;
-    return netScoreDetail(value, reachForCandidate(blackboard, "seek_enemy", "enemy"), costPerCellForHunger(pressure, blackboard.facts.hungerState));
+    return netScoreDetail(value, blackboard.facts.reachSteps.enemy, costPerCellForHunger(pressure, blackboard.facts.hungerState));
 }
 function scoreSeekAllyDetail(blackboard, weights, pressure) {
     const ally = blackboard.facts.known.ally;
@@ -165,14 +154,13 @@ function scoreSeekAllyDetail(blackboard, weights, pressure) {
     const hunger = blackboard.facts.hungerState;
     if (hunger?.desperate) return { net: -Infinity };
     const cohesion = getSnakeGameConfig().fleeAgent.factionCohesion ?? {};
-    const allyDist = blackboard.facts.known.allyDist;
-    if (Number.isFinite(allyDist) && allyDist <= (cohesion.idealStopDist ?? 40)) return { net: -Infinity };
+    const allyReach = blackboard.facts.reachSteps.ally;
+    if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 40)) return { net: -Infinity };
     let value = weights.seek_ally ?? weights.explore;
     if (hunger?.satisfied) value += cohesion.satisfiedBonus ?? pressure.allySatisfiedBonus ?? 60;
     const allyCount = blackboard.facts.known.allyCount ?? 1;
     if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? pressure.allyPackBonus ?? 20);
-    const reach = reachForCandidate(blackboard, "seek_ally", "ally") ?? (Number.isFinite(allyDist) ? allyDist : null);
-    return netScoreDetail(value, reach, costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hunger));
 }
 function scoreExplore(weights) {
     return weights.explore;
@@ -203,12 +191,14 @@ export function buildFleeDecisionContext({
     memorySource = null,
     committedTarget = null,
     routeStatus = null,
+    reachSteps = null,
+    cellSize = 16,
     foodFraction = null,
     pickPolicy = pickFleeIntentPolicy,
 }) {
     const hungerState = deriveFleeHungerState(foodFraction);
-    const threatState = deriveFleeAgentThreatState(visibleWorld.threat, visibleWorld.threatDist);
-    const blackboard = createFleeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, hungerState, threatState });
+    const threatState = deriveFleeAgentThreatState(visibleWorld.threat, reachSteps?.threat, cellSize);
+    const blackboard = createFleeDecisionBlackboard({ visibleWorld, memoryWorld, memorySource, committedTarget, routeStatus, reachSteps, hungerState, threatState });
     const scoredCandidates = scoreCandidateSet(scoreFleeIntentCandidateDetails(blackboard), FLEE_INTENT_SCORE_ORDER);
     const chosenIntent = pickPolicy(blackboard, scoredCandidates.candidateScores);
     const sprintIntent = deriveFleeSprintIntent(chosenIntent.mode, threatState, hungerState);

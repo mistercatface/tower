@@ -36,7 +36,7 @@ describe("snake engagement", () => {
 
     it("deriveSnakeEngagementState marks seek_food with visible food as active", () => {
         const food = { id: 1 };
-        const bb = blackboard({ food, foodDist: 2 });
+        const bb = blackboard({ food });
         const engagement = deriveSnakeEngagementState(bb, { mode: "seek_food", targetId: 1 });
         assert.equal(engagement.active, true);
         assert.equal(engagement.mode, "seek_food");
@@ -44,13 +44,13 @@ describe("snake engagement", () => {
     });
 
     it("deriveSnakeEngagementState marks explore and seek_ally as inactive", () => {
-        const bb = blackboard({ food: { id: 1 }, foodDist: 2 });
+        const bb = blackboard({ food: { id: 1 } });
         assert.equal(deriveSnakeEngagementState(bb, { mode: "explore" }).active, false);
         assert.equal(deriveSnakeEngagementState(bb, { mode: "seek_ally", targetId: 2 }).active, false);
     });
 
     it("deriveSnakeEngagementState requires acting on salient target for active modes", () => {
-        const bb = blackboard({ food: { id: 1 }, foodDist: 2 });
+        const bb = blackboard({ food: { id: 1 } });
         assert.equal(deriveSnakeEngagementState(bb, { mode: "seek_prey" }).active, false);
         assert.equal(deriveSnakeEngagementState(bb, { mode: "flee" }).active, false);
     });

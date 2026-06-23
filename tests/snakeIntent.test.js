@@ -19,6 +19,8 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { syncNavReachHorizon, navReachStepsTo } from "../Libraries/Navigation/navReachHorizon.js";
+import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 async function createIntentTestState(cols = 32, rows = 32) {
@@ -63,8 +65,17 @@ function snakeChainOptions() {
         growDirY: config.growDirY,
     };
 }
-function pickPolicyFromVisibleWorld(world) {
-    return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world }));
+function reachStepsForWorld(seeker, state, world) {
+    syncNavReachHorizon(requireSnakeVisionFrame(state).navTopology, seeker.x, seeker.y, getSnakeGameConfig().decisionReachHorizon ?? 32);
+    return {
+        threat: world.threat ? navReachStepsTo(world.threat.x, world.threat.y) : null,
+        prey: world.prey ? navReachStepsTo(world.prey.x, world.prey.y) : null,
+        food: world.food ? navReachStepsTo(world.food.x, world.food.y) : null,
+        ally: world.ally ? navReachStepsTo(world.ally.x, world.ally.y) : null,
+    };
+}
+function pickPolicyFromVisibleWorld(seeker, state, world) {
+    return pickSnakeIntentPolicy(createSnakeDecisionBlackboard({ visibleWorld: world, reachSteps: reachStepsForWorld(seeker, state, world) }));
 }
 describe("explore steering", () => {
     it("pickExploreDestination respects minimum tile distance", async () => {
@@ -193,7 +204,7 @@ describe("snake intent FSM", () => {
         const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => null);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.threat.id, threatChain.head.id);
-        assert.equal(pickPolicyFromVisibleWorld(world).mode, "flee");
+        assert.equal(pickPolicyFromVisibleWorld(seeker, state, world).mode, "flee");
     });
     it("prefers visible shard food over live prey when no threat is visible", async () => {
         applySnakeGameConfig({ fleeRange: 128 });
@@ -216,6 +227,7 @@ describe("snake intent FSM", () => {
         const world = perceiveSnakeIntentWorld(seeker, seeker.id, state, registry, () => food);
         assert.equal(world.prey.id, preyChain.head.id);
         assert.equal(world.food.id, food.id);
+        assert.deepEqual(pickPolicyFromVisibleWorld(seeker, state, world), { mode: "seek_food", targetId: food.id });
     });
     it("ignores smaller snakes hidden behind walls", async () => {
         applySnakeGameConfig({ fleeRange: 128 });

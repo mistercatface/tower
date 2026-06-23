@@ -10,6 +10,7 @@ import { requireSnakeVisionFrame } from "../snakePerception.js";
 import { resolveAgentRelationship } from "../snakeAgentSession.js";
 import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
 import { createFleeIntentMemory } from "./fleeIntentMemory.js";
+import { syncNavReachHorizon, navReachStepsTo } from "../../../Navigation/navReachHorizon.js";
 export function createFleeExploreIntent({
     brain,
     sync,
@@ -85,12 +86,32 @@ export function createFleeExploreIntent({
         });
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
+        const nav = requireSnakeVisionFrame(state).navTopology;
+        syncNavReachHorizon(nav, agent.x, agent.y, config.decisionReachHorizon ?? 32);
+        const committed = intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null;
+        const routeStatus = readRouteStatus(agent, state);
+        function reachStepsForMode(target, mode) {
+            if (!target) return null;
+            if (committed?.mode === mode && committed.targetId === target.id) {
+                const pathLen = routeStatus?.pathLen;
+                if (Number.isFinite(pathLen)) return pathLen;
+            }
+            return navReachStepsTo(target.x, target.y);
+        }
+        const reachSteps = {
+            threat: reachStepsForMode(memoryWorld.threat, "flee"),
+            enemy: reachStepsForMode(memoryWorld.prey, "seek_enemy"),
+            food: reachStepsForMode(memoryWorld.food, "seek_food"),
+            ally: reachStepsForMode(memoryWorld.ally, "seek_ally"),
+        };
         const decisionContext = buildFleeDecisionContext({
             visibleWorld: memoryWorld,
             memoryWorld,
             memorySource: memoryWorld.memorySource,
-            committedTarget: intent ? { mode: intent.getMode(), targetId: intent.getTargetId() } : null,
-            routeStatus: readRouteStatus(agent, state),
+            committedTarget: committed,
+            routeStatus,
+            reachSteps,
+            cellSize: state.obstacleGrid.cellSize,
             foodFraction: resolveHunger ? resolveHunger() : null,
         });
         lastBlackboard = decisionContext.blackboard;

@@ -10,21 +10,21 @@ export function deriveSnakeHungerState(foodFraction) {
     else if (foodFraction < desperateBelow) state = "desperate";
     return { foodFraction, state, satisfied: state === "satisfied", hungry: state === "hungry", desperate: state === "desperate" };
 }
-export function deriveSnakeThreatState(visibleThreat, threatDist) {
-    if (!visibleThreat || threatDist == null) return null;
-    const config = getSnakeGameConfig();
-    const fleeRange = config.fleeRange ?? config.visionRange.range;
-    const severity = Math.max(0, Math.min(1, (fleeRange - threatDist) / fleeRange));
-    return { dist: threatDist, severity, lethal: threatDist <= config.lethalThreatRange };
+export function deriveSnakeThreatState(visibleThreat, reachSteps, cellSize, config = getSnakeGameConfig()) {
+    if (!visibleThreat || reachSteps == null) return null;
+    const fleeRangeCells = Math.ceil((config.fleeRange ?? config.visionRange.range) / cellSize);
+    const lethalThreatRangeCells = Math.ceil(config.lethalThreatRange / cellSize);
+    const severity = Math.max(0, Math.min(1, (fleeRangeCells - reachSteps) / fleeRangeCells));
+    return { dist: reachSteps, severity, lethal: reachSteps <= lethalThreatRangeCells };
 }
-export function deriveAllyState(visibleWorld, known, memorySource = null, session = null) {
+export function deriveAllyState(visibleWorld, known, memorySource = null, session = null, allyReachSteps = null) {
     const visibleAlly = memorySource?.ally ? null : (visibleWorld?.ally ?? null);
     const knownAlly = known?.ally ?? null;
     const engagement = knownAlly && session ? readAgentEngagement(session, knownAlly.id) : null;
     const leadworthy = knownAlly ? (session ? isAgentEngaged(session, knownAlly.id) : true) : false;
     return {
         ally: knownAlly,
-        dist: known?.allyDist ?? null,
+        dist: allyReachSteps ?? null,
         count: known?.allyCount ?? 0,
         centroid: visibleAlly ? (visibleWorld.allyCentroid ?? null) : null,
         visible: !!visibleAlly,
@@ -54,7 +54,7 @@ function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
     }
     if (rememberedTarget) events.push(kind === "prey" ? "PREY_LAST_SEEN_ACTIVE" : `${upper}_REMEMBERED`);
 }
-function routeEvents(routeStatus) {
+export function routeEvents(routeStatus) {
     const events = [];
     if (!routeStatus) return events;
     if (routeStatus.routeFailed) events.push("ROUTE_FAILED");
@@ -67,6 +67,7 @@ export function createSnakeDecisionBlackboard({
     memorySource = null,
     committedTarget = null,
     routeStatus = null,
+    reachSteps = null,
     hungerState = null,
     threatState = null,
     safetyState = null,
@@ -80,10 +81,6 @@ export function createSnakeDecisionBlackboard({
         prey: visibleWorld.prey,
         food: visibleWorld.food,
         ally: visibleWorld.ally,
-        threatDist: visibleWorld.threatDist ?? null,
-        preyDist: visibleWorld.prey ? (visibleWorld.preyDist ?? null) : null,
-        foodDist: visibleWorld.food ? (visibleWorld.foodDist ?? null) : null,
-        allyDist: visibleWorld.ally ? (visibleWorld.allyDist ?? null) : null,
         allyCount: visibleWorld.allyCount ?? 0,
         allyCentroid: visibleWorld.allyCentroid ?? null,
     };
@@ -92,9 +89,6 @@ export function createSnakeDecisionBlackboard({
         prey: memorySource?.prey ? (memoryWorld?.prey ?? null) : null,
         food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
         ally: memorySource?.ally ? (memoryWorld?.ally ?? null) : null,
-        preyDist: memorySource?.prey ? (memoryWorld?.preyDist ?? null) : null,
-        foodDist: memorySource?.food ? (memoryWorld?.foodDist ?? null) : null,
-        allyDist: memorySource?.ally ? (memoryWorld?.allyDist ?? null) : null,
         allyCount: memorySource?.ally ? (memoryWorld?.allyCount ?? 1) : 0,
         allyCentroid: null,
     };
@@ -104,13 +98,10 @@ export function createSnakeDecisionBlackboard({
         prey: visibleWorld.prey ?? remembered.prey,
         food: visibleWorld.food ?? remembered.food,
         ally: knownAlly,
-        threatDist: visible.threatDist,
-        preyDist: visible.prey ? visible.preyDist : remembered.preyDist,
-        foodDist: visible.food ? visible.foodDist : remembered.foodDist,
-        allyDist: knownAlly ? (visibleWorld.ally?.id === knownAlly.id ? visible.allyDist : remembered.allyDist) : null,
         allyCount: knownAlly ? (visibleWorld.ally?.id === knownAlly.id ? visible.allyCount : remembered.allyCount) : 0,
         allyCentroid: knownAlly && visibleWorld.ally?.id === knownAlly.id ? visible.allyCentroid : null,
     };
+    const resolvedReachSteps = reachSteps ?? { threat: null, prey: null, food: null, ally: null };
     const events = routeEvents(routeStatus);
     pushTargetEvents(events, "threat", visibleWorld.threat, remembered.threat);
     pushTargetEvents(events, "prey", visibleWorld.prey, remembered.prey);
@@ -124,6 +115,7 @@ export function createSnakeDecisionBlackboard({
             visible,
             remembered,
             known,
+            reachSteps: resolvedReachSteps,
             committedTarget,
             routeStatus,
             hungerState,
@@ -133,7 +125,7 @@ export function createSnakeDecisionBlackboard({
             seekerFaction,
             seekerSegmentCount,
             engagementState: null,
-            allyState: deriveAllyState(visibleWorld, known, memorySource, session),
+            allyState: deriveAllyState(visibleWorld, known, memorySource, session, resolvedReachSteps.ally),
         },
         events,
     };
@@ -151,20 +143,6 @@ function costPerCellForHunger(pressure, hungerState) {
 function preyValueForHunger(weights, pressure, hungerState) {
     const effort = effortConfig(pressure);
     return effort.preyValue[hungerKey(hungerState)] ?? weights.prey;
-}
-function committedTargetMatches(blackboard, mode, target) {
-    const committed = blackboard.facts.committedTarget;
-    return committed?.mode === mode && committed.targetId === target?.id;
-}
-function reachForCandidate(blackboard, mode, kind) {
-    const target = blackboard.facts.known[kind];
-    if (!target) return null;
-    if (committedTargetMatches(blackboard, mode, target)) {
-        const pathLen = blackboard.facts.routeStatus?.pathLen;
-        if (Number.isFinite(pathLen)) return pathLen;
-    }
-    const dist = blackboard.facts.known[`${kind}Dist`];
-    return Number.isFinite(dist) ? dist : null;
 }
 function policyReasonForTarget(blackboard, kind) {
     if (blackboard.facts.remembered[kind]) return `${kind}_memory`;
@@ -194,14 +172,14 @@ function scorePreyDetail(blackboard, weights, pressure) {
     const isEnemySnake = isPreySnake && seekerFaction && prey.faction && prey.faction !== seekerFaction;
     if (isEnemySnake) value = pressure.enemySnakePreyValue ?? weights.prey + 1000;
     else if (hunger?.desperate && (!blackboard.facts.known.food || blackboard.facts.routeStatus?.routeFailed)) value += pressure.preyDesperationBonus;
-    return netScoreDetail(value, reachForCandidate(blackboard, "seek_prey", "prey"), costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, blackboard.facts.reachSteps.prey, costPerCellForHunger(pressure, hunger));
 }
 function scoreFoodDetail(blackboard, weights, pressure) {
     if (!blackboard.facts.known.food) return { net: -Infinity };
     const hunger = blackboard.facts.hungerState;
     const deficit = hunger ? 1 - hunger.foodFraction : 0;
     const value = weights.food + pressure.foodHungerBonus * deficit;
-    return netScoreDetail(value, reachForCandidate(blackboard, "seek_food", "food"), costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, blackboard.facts.reachSteps.food, costPerCellForHunger(pressure, hunger));
 }
 function regroupSizeFactor(segmentCount, cohesion) {
     const count = segmentCount ?? cohesion.referenceSegmentCount ?? 3;
@@ -221,14 +199,13 @@ function scoreSeekAllyDetail(blackboard, weights, pressure) {
     const cohesion = getSnakeGameConfig().factionCohesion ?? {};
     const sizeFactor = regroupSizeFactor(blackboard.facts.seekerSegmentCount, cohesion);
     if (sizeFactor <= 0) return { net: -Infinity };
-    const allyDist = blackboard.facts.known.allyDist;
-    if (Number.isFinite(allyDist) && allyDist <= (cohesion.idealStopDist ?? 3)) return { net: -Infinity };
+    const allyReach = blackboard.facts.reachSteps.ally;
+    if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 3)) return { net: -Infinity };
     let value = (weights.seek_ally ?? weights.explore) + (cohesion.satisfiedBonus ?? 50);
     value *= sizeFactor;
     const allyCount = blackboard.facts.known.allyCount ?? 1;
     if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? 15) * sizeFactor;
-    const reach = reachForCandidate(blackboard, "seek_ally", "ally") ?? (Number.isFinite(allyDist) ? allyDist : null);
-    return netScoreDetail(value, reach, costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hunger));
 }
 function scoreExplore(blackboard, weights) {
     return weights.explore;
@@ -262,6 +239,8 @@ export function buildSnakeDecisionContext({
     memorySource = null,
     committedTarget = null,
     routeStatus = null,
+    reachSteps = null,
+    cellSize = 16,
     foodFraction = null,
     safetyState = null,
     recentFailures = [],
@@ -271,13 +250,14 @@ export function buildSnakeDecisionContext({
     pickPolicy = pickSnakeIntentPolicy,
 }) {
     const hungerState = deriveSnakeHungerState(foodFraction);
-    const threatState = deriveSnakeThreatState(visibleWorld.threat, visibleWorld.threatDist);
+    const threatState = deriveSnakeThreatState(visibleWorld.threat, reachSteps?.threat, cellSize);
     const blackboard = createSnakeDecisionBlackboard({
         visibleWorld,
         memoryWorld,
         memorySource,
         committedTarget,
         routeStatus,
+        reachSteps,
         hungerState,
         threatState,
         safetyState,

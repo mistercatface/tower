@@ -313,7 +313,7 @@ Grep gate: zero `*Dist` / `lastDistanceCells` in `Libraries/`.
 
 ---
 
-## Pass 4 — Wire reach into live decisions
+## Pass 4 — Wire reach into live decisions ✅
 
 | File | Work |
 |------|------|
