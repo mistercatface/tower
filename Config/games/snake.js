@@ -4,9 +4,9 @@ export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 export const SNAKE_GAME_DEFAULTS = {
     segmentPropId: "ball",
     headPropId: "snake_head",
-    snakeCount: 75,
+    snakeCount: 5,
     /** Rolling ball flee agents spawned after snakes (0 disables). */
-    boidCount: 320,
+    boidCount: 640,
     fleeAgent: {
         bodyPropId: "flee_ball",
         faction: "bravo",
@@ -23,9 +23,6 @@ export const SNAKE_GAME_DEFAULTS = {
         initialHunger: 0.85,
         metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
         hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
-        /** High-speed flee head rams kill flee agents, including friendly fire and blindsides. */
-        ramDeathSpeed: 35,
-        ram: { deathSpeed: 35, attackerMinSpeed: 18 },
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
         decisionWeights: { flee: 400, enemy: 420, food: 360, seek_ally: 280, explore: 100 },
         /** Same-faction flee ball regroup when safe (seek_ally mode). */
