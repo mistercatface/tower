@@ -212,37 +212,6 @@ export const OVERLAY_RENDER_KEY = {
 };
 const OVERLAY_STAGE_PADDING = 6;
 const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
-/**
- * @param {object} spec
- * @param {number} spec.worldX
- * @param {number} spec.worldY
- * @param {number} spec.px
- * @param {number} spec.py
- * @param {string} spec.renderKey
- * @param {string} spec.customKey
- * @param {number} spec.worldSpan
- * @param {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} spec.draw
- * @param {number} [spec.zoom]
- */
-function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1 }) {
-    let key = BigInt(internSpriteKeyPart(renderKey));
-    key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
-    key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
-    key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
-    return overlaySpriteCache.getOrBake(key, () => {
-        const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
-        const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
-        const anchorX = stageSpan / 2;
-        const anchorY = stageSpan / 2;
-        const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
-        const ctx = canvas.getContext("2d");
-        ctx.save();
-        if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
-        draw(ctx, anchorX, anchorY);
-        ctx.restore();
-        return { canvas, meta: { anchorX, anchorY, bakeScale } };
-    });
-}
 /** @typedef {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} OverlayDrawRecipe */
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -254,10 +223,26 @@ function getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, 
  * @param {string} customKey
  * @param {number} worldSpan
  * @param {OverlayDrawRecipe} draw
- * @param {{ zoom?: number }} [opts]
+ * @param {number} [zoom]
  */
-export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, { zoom = 1 } = {}) {
-    const sprite = getOrBakeOverlaySprite({ worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom });
+export function drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom = 1) {
+    let key = BigInt(internSpriteKeyPart(renderKey));
+    key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
+    key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
+    key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
+    const sprite = overlaySpriteCache.getOrBake(key, () => {
+        const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
+        const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
+        const anchorX = stageSpan / 2;
+        const anchorY = stageSpan / 2;
+        const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
+        const bakeCtx = canvas.getContext("2d");
+        bakeCtx.save();
+        if (bakeScale !== 1) bakeCtx.scale(bakeScale, bakeScale);
+        draw(bakeCtx, anchorX, anchorY);
+        bakeCtx.restore();
+        return { canvas, meta: { anchorX, anchorY, bakeScale } };
+    });
     blitAnchoredSprite(ctx, sprite, worldX, worldY);
 }
 /** @typedef {import("../Render/Props3D/PropRenderer.js").PropDrawRecipe} PropDrawRecipe */

@@ -26,7 +26,7 @@ const editorSceneHooks = {
             draw(_state, viewport, ctx) {
                 const controller = getGameState().sandbox.controller;
                 if (!controller) return;
-                drawOverlayCommands(ctx, controller.collectOverlayCommands(), { px: viewport.x, py: viewport.y, zoom: viewport.zoom });
+                drawOverlayCommands(ctx, controller.collectOverlayCommands(), viewport.x, viewport.y, viewport.zoom);
             },
         },
         {

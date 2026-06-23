@@ -2,21 +2,6 @@ import { drawCachedOverlayGlyph } from "../../Canvas/QuantizedSpriteCache.js";
 import { fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokeSegment, traceAabbRect } from "../../Canvas/CanvasPath.js";
 import { lengthXY, normalizeXY } from "../../Math/Vec2.js";
 import { bakeOverlayCommand } from "./overlayGlyphBake.js";
-function resolveCacheAnchor(cmd) {
-    if (cmd.cache.anchorX != null && cmd.cache.anchorY != null) return { x: cmd.cache.anchorX, y: cmd.cache.anchorY };
-    if (cmd.kind === "circleStroke" || cmd.kind === "circleFillStroke") return { x: cmd.cx, y: cmd.cy };
-    if (cmd.kind === "arrowHead") return { x: cmd.x, y: cmd.y };
-    if (cmd.kind === "directionArrow") return { x: cmd.cx, y: cmd.cy };
-    if (cmd.kind === "aabb") return { x: (cmd.minX + cmd.maxX) * 0.5, y: (cmd.minY + cmd.maxY) * 0.5 };
-    return { x: 0, y: 0 };
-}
-function drawCachedOverlayCommand(ctx, cmd, px, py, zoom) {
-    const { renderKey, customKey, worldSpan } = cmd.cache;
-    const anchor = resolveCacheAnchor(cmd);
-    drawCachedOverlayGlyph(ctx, anchor.x, anchor.y, px, py, renderKey, customKey, worldSpan, (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommand(bakeCtx, bakeAnchorX, bakeAnchorY, cmd), {
-        zoom,
-    });
-}
 function drawArrowHead(ctx, x, y, dirX, dirY, fill, headLen, headWidth) {
     const tx = -dirY;
     const ty = dirX;
@@ -64,13 +49,43 @@ function drawAimSegmentCommand(ctx, cmd) {
     }
     ctx.restore();
 }
-export function drawOverlayCommands(ctx, commands, { px = 0, py = 0, zoom = 1 } = {}) {
+export function drawOverlayCommands(ctx, commands, px = 0, py = 0, zoom = 1) {
     if (!commands.length) return;
     ctx.save();
     for (let i = 0; i < commands.length; i++) {
         const cmd = commands[i];
         if (cmd.cache) {
-            drawCachedOverlayCommand(ctx, cmd, px, py, zoom);
+            const { renderKey, customKey, worldSpan } = cmd.cache;
+            let worldX = 0;
+            let worldY = 0;
+            if (cmd.cache.anchorX != null && cmd.cache.anchorY != null) {
+                worldX = cmd.cache.anchorX;
+                worldY = cmd.cache.anchorY;
+            } else if (cmd.kind === "circleStroke" || cmd.kind === "circleFillStroke") {
+                worldX = cmd.cx;
+                worldY = cmd.cy;
+            } else if (cmd.kind === "arrowHead") {
+                worldX = cmd.x;
+                worldY = cmd.y;
+            } else if (cmd.kind === "directionArrow") {
+                worldX = cmd.cx;
+                worldY = cmd.cy;
+            } else if (cmd.kind === "aabb") {
+                worldX = (cmd.minX + cmd.maxX) * 0.5;
+                worldY = (cmd.minY + cmd.maxY) * 0.5;
+            }
+            drawCachedOverlayGlyph(
+                ctx,
+                worldX,
+                worldY,
+                px,
+                py,
+                renderKey,
+                customKey,
+                worldSpan,
+                (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommand(bakeCtx, bakeAnchorX, bakeAnchorY, cmd),
+                zoom,
+            );
             continue;
         }
         if (cmd.kind === "aabb") {

@@ -32,7 +32,7 @@ Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for 
 
 ### Tier 1 #5–#11 — dead exports / unexported bake layer ✅
 
-- **`getOrBakeOverlaySprite`** — module-private; only `drawCachedOverlayGlyph` calls it
+- **`getOrBakeOverlaySprite`** — deleted; key pack + bake inlined in `drawCachedOverlayGlyph`
 - **`getOrBakePropSprite`** — module-private; only `drawCachedPropSprite` calls it
 - **`clearOverlaySpriteCache`** — deleted; `clearPropSpriteCache()` already clears overlay + intern
 - **`createQuantizedSpriteCache`** — module-private factory
@@ -41,6 +41,12 @@ Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for 
 - **`setPropRecipes`** — deleted from `PropRenderer` and `WorldSceneRenderer`; recipes set in constructor only
 
 **Tier 1 complete.** Public prop/overlay draw surface: `drawCachedPropSprite`, `drawCachedOverlayGlyph`, `clearPropSpriteCache`, plus cache key constants.
+
+### Overlay glyph draw — positional API + inlined bake (post–Tier 1)
+
+Was: `drawCachedOverlayGlyph(..., { zoom })` → `getOrBakeOverlaySprite({ worldX, … })` → blit. `drawCachedOverlayCommand` + `resolveCacheAnchor` returned `{ x, y }` every cached glyph. `drawOverlayCommands(..., { px, py, zoom })`.
+
+Now: `drawCachedOverlayGlyph(ctx, worldX, worldY, px, py, renderKey, customKey, worldSpan, draw, zoom)` — bake inlined, no `getOrBakeOverlaySprite`. Cached branch in `drawOverlayCommands` resolves anchor as scalars inline. `drawOverlayCommands(ctx, commands, px, py, zoom)`.
 
 ---
 
@@ -75,18 +81,6 @@ Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for 
 **What:** `appendOverlayWireLink` = `out.push(...overlayWireLink(...))`. All external sites import `appendOverlayWireLink` only. `overlayWireLink` is never imported outside the file (rules mention it as API, nothing calls it directly).
 
 **Fix:** One export — either merge into `appendOverlayWireLink` or make `overlayWireLink` private.
-
----
-
-### 15. `drawCachedOverlayCommand` — private hop in one file
-
-**Where:** `Libraries/Render/overlays/drawOverlayCommands.js`
-
-**What:** Resolves anchor → calls `drawCachedOverlayGlyph` with bake closure. Single caller: cached branch of `drawOverlayCommands` loop.
-
-**Why it's bullshit:** Extra layer inside a file that already owns both sides. Low severity (not exported).
-
-**Fix:** Inline into the `cmd.cache` branch.
 
 ---
 
@@ -208,7 +202,7 @@ Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for 
 
 **Done:** Tier 1 complete (#1–#11).
 
-**Next (recommended): Tier 2 dead exports** — #12, then #13–#15 inlines.
+**Next (recommended): Tier 2** — #12 delete, #13–#14 inlines.
 
 **Then pick one thread:**
 
@@ -219,7 +213,7 @@ Was: `buildPropSpriteKey` + `packPropSpriteKey` (one caller); export leaked for 
 | **Barrels / orphans** | #23–#25 | Delete unused index files |
 
 1. ~~**Tier 1 — render / sprite cache**~~ ✅
-2. **Tier 2 overlay commands** — #12–#15
+2. **Tier 2 overlay commands** — #12–#14
 3. **Tier 3 WorldSurface** — #16–#19
 4. **Tier 4 floor** — #21–#22
 5. **Tier 5 barrels** — #23–#25

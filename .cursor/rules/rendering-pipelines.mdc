@@ -118,7 +118,7 @@ Do not route belts, forcefields, buttons, or editor feedback through this path.
 
 ```text
 append*OverlayCommands(out, …)  →  buildSandboxOverlayCommands  →  collectOverlayCommands
-  →  drawOverlayCommands(ctx, commands, { px, py, zoom })
+  →  drawOverlayCommands(ctx, commands, px, py, zoom)
 ```
 
 ### Add new overlay feedback
