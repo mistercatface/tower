@@ -1,4 +1,5 @@
 import { buildAgentEventTargets } from "./buildAgentEventTargets.js";
+import { bandFromThresholds } from "./bandFromThresholds.js";
 import { deriveAllyState } from "./deriveAllyState.js";
 import { deriveThreatState } from "./deriveThreatState.js";
 import { mergeSlotsFromSchema } from "./mergeSlotsFromSchema.js";
@@ -40,7 +41,7 @@ export function pickAgentIntentPolicy(ctx, scores, spec) {
 export function buildAgentDecisionContext(spec, input) {
     const schema = spec.decisionSchema();
     const foodFraction = input.foodFraction ?? null;
-    const hungerTier = foodFraction == null ? null : foodFraction >= spec.hungerSatisfiedAt() ? "satisfied" : foodFraction < spec.hungerDesperateBelow() ? "desperate" : "hungry";
+    const hungerTier = bandFromThresholds(foodFraction, spec.hungerBands());
     const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, spec.threatConfig());
     const ctx = buildAgentDecisionFrame(spec, { ...input, foodFraction, hungerTier, threatState });
     const weights = spec.weights();

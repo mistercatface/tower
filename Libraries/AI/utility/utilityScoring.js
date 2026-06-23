@@ -1,3 +1,4 @@
+import { lookupBandTable } from "../agents/bandFromThresholds.js";
 export const SCORE_ABSENT = Object.freeze({ net: -Infinity });
 const DETAIL_SCRATCH = Array.from({ length: 8 }, () => ({ value: 0, reach: null, cost: 0, net: 0 }));
 let detailScratchIndex = 0;
@@ -26,7 +27,7 @@ export function netScoreOnly(net) {
     return out;
 }
 export function costPerCellForHunger(pressure, hungerTier) {
-    return pressure.effort.costPerCell[hungerTier ?? "hungry"];
+    return lookupBandTable(pressure.effort.costPerCell, hungerTier);
 }
 export function foodHungerScoreValue(weights, pressure, foodFraction) {
     const deficit = foodFraction != null ? 1 - foodFraction : 0;
@@ -36,7 +37,7 @@ export function scoreRiskAdjustedFlee(ctx, weights, pressure) {
     if (!ctx.known.threat) return -Infinity;
     const threat = ctx.threatState;
     if (!threat || threat.lethal) return Infinity;
-    const riskTolerance = ctx.hungerTier ? (pressure.riskTolerance[ctx.hungerTier] ?? 0) : 0;
+    const riskTolerance = ctx.hungerTier ? lookupBandTable(pressure.riskTolerance, ctx.hungerTier) : 0;
     if (riskTolerance <= 0) return Infinity;
     return weights.flee * threat.severity * (1 - riskTolerance);
 }

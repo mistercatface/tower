@@ -1,3 +1,4 @@
+import { lookupBandTable } from "./bandFromThresholds.js";
 import { costPerCellForHunger, foodHungerScoreValue, netScoreDetail, netScoreOnly, resetScoreDetailScratch, SCORE_ABSENT, scoreRiskAdjustedFlee } from "../utility/utilityScoring.js";
 const GUARDS = {
     notSatisfied: (ctx) => ctx.hungerTier === "satisfied",
@@ -21,7 +22,7 @@ function regroupSizeFactor(segmentCount, cohesion) {
 }
 function preyValueForHunger(weights, pressure, hungerTier, effortFallback) {
     const effort = pressure.effort ?? effortFallback?.effort;
-    return effort?.preyValue?.[hungerTier ?? "hungry"] ?? weights.prey;
+    return lookupBandTable(effort?.preyValue, hungerTier, "hungry") ?? weights.prey;
 }
 const SCORERS = {
     riskAdjustedFlee(ctx, _modeDef, weights, pressure) {

@@ -10,7 +10,7 @@
 
 ## Current task
 
-**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) step 3 next (band tables)
+**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) step 4 next (delete species decision models)
 
 Reach + flat `decisionContext` already shipped ✅
 

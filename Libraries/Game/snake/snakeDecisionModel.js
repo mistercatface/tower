@@ -1,4 +1,5 @@
 import { buildAgentDecisionContext, buildAgentDecisionFrame, pickAgentIntentPolicy } from "../../AI/agents/buildAgentDecisionContext.js";
+import { bandFromThresholds } from "../../AI/agents/bandFromThresholds.js";
 import { scoreDecisionCandidateDetails } from "../../AI/agents/scoreDecisionModes.js";
 import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
 import { scoreCandidateSet } from "../../AI/utility/utilityScoring.js";
@@ -21,8 +22,7 @@ export function scoreSnakeIntentCandidates(ctx, weights, pressure) {
 }
 const snakeDecisionSpec = {
     decisionSchema: () => getSnakeGameConfig().decision,
-    hungerSatisfiedAt: () => getSnakeGameConfig().hunger.satisfiedAtOrAbove,
-    hungerDesperateBelow: () => getSnakeGameConfig().hunger.desperateBelow,
+    hungerBands: () => getSnakeGameConfig().hungerBands,
     threatConfig: () => getSnakeGameConfig(),
     weights: () => getSnakeGameConfig().decisionWeights,
     pressure: () => getSnakeGameConfig().decisionPressure,
@@ -42,8 +42,7 @@ const snakeDecisionSpec = {
 };
 export function buildSnakeDecisionFrame(input) {
     const foodFraction = input.foodFraction ?? null;
-    const hungerTier =
-        foodFraction == null ? null : foodFraction >= snakeDecisionSpec.hungerSatisfiedAt() ? "satisfied" : foodFraction < snakeDecisionSpec.hungerDesperateBelow() ? "desperate" : "hungry";
+    const hungerTier = bandFromThresholds(foodFraction, snakeDecisionSpec.hungerBands());
     const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, getSnakeGameConfig());
     return buildAgentDecisionFrame(snakeDecisionSpec, { ...input, foodFraction, hungerTier, threatState });
 }

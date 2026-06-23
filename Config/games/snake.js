@@ -22,7 +22,11 @@ export const SNAKE_GAME_DEFAULTS = {
         friction: null,
         initialHunger: 0.85,
         metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
-        hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+        hungerBands: [
+            { id: "satisfied", min: 0.66 },
+            { id: "hungry", min: 0.33 },
+            { id: "desperate", min: 0 },
+        ],
         sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
         decisionWeights: { flee: 400, enemy: 420, food: 360, seek_ally: 280, explore: 100 },
         /** Same-faction flee ball regroup when safe (seek_ally mode). */
@@ -126,8 +130,12 @@ export const SNAKE_GAME_DEFAULTS = {
      * starveShedIntervalMs: once hunger is empty, time spent starving before losing each segment.
      */
     metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
-    /** Hunger-bar cutoffs for the satisfied/hungry/desperate facts (1 = just ate, 0 = starving). */
-    hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+    /** Hunger bands — highest `min` first; food fraction 1 = full, 0 = starving. */
+    hungerBands: [
+        { id: "satisfied", min: 0.66 },
+        { id: "hungry", min: 0.33 },
+        { id: "desperate", min: 0 },
+    ],
     /** Opposite-faction snakes within this segment gap duel (both hunt) instead of hunt/flee. */
     rivalBand: { maxSegmentGap: 2 },
     /** Decision scoring base weights. Shard food is safer than live prey, with threat and route pressure layered on top. */

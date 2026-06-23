@@ -46,18 +46,9 @@ Every tick an agent gets **one `decisionContext`**: merged targets, path-step re
 
 ---
 
-### 3 — Config owns bands (hunger first, generic forever)
+### 3 — Config owns bands ✅
 
-**Problem:** Hunger uses `satisfiedAtOrAbove` + `desperateBelow` in one place, magic strings in JS, and `riskTolerance.satisfied` / `costPerCell.desperate` in another. Middle band `"hungry"` isn’t declared anywhere.
-
-**Do:**
-
-1. One band table format in config, e.g. ordered `{ id, min }` thresholds (highest first).
-2. One engine helper: `bandFromThresholds(value, bands) → id | null` and `lookupBandTable(table, id, fallback)`.
-3. Replace duplicated hunger ternaries in `buildAgentDecisionContext` / `buildSnakeDecisionFrame` with config + helper.
-4. Sprint derive uses the same band ids + sprint table from config — one `deriveSprintFromConfig`, not snake/flee copies.
-
-**Done when:** adding a second banded scalar (stamina, morale, …) is config + registry guard — not a new derive function and three file grep sync.
+**Shipped:** `hungerBands` in config (ordered `{ id, min }`); `bandFromThresholds` + `lookupBandTable` in engine; old `hunger` cutoffs removed; tier derived via `spec.hungerBands()`.
 
 ---
 

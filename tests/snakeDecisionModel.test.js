@@ -3,7 +3,13 @@ import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
+import { bandFromThresholds } from "../Libraries/AI/agents/bandFromThresholds.js";
 import { createModePolicyLatch } from "../Libraries/AI/agentIntent/policyHysteresis.js";
+const TEST_HUNGER_BANDS = [
+    { id: "satisfied", min: 0.66 },
+    { id: "hungry", min: 0.33 },
+    { id: "desperate", min: 0 },
+];
 const CELL = 16;
 function world({ threat = null, prey = null, food = null, ally = null, allyCount = 0, allyCentroid = null } = {}) {
     return { threat, prey, food, ally, allyCount, allyCentroid };
@@ -35,12 +41,8 @@ function decisionFrame(visibleWorld, opts = {}) {
 }
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        const { satisfiedAtOrAbove, desperateBelow } = getSnakeGameConfig().hunger;
-        const tier = (fraction) => fraction == null ? null
-            : fraction >= satisfiedAtOrAbove ? "satisfied"
-            : fraction < desperateBelow ? "desperate"
-            : "hungry";
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
+        const tier = (fraction) => bandFromThresholds(fraction, getSnakeGameConfig().hungerBands);
         assert.equal(tier(1), "satisfied");
         assert.equal(tier(0.66), "satisfied");
         assert.equal(tier(0.5), "hungry");
@@ -52,7 +54,7 @@ describe("snake hunger facts (PR1)", () => {
         assert.equal(ctx.hungerTier, null);
     });
     it("exposes hunger facts on the decision snapshot", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ food: snake(3) }), { foodFraction: 0.9 });
         assert.equal(ctx.hungerTier, "satisfied");
         assert.equal(ctx.foodFraction, 0.9);
@@ -97,43 +99,43 @@ describe("snake intent scoring parity (PR2)", () => {
 });
 describe("satisfied snakes weigh prey effort", () => {
     it("a satisfied snake grabs adjacent visible prey", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ prey: snake(2) }), { foodFraction: 0.9, reachSteps: { prey: 1, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
         assert.equal(ctx.candidateScoreDetails.seek_prey.reach, 1);
         assert.equal(ctx.candidateScoreDetails.seek_prey.cost, 25);
     });
     it("a satisfied snake explores instead of chasing far visible prey", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "red" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 2, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "explore");
         assert.equal(ctx.candidateScoreDetails.seek_prey.net, 90);
     });
     it("a satisfied snake still attacks an opposite-team snake prey", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.9, seekerFaction: "red", reachSteps: { prey: 8, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
         assert.ok(ctx.candidateScores.seek_prey > 1000);
     });
     it("a hungry snake still chases prey", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ prey: snake(2, { type: "snake_head", faction: "blue" }) }), { foodFraction: 0.4, seekerFaction: "red", reachSteps: { prey: 6, food: null, ally: null, threat: null } });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
     });
     it("a satisfied snake still flees a larger threat", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ threat: snake(1), prey: snake(2) }), { foodFraction: 1, reachSteps: { threat: 1, prey: 1, food: null, ally: null } });
         assert.equal(ctx.chosenIntent.mode, "flee");
     });
     it("a satisfied snake still seeks food over exploring", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ prey: snake(2), food: snake(3) }), { foodFraction: 0.9 });
         assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
 });
 describe("committed target effort uses route length", () => {
     it("a satisfied snake abandons a lengthening chase while a desperate snake sustains it", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const prey = snake(2);
         const committedTarget = { mode: "seek_prey", targetId: prey.id };
         const routeStatus = { pathLen: 6 };
@@ -144,7 +146,7 @@ describe("committed target effort uses route length", () => {
         assert.equal(desperate.chosenIntent.mode, "seek_prey");
     });
     it("surfaces effort fields on the decision snapshot", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ food: snake(3) }), { foodFraction: 0.5, reachSteps: { food: 4, prey: null, ally: null, threat: null } });
         assert.deepEqual(ctx.candidateScoreDetails.seek_food, { value: 490, reach: 4, cost: 80, net: 410 });
         assert.equal(ctx.candidateScores.seek_food, 410);
@@ -169,7 +171,11 @@ describe("threat severity facts (PR6)", () => {
 });
 function applyScoringConfig() {
     applySnakeGameConfig({
-        hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+        hungerBands: [
+            { id: "satisfied", min: 0.66 },
+            { id: "hungry", min: 0.33 },
+            { id: "desperate", min: 0 },
+        ],
         decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
         decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250 },
     });
@@ -206,7 +212,11 @@ function applyRiskConfig() {
     applySnakeGameConfig({
         fleeRange: 128,
         lethalThreatRange: 48,
-        hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 },
+        hungerBands: [
+            { id: "satisfied", min: 0.66 },
+            { id: "hungry", min: 0.33 },
+            { id: "desperate", min: 0 },
+        ],
         decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 },
         decisionPressure: { foodHungerBonus: 300, preyDesperationBonus: 250, riskTolerance: { satisfied: 0, hungry: 0.4, desperate: 0.75 } },
     });
@@ -259,7 +269,7 @@ describe("sprint intent facts (PR9)", () => {
         assert.equal(deriveSprintIntent("explore", null).want, false);
     });
     it("surfaces sprintIntent on the decision snapshot", () => {
-        applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
+        applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });
         const ctx = context(world({ prey: snake(9) }), { foodFraction: 0.4 });
         assert.equal(ctx.chosenIntent.mode, "seek_prey");
         assert.deepEqual(ctx.sprintIntent, { want: true, reason: "chase" });

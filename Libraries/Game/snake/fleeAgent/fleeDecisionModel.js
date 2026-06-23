@@ -33,8 +33,7 @@ export function scoreFleeIntentCandidateDetails(ctx, weights = fleeWeights(), pr
 }
 const fleeDecisionSpec = {
     decisionSchema: () => getSnakeGameConfig().fleeAgent.decision,
-    hungerSatisfiedAt: () => getSnakeGameConfig().fleeAgent.hunger.satisfiedAtOrAbove,
-    hungerDesperateBelow: () => getSnakeGameConfig().fleeAgent.hunger.desperateBelow,
+    hungerBands: () => getSnakeGameConfig().fleeAgent.hungerBands,
     threatConfig: () => getSnakeGameConfig(),
     weights: fleeWeights,
     pressure: fleePressure,
