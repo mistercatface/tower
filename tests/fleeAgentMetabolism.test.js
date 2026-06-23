@@ -9,7 +9,7 @@ import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getAgentIdentity, setAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createFleeMetabolism, getFleeHunger, setFleeHunger, tickFleeMetabolism } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
 import { resolveFleeAgentEatRadius } from "../Libraries/Game/snake/fleeAgent/eatFleeAgentFood.js";
-import { deriveFleeSprintIntent } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell, primeSnakeHeadVision, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
@@ -153,10 +153,11 @@ describe("flee agent metabolism", () => {
         assert.equal(instance.sprinting, true);
         assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
     });
-    it("deriveFleeSprintIntent wants sprint on lethal flee when hunger allows", () => {
+    it("deriveSprintIntent wants sprint on lethal flee when hunger allows", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 } }, lethalThreatRange: 48 });
-        const sprint = deriveFleeSprintIntent("flee", { lethal: true, severity: 1 }, "hungry", 0.5);
-        assert.equal(sprint.want, true);
-        assert.equal(deriveFleeSprintIntent("explore", { lethal: true, severity: 1 }, "hungry", 0.5).want, false);
+        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        const ctx = { threatState: { lethal: true, severity: 1 }, hungerTier: "hungry", foodFraction: 0.5 };
+        assert.equal(deriveSprintIntent("flee", ctx, sprint).want, true);
+        assert.equal(deriveSprintIntent("explore", ctx, sprint).want, false);
     });
 });

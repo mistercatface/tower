@@ -6,12 +6,16 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { setFleeHunger } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
-import { buildFleeDecisionContext, deriveFleeSprintIntent, scoreFleeIntentCandidateDetails } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { buildFleeDecisionContext, scoreFleeIntentCandidateDetails } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 
 const CELL = 16;
+function sprintCtx(overrides = {}) {
+    return { threatState: null, hungerTier: null, foodFraction: null, ...overrides };
+}
 function fleeReach(overrides = {}) {
     return { threat: null, enemy: null, food: null, ally: null, ...overrides };
 }
@@ -21,23 +25,26 @@ function mockTarget(id) {
 }
 
 describe("flee agent decision model", () => {
-    it("deriveFleeSprintIntent blocks flee sprint when hunger is critically low", () => {
+    it("deriveSprintIntent blocks flee sprint when hunger is critically low", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 }, decisionPressure: { sprintFleeMinHunger: 0.1 } } });
-        assert.equal(deriveFleeSprintIntent("flee", { lethal: true, severity: 1 }, "desperate", 0.05).want, false);
+        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        assert.equal(deriveSprintIntent("flee", sprintCtx({ threatState: { lethal: true, severity: 1 }, hungerTier: "desperate", foodFraction: 0.05 }), sprint).want, false);
     });
 
-    it("deriveFleeSprintIntent sprints on flee when threat is severe enough", () => {
+    it("deriveSprintIntent sprints on flee when threat is severe enough", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5 } } });
-        const sprint = deriveFleeSprintIntent("flee", { lethal: false, severity: 0.6 }, "hungry", 0.6);
-        assert.equal(sprint.want, true);
-        assert.equal(sprint.reason, "escape");
+        const sprint = getSnakeGameConfig().fleeAgent.sprint;
+        const result = deriveSprintIntent("flee", sprintCtx({ threatState: { lethal: false, severity: 0.6 }, hungerTier: "hungry", foodFraction: 0.6 }), sprint);
+        assert.equal(result.want, true);
+        assert.equal(result.reason, "escape");
     });
 
-    it("deriveFleeSprintIntent only sprints on seek_food when desperate", () => {
+    it("deriveSprintIntent only sprints on seek_food when desperate", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.4 } } });
+        const sprint = getSnakeGameConfig().fleeAgent.sprint;
         const threat = { lethal: false, severity: 0.5 };
-        assert.equal(deriveFleeSprintIntent("seek_food", threat, "hungry", 0.5).want, false);
-        assert.equal(deriveFleeSprintIntent("seek_food", threat, "desperate", 0.2).want, true);
+        assert.equal(deriveSprintIntent("seek_food", sprintCtx({ threatState: threat, hungerTier: "hungry", foodFraction: 0.5 }), sprint).want, false);
+        assert.equal(deriveSprintIntent("seek_food", sprintCtx({ threatState: threat, hungerTier: "desperate", foodFraction: 0.2 }), sprint).want, true);
     });
 
     it("explores when only smaller snakes are visible and no food", () => {

@@ -5,29 +5,6 @@ import { deriveThreatState } from "./deriveThreatState.js";
 import { scoreCandidateSet } from "../utility/utilityScoring.js";
 import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "../../Game/snake/snakeEngagement.js";
-export function deriveSnakeSprintIntent(mode, threatState) {
-    const sprint = getSnakeGameConfig().sprint;
-    if (mode === "flee" && threatState && (threatState.lethal || threatState.severity >= sprint.fleeSeverity)) return { want: true, reason: "escape" };
-    if (mode === "seek_food" && threatState && !threatState.lethal && threatState.severity >= sprint.fleeSeverity) return { want: true, reason: "feed" };
-    if (mode === "seek_prey") return { want: true, reason: "chase" };
-    return { want: false, reason: "none" };
-}
-export function deriveFleeSprintIntent(mode, threatState, hungerTier = null, foodFraction = null) {
-    const flee = getSnakeGameConfig().fleeAgent;
-    const sprint = flee.sprint;
-    const fraction = foodFraction ?? 1;
-    const sprintFleeMin = sprint.sprintFleeMinHunger ?? flee.decisionPressure.sprintFleeMinHunger ?? 0.1;
-    if (mode === "flee") {
-        if (fraction < sprintFleeMin) return { want: false, reason: "starving" };
-        if (threatState && (threatState.lethal || threatState.severity >= sprint.fleeSeverity)) return { want: true, reason: "escape" };
-    }
-    if (mode === "seek_food") {
-        if (fraction < sprintFleeMin) return { want: false, reason: "starving" };
-        if (threatState && !threatState.lethal && threatState.severity >= sprint.fleeSeverity && hungerTier === "desperate") return { want: true, reason: "race" };
-    }
-    if (mode === "seek_enemy") return { want: true, reason: "attack" };
-    return { want: false, reason: "none" };
-}
 function snakeScoringEnv() {
     return { effortFallback: getSnakeGameConfig().decisionPressure, cohesion: getSnakeGameConfig().factionCohesion ?? {} };
 }
@@ -42,6 +19,7 @@ const snakeDecisionSpec = {
     weights: () => getSnakeGameConfig().decisionWeights,
     pressure: () => getSnakeGameConfig().decisionPressure,
     scoringEnv: snakeScoringEnv,
+    sprintConfig: () => getSnakeGameConfig().sprint,
     allySession: (input) => input.session ?? null,
     extraFacts: (input) => ({
         safetyState: input.safetyState,
@@ -50,7 +28,6 @@ const snakeDecisionSpec = {
         seekerSegmentCount: input.seekerSegmentCount,
         engagementState: null,
     }),
-    deriveSprint: (mode, threatState) => deriveSnakeSprintIntent(mode, threatState),
     afterPick: (ctx, chosenIntent) => {
         ctx.engagementState = deriveSnakeEngagementState(ctx, chosenIntent);
     },
@@ -62,7 +39,7 @@ const fleeDecisionSpec = {
     weights: () => getSnakeGameConfig().fleeAgent.decisionWeights,
     pressure: () => getSnakeGameConfig().fleeAgent.decisionPressure,
     scoringEnv: fleeScoringEnv,
-    deriveSprint: (mode, threatState, hungerTier, ctx) => deriveFleeSprintIntent(mode, threatState, hungerTier, ctx.foodFraction),
+    sprintConfig: () => getSnakeGameConfig().fleeAgent.sprint,
 };
 export function scoreSnakeIntentCandidateDetails(ctx, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
     return scoreDecisionCandidateDetails(ctx, getSnakeGameConfig().decision, weights, pressure, snakeScoringEnv());

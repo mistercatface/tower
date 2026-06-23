@@ -1,7 +1,7 @@
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
-import { buildSnakeDecisionContext, deriveSnakeSprintIntent } from "../../AI/agents/gameDecisionContext.js";
+import { buildSnakeDecisionContext } from "../../AI/agents/gameDecisionContext.js";
 import { createGroundNavIntentAdapter, getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 const SNAKE_REACH_SLOTS = {
@@ -76,7 +76,7 @@ export function createSnakeForageIntent({
             if (cell) locomotion.setFlee(agent, state, cell);
             return cell;
         },
-        deriveSprintIntent: (mode, ctx) => deriveSnakeSprintIntent(mode, ctx.threatState),
+        sprintConfig: config.sprint,
         fleeHeldOn: "any",
         transitionReason(prevMode, nextMode, policy) {
             if (policy?.reason) return policy.reason;

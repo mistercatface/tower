@@ -4,6 +4,7 @@ import { deriveAllyState } from "./deriveAllyState.js";
 import { deriveThreatState } from "./deriveThreatState.js";
 import { mergeSlotsFromSchema } from "./mergeSlotsFromSchema.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
+import { deriveSprintIntent } from "./deriveSprintIntent.js";
 import { pushTargetEvents, routeEvents, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
 import { pickBestScoreKey, scoreCandidateSet } from "../utility/utilityScoring.js";
 const EMPTY_AGENT_REACH_STEPS = Object.freeze({ threat: null, prey: null, enemy: null, food: null, ally: null });
@@ -51,7 +52,7 @@ export function buildAgentDecisionContext(spec, input) {
     const pickPolicy = input.pickPolicy ?? ((frame, scores) => pickAgentIntentPolicy(frame, scores, spec));
     const chosenIntent = pickPolicy(ctx, scoredCandidates.candidateScores);
     spec.afterPick?.(ctx, chosenIntent, input);
-    const sprintIntent = spec.deriveSprint(chosenIntent.mode, threatState, hungerTier, ctx);
+    const sprintIntent = deriveSprintIntent(chosenIntent.mode, ctx, spec.sprintConfig());
     ctx.candidateScores = scoredCandidates.candidateScores;
     ctx.candidateScoreDetails = scoredCandidates.candidateScoreDetails;
     ctx.chosenIntent = chosenIntent;

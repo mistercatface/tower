@@ -1,6 +1,7 @@
 import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
 import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
+import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { syncNavReachHorizon } from "../../Navigation/navReachHorizon.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { buildAgentReachSteps } from "./agentReachSteps.js";
@@ -54,7 +55,7 @@ function createFleeIntentLatch(config) {
         },
     });
 }
-function applyFleePolicyLatch({ world, fleeLatch, currentMode, deriveSprintIntent, fleeHeldOn = "flee" }) {
+function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fleeHeldOn = "flee" }) {
     const ctx = world.decisionContext;
     const chosen = ctx.chosenIntent;
     const policy = fleeLatch.apply(chosen, { world, currentMode });
@@ -63,7 +64,7 @@ function applyFleePolicyLatch({ world, fleeLatch, currentMode, deriveSprintInten
         ctx.chosenIntent = policy;
         ctx.chosenReason = policy.reason ?? null;
         ctx.targetId = policy.targetId ?? null;
-        ctx.sprintIntent = deriveSprintIntent(policy.mode, ctx);
+        ctx.sprintIntent = deriveSprintIntent(policy.mode, ctx, sprintConfig);
     }
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policy;
@@ -157,7 +158,7 @@ export function createGroundNavIntentAdapter({
     afterPerceive = null,
     resolveCommittedTarget,
     setFleeDestination,
-    deriveSprintIntent,
+    sprintConfig,
     fleeHeldOn = "flee",
     clearMemoryOnIntentClear = false,
     onIntentClear = null,
@@ -198,7 +199,7 @@ export function createGroundNavIntentAdapter({
             arrivalStamper.stamp(agent, state.obstacleGrid);
         },
         perceiveWorld: perceiveWithMemory,
-        pickPolicy: (world) => applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), deriveSprintIntent, fleeHeldOn }),
+        pickPolicy: (world) => applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn }),
         transitionReason,
         states,
         modeExitDelayTicks,

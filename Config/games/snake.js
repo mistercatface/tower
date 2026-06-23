@@ -27,7 +27,18 @@ export const SNAKE_GAME_DEFAULTS = {
             { id: "hungry", min: 0.33 },
             { id: "desperate", min: 0 },
         ],
-        sprint: { fleeSeverity: 0.5, speedMultiplier: 1.75, accelMultiplier: 1.5, hungerDrainMultiplier: 2.0, sprintFleeMinHunger: 0.1 },
+        sprint: {
+            fleeSeverity: 0.5,
+            speedMultiplier: 1.75,
+            accelMultiplier: 1.5,
+            hungerDrainMultiplier: 2.0,
+            sprintFleeMinHunger: 0.1,
+            rules: [
+                { mode: "flee", rule: "severeOrLethalThreat", guards: ["minHunger"], want: true, reason: "escape" },
+                { mode: "seek_food", rule: "severeNonLethalThreat", guards: ["minHunger", "bandDesperate"], want: true, reason: "race" },
+                { mode: "seek_enemy", rule: "always", want: true, reason: "attack" },
+            ],
+        },
         decisionWeights: { flee: 400, enemy: 420, food: 360, seek_ally: 280, explore: 100 },
         /** Same-faction flee ball regroup when safe (seek_ally mode). */
         factionCohesion: { arrivalRadius: 24, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
@@ -165,7 +176,17 @@ export const SNAKE_GAME_DEFAULTS = {
      * speed/accel multipliers scale the head's ground nav while sprinting; hungerDrainMultiplier
      * advances the food timer faster so sprinting eats into hunger and accelerates shedding.
      */
-    sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 },
+    sprint: {
+        fleeSeverity: 0.5,
+        speedMultiplier: 1.4,
+        accelMultiplier: 1.4,
+        hungerDrainMultiplier: 2.5,
+        rules: [
+            { mode: "flee", rule: "severeOrLethalThreat", want: true, reason: "escape" },
+            { mode: "seek_food", rule: "severeNonLethalThreat", want: true, reason: "feed" },
+            { mode: "seek_prey", rule: "always", want: true, reason: "chase" },
+        ],
+    },
     decision: {
         scoreOrder: ["flee", "seek_prey", "seek_food", "seek_ally", "explore"],
         targetLost: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
