@@ -14,33 +14,21 @@ Passthrough wrappers, split functions with one caller, exports nothing uses, and
 
 Was: two functions, one call site, identical to inlining the `BigInt` pack into `getOrBakeOverlaySprite`. Removed — same behavior, fewer names.
 
+### `drawWorldProp.js` + `propDrawContext` (Tier 1 #1)
+
+Was: whole file forwarded to `PropRenderer.drawProp`; `viewport` and `gameState` on context unused. Deleted file. `WorldSceneRenderer` calls `this.props.drawProp(ctx, prop, px, py, zoom)` directly. `propDrawContext` removed. `drawProp` takes scalar `zoom` (and `animFrame`), not `{ zoom }`.
+
+### Floor belt draw — `{ px, py }` camera object (partial Tier 4 #21)
+
+Was: `drawFloorOccupancyBelts/PowerSources(..., { px, py })` → gridStampDrawCache destructured `camera`. Now `px, py` scalars through the chain. **Still open:** `floorOccupancy.js` wrapper layer (guards only) — see Tier 4 #21.
+
+### Two prop blit paths — `PropRenderer` through `drawCachedPropSprite` (Tier 1 #2)
+
+Was: `PropRenderer.drawProp` called `getOrBakePropSprite` + `blitAnchoredSprite` directly because `drawCachedPropSprite` did not forward `propRecipes` (visual attachment bakes). Now `drawCachedPropSprite` accepts `propRecipes` in opts; `PropRenderer.drawProp` is a lookup + one `drawCachedPropSprite` call. Grid stamps and world props share the same blit path.
+
 ---
 
 ## Tier 1 — Render / sprite cache
-
-### 1. `drawWorldProp.js` — whole file is a passthrough
-
-**Where:** `Libraries/Render/drawWorldProp.js` → only caller `Libraries/Render/WorldSceneRenderer.js`
-
-**What:** Unpacks `drawContext`, calls `propRenderer.drawProp`. `viewport` param is never read.
-
-**Why it's bullshit:** One consumer, zero logic. Exists so WorldSceneRenderer has a “draw entry” name instead of calling `this.props.drawProp` directly.
-
-**Fix:** Delete file; inline `this.props.drawProp(ctx, prop, px, py, { zoom })` in WorldSceneRenderer.
-
----
-
-### 2. Two prop blit paths — `PropRenderer.drawProp` bypasses `drawCachedPropSprite`
-
-**Where:** `Libraries/Render/Props3D/PropRenderer.js`, `Libraries/Canvas/QuantizedSpriteCache.js`
-
-**What:** Rules say mandatory path is `drawCachedPropSprite` → `getOrBakePropSprite` → blit. World props go `drawWorldProp` → `PropRenderer.drawProp`, which calls `getOrBakePropSprite` + `blitAnchoredSprite` directly. Reason: `drawCachedPropSprite` never forwards `propRecipes` (needed for visual attachments on bake).
-
-**Why it's bullshit:** Two “official” paths for the same pipeline. Docs/rules claim one entry; world props use another because the wrapper is incomplete — not because the split is intentional architecture.
-
-**Fix:** Add `propRecipes` to `drawCachedPropSprite` opts; make `PropRenderer.drawProp` a one-liner through it (or delete PropRenderer and fold into WorldSceneRenderer).
-
----
 
 ### 3. `buildPropSpriteKey` + `packPropSpriteKey` — same sin as overlay had
 
@@ -78,15 +66,15 @@ Was: two functions, one call site, identical to inlining the `BigInt` pack into 
 
 ---
 
-### 6. `getOrBakePropSprite` — exported second entry (same class of problem)
+### 6. `getOrBakePropSprite` — exported bake layer (still open)
 
-**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`; external caller `PropRenderer.js`
+**Where:** `Libraries/Canvas/QuantizedSpriteCache.js`
 
-**What:** Exported alongside `drawCachedPropSprite`. Grid stamps use the wrapper; world props bypass the wrapper (see #2).
+**What:** Exported bake API. Only production caller is `drawCachedPropSprite` in the same file (~~PropRenderer imported it directly~~ — fixed in #2).
 
-**Why it's bullshit:** Two public bake/blit surfaces for one cache. The export only exists because PropRenderer reimplements the blit half.
+**Why it's bullshit:** Callers should use `drawCachedPropSprite`; exported bake suggests a second entry point.
 
-**Fix:** Unexport once #2 is fixed; single public API = `drawCachedPropSprite` (+ overlay glyph twin).
+**Fix:** Unexport; keep module-private behind `drawCachedPropSprite`.
 
 ---
 
@@ -112,15 +100,9 @@ Was: two functions, one call site, identical to inlining the `BigInt` pack into 
 
 ---
 
-### 9. `drawCachedPropSprite` — `modifier` opt never used
+### 9. ~~`drawCachedPropSprite` — `modifier` opt never used~~ ✅
 
-**Where:** `QuantizedSpriteCache.drawCachedPropSprite(..., { modifier = null })`
-
-**What:** Documented override path. No caller passes `modifier`; always falls through to `resolveSpriteDrawModifier(prop, px, py)`.
-
-**Why it's bullshit:** API copied from an pattern that was never wired. Invites a third modifier path.
-
-**Fix:** Remove `modifier` from opts until something actually overrides.
+Removed with positional API — `modifier` override never had callers.
 
 ---
 
@@ -256,7 +238,7 @@ Was: two functions, one call site, identical to inlining the `BigInt` pack into 
 
 **Where:** `Libraries/Sandbox/floorOccupancy.js` → `gridStampDrawCache.js`
 
-**What:** Grid guard → `syncFloorOccupancyStampDrawCache` → `drawCachedFloorOccupancy*`. Sole caller: `WorldSceneRenderer.drawFloorProps`.
+**What:** Grid guard → `syncFloorOccupancyStampDrawCache` → `drawCachedFloorOccupancy*`. Sole caller: `WorldSceneRenderer.drawFloorProps`. ~~`{ px, py }` camera object on the chain~~ — fixed; scalars now.
 
 **Why it's bullshit:** Outer layer only adds early returns; no other consumers. Real draw lives one hop away.
 
@@ -308,12 +290,25 @@ Was: two functions, one call site, identical to inlining the `BigInt` pack into 
 
 ## Fix order (suggested)
 
-1. **Dead exports** — #7, #8, #10, #11, #12, #16, #17, #23 (fast deletes, zero behavior change)
-2. **Same-file inlines** — #3 (prop key pack), #5, #13, #14, #15, #22
-3. **Render path collapse** — #1, #2, #6, #9 (one prop blit API)
-4. **WorldSurface clip/projection cleanup** — #18, #19
-5. **Floor wrapper merge** — #21
-6. **Barrel trim** — #24, #25
+**Done:** Tier 1 #1 (`drawWorldProp`), floor `{ px, py }` object on belt draw, Tier 1 #2 (one prop blit path via `drawCachedPropSprite`).
+
+**Next (recommended): dead exports batch** — #7, #10, #11, #12, #16, #17, #23. Pure deletes, no behavior change, clears grep noise in ~15 minutes.
+
+**Then pick one thread:**
+
+| Thread | Items | Why |
+|--------|-------|-----|
+| **Render tidy** | #6, #3, #5 | Unexport bake helpers, prop key pack inline |
+| **WorldSurface** | #18, #19 | Orphan clip/projection + duplicated chunk blit |
+| **Floor layer** | #21 remainder | Collapse `floorOccupancy` guards into `gridStampDrawCache` |
+
+1. ~~**Render path collapse** — #1, #2~~ ✅
+2. **Dead exports** — #7, #8, #10, #11, #12, #16, #17, #23
+3. **Same-file inlines** — #3, #5, #13, #14, #15, #22
+4. **Render tidy** — #6
+5. **WorldSurface clip/projection cleanup** — #18, #19
+6. **Floor wrapper merge** — #21
+7. **Barrel trim** — #24, #25
 
 ---
 

@@ -199,7 +199,7 @@ A different lens from the feature tiers below: which **CS graphics building bloc
 |------|--------|---|-----------------|
 | Bake recipe → offscreen → blit | ✅ | 90 | `QuantizedSpriteCache.js`, `getOrBakePropSprite` |
 | World-anchored blit | ✅ | 90 | `blitAnchoredSprite` |
-| Unified entry (`drawCachedPropSprite`) | ✅ | 90 | mandatory path for props + grid stamps |
+| Unified entry (`drawCachedPropSprite`) | ✅ | 90 | mandatory path for props + grid stamps; world props via `PropRenderer.drawProp` |
 | Viewer-offset quantization | ✅ | 85 | step 30, clamp ±120 (`viewQuantize.js`) |
 | Facing / roll angle buckets | ✅ | 85 | `quantizeAngleIndex`, footprint-scaled |
 | Zoom buckets | ✅ | 85 | 1/8 steps, floor 0.25 |

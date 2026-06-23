@@ -11,7 +11,7 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 
 | What are you drawing? | Pipeline | Entry point |
 |----------------------|----------|-------------|
-| Placed **WorldProp** (ball, crate, button, flipper, …) | **World prop cache** | `Assets/props/*.asset.js` → `drawWorldProp` → `PropRenderer.drawProp` |
+| Placed **WorldProp** (ball, crate, button, flipper, …) | **World prop cache** | `Assets/props/*.asset.js` → `PropRenderer.drawProp` → `drawCachedPropSprite` |
 | **Grid/floor stamp** (belt, forcefield, passage power, portal edge, …) | **Grid stamp cache** | `PropDrawRecipe` + `GRID_STAMP_RENDER_KEY` + `drawCachedPropSprite` |
 | **Voxel fill** or **rail wall edge** (building geometry) | **Wall atlas** | `WorldSceneRenderer.draw3DBuildings` only |
 | **Editor/sandbox feedback** (selection, path, wire, place preview, drag aim) | **Overlay commands** | `append*OverlayCommands` → `collectOverlayCommands` → `drawOverlayCommands` |
@@ -27,9 +27,9 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 **Path:**
 
 ```text
-*.asset.js  →  loadPropAssets  →  PropDrawRecipe  →  getOrBakePropSprite  →  blitAnchoredSprite
+*.asset.js  →  loadPropAssets  →  PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAnchoredSprite
                                       ↑
-                              drawWorldProp / PropRenderer.drawProp
+                              PropRenderer.drawProp (recipe lookup only)
 ```
 
 ### Add a new placed prop
@@ -62,7 +62,7 @@ PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAn
 1. **Recipe** colocated with the domain (`drawForcefields.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
 2. **`GRID_STAMP_RENDER_KEY`** entry in `QuantizedSpriteCache.js` (only if new topology family).
 3. **Minimal prop proxy** at world anchor with **`getCustomSpriteCacheKey()`** for dynamic buckets.
-4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, { animFrame?, zoom? })`.
+4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?, propRecipes?)`. World props: pass `propRecipes` when the bake needs visual attachment child recipes (see `PropRenderer.drawProp`).
 
 ```javascript
 // ✅
@@ -93,7 +93,7 @@ forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
 
 // ✅ — sync on revision, draw from cache
 syncFloorOccupancyStampDrawCache(state, grid);
-drawCachedFloorOccupancyBelts(ctx, viewport, camera, gameTime, cached, beltDrawForKind);
+drawCachedFloorOccupancyBelts(ctx, viewport, px, py, gameTime, cached, beltDrawForKind);
 ```
 
 ---

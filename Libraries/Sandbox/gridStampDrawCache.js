@@ -76,7 +76,7 @@ export function drawCachedFloorOccupancyBelts(ctx, viewport, px, py, gameTime, c
         const item = belts[i];
         if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
         item.proxy.ageMs = gameTime;
-        drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy._gridStamp.kind), { animFrame });
+        drawCachedPropSprite(ctx, item.proxy, px, py, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy._gridStamp.kind), animFrame);
     }
 }
 export function drawCachedFloorOccupancyPowerSources(ctx, viewport, px, py, cached, isEnergized, draw) {

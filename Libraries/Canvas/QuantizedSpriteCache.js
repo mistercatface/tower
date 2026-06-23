@@ -180,17 +180,16 @@ function drawVisualAttachmentList(ctx, attachments, propRecipes, px, py) {
     }
 }
 /**
- * @param {object} spec
- * @param {object} spec.prop
- * @param {number} spec.px
- * @param {number} spec.py
- * @param {string} spec.renderKey
- * @param {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} spec.draw
- * @param {Record<string, PropDrawRecipe>} [spec.propRecipes]
- * @param {number} [spec.animFrame]
- * @param {number} [spec.zoom]
+ * @param {object} prop
+ * @param {number} px
+ * @param {number} py
+ * @param {string} renderKey
+ * @param {(ctx: CanvasRenderingContext2D, prop: object, px: number, py: number) => void} draw
+ * @param {number} [animFrame]
+ * @param {number} [zoom]
+ * @param {Record<string, PropDrawRecipe>} [propRecipes]
  */
-export function getOrBakePropSprite({ prop, px, py, renderKey, draw, propRecipes = null, animFrame = 0, zoom = 1 }) {
+export function getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
     const key = buildPropSpriteKey(prop, px, py, renderKey, animFrame, zoom);
     return propSpriteCache.getOrBake(key, () => {
         const dx = prop.x - px;
@@ -300,10 +299,12 @@ export function clearOverlaySpriteCache() {
  * @param {number} py
  * @param {string} renderKey
  * @param {PropDrawRecipe} draw
- * @param {{ animFrame?: number, zoom?: number, modifier?: import("../Render/spriteDrawModifier.js").SpriteDrawModifier | null }} [opts]
+ * @param {number} [animFrame]
+ * @param {number} [zoom]
+ * @param {Record<string, PropDrawRecipe>} [propRecipes]
  */
-export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, { animFrame = 0, zoom = 1, modifier = null } = {}) {
-    const sprite = getOrBakePropSprite({ prop, px, py, renderKey, draw, animFrame, zoom });
-    const resolvedModifier = modifier ?? resolveSpriteDrawModifier(prop, px, py);
-    blitAnchoredSprite(ctx, sprite, prop.x, prop.y, resolvedModifier);
+export function drawCachedPropSprite(ctx, prop, px, py, renderKey, draw, animFrame = 0, zoom = 1, propRecipes = null) {
+    const sprite = getOrBakePropSprite(prop, px, py, renderKey, draw, animFrame, zoom, propRecipes);
+    const modifier = resolveSpriteDrawModifier(prop, px, py);
+    blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }
