@@ -1,9 +1,10 @@
 # Library audit — current map of the codebase
 
-This is the cross-cutting index for the engine. It answers two questions:
+This is the cross-cutting index for the engine. It answers three questions:
 
 - **Where does this concern live?**
 - **Is this engine/library code, sandbox tooling, or snake-game-specific code?**
+- **Is the overall shape healthy?** → [foundations/architecture-health.md](./foundations/architecture-health.md)
 
 Spoke docs stay authoritative for feature progress: [physics](./physics.md), [pathfinding](./pathfinding.md), [rendering](./rendering.md), [procedural](./procedural.md), [Mazes](./Mazes.md), and [AI](./AI.md). This audit keeps the folder map current.
 

@@ -34,4 +34,6 @@ Domain-specific items not scheduled yet — see [ROADMAP.md](./ROADMAP.md) §7 �
 
 ## Refactor / cleanup
 
-_(none)_
+Structural (architecture, not features) → [foundations/architecture-health.md](./foundations/architecture-health.md) debt register S1–S10.
+
+_(no active item — pick one structural debt when hub files hurt)_

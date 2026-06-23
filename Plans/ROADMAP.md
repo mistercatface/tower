@@ -2,7 +2,7 @@
 
 This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own domain detail; this file owns the dashboard, cross-engine comparison, cross-cutting foundations, and grab-list.
 
-**Start here for naming:** [glossary.md](./glossary.md) · **Active queue:** [NOW.md](./NOW.md)
+**Start here for naming:** [glossary.md](./glossary.md) · **Active queue:** [NOW.md](./NOW.md) · **Structural honesty:** [foundations/architecture-health.md](./foundations/architecture-health.md)
 
 **Design constraints:** Canvas 2D only · single-threaded sim plus Web Worker offload · uniform grid as the shared substrate · bake-and-blit rendering caches · seeded determinism where wired.
 
@@ -129,7 +129,7 @@ flowchart TB
     physics --> snake
 ```
 
-The desired direction remains: snake proves pressure, generic packages move into `Libraries/AI`, `Libraries/Navigation`, `Libraries/Pathfinding`, `Libraries/Sandbox`, or other engine homes.
+The desired direction remains: snake proves pressure, generic packages move into `Libraries/AI`, `Libraries/Navigation`, `Libraries/Pathfinding`, `Libraries/Sandbox`, or other engine homes. **Current coupling and debt:** [foundations/architecture-health.md](./foundations/architecture-health.md).
 
 ---
 
@@ -277,6 +277,6 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 [glossary.md](./glossary.md) · [NOW.md](./NOW.md) · [physics.md](./physics.md) · [pathfinding.md](./pathfinding.md) · [rendering.md](./rendering.md) · [procedural.md](./procedural.md) · [Mazes.md](./Mazes.md) · [AI.md](./AI.md) · [library-audit.md](./library-audit.md)
 
-**Domain:** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [sandbox-editor.md](./sandbox-editor.md)
+**Domain:** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [foundations/architecture-health.md](./foundations/architecture-health.md) · [sandbox-editor.md](./sandbox-editor.md)
 
 *Last updated: team hunting + flee `seek_ally` (AI ~52%); local flow horizon direction documented in AI.md and pathfinding grab-list.*
