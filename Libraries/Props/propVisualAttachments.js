@@ -52,11 +52,13 @@ function scaleVirtualPropShape(prop, scale) {
     if (shape?.type === "Circle") {
         prop.shape = new CircleShape(shape.radius * scale);
         prop.radius = prop.shape.radius;
+        if (prop.height != null) prop.height *= scale;
         return;
     }
     if (shape?.type === "Polygon") {
         prop.shape = new PolygonShape(shape.vertices.map((v) => ({ x: v.x * scale, y: v.y * scale })));
         prop.radius = prop.shape.getBoundingRadius();
+        if (prop.height != null) prop.height *= scale;
     }
 }
 function resolveVirtualPropScale(parentProp, childProp, cfg) {

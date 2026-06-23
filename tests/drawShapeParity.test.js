@@ -130,6 +130,8 @@ describe("draw shape parity", () => {
         const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(large, { quantizeAngle, quantizeRollQuat, anchorX: 0, anchorY: 0 })).after[0];
         assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
+        assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);
+        assert.ok(smallChild.height < getPropAsset("tri_wedge").visuals.world.height);
     });
     it("visual attachments expand bake bounds and facing cache keys", () => {
         const right = new WorldProp(0, 0, "flee_ball", 0);
