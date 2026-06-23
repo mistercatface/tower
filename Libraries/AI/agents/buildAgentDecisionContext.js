@@ -1,16 +1,19 @@
+import { buildAgentEventTargets } from "./buildAgentEventTargets.js";
+import { buildAgentRemembered } from "./buildAgentRemembered.js";
 import { deriveAllyState } from "./deriveAllyState.js";
 import { deriveThreatState } from "./deriveThreatState.js";
 import { pushTargetEvents, routeEvents, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
 import { pickBestScoreKey, scoreCandidateSet } from "../utility/utilityScoring.js";
 const EMPTY_AGENT_REACH_STEPS = Object.freeze({ threat: null, prey: null, enemy: null, food: null, ally: null });
 export function buildAgentDecisionFrame(spec, input) {
-    const { visibleWorld, memoryWorld = null, memorySource = null, committedTarget = null, routeStatus = null, reachSteps = null, hungerState = null, threatState = null } = input;
+    const { visibleWorld, memoryWorld = null, memorySource = null, committedTarget = null, routeStatus = null, reachSteps = null, foodFraction = null, hungerTier = null, threatState = null } = input;
     const visible = spec.buildVisible(visibleWorld, memorySource, memoryWorld, input);
-    const remembered = spec.buildRemembered(memoryWorld, memorySource);
+    const remembered = buildAgentRemembered(memoryWorld, memorySource, spec.rememberedSlots);
     const known = spec.buildKnown(visible, remembered, visibleWorld, input);
     const resolvedReachSteps = reachSteps ?? EMPTY_AGENT_REACH_STEPS;
     const events = routeEvents(routeStatus);
-    for (const { kind, visibleTarget, rememberedTarget } of spec.eventTargets(visible, remembered, visibleWorld)) pushTargetEvents(events, kind, visibleTarget, rememberedTarget);
+    for (const { kind, visibleTarget, rememberedTarget } of buildAgentEventTargets(visible, remembered, visibleWorld, spec.eventTargetSlots))
+        pushTargetEvents(events, kind, visibleTarget, rememberedTarget);
     for (const [mode, slotKey] of Object.entries(spec.targetLost)) if (!known[slotKey] && committedTarget?.mode === mode) events.push("TARGET_LOST");
     return {
         known,
@@ -18,7 +21,8 @@ export function buildAgentDecisionFrame(spec, input) {
         reachSteps: resolvedReachSteps,
         committedTarget,
         routeStatus,
-        hungerState,
+        foodFraction,
+        hungerTier,
         threatState,
         allyState: deriveAllyState(visibleWorld, known, memorySource, spec.allySession?.(input) ?? null, resolvedReachSteps[spec.allyReachKey ?? "ally"]),
         events,
@@ -29,20 +33,21 @@ export function pickAgentIntentPolicy(ctx, scores, spec) {
     const mode = pickBestScoreKey(scores, spec.scoreOrder).chosenKey;
     if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(ctx, "threat"));
     if (mode === "explore") return { mode: "explore", targetId: null };
-    const slotKey = spec.policySlot[mode];
+    const slotKey = spec.targetLost[mode];
     return intentPolicy(mode, ctx.known[slotKey].id, policyReasonForTarget(ctx, slotKey));
 }
 export function buildAgentDecisionContext(spec, input) {
-    const hungerState = spec.deriveHunger(input.foodFraction);
+    const foodFraction = input.foodFraction ?? null;
+    const hungerTier = foodFraction == null ? null : foodFraction >= spec.hungerSatisfiedAt() ? "satisfied" : foodFraction < spec.hungerDesperateBelow() ? "desperate" : "hungry";
     const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, spec.threatConfig());
-    const ctx = buildAgentDecisionFrame(spec, { ...input, hungerState, threatState });
+    const ctx = buildAgentDecisionFrame(spec, { ...input, foodFraction, hungerTier, threatState });
     const weights = spec.weights();
     const pressure = spec.pressure();
     const scoredCandidates = scoreCandidateSet(spec.scoreDetails(ctx, weights, pressure), spec.scoreOrder);
     const pickPolicy = input.pickPolicy ?? ((frame, scores) => pickAgentIntentPolicy(frame, scores, spec));
     const chosenIntent = pickPolicy(ctx, scoredCandidates.candidateScores);
     spec.afterPick?.(ctx, chosenIntent, input);
-    const sprintIntent = spec.deriveSprint(chosenIntent.mode, threatState, hungerState, ctx);
+    const sprintIntent = spec.deriveSprint(chosenIntent.mode, threatState, hungerTier, ctx);
     ctx.candidateScores = scoredCandidates.candidateScores;
     ctx.candidateScoreDetails = scoredCandidates.candidateScoreDetails;
     ctx.chosenIntent = chosenIntent;

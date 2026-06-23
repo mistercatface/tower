@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSnakeHungerState, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
 import { createModePolicyLatch } from "../Libraries/AI/agentIntent/policyHysteresis.js";
 const CELL = 16;
@@ -36,23 +36,26 @@ function decisionFrame(visibleWorld, opts = {}) {
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
-        assert.equal(deriveSnakeHungerState(1).state, "satisfied");
-        assert.equal(deriveSnakeHungerState(0.66).state, "satisfied");
-        assert.equal(deriveSnakeHungerState(0.5).state, "hungry");
-        assert.equal(deriveSnakeHungerState(0.33).state, "hungry");
-        assert.equal(deriveSnakeHungerState(0.1).state, "desperate");
+        const { satisfiedAtOrAbove, desperateBelow } = getSnakeGameConfig().hunger;
+        const tier = (fraction) => fraction == null ? null
+            : fraction >= satisfiedAtOrAbove ? "satisfied"
+            : fraction < desperateBelow ? "desperate"
+            : "hungry";
+        assert.equal(tier(1), "satisfied");
+        assert.equal(tier(0.66), "satisfied");
+        assert.equal(tier(0.5), "hungry");
+        assert.equal(tier(0.33), "hungry");
+        assert.equal(tier(0.1), "desperate");
     });
-    it("returns null hunger state when no fraction is provided", () => {
-        assert.equal(deriveSnakeHungerState(null), null);
+    it("returns null hunger tier when no fraction is provided", () => {
         const ctx = context(world({ food: snake(7) }));
-        assert.equal(ctx.hungerState, null);
+        assert.equal(ctx.hungerTier, null);
     });
     it("exposes hunger facts on the decision snapshot", () => {
         applySnakeGameConfig({ hunger: { satisfiedAtOrAbove: 0.66, desperateBelow: 0.33 } });
         const ctx = context(world({ food: snake(3) }), { foodFraction: 0.9 });
-        assert.equal(ctx.hungerState.state, "satisfied");
-        assert.equal(ctx.hungerState.satisfied, true);
-        assert.equal(ctx.hungerState.foodFraction, 0.9);
+        assert.equal(ctx.hungerTier, "satisfied");
+        assert.equal(ctx.foodFraction, 0.9);
         assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
 });

@@ -76,7 +76,7 @@ export function createFleeExploreIntent({
             if (exploreCell) locomotion.setExplore(agent, state, exploreCell);
             return exploreCell;
         },
-        deriveSprintIntent: (mode, ctx) => deriveFleeSprintIntent(mode, ctx.threatState, ctx.hungerState),
+        deriveSprintIntent: (mode, ctx) => deriveFleeSprintIntent(mode, ctx.threatState, ctx.hungerTier),
         clearMemoryOnIntentClear: true,
         transitionReason(prevMode, nextMode, policy) {
             if (policy?.reason) return policy.reason;

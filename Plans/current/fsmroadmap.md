@@ -155,14 +155,9 @@ Per agent per decision tick:
 
 **Goal:** Kill duplicate snake/flee spec boilerplate before or during H2b–H2c (slot merge + scorer registry). Species files keep weights, thresholds, and snake-only ally engagement — not another copy of “remembered food if `memorySource.food`”.
 
-#### Tier 1 — Same logic copy-pasted in snake + flee specs
+#### Tier 1 — Same logic copy-pasted in snake + flee specs ✅
 
-| #     | Hoist                                                                          | Detail                                                                                                                                                                                                |
-| ----- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1** | `deriveAgentHungerState(foodFraction, { satisfiedAtOrAbove, desperateBelow })` | Snake and flee `derive*HungerState` are the same 6 lines; only config path differs. New file `deriveAgentHungerState.js`; species pass config slice from `getSnakeGameConfig()` / `fleeAgent.hunger`. |
-| **2** | `buildAgentRemembered(memoryWorld, memorySource, slots)`                       | Both `buildRemembered` blocks are the same `memorySource?.X ? memoryWorld?.X : null` loop over `{ threat, prey/enemy, food, ally }`. Spec declares slot names; agent builds the object once.          |
-| **3** | `buildAgentEventTargets(visibleWorld, remembered, slots)`                      | Both specs return the same `{ kind, visibleTarget, rememberedTarget }[]` with different slot names. One helper; spec passes `[["threat","threat"], ["prey","prey"], …]`.                              |
-| **4** | Drop redundant `policySlot`                                                    | In both specs `policySlot` is identical to `targetLost` (`seek_food → food`, etc.). `pickAgentIntentPolicy` can read `spec.targetLost[mode]` directly — drop half the spec surface.                   |
+Shipped in `Libraries/AI/agents/`: `deriveAgentHungerState.js`, `buildAgentRemembered.js`, `buildAgentEventTargets.js`; engine reads `spec.rememberedSlots` / `spec.eventTargetSlots`; `pickAgentIntentPolicy` uses `targetLost[mode]` (no `policySlot`).
 
 #### Tier 2 — Scoring / allocation (agent utility layer)
 
@@ -197,7 +192,6 @@ Per agent per decision tick:
 ### Recommended execution order
 
 ```text
-Tier 1 hoists #1–4                 (trivial; unblocks H2b slot merge)
 Tier 2 #7 + Tier 3 #8–9            (fold into H2b–H2c PRs)
 Tier 2 #5–6 nets-only (optional)   (after H2c if scratch pool still smells)
 Tier 4 + #10                       (during H2c–H2d)
@@ -205,9 +199,9 @@ Tier 4 + #10                       (during H2c–H2d)
 
 **If you only do three more hoists:**
 
-1. `deriveAgentHungerState` — trivial, zero behavioral risk
-2. `buildAgentRemembered` + `buildAgentEventTargets` — kills the most spec boilerplate
-3. `SCORE_ABSENT` + shared explore detail — kills the most per-tick `{ net: … }` garbage in scoring
+1. Shared `scoreFoodDetail` / `scoreSeekAllyDetail` (Tier 2 #7)
+2. `buildAgentKnown` + `buildAgentVisible` (Tier 3 #8–9)
+3. Nets-only pick / engine-owned detail bag (Tier 2 #6)
 
 Agent layer becomes the **memory/scoring dialect**, the way `EMPTY_AGENT_REACH_STEPS` is now the **reach dialect**.
 
@@ -606,7 +600,8 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 ### Part 0 (agent hoists)
 
-- [ ] Agent hoists Tier 1–4 (or folded into H2b–H2c with same bar)
+- [x] Tier 1 (#1–4)
+- [ ] Tier 2–4 (or folded into H2b–H2c with same bar)
 
 ### Part 2 (gated on H2a)
 
@@ -621,7 +616,8 @@ Cross-doc: [`../../pathfinding.md`](../../pathfinding.md) Tier 3 · `flowGroundN
 
 - **0.0 — adjacent wins:** `EMPTY_AGENT_REACH_STEPS` in `buildAgentDecisionContext.js`; LOS cache int key (`gridCellLosCacheKey` → `mixHash4` / `Map<number, boolean>`) in `gridCellVisionSession.js`; query result buffer pooling + `filterQueryHash()` (replaces string `filterKey` + `hashString`) in `EntityRegistry.js`; `hashSaltString` (crypto P1) in `Libraries/Math/hash.js`.
 - **0.1 — hot-path allocation:** LOS without nav graph view — `navTopologyGraphCanStep` in `gridCellVision.js` (no `createNavGraphViewFromTopology` per ray); `tickKineticSleep` island-root dedup only (`prop.id === root`, no per-tick `Set`) in `kineticPhysicsPass.js`; score detail scratch pool (`netScoreDetailInto` / `allocScoreDetail` / `SCORE_ABSENT`) in `utilityScoring.js` (~5 detail objects/tick → pooled slots).
+- **Part 0 Tier 1:** `deriveAgentHungerState`, `buildAgentRemembered`, `buildAgentEventTargets`; `rememberedSlots` / `eventTargetSlots` on spec; `targetLost` only (no `policySlot`).
 
 ---
 
-_Last updated: H2a + pre-BFS alloc wins shipped; Part 0 = agent hoists only._
+_Last updated: Part 0 Tier 1 shipped._

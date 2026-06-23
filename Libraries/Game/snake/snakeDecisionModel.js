@@ -1,10 +1,9 @@
 import { isAgentEngaged } from "../../AI/agents/agentEngagement.js";
-import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
 import { buildAgentDecisionContext, buildAgentDecisionFrame, pickAgentIntentPolicy } from "../../AI/agents/buildAgentDecisionContext.js";
+import { deriveThreatState } from "../../AI/agents/deriveThreatState.js";
 import {
     costPerCellForHunger,
     foodHungerScoreValue,
-    hungerKey,
     netScoreDetail,
     netScoreOnly,
     resetScoreDetailScratch,
@@ -15,14 +14,8 @@ import {
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { deriveSnakeEngagementState } from "./snakeEngagement.js";
 const SCORE_ORDER = ["flee", "seek_prey", "seek_food", "seek_ally", "explore"];
-export function deriveSnakeHungerState(foodFraction) {
-    if (foodFraction == null) return null;
-    const { satisfiedAtOrAbove, desperateBelow } = getSnakeGameConfig().hunger;
-    let state = "hungry";
-    if (foodFraction >= satisfiedAtOrAbove) state = "satisfied";
-    else if (foodFraction < desperateBelow) state = "desperate";
-    return { foodFraction, state, satisfied: state === "satisfied", hungry: state === "hungry", desperate: state === "desperate" };
-}
+const SNAKE_REMEMBERED_SLOTS = [{ key: "threat" }, { key: "prey" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }];
+const SNAKE_EVENT_TARGET_SLOTS = ["threat", "prey", "food", "ally"];
 export function deriveSprintIntent(mode, threatState) {
     if (mode === "flee" && threatState && (threatState.lethal || threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity)) return { want: true, reason: "escape" };
     if (mode === "seek_food" && threatState && !threatState.lethal && threatState.severity >= getSnakeGameConfig().sprint.fleeSeverity) return { want: true, reason: "feed" };
@@ -39,26 +32,25 @@ function resolveKnownAlly(visibleWorld, remembered, memorySource, memoryWorld, s
 function effortConfig(pressure) {
     return pressure.effort ?? getSnakeGameConfig().decisionPressure.effort;
 }
-function preyValueForHunger(weights, pressure, hungerState) {
-    return effortConfig(pressure).preyValue[hungerKey(hungerState)] ?? weights.prey;
+function preyValueForHunger(weights, pressure, hungerTier) {
+    return effortConfig(pressure).preyValue[hungerTier ?? "hungry"] ?? weights.prey;
 }
 function scorePreyDetail(ctx, weights, pressure) {
     const prey = ctx.known.prey;
     if (!prey) return SCORE_ABSENT;
-    const hunger = ctx.hungerState;
-    let value = preyValueForHunger(weights, pressure, hunger);
+    const hungerTier = ctx.hungerTier;
+    let value = preyValueForHunger(weights, pressure, hungerTier);
     const isPreySnake = prey.type === "snake_head";
     const seekerFaction = ctx.seekerFaction;
     const isEnemySnake = isPreySnake && seekerFaction && prey.faction && prey.faction !== seekerFaction;
     if (isEnemySnake) value = pressure.enemySnakePreyValue ?? weights.prey + 1000;
-    else if (hunger?.desperate && (!ctx.known.food || ctx.routeStatus?.routeFailed)) value += pressure.preyDesperationBonus;
-    return netScoreDetail(value, ctx.reachSteps.prey, costPerCellForHunger(pressure, hunger));
+    else if (hungerTier === "desperate" && (!ctx.known.food || ctx.routeStatus?.routeFailed)) value += pressure.preyDesperationBonus;
+    return netScoreDetail(value, ctx.reachSteps.prey, costPerCellForHunger(pressure, hungerTier));
 }
 function scoreFoodDetail(ctx, weights, pressure) {
     if (!ctx.known.food) return SCORE_ABSENT;
-    const hunger = ctx.hungerState;
-    const value = foodHungerScoreValue(weights, pressure, hunger);
-    return netScoreDetail(value, ctx.reachSteps.food, costPerCellForHunger(pressure, hunger));
+    const value = foodHungerScoreValue(weights, pressure, ctx.foodFraction);
+    return netScoreDetail(value, ctx.reachSteps.food, costPerCellForHunger(pressure, ctx.hungerTier));
 }
 function regroupSizeFactor(segmentCount, cohesion) {
     const count = segmentCount ?? cohesion.referenceSegmentCount ?? 3;
@@ -73,8 +65,8 @@ function scoreSeekAllyDetail(ctx, weights, pressure) {
     if (!ally) return SCORE_ABSENT;
     if (!ctx.allyState?.leadworthy) return SCORE_ABSENT;
     if (ctx.known.threat) return SCORE_ABSENT;
-    const hunger = ctx.hungerState;
-    if (!hunger?.satisfied) return SCORE_ABSENT;
+    const hungerTier = ctx.hungerTier;
+    if (hungerTier !== "satisfied") return SCORE_ABSENT;
     const cohesion = getSnakeGameConfig().factionCohesion ?? {};
     const sizeFactor = regroupSizeFactor(ctx.seekerSegmentCount, cohesion);
     if (sizeFactor <= 0) return SCORE_ABSENT;
@@ -84,7 +76,7 @@ function scoreSeekAllyDetail(ctx, weights, pressure) {
     value *= sizeFactor;
     const allyCount = ctx.known.allyCount ?? 1;
     if (allyCount > 1) value += (allyCount - 1) * (cohesion.packBonus ?? 15) * sizeFactor;
-    return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hunger));
+    return netScoreDetail(value, allyReach, costPerCellForHunger(pressure, hungerTier));
 }
 export function scoreSnakeIntentCandidateDetails(ctx, weights = getSnakeGameConfig().decisionWeights, pressure = getSnakeGameConfig().decisionPressure) {
     resetScoreDetailScratch();
@@ -101,12 +93,15 @@ export function scoreSnakeIntentCandidates(ctx, weights, pressure) {
 }
 const snakeDecisionSpec = {
     scoreOrder: SCORE_ORDER,
+    hungerSatisfiedAt: () => getSnakeGameConfig().hunger.satisfiedAtOrAbove,
+    hungerDesperateBelow: () => getSnakeGameConfig().hunger.desperateBelow,
     threatConfig: () => getSnakeGameConfig(),
     weights: () => getSnakeGameConfig().decisionWeights,
     pressure: () => getSnakeGameConfig().decisionPressure,
     allySession: (input) => input.session ?? null,
     targetLost: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
-    policySlot: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
+    rememberedSlots: SNAKE_REMEMBERED_SLOTS,
+    eventTargetSlots: SNAKE_EVENT_TARGET_SLOTS,
     buildVisible: (visibleWorld) => ({
         threat: visibleWorld.threat,
         prey: visibleWorld.prey,
@@ -114,14 +109,6 @@ const snakeDecisionSpec = {
         ally: visibleWorld.ally,
         allyCount: visibleWorld.allyCount ?? 0,
         allyCentroid: visibleWorld.allyCentroid ?? null,
-    }),
-    buildRemembered: (memoryWorld, memorySource) => ({
-        threat: memorySource?.threat ? (memoryWorld?.threat ?? null) : null,
-        prey: memorySource?.prey ? (memoryWorld?.prey ?? null) : null,
-        food: memorySource?.food ? (memoryWorld?.food ?? null) : null,
-        ally: memorySource?.ally ? (memoryWorld?.ally ?? null) : null,
-        allyCount: memorySource?.ally ? (memoryWorld?.allyCount ?? 1) : 0,
-        allyCentroid: null,
     }),
     buildKnown: (visible, remembered, visibleWorld, input) => {
         const knownAlly = resolveKnownAlly(visibleWorld, remembered, input.memorySource, input.memoryWorld, input.session);
@@ -134,12 +121,6 @@ const snakeDecisionSpec = {
             allyCentroid: knownAlly && visibleWorld.ally?.id === knownAlly.id ? visible.allyCentroid : null,
         };
     },
-    eventTargets: (_visible, remembered, visibleWorld) => [
-        { kind: "threat", visibleTarget: visibleWorld.threat, rememberedTarget: remembered.threat },
-        { kind: "prey", visibleTarget: visibleWorld.prey, rememberedTarget: remembered.prey },
-        { kind: "food", visibleTarget: visibleWorld.food, rememberedTarget: remembered.food },
-        { kind: "ally", visibleTarget: visibleWorld.ally, rememberedTarget: remembered.ally },
-    ],
     extraFacts: (input) => ({
         safetyState: input.safetyState,
         recentFailures: input.recentFailures ?? [],
@@ -147,7 +128,6 @@ const snakeDecisionSpec = {
         seekerSegmentCount: input.seekerSegmentCount,
         engagementState: null,
     }),
-    deriveHunger: deriveSnakeHungerState,
     deriveSprint: (mode, threatState) => deriveSprintIntent(mode, threatState),
     afterPick: (ctx, chosenIntent) => {
         ctx.engagementState = deriveSnakeEngagementState(ctx, chosenIntent);
@@ -155,9 +135,11 @@ const snakeDecisionSpec = {
     scoreDetails: scoreSnakeIntentCandidateDetails,
 };
 export function buildSnakeDecisionFrame(input) {
-    const hungerState = deriveSnakeHungerState(input.foodFraction);
+    const foodFraction = input.foodFraction ?? null;
+    const hungerTier =
+        foodFraction == null ? null : foodFraction >= snakeDecisionSpec.hungerSatisfiedAt() ? "satisfied" : foodFraction < snakeDecisionSpec.hungerDesperateBelow() ? "desperate" : "hungry";
     const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, getSnakeGameConfig());
-    return buildAgentDecisionFrame(snakeDecisionSpec, { ...input, hungerState, threatState });
+    return buildAgentDecisionFrame(snakeDecisionSpec, { ...input, foodFraction, hungerTier, threatState });
 }
 export function pickSnakeIntentPolicy(ctx, scores = scoreSnakeIntentCandidates(ctx)) {
     return pickAgentIntentPolicy(ctx, scores, snakeDecisionSpec);

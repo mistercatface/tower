@@ -25,22 +25,18 @@ export function netScoreOnly(net) {
     out.net = net;
     return out;
 }
-export function hungerKey(hungerState) {
-    return hungerState?.state ?? "hungry";
+export function costPerCellForHunger(pressure, hungerTier) {
+    return pressure.effort.costPerCell[hungerTier ?? "hungry"];
 }
-export function costPerCellForHunger(pressure, hungerState) {
-    return pressure.effort.costPerCell[hungerKey(hungerState)];
-}
-export function foodHungerScoreValue(weights, pressure, hunger) {
-    const deficit = hunger ? 1 - hunger.foodFraction : 0;
+export function foodHungerScoreValue(weights, pressure, foodFraction) {
+    const deficit = foodFraction != null ? 1 - foodFraction : 0;
     return weights.food + pressure.foodHungerBonus * deficit;
 }
 export function scoreRiskAdjustedFlee(ctx, weights, pressure) {
     if (!ctx.known.threat) return -Infinity;
     const threat = ctx.threatState;
     if (!threat || threat.lethal) return Infinity;
-    const hunger = ctx.hungerState;
-    const riskTolerance = hunger ? (pressure.riskTolerance[hunger.state] ?? 0) : 0;
+    const riskTolerance = ctx.hungerTier ? (pressure.riskTolerance[ctx.hungerTier] ?? 0) : 0;
     if (riskTolerance <= 0) return Infinity;
     return weights.flee * threat.severity * (1 - riskTolerance);
 }

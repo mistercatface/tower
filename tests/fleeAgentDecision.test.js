@@ -23,14 +23,12 @@ function mockTarget(id) {
 describe("flee agent decision model", () => {
     it("deriveFleeSprintIntent blocks flee sprint when hunger is critically low", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 }, decisionPressure: { sprintFleeMinHunger: 0.1 } } });
-        const starving = { foodFraction: 0.05, state: "desperate", desperate: true };
-        assert.equal(deriveFleeSprintIntent("flee", { lethal: true, severity: 1 }, starving).want, false);
+        assert.equal(deriveFleeSprintIntent("flee", { lethal: true, severity: 1 }, "desperate", 0.05).want, false);
     });
 
     it("deriveFleeSprintIntent sprints on flee when threat is severe enough", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.5 } } });
-        const fed = { foodFraction: 0.6, state: "hungry", hungry: true };
-        const sprint = deriveFleeSprintIntent("flee", { lethal: false, severity: 0.6 }, fed);
+        const sprint = deriveFleeSprintIntent("flee", { lethal: false, severity: 0.6 }, "hungry", 0.6);
         assert.equal(sprint.want, true);
         assert.equal(sprint.reason, "escape");
     });
@@ -38,8 +36,8 @@ describe("flee agent decision model", () => {
     it("deriveFleeSprintIntent only sprints on seek_food when desperate", () => {
         applySnakeGameConfig({ fleeAgent: { sprint: { fleeSeverity: 0.4 } } });
         const threat = { lethal: false, severity: 0.5 };
-        assert.equal(deriveFleeSprintIntent("seek_food", threat, { foodFraction: 0.5, state: "hungry", desperate: false }).want, false);
-        assert.equal(deriveFleeSprintIntent("seek_food", threat, { foodFraction: 0.2, state: "desperate", desperate: true }).want, true);
+        assert.equal(deriveFleeSprintIntent("seek_food", threat, "hungry", 0.5).want, false);
+        assert.equal(deriveFleeSprintIntent("seek_food", threat, "desperate", 0.2).want, true);
     });
 
     it("explores when only smaller snakes are visible and no food", () => {
@@ -106,7 +104,7 @@ describe("flee agent decision model", () => {
 
     it("flee beats explore when outnumbered by visible threats", () => {
         applySnakeGameConfig({ fleeAgent: { decisionPressure: { outnumberedFleeBonus: 0.5 } }, fleeRange: 128, lethalThreatRange: 48 });
-        const hungerState = { foodFraction: 0.7, state: "hungry", hungry: true, satisfied: false, desperate: false };
+        const hungerTier = "hungry";
         const threatState = { dist: 64, severity: 0.5, lethal: false };
         const ctx = {
             known: { threat: mockTarget("t1"), food: null, threatCount: 2 },
@@ -114,7 +112,7 @@ describe("flee agent decision model", () => {
             reachSteps: fleeReach({ threat: 4 }),
             committedTarget: null,
             routeStatus: null,
-            hungerState,
+            hungerTier,
             threatState,
             events: [],
         };
