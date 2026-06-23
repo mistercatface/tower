@@ -8,21 +8,21 @@ Hygiene when touching this: [`hygiene.md`](hygiene.md) · [`stupid.md`](stupid.m
 
 ## Goal
 
-Every tick an agent gets **one `decisionContext`**: merged targets, path-step reach, threat/hunger facts, scored modes, chosen intent, sprint intent. Snake and flee differ only in **`Config/games/snake.js`** — not in parallel `*DecisionModel.js` files.
+Every tick an agent gets **one `decisionContext`**: merged targets, path-step reach, threat/hunger facts, scored modes, chosen intent, sprint intent. Snake and flee differ only in **`Config/games/snake.js`** — not in parallel species derive functions or adapter callbacks.
 
 ---
 
 ## Already done (don’t regress)
 
-- **Decision reach** — `syncNavReachHorizon` + `navReachStepsTo`; no `*Dist`, no per-tick `{ stepsTo }` objects.
+- **Decision reach** — `syncNavReachHorizon` + `navReachStepsTo`; no `*Dist`, no per-tick `{ stepsTo() }` objects.
 - **One context** — flat `decisionContext`; no `blackboard` / `decisionSnapshot` pair.
-- **Shared agent layer** — `buildAgentRemembered`, `buildAgentEventTargets`, `deriveThreatState`, `deriveAllyState`, `buildAgentDecisionContext`.
-- **Hot-path wins** — nav topo for LOS (no per-ray graph view), score-detail scratch pool, kinetic sleep without per-tick `Set`.
-- **Hunger** — `foodFraction` on context + `hungerTier` string (`"satisfied" | "hungry" | "desperate" | null`); no hunger objects.
+- **Shared agent layer** — slot merge, scorer registry, band tables, `gameDecisionContext.js` entry.
+- **Hot-path wins** — nav topo for LOS, score-detail scratch pool, kinetic sleep without per-tick `Set`.
+- **Hunger** — `foodFraction` + `hungerTier` from `hungerBands` + `bandFromThresholds`.
 
-**Tests:** 50/50 on `snakeDecisionModel.test.js` + `fleeAgentDecision.test.js`.
+**Tests:** 70/70 on decision + ally + flee metabolism suites touched by steps 1–4.
 
-**Still wrong (why this doc exists):** snake and flee each have ~150 lines of duplicate spec/scorer JS; hunger thresholds and tier names live in three places; band logic is copy-pasted ternaries; every new banded scalar will hurt unless step 3 happens.
+**Still wrong (why step 5 is next):** sprint is the worst remaining duplicate — two derive functions, spec wiring, **and** per-adapter callbacks; flee latch recomputes sprint through a third path. Not ready for flow or new modes until sprint is one derive + config.
 
 ---
 
@@ -30,57 +30,125 @@ Every tick an agent gets **one `decisionContext`**: merged targets, path-step re
 
 ### 1 — Config owns slot merge ✅
 
-**Problem:** `snakeDecisionModel.js` and `fleeDecisionModel.js` each define `buildVisible`, remembered slot arrays, and known-target merge (flee’s enemy←prey alias, memory gating, snake engaged-ally filter).
-
-**Shipped:** `Config/games/snake.js` → `decision` + `fleeAgent.decision` slot tables; `mergeSlotsFromSchema.js` (declarative field rules + sole `engagedAlly` merge hook); engine reads schema via `spec.decisionSchema()`.
-
-**Done when:** no `buildVisible` / `buildRemembered` / `buildKnown` closures in `Libraries/Game/snake/*DecisionModel.js`; both species read slots from config. ✅
+Shipped: `decision` / `fleeAgent.decision` slot tables + `mergeSlotsFromSchema.js`.
 
 ---
 
 ### 2 — Engine owns scoring ✅
 
-**Shipped:** `scoreDecisionModes.js` registry; `decision.modes` in config for snake + flee; guards/mods as closed enums; species files only export thin test wrappers + sprint/engagement hooks.
-
-**Done when:** no `function score*Detail` in game JS. ✅ (wrappers delegate to engine)
+Shipped: `scoreDecisionModes.js` + `decision.modes` in config.
 
 ---
 
 ### 3 — Config owns bands ✅
 
-**Shipped:** `hungerBands` in config (ordered `{ id, min }`); `bandFromThresholds` + `lookupBandTable` in engine; old `hunger` cutoffs removed; tier derived via `spec.hungerBands()`.
+Shipped: `hungerBands` + `bandFromThresholds` + `lookupBandTable`.
 
 ---
 
-### 4 — Delete species decision models
+### 4 — Delete species decision models ✅
 
-**Problem:** `snakeDecisionModel.js` and `fleeDecisionModel.js` are leftover adapters that should be data.
+Shipped: deleted `*DecisionModel.js`; `gameDecisionContext.js` is the entry point.
 
-**Do:**
+---
 
-1. Delete both files.
-2. Intent adapters call `buildDecisionContext(getSnakeGameConfig().decision, input)` / `fleeAgent.decision` directly.
-3. Move snake-only hooks (`deriveSnakeEngagementState`, faction prey logic) to small engine hook table referenced by id from config — not a whole decision model file.
-4. Migrate tests to import engine + config; drop wrappers like `buildSnakeDecisionContext` unless tests truly need them.
+### 5 — One sprint path ← **NEXT**
 
-**Done when:**
+**Problem:** “Should this agent sprint?” is answered in three places today:
 
-```bash
-rg 'snakeDecisionModel|fleeDecisionModel' --glob '*.js'   # zero outside history/comments
-rg 'function scorePreyDetail|function scoreFoodDetail' Libraries/Game/snake
+| Path | Where | What |
+|------|--------|------|
+| A | `buildAgentDecisionContext` | `spec.deriveSprint(mode, …)` after pick |
+| B | `createSnakeForageIntent` / `createFleeExploreIntent` | `deriveSprintIntent` callback into ground-nav adapter |
+| C | `applyFleePolicyLatch` | Re-derives sprint when hysteresis overrides mode |
+
+Snake uses `deriveSnakeSprintIntent(mode, threatState)`. Flee uses `deriveFleeSprintIntent(mode, threatState, hungerTier, foodFraction)`. Same question, two functions, adapter-specific signatures. Change one rule → grep three files.
+
+**Target:** One function, one config table per species, zero adapter sprint params. Latch and initial pick both call the same derive with `(mode, ctx, sprintConfig)`.
+
+#### Config shape (`Config/games/snake.js`)
+
+Keep shared thresholds on existing `sprint` / `fleeAgent.sprint`. Add a **rules list** per species (closed rule ids — not a DSL):
+
+```javascript
+// snake root — add to existing sprint block or decision.sprint
+sprint: {
+  fleeSeverity: 0.5,
+  rules: [
+    { mode: "flee", rule: "severeOrLethalThreat", want: true, reason: "escape" },
+    { mode: "seek_food", rule: "severeNonLethalThreat", want: true, reason: "feed" },
+    { mode: "seek_prey", rule: "always", want: true, reason: "chase" },
+  ],
+},
+
+// fleeAgent.sprint — same pattern, different rules
+sprint: {
+  fleeSeverity: 0.5,
+  minHungerFraction: 0.1,
+  rules: [
+    { mode: "flee", rule: "severeOrLethalThreat", guards: ["minHunger"], want: true, reason: "escape" },
+    { mode: "seek_food", rule: "severeNonLethalThreat", guards: ["minHunger", "bandDesperate"], want: true, reason: "race" },
+    { mode: "seek_enemy", rule: "always", want: true, reason: "attack" },
+  ],
+},
 ```
 
-Net **negative** line count vs today.
+**Closed rule ids** (engine implements, config picks): `always`, `severeOrLethalThreat`, `severeNonLethalThreat`. **Closed guards:** `minHunger`, `bandDesperate`, `bandNotSatisfied` (reuse band ids from `hungerBands`). New behavior = new named rule in engine, not inline config logic.
+
+#### Engine work
+
+1. Add `deriveSprintIntent(mode, ctx, sprintConfig)` in `Libraries/AI/agents/` (e.g. `deriveSprintIntent.js`).
+   - Reads `ctx.threatState`, `ctx.hungerTier`, `ctx.foodFraction` only — no extra args.
+   - Walks `sprintConfig.rules` for matching `mode`; first matching rule wins; default `{ want: false, reason: "none" }`.
+
+2. Wire **once** in `buildAgentDecisionContext`:
+   - Spec exposes `sprintConfig: () => getSnakeGameConfig().sprint` (or flee equivalent).
+   - After pick **and** whenever latch changes mode, call the same derive.
+
+3. **Delete** from `gameDecisionContext.js`: `deriveSnakeSprintIntent`, `deriveFleeSprintIntent`, and `deriveSprint` on both specs.
+
+4. **Remove adapter overrides:**
+   - Drop `deriveSprintIntent` param from `createGroundNavIntentAdapter` (or make it internal-only).
+   - `createSnakeForageIntent` / `createFleeExploreIntent` stop passing sprint callbacks.
+
+5. **Fix flee latch:** `applyFleePolicyLatch` calls `deriveSprintIntent(policy.mode, ctx, sprintConfig)` — same import as decision build, not an injected callback.
+
+6. **Tests:** Move sprint unit tests to import `deriveSprintIntent` + config; delete tests that only exercised deleted species functions. Keep parity cases (escape, feed, chase, flee race, min hunger block).
+
+#### Done when
+
+```bash
+rg 'deriveSnakeSprintIntent|deriveFleeSprintIntent|deriveSprintIntent:' Libraries --glob '*.js'   # zero
+rg 'deriveSprint:' Libraries/Game --glob '*.js'   # zero adapter sprint callbacks
+```
+
+- One `deriveSprintIntent` in engine; snake + flee differ only in `sprint.rules` in config.
+- `ctx.sprintIntent` set only via that function (pick + latch).
+- Decision tests + flee metabolism sprint tests green.
+
+#### Files touched
+
+| File | Change |
+|------|--------|
+| `Config/games/snake.js` | `sprint.rules` snake + flee |
+| `Libraries/AI/agents/deriveSprintIntent.js` | new — single derive |
+| `Libraries/AI/agents/buildAgentDecisionContext.js` | call derive; spec `sprintConfig` |
+| `Libraries/AI/agents/gameDecisionContext.js` | remove sprint functions + spec hooks |
+| `Libraries/Game/snake/createGroundNavIntentAdapter.js` | latch uses shared derive; drop param |
+| `createSnakeForageIntent.js` / `createFleeExploreIntent.js` | remove sprint callback |
+| `tests/snakeDecisionModel.test.js`, `tests/fleeAgentDecision.test.js`, `tests/fleeAgentMetabolism.test.js` | import engine derive |
 
 ---
 
-### 5 — Flow locomotion (after 4, or flee-only slice in parallel)
+### 6 — Flow locomotion (after 5)
 
 **Problem:** Flee still steers with cell-pick heuristics; crowds and smooth escape want local flow.
 
 **Do:** Replace flee **steering** (not decision reach) with backward flow sampling at agent cell. Decision scoring **stays** on `navReachHorizon` — never per-agent flow windows on the utility hot path.
 
-**Done when:** flee escape/regroup uses flow downhill; reach for scoring unchanged; Part 1 grep gates still clean.
+**Done when:** flee escape/regroup uses flow downhill; reach for scoring unchanged.
+
+**Gate:** Step 5 merged — don’t add flow while sprint is still triple-wired.
 
 ---
 
@@ -102,14 +170,13 @@ Net **negative** line count vs today.
 
 ---
 
-## What not to repeat (hunger lesson)
+## What not to repeat
 
 | Don’t | Do |
 |-------|-----|
-| Wrap a range check in objects then “optimize” the objects | Store the scalar; derive band id from config when needed |
-| One-off `deriveFooFromConfig` per banded stat | One `bandFromThresholds` + config tables |
-| Hoist into agent layer before config step deletes the hoist | Steps 1→4 in order; don’t add layers H2d would remove |
-| Magic strings in JS that must match config keys by spelling | Band `id` declared once in config; engine only uses those ids |
+| Species `deriveFooSprintIntent` + adapter callback + spec hook | One derive; config rules; latch calls same function |
+| Wrap a range check in objects | Scalar + band table |
+| Magic strings that must match config by spelling | Band `id` / rule `id` declared in config; engine validates at load (optional follow-up) |
 
 ---
 
@@ -118,10 +185,11 @@ Net **negative** line count vs today.
 | Role | File |
 |------|------|
 | Engine entry | `Libraries/AI/agents/buildAgentDecisionContext.js` |
-| Scoring | `Libraries/AI/utility/utilityScoring.js` |
-| Snake adapter (delete in step 4) | `Libraries/Game/snake/snakeDecisionModel.js` |
-| Flee adapter (delete in step 4) | `Libraries/Game/snake/fleeAgent/fleeDecisionModel.js` |
-| Config (owns tables after step 1–3) | `Config/games/snake.js` |
+| Game glue | `Libraries/AI/agents/gameDecisionContext.js` |
+| Scoring | `Libraries/AI/agents/scoreDecisionModes.js` |
+| Slots | `Libraries/AI/agents/mergeSlotsFromSchema.js` |
+| Bands | `Libraries/AI/agents/bandFromThresholds.js` |
+| Config | `Config/games/snake.js` |
 | Reach (frozen) | `Libraries/Navigation/navReachHorizon.js` |
 
-Ship log for old pass names: [`fsm/history.md`](fsm/history.md) — archive only, not the active queue.
+Ship log: [`fsm/history.md`](fsm/history.md) — archive only.

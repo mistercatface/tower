@@ -1,6 +1,6 @@
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../../AI/steering/pickFleeCell.js";
-import { buildFleeDecisionContext, deriveFleeSprintIntent } from "./fleeDecisionModel.js";
+import { buildFleeDecisionContext, deriveFleeSprintIntent } from "../../../AI/agents/gameDecisionContext.js";
 import { resolveFleePackOptions } from "./resolveFleePackOptions.js";
 import { createGroundNavIntentAdapter } from "../createGroundNavIntentAdapter.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
@@ -76,7 +76,7 @@ export function createFleeExploreIntent({
             if (exploreCell) locomotion.setExplore(agent, state, exploreCell);
             return exploreCell;
         },
-        deriveSprintIntent: (mode, ctx) => deriveFleeSprintIntent(mode, ctx.threatState, ctx.hungerTier),
+        deriveSprintIntent: (mode, ctx) => deriveFleeSprintIntent(mode, ctx.threatState, ctx.hungerTier, ctx.foodFraction),
         clearMemoryOnIntentClear: true,
         transitionReason(prevMode, nextMode, policy) {
             if (policy?.reason) return policy.reason;

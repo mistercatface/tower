@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionContext, buildSnakeDecisionFrame, deriveSnakeSprintIntent, pickSnakeIntentPolicy, scoreSnakeIntentCandidates } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
 import { bandFromThresholds } from "../Libraries/AI/agents/bandFromThresholds.js";
 import { createModePolicyLatch } from "../Libraries/AI/agentIntent/policyHysteresis.js";
@@ -251,22 +251,22 @@ describe("hunger overrides flee for food (PR7)", () => {
 describe("sprint intent facts (PR9)", () => {
     it("sprints to escape a severe or lethal flee threat", () => {
         applySnakeGameConfig({ sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } });
-        assert.deepEqual(deriveSprintIntent("flee", { severity: 0.8, lethal: false }), { want: true, reason: "escape" });
-        assert.deepEqual(deriveSprintIntent("flee", { severity: 0.1, lethal: true }), { want: true, reason: "escape" });
+        assert.deepEqual(deriveSnakeSprintIntent("flee", { severity: 0.8, lethal: false }), { want: true, reason: "escape" });
+        assert.deepEqual(deriveSnakeSprintIntent("flee", { severity: 0.1, lethal: true }), { want: true, reason: "escape" });
     });
     it("does not sprint from a mild flee threat", () => {
-        assert.equal(deriveSprintIntent("flee", { severity: 0.2, lethal: false }).want, false);
+        assert.equal(deriveSnakeSprintIntent("flee", { severity: 0.2, lethal: false }).want, false);
     });
     it("sprints to chase prey", () => {
-        assert.deepEqual(deriveSprintIntent("seek_prey", null), { want: true, reason: "chase" });
+        assert.deepEqual(deriveSnakeSprintIntent("seek_prey", null), { want: true, reason: "chase" });
     });
     it("sprints to grab food under a serious non-lethal threat", () => {
         applySnakeGameConfig({ sprint: { fleeSeverity: 0.5, speedMultiplier: 1.4, accelMultiplier: 1.4, hungerDrainMultiplier: 2.5 } });
-        assert.deepEqual(deriveSprintIntent("seek_food", { severity: 0.8, lethal: false }), { want: true, reason: "feed" });
+        assert.deepEqual(deriveSnakeSprintIntent("seek_food", { severity: 0.8, lethal: false }), { want: true, reason: "feed" });
     });
     it("does not sprint for safe food or exploring", () => {
-        assert.equal(deriveSprintIntent("seek_food", null).want, false);
-        assert.equal(deriveSprintIntent("explore", null).want, false);
+        assert.equal(deriveSnakeSprintIntent("seek_food", null).want, false);
+        assert.equal(deriveSnakeSprintIntent("explore", null).want, false);
     });
     it("surfaces sprintIntent on the decision snapshot", () => {
         applySnakeGameConfig({ hungerBands: TEST_HUNGER_BANDS });

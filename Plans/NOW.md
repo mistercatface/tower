@@ -10,7 +10,7 @@
 
 ## Current task
 
-**Decision engine cleanup** — [`current/fsmroadmap.md`](current/fsmroadmap.md) step 4 next (delete species decision models)
+**Decision engine cleanup** — steps 1–4 done ✅ · next: [`current/fsmroadmap.md`](current/fsmroadmap.md) **step 5 — one sprint path** (before flow)
 
 Reach + flat `decisionContext` already shipped ✅
 
@@ -20,7 +20,7 @@ Reach + flat `decisionContext` already shipped ✅
 
 From structural cleanup queue:
 
-0. **Snake/flee decision → config** · [`current/fsmroadmap.md`](current/fsmroadmap.md) — **before flow flee steering**
+0. **One sprint path** · [`current/fsmroadmap.md`](current/fsmroadmap.md) step 5 — **before flow**
 1. **Prop catalog passthrough** — delete twin maps · [`stupid.md`](current/stupid.md) P3-3
 2. **Library defaults getters** · [`library_defaults.md`](current/library_defaults.md)
 3. **Sandbox behavior registry threading** · [`passthrough.md`](current/passthrough.md) Tier 3
@@ -31,7 +31,7 @@ From structural cleanup queue:
 
 From [ROADMAP.md](./ROADMAP.md) highest strategic overlap (reorder as needed):
 
-1. **Decision config + flow flee steering** · [`current/fsmroadmap.md`](current/fsmroadmap.md) steps 1–4 then 5
+1. **Sprint derive, then flow flee steering** · [`current/fsmroadmap.md`](current/fsmroadmap.md) steps 5 then 6
 2. **Funnel / string-pull smoothing** · [pathfinding.md](./pathfinding.md)
 3. **Unified root seed** · [procedural.md](./procedural.md) Tier 10
 4. **Render cache telemetry** · [rendering.md](./rendering.md)

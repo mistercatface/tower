@@ -6,7 +6,7 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { setFleeHunger } from "../Libraries/Game/snake/fleeAgent/fleeMetabolism.js";
-import { buildFleeDecisionContext, deriveFleeSprintIntent, scoreFleeIntentCandidateDetails } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
+import { buildFleeDecisionContext, deriveFleeSprintIntent, scoreFleeIntentCandidateDetails } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";

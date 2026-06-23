@@ -8,8 +8,7 @@ import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
 import { createAgentIntentMemory } from "../Libraries/AI/memory/createAgentIntentMemory.js";
-import { buildSnakeDecisionContext } from "../Libraries/Game/snake/snakeDecisionModel.js";
-import { buildFleeDecisionContext } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
+import { buildSnakeDecisionContext, buildFleeDecisionContext } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/agentEngagement.js";
 import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { deriveSnakeEngagementState } from "../Libraries/Game/snake/snakeEngagement.js";

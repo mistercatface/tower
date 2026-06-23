@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { resolveFleePackOptions } from "../Libraries/Game/snake/fleeAgent/resolveFleePackOptions.js";
-import { buildSnakeDecisionFrame } from "../Libraries/Game/snake/snakeDecisionModel.js";
+import { buildSnakeDecisionFrame } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgent.js";
 import { createFleeAgentInstance } from "../Libraries/Game/snake/fleeAgent/FleeAgentInstance.js";
