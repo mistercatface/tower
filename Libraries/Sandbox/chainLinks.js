@@ -2,13 +2,13 @@ import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Motion/kineticConstraints.js";
 import { getConnectedBodyIds, getConnectedComponentPath } from "../Motion/kineticConstraintGraph.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { getPropAsset, formatPropTypeLabel } from "../Props/PropCatalog.js";
+import { worldPropAssets, formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
 export function isChainLinkBall(prop) {
     if (!prop?.strategy?.isKinetic) return false;
     if (prop.strategy?.canChain) return true;
-    return sandboxAssetMatchesTagFilter(getPropAsset(prop.type), "nav");
+    return sandboxAssetMatchesTagFilter(worldPropAssets[prop.type], "nav");
 }
 export function hasChainMembership(state, propId) {
     const list = listKineticConstraints(state.kinetic);

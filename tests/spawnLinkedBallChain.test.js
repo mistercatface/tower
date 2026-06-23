@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -10,7 +9,6 @@ import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/c
 import { growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
-loadPropAssets();
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

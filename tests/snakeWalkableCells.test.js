@@ -1,7 +1,6 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -16,7 +15,6 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { gridSettings } from "../Config/world.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
-loadPropAssets();
 async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);

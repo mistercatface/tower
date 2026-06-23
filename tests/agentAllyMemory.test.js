@@ -1,7 +1,6 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
@@ -13,7 +12,6 @@ import { createFleeIntentMemory } from "../Libraries/Game/snake/fleeAgent/fleeIn
 import { buildSnakeDecisionContext } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { buildFleeDecisionContext } from "../Libraries/Game/snake/fleeAgent/fleeDecisionModel.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
-loadPropAssets();
 function chainOptions(segmentCount) {
     const config = getSnakeGameConfig();
     return {

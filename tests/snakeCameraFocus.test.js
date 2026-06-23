@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -13,8 +12,6 @@ import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 import { CameraTargetCycler } from "../Libraries/Sandbox/CameraTargetCycler.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
-
-loadPropAssets();
 
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -11,8 +10,6 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getSnakeChainRadius, growSnakeChainAfterMeal } from "../Libraries/Game/snake/snakeScale.js";
-
-loadPropAssets();
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,

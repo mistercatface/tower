@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/propStrategy.js";
 import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
@@ -10,9 +9,8 @@ import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/Angle.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Props/rollingMotion.js";
-import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
+import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/propVisualAttachments.js";
-loadPropAssets();
 const cacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
 const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa", bottom: "#444", stroke: "#222" },
@@ -87,7 +85,7 @@ describe("draw shape parity", () => {
         assert.equal(resolvePropQuantizeSteps(plank).facing, 128);
     });
     it("flee ball declares a render-only tri wedge facing attachment", () => {
-        const attachment = getPropAsset("flee_ball").visuals.attachments[0];
+        const attachment = worldPropAssets["flee_ball"].visuals.attachments[0];
         assert.equal(attachment.id, "movement_arrow");
         assert.equal(attachment.propId, "tri_wedge");
         assert.equal(attachment.heading, "velocity");
@@ -122,7 +120,7 @@ describe("draw shape parity", () => {
         assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);
-        assert.ok(smallChild.height < getPropAsset("tri_wedge").visuals.world.height);
+        assert.ok(smallChild.height < worldPropAssets["tri_wedge"].visuals.world.height);
     });
     it("visual attachments expand bake bounds and facing cache keys", () => {
         const right = new WorldProp(0, 0, "flee_ball", 0);

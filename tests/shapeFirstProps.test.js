@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-loadPropAssets();
 describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {
         const prop = new WorldProp(0, 0, "crate", 0);

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
@@ -16,8 +15,6 @@ import { appendFocusedAgentTargetOverlayCommands, resolveCommittedTargetWorld } 
 import { resetVisionFullBuildCount, getVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { beginSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { createSnakeGameHarnessState } from "./harness/snakeGameHarness.js";
-
-loadPropAssets();
 
 describe("focused agent debug overlays", () => {
     it("resolveFocusedAgentDebugContext exposes brain and path for snake autosim and flee instance", async () => {

@@ -1,6 +1,5 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
@@ -10,7 +9,6 @@ import { createKineticTick } from "../GameState/KineticTick.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
-loadPropAssets();
 function mockWallSegment(x, y, size = 16) {
     return { x, y, size, width: size, height: size, angle: 0, isDead: false };
 }

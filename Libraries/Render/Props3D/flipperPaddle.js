@@ -1,4 +1,4 @@
-import { getPropAsset } from "../../Props/PropCatalog.js";
+import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { rotateXY } from "../../Math/Poly2D.js";
 import { getFlipperSpec } from "../../Sandbox/behaviors/flipperBehavior.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
@@ -61,7 +61,7 @@ function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, exte
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
 export function drawFlipperPaddle(ctx, prop, px, py, options) {
-    const asset = getPropAsset(prop.type);
+    const asset = worldPropAssets[prop.type];
     const spec = getFlipperSpec(prop, asset);
     const length = spec.length;
     const halfW = spec.width * 0.5;

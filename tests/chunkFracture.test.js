@@ -13,15 +13,13 @@ import {
 } from "../Libraries/Props/chunkFracture.js";
 import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
 import { fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
-loadPropAssets();
+import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 describe("chunk fracture", () => {
     it("crate asset uses chunk fracture mode", () => {
-        assert.equal(getPropAsset("crate").physics.fractureMode, "chunk");
-        assert.equal(getPropAsset("custom_box").physics.fractureMode, "chunk");
+        assert.equal(worldPropAssets["crate"].physics.fractureMode, "chunk");
+        assert.equal(worldPropAssets["custom_box"].physics.fractureMode, "chunk");
     });
     it("bakes rectilinear chunk grid from a box outline", () => {
         const geom = bakeChunkOutline(localBoxOutline(8, 8));

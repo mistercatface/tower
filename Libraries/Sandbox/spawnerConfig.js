@@ -1,7 +1,7 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { applyDragLaunchVelocity } from "./dragLaunch.js";
-import { getPropAsset, getWorldPropDefinitions } from "../Props/PropCatalog.js";
+import { worldPropAssets, worldPropDefinitions } from "../Props/PropCatalog.js";
 import { isSandboxSpawnable } from "./sandboxCapabilities.js";
 import { DRAG_LAUNCH_DEFAULTS } from "./dragLaunch.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
@@ -12,7 +12,7 @@ export function isSpawnerProp(asset) {
 }
 /** @param {object | null | undefined} prop */
 export function isSpawnerWorldProp(prop) {
-    return isSpawnerProp(getPropAsset(prop?.type));
+    return isSpawnerProp(worldPropAssets[prop?.type]);
 }
 /** @param {object | null | undefined} prop @param {object | null | undefined} asset */
 export function resolveSpawnerPropId(prop, asset) {
@@ -39,7 +39,7 @@ export function getSpawnerOutletWorld(prop, asset) {
  * @param {{ power?: number, nx?: number, ny?: number }} [options]
  */
 export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
-    const asset = getPropAsset(spawnerWorldProp.type);
+    const asset = worldPropAssets[spawnerWorldProp.type];
     if (!isSpawnerProp(asset)) return null;
     const config = getSpawnerDragConfig(spawnerWorldProp, asset);
     const outlet = getSpawnerOutletWorld(spawnerWorldProp, asset);
@@ -57,9 +57,9 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
 }
 /** @returns {string[]} */
 export function listSpawnerSpawnPropIds() {
-    return Object.keys(getWorldPropDefinitions())
+    return Object.keys(worldPropDefinitions)
         .filter((id) => {
-            const asset = getPropAsset(id);
+            const asset = worldPropAssets[id];
             return isSandboxSpawnable(asset) && !isSpawnerProp(asset);
         })
         .sort();

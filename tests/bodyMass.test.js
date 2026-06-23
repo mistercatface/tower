@@ -1,10 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { inverseMassFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
-loadPropAssets();
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
         const smallVerts = [

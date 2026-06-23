@@ -1,5 +1,4 @@
 import "../nodeCanvasSetup.js";
-import { loadPropAssets } from "../../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry, addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
@@ -25,7 +24,6 @@ import { SnakeInstance, getSnakeInstance } from "../../Libraries/Game/snake/Snak
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
-loadPropAssets();
 export function wireSnakeTestNavSession(state) {
     if (!state.nav?.session) throw new Error("wireSnakeTestNavSession: state.nav with session is required");
     state.nav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.nav.settings };

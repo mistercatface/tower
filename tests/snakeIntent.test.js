@@ -12,7 +12,6 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -22,7 +21,6 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { createSnakeDecisionBlackboard, pickSnakeIntentPolicy } from "../Libraries/Game/snake/snakeDecisionModel.js";
 import { perceiveSnakeIntentWorld } from "../Libraries/Game/snake/snakeIntent.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
-loadPropAssets();
 async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);

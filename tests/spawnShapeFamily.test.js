@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -11,9 +10,7 @@ import { propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
 import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSession.js";
 import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
-import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
-
-loadPropAssets();
+import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 
 function createSpawnTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -41,7 +38,7 @@ describe("spawn shape family defaults", () => {
         session.setSpawnBallRadius(6);
         session.setSpawnVisualOverrideTint("#ff0000");
         session.setSpawnVisualOverrideBrightness(1.25);
-        const asset = getPropAsset("ball");
+        const asset = worldPropAssets["ball"];
         const ctx = {
             spawnPropId,
             spawnFaction: "neutral",
@@ -72,7 +69,7 @@ describe("spawn shape family defaults", () => {
         session.setSpawnBoxWidth(24);
         session.setSpawnBoxHeight(32);
         session.setSpawnVisualOverrideTint("#00aa88");
-        const asset = getPropAsset("custom_box");
+        const asset = worldPropAssets["custom_box"];
         const ctx = {
             spawnPropId,
             spawnFaction: "neutral",

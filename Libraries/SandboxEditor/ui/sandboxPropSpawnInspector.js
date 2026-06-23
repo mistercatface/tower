@@ -1,4 +1,4 @@
-import { getPropAsset } from "../../Props/PropCatalog.js";
+import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../RoomGraph/roomGraphCorridorTypes.js";
 import {
     isGridFloorBeltSpawnAsset,
@@ -47,7 +47,7 @@ function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAdd
     body.appendChild(addRow);
 }
 export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
-    const spawnAsset = getPropAsset(spawnId);
+    const spawnAsset = worldPropAssets[spawnId];
     if (isRoomLinkSpawnAsset(spawnAsset)) {
         const fromNodeId = controller.getCorridorLinkWireFromNodeId();
         appendSelectField(body, "Type", {

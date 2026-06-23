@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
-import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
+import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
@@ -10,11 +9,9 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { fanTriangulateFromOrigin, regularStarFootprint } from "../Libraries/Math/Poly2D.js";
 import { resolveSnakePropRadius } from "../Libraries/Game/snake/snakeGameConfig.js";
 
-loadPropAssets();
-
 describe("goal_orb star", () => {
     it("uses a five-point star footprint at outer radius 2", () => {
-        const asset = getPropAsset("goal_orb");
+        const asset = worldPropAssets["goal_orb"];
         assert.equal(asset.physics.radius, 2);
         assert.deepEqual(asset.physics.localFootprint, regularStarFootprint(5, 2, 0.85));
     });

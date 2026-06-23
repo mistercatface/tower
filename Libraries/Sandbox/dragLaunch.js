@@ -1,7 +1,7 @@
 import { normalizeXY } from "../Math/Vec2.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
@@ -188,7 +188,7 @@ export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 export const DRAG_LAUNCH_WAIT_BEHAVIOR_ID = "dragLaunchWait";
 /** @param {object} prop */
 function dragLaunchConfigForProp(prop) {
-    return getDragLaunchConfig(getPropAsset(prop?.type));
+    return getDragLaunchConfig(worldPropAssets[prop?.type]);
 }
 /** @param {object} state @returns {(prop: object) => ReturnType<typeof buildDragLaunchAimLineContext>} */
 export function dragLaunchAimLineContextForState(state) {
@@ -206,7 +206,7 @@ export function createDragLaunchWaitBehavior(state) {
         buildAimLineContext: dragLaunchAimLineContextForState(state),
         canStart(prop) {
             if (!isEntityAtRest(prop)) return false;
-            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, getPropAsset(prop?.type), state).allowed;
+            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, worldPropAssets[prop?.type], state).allowed;
         },
     });
 }

@@ -1,7 +1,7 @@
 import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../../../Config/games/snake.js";
 import { mergeObjectTree } from "../../Config/mergeConfig.js";
-import { getPropAsset } from "../../Props/PropCatalog.js";
+import { worldPropAssets } from "../../Props/PropCatalog.js";
 let activeSnakeGameConfig = structuredClone(SNAKE_GAME_DEFAULTS);
 export function applySnakeGameConfig(overrides) {
     activeSnakeGameConfig = structuredClone(mergeObjectTree(SNAKE_GAME_DEFAULTS, overrides));
@@ -20,7 +20,7 @@ export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig(), rng = Math
     return specs;
 }
 export function resolveSnakePropRadius(propId) {
-    return getPropAsset(propId).physics.radius;
+    return worldPropAssets[propId].physics.radius;
 }
 export function resolveSnakeSegmentSpacing(config = getSnakeGameConfig(), segmentRadius = null) {
     const radius = segmentRadius ?? resolveSnakePropRadius(config.segmentPropId);

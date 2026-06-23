@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -20,8 +19,6 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 import { removeSandboxWorldProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
-
-loadPropAssets();
 
 function createSnakeAutosimTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

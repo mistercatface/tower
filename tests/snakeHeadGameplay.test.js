@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { applySnakeHeadGameplay } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
@@ -9,8 +8,6 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getKineticRollConfig } from "../Libraries/Sandbox/kineticRollActuator.js";
-
-loadPropAssets();
 
 describe("snakeHeadGameplay", () => {
     it("applies headMaxSpeed from snake config onto the head prop strategy", () => {

@@ -1,4 +1,4 @@
-import { getPropAsset } from "../../Props/PropCatalog.js";
+import { worldPropAssets } from "../../Props/PropCatalog.js";
 import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../../Props/pipeElbowGeometry.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import { rotateXY } from "../../Math/Poly2D.js";
@@ -115,7 +115,7 @@ function buildPipeElbowMesh(spec, facing) {
 }
 /** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
 export function drawPipeElbow(ctx, prop, px, py, options) {
-    const asset = getPropAsset(prop.type);
+    const asset = worldPropAssets[prop.type];
     const spec = getPipeElbowSpec(prop, asset);
     const facing = prop.facing ?? 0;
     const colors = options.colors;

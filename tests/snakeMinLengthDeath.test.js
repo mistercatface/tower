@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -18,8 +17,6 @@ import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/k
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts, killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
-
-loadPropAssets();
 
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

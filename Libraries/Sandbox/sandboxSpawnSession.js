@@ -1,4 +1,4 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { sampleAssetBaseTintHex } from "../Color/visualOverride.js";
 import { SANDBOX_DEFAULT_FACTION } from "./sandboxFaction.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
@@ -35,7 +35,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         spawnFaction,
         resolveSpawnPropTypeId: getSpawnPropId,
         resolveSpawnVisualOverride,
-        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(getPropAsset(getSpawnPropId())),
+        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(worldPropAssets[getSpawnPropId()]),
         spawnRoomNodeCols,
         spawnRoomNodeRows,
         spawnPuzzleAreaCols,
@@ -48,7 +48,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         selectSpawned: options.selectSpawned !== false,
     });
     const spawnAt = (worldX, worldY, options = {}) => {
-        const asset = getPropAsset(getSpawnPropId());
+        const asset = worldPropAssets[getSpawnPropId()];
         if (!asset) return false;
         return spawnPlaceableAt(state, worldX, worldY, asset, spawnCtx(options));
     };

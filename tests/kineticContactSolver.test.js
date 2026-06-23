@@ -1,6 +1,5 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
@@ -11,7 +10,6 @@ import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySl
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-loadPropAssets();
 function pairStillOverlaps(a, b) {
     return SatCollision.checkCollision(a, a.getShape(), b, b.getShape()) != null;
 }

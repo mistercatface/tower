@@ -1,7 +1,6 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { gridSettings } from "../Config/world.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
@@ -15,7 +14,6 @@ import { createNavGraphViewFromTopology } from "../Libraries/Navigation/navGraph
 import { cellInRect, colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-loadPropAssets();
 async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
     const cellSize = gridSettings.cellSize;
     const grid = new WorldObstacleGrid(cellSize);

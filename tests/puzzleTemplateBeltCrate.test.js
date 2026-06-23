@@ -2,7 +2,6 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createSeededRng } from "../Libraries/Math/SeededRng.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Libraries/Color/tintPresets.js";
 import { CORRIDOR_TYPE_CONVEYOR_ONE_WAY, CORRIDOR_TYPE_LOCKED_ROOM } from "../Libraries/RoomGraph/roomGraphCorridorTypes.js";
@@ -10,7 +9,6 @@ import { getRoomGraph, listRoomLinks, listRoomNodes } from "../Libraries/RoomGra
 import { stampBeltCratePuzzleAt } from "../Libraries/RoomGraph/puzzleTemplateBeltCrate.js";
 import { visitLiveWorldProps } from "../GameState/EntityRegistry.js";
 import { createRoomBakeTestState } from "./lockedRoomHarness.js";
-loadPropAssets();
 function countBallsWithTint(state, tint) {
     let count = 0;
     visitLiveWorldProps(state.worldProps, (prop) => {

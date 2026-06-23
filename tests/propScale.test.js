@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -10,8 +9,6 @@ import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius,
 import { getBaseSpriteCacheKey } from "../Libraries/Props/propStrategy.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-
-loadPropAssets();
 
 const noopDeps = {
     quantizeAngleIndex: (a) => 0,

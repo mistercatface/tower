@@ -2,7 +2,6 @@ import "./nodeCanvasSetup.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import button_floor from "../Assets/props/button_floor/button_floor.asset.js";
 import ball from "../Assets/props/ball/ball.asset.js";
 import { setPropCatalog } from "../Libraries/Props/PropCatalog.js";

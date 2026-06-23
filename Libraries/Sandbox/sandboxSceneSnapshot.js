@@ -1,4 +1,4 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset } from "./sandboxCapabilities.js";
@@ -137,7 +137,7 @@ function clearSandboxSceneContent(state) {
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
 function spawnSnapshotProp(state, entry) {
-    const asset = getPropAsset(entry.type);
+    const asset = worldPropAssets[entry.type];
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     if (isGridPassagePowerSourceSpawnAsset(asset)) return null;

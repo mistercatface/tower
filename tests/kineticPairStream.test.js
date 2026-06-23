@@ -1,6 +1,5 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
@@ -14,7 +13,6 @@ import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } fro
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
-loadPropAssets();
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
         const info = SatCollision.checkCollision(a, a.getShape(), b, b.getShape());

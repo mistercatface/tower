@@ -1,4 +1,4 @@
-import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
+import { worldPropAssets, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
 import { sandboxAssetTags } from "../../Sandbox/sandboxCapabilities.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },
@@ -11,7 +11,7 @@ const PLACE_PALETTE_TAGS_BY_KEY = { "wall:voxel": ["gen"], "wall:rail": ["gen"],
 function resolvePlacePaletteTags(paletteKey, asset = null) {
     const keyed = PLACE_PALETTE_TAGS_BY_KEY[paletteKey];
     if (keyed) return keyed;
-    if (paletteKey.startsWith("prop:")) return sandboxAssetTags(asset ?? getPropAsset(paletteKey.slice(5)));
+    if (paletteKey.startsWith("prop:")) return sandboxAssetTags(asset ?? worldPropAssets[paletteKey.slice(5)]);
     return [];
 }
 export function sandboxTagFilterLabel(filterId) {
@@ -37,7 +37,7 @@ export function buildPlacePaletteItems(propIds) {
     const items = [];
     for (let i = 0; i < propIds.length; i++) {
         const id = propIds[i];
-        const asset = getPropAsset(id);
+        const asset = worldPropAssets[id];
         const label = formatSandboxSpawnLabel(id);
         const key = `prop:${id}`;
         items.push({ key, kind: "prop", label, swatch: resolvePropPaletteSwatch(asset), glyph: label.slice(0, 2), tags: resolvePlacePaletteTags(key, asset) });

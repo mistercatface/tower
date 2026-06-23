@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -16,8 +15,6 @@ import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js"
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
-loadPropAssets();
-
 function spawnVisibleSnakeThreat(state, snakeGame, { col, row }, segmentCount = 6) {
     const chain = spawnSnakeChain(state, { col, row }, { segmentCount, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
     registerSnakeTestInstance(state, snakeGame, { headId: chain.chain.head.id, spawnGroupId: chain.chain.spawnGroupId });

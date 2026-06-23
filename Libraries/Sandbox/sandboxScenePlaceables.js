@@ -6,7 +6,7 @@ import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
 import {
@@ -60,7 +60,7 @@ const PLACEABLE = {
         },
         spawnAt(state, worldX, worldY, asset, ctx) {
             const propTypeId = ctx.resolveSpawnPropTypeId();
-            const placedAsset = getPropAsset(propTypeId);
+            const placedAsset = worldPropAssets[propTypeId];
             const halfExtents = blockPresetUsesResizableFootprint(propTypeId) ? ctx.spawnBoxHalfExtents : undefined;
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);

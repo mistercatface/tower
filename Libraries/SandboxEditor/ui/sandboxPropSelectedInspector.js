@@ -1,4 +1,4 @@
-import { getPropAsset, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
+import { worldPropAssets, formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
 import { resolveSandboxFaction } from "../../Sandbox/sandboxFaction.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendChainLinkInspector } from "./sandboxWorldPropInspector.js";
@@ -19,7 +19,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
-    if (isShapeFamilyAsset(getPropAsset(selectedProp.type))) appendShapeFamilySelectedFields(body, selectedProp);
+    if (isShapeFamilyAsset(worldPropAssets[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
     if (isButtonEntity(selectedProp))
         appendButtonWireInspector(body, {
             listLinks: () => controller.listSelectedButtonLinks(),
@@ -43,7 +43,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
     appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
         controller.setSelectedBehaviorId(value);
     });
-    const selectedAsset = getPropAsset(selectedProp.type);
+    const selectedAsset = worldPropAssets[selectedProp.type];
     if (isSpawnerProp(selectedAsset)) {
         const spawnPropIds = listSpawnerSpawnPropIds();
         if (spawnPropIds.length)

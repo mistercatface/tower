@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-loadPropAssets();
 describe("tri wedge prop", () => {
     it("builds PolygonShape from asset localFootprint", () => {
         const prop = new WorldProp(0, 0, "tri_wedge", 0);

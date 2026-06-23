@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { SNAKE_GAME_DEFAULTS, SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing, resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-
-loadPropAssets();
 
 describe("snakeGameConfig", () => {
     it("derives segment spacing from segment prop diameter and linkSlack", () => {

@@ -1,4 +1,4 @@
-import { formatPropTypeLabel, getPropAsset } from "../Props/PropCatalog.js";
+import { formatPropTypeLabel, worldPropAssets } from "../Props/PropCatalog.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
@@ -155,7 +155,7 @@ export function createSandboxSession(state) {
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
         visitLiveWorldProps(state.worldProps, (prop) => {
-            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) return;
+            if (!sandboxAssetMatchesTagFilter(worldPropAssets[prop.type], filter)) return;
             ids.push(prop.id);
         });
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
@@ -167,7 +167,7 @@ export function createSandboxSession(state) {
         for (const id of current.ids) {
             const prop = registry().getLive(id);
             if (!prop) continue;
-            if (!sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter)) continue;
+            if (!sandboxAssetMatchesTagFilter(worldPropAssets[prop.type], filter)) continue;
             ids.push(id);
         }
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });

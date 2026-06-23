@@ -1,4 +1,4 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { canStampFloorBeltAt, canStampPassagePowerSourceAt } from "./floorOccupancy.js";
@@ -21,7 +21,7 @@ export function resolveSandboxPlacePreview(state, session, worldX, worldY) {
         if (!hit) return null;
         return { kind: "edge", col: hit.col, row: hit.row, side: hit.side, edgeKind: mode, valid: true };
     }
-    const asset = getPropAsset(session.getSpawnPropId());
+    const asset = worldPropAssets[session.getSpawnPropId()];
     if (!asset) return null;
     if (isGridFloorBeltSpawnAsset(asset)) {
         const col = grid.worldCol(worldX);

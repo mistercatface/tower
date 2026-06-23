@@ -1,13 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Motion/kineticSleep.js";
 import { isRotatingEntity, pairBroadphaseOverlap, shouldResolveKineticPair } from "../Libraries/Spatial/collision/entityBroadphase.js";
-loadPropAssets();
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {

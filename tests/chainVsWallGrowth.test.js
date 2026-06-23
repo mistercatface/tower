@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -9,8 +8,6 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-
-loadPropAssets();
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,

@@ -1,4 +1,4 @@
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { isResizableBoxSpawnAsset, isSingleWorldPropSpawnAsset } from "./sandboxCapabilities.js";
 export const SANDBOX_PRIMARY_PROP_IDS = ["ball", "snake_head", "goal_orb", "flipper_left", "flipper_right"];
 export const DEFAULT_BALL_SPAWN_RADIUS = 4;
@@ -25,5 +25,5 @@ export function assetDefaultBallRadius(asset) {
     return asset?.physics?.radius ?? DEFAULT_BALL_SPAWN_RADIUS;
 }
 export function blockPresetUsesResizableFootprint(propId) {
-    return isResizableBoxSpawnAsset(getPropAsset(propId));
+    return isResizableBoxSpawnAsset(worldPropAssets[propId]);
 }

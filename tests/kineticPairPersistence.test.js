@@ -4,7 +4,6 @@ import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPi
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
@@ -12,8 +11,6 @@ import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/M
 import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { createKineticTestTick, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { collisionSettingsForIterations, withCollisionSettings } from "./harness/collisionSettingsHarness.js";
-
-loadPropAssets();
 
 function slabPairCollision(a, b) {
     return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);

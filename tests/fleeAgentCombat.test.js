@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -13,8 +12,6 @@ import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactP
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
 import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
-
-loadPropAssets();
 
 function registerFleeCombatAgent(state, snakeGame, cell, faction) {
     const pack = spawnFleeAgent(state, cell, { faction });

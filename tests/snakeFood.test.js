@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -14,8 +13,6 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { removeSandboxWorldProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { markSnakeSegmentsFracturable } from "../Libraries/Game/snake/snakeSegmentFracture.js";
-
-loadPropAssets();
 
 async function createFoodQueryState() {
     const grid = new WorldObstacleGrid(16);

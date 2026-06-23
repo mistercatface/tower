@@ -2,7 +2,6 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { performance } from "node:perf_hooks";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -20,7 +19,6 @@ import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { HPA_REPLAN_PEAK_INFLIGHT_CAP } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { FRAME_MS } from "./frameMs.js";
-loadPropAssets();
 /** Brain-on baseline — raise only when intentionally adding cost. */
 const PERF_TICKS = 120;
 const PERF_DT = FRAME_MS;

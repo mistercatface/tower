@@ -1,7 +1,6 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
 import {
     applyPendingWallDamage,
@@ -22,7 +21,6 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { getGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-loadPropAssets();
 const WALL_DAMAGE = resolveSnakeWallDamageConfig();
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);

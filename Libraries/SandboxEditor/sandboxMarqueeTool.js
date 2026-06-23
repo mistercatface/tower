@@ -1,6 +1,6 @@
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "../Sandbox/sandboxCapabilities.js";
 import { aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
 import { entityContainedInAabb } from "../Spatial/collision/entityBroadphase.js";
@@ -18,7 +18,7 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
             const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, {
                 kinds: ["worldProp"],
                 hitTest: "circle",
-                match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(getPropAsset(prop.type), filter),
+                match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(worldPropAssets[prop.type], filter),
             });
             selectPropIds(props.map((prop) => prop.id));
         },

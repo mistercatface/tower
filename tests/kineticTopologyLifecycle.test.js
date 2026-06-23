@@ -9,13 +9,10 @@ import { kineticPairBodiesAt } from "../Libraries/Spatial/collision/kineticPairS
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
-
-loadPropAssets();
 
 function createTestWorld(initialProps, constraints = []) {
     return createKineticTestWorld(initialProps, { constraints, constraintsDirty: false });

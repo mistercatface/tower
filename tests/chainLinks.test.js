@@ -1,12 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-loadPropAssets();
 class MockEntityMeta {
     constructor() {
         this.byEntityId = new Map();

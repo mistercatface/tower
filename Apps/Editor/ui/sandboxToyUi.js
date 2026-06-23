@@ -1,4 +1,4 @@
-import { getPropAsset, getWorldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
+import { worldPropAssets, worldPropDefinitions, formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
 import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { orderSandboxPalettePropIds } from "../../../Libraries/Sandbox/sandboxShapeFamilies.js";
 import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandboxScenePlaceables.js";
@@ -32,7 +32,7 @@ function clearElement(el) {
 }
 export function mountSandboxToyUi(container, state, controller) {
     let paletteTagFilter = "all";
-    const propIds = orderSandboxPalettePropIds(Object.keys(getWorldPropDefinitions()).filter((id) => isSandboxSpawnable(getPropAsset(id))));
+    const propIds = orderSandboxPalettePropIds(Object.keys(worldPropDefinitions).filter((id) => isSandboxSpawnable(worldPropAssets[id])));
     const bootstrapPaletteItems = buildPlacePaletteItems(propIds);
     if (!controller.getPlacePaletteKey() && bootstrapPaletteItems.length > 0) {
         const firstProp = bootstrapPaletteItems.find((item) => item.kind === "prop") ?? bootstrapPaletteItems[0];

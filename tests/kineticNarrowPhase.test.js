@@ -1,6 +1,5 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { SatCollision, checkEntityPairCollision, circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
@@ -9,7 +8,6 @@ import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Spatial
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-loadPropAssets();
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
     setCirclePropRadius(prop, 7);

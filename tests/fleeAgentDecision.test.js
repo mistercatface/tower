@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
@@ -11,8 +10,6 @@ import { buildFleeDecisionContext, deriveFleeSprintIntent, scoreFleeIntentCandid
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-
-loadPropAssets();
 
 function mockTarget(id) {
     return { id, x: 0, y: 0, type: "snake_head", isDead: false };

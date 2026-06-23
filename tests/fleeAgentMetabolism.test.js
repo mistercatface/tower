@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
@@ -18,7 +17,6 @@ import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 function stampWall(grid, col, row) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
 }
-loadPropAssets();
 function spawnVisibleSnakeThreat(state, snakeGame, { col, row }, segmentCount = 6) {
     const chain = spawnSnakeChain(state, { col, row }, { segmentCount, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
     registerSnakeTestInstance(state, snakeGame, { headId: chain.chain.head.id, spawnGroupId: chain.chain.spawnGroupId });

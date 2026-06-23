@@ -27,7 +27,7 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 **Path:**
 
 ```text
-*.asset.js  →  loadPropAssets  →  PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAnchoredSprite
+*.asset.js  →  PropCatalog module init  →  PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAnchoredSprite
                                       ↑
                               worldPropRecipes lookup at draw site
 ```
@@ -38,7 +38,7 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 2. **Draw recipe** — pick one:
    - **`primitive`** (`sphere`, `box`, …) in `Libraries/Props/primitives/` when a shared shape fits.
    - **`draw: createFooDraw()`** in `Libraries/Render/` when custom (see `button_floor.asset.js`, `createConveyorDraw`).
-3. Register in **`Assets/props/index.js`**. `loadPropAssets()` wires `render3DKey` = asset `id` automatically.
+3. Register in **`Assets/props/index.js`**. `PropCatalog.js` builds recipes/definitions on import (`render3DKey` = asset `id`).
 4. Recipe signature: **`(ctx, prop, px, py) => void`** — iso projection uses `px`/`py`; never iterate the world calling `drawBox`/`ctx.fill` directly from sandbox code.
 
 ### Dynamic state

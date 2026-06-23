@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry, findLiveWorldProp } from "../GameState/EntityRegistry.js";
 import { KineticSession, createKineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -14,8 +13,6 @@ import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualO
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
-
-loadPropAssets();
 
 function createSnapshotTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

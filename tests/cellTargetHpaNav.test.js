@@ -3,12 +3,10 @@ import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createCellTargetHpaNav } from "../Libraries/Sandbox/groundNav/cellTargetHpaNav.js";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { writeNavFloorCell } from "../Libraries/Spatial/grid/navGridMutations.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { FLOOR_CELL_KIND, floorBeltFacingFromIndex } from "../Libraries/Spatial/grid/FloorCell.js";
 import { FRAME_MS } from "./frameMs.js";
-loadPropAssets();
 function createNavTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
-import { loadPropAssets } from "../Libraries/Props/loadPropAssets.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -12,10 +11,8 @@ import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSess
 import { appendShapeFamilySelectedFields } from "../Libraries/SandboxEditor/ui/sandboxShapeFamilyUi.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { getPropAsset } from "../Libraries/Props/PropCatalog.js";
+import { worldPropAssets } from "../Libraries/Props/PropCatalog.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
-
-loadPropAssets();
 
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -185,7 +182,7 @@ describe("sandbox editor inspector wiring", () => {
     it("spawnPlaceableAt honors selectSpawned false in spawn context", () => {
         const state = createEditorTestState();
         let pickCount = 0;
-        const asset = getPropAsset("ball");
+        const asset = worldPropAssets["ball"];
         const ctx = {
             spawnPropId: "ball",
             spawnFaction: "neutral",

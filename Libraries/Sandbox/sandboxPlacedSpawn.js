@@ -2,7 +2,7 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
-import { getPropAsset } from "../Props/PropCatalog.js";
+import { worldPropAssets } from "../Props/PropCatalog.js";
 import { applyPropBoxFootprint } from "../Props/propStrategy.js";
 import { convexFootprintHalfExtents } from "../Math/Poly2D.js";
 import { isGridFloorBeltSpawnAsset, isGridPassagePowerSourceSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
@@ -11,7 +11,7 @@ import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 import { tryExportLinkedBallChainSpawnGroup } from "./spawnLinkedBallChain.js";
 import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
 function assetDefaultFootprintSpan(typeId) {
-    const footprint = getPropAsset(typeId)?.physics?.localFootprint;
+    const footprint = worldPropAssets[typeId]?.physics?.localFootprint;
     if (!footprint?.length) return null;
     return convexFootprintHalfExtents(footprint);
 }
@@ -23,7 +23,7 @@ function footprintDiffersFromAsset(prop) {
 }
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
-    const assetRadius = getPropAsset(prop.type)?.physics?.radius;
+    const assetRadius = worldPropAssets[prop.type]?.physics?.radius;
     if (prop.radius != null && assetRadius != null && prop.radius !== assetRadius) entry.radius = prop.radius;
     if (footprintDiffersFromAsset(prop)) {
         const span = convexFootprintHalfExtents(prop.shape.vertices);
@@ -47,7 +47,7 @@ function tryExportSpawnGroup(members, meta) {
     return tryExportPoolRackSpawnGroup(members, meta) ?? tryExportLinkedBallChainSpawnGroup(members, meta);
 }
 export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, boxHalfExtents = undefined, visualOverride = undefined) {
-    const asset = getPropAsset(propTypeId);
+    const asset = worldPropAssets[propTypeId];
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isGridPassagePowerSourceSpawnAsset(asset)) throw new Error(`Passage power source "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
