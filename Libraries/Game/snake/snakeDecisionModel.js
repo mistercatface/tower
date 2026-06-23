@@ -93,7 +93,6 @@ const snakeDecisionSpec = {
     threatConfig: () => getSnakeGameConfig(),
     weights: () => getSnakeGameConfig().decisionWeights,
     pressure: () => getSnakeGameConfig().decisionPressure,
-    defaultReachSteps: () => ({ threat: null, prey: null, food: null, ally: null }),
     allySession: (input) => input.session ?? null,
     targetLost: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },
     policySlot: { seek_prey: "prey", seek_food: "food", seek_ally: "ally" },

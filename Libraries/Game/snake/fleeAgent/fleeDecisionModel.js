@@ -85,7 +85,6 @@ const fleeDecisionSpec = {
     threatConfig: () => getSnakeGameConfig(),
     weights: fleeWeights,
     pressure: fleePressure,
-    defaultReachSteps: () => ({ threat: null, enemy: null, food: null, ally: null }),
     targetLost: { seek_enemy: "enemy", seek_food: "food", seek_ally: "ally" },
     policySlot: { seek_enemy: "enemy", seek_food: "food", seek_ally: "ally" },
     buildVisible: (visibleWorld, memorySource) => ({

@@ -2,12 +2,13 @@ import { deriveAllyState } from "./deriveAllyState.js";
 import { deriveThreatState } from "./deriveThreatState.js";
 import { pushTargetEvents, routeEvents, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
 import { pickBestScoreKey, scoreCandidateSet } from "../utility/utilityScoring.js";
+const EMPTY_AGENT_REACH_STEPS = Object.freeze({ threat: null, prey: null, enemy: null, food: null, ally: null });
 export function buildAgentDecisionFrame(spec, input) {
     const { visibleWorld, memoryWorld = null, memorySource = null, committedTarget = null, routeStatus = null, reachSteps = null, hungerState = null, threatState = null } = input;
     const visible = spec.buildVisible(visibleWorld, memorySource, memoryWorld, input);
     const remembered = spec.buildRemembered(memoryWorld, memorySource);
     const known = spec.buildKnown(visible, remembered, visibleWorld, input);
-    const resolvedReachSteps = reachSteps ?? spec.defaultReachSteps();
+    const resolvedReachSteps = reachSteps ?? EMPTY_AGENT_REACH_STEPS;
     const events = routeEvents(routeStatus);
     for (const { kind, visibleTarget, rememberedTarget } of spec.eventTargets(visible, remembered, visibleWorld)) pushTargetEvents(events, kind, visibleTarget, rememberedTarget);
     for (const [mode, slotKey] of Object.entries(spec.targetLost)) if (!known[slotKey] && committedTarget?.mode === mode) events.push("TARGET_LOST");
