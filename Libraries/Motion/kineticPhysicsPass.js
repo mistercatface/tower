@@ -13,12 +13,10 @@ function propBlocksSleep(prop) {
 function tickKineticSleep(frame) {
     const kineticBodies = frame._kineticBodies;
     if (!kineticBodies) return;
-    const visited = new Set();
     for (let i = 0; i < kineticBodies.length; i++) {
         const prop = kineticBodies[i];
         const root = prop._kineticIslandRoot ?? prop.id;
-        if (visited.has(root)) continue;
-        visited.add(root);
+        if (prop.id !== root) continue;
         const islandMembers = prop._kineticIslandPeers ?? [prop];
         const eligible = evaluateKineticIslandSleepEligible(islandMembers, frame, { blocksSleep: propBlocksSleep });
         for (let j = 0; j < islandMembers.length; j++) advanceKineticSleep(islandMembers[j], eligible);
