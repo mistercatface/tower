@@ -153,6 +153,7 @@ export function createGroundNavIntentAdapter({
     intentMemoryOptions,
     reachSlots,
     buildDecisionContext,
+    decisionContext,
     afterPerceive = null,
     resolveCommittedTarget,
     setFleeDestination,
@@ -174,9 +175,9 @@ export function createGroundNavIntentAdapter({
     const routeStatus = { hasDestination: false, hasRoute: false, replanPending: false, routeFailed: false, destReached: false, stuckFrames: 0, pathLen: null };
     const committed = { mode: null, targetId: null };
     const reachSteps = Object.fromEntries(Object.keys(reachSlots).map((key) => [key, null]));
-    const perceiveWorld = { decisionContext: null };
+    const perceiveWorld = { decisionContext };
     let intent = null;
-    let lastDecisionContext = null;
+    let lastDecisionContext = decisionContext;
     const perceiveWithMemory = (agent, state) => {
         perceiveAgentIntentWorldInto(visible, agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
@@ -192,10 +193,9 @@ export function createGroundNavIntentAdapter({
         }
         readAgentRouteStatusInto(routeStatus, locomotion, agent, state);
         buildAgentReachStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlots);
-        const decisionContext = buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
+        buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
         afterPerceive?.(decisionContext, agent, state);
         lastDecisionContext = decisionContext;
-        perceiveWorld.decisionContext = decisionContext;
         return perceiveWorld;
     };
     const resetArrivalAndLatch = () => {

@@ -1,3 +1,10 @@
+export function routeEventsInto(out, routeStatus) {
+    out.length = 0;
+    if (!routeStatus) return out;
+    if (routeStatus.routeFailed) out.push("ROUTE_FAILED");
+    if (routeStatus.destReached) out.push("DEST_REACHED");
+    return out;
+}
 export function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) {
     const upper = kind.toUpperCase();
     if (visibleTarget) {
@@ -7,11 +14,7 @@ export function pushTargetEvents(events, kind, visibleTarget, rememberedTarget) 
     if (rememberedTarget) events.push(kind === "prey" ? "PREY_LAST_SEEN_ACTIVE" : `${upper}_REMEMBERED`);
 }
 export function routeEvents(routeStatus) {
-    const events = [];
-    if (!routeStatus) return events;
-    if (routeStatus.routeFailed) events.push("ROUTE_FAILED");
-    if (routeStatus.destReached) events.push("DEST_REACHED");
-    return events;
+    return routeEventsInto([], routeStatus);
 }
 export function policyReasonForTarget(ctx, kind) {
     if (ctx.remembered[kind]) return `${kind}_memory`;

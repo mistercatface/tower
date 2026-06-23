@@ -1,11 +1,5 @@
 /** @typedef {{ key: string, memoryKey?: string, allyCount?: number, constant?: null }} AgentRememberedSlot */
-/**
- * @param {object | null} memoryWorld
- * @param {object | null} memorySource
- * @param {AgentRememberedSlot[]} slots
- */
-export function buildAgentRemembered(memoryWorld, memorySource, slots) {
-    const remembered = {};
+export function buildAgentRememberedInto(remembered, memoryWorld, memorySource, slots) {
     for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
         const { key, memoryKey = key } = slot;
@@ -20,4 +14,7 @@ export function buildAgentRemembered(memoryWorld, memorySource, slots) {
         remembered[key] = memorySource?.[memoryKey] ? (memoryWorld?.[memoryKey] ?? null) : null;
     }
     return remembered;
+}
+export function buildAgentRemembered(memoryWorld, memorySource, slots) {
+    return buildAgentRememberedInto({}, memoryWorld, memorySource, slots);
 }

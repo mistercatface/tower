@@ -1,5 +1,5 @@
 import { isAgentEngaged } from "./agentEngagement.js";
-import { buildAgentRemembered } from "./buildAgentRemembered.js";
+import { buildAgentRememberedInto } from "./buildAgentRemembered.js";
 function resolveEngagedAlly(visibleWorld, remembered, input) {
     let ally = visibleWorld.ally;
     const session = input.session ?? null;
@@ -39,15 +39,18 @@ function copyKnownField(fieldDef, visible, remembered, visibleWorld, known) {
     }
     return visibleWorld[fieldDef.from] ?? remembered[fieldDef.from] ?? fieldDef.default ?? null;
 }
+export function mergeSlotsFromSchemaInto(frame, schema, visibleWorld, memoryWorld, memorySource, input) {
+    buildAgentRememberedInto(frame.remembered, memoryWorld, memorySource, schema.remembered);
+    for (const slotKey of Object.keys(schema.slots)) frame.visible[slotKey] = visibleSlotValue(slotKey, schema.slots[slotKey], visibleWorld, memorySource);
+    if (schema.fields)
+        for (const [fieldKey, fieldDef] of Object.entries(schema.fields)) if (fieldDef.visible != null) frame.visible[fieldKey] = copyVisibleField(fieldDef.visible, visibleWorld, memorySource);
+    for (const [slotKey, slotDef] of Object.entries(schema.slots)) frame.known[slotKey] = mergeKnownSlot(slotKey, slotDef, frame.visible, frame.remembered, visibleWorld, input);
+    if (schema.fields)
+        for (const [fieldKey, fieldDef] of Object.entries(schema.fields))
+            if (fieldDef.known != null) frame.known[fieldKey] = copyKnownField(fieldDef.known, frame.visible, frame.remembered, visibleWorld, frame.known);
+    return frame;
+}
 export function mergeSlotsFromSchema(schema, visibleWorld, memoryWorld, memorySource, input) {
-    const remembered = buildAgentRemembered(memoryWorld, memorySource, schema.remembered);
-    const visible = {};
-    for (const slotKey of Object.keys(schema.slots)) visible[slotKey] = visibleSlotValue(slotKey, schema.slots[slotKey], visibleWorld, memorySource);
-    if (schema.fields)
-        for (const [fieldKey, fieldDef] of Object.entries(schema.fields)) if (fieldDef.visible != null) visible[fieldKey] = copyVisibleField(fieldDef.visible, visibleWorld, memorySource);
-    const known = {};
-    for (const [slotKey, slotDef] of Object.entries(schema.slots)) known[slotKey] = mergeKnownSlot(slotKey, slotDef, visible, remembered, visibleWorld, input);
-    if (schema.fields)
-        for (const [fieldKey, fieldDef] of Object.entries(schema.fields)) if (fieldDef.known != null) known[fieldKey] = copyKnownField(fieldDef.known, visible, remembered, visibleWorld, known);
-    return { visible, remembered, known };
+    const frame = { visible: {}, remembered: {}, known: {} };
+    return mergeSlotsFromSchemaInto(frame, schema, visibleWorld, memoryWorld, memorySource, input);
 }

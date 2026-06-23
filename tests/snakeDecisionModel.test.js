@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSharedConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { buildAgentDecisionContextFor, buildAgentDecisionFrameFor, pickAgentIntentPolicyFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
@@ -160,12 +160,13 @@ describe("committed target effort uses route length", () => {
 describe("threat severity facts (PR6)", () => {
     it("derives severity from distance and flags lethal range", () => {
         applySnakeGameConfig({ shared: { fleeRange: 128, lethalThreatRange: 48 } });
-        assert.equal(deriveThreatState(null, 10, CELL, getSnakeGameConfig()), null);
-        assert.equal(deriveThreatState(snake(1), null, CELL, getSnakeGameConfig()), null);
-        assert.equal(deriveThreatState(snake(1), 4, CELL, getSnakeGameConfig()).severity, 0.5);
-        assert.equal(deriveThreatState(snake(1), 8, CELL, getSnakeGameConfig()).severity, 0);
-        assert.equal(deriveThreatState(snake(1), 2, CELL, getSnakeGameConfig()).lethal, true);
-        assert.equal(deriveThreatState(snake(1), 4, CELL, getSnakeGameConfig()).lethal, false);
+        const shared = getSharedConfig();
+        assert.equal(deriveThreatState(null, 10, CELL, shared), null);
+        assert.equal(deriveThreatState(snake(1), null, CELL, shared), null);
+        assert.equal(deriveThreatState(snake(1), 4, CELL, shared).severity, 0.5);
+        assert.equal(deriveThreatState(snake(1), 8, CELL, shared).severity, 0);
+        assert.equal(deriveThreatState(snake(1), 2, CELL, shared).lethal, true);
+        assert.equal(deriveThreatState(snake(1), 4, CELL, shared).lethal, false);
     });
     it("surfaces threatState on the snapshot without changing the chosen mode", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { decisionWeights: { flee: 400, prey: 300, food: 340, explore: 100 } } }, shared: { fleeRange: 128, lethalThreatRange: 48 } });

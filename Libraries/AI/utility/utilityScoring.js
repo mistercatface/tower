@@ -53,6 +53,10 @@ export function pickBestScoreKey(candidateScores, order) {
     }
     return { chosenKey, chosenScore };
 }
+export function scoreCandidateNetsInto(out, candidateScoreDetails, order) {
+    for (const key of order) out[key] = candidateScoreDetails[key].net;
+    return pickBestScoreKey(out, order);
+}
 export function scoreCandidateSet(candidateScoreDetails, order) {
     const candidateScores = {};
     for (const key of order) {

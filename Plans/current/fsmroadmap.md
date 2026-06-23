@@ -52,7 +52,11 @@ setupSnakeGame → scene spawners → spawnAgentChain.js → createAgentSpecies
 
 Shipped: intent adapter owns reused `visible`, `routeStatus`, `committed`, `reachSteps`, `perceiveWorld`; `createAgentIntentMemory` mutates stable `memoryWorld` + `memorySource`; `targetMemory` refreshes records in place; `perceiveAgentWorldInto` / `buildAgentReachStepsInto`; unified FSM world `{ decisionContext }` (dropped flee spread + `perceiveSource` / `attachDecisionToPerceiveWorld` config flags).
 
-**7B — Decision build — mutate, don't mint** ← **NEXT**
+**7B — Decision build — mutate, don't mint** ✅
+
+Shipped: `createAgentDecisionContextFrame` per intent; `buildAgentDecisionContextInto` mutates in place; `mergeSlotsFromSchemaInto`, `routeEventsInto`, `deriveThreatStateInto`, `deriveAllyStateInto`; hot path nets-only pick (`scoreCandidateNetsInto`, no `candidateScoreDetails`); `getThreatConfig()` deleted; `deriveThreatState` reads `getSharedConfig()` directly.
+
+**7C — FSM tail** ← **NEXT**
 
 This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`frame.md`](frame.md) and [`objects.md`](objects.md):
 
@@ -67,13 +71,12 @@ This is not "add scratch objects everywhere." Wrong fix. Right fix matches [`fra
 **Per-tick smell remaining (one agent):**
 
 ```text
-buildAgentDecisionContext → spread input, mergeSlots → 3 new slot bags,
-                            routeEvents [], score maps, full ctx
 createAgentIntent         → makeContext ×2, policy spread, effects closures
 memory.snapshot()         → still allocates (cold/debug path ok later)
 ```
 
 ~~Fixed in 7A:~~ perceive visible bag, enrichWorld spread, routeStatus object, reachSteps map, flee world spread.
+~~Fixed in 7B:~~ fresh decisionContext, mergeSlots `{}` bags, routeEvents `[]`, getThreatConfig spread, score detail maps on hot path.
 
 **A. Collapse the bag chain (perceive → decide)** ✅
 
@@ -85,7 +88,7 @@ memory.snapshot()         → still allocates (cold/debug path ok later)
 | `agentWorldPerception.js` | Write into intent-owned visible frame (or accept out-buffer from adapter). |
 | `groundNavIntentProfiles.js` | Drop `perceiveSource: "memory"` / `attachDecisionToPerceiveWorld` split — one shape. |
 
-**B. Decision build — mutate, don't mint**
+**B. Decision build — mutate, don't mint** ✅
 
 | File | Change |
 |------|--------|
@@ -133,7 +136,7 @@ Manual: run snake + flee decision/FSM suites; no behavior change, allocation sha
 
 ### 8 — Flow locomotion
 
-**Gate:** Step 7 complete (7A ✅ · 7B/C pending). Flow blocked until then.
+**Gate:** Step 7 complete (7A ✅ · 7B ✅ · 7C pending). Flow blocked until then.
 
 **Problem:** Flee escape/regroup uses cell-pick heuristics; crowds want smooth local flow.
 

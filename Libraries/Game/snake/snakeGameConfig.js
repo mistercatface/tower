@@ -11,10 +11,6 @@ export function getSnakeGameConfig() {
 export function getSharedConfig(config = getSnakeGameConfig()) {
     return config.shared ?? {};
 }
-export function getThreatConfig(config = getSnakeGameConfig()) {
-    const shared = getSharedConfig(config);
-    return { ...shared, visionRange: shared.visionRange };
-}
 export function resolveSnakeBodyConfig(config = getSnakeGameConfig()) {
     const snake = config.agentProfiles.snake;
     return {

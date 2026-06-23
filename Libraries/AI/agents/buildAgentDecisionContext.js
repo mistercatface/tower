@@ -1,35 +1,104 @@
-import { buildAgentEventTargets } from "./buildAgentEventTargets.js";
 import { bandFromThresholds } from "./bandFromThresholds.js";
-import { deriveAllyState } from "./deriveAllyState.js";
-import { deriveThreatState } from "./deriveThreatState.js";
-import { mergeSlotsFromSchema } from "./mergeSlotsFromSchema.js";
+import { deriveAllyStateInto } from "./deriveAllyState.js";
+import { deriveThreatStateInto } from "./deriveThreatState.js";
+import { mergeSlotsFromSchemaInto } from "./mergeSlotsFromSchema.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { deriveSprintIntent } from "./deriveSprintIntent.js";
-import { pushTargetEvents, routeEvents, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
-import { pickBestScoreKey, scoreCandidateSet } from "../utility/utilityScoring.js";
+import { pushTargetEvents, routeEventsInto, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
+import { pickBestScoreKey, scoreCandidateNetsInto, scoreCandidateSet } from "../utility/utilityScoring.js";
+import { getAgentProfile } from "./agentProfile.js";
+import { getSharedConfig } from "../../Game/snake/snakeGameConfig.js";
 const EMPTY_AGENT_REACH_STEPS = Object.freeze({ threat: null, prey: null, enemy: null, food: null, ally: null });
-export function buildAgentDecisionFrame(spec, input) {
-    const schema = spec.decisionSchema();
-    const { visibleWorld, memoryWorld = null, memorySource = null, committedTarget = null, routeStatus = null, reachSteps = null, foodFraction = null, hungerTier = null, threatState = null } = input;
-    const { visible, remembered, known } = mergeSlotsFromSchema(schema, visibleWorld, memoryWorld, memorySource, input);
-    const resolvedReachSteps = reachSteps ?? EMPTY_AGENT_REACH_STEPS;
-    const events = routeEvents(routeStatus);
-    for (const { kind, visibleTarget, rememberedTarget } of buildAgentEventTargets(visible, remembered, visibleWorld, schema.eventTargets))
-        pushTargetEvents(events, kind, visibleTarget, rememberedTarget);
-    for (const [mode, slotKey] of Object.entries(schema.targetLost)) if (!known[slotKey] && committedTarget?.mode === mode) events.push("TARGET_LOST");
+function pushSchemaEventTargets(events, visible, remembered, visibleWorld, eventTargets) {
+    for (let i = 0; i < eventTargets.length; i++) {
+        const slot = eventTargets[i];
+        if (typeof slot === "string") {
+            pushTargetEvents(events, slot, visible[slot] ?? visibleWorld[slot] ?? null, remembered[slot] ?? null);
+            continue;
+        }
+        const { kind, visible: pickVisible, remembered: pickRemembered } = slot;
+        pushTargetEvents(
+            events,
+            kind,
+            pickVisible ? pickVisible(visible, remembered, visibleWorld) : visibleWorld[kind],
+            pickRemembered ? pickRemembered(visible, remembered, visibleWorld) : remembered[kind],
+        );
+    }
+}
+function writeScoringEnvInto(env, profile) {
+    env.cohesion = profile.factionCohesion ?? {};
+    if (profile.scoringEnv?.effortFallback) env.effortFallback = profile.decisionPressure;
+    else delete env.effortFallback;
+    if (profile.scoringEnv?.sprint) env.sprint = profile.sprint;
+    else delete env.sprint;
+    return env;
+}
+export function createAgentDecisionContextFrame(profileId) {
+    const schema = getAgentProfile(profileId).decision;
+    const visible = {};
+    const remembered = {};
+    const known = {};
+    const candidateScores = {};
+    for (const slotKey of Object.keys(schema.slots)) {
+        visible[slotKey] = null;
+        known[slotKey] = null;
+    }
+    for (const [fieldKey, fieldDef] of Object.entries(schema.fields ?? {})) {
+        if (fieldDef.visible != null) visible[fieldKey] = fieldDef.visible.default ?? null;
+        if (fieldDef.known != null) known[fieldKey] = fieldDef.known.default ?? null;
+    }
+    for (const slot of schema.remembered) remembered[slot.key] = slot.constant ?? null;
+    for (const mode of schema.scoreOrder) candidateScores[mode] = -Infinity;
     return {
-        known,
+        visible,
         remembered,
-        reachSteps: resolvedReachSteps,
-        committedTarget,
-        routeStatus,
-        foodFraction,
-        hungerTier,
-        threatState,
-        allyState: deriveAllyState(visibleWorld, known, memorySource, spec.allySession?.(input) ?? null, resolvedReachSteps[spec.allyReachKey ?? "ally"]),
-        events,
-        ...(spec.extraFacts?.(input) ?? {}),
+        known,
+        candidateScores,
+        events: [],
+        threatState: null,
+        threatScratch: { dist: 0, severity: 0, lethal: false },
+        allyState: { ally: null, dist: null, count: 0, centroid: null, visible: false, remembered: false, engagement: null, leadworthy: false },
+        scoringEnv: { cohesion: {} },
+        reachSteps: EMPTY_AGENT_REACH_STEPS,
+        committedTarget: null,
+        routeStatus: null,
+        foodFraction: null,
+        hungerTier: null,
+        chosenIntent: null,
+        chosenReason: null,
+        targetId: null,
+        sprintIntent: null,
+        candidateScoreDetails: null,
+        policyLatch: null,
+        engagementState: null,
+        safetyState: null,
+        recentFailures: [],
+        seekerFaction: null,
+        seekerSegmentCount: null,
     };
+}
+export function buildAgentDecisionFrameInto(ctx, spec, input) {
+    const schema = spec.decisionSchema();
+    mergeSlotsFromSchemaInto(ctx, schema, input.visibleWorld, input.memoryWorld ?? null, input.memorySource ?? null, input);
+    ctx.reachSteps = input.reachSteps ?? EMPTY_AGENT_REACH_STEPS;
+    ctx.committedTarget = input.committedTarget ?? null;
+    ctx.routeStatus = input.routeStatus ?? null;
+    ctx.foodFraction = input.foodFraction ?? null;
+    ctx.hungerTier = input.hungerTier ?? null;
+    ctx.threatState = deriveThreatStateInto(ctx.threatScratch, input.visibleWorld?.threat, input.reachSteps?.threat, input.cellSize ?? 16, getSharedConfig());
+    routeEventsInto(ctx.events, input.routeStatus);
+    pushSchemaEventTargets(ctx.events, ctx.visible, ctx.remembered, input.visibleWorld, schema.eventTargets);
+    for (const [mode, slotKey] of Object.entries(schema.targetLost)) if (!ctx.known[slotKey] && input.committedTarget?.mode === mode) ctx.events.push("TARGET_LOST");
+    deriveAllyStateInto(ctx.allyState, input.visibleWorld, ctx.known, input.memorySource ?? null, spec.allySession?.(input) ?? null, ctx.reachSteps[spec.allyReachKey ?? "ally"]);
+    const extra = spec.extraFacts?.(input);
+    if (extra) {
+        ctx.safetyState = extra.safetyState ?? null;
+        ctx.recentFailures = extra.recentFailures ?? [];
+        ctx.seekerFaction = extra.seekerFaction ?? null;
+        ctx.seekerSegmentCount = extra.seekerSegmentCount ?? null;
+        ctx.engagementState = extra.engagementState ?? null;
+    }
+    return ctx;
 }
 export function pickAgentIntentPolicy(ctx, scores, spec) {
     const schema = spec.decisionSchema();
@@ -39,25 +108,37 @@ export function pickAgentIntentPolicy(ctx, scores, spec) {
     const slotKey = schema.targetLost[mode];
     return intentPolicy(mode, ctx.known[slotKey].id, policyReasonForTarget(ctx, slotKey));
 }
-export function buildAgentDecisionContext(spec, input) {
+export function buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDetails = false } = {}) {
     const schema = spec.decisionSchema();
     const foodFraction = input.foodFraction ?? null;
     const hungerTier = bandFromThresholds(foodFraction, spec.hungerBands());
-    const threatState = deriveThreatState(input.visibleWorld.threat, input.reachSteps?.threat, input.cellSize ?? 16, spec.threatConfig());
-    const ctx = buildAgentDecisionFrame(spec, { ...input, foodFraction, hungerTier, threatState });
+    buildAgentDecisionFrameInto(ctx, spec, { ...input, foodFraction, hungerTier });
     const weights = spec.weights();
     const pressure = spec.pressure();
-    const env = spec.scoringEnv?.() ?? {};
-    const scoredCandidates = scoreCandidateSet(scoreDecisionCandidateDetails(ctx, schema, weights, pressure, env), schema.scoreOrder);
+    writeScoringEnvInto(ctx.scoringEnv, getAgentProfile(spec.profileId));
+    const details = scoreDecisionCandidateDetails(ctx, schema, weights, pressure, ctx.scoringEnv);
     const pickPolicy = input.pickPolicy ?? ((frame, scores) => pickAgentIntentPolicy(frame, scores, spec));
-    const chosenIntent = pickPolicy(ctx, scoredCandidates.candidateScores);
-    spec.afterPick?.(ctx, chosenIntent, input);
-    const sprintIntent = deriveSprintIntent(chosenIntent.mode, ctx, spec.sprintConfig());
-    ctx.candidateScores = scoredCandidates.candidateScores;
-    ctx.candidateScoreDetails = scoredCandidates.candidateScoreDetails;
-    ctx.chosenIntent = chosenIntent;
-    ctx.chosenReason = chosenIntent.reason ?? null;
-    ctx.targetId = chosenIntent.targetId ?? null;
-    ctx.sprintIntent = sprintIntent;
+    if (includeScoreDetails) {
+        const scored = scoreCandidateSet(details, schema.scoreOrder);
+        for (const key of schema.scoreOrder) ctx.candidateScores[key] = scored.candidateScores[key];
+        ctx.candidateScoreDetails = scored.candidateScoreDetails;
+        ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
+    } else {
+        scoreCandidateNetsInto(ctx.candidateScores, details, schema.scoreOrder);
+        ctx.candidateScoreDetails = null;
+        ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
+    }
+    spec.afterPick?.(ctx, ctx.chosenIntent, input);
+    ctx.sprintIntent = deriveSprintIntent(ctx.chosenIntent.mode, ctx, spec.sprintConfig());
+    ctx.chosenReason = ctx.chosenIntent.reason ?? null;
+    ctx.targetId = ctx.chosenIntent.targetId ?? null;
     return ctx;
+}
+export function buildAgentDecisionFrame(spec, input) {
+    const ctx = createAgentDecisionContextFrame(spec.profileId);
+    return buildAgentDecisionFrameInto(ctx, spec, input);
+}
+export function buildAgentDecisionContext(spec, input) {
+    const ctx = createAgentDecisionContextFrame(spec.profileId);
+    return buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDetails: true });
 }

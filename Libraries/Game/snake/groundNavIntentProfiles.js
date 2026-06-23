@@ -1,7 +1,7 @@
 import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
-import { buildAgentDecisionContextFor } from "../../AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionContextIntoFor, createAgentDecisionContextFrame } from "../../AI/agents/gameDecisionContext.js";
 import { getAgentProfile, AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { resolvePackSteeringOptions } from "./resolvePackSteeringOptions.js";
 import { createGroundNavIntentAdapter, getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
@@ -28,7 +28,7 @@ function resolveCommittedTarget(committedSlots, id, world) {
     }
     return null;
 }
-function buildDecisionInput(profileId, input, deps) {
+function buildDecisionContextInto(profileId, decisionContext, input, deps) {
     const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
     const { resolveHunger, resolveSegmentCount } = deps;
     const decisionInput = {
@@ -45,7 +45,7 @@ function buildDecisionInput(profileId, input, deps) {
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
     if (fields.seekerSegmentCount) decisionInput.seekerSegmentCount = resolveSegmentCount ? resolveSegmentCount() : null;
     if (fields.session) decisionInput.session = state.sandbox?.snakeGame ?? null;
-    return buildAgentDecisionContextFor(profileId, decisionInput);
+    return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
 }
 function setFleeDestination(intent, args, profileId) {
     const { agent, state, world, avoidCell, locomotion, navWalkable, config, brain, rng, resolveExploreCell } = args;
@@ -95,11 +95,13 @@ function buildAdapterOptions(profileId, deps) {
     const intent = profile.intent;
     const shared = getSharedConfig();
     const { selfHeadId, brain, resolveExploreCell, rng, resolveHunger, resolveSegmentCount } = deps;
+    const decisionContext = createAgentDecisionContextFrame(profileId);
     const adapter = {
         reachSlots: intent.reachSlots,
         intentMemoryOptions: intentMemoryOptions(profileId, intent, shared),
         config: shared,
-        buildDecisionContext: (input) => buildDecisionInput(profileId, input, deps),
+        decisionContext,
+        buildDecisionContext: (input) => buildDecisionContextInto(profileId, decisionContext, input, deps),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
         setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable: deps.navWalkable, config: shared, brain, rng, resolveExploreCell }, profileId),
         sprintConfig: profile.sprint,
