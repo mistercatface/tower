@@ -4,13 +4,13 @@ Unlike the completed indirection pass (wrapper/barrel cleanup), this doc tracks 
 
 **Reference win (what “big” feels like):**
 
-| Layer | Before | After |
-|-------|--------|-------|
-| World bounds | Ad-hoc `{ minX, maxX, … }`, fresh objects in loops | `Aabb2D` + `createAabb` + `*Into` scratch (`chunkWorldAabbScratch`, `intersectAabbOptionalInto`) |
-| Grid indices | `gridToWorld()` → `{ x, y }` in hot paths | Scalars on `WorldObstacleGrid` (`worldCol`, `gridCenterX`, …) |
-| Chunk draw | New AABB + camera object per chunk | Pass `viewport`; ground blit skips mutation entirely |
-| Floor belts | Per-cell proxy + closure every frame | Revision cache in `gridStampDrawCache.js` (sync on key, cull + blit per frame) |
-| Frame draw | `worldSceneDrawInput`, `ElevationCamera`, `wallCtx`, px/py soup | `draw*(ctx, state, viewport)` — [`frame.md`](frame.md) |
+| Layer        | Before                                                          | After                                                                                            |
+| ------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| World bounds | Ad-hoc `{ minX, maxX, … }`, fresh objects in loops              | `Aabb2D` + `createAabb` + `*Into` scratch (`chunkWorldAabbScratch`, `intersectAabbOptionalInto`) |
+| Grid indices | `gridToWorld()` → `{ x, y }` in hot paths                       | Scalars on `WorldObstacleGrid` (`worldCol`, `gridCenterX`, …)                                    |
+| Chunk draw   | New AABB + camera object per chunk                              | Pass `viewport`; ground blit skips mutation entirely                                             |
+| Floor belts  | Per-cell proxy + closure every frame                            | Revision cache in `gridStampDrawCache.js` (sync on key, cull + blit per frame)                   |
+| Frame draw   | `worldSceneDrawInput`, `ElevationCamera`, `wallCtx`, px/py soup | `draw*(ctx, state, viewport)` — [`frame.md`](frame.md)                                           |
 
 Those weren’t micro-optimizations — they **picked one dialect** and made whole folders speak it.
 
@@ -76,20 +76,6 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 ---
 
-### 5. Entity `queryView` — pool result arrays per query slot
-
-**Where:** `GameState/EntityRegistry.js`
-
-**What:** Good: `_candidateScratch`, `_kindSetScratch`. Bad: cache miss → **`result = []` + push**; render pass runs **3–5 queries** (debris, floor, 3D, overlays, tiles) and `spatialGen` often bumps between sim and render (`kineticSpatial.begin(state)`).
-
-**Fix:** Fixed result buffers per known query slot (or reuse one buffer with generation tags). Same “Into/scratch” mindset as AABB.
-
-**Touches:** 1 file + call sites that mutate returned arrays. **Payoff:** render pass under entity-heavy scenes.
-
-**Detail:** [`queryview-pooling.md`](queryview-pooling.md) — registry-internal; **not** a call-site normalization (render already mostly goes through `queryPropsInView`).
-
----
-
 ## Tier 3 — Grid edit / invalidation spine (partially done)
 
 ### 6. Unify draw-cache bumps with `GRID_NAV_EPOCH`
@@ -123,29 +109,29 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 ## Explicitly not a “big normalization” (don’t bait yourself)
 
-| Idea | Why skip or defer |
-|------|-------------------|
-| Merge `CellBounds` and `Aabb2D` into one type | Different domains (grid edit vs world space). Bridge already exists. |
-| Overlay command pooling | Real win in editor, but **different pipeline**. Do if editor perf matters. |
-| Delete `animatedSurfaceZone` registry | Dead scaffold — cleanup, not normalization. |
-| First-person / fixed iso modes | New renderer branch (`Plans/rendering.md`), not consolidating overhead path. |
-| Per-agent flow windows for utility reach | Phase 2 locomotion; phase 1 = sync BFS ([`fsm/fsmbfs.md`](fsm/fsmbfs.md)) |
+| Idea                                                        | Why skip or defer                                                                                                                  |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Merge `CellBounds` and `Aabb2D` into one type               | Different domains (grid edit vs world space). Bridge already exists.                                                               |
+| Overlay command pooling                                     | Real win in editor, but **different pipeline**. Do if editor perf matters.                                                         |
+| Delete `animatedSurfaceZone` registry                       | Dead scaffold — cleanup, not normalization.                                                                                        |
+| First-person / fixed iso modes                              | New renderer branch (`Plans/rendering.md`), not consolidating overhead path.                                                       |
+| Per-agent flow windows for utility reach                    | Phase 2 locomotion; phase 1 = sync BFS ([`fsm/fsmbfs.md`](fsm/fsmbfs.md))                                                          |
 | Generic AI slot pipeline / `Libraries/AI/decision/` package | Two consumers — **Part 1** dedupes into concrete `Libraries/AI/*` files, not a framework folder ([`fsm/fsmbfs.md`](fsm/fsmbfs.md)) |
 
 ---
 
 ## Suggested order (ROI × normalization breadth)
 
-| Order | Item | Why first |
-|-------|------|-----------|
-| **0** | **AI consumer dedupe** ([`fsm/fsmbfs.md`](fsm/fsmbfs.md) Part 1) | Gate for flow locomotion; flee must not import snake decision model |
-| **1** | **Prop catalog passthrough** ([`passthrough.md`](passthrough.md) Tier 1) | Kill twin maps + load/getter theater |
-| **2** | **Library defaults getters** ([`library_defaults.md`](library_defaults.md)) | Same pattern as deleted boot getters |
-| **3** | **#6 Floor epoch / draw bump** | Makes grid edits trustworthy |
-| **4** | **#3 Wall buckets** | Sim tick; independent of render |
-| **5** | **#5 Query result pools** | Render entity count scaling |
-| **6** | **#4 Sleep Set → stamp** | Physics GC; easy |
-| **7** | **#7 Unified depth collect** | G7 after frame landed |
+| Order | Item                                                                        | Why first                                                           |
+| ----- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **0** | **AI consumer dedupe** ([`fsm/fsmbfs.md`](fsm/fsmbfs.md) Part 1)            | Gate for flow locomotion; flee must not import snake decision model |
+| **1** | **Prop catalog passthrough** ([`passthrough.md`](passthrough.md) Tier 1)    | Kill twin maps + load/getter theater                                |
+| **2** | **Library defaults getters** ([`library_defaults.md`](library_defaults.md)) | Same pattern as deleted boot getters                                |
+| **3** | **#6 Floor epoch / draw bump**                                              | Makes grid edits trustworthy                                        |
+| **4** | **#3 Wall buckets**                                                         | Sim tick; independent of render                                     |
+| **5** | **#5 Query result pools**                                                   | Render entity count scaling                                         |
+| **6** | **#4 Sleep Set → stamp**                                                    | Physics GC; easy                                                    |
+| **7** | **#7 Unified depth collect**                                                | G7 after frame landed                                               |
 
 ---
 

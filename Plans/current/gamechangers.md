@@ -10,15 +10,15 @@ Cross-cutting refactors with **subsystem-wide payoff** — same spirit as bounds
 
 ## Priority overview
 
-| # | Item | Payoff | Effort | Depends on frame? |
-|---|------|--------|--------|-------------------|
-| **G1** | Forcefields → belt cache pattern | Finishes grid-stamp pipeline | Small | No |
-| **G2** | Floor epoch / draw bump unification | Trustworthy grid edits | Medium | No |
-| **G3** | Wall candidate bucket reuse | Sim tick GC / perf | Medium | No |
-| **G4** | Entity query result pools | Render entity scaling | Small–medium | Helps if frame adds more queries |
-| **G5** | Kinetic sleep / island stamps | Physics tick GC | Small | No |
-| **G6** | ElevationCamera `Into` everywhere | Camera scratch dialect | Tiny | **Yes** — fold into frame Phase 4 |
-| **G7** | Unified depth-sorted collect | One painter entry | Medium | **Yes** — do after frame |
+| #      | Item                                | Payoff                       | Effort       | Depends on frame?                 |
+| ------ | ----------------------------------- | ---------------------------- | ------------ | --------------------------------- |
+| **G1** | Forcefields → belt cache pattern    | Finishes grid-stamp pipeline | Small        | No                                |
+| **G2** | Floor epoch / draw bump unification | Trustworthy grid edits       | Medium       | No                                |
+| **G3** | Wall candidate bucket reuse         | Sim tick GC / perf           | Medium       | No                                |
+| **G4** | Entity query result pools           | Render entity scaling        | Small–medium | Helps if frame adds more queries  |
+| **G5** | Kinetic sleep / island stamps       | Physics tick GC              | Small        | No                                |
+| **G6** | ElevationCamera `Into` everywhere   | Camera scratch dialect       | Tiny         | **Yes** — fold into frame Phase 4 |
+| **G7** | Unified depth-sorted collect        | One painter entry            | Medium       | **Yes** — do after frame          |
 
 **Suggested order:** G1 → [`frame.md`](frame.md) → G2 → G3 → G4 → G5 → G7 (G6 inside frame).
 
@@ -32,10 +32,10 @@ Cross-cutting refactors with **subsystem-wide payoff** — same spirit as bounds
 
 Grid stamps are mandated to: **sync on revision key → stable proxies → viewport cull → `drawCachedPropSprite`**.
 
-| Feature | Sync key | Proxy on rebuild |
-|---------|----------|------------------|
-| Floor belts / power | `floorOccupancyStampDrawCacheKey` | `Object.create(proto)` ✅ |
-| Passage forcefields | `passageEdgeDrawCacheKey` | **`createForcefieldDrawProxy()` fresh literal** ⚠️ |
+| Feature             | Sync key                          | Proxy on rebuild                                   |
+| ------------------- | --------------------------------- | -------------------------------------------------- |
+| Floor belts / power | `floorOccupancyStampDrawCacheKey` | `Object.create(proto)` ✅                          |
+| Passage forcefields | `passageEdgeDrawCacheKey`         | **`createForcefieldDrawProxy()` fresh literal** ⚠️ |
 
 Forcefields already revision-cache and cull — but **`syncPassageEdgeDrawCache` allocates new proxy objects + nested `{ x, y }` on every key change**, and sync lives outside `gridStampDrawCache` while `clearGridStampDrawCaches` clears `_passageEdgeDrawCache` there.
 
@@ -106,26 +106,6 @@ Generation-stamped bucket arrays or fixed bucket ring keyed by `(col, row, pad)`
 
 ---
 
-## G4 — Entity `queryView` result array pooling
-
-**Where:** `GameState/EntityRegistry.js`
-
-### Problem
-
-Cache miss → **`result = []` + push**; render runs **3–5 queries** per pass.
-
-### Fix
-
-Fixed result buffers per known **`filterId`** slot; callers must not retain result reference across frames.
-
-### Review bar
-
-- [ ] Cache miss does not allocate new `[]` for hot filterIds (`debris`, `floor`, `3d`, `overlay`).
-
-**Detail:** [`queryview-pooling.md`](queryview-pooling.md) · perf → [`objects.md`](objects.md) Tier 2 #7.
-
----
-
 ## G5 — Kinetic sleep / islands — `Set` → generation stamp
 
 **Where:** `kineticPhysicsPass.js`, `kineticIslands.js`, `kineticConstraintGraph.js`, `kineticConstraintSolver.js`
@@ -170,21 +150,21 @@ Shared `_rankByDistSq(items, pass.px, pass.py)`; optional single collect + one s
 
 ## Explicitly not game-changers
 
-| Idea | Why |
-|------|-----|
-| Merge `CellBounds` + `Aabb2D` | Different domains; bridges exist |
-| Overlay command list pooling | Editor pipeline; separate from world draw |
+| Idea                                  | Why                                        |
+| ------------------------------------- | ------------------------------------------ |
+| Merge `CellBounds` + `Aabb2D`         | Different domains; bridges exist           |
+| Overlay command list pooling          | Editor pipeline; separate from world draw  |
 | `animatedSurfaceZone` registry delete | Dead scaffold — cleanup, not normalization |
-| First-person / fixed iso render modes | New engine branch (`Plans/rendering.md`) |
+| First-person / fixed iso render modes | New engine branch (`Plans/rendering.md`)   |
 
 ---
 
 ## Related docs
 
-| Doc | Role |
-|-----|------|
-| [`frame.md`](frame.md) | Frame draw pass — **after G1** |
-| [`normalization.md`](normalization.md) | Short audit index |
-| [`objects.md`](objects.md) | Allocation/scratch audit (perf) |
-| `Plans/clean.md` | Sprite cache signatures after pass exists |
-| `.cursor/rules/rendering-pipelines.mdc` | Pipeline law |
+| Doc                                     | Role                                      |
+| --------------------------------------- | ----------------------------------------- |
+| [`frame.md`](frame.md)                  | Frame draw pass — **after G1**            |
+| [`normalization.md`](normalization.md)  | Short audit index                         |
+| [`objects.md`](objects.md)              | Allocation/scratch audit (perf)           |
+| `Plans/clean.md`                        | Sprite cache signatures after pass exists |
+| `.cursor/rules/rendering-pipelines.mdc` | Pipeline law                              |
