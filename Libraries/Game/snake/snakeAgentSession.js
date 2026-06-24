@@ -1,6 +1,6 @@
 import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 export function createSnakeAgentSession(state, { registry, navWalkable, speciesById }) {
-    return { registry, speciesById, instancesByHeadId: registry.instancesByHeadId, engagementByHeadId: new Map(), navWalkable, simTick: 0, lastVisionBeginTick: -1 };
+    return { registry, speciesById, instancesByHeadId: registry.instancesByHeadId, engagementByHeadId: new Map(), navWalkable, simTick: 0, lastVisionBeginTick: -1, focusedInstance: null };
 }
 export function registerAgentInstance(session, speciesId, instance) {
     const def = session.speciesById.get(speciesId);

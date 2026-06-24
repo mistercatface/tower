@@ -19,12 +19,14 @@ function appendAgentRing(out, agent, style) {
 }
 /** Read-only visible threat/prey/ally rings — same LOS pass as combat, no vision cache or sim tick. */
 export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, ctx, config = getSnakeGameConfig()) {
-    if (!ctx?.head) return;
+    const { instance, session, head } = ctx;
+    if (!head) return;
     const visionRange = getSharedConfig(config).visionRange;
     const frame = { navTopology: state.nav.topology, visionSession: null, visionRange };
     const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
-    const world = classifyAgentVision(ctx.head, ctx, state, frame, null, perceptionOptions);
-    const committedTargetId = ctx.getIntentTarget?.()?.targetId ?? null;
+    const agentCtx = { instance, session };
+    const world = classifyAgentVision(head, agentCtx, state, frame, null, perceptionOptions);
+    const committedTargetId = instance.intent?.getTargetId?.() ?? null;
     if (world.threat) appendAgentRing(out, world.threat, agentRingStyle(config, "threat"));
     if (world.prey && world.prey.id !== committedTargetId) appendAgentRing(out, world.prey, agentRingStyle(config, "prey"));
     if (world.ally) appendAgentRing(out, world.ally, agentRingStyle(config, "ally"));

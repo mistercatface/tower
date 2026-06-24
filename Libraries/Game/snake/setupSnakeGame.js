@@ -1,9 +1,8 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
-import { aliveAgentInstances, isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
-import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
+import { createSnakeAgentCameraFocus } from "./snakeAgentCameraFocus.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createAgentPopulationRegistry } from "../../AI/agents/agentPopulationRegistry.js";
 import { createSnakeAgentSession, spawnSpeciesBatch, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
@@ -57,44 +56,28 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         spawnSpeciesBatch(session, state, species, spawnCtxs);
     }
     const centerSnake = scene.snakes[0];
+    const centerInstance = session.instancesByHeadId.get(centerSnake.chain.head.id);
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
     state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
-    const cameraCycler = new CameraTargetCycler(state, {
-        getTargetIds: () => {
-            const ids = [];
-            for (const instance of aliveAgentInstances(registry)) ids.push(instance.headId);
-            return ids;
-        },
+    const cameraFocus = createSnakeAgentCameraFocus(state, session, {
         onTargetChanged: () => {
             hud.update();
         },
     });
-    function resolveFocusedHeadProp() {
-        return cameraCycler.getFocusedProp();
-    }
-    function resolveFocusedAutosim() {
-        const focusedId = cameraCycler.focusedId;
-        const instance = session.instancesByHeadId.get(focusedId);
-        if (instance?.lifecycle !== "alive") return null;
-        return instance.autosim;
-    }
-    function onHeadDied(headId) {
-        if (cameraCycler.focusedId === headId) cameraCycler.setFocusedId(null);
-    }
-    state.sandbox.snakeGame.onHeadDied = onHeadDied;
+    session.onAgentDied = (instance) => cameraFocus.onAgentDied(instance);
     const getSegmentCount = () => {
-        const focusedId = cameraCycler.focusedId;
-        if (!isAliveAgentHead(registry, focusedId)) return 0;
-        return getConnectedBodyIds(state.kinetic, focusedId).length;
+        const instance = cameraFocus.getFocusedInstance();
+        if (!instance) return 0;
+        return getConnectedBodyIds(state.kinetic, instance.headId).length;
     };
     const getFocusedSnakeName = () => {
-        const focusedId = cameraCycler.focusedId;
-        if (!focusedId) return "No Target";
-        return resolveAgentName(focusedId, "Snake");
+        const instance = cameraFocus.getFocusedInstance();
+        if (!instance) return "No Target";
+        return resolveAgentName(instance.headId, "Snake");
     };
     const hud = mountSnakeHud({
-        onCycleCamera: () => cameraCycler.cycle(),
+        onCycleCamera: () => cameraFocus.cycle(),
         getFocusedSnakeName,
         renderModeControl: {
             get() {
@@ -137,28 +120,28 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         gameState: state,
         onVisualSettingChange: markLabViewDirty,
     });
-    cameraCycler.setFocusedId(centerSnake.chain.head.id);
-    cameraCycler.bindInput();
+    cameraFocus.setFocusedInstance(centerInstance);
+    cameraFocus.bindInput();
     hud.update();
     return {
         initialViewportZoom: GAME_MODE_ZOOM_DEFAULT,
         snakes: scene.snakes,
-        getFocusedHeadId: () => cameraCycler.focusedId,
-        getFocusedSnakeHead: resolveFocusedHeadProp,
+        getFocusedInstance: () => cameraFocus.getFocusedInstance(),
+        getFocusedHead: () => cameraFocus.getFocusedInstance()?.head ?? null,
         cameraTarget: centerSnake.chain.head,
-        cycleCameraFocus: () => cameraCycler.cycle(),
+        cycleCameraFocus: () => cameraFocus.cycle(),
         focusAgentFromProp(propId) {
             const instance = resolveAliveAgentInstanceFromProp(state, propId);
             if (!instance) return false;
-            if (cameraCycler.focusedId === instance.headId) {
+            if (cameraFocus.getFocusedInstance() === instance) {
                 state.viewport.snapTo(instance.head.x, instance.head.y);
                 return true;
             }
-            cameraCycler.setFocusedId(instance.headId);
+            cameraFocus.setFocusedInstance(instance);
             return true;
         },
         releaseCameraFocus() {
-            cameraCycler.setFocusedId(null);
+            cameraFocus.clear();
             state.sandbox.controller?.session?.clearSelection();
             hud.update();
         },
@@ -177,7 +160,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             hud.update();
         },
         appendOverlayCommands(out, gameState) {
-            appendSnakeGameOverlayCommands(out, gameState, { focusedHeadId: cameraCycler.focusedId });
+            appendSnakeGameOverlayCommands(out, gameState, { focusedInstance: cameraFocus.getFocusedInstance() });
         },
         applyContactSideEffects(tick, contacts) {
             applyKineticContactSideEffects(tick, contacts);
@@ -191,7 +174,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
         },
         stop() {
-            cameraCycler.destroy();
+            cameraFocus.destroy();
             const snakeGame = state.sandbox.snakeGame;
             if (snakeGame) stopAllAgents(snakeGame, state);
             hud.destroy();

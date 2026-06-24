@@ -20,9 +20,17 @@ export function resolveCommittedTargetWorld(state, intentTarget) {
     }
     return null;
 }
+function readIntentTarget(instance) {
+    const intent = instance.intent;
+    if (!intent) return null;
+    return {
+        mode: intent.getMode?.() ?? null,
+        targetId: intent.getTargetId?.() ?? null,
+        destination: intent.getDestination?.() ?? null,
+    };
+}
 export function appendFocusedAgentTargetOverlayCommands(out, state, ctx, config = getSnakeGameConfig()) {
-    const intentTarget = ctx.getIntentTarget?.();
-    const target = resolveCommittedTargetWorld(state, intentTarget);
+    const target = resolveCommittedTargetWorld(state, readIntentTarget(ctx.instance));
     if (!target) return;
     const style = focusedTargetRingStyle(config);
     const radius = target.kind === "entity" ? target.radius + style.entityPad : target.radius * style.cellScale;
