@@ -56,7 +56,7 @@ const FLEE_INTENT = {
 export const SNAKE_GAME_DEFAULTS = {
     snakeCount: 32,
     boidCount: 96,
-    squidCount: 8,
+    squidCount: 1,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,
