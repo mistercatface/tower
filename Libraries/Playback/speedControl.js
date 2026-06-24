@@ -79,15 +79,31 @@ export function applySpeedControl(host, options = {}) {
         elements.speedUpBtn?.addEventListener("click", () => playbackHandlers.adjustSpeed(resolveStep()));
         elements.pauseBtn?.addEventListener("click", () => playbackHandlers.togglePause());
     }
+    let lastPauseLabel = null;
+    let lastSpeedLabel = null;
+    let lastCanDecrease = null;
+    let lastCanIncrease = null;
     return {
         root,
         refresh(state) {
             clampSelectedSpeed(state);
             const view = getSpeedControlView(state);
-            if (elements.pauseLabel) elements.pauseLabel.textContent = view.pauseLabel;
-            if (elements.speedLabel) elements.speedLabel.textContent = view.speedLabel;
-            if (elements.speedDownBtn) elements.speedDownBtn.classList.toggle("is-at-limit", !view.canDecrease);
-            if (elements.speedUpBtn) elements.speedUpBtn.classList.toggle("is-at-limit", !view.canIncrease);
+            if (elements.pauseLabel && lastPauseLabel !== view.pauseLabel) {
+                elements.pauseLabel.textContent = view.pauseLabel;
+                lastPauseLabel = view.pauseLabel;
+            }
+            if (elements.speedLabel && lastSpeedLabel !== view.speedLabel) {
+                elements.speedLabel.textContent = view.speedLabel;
+                lastSpeedLabel = view.speedLabel;
+            }
+            if (elements.speedDownBtn && lastCanDecrease !== view.canDecrease) {
+                elements.speedDownBtn.classList.toggle("is-at-limit", !view.canDecrease);
+                lastCanDecrease = view.canDecrease;
+            }
+            if (elements.speedUpBtn && lastCanIncrease !== view.canIncrease) {
+                elements.speedUpBtn.classList.toggle("is-at-limit", !view.canIncrease);
+                lastCanIncrease = view.canIncrease;
+            }
         },
     };
 }

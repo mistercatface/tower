@@ -4,10 +4,8 @@ import { getNavWalkableCellIndex, pickWalkableCell, createNavWalkableAccess } fr
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellIndices, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
 import { withSeededRandom } from "../../Random/index.js";
-import { applyPlayAreaConfig, generateLabCaverns, generateLabRailDfsMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
-import { planRailMazeCorridorBelts } from "../../Procedural/Mazes/railMazeCorridorBelts.js";
-import { stampGlobalRailMazeBelts } from "../../Procedural/Mazes/stampGlobalRailMazeBelts.js";
-import { commitGridNavEdit, commitGridNavEditUnion } from "../../Sandbox/gridNavEdit.js";
+import { applyPlayAreaConfig, generateLabCaverns, generateLabRailMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
+import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
@@ -130,28 +128,22 @@ export async function generateSnakeSplitMap(state) {
     if (config.rail.edgeThickness != null) railConfig.edgeThickness = config.rail.edgeThickness;
     await generateLabCaverns(state, { openBoundarySides: { south: true }, openBoundaryRows: cavern.openBoundaryRows ?? 2 });
     const rail = config.rail;
-    await generateLabRailDfsMaze(state, {
+    const playable = resolveSnakePlayableBounds(state);
+    const floodSeed = resolveSnakeNavWalkableFloodSeedBounds(state);
+    const navWalkableIndex = getNavWalkableCellIndex(state, playable, floodSeed);
+    await generateLabRailMaze(state, {
+        boundsConfig: railConfig,
         railWallHeightLevel: rail.wallHeightLevel,
         railWallThicknessLevel: rail.edgeThickness,
         corridorWidthMin: rail.corridorWidthMin ?? 1,
         corridorWidthMax: rail.corridorWidthMax ?? 2,
         extraLinkRatio: rail.extraLinkRatio,
         northReserveRows: cavern.openBoundaryRows ?? 3,
+        floodSeedBounds: floodSeed,
+        navWalkableIndex,
     });
     const paddingBounds = clearSnakeRegionPaddingStrip(state, cavern.regionPaddingCells ?? 4);
-    const playable = resolveSnakePlayableBounds(state);
-    const floodSeed = resolveSnakeNavWalkableFloodSeedBounds(state);
-    const navWalkableIndex = getNavWalkableCellIndex(state, playable, floodSeed);
-    const beltPlan = planRailMazeCorridorBelts({
-        grid: state.obstacleGrid,
-        navTopology: state.nav.topology,
-        railConfig,
-        northReserveRows: cavern.openBoundaryRows ?? 3,
-        navWalkableIndex,
-        mapSeed: state.mapSeed,
-    });
-    const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
-    await commitGridNavEditUnion(state, paddingBounds, beltBounds);
+    await commitGridNavEdit(state, paddingBounds);
     cavernConfig.wallHeightLevel = prevCavernWallHeightLevel;
     railConfig.wallHeightLevel = prevRailWallHeightLevel;
     cavernConfig.fillChance = prevCavernFillChance;

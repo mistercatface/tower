@@ -1,4 +1,4 @@
-import { formatSandboxSpawnLabel  } from "../../Props/PropCatalog.js";
+import { formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
 import { sandboxAssetTags } from "../../Sandbox/sandboxCapabilities.js";
 import propCatalog from "../../../Assets/props/index.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [
@@ -8,7 +8,7 @@ export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "gen", label: "Gen" },
     { id: "rooms", label: "Rooms" },
 ];
-const PLACE_PALETTE_TAGS_BY_KEY = { "wall:voxel": ["gen"], "wall:rail": ["gen"], "gen:cavern": ["gen"], "gen:rail": ["gen"], "gen:erase": ["gen"] };
+const PLACE_PALETTE_TAGS_BY_KEY = { "wall:voxel": ["gen"], "wall:rail": ["gen"], "gen:cavern": ["gen"], "gen:rail": ["gen"], "gen:railMaze": ["gen"], "gen:erase": ["gen"] };
 function resolvePlacePaletteTags(paletteKey, asset = null) {
     const keyed = PLACE_PALETTE_TAGS_BY_KEY[paletteKey];
     if (keyed) return keyed;
@@ -28,6 +28,7 @@ const WALL_PALETTE_SWATCHES = { voxel: "#78716c", rail: "#57534e", forcefield: "
 const MAP_GEN_PALETTE_OPTIONS = [
     { key: "gen:cavern", genKind: "cavern", label: "Cavern generation", swatch: "#ff9800", glyph: "Cv" },
     { key: "gen:rail", genKind: "rail", label: "Rail wall generation", swatch: "#e040fb", glyph: "Rw" },
+    { key: "gen:railMaze", genKind: "railMaze", label: "Rail maze generation", swatch: "#ba68c8", glyph: "Rz" },
     { key: "gen:erase", genKind: "erase", label: "Wall eraser", swatch: "#f44336", glyph: "Er" },
 ];
 function resolvePropPaletteSwatch(asset) {

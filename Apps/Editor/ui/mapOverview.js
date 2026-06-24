@@ -22,6 +22,7 @@ export function activeMapGenKind(state) {
     const key = state.sandbox.controller?.getPlacePaletteKey();
     if (key === "gen:cavern") return "cavern";
     if (key === "gen:rail") return "rail";
+    if (key === "gen:railMaze") return "railMaze";
     if (key === "gen:erase") return "erase";
     return null;
 }

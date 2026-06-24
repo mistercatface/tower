@@ -5,7 +5,10 @@ import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index
 import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { generateCavernOccupancy } from "../../../Libraries/Procedural/Mazes/cavernOccupancy.js";
 import { stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/stampRailWalls.js";
-import { commitGridNavEdit } from "../../../Libraries/Sandbox/gridNavEdit.js";
+import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Sandbox/gridNavEdit.js";
+import { planRailMazeCorridorBelts } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
+import { stampGlobalRailMazeBelts } from "../../../Libraries/Procedural/Mazes/stampGlobalRailMazeBelts.js";
+import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -13,7 +16,19 @@ import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellT
 import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/grid/gridNavEpoch.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
-import { MAP_GEN_KINDS, applyMapGenShapeMask, forEachGlobalCellInMapGenBounds, getInnerRadiusCells, getMapGenBoundsAabb, getMapGenBoundsCenterWorld, getMapGenBoundsStampExtent, isGlobalCellInMapGenBounds, migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, getMapGenBoundsConfig } from "../../../Libraries/Sandbox/mapGenBounds.js";
+import {
+    MAP_GEN_KINDS,
+    applyMapGenShapeMask,
+    forEachGlobalCellInMapGenBounds,
+    getInnerRadiusCells,
+    getMapGenBoundsAabb,
+    getMapGenBoundsCenterWorld,
+    getMapGenBoundsStampExtent,
+    isGlobalCellInMapGenBounds,
+    migrateMapGenBoundsForMode,
+    syncMapGenBoundsFromPlay,
+    getMapGenBoundsConfig,
+} from "../../../Libraries/Sandbox/mapGenBounds.js";
 export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 const CLEAR_CIRCLE_BOUNDS = createAabb();
 /** @param {number} cells */
@@ -312,6 +327,66 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     await commitGridNavEdit(state, damageBounds);
+    state.floorSeed = state.mapSeed;
+    state.worldSurfaces.clearBakeCache();
+}
+export async function generateLabRailMaze(state, options = {}) {
+    const config = options.boundsConfig ?? state.editor.railMazeConfig;
+    const cellSize = gridSettings.cellSize;
+    const stampBoundsAabb = getMapGenBoundsAabb(config, cellSize);
+    ensureLabObstacleGridCoverage(state, stampBoundsAabb);
+    const grid = state.obstacleGrid;
+    const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
+    const { col: baseCol, row: baseRow } = grid.worldToGrid(originCol * cellSize, originRow * cellSize);
+    const startCol = Math.max(0, baseCol);
+    const endCol = Math.min(grid.cols - 1, baseCol + cols - 1);
+    const startRow = Math.max(0, baseRow);
+    const endRow = Math.min(grid.rows - 1, baseRow + rows - 1);
+    clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow);
+    const railWallHeightLevel = options.railWallHeightLevel ?? config.wallHeightLevel;
+    const railWallThicknessLevel = options.railWallThicknessLevel ?? config.edgeThickness;
+    const corridorWidthMin = options.corridorWidthMin ?? config.corridorWidthMin;
+    const corridorWidthMax = options.corridorWidthMax ?? config.corridorWidthMax;
+    const extraLinkRatio = options.extraLinkRatio ?? config.extraLinkRatio;
+    const northReserveRows = options.northReserveRows ?? config.northReserveRows;
+    let rails = bakeRailMazeDfs(
+        { originCol, originRow, cols, rows },
+        { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio, northReserveRows },
+        state.mapSeed,
+    );
+    if (config.boundsMode !== "rect")
+        rails = rails.filter((wall) => {
+            const inCell = isGlobalCellInMapGenBounds(config, wall.col, wall.row);
+            let inNeighbor = false;
+            if (wall.side === 0) inNeighbor = isGlobalCellInMapGenBounds(config, wall.col, wall.row - 1);
+            else if (wall.side === 1) inNeighbor = isGlobalCellInMapGenBounds(config, wall.col + 1, wall.row);
+            else if (wall.side === 2) inNeighbor = isGlobalCellInMapGenBounds(config, wall.col, wall.row + 1);
+            else if (wall.side === 3) inNeighbor = isGlobalCellInMapGenBounds(config, wall.col - 1, wall.row);
+            return inCell || inNeighbor;
+        });
+
+    stampGlobalRailWalls(state, rails, { commit: false });
+    const northRows = Math.max(0, Math.round(northReserveRows ?? 0));
+    let northBounds = null;
+    if (northRows > 0) northBounds = clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, northRows);
+
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    let damageBounds = { startCol, endCol, startRow, endRow };
+    if (northBounds) damageBounds = unionCellBounds(damageBounds, northBounds);
+    if (config.boundsMode === "donut") {
+        const innerR = getInnerRadiusCells(config) * cellSize;
+        const center = getMapGenBoundsCenterWorld(config, cellSize);
+        const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, innerR);
+        if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
+    }
+    await commitGridNavEdit(state, damageBounds);
+    const centerCol = config.boundsMode === "rect" ? config.boundsCol + Math.floor(config.boundsCols / 2) : config.centerCol;
+    const centerRow = config.boundsMode === "rect" ? config.boundsRow + Math.floor(config.boundsRows / 2) : config.centerRow;
+    const floodSeedBounds = options.floodSeedBounds ?? { boundsMode: "rect", boundsCol: centerCol, boundsRow: centerRow, boundsCols: 1, boundsRows: 1 };
+    const navWalkableIndex = options.navWalkableIndex ?? getNavWalkableCellIndex(state, config, floodSeedBounds);
+    const beltPlan = planRailMazeCorridorBelts({ grid, navTopology: state.nav.topology, railConfig: config, northReserveRows: northRows, navWalkableIndex, mapSeed: state.mapSeed });
+    const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
+    await commitGridNavEditUnion(state, damageBounds, beltBounds);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }

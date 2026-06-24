@@ -1,7 +1,7 @@
 import { createAabb, minCornerAabbInto } from "../Math/Aabb2D.js";
 import { worldBoundsFromCellOriginInto } from "../Spatial/grid/GridCoords.js";
-export const MAP_GEN_KINDS = ["cavern", "rail", "erase"];
-export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", erase: "#f44336" };
+export const MAP_GEN_KINDS = ["cavern", "rail", "railMaze", "erase"];
+export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", railMaze: "#ba68c8", erase: "#f44336" };
 export function createDefaultMapGenBoundsConfig() {
     return { boundsMode: "rect", boundsCol: -8, boundsRow: -8, boundsCols: 32, boundsRows: 32, centerCol: 8, centerRow: 8, outerRadiusCells: 16, donutThicknessCells: 4 };
 }
@@ -123,6 +123,7 @@ export function refreshMapGenBoundsAabb(cache, config, cellSize) {
 export function getMapGenBoundsConfig(editor, kind) {
     if (kind === "cavern") return editor.cavernConfig;
     if (kind === "rail") return editor.railConfig;
+    if (kind === "railMaze") return editor.railMazeConfig;
     return editor.eraseConfig;
 }
 export function getMapGenBoundsAabbCache(editor, kind) {

@@ -228,6 +228,64 @@ function buildRailGenEditor(panel, state, onPreviewChange, onGenerated, generate
         { className: "editor-tools-row" },
     );
 }
+function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, generateRailMaze) {
+    mapGenBoundInputs.length = 0;
+    const { railMazeConfig } = state.editor;
+    const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
+    appendMapGenBoundsControls(panel, railMazeConfig, state, "Light purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
+    panel.appendChild(
+        new SliderControl("Wall thickness", 1, 4, 1, railMazeConfig.edgeThickness, (val) => {
+            railMazeConfig.edgeThickness = val;
+        }).element,
+    );
+    panel.appendChild(
+        new SliderControl("Wall height", 1, maxWallHeightLevel, 1, railMazeConfig.wallHeightLevel, (val) => {
+            railMazeConfig.wallHeightLevel = val;
+        }).element,
+    );
+    panel.appendChild(
+        new SliderControl("Min corridor width", 1, 4, 1, railMazeConfig.corridorWidthMin, (val) => {
+            railMazeConfig.corridorWidthMin = val;
+            if (railMazeConfig.corridorWidthMax < val) railMazeConfig.corridorWidthMax = val;
+        }).element,
+    );
+    panel.appendChild(
+        new SliderControl("Max corridor width", 1, 4, 1, railMazeConfig.corridorWidthMax, (val) => {
+            railMazeConfig.corridorWidthMax = Math.max(railMazeConfig.corridorWidthMin, val);
+        }).element,
+    );
+    panel.appendChild(
+        new SliderControl(
+            "Extra link ratio",
+            0,
+            1,
+            0.05,
+            railMazeConfig.extraLinkRatio,
+            (val) => {
+                railMazeConfig.extraLinkRatio = val;
+            },
+            (v) => `${Math.round(v * 100)}%`,
+        ).element,
+    );
+    panel.appendChild(
+        new SliderControl("North reserve rows", 0, 8, 1, railMazeConfig.northReserveRows, (val) => {
+            railMazeConfig.northReserveRows = val;
+        }).element,
+    );
+    appendActionRow(
+        panel,
+        [
+            {
+                label: "Generate rail maze",
+                variant: "",
+                onClick: () => {
+                    void generateRailMaze().then(onGenerated);
+                },
+            },
+        ],
+        { className: "editor-tools-row" },
+    );
+}
 function buildEraseEditor(panel, state, onPreviewChange, onGenerated, eraseWalls) {
     mapGenBoundInputs.length = 0;
     const { eraseConfig } = state.editor;
@@ -252,8 +310,9 @@ function buildEraseEditor(panel, state, onPreviewChange, onGenerated, eraseWalls
         { className: "editor-tools-row" },
     );
 }
-export function appendMapGenEditor(parent, state, kind, { onGenerated, onPreviewChange, generateCaverns, generateRails, eraseWalls }) {
+export function appendMapGenEditor(parent, state, kind, { onGenerated, onPreviewChange, generateCaverns, generateRails, generateRailMaze, eraseWalls }) {
     if (kind === "cavern") buildCavernGenEditor(parent, state, onPreviewChange, onGenerated, generateCaverns);
     else if (kind === "rail") buildRailGenEditor(parent, state, onPreviewChange, onGenerated, generateRails);
+    else if (kind === "railMaze") buildRailMazeGenEditor(parent, state, onPreviewChange, onGenerated, generateRailMaze);
     else buildEraseEditor(parent, state, onPreviewChange, onGenerated, eraseWalls);
 }
