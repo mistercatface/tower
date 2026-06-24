@@ -22,9 +22,9 @@ function buildVisibleSourceResolvers(profile) {
         const accept = ACCEPT_PREDICATES[config.accept];
         if (!accept) throw new Error(`Unknown accept predicate: ${config.accept}`);
         const categoryId = config.category;
-        resolvers[slotId] = (seeker, state, { frame, visionRange }) => {
+        resolvers[slotId] = (seeker, state, { frame, visionRange, committedTargetId, targetStickyFactor }) => {
             const index = getPropCategoryIndex(state, categoryId);
-            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, accept);
+            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, accept, committedTargetId, targetStickyFactor);
         };
     }
     return resolvers;
