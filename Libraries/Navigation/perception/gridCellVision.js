@@ -1,5 +1,6 @@
 import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
-import { navTopologyGraphCanStep } from "../NavTopology.js";
+import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
+import { navCanStep } from "../../Pathfinding/navTopologySab.js";
 import { gridCellLosCacheKey } from "./gridCellVisionSession.js";
 const HEADING_SPEED_MIN = 0.25;
 export function resolveObserverHeading(prop) {
@@ -13,31 +14,65 @@ export function hasGridCellLineOfSight(navTopology, col0, row0, col1, row1) {
     const grid = navTopology.grid;
     if (!cellInRect(col1, row1, grid.cols, grid.rows)) return false;
     if (col0 === col1 && row0 === row1) return true;
-    let x = col0;
-    let y = row0;
-    const dx = Math.abs(col1 - col0);
-    const dy = Math.abs(row1 - row0);
-    const sx = col0 < col1 ? 1 : -1;
-    const sy = row0 < row1 ? 1 : -1;
-    let err = dx - dy;
-    while (true) {
-        if (x === col1 && y === row1) return true;
-        const e2 = 2 * err;
-        let nx = x;
-        let ny = y;
-        if (e2 > -dy) {
-            err -= dy;
-            nx = x + sx;
+    const cardinalOpen = navTopology.navCardinalOpen;
+    const vertexPassability = navTopology.vertexPassability;
+    if (cardinalOpen && vertexPassability) {
+        let x = col0;
+        let y = row0;
+        const dx = Math.abs(col1 - col0);
+        const dy = Math.abs(row1 - row0);
+        const sx = col0 < col1 ? 1 : -1;
+        const sy = row0 < row1 ? 1 : -1;
+        let err = dx - dy;
+        while (true) {
+            if (x === col1 && y === row1) return true;
+            const e2 = 2 * err;
+            let nx = x;
+            let ny = y;
+            if (e2 > -dy) {
+                err -= dy;
+                nx = x + sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                ny = y + sy;
+            }
+            if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
+            if (boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, x, y, nx, ny)) return false;
+            x = nx;
+            y = ny;
         }
-        if (e2 < dx) {
-            err += dx;
-            ny = y + sy;
-        }
-        if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
-        if (!navTopologyGraphCanStep(navTopology, x, y, nx, ny)) return false;
-        x = nx;
-        y = ny;
     }
+    const frame = navTopology.frame;
+    const topology = navTopology.topology;
+    if (frame && topology) {
+        let x = col0;
+        let y = row0;
+        const dx = Math.abs(col1 - col0);
+        const dy = Math.abs(row1 - row0);
+        const sx = col0 < col1 ? 1 : -1;
+        const sy = row0 < row1 ? 1 : -1;
+        let err = dx - dy;
+        while (true) {
+            if (x === col1 && y === row1) return true;
+            const e2 = 2 * err;
+            let nx = x;
+            let ny = y;
+            if (e2 > -dy) {
+                err -= dy;
+                nx = x + sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                ny = y + sy;
+            }
+            if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
+            if (!navCanStep(frame, topology, x, y, nx, ny)) return false;
+            x = nx;
+            y = ny;
+        }
+    }
+    return false;
 }
 export function hasGridCellLineOfSightCached(visionSession, navTopology, col0, row0, col1, row1) {
     if (!visionSession) return hasGridCellLineOfSight(navTopology, col0, row0, col1, row1);
