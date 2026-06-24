@@ -1,15 +1,14 @@
 import { perceiveAgentWorld, perceiveAgentWorldInto, findNearestVisibleThreat as findAgentThreat } from "../../AI/perception/agentWorldPerception.js";
-import { resolveAgentRelationship } from "./snakeAgentSession.js";
+import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { getSharedConfig } from "./snakeGameConfig.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 export function resolveAgentPerceptionOptions(state, visionRange = null) {
     const shared = getSharedConfig();
     const resolved = visionRange ?? shared.visionRange;
-    const snakeGame = state.sandbox?.snakeGame;
     return {
         readVisionFrame: requireSnakeVisionFrame,
         agentRange: shared.fleeRange ?? resolved.range,
-        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => (snakeGame ? resolveAgentRelationship(snakeGame, selfInstance, targetInstance, distSq) : "neutral"),
+        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, undefined, distSq),
     };
 }
 export function perceiveAgentIntentWorldInto(out, seeker, agentCtx, state, resolveVisibleFood, visionRange = null) {

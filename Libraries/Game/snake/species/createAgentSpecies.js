@@ -31,17 +31,12 @@ export function createAgentSpecies(profileId) {
     const features = resolveSpeciesFeatures(profileId);
     return {
         id: profileId,
+        pressureDiagnostics: features.pressureDiagnostics,
         createInstance(state, ctx) {
             return createAgentInstance(state, { profileId, head: ctx.head, spawnGroupId: ctx.spawnGroupId, navWalkable: ctx.navWalkable });
         },
         register(session, instance) {
             registerAliveAgent(session.registry, instance.headId, profileId, instance);
-        },
-        start(instance, state) {
-            instance.start(state);
-        },
-        stop(instance, state) {
-            instance.stopSteering(state);
         },
         die(instance, state, session, deathImpact = null) {
             instance.lifecycle = "dead";
@@ -59,22 +54,6 @@ export function createAgentSpecies(profileId) {
             clearSnakeSteeringLeaseFromProp(instance.head);
             if (session.onHeadDied) session.onHeadDied(instance.headId);
         },
-        validate(instance, state, session) {
-            instance.validate(state, session);
-        },
-        tick(instance, state, dtMs) {
-            instance.tick(state, dtMs);
-        },
-        syncMembers(instance, state) {
-            return instance.syncMembersFromGraph(state);
-        },
-        ...(features.pressureDiagnostics
-            ? {
-                  updateDiagnostics(instance, state) {
-                      instance.updatePressureDiagnostics(state);
-                  },
-              }
-            : {}),
     };
 }
 export const snakeSpecies = createAgentSpecies(AGENT_PROFILE.snake);

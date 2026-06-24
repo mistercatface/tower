@@ -2,29 +2,25 @@ import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createAgentBrain } from "./agentBrain.js";
-import { createGroundNavAgentIntent } from "./createGroundNavAgentIntent.js";
+import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
+import { buildGroundNavIntentAdapterOptions } from "./groundNavIntentProfiles.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
-import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { resolveSnakeExploreCell } from "./snakeExplore.js";
-import { canAgentEatSnakeFood, findNearestVisibleSnakeFoodForFrame, isSnakeShardFood } from "./snakeFood.js";
+import { canAgentEatSnakeFood, isSnakeShardFood } from "./snakeFood.js";
 import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "./agentMetabolism.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-export function runAgentFsmTick(intent, seeker, state, dt, beforeNav, useIntentTick) {
+function runAgentFsmTick(intent, seeker, state, dt, beforeNav) {
     let choice;
     tickAgentIntent(state, intent, seeker, dt, (agent) => {
-        if (useIntentTick && typeof intent.tick === "function") choice = intent.tick(agent, state);
-        else {
-            intent.perceive(agent, state);
-            choice = intent.transition(agent, state);
-        }
+        choice = intent.tick(agent, state);
         if (beforeNav) beforeNav(agent);
     });
     return choice;
@@ -69,16 +65,11 @@ export function createAgentAutosim(
     const agentCtx = { instance, session, navWalkable: resolvedNavWalkable };
     const config = getSnakeGameConfig();
     const profile = getAgentProfile(profileId, config);
-    const shared = getSharedConfig(config);
     const metabolismApi = resolveMetabolismApi(profileId);
     const metabolism = metabolismApi.create();
     const { brain, sync } = createAgentBrain(visionRange);
     const headNav = createCellTargetHpaNav(state);
-    const resolvedVisionRange = visionRange ?? shared.visionRange;
-    const terminalHoming = shared.terminalHoming;
-    const useIntentTick = profile.intent?.returnShape === "intentTick";
     const foodValue = profile.metabolism?.foodValue;
-    const huntMode = profile.intent?.huntMode ?? "seek_prey";
     const snakeProfile = profileId === AGENT_PROFILE.snake ? profile : null;
     const resolvedBallType = ballType ?? profile.bodyPropId ?? snakeProfile?.bodyPropId;
     const resolvedGrowDirX = growDirX ?? profile.growDirX ?? -1;
@@ -88,36 +79,15 @@ export function createAgentAutosim(
         if (eatRadius != null) return eatRadius;
         return resolveSnakeEatRadius(config, resolveAgentRadius(instance.head));
     };
-    const resolveVisibleFood = (seeker, gameState, perceptionContext) => findNearestVisibleSnakeFoodForFrame(gameState, seeker, perceptionContext.frame, perceptionContext.visionRange);
     const resolveSeeker = () => instance.head;
     const resolveChainTailProp = () => {
         const tail = instance.memberProps[instance.memberProps.length - 1];
         if (!tail) throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
         return tail;
     };
-    const intent = createGroundNavAgentIntent({
-        profileId,
-        brain,
-        sync,
-        headNav,
-        resolveVisibleFood,
-        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, resolvedNavWalkable),
-        agentCtx,
-        visionRange: resolvedVisionRange,
-        seekArrivalRadius: (mode, agent, target) => {
-            if (mode === "seek_ally") {
-                const cohesion = profile.factionCohesion ?? {};
-                return { arrivalRadius: cohesion.arrivalRadius ?? (profileId === AGENT_PROFILE.snake ? 32 : 24), lockOnTarget: true, terminalHoming };
-            }
-            const huntArrival = Math.max(2, resolveAgentRadius(instance.head) * 0.25);
-            if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
-            if (!isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
-            return { arrivalRadius: resolveEatRadiusValue(agent), lockOnTarget: true, terminalHoming };
-        },
-        resolveHunger: () => metabolismApi.get(metabolism),
-        resolveSegmentCount: () => getConnectedBodyIds(state.kinetic, agentId).length,
-        rng,
-    });
+    const intent = createGroundNavIntentAdapter(
+        buildGroundNavIntentAdapterOptions(profileId, { state, instance, metabolismApi, metabolism, eatRadius, brain, sync, headNav, agentCtx, visionRange, rng }),
+    );
     let active = false;
     let sprinting = false;
     let baseMaxSpeed = null;
@@ -192,16 +162,12 @@ export function createAgentAutosim(
             metabolismApi.set(metabolism, initialHunger);
             intent.resetMode();
             if (intent.resetMemory) intent.resetMemory();
-            runAgentFsmTick(intent, resolveSeeker(), state, 0, applySprintState, useIntentTick);
+            runAgentFsmTick(intent, resolveSeeker(), state, 0, applySprintState);
         },
         stop() {
             active = false;
             const seeker = resolveSeeker();
-            if (typeof intent.clearIntent === "function") intent.clearIntent(seeker, state);
-            else {
-                intent.headNav.clear(seeker);
-                intent.clear(seeker, state);
-            }
+            intent.clear(seeker, state);
         },
         isActive() {
             return active;
@@ -243,12 +209,12 @@ export function createAgentAutosim(
                     return;
                 }
             }
-            if (profileId === AGENT_PROFILE.snake && enforceSnakeMinLength(state, snakeGame, agentId, members)) return;
+            if (profileId === AGENT_PROFILE.snake && enforceSnakeMinLength(state, snakeGame, instance, members)) return;
             if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
                 const food = state.entityRegistry.getLive(intent.getTargetId());
                 if (food && eatFoodShard(seeker, food, members)) return;
             }
-            const choice = runAgentFsmTick(intent, seeker, state, dtMs, applySprintState, useIntentTick);
+            const choice = runAgentFsmTick(intent, seeker, state, dtMs, applySprintState);
             let fedThisTick = false;
             if (choice?.mode === "seek_food" && choice.target && isSnakeShardFood(choice.target)) fedThisTick = eatFoodShard(seeker, choice.target, members);
             const drainMultiplier = sprinting ? (profile.sprint?.hungerDrainMultiplier ?? 1) : 1;

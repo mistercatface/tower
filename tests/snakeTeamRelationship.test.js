@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { resolveAgentRelationship } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
@@ -39,7 +39,7 @@ function instanceFor(snakeGame, pack) {
     return snakeGame.instancesByHeadId.get(pack.head.id);
 }
 function relationship(snakeGame, seeker, target) {
-    return resolveAgentRelationship(snakeGame, instanceFor(snakeGame, seeker), instanceFor(snakeGame, target));
+    return resolveRelationshipForInstances(instanceFor(snakeGame, seeker), instanceFor(snakeGame, target));
 }
 
 describe("resolveAgentRelationship team hunting", () => {

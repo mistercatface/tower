@@ -11,7 +11,6 @@ import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snak
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { isAliveAgentHead } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { splitSnakeAtStruckSegment, killSnake, enforceSnakeMinLength } from "../Libraries/Game/snake/snakeCombat.js";
-import { getAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
@@ -77,9 +76,10 @@ describe("snake split on impact", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         const members = getOrderedChainMemberIds(state, headId);
         const struckId = members[2];
-        const result = splitSnakeAtStruckSegment(state, snakeGame, headId, struckId);
+        const result = splitSnakeAtStruckSegment(state, snakeGame, instance, struckId);
         assert.ok(result);
         assert.equal(result.aliveIds.length, 3);
         assert.equal(result.inertIds.length, 2);
@@ -95,8 +95,9 @@ describe("snake split on impact", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         const members = getOrderedChainMemberIds(state, headId);
-        splitSnakeAtStruckSegment(state, snakeGame, headId, members[0]);
+        splitSnakeAtStruckSegment(state, snakeGame, instance, members[0]);
         assert.equal(isAliveAgentHead(snakeGame.registry, headId), false);
         assert.equal(snakeGame.instancesByHeadId.has(headId), false);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
@@ -111,7 +112,8 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(1));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
-        assert.ok(enforceSnakeMinLength(state, snakeGame, headId));
+        const instance = snakeGame.instancesByHeadId.get(headId);
+        assert.ok(enforceSnakeMinLength(state, snakeGame, instance));
         assert.equal(isAliveAgentHead(snakeGame.registry, headId), false);
     });
 
@@ -122,7 +124,8 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(2));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
-        assert.ok(enforceSnakeMinLength(state, snakeGame, headId));
+        const instance = snakeGame.instancesByHeadId.get(headId);
+        assert.ok(enforceSnakeMinLength(state, snakeGame, instance));
         assert.equal(snakeGame.instancesByHeadId.has(headId), false);
     });
 
@@ -133,8 +136,9 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         assert.equal(state.kinetic.kineticConstraints.length, 2);
-        killSnake(state, snakeGame, headId);
+        killSnake(state, snakeGame, instance);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
         assert.equal(snakeGame.instancesByHeadId.has(headId), false);
     });
@@ -146,11 +150,12 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         const head = pack.chain.head;
         head.vx = 42;
         head.vy = -17;
         head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
-        killSnake(state, snakeGame, headId);
+        killSnake(state, snakeGame, instance);
         assert.equal(head.vx, 42);
         assert.equal(head.vy, -17);
         assert.equal(head._groundRollDrive, undefined);
@@ -163,12 +168,13 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         const members = getOrderedChainMemberIds(state, headId);
         const tailLead = state.entityRegistry.getLive(members[3]);
         tailLead.vx = 30;
         tailLead.vy = 5;
         tailLead._groundRollDrive = { kind: "thrust", dirX: 0, dirY: 1, accel: 5, maxSpeed: 10 };
-        splitSnakeAtStruckSegment(state, snakeGame, headId, members[2]);
+        splitSnakeAtStruckSegment(state, snakeGame, instance, members[2]);
         assert.equal(tailLead.vx, 30);
         assert.equal(tailLead.vy, 5);
         assert.equal(tailLead._groundRollDrive, undefined);
@@ -182,7 +188,7 @@ describe("snake min length death", () => {
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
         const head = pack.chain.head;
-        const instance = getAgentInstance(snakeGame, headId);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         instance.autosim = {
             start() {},
             stop() {},
@@ -190,7 +196,7 @@ describe("snake min length death", () => {
                 steerRollToward(head, 1, 0, { accel: 10, maxSpeed: 50 });
             },
         };
-        killSnake(state, snakeGame, headId);
+        killSnake(state, snakeGame, instance);
         head.vx = 0;
         head.vy = 0;
         for (const liveInstance of snakeGame.instancesByHeadId.values()) {
@@ -209,7 +215,7 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
-        const instance = getAgentInstance(snakeGame, headId);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         const members = getOrderedChainMemberIds(state, headId);
         removeChainLinkBetween(state, members[0], members[1]);
         removeChainLinkBetween(state, members[1], members[2]);
@@ -226,11 +232,12 @@ describe("snake min length death", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(5));
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
+        const instance = snakeGame.instancesByHeadId.get(headId);
         const members = getOrderedChainMemberIds(state, headId);
-        splitSnakeAtStruckSegment(state, snakeGame, headId, members[2]);
+        splitSnakeAtStruckSegment(state, snakeGame, instance, members[2]);
         const inertLead = state.entityRegistry.getLive(members[3]);
         inertLead._groundRollDrive = { kind: "thrust", dirX: 0, dirY: 1, accel: 5, maxSpeed: 10 };
-        killSnake(state, snakeGame, headId);
+        killSnake(state, snakeGame, instance);
         assert.equal(inertLead._groundRollDrive, undefined);
         assert.equal(snakeGame.registry.inertByLeadId.size, 0);
     });

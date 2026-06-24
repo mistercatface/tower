@@ -49,7 +49,6 @@ const FLEE_INTENT = {
     fleePackBlend: true,
     fleeExploreFallback: true,
     publishEngagement: false,
-    returnShape: "intentTick",
     decisionFields: {},
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */

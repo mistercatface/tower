@@ -54,6 +54,7 @@ function snakeChainOptions(segmentCount) {
 
 function wireSnakeGame(state, snake) {
     wireSnakeTestGame(state, [{ headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId }]);
+    return state.sandbox.snakeGame.instancesByHeadId.get(snake.chain.head.id);
 }
 
 function snakeShards(state) {
@@ -76,10 +77,10 @@ describe("snake segment fracture", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
-        wireSnakeGame(state, snake);
+        const instance = wireSnakeGame(state, snake);
         const originalIds = snake.chain.members.map((prop) => prop.id);
 
-        killSnake(state, state.sandbox.snakeGame, snake.chain.head.id);
+        killSnake(state, state.sandbox.snakeGame, instance);
 
         for (const id of originalIds) assert.ok(state.entityRegistry.get(id));
         assert.equal(snakeShards(state).length, 0);
@@ -90,7 +91,7 @@ describe("snake segment fracture", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
-        wireSnakeGame(state, snake);
+        const instance = wireSnakeGame(state, snake);
         const struck = snake.chain.members[1];
         const tint = getPropVisualTint(struck);
         struck.vx = 7;
@@ -98,7 +99,7 @@ describe("snake segment fracture", () => {
         struck.angularVelocity = 0.25;
         const impact = { worldX: struck.x - struck.radius, worldY: struck.y, impactForce: 90, struckSegmentId: struck.id };
 
-        killSnake(state, state.sandbox.snakeGame, snake.chain.head.id, null, impact);
+        killSnake(state, state.sandbox.snakeGame, instance, null, impact);
 
         const shards = snakeShards(state);
         assertSnakeShardCountForOneSegment(shards);
@@ -120,10 +121,10 @@ describe("snake segment fracture", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
-        wireSnakeGame(state, snake);
+        const instance = wireSnakeGame(state, snake);
         const struck = snake.chain.members[1];
 
-        killSnake(state, state.sandbox.snakeGame, snake.chain.head.id, null, { worldX: struck.x, worldY: struck.y, impactForce: 30, struckSegmentId: struck.id });
+        killSnake(state, state.sandbox.snakeGame, instance, null, { worldX: struck.x, worldY: struck.y, impactForce: 30, struckSegmentId: struck.id });
 
         assertSnakeShardCountForOneSegment(snakeShards(state));
         assert.equal(state.entityRegistry.get(struck.id), null);
@@ -136,9 +137,9 @@ describe("snake segment fracture", () => {
         resetKineticConstraintIds(1);
         const state = createTestState();
         const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
-        wireSnakeGame(state, snake);
+        const instance = wireSnakeGame(state, snake);
         const struck = snake.chain.members[1];
-        killSnake(state, state.sandbox.snakeGame, snake.chain.head.id, null, { worldX: struck.x, worldY: struck.y, impactForce: 90, struckSegmentId: struck.id });
+        killSnake(state, state.sandbox.snakeGame, instance, null, { worldX: struck.x, worldY: struck.y, impactForce: 90, struckSegmentId: struck.id });
         const initialShardCount = snakeShards(state).length;
         assert.equal(state.entityRegistry.get(struck.id), null);
         assert.ok(state.entityRegistry.get(snake.chain.head.id));

@@ -58,7 +58,8 @@ describe("snake camera focus", () => {
             if (cameraCycler.focusedId === headId) cameraCycler.setFocusedId(null);
         };
         cameraCycler.setFocusedId(first.chain.head.id);
-        killSnake(state, state.sandbox.snakeGame, first.chain.head.id);
+        const instance = state.sandbox.snakeGame.instancesByHeadId.get(first.chain.head.id);
+        killSnake(state, state.sandbox.snakeGame, instance);
         assert.equal(cameraCycler.focusedId, null);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });

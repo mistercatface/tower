@@ -21,7 +21,7 @@ import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkab
 import { createSnakeAgentSession, registerAgentInstance } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js";
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
-import { AgentInstance, getAgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
@@ -73,7 +73,7 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
 }
 export function createWiredSnakeAutosim(state, options) {
     wireSnakeTestNavSession(state);
-    const instance = getAgentInstance(state.sandbox.snakeGame, options.headId);
+    const instance = state.sandbox.snakeGame.instancesByHeadId.get(options.headId);
     if (instance) {
         const autosim = createAgentAutosim(state, { instance, ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
         instance.autosim = autosim;

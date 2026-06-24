@@ -3,9 +3,13 @@ import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
 import { buildAgentDecisionContextIntoFor, createAgentDecisionContextFrame } from "../../AI/agents/gameDecisionContext.js";
 import { getAgentProfile, AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
+import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolvePackSteeringOptions } from "./resolvePackSteeringOptions.js";
-import { createGroundNavIntentAdapter, getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
-import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
+import { findNearestVisibleSnakeFoodForFrame, isSnakeShardFood } from "./snakeFood.js";
+import { resolveSnakeExploreCell } from "./snakeExplore.js";
+import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 function transitionReason(seekModes) {
     return (prevMode, nextMode, policy) => {
         if (policy?.reason) return policy.reason;
@@ -47,6 +51,50 @@ function buildDecisionContextInto(profileId, decisionContext, input, deps) {
     if (fields.session) decisionInput.session = state.sandbox?.snakeGame ?? null;
     return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
 }
+function resolveAgentRadius(leader) {
+    return getCirclePropRadius(leader);
+}
+function resolveEatRadiusValue(config, instance, eatRadius) {
+    if (typeof eatRadius === "function") return eatRadius();
+    if (eatRadius != null) return eatRadius;
+    return resolveSnakeEatRadius(config, resolveAgentRadius(instance.head));
+}
+function defaultSeekArrivalRadius(profileId, profile, config, shared, instance, eatRadius) {
+    const huntMode = profile.intent?.huntMode ?? "seek_prey";
+    const terminalHoming = shared.terminalHoming;
+    return (mode, agent, target) => {
+        if (mode === "seek_ally") {
+            const cohesion = profile.factionCohesion ?? {};
+            return { arrivalRadius: cohesion.arrivalRadius ?? (profileId === AGENT_PROFILE.snake ? 32 : 24), lockOnTarget: true, terminalHoming };
+        }
+        const huntArrival = Math.max(2, resolveAgentRadius(instance.head) * 0.25);
+        if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
+        if (!isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
+        return { arrivalRadius: resolveEatRadiusValue(config, instance, eatRadius), lockOnTarget: true, terminalHoming };
+    };
+}
+function resolveGroundNavIntentDeps(profileId, deps) {
+    const config = getSnakeGameConfig();
+    const profile = getAgentProfile(profileId, config);
+    const shared = getSharedConfig(config);
+    const { state, agentCtx, metabolismApi, metabolism, eatRadius } = deps;
+    const instance = deps.instance ?? agentCtx.instance;
+    const navWalkable = agentCtx.navWalkable;
+    return {
+        brain: deps.brain,
+        sync: deps.sync,
+        headNav: deps.headNav,
+        agentCtx,
+        visionRange: deps.visionRange ?? shared.visionRange,
+        resolveVisibleFood:
+            deps.resolveVisibleFood ?? ((seeker, gameState, perceptionContext) => findNearestVisibleSnakeFoodForFrame(gameState, seeker, perceptionContext.frame, perceptionContext.visionRange)),
+        resolveExploreCell: deps.resolveExploreCell ?? ((seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable)),
+        seekArrivalRadius: deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, config, shared, instance, eatRadius),
+        resolveHunger: deps.resolveHunger ?? (metabolismApi && metabolism ? () => metabolismApi.get(metabolism) : null),
+        resolveSegmentCount: deps.resolveSegmentCount ?? (state && instance ? () => getConnectedBodyIds(state.kinetic, instance.headId).length : null),
+        rng: deps.rng ?? Math.random,
+    };
+}
 function setFleeDestination(intent, args, profileId) {
     const { agent, state, world, avoidCell, locomotion, navWalkable, config, brain, rng, resolveExploreCell } = args;
     const threat = world.decisionContext.known.threat;
@@ -65,25 +113,16 @@ function setFleeDestination(intent, args, profileId) {
     return null;
 }
 function extendReturn(intent, deps) {
-    if (intent.returnShape === "fsmSnapshot") {
-        const { intent: intentApi, locomotion, intentMemory, getLastDecisionContext } = deps;
-        return {
-            getFsmSnapshot(agent, state) {
-                return getGroundNavFsmSnapshot({ intent: intentApi, locomotion, agent, state, intentMemory, lastDecisionContext: getLastDecisionContext() });
-            },
-        };
-    }
-    const { intent: intentApi, intentMemory } = deps;
-    return {
+    const { intent: intentApi, locomotion, intentMemory, getLastDecisionContext } = deps;
+    const api = {
         tick(agent, state) {
             intentApi.perceive(agent, state);
             return intentApi.transition(agent, state);
         },
-        clearIntent(agent, state) {
-            intentApi.clear(agent, state);
-            intentMemory.clear();
-        },
     };
+    if (intent.returnShape === "fsmSnapshot")
+        api.getFsmSnapshot = (agent, state) => getGroundNavFsmSnapshot({ intent: intentApi, locomotion, agent, state, intentMemory, lastDecisionContext: getLastDecisionContext() });
+    return api;
 }
 function intentMemoryOptions(profileId, intent, shared) {
     const base = shared.intentMemory;
@@ -120,6 +159,7 @@ function buildAdapterOptions(profileId, deps) {
 }
 export function buildGroundNavIntentAdapterOptions(profileId, deps) {
     if (!getSnakeGameConfig().agentProfiles?.[profileId]) throw new Error(`unknown ground nav intent profile: ${profileId}`);
-    return buildAdapterOptions(profileId, deps);
+    const resolvedDeps = resolveGroundNavIntentDeps(profileId, deps);
+    return { ...resolvedDeps, ...buildAdapterOptions(profileId, resolvedDeps) };
 }
 export { AGENT_PROFILE };

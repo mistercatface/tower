@@ -13,7 +13,7 @@ import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Gam
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
 import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { AgentInstance, createAgentInstance, getAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance, createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
@@ -176,7 +176,7 @@ describe("AgentInstance (snake)", () => {
         grantSnakeSteeringLease(instance);
         const head = pack.chain.head;
         head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
-        killSnake(state, state.sandbox.snakeGame, head.id);
+        killSnake(state, state.sandbox.snakeGame, instance);
         applyGroundRollDrive(head, 1 / 60, state);
         assert.equal(head._groundRollDrive, undefined);
         assert.equal(head.vx, 0);

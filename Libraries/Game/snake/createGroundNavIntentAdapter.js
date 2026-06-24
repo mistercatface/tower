@@ -157,7 +157,6 @@ export function createGroundNavIntentAdapter({
     resolveVisibleFood,
     resolveExploreCell,
     agentCtx,
-    navWalkable,
     visionRange,
     seekArrivalRadius,
     resolveHunger,

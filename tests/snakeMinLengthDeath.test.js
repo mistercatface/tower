@@ -271,7 +271,8 @@ describe("snake combat min length", () => {
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
-        killSnake(state, state.sandbox.snakeGame, prey.chain.head.id);
+        const preyInstance = state.sandbox.snakeGame.instancesByHeadId.get(prey.chain.head.id);
+        killSnake(state, state.sandbox.snakeGame, preyInstance);
         assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 3);
         assert.equal(getOrderedChainMemberIds(state, prey.chain.head.id).length, 1);
     });

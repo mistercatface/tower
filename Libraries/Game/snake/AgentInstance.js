@@ -228,9 +228,6 @@ export class AgentInstance {
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
 }
-export function getAgentInstance(snakeGame, headId) {
-    return snakeGame.instancesByHeadId.get(headId) ?? null;
-}
 export function createAgentInstance(state, { profileId, head, spawnGroupId, navWalkable = null, ...autosimOptions }) {
     const instance = new AgentInstance({ profileId, head, spawnGroupId, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);

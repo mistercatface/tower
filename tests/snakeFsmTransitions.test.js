@@ -12,7 +12,8 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createGroundNavAgentIntent } from "../Libraries/Game/snake/createGroundNavAgentIntent.js";
+import { createGroundNavIntentAdapter } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
+import { buildGroundNavIntentAdapterOptions } from "../Libraries/Game/snake/groundNavIntentProfiles.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { createAgentBrain } from "../Libraries/Game/snake/agentBrain.js";
@@ -119,7 +120,7 @@ function createMockIntent(state, headId) {
     const head = instance.head;
     applyAgentGameplay(AGENT_PROFILE.snake, head, "leader");
     const { brain, sync } = createAgentBrain();
-    const intent = createGroundNavAgentIntent({
+    const intentDeps = {
         profileId: AGENT_DECISION_PROFILE.snake,
         brain,
         sync,
@@ -128,7 +129,8 @@ function createMockIntent(state, headId) {
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
         rng: () => 0,
-    });
+    };
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions(AGENT_DECISION_PROFILE.snake, intentDeps));
     return { intent, headNav };
 }
 describe("snake FSM transitions", () => {
