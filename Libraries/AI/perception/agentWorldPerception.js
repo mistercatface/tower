@@ -48,11 +48,8 @@ export function perceiveAgentWorldInto(out, seeker, agentCtx, state, visibleSour
     out.allyCount = agents.allyCount;
     out.allyCentroid = agents.allyCentroid;
     out.threatCount = agents.threatCount;
-
-    // Resolve prop categories
-    if (visibleSourceResolvers) for (const slotId in visibleSourceResolvers) out[slotId] = visibleSourceResolvers[slotId](seeker, state, { frame, visionRange: resolved });
-    else out.food = null; // fallback
-
+    if (visibleSourceResolvers) for (const slotId in visibleSourceResolvers) out[slotId] = visibleSourceResolvers[slotId](seeker, state, { frame, visionRange: resolved }) ?? null;
+    else out.food = null;
     return out;
 }
 export function perceiveAgentWorld(seeker, agentCtx, state, visibleSourceResolvers, visionRange, perceptionOptions) {

@@ -170,9 +170,8 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             const index = getPropCategoryIndex(state, "food");
             const moving = [];
             index.forEachRegistered((food) => {
-                if (!food.isSleeping) moving.push(food);
+                if (food.strategy?.isKinetic && !food.isSleeping) moving.push(food);
             });
-
             for (let i = 0; i < moving.length; i++) index.reconcile(moving[i]);
         },
         stop() {

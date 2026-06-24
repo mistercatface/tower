@@ -129,6 +129,50 @@ describe("snake visible shard food parity", () => {
         primeSnakeHeadVision(state, seeker);
         assert.equal(findNearestVisibleSnakeFood(state, seeker).id, carcassSegment.id);
     });
+
+    it("proves vision relies on coarse category index cell counts (no vision if moved without reconcile)", async () => {
+        applySnakeGameConfig();
+        const state = await createFoodQueryState();
+        const config = getSnakeGameConfig();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
+        const food = spawnSnakeFoodShardAtCell(state, { col: 6, row: 8 });
+        
+        // Manually shift the food's position without reconciling the category index
+        const farPos = state.obstacleGrid.gridToWorld(24, 8);
+        food.x = farPos.x;
+        food.y = farPos.y;
+
+        const seeker = chain.head;
+        seeker.facing = Math.PI;
+        primeSnakeHeadVision(state, seeker);
+
+        const visibleFood = findNearestVisibleSnakeFood(state, seeker);
+        assert.equal(visibleFood, null);
+    });
+
+    it("never queries the entity registry spatial query (queryView) during visible food resolution", async () => {
+        applySnakeGameConfig();
+        const state = await createFoodQueryState();
+        const config = getSnakeGameConfig();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 8 }, chainOptions(config));
+        const visible = spawnSnakeFoodShardAtCell(state, { col: 6, row: 8 });
+        const seeker = chain.head;
+        seeker.facing = Math.PI;
+        primeSnakeHeadVision(state, seeker);
+
+        let queryViewCalled = false;
+        const originalQueryView = state.entityRegistry.queryView;
+        state.entityRegistry.queryView = function (...args) {
+            queryViewCalled = true;
+            return originalQueryView.apply(this, args);
+        };
+
+        const visibleFood = findNearestVisibleSnakeFood(state, seeker);
+        assert.equal(visibleFood.id, visible.id);
+        assert.equal(queryViewCalled, false, "Should not hit entity registry queryView during vision category resolution");
+
+        state.entityRegistry.queryView = originalQueryView;
+    });
 });
 
 describe("snake food allegiance", () => {

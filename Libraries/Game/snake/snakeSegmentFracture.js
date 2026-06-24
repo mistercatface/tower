@@ -1,5 +1,4 @@
-import { removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
-import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
+import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { transformPoint2DInto } from "../../Math/Poly2D.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
@@ -77,7 +76,6 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
 export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact = null, random = Math.random) {
     markSnakeSegmentsFracturable(state, memberIds);
     if (deathImpact?.struckSegmentId == null) return { spawned: [], removedSegments: [] };
-    const meta = getSandboxEntityMeta(state);
     const spawned = [];
     const removedSegments = [];
     for (let i = 0; i < memberIds.length; i++) {
@@ -87,8 +85,7 @@ export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact
         const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;
         const impact = resolveSegmentImpact(segment, radius, deathImpact, i);
         spawned.push(...spawnSnakeSegmentShards(state, segment, impact, spatialFrame, random));
-        getPropCategoryIndex(state, "food").unregister(segment);
-        removeWorldPropFromState(state, segment, spatialFrame ?? undefined, meta);
+        removeSandboxWorldProp(state, segment, spatialFrame ?? undefined);
         removedSegments.push(segment);
     }
     return { spawned, removedSegments };

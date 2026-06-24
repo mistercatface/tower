@@ -110,6 +110,12 @@ export class CellPropIndex {
         for (let i = 0; i < list.length; i++) fn(list[i]);
     }
 
+    /**
+     * Returns a read-only live reference to the items in the cell. Do not mutate.
+     * @param {number} col
+     * @param {number} row
+     * @returns {ReadonlyArray<object>}
+     */
     itemsInCell(col, row) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return [];
         const idx = col + row * this.cols;
@@ -141,20 +147,16 @@ export class CellPropIndex {
 
     syncBounds(grid) {
         if (this.cols === grid.cols && this.rows === grid.rows && this.cellSize === grid.cellSize && this.minX === grid.minX && this.minY === grid.minY) return;
-
         this.minX = grid.minX;
         this.minY = grid.minY;
         this.cols = grid.cols;
         this.rows = grid.rows;
         this.cellSize = grid.cellSize;
-
         const allProps = [];
         for (const list of this.buckets.cells.values()) for (let i = 0; i < list.length; i++) allProps.push(list[i]);
-
         this.buckets.clear();
         this.count = new Uint16Array(this.cols * this.rows);
         this._totalCount = 0;
-
         for (let i = 0; i < allProps.length; i++) {
             const prop = allProps[i];
             prop._cellIndexCell = -1; // reset before registering

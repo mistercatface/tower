@@ -1,7 +1,6 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { createAgentBrain } from "./agentBrain.js";
 import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
 import { buildGroundNavIntentAdapterOptions } from "./groundNavIntentProfiles.js";
@@ -142,7 +141,6 @@ export function createAgentAutosim(
         brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
         intent.clearTrackedGoal();
         intent.headNav.clearDestination();
-        getPropCategoryIndex(state, "food").unregister(food);
         removeSandboxWorldProp(state, food);
         if (profileId === AGENT_PROFILE.snake) feedAndGrow(food.snakeFoodValue ?? foodValue, members);
         else metabolismApi.feed(metabolism, food.snakeFoodValue ?? foodValue);
