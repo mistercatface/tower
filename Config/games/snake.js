@@ -54,8 +54,8 @@ const FLEE_INTENT = {
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 64,
-    boidCount: 64,
+    snakeCount: 32,
+    boidCount: 96,
     squidCount: 8,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
