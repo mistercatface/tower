@@ -3,8 +3,11 @@ export function createAgentPopulationRegistry() {
 }
 export function registerAliveAgent(registry, headId, species, instance) {
     registry.instancesByHeadId.set(headId, instance);
-    registry.aliveByHeadId.set(headId, { headId, species, lifecycle: "alive" });
+    registry.aliveByHeadId.set(headId, { headId, head: instance.head, species, instance, lifecycle: "alive" });
     registry.deadHeadIds.delete(headId);
+}
+export function aliveAgentRecords(registry) {
+    return registry.aliveByHeadId.values();
 }
 export function registerInertAgent(registry, leadSegmentId, memberIds, sourceHeadId) {
     registry.inertByLeadId.set(leadSegmentId, { leadSegmentId, memberIds, sourceHeadId, lifecycle: "inert" });

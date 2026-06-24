@@ -32,7 +32,7 @@ export function createAgentSpecies(profileId) {
     return {
         id: profileId,
         createInstance(state, ctx) {
-            return createAgentInstance(state, { profileId, head: ctx.head, headId: ctx.headId, spawnGroupId: ctx.spawnGroupId, navWalkable: ctx.navWalkable });
+            return createAgentInstance(state, { profileId, head: ctx.head, spawnGroupId: ctx.spawnGroupId, navWalkable: ctx.navWalkable });
         },
         register(session, instance) {
             registerAliveAgent(session.registry, instance.headId, profileId, instance);

@@ -35,6 +35,12 @@ function wireRelationshipSnakes(state, snakes) {
     }
     return snakeGame;
 }
+function instanceFor(snakeGame, pack) {
+    return snakeGame.instancesByHeadId.get(pack.head.id);
+}
+function relationship(snakeGame, seeker, target) {
+    return resolveAgentRelationship(snakeGame, instanceFor(snakeGame, seeker), instanceFor(snakeGame, target));
+}
 
 describe("resolveAgentRelationship team hunting", () => {
     it("same faction smaller snake is ally", async () => {
@@ -47,7 +53,7 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "red" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "ally");
+        assert.equal(relationship(snakeGame, seeker, target), "ally");
     });
 
     it("opposite faction within rival band is rival", async () => {
@@ -60,8 +66,8 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "rival");
-        assert.equal(resolveAgentRelationship(snakeGame, target.head.id, seeker.head.id, state), "rival");
+        assert.equal(relationship(snakeGame, seeker, target), "rival");
+        assert.equal(relationship(snakeGame, target, seeker), "rival");
     });
 
     it("opposite faction outside rival band smaller snake is prey", async () => {
@@ -74,7 +80,7 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "prey");
+        assert.equal(relationship(snakeGame, seeker, target), "prey");
     });
 
     it("opposite faction outside rival band larger snake is threat", async () => {
@@ -87,7 +93,7 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "threat");
+        assert.equal(relationship(snakeGame, seeker, target), "threat");
     });
 
     it("opposite faction equal size is rival", async () => {
@@ -100,7 +106,7 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: seeker, faction: "red" },
             { chain: target, faction: "blue" },
         ]);
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "rival");
+        assert.equal(relationship(snakeGame, seeker, target), "rival");
     });
 
     it("flee agent treats any snake as threat", async () => {
@@ -109,12 +115,12 @@ describe("resolveAgentRelationship team hunting", () => {
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
         const smallSnake = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
         registerSnakeTestInstance(state, snakeGame, { headId: smallSnake.head.id, spawnGroupId: smallSnake.spawnGroupId });
         smallSnake.head.faction = "blue";
-        assert.equal(resolveAgentRelationship(snakeGame, pack.head.id, smallSnake.head.id, state), "threat");
+        assert.equal(relationship(snakeGame, pack, smallSnake), "threat");
     });
 
     it("same-faction flee agents are allies and opposite teams are prey", async () => {
@@ -126,12 +132,12 @@ describe("resolveAgentRelationship team hunting", () => {
         const charlieB = spawnFleeAgent(state, { col: 12, row: 10 }, { faction: "charlie" });
         const delta = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "delta" });
         for (const pack of [charlieA, charlieB, delta]) {
-            const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+            const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
             registerAgentInstance(snakeGame, "flee_agent", instance);
         }
-        assert.equal(resolveAgentRelationship(snakeGame, charlieA.head.id, charlieB.head.id, state), "ally");
-        assert.equal(resolveAgentRelationship(snakeGame, charlieA.head.id, delta.head.id, state), "prey");
-        assert.equal(resolveAgentRelationship(snakeGame, delta.head.id, charlieA.head.id, state), "prey");
+        assert.equal(relationship(snakeGame, charlieA, charlieB), "ally");
+        assert.equal(relationship(snakeGame, charlieA, delta), "prey");
+        assert.equal(relationship(snakeGame, delta, charlieA), "prey");
     });
 
     it("missing faction is neutral", async () => {
@@ -145,6 +151,6 @@ describe("resolveAgentRelationship team hunting", () => {
             { chain: target, faction: null },
         ]);
         target.head.faction = null;
-        assert.equal(resolveAgentRelationship(snakeGame, seeker.head.id, target.head.id, state), "neutral");
+        assert.equal(relationship(snakeGame, seeker, target), "neutral");
     });
 });

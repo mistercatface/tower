@@ -57,9 +57,9 @@ describe("flee pack blend (4d)", () => {
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.5, maxPackDistCells: 24 } } }, shared: { fleeTiles: 8 } });
         const fleePack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
         const allyPack = spawnFleeAgent(state, { col: 10, row: 6 }, { faction: "bravo" });
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
+        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
         instance.start(state);
         const predator = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId });

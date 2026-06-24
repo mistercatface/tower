@@ -1,17 +1,10 @@
+import { aliveAgentRecords } from "../agents/agentPopulationRegistry.js";
 import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
 /**
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
  */
-export function classifyAgentVision(
-    seeker,
-    selfHeadId,
-    state,
-    registry,
-    frame,
-    vision,
-    { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true } = {},
-) {
+export function classifyAgentVision(seeker, agentCtx, state, frame, vision, { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true } = {}) {
     const navTopology = frame.navTopology;
     const visionSession = frame.visionSession;
     const range = agentRange ?? visionRange.range;
@@ -28,15 +21,16 @@ export function classifyAgentVision(
     let allyCount = 0;
     let allyCentroidX = 0;
     let allyCentroidY = 0;
-    for (const headId of registry.aliveByHeadId.keys()) {
-        if (headId === selfHeadId) continue;
-        const head = state.entityRegistry.getLive(headId);
-        if (!head || head.isDead) continue;
+    for (const record of aliveAgentRecords(agentCtx.session.registry)) {
+        const targetInstance = record.instance;
+        if (targetInstance === agentCtx.instance || targetInstance.lifecycle !== "alive") continue;
+        const head = targetInstance.head;
+        if (head.isDead) continue;
         const dx = head.x - seeker.x;
         const dy = head.y - seeker.y;
         const distSq = dx * dx + dy * dy;
         if (distSq > rangeSq) continue;
-        const relationship = resolveRelationship(selfHeadId, headId, state, registry, distSq);
+        const relationship = resolveRelationship(agentCtx.instance, targetInstance, state, distSq);
         if (relationship === "neutral") continue;
         const targetCol = navTopology.grid.worldCol(head.x);
         const targetRow = navTopology.grid.worldRow(head.y);

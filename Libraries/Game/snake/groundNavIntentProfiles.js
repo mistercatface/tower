@@ -94,7 +94,7 @@ function buildAdapterOptions(profileId, deps) {
     const profile = getAgentProfile(profileId);
     const intent = profile.intent;
     const shared = getSharedConfig();
-    const { selfHeadId, brain, resolveExploreCell, rng, resolveHunger, resolveSegmentCount } = deps;
+    const { agentCtx, brain, resolveExploreCell, rng, resolveHunger, resolveSegmentCount } = deps;
     const decisionContext = createAgentDecisionContextFrame(profileId);
     const adapter = {
         reachSlots: intent.reachSlots,
@@ -103,7 +103,7 @@ function buildAdapterOptions(profileId, deps) {
         decisionContext,
         buildDecisionContext: (input) => buildDecisionContextInto(profileId, decisionContext, input, deps),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
-        setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable: deps.navWalkable, config: shared, brain, rng, resolveExploreCell }, profileId),
+        setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable: agentCtx.navWalkable, config: shared, brain, rng, resolveExploreCell }, profileId),
         sprintConfig: profile.sprint,
         fleeHeldOn: intent.fleeHeldOn,
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
@@ -114,7 +114,7 @@ function buildAdapterOptions(profileId, deps) {
     if (intent.publishEngagement)
         adapter.afterPerceive = (decisionContext, _agent, state) => {
             const snakeGame = state.sandbox?.snakeGame;
-            if (snakeGame) publishAgentEngagement(snakeGame, selfHeadId, decisionContext.engagementState);
+            if (snakeGame) publishAgentEngagement(snakeGame, agentCtx.instance.headId, decisionContext.engagementState);
         };
     return adapter;
 }

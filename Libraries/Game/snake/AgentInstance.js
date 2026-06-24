@@ -29,6 +29,7 @@ export class AgentInstance {
         this.autosim = autosim;
         this.lifecycle = lifecycle;
         this.memberIds = memberIds;
+        this.memberProps = [];
         this.steeringEpoch = 0;
         this.segmentWallPressures = new Map();
         this.accumulatedPressure = 0;
@@ -103,6 +104,11 @@ export class AgentInstance {
     syncMembersFromGraph(state) {
         if (isSquidProfile(this)) this.memberIds = getConnectedBodyIds(state.kinetic, this.headId);
         else this.memberIds = getConnectedComponentPath(state.kinetic, this.headId);
+        this.memberProps.length = 0;
+        for (let i = 0; i < this.memberIds.length; i++) {
+            const prop = state.entityRegistry.getLive(this.memberIds[i]);
+            if (prop) this.memberProps.push(prop);
+        }
         return this.memberIds;
     }
     orderedMembers(state) {
@@ -144,10 +150,9 @@ export class AgentInstance {
         const members = this.syncMembersFromGraph(state);
         const activeIds = new Set(members);
         for (const segmentId of this.segmentWallPressures.keys()) if (!activeIds.has(segmentId)) this.segmentWallPressures.delete(segmentId);
-        for (let i = 0; i < members.length; i++) {
-            const segmentId = members[i];
-            const prop = state.entityRegistry.getLive(segmentId);
-            if (!prop) continue;
+        for (let i = 0; i < this.memberProps.length; i++) {
+            const prop = this.memberProps[i];
+            const segmentId = prop.id;
             const bodyWallHits = prop._wallResolveHits ?? [];
             const linkWallHits = prop._linkWallHits ?? [];
             const allHits = [...bodyWallHits, ...linkWallHits];
@@ -226,10 +231,9 @@ export class AgentInstance {
 export function getAgentInstance(snakeGame, headId) {
     return snakeGame.instancesByHeadId.get(headId) ?? null;
 }
-export function createAgentInstance(state, { profileId, head = null, headId = null, spawnGroupId, navWalkable = null, ...autosimOptions }) {
-    const resolvedHead = head ?? state.entityRegistry.getLive(headId);
-    const instance = new AgentInstance({ profileId, head: resolvedHead, spawnGroupId, lifecycle: "alive" });
-    instance.autosim = createAgentAutosim(state, { instance, navWalkable, ...autosimOptions });
+export function createAgentInstance(state, { profileId, head, spawnGroupId, navWalkable = null, ...autosimOptions }) {
+    const instance = new AgentInstance({ profileId, head, spawnGroupId, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
+    instance.autosim = createAgentAutosim(state, { instance, navWalkable, ...autosimOptions });
     return instance;
 }

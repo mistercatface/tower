@@ -25,7 +25,7 @@ describe("focused agent debug overlays", () => {
         registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
         const fleePack = spawnFleeAgent(state, { col: 12, row: 10 });
-        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
         fleeInstance.start(state);
 

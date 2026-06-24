@@ -14,10 +14,10 @@ import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeG
 
 function registerSquidAndFlee(state, snakeGame) {
     const squidPack = spawnSquidChain(state, { col: 10, row: 10 }, { faction: "charlie" });
-    const squidInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.squid, headId: squidPack.brain.id, spawnGroupId: squidPack.spawnGroupId });
+    const squidInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.squid, head: squidPack.brain, spawnGroupId: squidPack.spawnGroupId });
     registerAgentInstance(snakeGame, "squid", squidInstance);
     const fleePack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
-    const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, headId: fleePack.head.id, spawnGroupId: fleePack.spawnGroupId });
+    const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
     registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
     return { squidPack, squidInstance, fleePack, fleeInstance };
 }

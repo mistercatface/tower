@@ -114,8 +114,8 @@ describe("ally intent memory", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "bravo" });
         const allyPack = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "bravo" });
-        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: seekerPack.head.id, spawnGroupId: seekerPack.spawnGroupId }));
-        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: allyPack.head.id, spawnGroupId: allyPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
         const memory = createAgentIntentMemory(getSharedConfig().intentMemory);
         const visible = {
             threat: null,

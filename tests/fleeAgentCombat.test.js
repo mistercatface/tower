@@ -16,7 +16,7 @@ import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstan
 
 function registerFleeCombatAgent(state, snakeGame, cell, faction) {
     const pack = spawnFleeAgent(state, cell, { faction });
-    const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+    const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
     registerAgentInstance(snakeGame, "flee_agent", instance);
     return { pack, instance };
 }
@@ -45,7 +45,7 @@ describe("flee agent escape combat", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee,  headId: pack.head.id, spawnGroupId: pack.spawnGroupId });
+        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         instance.sprinting = true;

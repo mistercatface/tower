@@ -1,4 +1,5 @@
 import { getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
+import { aliveAgentRecords } from "../../AI/agents/agentPopulationRegistry.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentInstance } from "./AgentInstance.js";
@@ -9,10 +10,10 @@ import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
-    for (const instance of snakeGame.instancesByHeadId.values()) {
+    for (const record of aliveAgentRecords(snakeGame.registry)) {
+        const { instance } = record;
         if (instance.lifecycle !== "alive") continue;
-        const meta = snakeGame.registry.aliveByHeadId.get(instance.headId);
-        const def = meta ? snakeGame.speciesById.get(meta.species) : null;
+        const def = snakeGame.speciesById.get(record.species);
         const members = def?.syncMembers ? def.syncMembers(instance, state) : getConnectedComponentPath(state.kinetic, instance.headId);
         for (let i = 0; i < members.length; i++) map.set(members[i], instance);
     }
@@ -57,10 +58,9 @@ function snakeDeathImpactFromContact(spatialFrame, contacts, i, struckSegmentId,
     const hit = contactWorldPointForBody(spatialFrame, contacts, i, struckBody);
     return { worldX: hit.x, worldY: hit.y, impactForce: impactForce ?? Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]), struckSegmentId, spatialFrame };
 }
-function headDistSq(state, headIdA, headIdB) {
-    const headA = state.entityRegistry.getLive(headIdA);
-    const headB = state.entityRegistry.getLive(headIdB);
-    if (!headA || !headB) return null;
+function headDistSq(instanceA, instanceB) {
+    const headA = instanceA.head;
+    const headB = instanceB.head;
     const dx = headA.x - headB.x;
     const dy = headA.y - headB.y;
     return dx * dx + dy * dy;
@@ -83,11 +83,9 @@ function classifyFleeRamVictims(contacts, i) {
 function areSameFleeFaction(bodyA, bodyB) {
     return bodyA.faction != null && bodyA.faction === bodyB.faction;
 }
-function areTeammates(snakeGame, headIdA, headIdB, state) {
-    if (resolveAgentRelationship(snakeGame, headIdA, headIdB, state) === "ally") return true;
-    const headA = state.entityRegistry.getLive(headIdA);
-    const headB = state.entityRegistry.getLive(headIdB);
-    return headA?.faction != null && headA.faction === headB?.faction;
+function areTeammates(snakeGame, instanceA, instanceB) {
+    if (resolveAgentRelationship(snakeGame, instanceA, instanceB) === "ally") return true;
+    return instanceA.head.faction != null && instanceA.head.faction === instanceB.head.faction;
 }
 function tryResolveFleeBallHeadRam(state, snakeGame, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, bodyA, bodyB, relSpeed) {
     if (!traitsA.fleeBallHeadRam || !traitsB.fleeBallHeadRam) return false;
@@ -106,7 +104,7 @@ function tryResolveFleeBallHeadRam(state, snakeGame, spatialFrame, contacts, i, 
 }
 function tryResolveFleeEscapeRam(state, snakeGame, spatialFrame, contacts, i, fleeInstance, chainInstance, chainTraits, fleeBody, chainBody, relSpeed, config, splitLinks) {
     if (!chainTraits.victimOfFleeEscapeRam) return false;
-    if (areTeammates(snakeGame, fleeInstance.headId, chainInstance.headId, state)) return false;
+    if (areTeammates(snakeGame, fleeInstance, chainInstance)) return false;
     if (!fleeInstance.sprinting || relSpeed < config.splitImpulseThreshold) return false;
     if (fleeInstance.intent?.getMode?.() !== "flee") return false;
     if (fleeBody.id !== fleeInstance.headId || chainBody.id === chainInstance.headId) return false;
@@ -126,7 +124,7 @@ function squidDuelSpeedOk(relSpeed, config) {
 }
 function tryResolveBrainRam(state, snakeGame, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, bodyA, bodyB, relSpeed, config, resolverId) {
     if (!matchesBrainRamResolver(traitsA, resolverId) || !matchesBrainRamResolver(traitsB, resolverId)) return false;
-    if (areTeammates(snakeGame, instanceA.headId, instanceB.headId, state)) return false;
+    if (areTeammates(snakeGame, instanceA, instanceB)) return false;
     const aLeader = bodyA.id === instanceA.headId;
     const bLeader = bodyB.id === instanceB.headId;
     if (!aLeader && !bLeader) {
@@ -214,9 +212,9 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts, sn
         if (tryResolveBrainRam(state, snakeGame, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, pair.bodyA, pair.bodyB, relSpeed, config, "squidVsSquid")) continue;
         const bothSquidDuel = matchesBrainRamResolver(traitsA, "squidVsSquid") && matchesBrainRamResolver(traitsB, "squidVsSquid");
         if (!bothSquidDuel && isChainCombatTopology(traitsA) && isChainCombatTopology(traitsB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
-        const distSq = headDistSq(state, instanceA.headId, instanceB.headId);
-        const relationshipAB = resolveAgentRelationship(snakeGame, instanceA.headId, instanceB.headId, state, distSq);
-        const relationshipBA = resolveAgentRelationship(snakeGame, instanceB.headId, instanceA.headId, state, distSq);
+        const distSq = headDistSq(instanceA, instanceB);
+        const relationshipAB = resolveAgentRelationship(snakeGame, instanceA, instanceB, distSq);
+        const relationshipBA = resolveAgentRelationship(snakeGame, instanceB, instanceA, distSq);
         if (relationshipAB === "prey" || relationshipBA === "prey") {
             const predatorInstance = relationshipAB === "prey" ? instanceA : instanceB;
             const preyInstance = relationshipAB === "prey" ? instanceB : instanceA;

@@ -156,8 +156,7 @@ export function createGroundNavIntentAdapter({
     headNav,
     resolveVisibleFood,
     resolveExploreCell,
-    selfHeadId,
-    registry,
+    agentCtx,
     navWalkable,
     visionRange,
     seekArrivalRadius,
@@ -227,7 +226,7 @@ export function createGroundNavIntentAdapter({
     });
     intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
-        perceiveAgentIntentWorldInto(visible, agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
+        perceiveAgentIntentWorldInto(visible, agent, agentCtx, state, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         if (intent) {
@@ -278,7 +277,7 @@ export function createGroundNavIntentAdapter({
     });
     const base = {
         ...intent,
-        headId: selfHeadId,
+        headId: agentCtx.instance.headId,
         headNav,
         getDestination() {
             return locomotion.getDestination();

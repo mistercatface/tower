@@ -9,8 +9,7 @@ export function tickAgentIntent(state, intent, agent, dtMs, tickFsmLogic) {
     if (soloTick) endSnakePerceptionFrame(state);
 }
 export function reapAgentInstance(state, snakeGame, instance, deathImpact = null) {
-    const meta = snakeGame.registry.aliveByHeadId.get(instance.headId);
-    const def = meta ? snakeGame.speciesById.get(meta.species) : null;
+    const def = snakeGame.speciesById.get(instance.profileId);
     if (def && typeof def.die === "function") def.die(instance, state, snakeGame, deathImpact);
-    else throw new Error(`Missing die hook for species ${meta?.species}`);
+    else throw new Error(`Missing die hook for species ${instance.profileId}`);
 }

@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellChebyshevDistance, pickExploreDestination } from "../Libraries/Navigation/steering/exploreSteering.js";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
-import { wireSnakeGameForHead, createWiredSnakeAutosim, primeSnakeHeadVision, wireSnakeTestGame, spawnSnakeFoodShardAtCell, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
+import { wireSnakeGameForHead, createWiredSnakeAutosim, primeSnakeHeadVision, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
-import { findNearestVisibleThreat } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { findNearestSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
@@ -176,30 +175,19 @@ describe("snake intent integration", () => {
     });
 
     it("pickFleeCell steps away from the threat", async () => {
-        applySnakeGameConfig({ shared: { fleeTiles: 3 } });
+        applySnakeGameConfig({ shared: { fleeTiles: 3, fleeRange: 128 } });
         resetKineticConstraintIds(1);
         const state = await createIntentTestState();
-        wireSnakeTestGame(state);
-        const self = spawnLinkedBallChain(state, { col: 22, row: 20 }, { ...snakeChainOptions(), segmentCount: 3 });
-        const larger = spawnLinkedBallChain(state, { col: 26, row: 20 }, { ...snakeChainOptions(), segmentCount: 6 });
-        registerSnakeTestInstance(state, state.sandbox.snakeGame, { headId: self.head.id, spawnGroupId: self.spawnGroupId });
-        registerSnakeTestInstance(state, state.sandbox.snakeGame, { headId: larger.head.id, spawnGroupId: larger.spawnGroupId });
-        self.head.faction = "red";
-        larger.head.faction = "blue";
-        const registry = state.sandbox.snakeGame.registry;
-        const navWalkable = state.sandbox.snakeGame.navWalkable;
+        const navWalkable = { has: () => true };
         const grid = state.obstacleGrid;
-        self.head.facing = 0;
-        larger.head.x = self.head.x + 64;
-        larger.head.y = self.head.y;
-        primeSnakeHeadVision(state, self.head);
         const config = getSnakeGameConfig();
-        const threat = findNearestVisibleThreat(self.head, self.head.id, state, registry, config.visionRange);
-        const cell = pickFleeCell(self.head, threat, grid, navWalkable, config.fleeTiles);
+        const selfCell = { col: 22, row: 20 };
+        const threatCell = { col: 26, row: 20 };
+        const selfWorld = grid.gridToWorld(selfCell.col, selfCell.row);
+        const threatWorld = grid.gridToWorld(threatCell.col, threatCell.row);
+        const cell = pickFleeCell(selfWorld, threatWorld, grid, navWalkable, config.shared.fleeTiles);
         assert.ok(cell);
-        const selfCell = grid.worldToGrid(self.head.x, self.head.y);
-        const threatCell = grid.worldToGrid(larger.head.x, larger.head.y);
-        assert.ok(cellChebyshevDistance(cell.col, cell.row, threatCell.col, threatCell.row) > cellChebyshevDistance(selfCell.col, selfCell.row, threatCell.col, threatCell.row));
+        assert.deepEqual(cell, { col: 19, row: 20 });
     });
 
     it("ignores smaller snakes hidden behind walls", async () => {
@@ -208,7 +196,7 @@ describe("snake intent integration", () => {
         const state = await createIntentTestState();
         const seekerChain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 5 });
         const preyChain = spawnLinkedBallChain(state, { col: 12, row: 10 }, { ...snakeChainOptions(), segmentCount: 3 });
-        const { registry } = wireSnakeTestGame(state, [
+        wireSnakeTestGame(state, [
             { headId: seekerChain.head.id, spawnGroupId: seekerChain.spawnGroupId },
             { headId: preyChain.head.id, spawnGroupId: preyChain.spawnGroupId },
         ]);
@@ -221,7 +209,9 @@ describe("snake intent integration", () => {
         stampWall(state.obstacleGrid, 11, 10);
         await state.nav.commitEdit({ startCol: 10, endCol: 12, startRow: 9, endRow: 11 });
         primeSnakeHeadVision(state, seeker);
-        const world = perceiveAgentIntentWorld(seeker, seeker.id, state, registry, () => null);
+        const instance = state.sandbox.snakeGame.instancesByHeadId.get(seeker.id);
+        const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
+        const world = perceiveAgentIntentWorld(seeker, agentCtx, state, () => null);
         assert.equal(world.prey, null);
     });
 });

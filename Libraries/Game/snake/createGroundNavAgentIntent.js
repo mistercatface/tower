@@ -8,29 +8,13 @@ export function createGroundNavAgentIntent({
     headNav,
     resolveVisibleFood,
     resolveExploreCell,
-    session,
-    agentId,
-    navWalkable,
+    agentCtx,
     visionRange = null,
     seekArrivalRadius = null,
     resolveHunger = null,
     resolveSegmentCount = null,
     rng = Math.random,
 }) {
-    const deps = {
-        brain,
-        sync,
-        headNav,
-        resolveVisibleFood,
-        resolveExploreCell,
-        selfHeadId: agentId,
-        registry: session.registry,
-        navWalkable,
-        visionRange,
-        seekArrivalRadius,
-        resolveHunger,
-        resolveSegmentCount,
-        rng,
-    };
+    const deps = { brain, sync, headNav, resolveVisibleFood, resolveExploreCell, agentCtx, navWalkable: agentCtx.navWalkable, visionRange, seekArrivalRadius, resolveHunger, resolveSegmentCount, rng };
     return createGroundNavIntentAdapter({ ...deps, config: getSharedConfig(), ...buildGroundNavIntentAdapterOptions(profileId, deps) });
 }

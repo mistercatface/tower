@@ -2,38 +2,35 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { resolveRelationshipFromProfile } from "../Libraries/Game/snake/agentRelationships.js";
+import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 
-describe("resolveRelationshipFromProfile", () => {
+function instance(profileId, { faction = "a", segments = 3 } = {}) {
+    return { profileId, head: { faction }, memberIds: Array.from({ length: segments }, (_, i) => i) };
+}
+describe("resolveRelationshipForInstances", () => {
     it("returns static relationship strings from profile table", () => {
         applySnakeGameConfig();
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.snake, "flee_agent", 1, 2, { entityRegistry: { getLive: () => ({ faction: "a" }) } }), "prey");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.snake, "squid", 1, 2, { entityRegistry: { getLive: () => ({ faction: "a" }) } }), "threat");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.flee, "snake", 1, 2, { entityRegistry: { getLive: () => ({ faction: "a" }) } }), "threat");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.flee, "squid", 1, 2, { entityRegistry: { getLive: () => ({ faction: "a" }) } }), "threat");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "squid", 1, 2, { entityRegistry: { getLive: () => ({ faction: "a" }) } }), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.flee)), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.squid)), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake)), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.squid)), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid)), "threat");
     });
 
     it("squid proximity relationships attack close and ignore or flee at distance", () => {
         applySnakeGameConfig();
-        const state = { entityRegistry: { getLive: () => ({ faction: "a" }) }, kinetic: {}, sandbox: {} };
         const closeSq = 40 * 40;
         const farSq = 80 * 80;
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "flee_agent", 1, 2, state, undefined, closeSq), "prey");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "flee_agent", 1, 2, state, undefined, farSq), "neutral");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "snake", 1, 2, state, undefined, closeSq), "prey");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "squid", 1, 2, state, undefined, closeSq), "prey");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "squid", 1, 2, state, undefined, farSq), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), undefined, closeSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), undefined, farSq), "neutral");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.snake), undefined, closeSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), undefined, closeSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), undefined, farSq), "threat");
     });
 
     it("sizeBand same faction returns configured ally or neutral", () => {
         applySnakeGameConfig();
-        const state = {
-            entityRegistry: { getLive: () => ({ faction: "red" }) },
-            kinetic: {},
-            sandbox: {},
-        };
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.snake, "snake", 1, 2, state), "ally");
-        assert.equal(resolveRelationshipFromProfile(AGENT_PROFILE.squid, "snake", 1, 2, state), "neutral");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake, { faction: "red", segments: 5 }), instance(AGENT_PROFILE.snake, { faction: "red", segments: 3 })), "ally");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid, { faction: "red" }), instance(AGENT_PROFILE.snake, { faction: "red" })), "neutral");
     });
 });

@@ -3,8 +3,7 @@ import { hueToPickerHex } from "../../Color/hex.js";
 export function applySnakeChainTint(members, tintHex) {
     for (let i = 0; i < members.length; i++) setPropVisualTint(members[i], tintHex);
 }
-export function copySnakeChainTintFromHead(state, headId, prop) {
-    const head = state.entityRegistry.getLive(headId);
+export function copySnakeChainTintFromHead(head, prop) {
     const tint = getPropVisualTint(head);
     if (tint != null) setPropVisualTint(prop, tint);
 }

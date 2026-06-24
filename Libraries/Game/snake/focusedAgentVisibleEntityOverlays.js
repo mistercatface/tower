@@ -22,9 +22,8 @@ export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, ctx, 
     if (!ctx?.head) return;
     const visionRange = getSharedConfig(config).visionRange;
     const frame = { navTopology: state.nav.topology, visionSession: null, visionRange };
-    const registry = state.sandbox.snakeGame.registry;
     const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
-    const world = classifyAgentVision(ctx.head, ctx.headId, state, registry, frame, null, perceptionOptions);
+    const world = classifyAgentVision(ctx.head, ctx, state, frame, null, perceptionOptions);
     const committedTargetId = ctx.getIntentTarget?.()?.targetId ?? null;
     if (world.threat) appendAgentRing(out, world.threat, agentRingStyle(config, "threat"));
     if (world.prey && world.prey.id !== committedTargetId) appendAgentRing(out, world.prey, agentRingStyle(config, "prey"));

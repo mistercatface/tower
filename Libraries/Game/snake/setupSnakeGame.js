@@ -1,5 +1,6 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
+import { aliveAgentRecords } from "../../AI/agents/agentPopulationRegistry.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
@@ -62,7 +63,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     const cameraCycler = new CameraTargetCycler(state, {
         getTargetIds: () => {
             const ids = [];
-            for (const headId of registry.aliveByHeadId.keys()) ids.push(headId);
+            for (const record of aliveAgentRecords(registry)) ids.push(record.headId);
             return ids;
         },
         onTargetChanged: () => {

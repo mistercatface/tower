@@ -9,19 +9,18 @@ export function resolveAgentPerceptionOptions(state, visionRange = null) {
     return {
         readVisionFrame: requireSnakeVisionFrame,
         agentRange: shared.fleeRange ?? resolved.range,
-        resolveRelationship: (selfHeadId, headId, gameState, _registry, distSq) =>
-            snakeGame ? resolveAgentRelationship(snakeGame, selfHeadId, headId, gameState, distSq) : "neutral",
+        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => (snakeGame ? resolveAgentRelationship(snakeGame, selfInstance, targetInstance, distSq) : "neutral"),
     };
 }
-export function perceiveAgentIntentWorldInto(out, seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange = null) {
+export function perceiveAgentIntentWorldInto(out, seeker, agentCtx, state, resolveVisibleFood, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
-    return perceiveAgentWorldInto(out, seeker, selfHeadId, state, registry, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
+    return perceiveAgentWorldInto(out, seeker, agentCtx, state, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
 }
-export function perceiveAgentIntentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, visionRange = null) {
+export function perceiveAgentIntentWorld(seeker, agentCtx, state, resolveVisibleFood, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
-    return perceiveAgentWorld(seeker, selfHeadId, state, registry, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
+    return perceiveAgentWorld(seeker, agentCtx, state, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
 }
-export function findNearestVisibleThreat(seeker, selfHeadId, state, registry, visionRange = null) {
+export function findNearestVisibleThreat(seeker, agentCtx, state, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
-    return findAgentThreat(seeker, selfHeadId, state, registry, resolved, resolveAgentPerceptionOptions(state, resolved));
+    return findAgentThreat(seeker, agentCtx, state, resolved, resolveAgentPerceptionOptions(state, resolved));
 }
