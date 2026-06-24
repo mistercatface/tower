@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Motion/kineticSleep.js";
@@ -9,9 +9,14 @@ import { isRotatingEntity, pairBroadphaseOverlap, shouldResolveKineticPair } fro
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
-        const info = SatCollision.checkCollision(a, a.getShape(), b, b.getShape());
-        if (!info || info.coincident) return;
-        separateAlongNormal(a, b, info.nx, info.ny, info.overlap, a.mass, b.mass);
+        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+        if (!collided) return;
+        const overlap = SAT_RESULT[0];
+        const nx = SAT_RESULT[1];
+        const ny = SAT_RESULT[2];
+        const coincident = SAT_RESULT[5] !== 0;
+        if (coincident) return;
+        separateAlongNormal(a, b, nx, ny, overlap, a.mass, b.mass);
     }
 }
 describe("kinetic sleep on proof props", () => {

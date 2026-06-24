@@ -5,33 +5,36 @@ import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
-import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
+import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab, kineticDynamicSlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
-import { SatCollision, getEntityCollisionParts } from "./SatCollision.js";
+import { SatCollision, getEntityCollisionParts, entityFacing } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
 /** @param {object} prop @param {object[]} wallCandidates */
 function kineticOverlapsWallSegment(prop, wallCandidates) {
     const parts = getEntityCollisionParts(prop);
+    const physId = prop._physId;
+    const hasSlab = physId !== undefined && physId !== -1;
+    const px = hasSlab ? kineticDynamicSlab.x[physId] : prop.x;
+    const py = hasSlab ? kineticDynamicSlab.y[physId] : prop.y;
     for (let p = 0; p < parts.length; p++) {
         const shape = parts[p];
         if (shape.type === "Circle") {
             const radiusSq = shape.radius * shape.radius;
             for (let i = 0; i < wallCandidates.length; i++) {
                 const seg = wallCandidates[i];
-                if (distanceSqToSegment(seg, prop.x, prop.y) <= radiusSq) return true;
+                if (distanceSqToSegment(seg, px, py) <= radiusSq) return true;
             }
             continue;
         }
         for (let i = 0; i < wallCandidates.length; i++) {
             const seg = wallCandidates[i];
             const segShape = ensureWallSegmentPolygonShape(seg);
-            if (SatCollision.checkCollision(prop, shape, seg, segShape)) return true;
+            if (SatCollision.checkCollision(px, py, entityFacing(prop), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
         }
     }
     return false;
 }
 function bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls) {
-    writebackActiveKineticBodySlab(activeBodies);
     for (let i = 0; i < activeBodies.length; i++) {
         const prop = activeBodies[i];
         if (!prop.strategy?.isKinetic) continue;
@@ -39,7 +42,6 @@ function bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls)
         if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
         resolveWalls(prop);
     }
-    refreshActiveKineticBodySlabPose(activeBodies);
 }
 /**
  * Kinetic collision substeps: contact solve + wall resolve.
@@ -78,12 +80,12 @@ export function runCollisionPipeline(
             bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls);
             frame.flushScheduledKineticActivations(patchBodies);
             clampActiveKineticBodySlabSpeed(1000);
-            writebackActiveKineticBodySlab(activeBodies);
-            refreshActiveKineticBodySlabPose(activeBodies);
             const maxError = measureConstraintSlabMaxError();
             const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
             if (maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq) break;
         }
+        writebackActiveKineticBodySlab(activeBodies);
+        refreshActiveKineticBodySlabPose(activeBodies);
         tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
     } else tick.world.kinetic.kineticSolverStats = { outerIterations: 0, maxIterations: kineticIterations };
     if (hasActiveBodies)

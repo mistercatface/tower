@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
@@ -23,12 +23,12 @@ describe("kinetic contact pipeline", () => {
         const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
-        assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
+        assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.getShape(), wedge.x, wedge.y, entityFacing(wedge), wedge.getShape()));
         const tick = createKineticTestTick([ball, wedge]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 1);
         assert.equal(kineticContactBuffer.static.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
-        assert.equal(slabPairCollision(ball, wedge), null);
+        assert.ok(!slabPairCollision(ball, wedge));
     });
 
     it("circle-only pass fills buffer with circle-circle tier", () => {
@@ -50,6 +50,6 @@ describe("kinetic contact pipeline", () => {
         assert.equal(kineticContactBuffer.count, 2);
         assert.equal(kineticContactBuffer.static.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
         assert.equal(kineticContactBuffer.static.tier[1], KINETIC_PAIR_TIER.POLY_POLY);
-        assert.equal(slabPairCollision(left, right), null);
+        assert.ok(!slabPairCollision(left, right));
     });
 });

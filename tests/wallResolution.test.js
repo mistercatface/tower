@@ -1,8 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
+import { writeActiveKineticBodySlabPose, writeStaticKineticSlabSlot, writeBroadphaseFromBounds } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { createKineticTick } from "../GameState/KineticTick.js";
@@ -14,7 +15,7 @@ function mockWallSegment(x, y, size = 16) {
 }
 function shapeOverlapsWall(prop, wall) {
     const segShape = ensureWallSegmentPolygonShape(wall);
-    return SatCollision.checkCollision(prop, prop.getShape(), wall, segShape) != null;
+    return SatCollision.checkCollision(prop.x, prop.y, entityFacing(prop), prop.getShape(), wall.x, wall.y, entityFacing(wall), segShape);
 }
 function resolveWallUntilClear(prop, segments, maxPasses = 6) {
     const wp = prop.strategy?.wallPhysics;
@@ -49,8 +50,8 @@ describe("polygon wall resolution", () => {
         const floor = mockWallSegment(0, 16);
         assert.ok(shapeOverlapsWall(wedge, floor));
         resolveWallUntilClear(wedge, [floor]);
-        const info = SatCollision.checkCollision(wedge, wedge.getShape(), floor, ensureWallSegmentPolygonShape(floor));
-        if (info) assert.ok(info.ny < -0.5 || dotXY(info.nx, info.ny, 0, wedge.y - floor.y) > 0);
+        const collided = SatCollision.checkCollision(wedge.x, wedge.y, entityFacing(wedge), wedge.getShape(), floor.x, floor.y, entityFacing(floor), ensureWallSegmentPolygonShape(floor));
+        if (collided) assert.ok(SAT_RESULT[2] < -0.5 || dotXY(SAT_RESULT[1], SAT_RESULT[2], 0, wedge.y - floor.y) > 0);
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });
     it("wall impulse slows polygon sliding into a segment", () => {
@@ -65,6 +66,10 @@ describe("polygon wall resolution", () => {
         const bar = bar16x8(5, 0);
         bar.vx = 0;
         bar.vy = 0;
+        bar._physId = 0;
+        writeActiveKineticBodySlabPose(bar);
+        writeStaticKineticSlabSlot(bar);
+        writeBroadphaseFromBounds(bar._physId, bar.getShape());
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();

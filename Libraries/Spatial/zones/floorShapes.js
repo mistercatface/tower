@@ -1,5 +1,5 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
-import { SatCollision } from "../collision/SatCollision.js";
+import { SatCollision, entityFacing } from "../collision/SatCollision.js";
 import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { boxLocalFootprint, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
 import { kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
@@ -18,7 +18,7 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
             const entity = candidates[i];
             if (!entity || entity.isDead) continue;
             const shape = entity.getShape();
-            if (SatCollision.checkCollision(entity, shape, floorShape, zoneShape) == null) continue;
+            if (!SatCollision.checkCollision(entity.x, entity.y, entityFacing(entity), shape, floorShape.x, floorShape.y, entityFacing(floorShape), zoneShape)) continue;
             next.add(entity.id);
             if (!floorShape._occupants.has(entity.id)) onEnter(floorShape, entity);
         }

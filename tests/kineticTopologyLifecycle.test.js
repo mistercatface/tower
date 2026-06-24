@@ -11,7 +11,7 @@ import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { SatCollision } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 
 function createTestWorld(initialProps, constraints = []) {
@@ -98,7 +98,7 @@ describe("kinetic topology lifecycle", () => {
         const ball = new WorldProp(18, 0, "ball", 0);
         applyPropBoxFootprint(glass, 24, 18);
         ball.vx = -200;
-        assert.ok(SatCollision.checkCollision(glass, glass.getShape(), ball, ball.getShape()));
+        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.getShape(), ball.x, ball.y, entityFacing(ball), ball.getShape()));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, { resolveWalls() {} });
         assert.ok(tick.world.worldProps.length > 2);

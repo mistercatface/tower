@@ -1,13 +1,18 @@
 import { addXY } from "../../Math/Vec2.js";
+import { kineticDynamicSlab } from "./kineticBodySlab.js";
 /**
  * Position correction along contact normals (no velocity change).
  */
 /**
- * @param {{ x: number, y: number }} body — mutated in place
+ * @param {{ x: number, y: number, _physId?: number }} body — mutated in place
  */
 export function applyPositionCorrection(body, normalX, normalY, overlap) {
     if (body.strategy?.pinned) return;
-    addXY(body, normalX * overlap, normalY * overlap);
+    const physId = body._physId;
+    if (physId !== undefined && physId !== -1) {
+        kineticDynamicSlab.x[physId] += normalX * overlap;
+        kineticDynamicSlab.y[physId] += normalY * overlap;
+    } else addXY(body, normalX * overlap, normalY * overlap);
 }
 /**
  * Mass-weighted separation of two overlapping bodies.
@@ -58,9 +63,13 @@ export function computeCircleWallContact(entity, normalX, normalY, radius) {
 }
 /**
  * @param {{ x: number, y: number }} entity
- * @param {{ cx?: number, cy?: number }} [satResult]
+ * @param {number} normalX
+ * @param {number} normalY
+ * @param {number} overlap
+ * @param {number} cx
+ * @param {number} cy
  * @returns {{ cx: number, cy: number }}
  */
-export function computePolygonWallContact(entity, normalX, normalY, overlap, satResult = null) {
-    return { cx: satResult?.cx !== undefined ? satResult.cx : entity.x - normalX * overlap, cy: satResult?.cy !== undefined ? satResult.cy : entity.y - normalY * overlap };
+export function computePolygonWallContact(entity, normalX, normalY, overlap, cx = NaN, cy = NaN) {
+    return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
 }

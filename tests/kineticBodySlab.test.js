@@ -5,7 +5,7 @@ import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
 import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
+import { circleCircleContact, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 
 describe("kinetic body slab", () => {
     it("broadphase slot uses body x/y as circle center", () => {
@@ -46,13 +46,14 @@ describe("kinetic body slab", () => {
         a._physId = 0;
         b._physId = 1;
         snapshotKineticBodySlab([a, b]);
-        const slab = circleCircleContactSlab(0, 1);
-        const sat = circleCircleContact(a, a.getShape(), b, b.getShape());
-        assert.ok(slab);
-        assert.ok(sat);
-        assert.ok(Math.abs(slab.overlap - sat.overlap) < 1e-5);
-        assert.ok(Math.abs(slab.nx - sat.nx) < 1e-5);
-        assert.ok(Math.abs(slab.ny - sat.ny) < 1e-5);
+        const slabCollided = circleCircleContactSlab(0, 1);
+        assert.ok(slabCollided);
+        const slabRes = new Float32Array(SAT_RESULT);
+        const satCollided = circleCircleContact(a.x, a.y, a.getShape(), b.x, b.y, b.getShape());
+        assert.ok(satCollided);
+        assert.ok(Math.abs(slabRes[0] - SAT_RESULT[0]) < 1e-5);
+        assert.ok(Math.abs(slabRes[1] - SAT_RESULT[1]) < 1e-5);
+        assert.ok(Math.abs(slabRes[2] - SAT_RESULT[2]) < 1e-5);
     });
 
     it("activeBodiesMatchKineticSlab detects pose drift after unsynced move", () => {

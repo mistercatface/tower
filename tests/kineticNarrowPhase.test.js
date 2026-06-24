@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { SatCollision, checkEntityPairCollision, circleCircleContact } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, checkEntityPairCollision, circleCircleContact, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Spatial/collision/kineticNarrowPhase.js";
@@ -38,9 +38,13 @@ describe("kinetic narrow phase tiers", () => {
     it("circle-circle fast contact matches SAT dispatch", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(15, 0, 10);
-        const fast = circleCircleContact(a, a.getShape(), b, b.getShape());
-        const sat = SatCollision.checkCollision(a, a.getShape(), b, b.getShape());
-        assert.deepEqual(fast, sat);
+        const fastCollided = circleCircleContact(a.x, a.y, a.getShape(), b.x, b.y, b.getShape());
+        const fastRes = new Float32Array(SAT_RESULT);
+        const satCollided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+        assert.equal(fastCollided, satCollided);
+        if (fastCollided) {
+            assert.deepEqual(fastRes, SAT_RESULT);
+        }
     });
     it("pair gather stamps circle-circle tier on overlapping movers", () => {
         const a = mockKineticCircle(0, 0, 10, 40, 0);
@@ -62,10 +66,10 @@ describe("kinetic narrow phase tiers", () => {
         const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
-        assert.ok(SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
+        assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.getShape(), wedge.x, wedge.y, entityFacing(wedge), wedge.getShape()));
         const tick = createKineticTestTick([ball, wedge]);
         resolveKineticContactPass(tick);
-        assert.ok(!SatCollision.checkCollision(ball, ball.getShape(), wedge, wedge.getShape()));
+        assert.ok(!SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.getShape(), wedge.x, wedge.y, entityFacing(wedge), wedge.getShape()));
     });
     it("contact pass still separates poly-poly pairs", () => {
         const left = new WorldProp(0, 0, "crate", 0);
@@ -73,6 +77,6 @@ describe("kinetic narrow phase tiers", () => {
         right.vx = -20;
         assert.ok(checkEntityPairCollision(left, right));
         resolveKineticContactPass(createKineticTestTick([left, right]));
-        assert.equal(checkEntityPairCollision(left, right), null);
+        assert.ok(!checkEntityPairCollision(left, right));
     });
 });

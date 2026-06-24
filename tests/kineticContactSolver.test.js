@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt } from "../Libraries/Spatial/collision/SatCollision.js";
+import { SatCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
@@ -11,19 +11,26 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 function pairStillOverlaps(a, b) {
-    return SatCollision.checkCollision(a, a.getShape(), b, b.getShape()) != null;
+    return SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
 }
 function slabPairStillOverlaps(a, b) {
-    return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]) != null;
+    return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
 }
 function separatePairUntilClear(a, b, maxPasses = 8) {
     let last = null;
     for (let pass = 0; pass < maxPasses; pass++) {
-        const info = SatCollision.checkCollision(a, a.getShape(), b, b.getShape());
-        if (!info) return last;
-        last = info;
-        if (info.coincident) break;
-        separateAlongNormal(a, b, info.nx, info.ny, info.overlap, a.mass, b.mass);
+        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+        if (!collided) return last;
+        last = {
+            overlap: SAT_RESULT[0],
+            nx: SAT_RESULT[1],
+            ny: SAT_RESULT[2],
+            coincident: SAT_RESULT[5] !== 0,
+            featureA: SAT_RESULT[6],
+            featureB: SAT_RESULT[7]
+        };
+        if (last.coincident) break;
+        separateAlongNormal(a, b, last.nx, last.ny, last.overlap, a.mass, b.mass);
     }
     return last;
 }
@@ -134,9 +141,9 @@ describe("poly-poly kinetic contact", () => {
     it("poly-poly crate overlap emits two manifold points", () => {
         const left = new WorldProp(0, 0, "crate", 0);
         const right = new WorldProp(10, 0, "crate", 0);
-        const hit = checkEntityPairCollision(left, right);
-        assert.ok(hit);
-        assert.equal(hit.info.points.length, 2);
+        const collided = checkEntityPairCollision(left, right);
+        assert.ok(collided);
+        assert.equal(SAT_RESULT[8], 2);
     });
     it("three-crate stack settles without lateral drift", () => {
         const bottom = new WorldProp(0, 0, "crate", 0);

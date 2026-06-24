@@ -16,7 +16,7 @@ import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js"
 import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
 import { kineticDynamicSlab, kineticStaticSlab, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
-import { checkEntityPairCollisionAt } from "./SatCollision.js";
+import { checkEntityPairCollisionAt, SAT_RESULT } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { contactWarmStartKeyFromPairKey, isRestingKineticContact, warmStartCacheIndex } from "./kineticContactManifold.js";
 const MAX_CONTACTS = 4096;
@@ -77,13 +77,20 @@ export function circleCircleContactSlab(physIdA, physIdB) {
     const dy = slab.y[physIdB] - slab.y[physIdA];
     const distSq = dx * dx + dy * dy;
     const radii = slab.r[physIdA] + slab.r[physIdB];
-    if (distSq >= radii * radii) return null;
-    if (distSq <= COINCIDENT_CIRCLE_EPS * COINCIDENT_CIRCLE_EPS) return { overlap: radii, nx: 0, ny: 0, coincident: true };
+    if (distSq >= radii * radii) return false;
+    if (distSq <= COINCIDENT_CIRCLE_EPS * COINCIDENT_CIRCLE_EPS) {
+        SAT_RESULT[0] = radii;
+        SAT_RESULT[1] = 0;
+        SAT_RESULT[2] = 0;
+        SAT_RESULT[5] = 1; // coincident
+        return true;
+    }
     const dist = Math.sqrt(distSq);
-    const overlap = radii - dist;
-    const nx = dx / dist;
-    const ny = dy / dist;
-    return { overlap, nx, ny, coincident: false };
+    SAT_RESULT[0] = radii - dist;
+    SAT_RESULT[1] = dx / dist;
+    SAT_RESULT[2] = dy / dist;
+    SAT_RESULT[5] = 0; // coincident
+    return true;
 }
 function warmStartCacheLookup(key) {
     let idx = warmStartCacheIndex(key);
@@ -199,20 +206,23 @@ function appendContact(
     contacts.static.warmStartKey[i] = contactWarmStartKeyFromPairKey(warmStartPairKey, featureA, featureB);
 }
 function narrowPhaseCircleContact(physIdA, physIdB, pairDynamic, pairIndex, restitution, friction, warmStartPairKey, contacts) {
-    const info = circleCircleContactSlab(physIdA, physIdB);
-    if (!info) return;
-    if (info.coincident) {
-        separateCoincidentCircleSlab(physIdA, physIdB, info.overlap);
+    if (!circleCircleContactSlab(physIdA, physIdB)) return;
+    const overlap = SAT_RESULT[0];
+    const nx = SAT_RESULT[1];
+    const ny = SAT_RESULT[2];
+    const coincident = SAT_RESULT[5] !== 0;
+    if (coincident) {
+        separateCoincidentCircleSlab(physIdA, physIdB, overlap);
         return;
     }
-    separateAlongNormalSlab(physIdA, physIdB, info.nx, info.ny, info.overlap);
+    separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap);
     appendContact(
         contacts,
         physIdA,
         physIdB,
         KINETIC_PAIR_TIER.CIRCLE_CIRCLE,
-        info.nx,
-        info.ny,
+        nx,
+        ny,
         pairDynamic.preDvx[pairIndex],
         pairDynamic.preDvy[pairIndex],
         pairDynamic.preVxA[pairIndex],
@@ -232,39 +242,46 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairDynamic
     const slab = kineticDynamicSlab;
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
-    const hit = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
-    if (!hit) return;
-    const info = hit.info;
-    if (info.coincident) {
-        separateCoincidentCircleSlab(physIdA, physIdB, info.overlap);
+    const collided = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
+    if (!collided) return;
+    const overlap = SAT_RESULT[0];
+    const nx = SAT_RESULT[1];
+    const ny = SAT_RESULT[2];
+    const coincident = SAT_RESULT[5] !== 0;
+    if (coincident) {
+        separateCoincidentCircleSlab(physIdA, physIdB, overlap);
         return;
     }
-    separateAlongNormalSlab(physIdA, physIdB, info.nx, info.ny, info.overlap);
-    const points = info.points ?? [{ cx: info.cx, cy: info.cy, featureA: info.featureA ?? 0, featureB: info.featureB ?? 0 }];
-    for (let p = 0; p < points.length; p++) {
-        const pt = points[p];
+    separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap);
+    const pointCount = SAT_RESULT[8];
+    for (let p = 0; p < pointCount; p++) {
+        const offset = 9 + p * 4;
+        const cx = SAT_RESULT[offset + 0];
+        const cy = SAT_RESULT[offset + 1];
+        const featureA = SAT_RESULT[offset + 2];
+        const featureB = SAT_RESULT[offset + 3];
         appendContact(
             contacts,
             physIdA,
             physIdB,
             tier,
-            info.nx,
-            info.ny,
+            nx,
+            ny,
             pairDynamic.preDvx[pairIndex],
             pairDynamic.preDvy[pairIndex],
             pairDynamic.preVxA[pairIndex],
             pairDynamic.preVyA[pairIndex],
             pairDynamic.preVxB[pairIndex],
             pairDynamic.preVyB[pairIndex],
-            pt.cx - slab.x[physIdA],
-            pt.cy - slab.y[physIdA],
-            pt.cx - slab.x[physIdB],
-            pt.cy - slab.y[physIdB],
+            cx - slab.x[physIdA],
+            cy - slab.y[physIdA],
+            cx - slab.x[physIdB],
+            cy - slab.y[physIdB],
             restitution,
             friction,
             warmStartPairKey,
-            pt.featureA ?? 0,
-            pt.featureB ?? 0,
+            featureA,
+            featureB,
         );
     }
 }
