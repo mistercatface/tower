@@ -62,17 +62,28 @@ describe("node worker shim", () => {
         assert.ok(nav.topology.topology);
         await terminateWorkerNavigation(nav);
     });
-    it("runs a real worker HPA replan request", async () => {
+    it("runs a real worker HPA replan request and recovers after worker recycle", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
         const navigation = await createWorkerNavigation(grid);
         const start = grid.gridToWorld(2, 2);
         const target = grid.gridToWorld(10, 10);
         const request = buildReplanParams(grid, start.x, start.y, target.x, target.y, navigation, null);
-        const navState = createNavState();
-        const workerOut = await navigation.worker.requestPath(request, navState);
-        assert.ok(workerOut?.result?.pathLen > 0);
-        navigation.worker.releaseSlot(workerOut.result.pathSlot);
+
+        const navState1 = createNavState();
+        const workerOut1 = await navigation.worker.requestPath(request, navState1);
+        assert.ok(workerOut1?.result?.pathLen > 0);
+        navigation.worker.releaseSlot(workerOut1.result.pathSlot);
+
+        // Recycle the worker to simulate timeout/crash
+        navigation.worker.recycleWorker();
+
+        // Next request should trigger self-healing and succeed
+        const navState2 = createNavState();
+        const workerOut2 = await navigation.worker.requestPath(request, navState2);
+        assert.ok(workerOut2?.result?.pathLen > 0);
+        navigation.worker.releaseSlot(workerOut2.result.pathSlot);
+
         await terminateWorkerNavigation(navigation);
     });
 });

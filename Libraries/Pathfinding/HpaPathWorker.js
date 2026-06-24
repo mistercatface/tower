@@ -435,6 +435,11 @@ export class HpaPathWorker {
         await this.scheduleNavTopologySyncAwait(request.obstacleGrid, null);
         if (!isNavTopologyReady(this, request.obstacleGrid)) return null;
         this.releaseOwnedPathSlot(navState);
+        if (this._graphEpoch < request.graphEpoch) {
+            const seedX = this._pruneSeedWorldX ?? (request.obstacleGrid.minX + request.obstacleGrid.maxX) / 2;
+            const seedY = this._pruneSeedWorldY ?? (request.obstacleGrid.minY + request.obstacleGrid.maxY) / 2;
+            await this.syncObstacleNavGraph(request.obstacleGrid, null, request.graphEpoch, seedX, seedY, true);
+        }
         if (!(await this._ensureWorkerGraphReady(request.graphEpoch))) return null;
         const slot = this.leaseSlot();
         let workerOut = null;
