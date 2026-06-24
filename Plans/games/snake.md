@@ -201,6 +201,6 @@ Grouped knobs (override via `applySnakeGameConfig` in tests):
 
 ## Key tests
 
-`snakeDecisionModel`, `snakeIntent`, `snakeForageIntent`, `snakeFsmTransitions`, `agentAllyPerception`, `snakeEngagement`, `focusedAgentDebugOverlays`, `snakeSplit`, `snakeSegmentFracture`, `snakeMulti`, `fleeAgentDecision`, `gridCellVision`.
+`snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `agentAllyPerception`, `agentAllyMemory`, `focusedAgentDebugOverlays`, `snakeSplit`, `snakeSegmentFracture`, `snakeMulti`, `fleeAgentDecision`, `gridCellVision`.
 
 Harness: `tests/harness/snakeGameHarness.js`.

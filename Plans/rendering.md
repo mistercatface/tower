@@ -184,7 +184,7 @@ A different lens from the feature tiers below: which **CS graphics building bloc
 | Painter's sort (far→near) | ✅ | 85 | `_distSq` per drawable, `WorldSceneRenderer.js` |
 | Per-face mesh sort (back→front) | ✅ | 80 | sphere/flipper/pipe faces by `face.depth` |
 | Textured-quad cell depth sort | ✅ | 80 | `drawTexturedQuadCells` |
-| Structure pass switch (radial/flat) | ✅ | 85 | `StructureDrawPass.js`, `WorldRenderMode.js` |
+| Structure pass switch (radial/flat) | ✅ | 85 | `WorldRenderMode.js` inlined in `WorldSceneRenderer.js` |
 | Floor / debris / entity layer hooks | ✅ | 80 | `renderMode` per asset |
 | Robust cross-pipeline z (props vs walls) | 🟡 | 55 | distance-sq heuristic, occasional overlap edge cases |
 | True per-pixel depth buffer | ⬜ | 0 | painter's only (intentional for 2D canvas) |
@@ -335,7 +335,7 @@ This is the headline roadmap for *your* vision. All **overhead** modes share Tie
 | **Vector silhouette mode** (orthogonal debug overlay) | ✅ | 80 | `vectorProp.js`, toolbar toggle; not a camera mode but a draw mode |
 | **Top-down flat 2D** | 🟡 | 45 | `flat2d` does flat wall-rail footprints, but 3D props still extrude; not a true orthographic top-down yet |
 | **Fixed isometric** (true 2:1 dimetric axes) | ⬜ | 0 | despite folder name — would set `strength→fixed axis`, lock viewer direction, re-key sprite bakes by fixed angle |
-| Mode switch infrastructure | 🟡 | 60 | `WorldRenderMode` swaps `StructureDrawPass` only; needs to also drive projection + sprite keys for full mode parity |
+| Mode switch infrastructure | 🟡 | 60 | `WorldRenderMode` swaps radial/flat structure draw directly; needs to also drive projection + sprite keys for full mode parity |
 | Smooth runtime mode transitions | ⬜ | 0 | |
 
 **Branch progress: 45%**
@@ -450,11 +450,11 @@ This is the headline roadmap for *your* vision. All **overhead** modes share Tie
 ```
 Libraries/Spatial/iso/              — projection & camera (read "iso" as "elevation")
   IsometricProjection.js            — radial elevation alpha, extrude, silhouettes
-  ElevationCamera.js, perspectiveDefaults.js
+  ElevationCamera.js
 Core/GamePerspective.js             — per-game cameraHeight / strength
 Libraries/Viewport/Viewport.js      — pan / zoom / world↔screen
 Render/Render.js                    — the one render loop (renderSimulationScene)
-Render/StructureDrawPass.js, WorldRenderMode.js — radial vs flat2d switch
+Render/WorldRenderMode.js — radial vs flat2d switch
 Libraries/Render/WorldSceneRenderer.js — depth sort + scene passes
 Libraries/Canvas/QuantizedSpriteCache.js — bake→quantize→blit (the cache)
   BakedSpriteCache.js, offscreenCanvas.js, viewQuantize.js, AffineTexture.js

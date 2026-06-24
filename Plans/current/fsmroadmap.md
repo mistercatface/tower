@@ -25,8 +25,8 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 ### Not current anymore
 
-- The old plan's "Phase A reach BFS off main thread" is done in spirit for live snake/flee/squid decision reach: intent scoring no longer imports `syncNavReachHorizon` / `navReachStepsTo`.
-- `Libraries/Navigation/navReachHorizon.js` still exists with its focused tests, but it is not the live ground-agent decision reach path.
+- The old plan's "Phase A reach BFS off main thread" is done: intent scoring now uses flow-backed reach off-thread via `flowTargetSteps.js`.
+- `Libraries/Navigation/navReachHorizon.js` and its tests (`navReachHorizon.test.js`) have been deleted, as flow-backed reach is now the sole decision reach path.
 - The deleted `flow-reach-deprecation.md` link should not be treated as an active planning dependency.
 - Flow locomotion is not blocked on reach cleanup anymore; the remaining blocker is cleanly integrating flow execution with the existing cell-target/HPA locomotion contract.
 
@@ -38,12 +38,12 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 **Goal:** Make flow-backed reach a first-class decision input with clear readiness and no hidden extra distance model.
 
-| Step | Work | File / area |
-|------|------|-------------|
-| 1.1 | Audit first-frame and not-ready behavior in `readTargetSteps`; decide whether "unknown" should beat approximate octile in scoring. | `flowTargetSteps.js`, decision tests |
-| 1.2 | Add targeted tests for ready flow distance, not-ready flow distance, stale cache expiry, and committed route length precedence. | new or existing reach/decision tests |
-| 1.3 | Add lightweight diagnostics to focused FSM snapshots for reach source (`route`, `flow`, `stale`, `unknown`) if the UI needs to explain surprising choices. | `createGroundNavIntentAdapter.js`, focused debug |
-| 1.4 | Decide whether `navReachHorizon.js` is debug/test-only or removable; delete it only when no non-test caller remains. | `Libraries/Navigation/`, `tests/navReachHorizon.test.js` |
+| Step | Work | File / area | Status |
+|------|------|-------------|--------|
+| 1.1 | Audit first-frame and not-ready behavior in `readTargetSteps`; decide whether "unknown" should beat approximate octile in scoring. | `flowTargetSteps.js`, decision tests | Done |
+| 1.2 | Add targeted tests for ready flow distance, not-ready flow distance, stale cache expiry, and committed route length precedence. | new or existing reach/decision tests | Done |
+| 1.3 | Add lightweight diagnostics to focused FSM snapshots for reach source (`route`, `flow`, `stale`, `unknown`) if the UI needs to explain surprising choices. | `createGroundNavIntentAdapter.js`, focused debug | Pending |
+| 1.4 | Decide whether `navReachHorizon.js` is debug/test-only or removable; delete it only when no non-test caller remains. | `Libraries/Navigation/`, `tests/navReachHorizon.test.js` | Done |
 
 **Done when:** Decision reach has an explicit source contract, tests cover flow readiness, and there is no accidental reintroduction of per-agent forward BFS in live autosim.
 
@@ -51,12 +51,12 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 **Goal:** Flee escape/regroup steering uses flow downhill while the FSM still selects the same flee/seek policies and destinations.
 
-| Step | Work | File / area |
-|------|------|-------------|
-| 2.1 | Add a profile or mode-level locomotion choice for local execution (`flee`, then `seek_ally` for regroup) without changing decision scoring. | `Config/games/snake.js`, `agentAutosim.js` |
-| 2.2 | Extend the cell-target locomotion seam so intent effects can request flow execution for local destinations and HPA execution for long routes. | `createGroundNavIntentAdapter.js`, `cellTargetHpaNav.js`, `driveFlowGroundNav.js` |
-| 2.3 | Reuse the existing `FlowFieldGrid` window/cache/worker path; do not create per-agent flow windows or a second flow cache unless profiling proves the shared window cannot serve crowds. | `FlowFieldGrid.js`, `flowGroundNavBehavior.js` |
-| 2.4 | Add a targeted locomotion test: a flee agent in a constrained local layout moves downhill through flow and preserves existing FSM transition reasons. | new focused test |
+| Step | Work | File / area | Status |
+|------|------|-------------|--------|
+| 2.1 | Add a profile or mode-level locomotion choice for local execution (`flee`, then `seek_ally` for regroup) without changing decision scoring. | `Config/games/snake.js`, `agentAutosim.js` | Pending |
+| 2.2 | Extend the cell-target locomotion seam so intent effects can request flow execution for local destinations and HPA execution for long routes. | `createGroundNavIntentAdapter.js`, `cellTargetHpaNav.js`, `driveFlowGroundNav.js` | Pending |
+| 2.3 | Reuse the existing `FlowFieldGrid` window/cache/worker path; do not create per-agent flow windows or a second flow cache unless profiling proves the shared window cannot serve crowds. | `FlowFieldGrid.js`, `flowGroundNavBehavior.js` | Pending |
+| 2.4 | Add a targeted locomotion test: a flee agent in a constrained local layout moves downhill through flow and preserves existing FSM transition reasons. | new focused test | Pending |
 
 **Done when:** Flee agents can execute escape/regroup using flow steering, the FSM snapshots remain stable, and HPA remains the route planner for non-local committed movement.
 
@@ -64,12 +64,12 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 **Goal:** Keep flow reach + locomotion cheap under snake/flee/squid crowd counts.
 
-| Step | Work | File / area |
-|------|------|-------------|
-| 3.1 | Profile current slot churn with the shared 512-slot cache under representative snake/flee/squid counts. | `FlowCacheManager`, perf harness |
-| 3.2 | Add prioritization only if measurements show editor flow, off-screen agents, and focused/on-screen agents are competing for worker slots. | `PathfindingWorkerClient`, `SabSlotWorkerHost`, `FlowFieldGrid` |
-| 3.3 | Make worker lifecycle failure visible rather than silently degrading decision reach or locomotion. | `PathfindingWorkerClient`, focused debug |
-| 3.4 | Revisit multi-worker flow only after slot churn or worker time shows up in profiles. | worker host/runtime |
+| Step | Work | File / area | Status |
+|------|------|-------------|--------|
+| 3.1 | Profile current slot churn with the shared 512-slot cache under representative snake/flee/squid counts. | `FlowCacheManager`, perf harness | Pending |
+| 3.2 | Add prioritization only if measurements show editor flow, off-screen agents, and focused/on-screen agents are competing for worker slots. | `PathfindingWorkerClient`, `SabSlotWorkerHost`, `FlowFieldGrid` | Pending |
+| 3.3 | Make worker lifecycle failure visible rather than silently degrading decision reach or locomotion. | `PathfindingWorkerClient`, focused debug | Pending |
+| 3.4 | Revisit multi-worker flow only after slot churn or worker time shows up in profiles. | worker host/runtime | Pending |
 
 **Done when:** Profiles show no main-thread local BFS in live agent decisions and flow worker cost is visible, bounded, and explainable.
 
@@ -77,12 +77,12 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 **Goal:** Keep the FSM explicit, profile-owned, and easy to inspect as more agent behaviors arrive.
 
-| Step | Work | File / area |
-|------|------|-------------|
-| 4.1 | Keep new modes as `intentStates.js` state objects plus profile schema entries; avoid new decision packages or resolver layers. | `intentStates.js`, `snake.js` config |
-| 4.2 | Preserve one context frame per intent instance; no per-tick option bags for decision or locomotion. | `createGroundNavIntentAdapter.js` |
-| 4.3 | Extend focused debug from the existing FSM snapshot instead of adding separate overlay state. | `getGroundNavFsmSnapshot`, focused debug modules |
-| 4.4 | Add behavior tests at the FSM boundary when changing mode selection, latch timing, sprint rules, or target memory. | existing snake/flee tests |
+| Step | Work | File / area | Status |
+|------|------|-------------|--------|
+| 4.1 | Keep new modes as `intentStates.js` state objects plus profile schema entries; avoid new decision packages or resolver layers. | `intentStates.js`, `snake.js` config | Pending |
+| 4.2 | Preserve one context frame per intent instance; no per-tick option bags for decision or locomotion. | `createGroundNavIntentAdapter.js` | Pending |
+| 4.3 | Extend focused debug from the existing FSM snapshot instead of adding separate overlay state. | `getGroundNavFsmSnapshot`, focused debug modules | Pending |
+| 4.4 | Add behavior tests at the FSM boundary when changing mode selection, latch timing, sprint rules, or target memory. | existing snake/flee tests | Pending |
 
 ---
 

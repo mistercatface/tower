@@ -18,9 +18,9 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | **Pathfinding** | ~56% | pro-grade grid search + HPA/flow workers; missing smoothing and crowd layer | octile A*, HPA* Voronoi regions, flow-field BFS, SAB workers | funnel / string-pull smoothing | [pathfinding.md](./pathfinding.md) |
 | **Rendering** | ~52% | radial pseudo-3D core is strong; no shadows/lighting pass yet | camera-relative elevation projection, painter sort, bake/blit LRU | projected drop shadows | [rendering.md](./rendering.md) |
 | **Procedural** | ~42% | strong bake/resolution; weak authorship/generator layer | CA caves, room-graph bake, cardinal corridor A* | unified root seed | [procedural.md](./procedural.md) · algorithms → [Mazes.md](./Mazes.md) |
-| **AI** | ~55% | two intent consumers; team hunting; cohesion 4c/4d; **`reachSteps` nav BFS** for utility/threat/cohesion | FSM, utility scoring, TTL target memory, faction relationships | Part 1 dedupe then local flow locomotion (Part 2) | [AI.md](./AI.md) |
+| **AI** | ~55% | two intent consumers; team hunting; cohesion 4c/4d; **`reachSteps` flow-backed reach** for utility/threat/cohesion | FSM, utility scoring, TTL target memory, faction relationships | Local flow locomotion (Part 2) | [AI.md](./AI.md) |
 
-**Overall engine maturity: ~56%** _(manual unweighted roll-up)._ Recent AI work: flee agents as a second full intent consumer, faction relationship rules, ally perception/memory, and flee regroup (`seek_ally`). Pathfinding flow fields remain strong but are not yet wired into snake/flee decision or locomotion loops.
+**Overall engine maturity: ~56%** _(manual unweighted roll-up)._ Recent AI work: flee agents as a second full intent consumer, faction relationship rules, ally perception/memory, and flee regroup (`seek_ally`). Pathfinding flow fields are now wired into snake/flee decision reach, but not yet into locomotion loops.
 
 ---
 
@@ -43,8 +43,8 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 |---|---|---|---|
 | Search | ✅ octile/cardinal/abstract A* | A* over navmesh graph | parity on grid |
 | Hierarchy | ✅ HPA* Voronoi regions + CSR graph | Detour tiles | parity in grid representation |
-| Many agents / one goal | ✅ flow fields (shared window) | bespoke | strong; per-agent local horizons not wired |
-| Local agent horizon | 🟡 infra exists | continuum crowds / local fields | `FlowFieldWindow` + range BFS; not per-agent yet |
+| Many agents / one goal | ✅ flow fields (shared window) | bespoke | strong; per-agent flow distance slots wired for decision reach |
+| Local agent horizon | 🟡 infra exists | continuum crowds / local fields | `FlowFieldWindow` + range BFS; per-agent flow slots for decision reach |
 | Concurrency | ✅ SAB workers + slot leases | job system | parity |
 | Dynamic repair | ✅ epoch invalidation + localized region patch | tile-cache rebuild | parity |
 | Runtime topology | ✅ `NavRuntime` + `NavTopology` + worker navigation | nav service / tile cache | current naming is now documented |
@@ -63,7 +63,7 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | Utility scoring | ✅ generic core; snake + flee scorers | utility AI | no authoring layer |
 | EQS | 🟡 generic option scorer; explore consumer | Unreal EQS | no debug UI |
 | Teams/factions | 🟡 relationships + flee regroup | team-aware targeting | snake regroup + pack flee pending |
-| Nav–AI bridge | 🟡 HPA locomotion; flow for sandbox only | local fields + global plan | decision reach still cell-distance proxy |
+| Nav–AI bridge | 🟡 HPA locomotion; flow for sandbox only | local fields + global plan | decision reach uses flow distance slots |
 | Strategy/game theory | ⬜ none | GOAP/HTN/MCTS/minimax | future |
 
 ### Rendering
@@ -192,8 +192,8 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [x] Runtime topology now lives in `Libraries/Navigation` (`NavRuntime`, `NavTopology`).
 - [ ] ▶ Funnel/string-pull smoothing.
 - [ ] Local separation / RVO-style crowd.
-- [x] **FSM reach (`reachSteps`)** — Pass 1–5 ✅ · [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md)
-- [ ] **AI consumer dedupe (Part 1)** — snake/flee dedupe; move generic FSM out of snake folder · **gates** flow locomotion
+- [ ] **Local flow locomotion (Part 2)** — 2a flee flow steering, 2b hybrid HPA → 3 blended fields · [`current/fsmroadmap.md`](current/fsmroadmap.md)
+- [ ] **AI consumer dedupe & FSM hygiene (Part 4)** — dedupe snake/flee; generic derives in `Libraries/AI/` · [`current/fsmroadmap.md`](current/fsmroadmap.md)
 - [ ] **Per-agent local flow horizons (locomotion Part 2)** — 2a flee flow → 2b hybrid HPA → 3 blended fields · [AI.md](./AI.md#future-local-flow-horizons)
 
 ### Rendering
@@ -220,9 +220,9 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [x] Ally perception + memory + blackboard (`allyState`, TTL ally slot).
 - [x] Flee `seek_ally` regroup when safe and satisfied.
 - [x] Cohesion **4c** (snake regroup) and **4d** (flee pack flee blend).
-- [x] **FSM reach (`reachSteps`)** — Pass 1–5 ✅ · [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md)
-- [ ] **AI consumer dedupe (Part 1)** — dedupe snake/flee; generic derives in `Libraries/AI/` not `snakeDecisionModel.js`
-- [ ] Local flow horizons for **locomotion** (Part 2: 2a–3) — **gated on Part 1**
+- [x] **FSM reach (`reachSteps`)** — Flow-backed reach ✅ · [`current/fsmroadmap.md`](current/fsmroadmap.md)
+- [ ] **Local flow locomotion (Part 2)** — 2a flee flow steering, 2b hybrid HPA → 3 blended fields · [`current/fsmroadmap.md`](current/fsmroadmap.md)
+- [ ] **AI consumer dedupe & FSM hygiene (Part 4)** — dedupe snake/flee; generic derives in `Libraries/AI/` not `snakeDecisionModel.js`
 - [ ] Behavior-tree skeleton over existing intent primitives.
 
 ---
@@ -249,8 +249,8 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 ### Highest strategic overlap
 
-1. **AI consumer dedupe (Part 1)** — snake/flee cleanup; gates flow locomotion · [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md)
-2. **Local flow locomotion (Part 2)** — 2a flee flow steer, 2b hybrid HPA, 3 blended fields · same doc
+1. **Local flow locomotion (Part 2)** — 2a flee flow steer, 2b hybrid HPA, 3 blended fields · [`current/fsmroadmap.md`](current/fsmroadmap.md)
+2. **AI consumer dedupe & FSM hygiene (Part 4)** — snake/flee cleanup; generic derives in `Libraries/AI/` · same doc
 3. **Funnel / string-pull path smoothing** — pathfinding feel win, visibly improves snake chase/explore.
 4. **Unified root seed** — procedural reproducibility, regression tests, future level generator.
 5. **Render cache telemetry** — supports dense snake/sandbox scenes and sizes caches from evidence.
@@ -259,7 +259,7 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 | Domain | Grab-list |
 |---|---|
-| AI | **Part 1 dedupe** (gate); local flow locomotion 2a–3; behavior-tree skeleton; decision debug view |
+| AI | local flow locomotion 2a–3; **FSM hygiene & dedupe (Part 4)**; behavior-tree skeleton; decision debug view |
 | Pathfinding | path smoothing; per-agent local flow window pool; local separation; hybrid HPA waypoint + flow execution; worker resilience |
 | Procedural | unified root seed; seed golden tests; room-graph generator v1; Poisson/min-distance placement |
 | Rendering | projected shadows; cache telemetry; projection/viewport tests; top-down 2D completion |
@@ -283,4 +283,4 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 **Domain:** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [foundations/architecture-health.md](./foundations/architecture-health.md) · [sandbox-editor.md](./sandbox-editor.md)
 
-*Last updated: FSM reach phase 1 complete; Part 1 AI dedupe gates Part 2 flow locomotion · [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md)*
+*Last updated: FSM reach phase 1 (flow-backed reach) complete · [`current/fsmroadmap.md`](current/fsmroadmap.md)*

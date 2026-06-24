@@ -75,7 +75,7 @@ Iso projection, wall faces, prop mesh extrusion, overlay glyphs, and grid stamp 
 5. **Side-channel binds** — `Viewport.bindDrawSession()` tried to sneak `px/py` to recipes without threading params. Hidden global state, untestable, broke when draw order changed.
 6. **Compatibility shims for tests** — keeping `ElevationCamera` or dual `{ blackboard, decisionSnapshot }` returns so tests did not need updating in the same PR. **Tests migrate with the frame** — see [Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims).
 
-Same class of mistake as `*Dist` threaded perception → memory → blackboard (see `[fsm/history.md](fsm/history.md)`): **copy the fact at every layer instead of sync once · read many**.
+Same class of mistake as `*Dist` threaded perception → memory → blackboard (see `[fsmroadmap.md](fsmroadmap.md)`): **copy the fact at every layer instead of sync once · read many**.
 
 ### After — one rule
 
@@ -96,7 +96,7 @@ Pass viewport. Read viewport. Nothing else.
 
 **Grep gates (still enforced):** zero `elevationCameraFrom`, `wallPassCamera`, `wallCtx`, `worldSceneDrawInput`, `drawCachedPropSprite(…, px, py` at call sites. Full checklist: `[frame.md](frame.md#review-bar)`.
 
-**Pattern for AI work:** same as `syncNavReachHorizon` + `createGroundNavIntentAdapter` — compute frame facts **once at the boundary**, pass the handle, delete the copies. Pass H2a collapsed `blackboard`/`decisionSnapshot` to flat `decisionContext` — **no test accommodation aliases** ([Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims)).
+**Pattern for AI work:** same as `flowTargetSteps` + `createGroundNavIntentAdapter` — compute frame facts **once at the boundary**, pass the handle, delete the copies. Pass H2a collapsed `blackboard`/`decisionSnapshot` to flat `decisionContext` — **no test accommodation aliases** ([Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims)).
 
 ---
 

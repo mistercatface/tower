@@ -39,9 +39,9 @@ These wrap module-level records filled once at import/boot. Caller already has t
 
 ---
 
-## Tier 1b — AI distance passthrough — **done** ✅ ([`fsm/history.md`](fsm/history.md) Pass 3–5 · [`fsm/fsmbfs.md`](fsm/fsmbfs.md))
+## Tier 1b — AI distance passthrough — **done** ✅ ([`fsmroadmap.md`](fsmroadmap.md) Pass 3–5)
 
-Was: `*Dist` copied perception → memory → blackboard → `reachForCandidate`. Now: **`facts.reachSteps`** once at intent adapter via `syncNavReachHorizon`.
+Was: `*Dist` copied perception → memory → blackboard → `reachForCandidate`. Now: **`facts.reachSteps`** once at intent adapter via `flowTargetSteps.js`.
 
 ---
 

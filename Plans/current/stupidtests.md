@@ -37,7 +37,7 @@ Already in `npm run test:slow` — don’t promote to tier 1.
 
 **Tier 1 (`npm test`) today:** corridor, math, fracture suite, locked-room, puzzle template, kinetic core, props/draw, `floorBeltCell`, `nodeWorkerShim`, `gameLaunch`, `propScale`.
 
-**Promote to tier 1:** `snakeDecisionModel`, `navTopologyParity`, `navReachHorizon`, `AStar`, `cellTargetHpaNav`
+**Promote to tier 1:** `snakeDecisionModel`, `navTopologyParity`, `flowTargetSteps`, `AStar`, `cellTargetHpaNav`
 
 **Tier 3 (`npm run test:slow`):** `snakeSplitLayout`, `railMazeCorridorBelts`, `snakePerfBudget`, `snakeMapGen`, `snakeFsmTransitions`, `corridorMultiLane`, `tileBake*`, `surfaceTextureComposer`
 
@@ -164,7 +164,7 @@ Legend: **T1** tier 1 · **T2** tier 2 · **T3** tier 3 · **TRM** trim · **MRG
 | `losShadow.test.js` | T2 TRM | Canvas theater |
 | `maskCompositor.test.js` | T1 | |
 | `navGraphBeltChain.test.js` | T2 | |
-| `navReachHorizon.test.js` | T2 → T1 | |
+| `flowTargetSteps.test.js` | T2 | |
 | `navStepPenalty.test.js` | T2 | |
 | `navTopologyParity.test.js` | T2 → T1 | |
 | `navWalkableIndex.test.js` | T2 | |
@@ -226,7 +226,7 @@ Legend: **T1** tier 1 · **T2** tier 2 · **T3** tier 3 · **TRM** trim · **MRG
 
 Fracture: `glassFracture`, `chunkFracture`, `propFracture`, `poxelFracture`, `snakeSegmentFracture`
 
-Corridor / puzzle / nav: `corridorWidthOne`, `lockedRoom`, `puzzleTemplateBeltCrate`, `hpaGroundNavReplan`, `nodeWorkerShim`, `navTopologyParity`, `cellTargetHpaNav`, `navReachHorizon`
+Corridor / puzzle / nav: `corridorWidthOne`, `lockedRoom`, `puzzleTemplateBeltCrate`, `hpaGroundNavReplan`, `nodeWorkerShim`, `navTopologyParity`, `cellTargetHpaNav`, `flowTargetSteps`
 
 Math / spatial: `segment2D`, `poly2D`, `worldPropPick`, `lineOfSight`, `AStar`, `gridCellVision`
 
@@ -260,4 +260,4 @@ npm run test:slow
 
 Do **not** run full `test:all` or `npm test` as agent wrap-up unless the change touches test infra or the user asks.
 
-**Stale plan refs to fix when touching those docs:** `Plans/procedural.md` → `cavernFloorCells.test.js`; `Plans/games/snake.md` / `Plans/library-audit.md` → old snake test file list.
+**Stale plan refs to fix when touching those docs:** `Plans/procedural.md` → `walkableCells.test.js`; `Plans/games/snake.md` / `Plans/library-audit.md` → old snake test file list.

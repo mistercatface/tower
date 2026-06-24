@@ -149,7 +149,7 @@ Condensed file map (detail in snake doc):
 | Pathfinding / nav | `AStar`, `hpaGroundNavReplan`, `hpaPathSlot`, `hpaStitch`, `hpaRegionGraph`, `gridNavContext`, `hpaBeltNav`, `flowFieldBfs`, `lineOfSight`, corridor tests |
 | AI / decisions | `brain`, `navStepPenalty`, `targetMemory`, `utilityScoring`, `eqsScoreOptions`, `goalSeekAutosim`, `gridCellVision` |
 | Snake game | `snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeForageIntent`, `snakeAutosim`, `snakeMulti`, `snakeStarvation`, `snakePerfBudget`, `snakeMinLengthDeath`, `snakeSplit`, `snakeScale` |
-| Procedural / mazes | `puzzleTemplateBeltCrate`, `lockedRoom`, `railMaze*`, `snakeSplitLayout`, `cavernFloorCells`, `navWalkableIndex` |
+| Procedural / mazes | `puzzleTemplateBeltCrate`, `lockedRoom`, `railMaze*`, `snakeSplitLayout`, `walkableCells`, `navWalkableIndex` |
 | Rendering / props | `vectorProp`, `drawShapeParity`, `maskCompositor`, `propScale`, `colorVisualOverride`, `shapeFirstProps`, `spawnShapeFamily`, `sandboxSceneSnapshot` |
 
 Coverage read: physics, pathfinding, AI, and snake are the best-tested. Procedural authorship and projection/perspective-mode math are still thinner than their foundations.

@@ -239,8 +239,7 @@ Phases completed on the snake game proving ground:
 |---|---|---|
 | **1–2 Team hunting** | ✅ | Faction metadata drives `resolveRelationship`; shared vision classifier |
 | **3 Prey/threat scoring** | ✅ | Config `enemySnakePreyValue`, rival band by segment gap |
-| **Flee threat fix** | ✅ | Flee agents treat all snakes as threat; never hunt snakes |
-| **4a Ally perception** | ✅ | `ally`, `allyCount`, `allyCentroid` on world view — **`allyDist` deleted in fsmbfs Pass 3** |
+| **4a Ally perception** | ✅ | `ally`, `allyCount`, `allyCentroid` on world view — **`allyDist` deleted in fsmroadmap** |
 | **Prep Ally memory + blackboard** | ✅ | TTL ally slot, `known.ally`, `allyState`, `ALLY_SEEN` / `ALLY_REMEMBERED` |
 | **4b Flee `seek_ally`** | ✅ | Regroup when safe + satisfied; faction cohesion config; friendly arrival radius |
 | **4c Snake regroup (`seek_ally`)** | ✅ | Satisfied-only; size-scaled; friendly arrival radius |
@@ -274,14 +273,14 @@ Pattern to preserve: generic loop in `Libraries/AI`, domain facts/scorers in gam
 
 ## Future: local flow horizons
 
-The pathfinding stack already has the building blocks for **per-agent sliding flow windows**: centered grid frame (`FlowFieldWindow`), range-limited backward BFS (`computeFlowField` `range`), direction sampling (`sampleFlowDirection`), and worker offload (`FlowFieldWorkerEntry`). Today one shared `FlowFieldGrid` recenters for sandbox drag-nav; snakes/flee use HPA polylines instead. Utility **reach** for decisions uses `Libraries/Navigation/navReachHorizon.js` — see [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md).
+The pathfinding stack already has the building blocks for **per-agent sliding flow windows**: centered grid frame (`FlowFieldWindow`), range-limited backward BFS (`computeFlowField` `range`), direction sampling (`sampleFlowDirection`), and worker offload (`FlowFieldWorkerEntry`). Today one shared `FlowFieldGrid` recenters for sandbox drag-nav; snakes/flee use HPA polylines instead. Utility **reach** for decisions uses `Libraries/Navigation/flowTargetSteps.js` — see `current/fsmroadmap.md`.
 
 **Concept:** each agent (or a pooled subset) carries a small window centered on its occupied cell. Rebuild a local field backward from the active goal, capped at **R path steps**. Steer by sampling the byte field at the agent position — same as `driveFlowGroundNav`, but scoped and per-agent.
 
 ### Phased integration (lowest risk first)
 
-1. **Decision-only reach (phase 1 — done ✅)** — [`fsm/history.md`](current/fsm/history.md): Pass 1–5 · [`fsm/fsmbfs.md`](current/fsm/fsmbfs.md) for active plan.
-2. **AI consumer dedupe (Part 1 — next, gates locomotion)** — [`fsmbfs.md`](current/fsm/fsmbfs.md) Part 1: dedupe snake/flee intent adapters, move generic derives out of `snakeDecisionModel.js`. **Do not wire flow until Part 1 grep gates pass.**
+1. **Decision-only reach (phase 1 — done ✅)** — flow-backed reach (`flowTargetSteps.js`) (`current/fsmroadmap.md` ✅).
+2. **Local flow locomotion (Part 2 — next)** — [`current/fsmroadmap.md`](current/fsmroadmap.md) Step 2.
 3. **Flee-ball locomotion (2a)** — high agent count, short horizons; per-agent flow windows + worker.
 4. **Hybrid snake stack (2b)** — HPA produces corridor waypoint; local flow executes until invalidation or waypoint reached.
 5. **Multi-source fields (3)** — compose attraction (food, ally) and repulsion (threat) into one cost field for flee and pack behavior.
@@ -290,7 +289,7 @@ The pathfinding stack already has the building blocks for **per-agent sliding fl
 
 | Feature | Mechanism |
 |---|---|
-| Reachability-aware hunt/food scoring | `facts.reachSteps` from `navReachHorizon` ✅ |
+| Reachability-aware hunt/food scoring | `facts.reachSteps` from `flowTargetSteps` ✅ |
 | Crowd lanes | Many agents sharing a goal sample the same local downhill |
 | Field-based flee | Threat repulsion gradient instead of single `pickFleeCell` |
 | Cohesion / pack flee (4d) | Goal = ally centroid; flee = blend threat repulsion + ally attraction |
@@ -310,8 +309,8 @@ Cross-doc: flow field implementation detail → [pathfinding.md](./pathfinding.m
 
 ## Recommended next unlocks
 
-1. **AI consumer dedupe (Part 1).** Snake/flee copy-paste cleanup — gates flow work · [`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md)
-2. **Local flow for locomotion (Part 2).** Per-agent flow windows for flee steering — 2a → 2b → 3 · same doc
+1. **Local flow for locomotion (Part 2).** Per-agent flow windows for flee steering — 2a → 2b → 3 · [`current/fsmroadmap.md`](current/fsmroadmap.md)
+2. **AI consumer dedupe & FSM hygiene (Part 4).** Snake/flee copy-paste cleanup · same doc
 3. **Path smoothing + local separation.** Complements flow horizons for snake chase feel.
 4. **Behavior tree skeleton.** Thin selector/sequence layer over existing intent/effect primitives.
 5. **Generic slot pipeline.** Only if a **third** consumer appears — Part 1 shared modules are enough for two.

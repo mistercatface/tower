@@ -227,13 +227,13 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 | Flow → steering | ✅ | 80 | `flowSteering.js`, `computeFlowFieldSteering` |
 | Target field cache | ✅ | 75 | `MAX_CACHE = 100` goal slots |
 | Range-limited fields | ✅ | 70 | optional BFS `range` cap |
-| Reachability check (flow wrapper) | — | **deleted** — was dead `checkReachability`; use `navReachHorizon.js` for AI reach |
+| Reachability check (flow wrapper) | — | **deleted** — was dead `checkReachability`; use `flowTargetSteps.js` for AI reach |
 | Integration/cost-field blending | ⬜ | 0 | direction only, no potential-field cost blend |
 | Per-agent local flow window pool | ⬜ | 0 | sliding R-step horizon per agent; see [AI.md](./AI.md#future-local-flow-horizons) |
 
 **Branch progress: 78%**
 
-**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. Phase 1 utility reach is **`navReachHorizon.js`** ([`current/fsm/fsmbfs.md`](current/fsm/fsmbfs.md) ✅). Phase 2+: per-agent flow windows for flee/cohesion locomotion and hybrid HPA+flow execution.
+**Future direction — per-agent local horizons:** Today `FlowFieldGrid` is one shared rolling window (map-sized frame, recentered for drag-nav) with a 100-slot goal cache. Snake/flee use per-agent HPA instead. Phase 1 utility reach is flow-backed reach (**`flowTargetSteps.js`**) ([`current/fsmroadmap.md`](current/fsmroadmap.md) ✅). Phase 2+: per-agent flow windows for flee/cohesion locomotion and hybrid HPA+flow execution.
 
 ---
 
@@ -510,4 +510,4 @@ tests/hpaGroundNavReplan.test.js, gridNavContext.test.js, eqsScoreOptions.test.j
 
 ---
 
-*Last updated: roadmap sync after `NavRuntime`/`NavTopology` naming, EQS-scored explore, and current AI extraction work. Planning core is the mature half; Tier 7 local avoidance + path smoothing are the headline gaps to a Recast/Detour-class stack. Navmesh is the long-term anchor (Tier 12) but lands as a layer beside the puzzle grid, not a rewrite.*
+*Last updated: roadmap sync after FSM reach phase 1 (flow-backed reach) complete and `NavRuntime`/`NavTopology` naming.*
