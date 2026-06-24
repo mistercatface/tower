@@ -125,7 +125,6 @@ function createMockIntent(state, headId) {
         brain,
         sync,
         headNav,
-        resolveVisibleFood: () => null,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
         rng: () => 0,

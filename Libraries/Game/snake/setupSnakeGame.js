@@ -169,11 +169,9 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
             const index = getPropCategoryIndex(state, "food");
             const moving = [];
-            for (const list of index.buckets.cells.values())
-                for (let i = 0; i < list.length; i++) {
-                    const food = list[i];
-                    if (food.bodyId !== undefined && !state.kinetic.bodies.isSleeping(food.bodyId)) moving.push(food);
-                }
+            index.forEachRegistered((food) => {
+                if (!food.isSleeping) moving.push(food);
+            });
 
             for (let i = 0; i < moving.length; i++) index.reconcile(moving[i]);
         },

@@ -36,3 +36,8 @@ export function getPropCategoryIndex(state, categoryId) {
     }
     return index;
 }
+
+export function unregisterPropFromCategoryIndexes(state, prop) {
+    if (!state.sandbox?.propCategoryIndexes) return;
+    for (const index of state.sandbox.propCategoryIndexes.values()) index.unregister(prop);
+}

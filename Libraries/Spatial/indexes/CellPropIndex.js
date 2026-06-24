@@ -13,6 +13,7 @@ export class CellPropIndex {
         this.cols = 0;
         this.rows = 0;
         this.cellSize = 16;
+        this._totalCount = 0;
     }
 
     _propToCellIdx(prop) {
@@ -30,12 +31,17 @@ export class CellPropIndex {
         if (idx !== -1) {
             this.buckets.push(idx, prop);
             this.count[idx]++;
+            this._totalCount++;
         }
     }
 
     unregister(prop) {
         const idx = prop._cellIndexCell;
-        if (idx !== undefined && idx !== -1) if (this.buckets.removeFrom(idx, prop)) this.count[idx]--;
+        if (idx !== undefined && idx !== -1)
+            if (this.buckets.removeFrom(idx, prop)) {
+                this.count[idx]--;
+                this._totalCount--;
+            }
 
         prop._cellIndexCell = -1;
     }
@@ -46,6 +52,43 @@ export class CellPropIndex {
         if (prop._cellIndexCell === newIdx) return;
         this.unregister(prop);
         this.register(prop);
+    }
+
+    totalCount() {
+        return this._totalCount;
+    }
+
+    findNearest(x, y, accept = null) {
+        let nearest = null;
+        let bestDistSq = Infinity;
+        for (const list of this.buckets.cells.values())
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (accept && !accept(item)) continue;
+                const dx = item.x - x;
+                const dy = item.y - y;
+                const distSq = dx * dx + dy * dy;
+                if (distSq < bestDistSq) {
+                    bestDistSq = distSq;
+                    nearest = item;
+                }
+            }
+
+        return nearest;
+    }
+
+    findFirst(accept = null) {
+        for (const list of this.buckets.cells.values())
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (!accept || accept(item)) return item;
+            }
+
+        return null;
+    }
+
+    forEachRegistered(fn) {
+        for (const list of this.buckets.cells.values()) for (let i = 0; i < list.length; i++) if (fn(list[i]) === true) return;
     }
 
     countAtIdx(idx) {
@@ -65,6 +108,12 @@ export class CellPropIndex {
         const list = this.buckets.peek(idx);
         if (!list) return;
         for (let i = 0; i < list.length; i++) fn(list[i]);
+    }
+
+    itemsInCell(col, row) {
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return [];
+        const idx = col + row * this.cols;
+        return this.buckets.peek(idx) ?? [];
     }
 
     nearestItemInCell(col, row, x, y, accept) {
@@ -104,6 +153,7 @@ export class CellPropIndex {
 
         this.buckets.clear();
         this.count = new Uint16Array(this.cols * this.rows);
+        this._totalCount = 0;
 
         for (let i = 0; i < allProps.length; i++) {
             const prop = allProps[i];

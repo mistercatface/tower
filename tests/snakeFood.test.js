@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { countLiveSnakeFood, canAgentEatSnakeFood, isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
+import { canAgentEatSnakeFood, isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
 import { resolveVisibleCategoryInVision } from "../Libraries/AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
@@ -60,18 +60,49 @@ function chainOptions(config) {
     };
 }
 
-describe("snake shard food query", () => {
-    it("tracks spawn and removal through the registry query", async () => {
+describe("snake shard category index", () => {
+    it("tracks spawn and removal through the category index", async () => {
         const state = await createFoodQueryState();
         const food = spawnSnakeFoodShardAtCell(state, { col: 8, row: 8 });
-        assert.equal(countLiveSnakeFood(state), 1);
+        assert.equal(getPropCategoryIndex(state, "food").totalCount(), 1);
         removeSandboxWorldProp(state, food);
-        assert.equal(countLiveSnakeFood(state), 0);
+        assert.equal(getPropCategoryIndex(state, "food").totalCount(), 0);
+    });
+
+    it("reconciles moving shards correctly", async () => {
+        const state = await createFoodQueryState();
+        const food = spawnSnakeFoodShardAtCell(state, { col: 8, row: 8 });
+        const index = getPropCategoryIndex(state, "food");
+        assert.equal(index.countAtCell(8, 8), 1);
+        assert.equal(index.countAtCell(12, 8), 0);
+
+        // Move the shard manually
+        const newPos = state.obstacleGrid.gridToWorld(12, 8);
+        food.x = newPos.x;
+        food.y = newPos.y;
+
+        index.reconcile(food);
+        assert.equal(index.countAtCell(8, 8), 0);
+        assert.equal(index.countAtCell(12, 8), 1);
+    });
+
+    it("supports many shards in a cell and returns the nearest", async () => {
+        const state = await createFoodQueryState();
+        const index = getPropCategoryIndex(state, "food");
+        const food1 = spawnSnakeFoodShardAtCell(state, { col: 8, row: 8 });
+        const food2 = spawnSnakeFoodShardAtCell(state, { col: 8, row: 8 });
+        
+        // Put food1 slightly closer to the coordinate (120, 120)
+        food1.x = 122; food1.y = 120;
+        food2.x = 128; food2.y = 120;
+
+        const nearest = index.findNearest(120, 120);
+        assert.equal(nearest.id, food1.id);
     });
 });
 
 describe("snake visible shard food parity", () => {
-    it("matches 360 range and LOS visibility through the dynamic food query", async () => {
+    it("matches 360 range and LOS visibility through the category index", async () => {
         applySnakeGameConfig();
         const state = await createFoodQueryState();
         const config = getSnakeGameConfig();

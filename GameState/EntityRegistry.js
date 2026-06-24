@@ -352,6 +352,7 @@ export function removeWorldPropFromState(world, prop, spatialFrame = kineticSpat
     entityMeta?.delete(prop.id);
     pruneKineticConstraintsForBody(world.kinetic, prop.id);
     spatialFrame.evictKineticProp(prop, world.kinetic);
+    prop.isDead = true;
 }
 export function visitLiveWorldProps(worldProps, visit) {
     for (let i = 0; i < worldProps.length; i++) {

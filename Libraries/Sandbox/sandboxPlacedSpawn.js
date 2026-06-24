@@ -9,6 +9,7 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { spawnPoolRack, tryExportPoolRackSpawnGroup } from "./spawnPoolRack.js";
 import { tryExportLinkedBallChainSpawnGroup } from "./spawnLinkedBallChain.js";
 import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
+import { unregisterPropFromCategoryIndexes } from "../../GameState/SandboxWorldState.js";
 import propCatalog from "../../Assets/props/index.js";
 function assetDefaultFootprintSpan(typeId) {
     const footprint = propCatalog[typeId]?.physics?.localFootprint;
@@ -87,5 +88,6 @@ export function collectPlacedSandboxPropEntries(state) {
     return entries;
 }
 export function removeSandboxWorldProp(state, prop, spatialFrame = kineticSpatial) {
+    unregisterPropFromCategoryIndexes(state, prop);
     removeWorldPropFromState(state, prop, spatialFrame, getSandboxEntityMeta(state));
 }

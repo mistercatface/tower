@@ -7,7 +7,7 @@ import { wireSnakeGameForHead, createWiredSnakeAutosim, primeSnakeHeadVision, wi
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { findNearestSnakeFood, isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
+import { isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
 import { resolveVisibleCategoryInVision } from "../Libraries/AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
@@ -134,7 +134,7 @@ describe("snake intent integration", () => {
         seeker.facing = Math.PI;
         wireSnakeTestGame(state);
         primeSnakeHeadVision(state, seeker);
-        assert.equal(findNearestSnakeFood(state, seeker.x, seeker.y).id, nearBehindWall.id);
+        assert.equal(getPropCategoryIndex(state, "food").findNearest(seeker.x, seeker.y).id, nearBehindWall.id);
         assert.equal(findNearestVisibleSnakeFood(state, seeker).id, farVisible.id);
     });
 
