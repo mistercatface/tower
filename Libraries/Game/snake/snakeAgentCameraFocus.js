@@ -3,6 +3,9 @@ import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 function isFocusableInstance(instance) {
     return instance?.lifecycle === "alive" && instance.head && !instance.head.isDead;
 }
+export function getSessionFocusedInstance(session) {
+    return isFocusableInstance(session?.focusedInstance) ? session.focusedInstance : null;
+}
 export function createSnakeAgentCameraFocus(state, session, { onTargetChanged = null, triggerKey = "Tab" } = {}) {
     function getFocusableInstances() {
         const instances = [];
@@ -23,7 +26,7 @@ export function createSnakeAgentCameraFocus(state, session, { onTargetChanged = 
         onTargetChanged?.(next);
     }
     function getFocusedInstance() {
-        return isFocusableInstance(session.focusedInstance) ? session.focusedInstance : null;
+        return getSessionFocusedInstance(session);
     }
     function cycle() {
         const instances = getFocusableInstances();

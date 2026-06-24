@@ -1,6 +1,7 @@
 import { classifyAgentVision } from "../../AI/perception/classifyAgentVision.js";
 import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { resolveAgentPerceptionOptions } from "./agentIntentPerception.js";
+import { getSessionFocusedInstance } from "./snakeAgentCameraFocus.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
 function agentRingStyle(config, slot) {
     const slots = config.focusedAgentDebug?.agentSlots ?? {};
@@ -18,8 +19,9 @@ function appendAgentRing(out, agent, style) {
     out.push(overlayCircleFillStroke(agent.x, agent.y, radius + pad, { fill: style.fill, stroke: style.stroke, lineWidth: style.lineWidth ?? 1 }));
 }
 /** Read-only visible threat/prey/ally rings — same LOS pass as combat, no vision cache or sim tick. */
-export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, ctx, config = getSnakeGameConfig()) {
-    const { instance, session, head } = ctx;
+export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, session, config = getSnakeGameConfig()) {
+    const instance = getSessionFocusedInstance(session);
+    const head = instance?.head;
     if (!head) return;
     const visionRange = getSharedConfig(config).visionRange;
     const frame = { navTopology: state.nav.topology, visionSession: null, visionRange };

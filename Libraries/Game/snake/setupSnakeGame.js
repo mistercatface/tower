@@ -1,15 +1,16 @@
-import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
-import { createSnakeAgentCameraFocus } from "./snakeAgentCameraFocus.js";
+import { createSnakeAgentCameraFocus, getSessionFocusedInstance } from "./snakeAgentCameraFocus.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createAgentPopulationRegistry } from "../../AI/agents/agentPopulationRegistry.js";
 import { createSnakeAgentSession, spawnSpeciesBatch, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "./species/index.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";
-import { appendSnakeGameOverlayCommands } from "./appendSnakeGameOverlayCommands.js";
+import { appendFocusedAgentPathPreviewCommands } from "./focusedAgentPathOverlays.js";
+import { appendFocusedAgentTargetOverlayCommands } from "./focusedAgentTargetOverlays.js";
+import { appendFocusedAgentVisibleEntityOverlayCommands } from "./focusedAgentVisibleEntityOverlays.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
@@ -66,13 +67,8 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         },
     });
     session.onAgentDied = (instance) => cameraFocus.onAgentDied(instance);
-    const getSegmentCount = () => {
-        const instance = cameraFocus.getFocusedInstance();
-        if (!instance) return 0;
-        return getConnectedBodyIds(state.kinetic, instance.headId).length;
-    };
     const getFocusedSnakeName = () => {
-        const instance = cameraFocus.getFocusedInstance();
+        const instance = getSessionFocusedInstance(session);
         if (!instance) return "No Target";
         return resolveAgentName(instance.headId, "Snake");
     };
@@ -126,14 +122,11 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     return {
         initialViewportZoom: GAME_MODE_ZOOM_DEFAULT,
         snakes: scene.snakes,
-        getFocusedInstance: () => cameraFocus.getFocusedInstance(),
-        getFocusedHead: () => cameraFocus.getFocusedInstance()?.head ?? null,
         cameraTarget: centerSnake.chain.head,
-        cycleCameraFocus: () => cameraFocus.cycle(),
         focusAgentFromProp(propId) {
             const instance = resolveAliveAgentInstanceFromProp(state, propId);
             if (!instance) return false;
-            if (cameraFocus.getFocusedInstance() === instance) {
+            if (getSessionFocusedInstance(session) === instance) {
                 state.viewport.snapTo(instance.head.x, instance.head.y);
                 return true;
             }
@@ -145,7 +138,6 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             state.sandbox.controller?.session?.clearSelection();
             hud.update();
         },
-        getSegmentCount,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
             validateAliveAgents(snakeGame, state);
@@ -159,8 +151,16 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             }
             hud.update();
         },
-        appendOverlayCommands(out, gameState) {
-            appendSnakeGameOverlayCommands(out, gameState, { focusedInstance: cameraFocus.getFocusedInstance() });
+        appendOverlayCommands(out, state) {
+            const overlayConfig = getSnakeGameConfig();
+            if (overlayConfig.showFocusedAgentDebug !== true) return;
+            const snakeGame = state.sandbox?.snakeGame;
+            const instance = getSessionFocusedInstance(snakeGame);
+            if (!instance?.autosim || typeof instance.autosim.getBrain !== "function") return;
+            appendFocusedAgentVisibleEntityOverlayCommands(out, state, snakeGame, overlayConfig);
+            const pathOverlay = instance.autosim.getPathOverlay?.();
+            if (pathOverlay) appendFocusedAgentPathPreviewCommands(out, pathOverlay, instance.head.radius, overlayConfig);
+            appendFocusedAgentTargetOverlayCommands(out, state, snakeGame, overlayConfig);
         },
         applyContactSideEffects(tick, contacts) {
             applyKineticContactSideEffects(tick, contacts);
