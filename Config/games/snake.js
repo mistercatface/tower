@@ -53,8 +53,8 @@ const FLEE_INTENT = {
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 35,
-    boidCount: 100,
+    snakeCount: 64,
+    boidCount: 128,
     squidCount: 1,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
@@ -165,6 +165,7 @@ export const SNAKE_GAME_DEFAULTS = {
             teams: [
                 { faction: "charlie", color: "#f1c40f" },
                 { faction: "delta", color: "#2ecc71" },
+                { faction: "echo", color: "#e67e22" },
             ],
             initialHunger: 0.85,
             metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },

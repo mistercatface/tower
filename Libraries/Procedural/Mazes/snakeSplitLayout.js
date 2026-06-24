@@ -70,7 +70,7 @@ function stampRailsOnGrid(grid, rails, wallHeightLevel, edgeThickness) {
     for (let i = 0; i < rails.length; i++) {
         const wall = rails[i];
         const col = grid.worldCol(wall.col * cellSize);
-    const row = grid.worldRow(wall.row * cellSize);
+        const row = grid.worldRow(wall.row * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         grid.stampCellEdge(col, row, wall.side, level, thickness);
     }

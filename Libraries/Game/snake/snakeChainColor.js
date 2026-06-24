@@ -26,5 +26,11 @@ export function pickSnakeChainTintHex(faction = null, rng = Math.random) {
         const light = 45 + resolvedRng() * 12;
         return hueToPickerHex(hue, sat, light);
     }
+    if (resolvedFaction === "purple") {
+        const hue = 265 + resolvedRng() * 35;
+        const sat = 70 + resolvedRng() * 15;
+        const light = 45 + resolvedRng() * 12;
+        return hueToPickerHex(hue, sat, light);
+    }
     return randomVisualTintHex(resolvedRng);
 }
