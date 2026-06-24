@@ -7,6 +7,7 @@ import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.j
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { buildCircleImpactShards, spawnShardPropsFromGeometry } from "../../Props/propFracture.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 export const SNAKE_SHARD_PROP_ID = "snake_shard";
 const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
 const MIN_SNAKE_SHARDS = 4;
@@ -30,14 +31,17 @@ function segmentLocalToWorld(segment, localX, localY) {
 function copyVisualOverride(from, to) {
     if (from.visualOverride) to.visualOverride = { ...from.visualOverride };
 }
-function markDeadSegmentFracturable(segment) {
-    if (segment) segment[FRACTURABLE_DEAD_SEGMENT_FLAG] = true;
+function markDeadSegmentFracturable(state, segment) {
+    if (segment) {
+        segment[FRACTURABLE_DEAD_SEGMENT_FLAG] = true;
+        getPropCategoryIndex(state, "food").register(segment);
+    }
 }
 export function isSnakeFracturableDeadSegment(prop) {
     return prop?.[FRACTURABLE_DEAD_SEGMENT_FLAG] === true;
 }
 export function markSnakeSegmentsFracturable(state, memberIds) {
-    for (let i = 0; i < memberIds.length; i++) markDeadSegmentFracturable(state.entityRegistry.get(memberIds[i]));
+    for (let i = 0; i < memberIds.length; i++) markDeadSegmentFracturable(state, state.entityRegistry.get(memberIds[i]));
 }
 function defaultSegmentLocalHit(radius, index) {
     const angle = index * 1.61803398875;
@@ -67,6 +71,7 @@ export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = n
     return spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, spatialFrame, (shard) => {
         copyVisualOverride(segment, shard);
         shard.snakeFoodValue = foodValue;
+        getPropCategoryIndex(state, "food").register(shard);
     });
 }
 export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact = null, random = Math.random) {
@@ -82,6 +87,7 @@ export function shatterSnakeSegments(state, spatialFrame, memberIds, deathImpact
         const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;
         const impact = resolveSegmentImpact(segment, radius, deathImpact, i);
         spawned.push(...spawnSnakeSegmentShards(state, segment, impact, spatialFrame, random));
+        getPropCategoryIndex(state, "food").unregister(segment);
         removeWorldPropFromState(state, segment, spatialFrame ?? undefined, meta);
         removedSegments.push(segment);
     }

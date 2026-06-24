@@ -154,7 +154,7 @@ export function createGroundNavIntentAdapter({
     brain,
     sync,
     headNav,
-    resolveVisibleFood,
+    visibleSourceResolvers,
     resolveExploreCell,
     agentCtx,
     visionRange,
@@ -225,7 +225,7 @@ export function createGroundNavIntentAdapter({
     });
     intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
-        perceiveAgentIntentWorldInto(visible, agent, agentCtx, state, resolveVisibleFood, resolvedVision);
+        perceiveAgentIntentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         if (intent) {

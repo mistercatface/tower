@@ -39,6 +39,7 @@ export class WorldObstacleGrid {
         this.gridTopologyEpoch = 0;
         this._passagePowerNavKey = "";
         this._navTopologyRef = null;
+        this.onBoundsResync = null;
     }
     invalidateNavTopology() {
         invalidateGridLocalNavBake(this);
@@ -222,6 +223,7 @@ export class WorldObstacleGrid {
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
+        if (this.onBoundsResync) this.onBoundsResync(this);
     }
     expandToCoverAabb(aabb) {
         if (this.cols <= 0) {
@@ -270,6 +272,7 @@ export class WorldObstacleGrid {
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
+        if (this.onBoundsResync) this.onBoundsResync(this);
         return true;
     }
     // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.

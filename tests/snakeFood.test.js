@@ -4,7 +4,10 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { countLiveSnakeFood, canAgentEatSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
+import { countLiveSnakeFood, canAgentEatSnakeFood, isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
+import { resolveVisibleCategoryInVision } from "../Libraries/AI/perception/agentWorldPerception.js";
+import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
+import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { wireSnakeTestGame, wireSnakeTestNavSession, primeSnakeHeadVision, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -13,6 +16,12 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { removeSandboxWorldProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { markSnakeSegmentsFracturable } from "../Libraries/Game/snake/snakeSegmentFracture.js";
+
+function findNearestVisibleSnakeFood(state, seeker) {
+    const frame = requireSnakeVisionFrame(state);
+    const index = getPropCategoryIndex(state, "food");
+    return resolveVisibleCategoryInVision(index, seeker, frame, frame.visionRange, isEdibleSnakeFoodForSeeker);
+}
 
 async function createFoodQueryState() {
     const grid = new WorldObstacleGrid(16);

@@ -1,4 +1,6 @@
 import { SandboxEntityMetaStore } from "./sandboxEntityMeta.js";
+import { CellPropIndex } from "../Libraries/Spatial/indexes/CellPropIndex.js";
+
 /** Sandbox playfield data — per-entity editor metadata. */
 export class SandboxWorldState {
     constructor() {
@@ -14,5 +16,23 @@ export class SandboxWorldState {
         this.tripwireTriggeredKeys = new Set();
         /** @type {object[]} recent belt cell zone events for future train-style consumers */
         this.beltZoneEvents = [];
+        /** @type {Map<string, CellPropIndex>} */
+        this.propCategoryIndexes = new Map();
     }
+}
+
+export function getPropCategoryIndex(state, categoryId) {
+    let index = state.sandbox.propCategoryIndexes.get(categoryId);
+    if (!index) {
+        index = new CellPropIndex();
+        state.sandbox.propCategoryIndexes.set(categoryId, index);
+
+        if (!state.obstacleGrid.onBoundsResync)
+            state.obstacleGrid.onBoundsResync = (grid) => {
+                for (const idx of state.sandbox.propCategoryIndexes.values()) idx.syncBounds(grid);
+            };
+
+        index.syncBounds(state.obstacleGrid);
+    }
+    return index;
 }

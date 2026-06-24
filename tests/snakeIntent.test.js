@@ -7,7 +7,10 @@ import { wireSnakeGameForHead, createWiredSnakeAutosim, primeSnakeHeadVision, wi
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { FRAME_MS } from "./frameMs.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { findNearestSnakeFood, findNearestVisibleSnakeFood } from "../Libraries/Game/snake/snakeFood.js";
+import { findNearestSnakeFood, isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
+import { resolveVisibleCategoryInVision } from "../Libraries/AI/perception/agentWorldPerception.js";
+import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
+import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
@@ -21,6 +24,12 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { perceiveAgentIntentWorld } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+
+function findNearestVisibleSnakeFood(state, seeker) {
+    const frame = requireSnakeVisionFrame(state);
+    const index = getPropCategoryIndex(state, "food");
+    return resolveVisibleCategoryInVision(index, seeker, frame, frame.visionRange, isEdibleSnakeFoodForSeeker);
+}
 
 async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

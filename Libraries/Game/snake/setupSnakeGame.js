@@ -1,5 +1,6 @@
 import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
+import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { createAgentPopulationRegistry, aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
@@ -166,6 +167,15 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         afterKineticPhysics() {
             const snakeGame = state.sandbox.snakeGame;
             if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
+            const index = getPropCategoryIndex(state, "food");
+            const moving = [];
+            for (const list of index.buckets.cells.values())
+                for (let i = 0; i < list.length; i++) {
+                    const food = list[i];
+                    if (food.bodyId !== undefined && !state.kinetic.bodies.isSleeping(food.bodyId)) moving.push(food);
+                }
+
+            for (let i = 0; i < moving.length; i++) index.reconcile(moving[i]);
         },
         stop() {
             state.followCamera.removeOnTargetChanged(onTargetChanged);

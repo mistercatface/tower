@@ -151,6 +151,7 @@ export const SNAKE_GAME_DEFAULTS = {
                     explore: { scorer: "constant", weightKey: "explore" },
                 },
             },
+            visibleSources: { food: { category: "food", accept: "edibleFood" } },
             intent: SNAKE_INTENT,
         },
         flee_agent: {
@@ -219,6 +220,7 @@ export const SNAKE_GAME_DEFAULTS = {
                     explore: { scorer: "constant", weightKey: "explore" },
                 },
             },
+            visibleSources: { food: { category: "food", accept: "edibleFood" } },
             intent: FLEE_INTENT,
         },
         squid: {
@@ -282,6 +284,7 @@ export const SNAKE_GAME_DEFAULTS = {
                     explore: { scorer: "constant", weightKey: "explore" },
                 },
             },
+            visibleSources: { food: { category: "food", accept: "edibleFood" } },
             intent: SQUID_INTENT,
         },
     },

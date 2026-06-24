@@ -26,6 +26,7 @@ import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
+import { getPropCategoryIndex } from "../../GameState/SandboxWorldState.js";
 export function wireSnakeTestNavSession(state) {
     if (!state.nav?.session) throw new Error("wireSnakeTestNavSession: state.nav with session is required");
     state.nav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.nav.settings };
@@ -126,17 +127,14 @@ export function spawnSnakeFoodShardAtCell(state, cell, { foodValue = null } = {}
     shard.radius = 2;
     shard.snakeFoodValue = foodValue ?? getSnakeGameConfig().agentProfiles.snake.metabolism.foodValue;
     addWorldPropToState(state, shard);
+    getPropCategoryIndex(state, "food").register(shard);
     return shard;
 }
 export async function buildSnakeGameSession(state) {
     applySnakeGameConfig();
     resetKineticConstraintIds(1);
     const config = getSnakeGameConfig();
-    const chain = spawnLinkedBallChain(
-        state,
-        { col: 10, row: 10 },
-        resolveSnakeChainSpawnOptions(config),
-    );
+    const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, resolveSnakeChainSpawnOptions(config));
     wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
     const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();

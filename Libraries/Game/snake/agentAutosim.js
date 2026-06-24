@@ -1,6 +1,7 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { createAgentBrain } from "./agentBrain.js";
 import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
 import { buildGroundNavIntentAdapterOptions } from "./groundNavIntentProfiles.js";
@@ -81,9 +82,11 @@ export function createAgentAutosim(
     };
     const resolveSeeker = () => instance.head;
     const resolveChainTailProp = () => {
-        const tail = instance.memberProps[instance.memberProps.length - 1];
-        if (!tail) throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
-        return tail;
+        for (let i = instance.memberProps.length - 1; i >= 0; i--) {
+            const tail = instance.memberProps[i];
+            if (tail && !tail.isDead) return tail;
+        }
+        throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
     };
     const intent = createGroundNavIntentAdapter(
         buildGroundNavIntentAdapterOptions(profileId, { state, instance, metabolismApi, metabolism, eatRadius, brain, sync, headNav, agentCtx, visionRange, rng }),
@@ -139,6 +142,7 @@ export function createAgentAutosim(
         brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
         intent.clearTrackedGoal();
         intent.headNav.clearDestination();
+        getPropCategoryIndex(state, "food").unregister(food);
         removeSandboxWorldProp(state, food);
         if (profileId === AGENT_PROFILE.snake) feedAndGrow(food.snakeFoodValue ?? foodValue, members);
         else metabolismApi.feed(metabolism, food.snakeFoodValue ?? foodValue);

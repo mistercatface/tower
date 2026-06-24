@@ -7,9 +7,29 @@ import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolvePackSteeringOptions } from "./resolvePackSteeringOptions.js";
 import { getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
-import { findNearestVisibleSnakeFoodForFrame, isSnakeShardFood } from "./snakeFood.js";
+import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
 import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
+import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
+import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
+
+const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
+
+function buildVisibleSourceResolvers(profile) {
+    if (!profile.visibleSources) return null;
+    const resolvers = {};
+    for (const [slotId, config] of Object.entries(profile.visibleSources)) {
+        const accept = ACCEPT_PREDICATES[config.accept];
+        if (!accept) throw new Error(`Unknown accept predicate: ${config.accept}`);
+        const categoryId = config.category;
+        resolvers[slotId] = (seeker, state, { frame, visionRange }) => {
+            const index = getPropCategoryIndex(state, categoryId);
+            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, accept);
+        };
+    }
+    return resolvers;
+}
+
 function transitionReason(seekModes) {
     return (prevMode, nextMode, policy) => {
         if (policy?.reason) return policy.reason;
@@ -86,8 +106,7 @@ function resolveGroundNavIntentDeps(profileId, deps) {
         headNav: deps.headNav,
         agentCtx,
         visionRange: deps.visionRange ?? shared.visionRange,
-        resolveVisibleFood:
-            deps.resolveVisibleFood ?? ((seeker, gameState, perceptionContext) => findNearestVisibleSnakeFoodForFrame(gameState, seeker, perceptionContext.frame, perceptionContext.visionRange)),
+        visibleSourceResolvers: deps.visibleSourceResolvers ?? buildVisibleSourceResolvers(profile),
         resolveExploreCell: deps.resolveExploreCell ?? ((seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable)),
         seekArrivalRadius: deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, config, shared, instance, eatRadius),
         resolveHunger: deps.resolveHunger ?? (metabolismApi && metabolism ? () => metabolismApi.get(metabolism) : null),

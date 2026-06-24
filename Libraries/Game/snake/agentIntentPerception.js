@@ -11,13 +11,13 @@ export function resolveAgentPerceptionOptions(state, visionRange = null) {
         resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, undefined, distSq),
     };
 }
-export function perceiveAgentIntentWorldInto(out, seeker, agentCtx, state, resolveVisibleFood, visionRange = null) {
+export function perceiveAgentIntentWorldInto(out, seeker, agentCtx, state, visibleSourceResolvers, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
-    return perceiveAgentWorldInto(out, seeker, agentCtx, state, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
+    return perceiveAgentWorldInto(out, seeker, agentCtx, state, visibleSourceResolvers, resolved, resolveAgentPerceptionOptions(state, resolved));
 }
-export function perceiveAgentIntentWorld(seeker, agentCtx, state, resolveVisibleFood, visionRange = null) {
+export function perceiveAgentIntentWorld(seeker, agentCtx, state, visibleSourceResolvers, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
-    return perceiveAgentWorld(seeker, agentCtx, state, resolveVisibleFood, resolved, resolveAgentPerceptionOptions(state, resolved));
+    return perceiveAgentWorld(seeker, agentCtx, state, visibleSourceResolvers, resolved, resolveAgentPerceptionOptions(state, resolved));
 }
 export function findNearestVisibleThreat(seeker, agentCtx, state, visionRange = null) {
     const resolved = visionRange ?? getSharedConfig().visionRange;
