@@ -36,7 +36,10 @@ export class FlowFieldGrid {
         if (!workerUrl) throw new Error("FlowFieldGrid requires an injected workerUrl");
         this.protocol = new PathfindingWorkerClient(workerUrl, MAX_CACHE, "FlowFieldGrid", (data) => this._handleWorkerMessage(data));
         this._workerHost = this.protocol.host;
-        this.protocol.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool, sabFlowDistPool: this.sabFlowDistPool } });
+        this.protocol.postMessage({
+            type: "init",
+            data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool, sabFlowDistPool: this.sabFlowDistPool },
+        });
         this._syncWindowAliases();
     }
     _syncWindowAliases() {
@@ -167,8 +170,7 @@ export class FlowFieldGrid {
         return new Int32Array(this.sabFlowDistPool, slot * size * 4, size);
     }
     readFlowStepsAt(slot, worldX, worldY) {
-        const col = this.window.worldToGridX(worldX);
-        const row = this.window.worldToGridY(worldY);
+        const { col, row } = this.worldToGrid(worldX, worldY);
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
         const idx = row * this.cols + col;
         const dist = this.flowDistanceView(slot)[idx];
