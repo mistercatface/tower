@@ -23,6 +23,7 @@ export class FlowFieldWindow {
         this.navRows = 0;
         this.topologyKey = "";
         this.ready = false;
+        this.syncPending = false;
         this.cellBounds = createAabb();
     }
     setCenter(centerX, centerY) {
@@ -32,16 +33,19 @@ export class FlowFieldWindow {
     invalidateTopology() {
         this.topologyKey = "";
         this.ready = false;
+        this.syncPending = false;
     }
     beginTopologySync(navCacheKey) {
         const key = `${navCacheKey}:${centeredGridFrameKey(this.frame)}`;
-        if (key === this.topologyKey && this.ready) return false;
+        if (key === this.topologyKey && (this.ready || this.syncPending)) return false;
         this.topologyKey = key;
         this.ready = false;
+        this.syncPending = true;
         return true;
     }
     markReady() {
         this.ready = true;
+        this.syncPending = false;
     }
     rebuildFlowToNavMap(flowToNavIdx, navFrame) {
         const mapped = rebuildFlowToNavIdx(flowToNavIdx, this.frame, navFrame);

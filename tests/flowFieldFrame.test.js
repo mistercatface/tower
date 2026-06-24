@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame } from "../Libraries/Spatial/grid/GridCoords.js";
 import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx } from "../Libraries/Pathfinding/flowFieldWindow.js";
+import { FlowFieldWindow } from "../Libraries/Pathfinding/flowFieldWindow.js";
+import { FlowCacheManager } from "../Libraries/Pathfinding/flowCacheManager.js";
 import { sampleFlowDirection } from "../Libraries/Pathfinding/sampleFlowDirection.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Pathfinding/neighborGridLayout.js";
 import { gridReachabilityBfs } from "../Libraries/Pathfinding/gridReachabilityBfs.js";
@@ -50,5 +52,40 @@ describe("flow field centered grid frame", () => {
         const grid = new FlatGridView(2, 1, { neighbors: neighborGrid, neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT });
 
         assert.equal(gridReachabilityBfs(grid, 0, 1, () => false), true);
+    });
+
+    it("does not begin duplicate topology syncs while a matching window is pending", () => {
+        const window = new FlowFieldWindow(16, 32, 32);
+
+        assert.equal(window.beginTopologySync("nav-a"), true);
+        assert.equal(window.beginTopologySync("nav-a"), false);
+        window.markReady();
+        assert.equal(window.beginTopologySync("nav-a"), false);
+        assert.equal(window.beginTopologySync("nav-b"), true);
+    });
+
+    it("keeps separate flow slots for the same target with different ranges", () => {
+        const window = new FlowFieldWindow(16, 64, 64);
+        window.beginTopologySync("nav-a");
+        window.markReady();
+        const cache = new FlowCacheManager(4, window);
+        const posts = [];
+        const protocol = {
+            postSlot(slot, payload) {
+                posts.push({ slot, payload });
+            },
+        };
+        const target = window.gridToWorld(2, 2);
+
+        const shortSlot = cache.getOrRequestSlot(target.x, target.y, 2, protocol);
+        const longSlot = cache.getOrRequestSlot(target.x, target.y, 999999, protocol);
+        const shortSlotAgain = cache.getOrRequestSlot(target.x, target.y, 2, protocol);
+
+        assert.notEqual(shortSlot, longSlot);
+        assert.equal(shortSlotAgain, shortSlot);
+        assert.deepEqual(
+            posts.map((post) => post.payload.range),
+            [2, 999999],
+        );
     });
 });

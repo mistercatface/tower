@@ -2,7 +2,7 @@ import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
 import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
-import { buildFlowTargetStepsInto } from "../../Navigation/flowTargetSteps.js";
+import { buildFlowTargetStepsInto, createFlowTargetStepSlots } from "../../Navigation/flowTargetSteps.js";
 import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { perceiveAgentIntentWorldInto } from "./agentIntentPerception.js";
@@ -187,10 +187,13 @@ export function createGroundNavIntentAdapter({
     const fleeLatch = createFleeIntentLatch(config);
     const arrivalStamper = createBrainArrivalStamper(brain);
     const staleCache = createFlowReachStaleCache();
+    const reachSlotList = createFlowTargetStepSlots(reachSlots);
     const visible = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 };
     const routeStatus = { hasDestination: false, hasRoute: false, replanPending: false, routeFailed: false, destReached: false, stuckFrames: 0, pathLen: null };
     const committed = { mode: null, targetId: null };
-    const reachSteps = Object.fromEntries(Object.keys(reachSlots).map((key) => [key, null]));
+    const reachSteps = {};
+    for (let i = 0; i < reachSlotList.length; i++) reachSteps[reachSlotList[i].key] = null;
+    const flowReachContext = { state: null, agent: null, staleCache, range: config.decisionReachHorizon ?? 32, flowResult: { slot: null, steps: null, ready: false } };
     const perceiveWorld = { decisionContext };
     let intent = null;
     let lastDecisionContext = decisionContext;
@@ -235,9 +238,9 @@ export function createGroundNavIntentAdapter({
             committed.targetId = null;
         }
         readAgentRouteStatusInto(routeStatus, locomotion, agent, state);
-        buildFlowTargetStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlots, {
-            state, agent, staleCache, range: config.decisionReachHorizon ?? 32,
-        });
+        flowReachContext.state = state;
+        flowReachContext.agent = agent;
+        buildFlowTargetStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlotList, flowReachContext);
         buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
         afterPerceive?.(decisionContext, agent, state);
         lastDecisionContext = decisionContext;

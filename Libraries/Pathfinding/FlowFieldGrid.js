@@ -27,7 +27,9 @@ export class FlowFieldGrid {
         this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
         this.sabFlowDistPool = new SharedArrayBuffer(size * MAX_CACHE * 4);
+        this.flowDistPool = new Int32Array(this.sabFlowDistPool);
         this.cache = new FlowCacheManager(MAX_CACHE, this.window);
+        this._flowStepsResult = { slot: null, steps: null, ready: false };
         this._topologyKey = "";
         this._windowReady = false;
         this._flowNavBound = false;
@@ -165,23 +167,29 @@ export class FlowFieldGrid {
         const size = this.cols * this.rows;
         return new Uint8Array(this.sabFlowPool, slot * size, size);
     }
-    flowDistanceView(slot) {
-        const size = this.cols * this.rows;
-        return new Int32Array(this.sabFlowDistPool, slot * size * 4, size);
-    }
     readFlowStepsAt(slot, worldX, worldY) {
-        const { col, row } = this.worldToGrid(worldX, worldY);
+        const col = this.window.worldCol(worldX);
+        const row = this.window.worldRow(worldY);
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
         const idx = row * this.cols + col;
-        const dist = this.flowDistanceView(slot)[idx];
+        const dist = this.flowDistPool[slot * this.cols * this.rows + idx];
         return dist >= 0 ? dist : null;
     }
-    readFlowStepsForTarget(agentX, agentY, targetX, targetY, range = 999999) {
+    readFlowStepsForTargetInto(out, agentX, agentY, targetX, targetY, range = 999999) {
+        out.slot = null;
+        out.steps = null;
+        out.ready = false;
         this.syncLocalTopology();
-        if (!this.window.ready) return { slot: null, steps: null, ready: false };
+        if (!this.window.ready) return out;
         const slot = this.ensureFlowRequest(targetX, targetY, range);
-        if (slot === null || !this.isFlowSlotReady(slot)) return { slot, steps: null, ready: false };
-        return { slot, steps: this.readFlowStepsAt(slot, agentX, agentY), ready: true };
+        out.slot = slot;
+        if (slot === null || !this.isFlowSlotReady(slot)) return out;
+        out.steps = this.readFlowStepsAt(slot, agentX, agentY);
+        out.ready = true;
+        return out;
+    }
+    readFlowStepsForTarget(agentX, agentY, targetX, targetY, range = 999999) {
+        return this.readFlowStepsForTargetInto(this._flowStepsResult, agentX, agentY, targetX, targetY, range);
     }
     ensureFlowRequest(targetX, targetY, range = 999999) {
         return this.cache.getOrRequestSlot(targetX, targetY, range, this.protocol);
@@ -213,5 +221,8 @@ export class FlowFieldGrid {
     }
     entityIntersectsCell(x, y, radius, col, row) {
         return this.window.entityIntersectsCell(x, y, radius, col, row);
+    }
+    flowReachCacheToken() {
+        return this.window.topologyKey;
     }
 }
