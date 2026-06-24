@@ -38,6 +38,8 @@ export function createSandboxPrimaryPointerTools(
             const registry = state.entityRegistry;
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
+                const focusAgentFromProp = state.appLaunch?.session?.focusAgentFromProp;
+                if (focusAgentFromProp?.(hit.id)) return "consume";
                 const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
                 if (allowed.length > 0) {
                     if (e.ctrlKey || e.metaKey) {

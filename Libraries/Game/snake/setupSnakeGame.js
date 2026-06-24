@@ -1,4 +1,5 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
+import { resolveAliveAgentHeadId } from "./resolveAliveAgentHeadId.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
@@ -142,6 +143,17 @@ export async function setupSnakeGame(state) {
         getFocusedSnakeHead: resolveFocusedHeadProp,
         cameraTarget: centerSnake.chain.head,
         cycleCameraFocus: () => cameraCycler.cycle(),
+        focusAgentFromProp(propId) {
+            const headId = resolveAliveAgentHeadId(state, propId);
+            if (!headId) return false;
+            if (cameraCycler.focusedId === headId) {
+                const prop = state.entityRegistry.getLive(headId);
+                if (prop) state.viewport.snapTo(prop.x, prop.y);
+                return true;
+            }
+            cameraCycler.setFocusedId(headId);
+            return true;
+        },
         releaseCameraFocus() {
             cameraCycler.setFocusedId(null);
             state.sandbox.controller?.session?.clearSelection();
