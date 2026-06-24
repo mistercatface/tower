@@ -81,6 +81,7 @@ export const SNAKE_GAME_DEFAULTS = {
         fleeRange: null,
         lethalThreatRange: 48,
         fleeHysteresis: { minTicks: 45, exitThreatSeverity: 0.15, refreshAtSeverity: 0.35 },
+        targetingHysteresis: { targetStickyFactor: 0.75 },
         intentMemory: { threatTtlTicks: 45, preyTtlTicks: 90, foodTtlTicks: 180, allyTtlTicks: 60 },
         terminalHoming: { enabled: true, handoffRadius: null, requireWorldLos: true, minHoldTicks: 6 },
     },

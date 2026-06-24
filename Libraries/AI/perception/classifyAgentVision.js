@@ -1,5 +1,9 @@
-import { aliveAgentInstances } from "../agents/agentPopulationRegistry.js";
+import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
+import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
+
+const AGENT_VISION_QUERY_BOUNDS = createAabb();
+
 /**
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
@@ -21,10 +25,15 @@ export function classifyAgentVision(seeker, agentCtx, state, frame, vision, { vi
     let allyCount = 0;
     let allyCentroidX = 0;
     let allyCentroidY = 0;
-    for (const targetInstance of aliveAgentInstances(agentCtx.session.registry)) {
+    const bounds = centerReachAabbInto(AGENT_VISION_QUERY_BOUNDS, seeker.x, seeker.y, range);
+    const candidates = state.entityRegistry.queryView({ bounds, kinds: ["worldProp"], hitTest: "center" }, kineticSpatial);
+    for (let i = 0; i < candidates.length; i++) {
+        const prop = candidates[i];
+        const targetInstance = agentCtx.session.instancesByHeadId.get(prop.id);
+        if (!targetInstance || targetInstance.lifecycle !== "alive") continue;
         if (targetInstance === agentCtx.instance) continue;
         const head = targetInstance.head;
-        if (head.isDead) continue;
+        if (head !== prop || head.isDead) continue;
         const dx = head.x - seeker.x;
         const dy = head.y - seeker.y;
         const distSq = dx * dx + dy * dy;
