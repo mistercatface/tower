@@ -10,7 +10,7 @@ import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
-import { createSnakeAgentCameraFocus, getSessionFocusedInstance } from "../Libraries/Game/snake/snakeAgentCameraFocus.js";
+import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { resolveAliveAgentInstanceFromProp } from "../Libraries/Game/snake/resolveAliveAgentInstanceFromProp.js";
 import { getConnectedBodyIds } from "../Libraries/Motion/kineticConstraintGraph.js";
@@ -23,7 +23,7 @@ function createTestState(cols = 32, rows = 32) {
     cavernConfig.boundsRow = 0;
     cavernConfig.boundsCols = cols;
     cavernConfig.boundsRows = rows;
-    return {
+    const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -33,6 +33,8 @@ function createTestState(cols = 32, rows = 32) {
         nav: { settings: {}, commitEdit: async () => {}, topologyKey: () => "" },
         viewport: { snapTo() {}, follow() {} },
     };
+    state.followCamera = new FollowCamera(state);
+    return state;
 }
 
 describe("snake camera focus", () => {
@@ -47,11 +49,10 @@ describe("snake camera focus", () => {
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
         const session = state.sandbox.snakeGame;
-        createSnakeAgentCameraFocus(state, session);
         const instance = session.instancesByHeadId.get(first.chain.head.id);
-        session.setFocusedInstance(instance);
+        state.followCamera.focus(instance.head);
         killSnake(state, session, instance);
-        assert.equal(getSessionFocusedInstance(session), null);
+        assert.equal(state.followCamera.targetProp, null);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });
 
@@ -70,7 +71,7 @@ describe("snake camera focus", () => {
         assert.equal(resolveAliveAgentInstanceFromProp(state, "missing"), null);
     });
 
-    it("focusAgentFromProp snaps camera to the resolved head", () => {
+    it("focusFromPropId snaps camera to the resolved head", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -86,22 +87,13 @@ describe("snake camera focus", () => {
             { headId: first.chain.head.id, spawnGroupId: first.chain.spawnGroupId },
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
-        const session = state.sandbox.snakeGame;
-        createSnakeAgentCameraFocus(state, session);
-        const focusAgentFromProp = (propId) => {
+        state.followCamera.registerPickResolver((propId) => {
             const instance = resolveAliveAgentInstanceFromProp(state, propId);
-            if (!instance) return false;
-            if (getSessionFocusedInstance(session) === instance) {
-                state.viewport.snapTo(instance.head.x, instance.head.y);
-                return true;
-            }
-            session.setFocusedInstance(instance);
-            return true;
-        };
-        const secondInstance = session.instancesByHeadId.get(second.chain.head.id);
+            return instance ? instance.head : null;
+        });
         const tailId = getConnectedBodyIds(state.kinetic, second.chain.head.id).at(-1);
-        assert.ok(focusAgentFromProp(tailId));
-        assert.equal(getSessionFocusedInstance(session), secondInstance);
+        assert.ok(state.followCamera.focusFromPropId(tailId));
+        assert.equal(state.followCamera.targetProp, second.chain.head);
         assert.equal(snappedX, second.chain.head.x);
         assert.equal(snappedY, second.chain.head.y);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry)?.id, second.chain.head.id);

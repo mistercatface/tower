@@ -11,30 +11,8 @@ import { wireSnakeTestGame, registerSnakeTestInstance, createWiredSnakeAutosim, 
 import { appendFocusedAgentPathPreviewCommands } from "../Libraries/Game/snake/focusedAgentPathOverlays.js";
 import { appendFocusedAgentTargetOverlayCommands, resolveCommittedTargetWorld } from "../Libraries/Game/snake/focusedAgentTargetOverlays.js";
 import { appendFocusedAgentVisibleEntityOverlayCommands } from "../Libraries/Game/snake/focusedAgentVisibleEntityOverlays.js";
-import { getSessionFocusedInstance } from "../Libraries/Game/snake/snakeAgentCameraFocus.js";
 
 describe("focused agent debug overlays", () => {
-    it("getSessionFocusedInstance reads the focused agent from snakeGame session", async () => {
-        applySnakeGameConfig();
-        resetKineticConstraintIds(1);
-        const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
-        const snakeGame = state.sandbox.snakeGame;
-        const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
-        const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
-        createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
-        const fleePack = spawnFleeAgent(state, { col: 12, row: 10 });
-        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
-        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
-        fleeInstance.start(state);
-
-        snakeGame.focusedInstance = snakeInstance;
-        assert.equal(getSessionFocusedInstance(snakeGame), snakeInstance);
-        snakeGame.focusedInstance = fleeInstance;
-        assert.equal(getSessionFocusedInstance(snakeGame), fleeInstance);
-        assert.equal(typeof getSessionFocusedInstance(snakeGame).autosim.getPathOverlay, "function");
-    });
-
     it("appendFocusedAgentPathPreviewCommands draws at most three scaled purple nodes", () => {
         const out = [];
         appendFocusedAgentPathPreviewCommands(
@@ -68,7 +46,7 @@ describe("focused agent debug overlays", () => {
         autosim.start();
         const prey = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId });
-        snakeGame.focusedInstance = snakeInstance;
+        state.followCamera.focus(snakeInstance.head);
         const target = resolveCommittedTargetWorld(state, {
             mode: "seek_prey",
             targetId: prey.chain.head.id,
@@ -96,7 +74,7 @@ describe("focused agent debug overlays", () => {
         const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
         spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
-        snakeGame.focusedInstance = snakeInstance;
+        state.followCamera.focus(snakeInstance.head);
         const simTickBefore = snakeGame.simTick;
         const out = [];
         appendFocusedAgentVisibleEntityOverlayCommands(out, state, snakeGame);
@@ -114,10 +92,10 @@ describe("focused agent debug overlays", () => {
         const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
         const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
         createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
-        snakeGame.focusedInstance = snakeInstance;
+        state.followCamera.focus(snakeInstance.head);
         const commands = [];
         const overlayConfig = getSnakeGameConfig();
-        const instance = getSessionFocusedInstance(snakeGame);
+        const instance = snakeGame.instancesByHeadId.get(state.followCamera.targetProp.id);
         appendFocusedAgentVisibleEntityOverlayCommands(commands, state, snakeGame, overlayConfig);
         const pathOverlay = instance.autosim.getPathOverlay?.();
         if (pathOverlay) appendFocusedAgentPathPreviewCommands(commands, pathOverlay, instance.head.radius, overlayConfig);

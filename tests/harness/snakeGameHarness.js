@@ -21,6 +21,7 @@ import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkab
 import { createSnakeAgentSession, registerAgentInstance } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js";
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
+import { FollowCamera } from "../../Libraries/Sandbox/FollowCamera.js";
 import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
@@ -100,6 +101,7 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
         nav,
         viewport: { circleInBounds: () => true, snapTo() {} },
     };
+    state.followCamera = new FollowCamera(state);
     const hpaBehavior = createHpaGroundNavBehavior(state);
     const directBehavior = createDirectGroundNavBehavior(state);
     const behaviorById = new Map([

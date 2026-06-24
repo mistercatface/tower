@@ -10,9 +10,11 @@ import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { EntityRegistry } from "./EntityRegistry.js";
 import { KineticSession } from "./KineticSession.js";
+import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";
 const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 60, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };
 export class SharedGameState {
     constructor() {
+        this.followCamera = new FollowCamera(this);
         this.scheduler = new Scheduler();
         this.phase = "simulation";
         this.obstacleGrid = new WorldObstacleGrid(gridSettings.cellSize);

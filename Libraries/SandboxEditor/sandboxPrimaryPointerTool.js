@@ -38,8 +38,7 @@ export function createSandboxPrimaryPointerTools(
             const registry = state.entityRegistry;
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
-                const focusAgentFromProp = state.appLaunch?.session?.focusAgentFromProp;
-                if (focusAgentFromProp?.(hit.id)) return "consume";
+                if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
                 const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
                 if (allowed.length > 0) {
                     if (e.ctrlKey || e.metaKey) {
@@ -64,7 +63,7 @@ export function createSandboxPrimaryPointerTools(
             }
             const grid = state.obstacleGrid;
             const col = grid.worldCol(world.x);
-    const row = grid.worldRow(world.y);
+            const row = grid.worldRow(world.y);
             if (session.pickRoomNodeAtWorld(world.x, world.y)) {
                 exitButtonWire();
                 return true;

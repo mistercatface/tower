@@ -21,7 +21,8 @@ export function mountGameViewport(state, onStageResize) {
             state.viewport.zoom = zoom;
         },
         onRightDragStart: () => {
-            state.appLaunch?.session?.releaseCameraFocus?.();
+            state.followCamera?.clear();
+            state.sandbox.controller?.session?.clearSelection();
         },
         minZoom: TILELAB_ZOOM_MIN,
         maxZoom: GAME_MODE_ZOOM_MAX,

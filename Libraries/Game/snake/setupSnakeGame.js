@@ -1,9 +1,8 @@
 import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
-import { createSnakeAgentCameraFocus, getSessionFocusedInstance } from "./snakeAgentCameraFocus.js";
+import { createAgentPopulationRegistry, aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
-import { createAgentPopulationRegistry } from "../../AI/agents/agentPopulationRegistry.js";
 import { createSnakeAgentSession, spawnSpeciesBatch, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "./species/index.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
@@ -61,18 +60,27 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
     state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
-    createSnakeAgentCameraFocus(state, session, {
-        onTargetChanged: () => {
-            hud.update();
-        },
+    state.followCamera.registerPickResolver((propId) => {
+        const instance = resolveAliveAgentInstanceFromProp(state, propId);
+        return instance ? instance.head : null;
     });
+    state.followCamera.registerCandidateList(() => {
+        const instances = [];
+        for (const instance of aliveAgentInstances(session.registry)) if (instance?.lifecycle === "alive" && instance.head && !instance.head.isDead) instances.push(instance.head);
+
+        return instances;
+    });
+    const onTargetChanged = () => {
+        hud.update();
+    };
+    state.followCamera.addOnTargetChanged(onTargetChanged);
     const getFocusedSnakeName = () => {
-        const instance = getSessionFocusedInstance(session);
-        if (!instance) return "No Target";
-        return resolveAgentName(instance.headId, "Snake");
+        const prop = state.followCamera.targetProp;
+        if (!prop) return "No Target";
+        return resolveAgentName(prop.id, "Snake");
     };
     const hud = mountSnakeHud({
-        onCycleCamera: () => session.cycleCameraFocus(),
+        onCycleCamera: () => state.followCamera.cycle(),
         getFocusedSnakeName,
         renderModeControl: {
             get() {
@@ -115,28 +123,13 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         gameState: state,
         onVisualSettingChange: markLabViewDirty,
     });
-    session.setFocusedInstance(centerInstance);
-    session.bindCameraFocusInput();
+    state.followCamera.focus(centerSnake.chain.head);
+    state.followCamera.bindInput();
     hud.update();
     return {
         initialViewportZoom: GAME_MODE_ZOOM_DEFAULT,
         snakes: scene.snakes,
         cameraTarget: centerSnake.chain.head,
-        focusAgentFromProp(propId) {
-            const instance = resolveAliveAgentInstanceFromProp(state, propId);
-            if (!instance) return false;
-            if (getSessionFocusedInstance(session) === instance) {
-                state.viewport.snapTo(instance.head.x, instance.head.y);
-                return true;
-            }
-            session.setFocusedInstance(instance);
-            return true;
-        },
-        releaseCameraFocus() {
-            session.clearCameraFocus();
-            state.sandbox.controller?.session?.clearSelection();
-            hud.update();
-        },
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
             validateAliveAgents(snakeGame, state);
@@ -154,7 +147,9 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             const overlayConfig = getSnakeGameConfig();
             if (overlayConfig.showFocusedAgentDebug !== true) return;
             const snakeGame = state.sandbox?.snakeGame;
-            const instance = getSessionFocusedInstance(snakeGame);
+            const prop = state.followCamera?.targetProp;
+            if (!prop) return;
+            const instance = snakeGame?.instancesByHeadId.get(prop.id);
             if (!instance?.autosim || typeof instance.autosim.getBrain !== "function") return;
             appendFocusedAgentVisibleEntityOverlayCommands(out, state, snakeGame, overlayConfig);
             const pathOverlay = instance.autosim.getPathOverlay?.();
@@ -173,7 +168,8 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
         },
         stop() {
-            session.destroyCameraFocus();
+            state.followCamera.removeOnTargetChanged(onTargetChanged);
+            state.followCamera.destroy();
             const snakeGame = state.sandbox.snakeGame;
             if (snakeGame) stopAllAgents(snakeGame, state);
             hud.destroy();
