@@ -60,7 +60,10 @@ export function createHpaGroundNavBehavior(state) {
             pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
         });
         run.wasOnBelt = beltWasOnBelt;
-        if (!steering) return;
+        if (!steering) {
+            if (beltWasOnBelt) clearGroundRollDrive(prop);
+            return;
+        }
         if (vx === 0 && vy === 0) return;
         steerRollToward(prop, vx, vy, config);
     };

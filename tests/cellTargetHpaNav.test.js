@@ -192,6 +192,23 @@ describe("cellTargetHpaNav", () => {
         for (let i = 0; i < state.nav.settings.stuckReplanFrames + 5; i++) nav.tick(seeker, FRAME_MS);
         assert.ok(nav.getDestination());
     });
+    it("clears ground roll drive while riding a belt", () => {
+        const state = createNavTestState();
+        const nav = createCellTargetHpaNav(state);
+        const grid = state.obstacleGrid;
+        const seeker = testSeeker();
+        const beltCol = 2;
+        const beltRow = 3;
+        writeNavFloorCell(grid, beltCol, beltRow, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        const beltWorld = grid.gridToWorld(beltCol, beltRow);
+        seeker.x = beltWorld.x;
+        seeker.y = beltWorld.y;
+        seeker._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 600, maxSpeed: 180 };
+        nav.setDestination(grid, 8, 8);
+        nav.tick(seeker, FRAME_MS);
+        assert.equal(seeker._groundRollDrive, undefined);
+        assert.ok(nav.getDestination());
+    });
     it("throttles belt handoff replans", () => {
         const state = createNavTestState();
         const nav = createCellTargetHpaNav(state);

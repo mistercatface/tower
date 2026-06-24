@@ -23,7 +23,7 @@ import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "..
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
 export async function setupSnakeGame(state) {
     applySnakeGameConfig();
-    state.losShadowStrength = 0.95;
+    state.losShadowStrength = 0.77;
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const registry = createAgentPopulationRegistry();

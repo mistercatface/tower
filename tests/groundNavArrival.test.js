@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { floorBeltFacingFromIndex, FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
+import { writeNavFloorCell } from "../Libraries/Spatial/grid/navGridMutations.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { SandboxEntityMetaStore } from "../GameState/sandboxEntityMeta.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -73,6 +74,24 @@ describe("ground nav arrival", () => {
         assert.equal(prop._groundRollDrive, undefined);
         assert.equal(prop.vx, 12);
         assert.equal(prop.vy, -8);
+    });
+
+    it("hpa clears roll drive while riding a belt", () => {
+        const prop = rollingProp(3);
+        const state = createNavState(prop);
+        const grid = state.obstacleGrid;
+        const hpa = createHpaGroundNavBehavior(state);
+        writeNavFloorCell(grid, 2, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        const beltWorld = grid.gridToWorld(2, 3);
+        prop.x = beltWorld.x;
+        prop.y = beltWorld.y;
+        prop._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 600, maxSpeed: 180 };
+        hpa.setMoveTarget(prop, grid.gridToWorld(8, 8));
+
+        hpa.tickWorld(FRAME_MS);
+
+        assert.equal(prop._groundRollDrive, undefined);
+        assert.ok(hpa.hasMoveTarget(prop));
     });
 
     it("flow clears roll drive at destination without zeroing velocity", () => {

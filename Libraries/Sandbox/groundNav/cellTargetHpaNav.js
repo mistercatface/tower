@@ -286,6 +286,7 @@ export function createCellTargetHpaNav(state) {
             });
             lastReplanReason = replanReason;
             wasOnBelt = beltWasOnBelt;
+            clearGroundRollDrive(prop);
             return;
         }
         if (lockOnTarget && exactArrival && terminalHomingEnabled() && shouldTerminalHome(prop, grid, config)) {
