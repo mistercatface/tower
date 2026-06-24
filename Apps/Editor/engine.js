@@ -130,7 +130,7 @@ export function createEditorApp(options = {}) {
         else resizeEditorLayout(state);
         state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
     });
-    if (gameMode) void mountGameShell(state, launcher);
+    if (gameMode) void mountGameShell(state, launcher, { playbackHandlers });
     else mountEditorUi(state, { playbackHandlers });
     if (!gameMode) {
         state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);

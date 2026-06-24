@@ -19,8 +19,8 @@ function tryLockPortraitOrientation(enabled) {
     if (typeof lock !== "function") return;
     lock.call(screen.orientation, "portrait-primary").catch(() => {});
 }
-/** @param {import("../state.js").TileLabGameState} state @param {import("../../../Libraries/Game/gameLaunchers.js").GameLauncher} launcher */
-export async function mountGameShell(state, launcher) {
+/** @param {import("../state.js").TileLabGameState} state @param {import("../../../Libraries/Game/gameLaunchers.js").GameLauncher} launcher @param {{ playbackHandlers?: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} [options] */
+export async function mountGameShell(state, launcher, { playbackHandlers } = {}) {
     const uiRoot = document.getElementById("ui-root");
     uiRoot.innerHTML = GAME_SHELL_HTML;
     const stageInner = document.querySelector("#gameStage .game-stage-inner");
@@ -47,7 +47,7 @@ export async function mountGameShell(state, launcher) {
     syncCanvas();
     await initTileLabWorld(state);
     mountGameSandbox(state);
-    await runGameLaunch(state, launcher);
+    await runGameLaunch(state, launcher, { playbackHandlers });
     syncCanvas();
     repaintUntilBakesDone(state);
 }

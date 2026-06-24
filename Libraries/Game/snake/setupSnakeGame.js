@@ -22,7 +22,7 @@ import { spawnSquidsInScene } from "./squid/spawnSquidsInScene.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
-export async function setupSnakeGame(state) {
+export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     applySnakeGameConfig();
     state.losShadowStrength = 0.77;
     const config = getSnakeGameConfig();
@@ -131,6 +131,8 @@ export async function setupSnakeGame(state) {
                 state.viewport.zoom = zoom;
             },
         },
+        playbackHandlers,
+        gameState: state,
         onVisualSettingChange: markLabViewDirty,
     });
     cameraCycler.setFocusedId(centerSnake.chain.head.id);

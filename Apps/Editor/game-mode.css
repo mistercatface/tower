@@ -1,6 +1,7 @@
 /* Runtime game mode — square canvas, centered, no editor chrome (?game=...) */
 
 @import url('../../Libraries/Viewport/zoomControl.css');
+@import url('../../Libraries/Playback/speedControl.css');
 
 body.shell-game {
     align-items: stretch;
@@ -247,4 +248,25 @@ body.shell-game .snake-hud-zoom-panel .viewport-zoom-control-value {
     font-size: 13px;
     font-weight: 700;
     color: #f5f7fb;
+}
+
+body.shell-game .snake-hud-speed-panel {
+    pointer-events: auto;
+    min-width: 0;
+    padding: 8px 10px;
+}
+
+body.shell-game .snake-hud-speed-panel .speed-control > button {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #f5f7fb;
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+body.shell-game .snake-hud-speed-panel .speed-control > button:hover {
+    border-color: rgba(120, 220, 255, 0.65);
+    color: rgba(120, 220, 255, 0.95);
 }

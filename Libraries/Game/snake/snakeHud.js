@@ -1,4 +1,5 @@
 import { applyZoomControl, directZoomMapping } from "../../Viewport/index.js";
+import { applySpeedControl } from "../../Playback/speedControl.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 function hudToggleButton(label, dataAttr) {
     return `<button type="button" class="snake-hud-toggle" ${dataAttr}><span class="snake-hud-value" style="font-size: 16px;">${label}</span></button>`;
@@ -14,6 +15,8 @@ export function mountSnakeHud({
     shadowSliderControl = null,
     blurToggleControl = null,
     zoomControl = null,
+    playbackHandlers = null,
+    gameState = null,
     onVisualSettingChange = null,
 } = {}) {
     const stage = document.querySelector("#gameStage");
@@ -28,10 +31,12 @@ export function mountSnakeHud({
         ? '<div class="snake-hud-panel snake-hud-slider-panel"><span class="snake-hud-label">Shadows</span><div class="snake-hud-slider-row"><input type="range" class="snake-hud-slider" data-snake-shadow-slider min="0" max="100" step="1" value="0" aria-label="Shadow darkness"><span class="snake-hud-slider-value" data-snake-shadow-value>Off</span></div></div>'
         : "";
     const zoomPanel = zoomControl ? '<div class="snake-hud-panel snake-hud-slider-panel snake-hud-zoom-panel" data-snake-zoom-host></div>' : "";
+    const speedPanel = playbackHandlers ? '<div class="snake-hud-panel snake-hud-slider-panel snake-hud-speed-panel" data-snake-speed-host></div>' : "";
     root.innerHTML =
         '<div class="snake-hud-panel"><span class="snake-hud-label">Focused</span><span class="snake-hud-value" data-snake-name>—</span></div>' +
         shadowPanel +
         zoomPanel +
+        speedPanel +
         (toggles.length ? `<div class="snake-hud-toggles">${toggles.join("")}</div>` : "");
     stage.appendChild(root);
     const nameEl = root.querySelector("[data-snake-name]");
@@ -108,6 +113,12 @@ export function mountSnakeHud({
               })
             : null;
     zoomControlHandle?.refresh();
+    const speedHost = playbackHandlers ? root.querySelector("[data-snake-speed-host]") : null;
+    const speedControlHandle =
+        speedHost && playbackHandlers && gameState
+            ? applySpeedControl(speedHost, { inject: true, playbackHandlers })
+            : null;
+    speedControlHandle?.refresh(gameState);
     function syncOverlayToggle() {
         const enabled = getSnakeGameConfig().showFocusedAgentDebug === true;
         overlayToggleEl.classList.toggle("is-on", enabled);
@@ -131,6 +142,7 @@ export function mountSnakeHud({
                 }
             }
             zoomControlHandle?.refresh();
+            if (gameState) speedControlHandle?.refresh(gameState);
         },
         destroy() {
             root.remove();

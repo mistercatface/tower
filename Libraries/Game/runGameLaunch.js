@@ -10,12 +10,12 @@ const GAME_LAUNCH_ACTIONS = {
         fitPlayStageZoom(state.viewport, state.appLaunch?.session);
     },
 };
-/** @param {object} state @param {import("./gameLaunchers.js").GameLauncher} launcher */
-export async function runGameLaunch(state, launcher) {
+/** @param {object} state @param {import("./gameLaunchers.js").GameLauncher} launcher @param {{ playbackHandlers?: import("../Playback/speedControl.js").PlaybackHandlers }} [launchOptions] */
+export async function runGameLaunch(state, launcher, launchOptions = {}) {
     /** @type {GameLaunchContext} */
     const ctx = {};
     if (launcher.setup) {
-        state.appLaunch.session = await launcher.setup(state);
+        state.appLaunch.session = await launcher.setup(state, launchOptions);
         if (state.appLaunch.session?.cameraTarget) ctx.cameraTarget = state.appLaunch.session.cameraTarget;
     }
     const actions = launcher.actions ?? [];
