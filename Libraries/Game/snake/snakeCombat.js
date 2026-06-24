@@ -1,4 +1,4 @@
-import { aliveAgentRecords } from "../../AI/agents/agentPopulationRegistry.js";
+import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getInstanceCombatTraits, isChainCombatTopology, matchesBrainRamResolver, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
@@ -8,9 +8,7 @@ import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
 function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
-    for (const record of aliveAgentRecords(snakeGame.registry)) {
-        const { instance } = record;
-        if (instance.lifecycle !== "alive") continue;
+    for (const instance of aliveAgentInstances(snakeGame.registry)) {
         const members = instance.syncMembersFromGraph(state);
         for (let i = 0; i < members.length; i++) map.set(members[i], instance);
     }

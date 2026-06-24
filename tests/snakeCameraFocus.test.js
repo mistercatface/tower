@@ -13,6 +13,7 @@ import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCa
 import { CameraTargetCycler } from "../Libraries/Sandbox/CameraTargetCycler.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { resolveAliveAgentInstanceFromProp } from "../Libraries/Game/snake/resolveAliveAgentInstanceFromProp.js";
+import { aliveAgentInstances } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { getConnectedBodyIds } from "../Libraries/Motion/kineticConstraintGraph.js";
 
 function createTestState(cols = 32, rows = 32) {
@@ -50,7 +51,7 @@ describe("snake camera focus", () => {
         const cameraCycler = new CameraTargetCycler(state, {
             getTargetIds: () => {
                 const ids = [];
-                for (const headId of registry.aliveByHeadId.keys()) ids.push(headId);
+                for (const instance of aliveAgentInstances(registry)) ids.push(instance.headId);
                 return ids;
             },
         });
@@ -95,7 +96,13 @@ describe("snake camera focus", () => {
             { headId: first.chain.head.id, spawnGroupId: first.chain.spawnGroupId },
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
-        const cameraCycler = new CameraTargetCycler(state, { getTargetIds: () => [...state.sandbox.snakeGame.registry.aliveByHeadId.keys()] });
+        const cameraCycler = new CameraTargetCycler(state, {
+            getTargetIds: () => {
+                const ids = [];
+                for (const instance of aliveAgentInstances(state.sandbox.snakeGame.registry)) ids.push(instance.headId);
+                return ids;
+            },
+        });
         const focusAgentFromProp = (propId) => {
             const instance = resolveAliveAgentInstanceFromProp(state, propId);
             if (!instance) return false;

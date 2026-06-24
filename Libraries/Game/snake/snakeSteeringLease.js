@@ -1,3 +1,4 @@
+import { isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 export function grantSnakeSteeringLease(instance) {
@@ -19,7 +20,7 @@ export function maySnakeHeadReceiveRoll(world, prop) {
     const snakeGame = world?.sandbox?.snakeGame;
     if (!snakeGame) return true;
     const instance = snakeGame.instancesByHeadId.get(prop.id);
-    if (instance && instance.lifecycle === "alive" && snakeGame.registry.aliveByHeadId.has(prop.id)) {
+    if (instance && instance.lifecycle === "alive" && isAliveAgentHead(snakeGame.registry, prop.id)) {
         const lease = prop._snakeSteering;
         return !!lease && instance.steeringEpoch === lease.epoch;
     }

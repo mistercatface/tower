@@ -1,4 +1,4 @@
-import { aliveAgentRecords } from "../agents/agentPopulationRegistry.js";
+import { aliveAgentInstances } from "../agents/agentPopulationRegistry.js";
 import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
 /**
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
@@ -21,9 +21,8 @@ export function classifyAgentVision(seeker, agentCtx, state, frame, vision, { vi
     let allyCount = 0;
     let allyCentroidX = 0;
     let allyCentroidY = 0;
-    for (const record of aliveAgentRecords(agentCtx.session.registry)) {
-        const targetInstance = record.instance;
-        if (targetInstance === agentCtx.instance || targetInstance.lifecycle !== "alive") continue;
+    for (const targetInstance of aliveAgentInstances(agentCtx.session.registry)) {
+        if (targetInstance === agentCtx.instance) continue;
         const head = targetInstance.head;
         if (head.isDead) continue;
         const dx = head.x - seeker.x;

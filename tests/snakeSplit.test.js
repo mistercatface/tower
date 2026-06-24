@@ -200,7 +200,7 @@ describe("snake min length death", () => {
         head.vx = 0;
         head.vy = 0;
         for (const liveInstance of snakeGame.instancesByHeadId.values()) {
-            if (!snakeGame.registry.aliveByHeadId.has(liveInstance.headId)) continue;
+            if (!isAliveAgentHead(snakeGame.registry, liveInstance.headId)) continue;
             liveInstance.autosim.tick(50);
         }
         assert.equal(head.vx, 0);

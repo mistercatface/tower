@@ -1,6 +1,6 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
-import { aliveAgentRecords } from "../../AI/agents/agentPopulationRegistry.js";
+import { aliveAgentInstances, isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
@@ -63,7 +63,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     const cameraCycler = new CameraTargetCycler(state, {
         getTargetIds: () => {
             const ids = [];
-            for (const record of aliveAgentRecords(registry)) ids.push(record.headId);
+            for (const instance of aliveAgentInstances(registry)) ids.push(instance.headId);
             return ids;
         },
         onTargetChanged: () => {
@@ -85,7 +85,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     state.sandbox.snakeGame.onHeadDied = onHeadDied;
     const getSegmentCount = () => {
         const focusedId = cameraCycler.focusedId;
-        if (!registry.aliveByHeadId.has(focusedId)) return 0;
+        if (!isAliveAgentHead(registry, focusedId)) return 0;
         return getConnectedBodyIds(state.kinetic, focusedId).length;
     };
     const getFocusedSnakeName = () => {

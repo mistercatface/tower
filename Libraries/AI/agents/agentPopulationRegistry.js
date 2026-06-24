@@ -1,25 +1,23 @@
 export function createAgentPopulationRegistry() {
-    return { instancesByHeadId: new Map(), aliveByHeadId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() };
+    return { instancesByHeadId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() };
 }
-export function registerAliveAgent(registry, headId, species, instance) {
+export function registerAliveAgent(registry, headId, _species, instance) {
     registry.instancesByHeadId.set(headId, instance);
-    registry.aliveByHeadId.set(headId, { headId, head: instance.head, species, instance, lifecycle: "alive" });
     registry.deadHeadIds.delete(headId);
 }
-export function aliveAgentRecords(registry) {
-    return registry.aliveByHeadId.values();
+export function* aliveAgentInstances(registry) {
+    for (const instance of registry.instancesByHeadId.values()) if (instance.lifecycle === "alive") yield instance;
 }
 export function registerInertAgent(registry, leadSegmentId, memberIds, sourceHeadId) {
     registry.inertByLeadId.set(leadSegmentId, { leadSegmentId, memberIds, sourceHeadId, lifecycle: "inert" });
 }
 export function markAgentDead(registry, headId) {
-    registry.aliveByHeadId.delete(headId);
     registry.instancesByHeadId.delete(headId);
     registry.deadHeadIds.add(headId);
 }
-export function isAliveAgentHead(registry, headId) {
-    return registry.aliveByHeadId.has(headId);
-}
 export function purgeInertAgentsForHead(registry, headId) {
     for (const [leadId, entry] of registry.inertByLeadId) if (entry.sourceHeadId === headId) registry.inertByLeadId.delete(leadId);
+}
+export function isAliveAgentHead(registry, headId) {
+    return registry.instancesByHeadId.get(headId)?.lifecycle === "alive";
 }

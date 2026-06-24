@@ -11,7 +11,7 @@ import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snak
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
-import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI/agents/agentPopulationRegistry.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { AgentInstance, createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
@@ -144,7 +144,7 @@ describe("AgentInstance (snake)", () => {
         state.sandbox.snakeGame = session;
         const instance = createAgentInstance(state, {
             profileId: AGENT_PROFILE.snake,
-            headId: pack.chain.head.id,
+            head: pack.chain.head,
             spawnGroupId: pack.chain.spawnGroupId,
             navWalkable: createSnakeNavWalkable(state),
         });
@@ -153,7 +153,7 @@ describe("AgentInstance (snake)", () => {
         assert.equal(instance.head, pack.chain.head);
         assert.equal(instance.headId, pack.chain.head.id);
         assert.equal(snakeGame.instancesByHeadId.get(pack.chain.head.id), instance);
-        assert.equal(snakeGame.registry.aliveByHeadId.has(pack.chain.head.id), true);
+        assert.equal(isAliveAgentHead(snakeGame.registry, pack.chain.head.id), true);
         assert.equal(instance.memberIds.length, 3);
     });
 

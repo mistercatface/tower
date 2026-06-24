@@ -4,7 +4,7 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "./snakeSteeringLease.js";
-import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
+import { isAliveAgentHead, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { reapAgentInstance } from "./snakeAgentLifecycle.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
@@ -80,7 +80,7 @@ export class AgentInstance {
         if (isFleeProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     isSteerable(state, registry) {
-        if (this.lifecycle !== "alive" || !registry.aliveByHeadId.has(this.headId)) return false;
+        if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;
         if (!getSandboxEntityMeta(state).isChainHead(this.headId)) return false;
         if (isSquidProfile(this)) return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
         const members = getConnectedComponentPath(state.kinetic, this.headId);
