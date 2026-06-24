@@ -90,7 +90,7 @@ describe("draw shape parity", () => {
         const plank = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(plank, 64, 8);
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
-        assert.equal(resolvePropQuantizeSteps(plank).facing, 128);
+        assert.equal(resolvePropQuantizeSteps(plank).facing, 360);
     });
     it("flee ball declares a render-only tri wedge facing attachment", () => {
         const attachment = propCatalog["flee_ball"].visuals.attachments[0];
