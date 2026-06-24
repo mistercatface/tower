@@ -10,7 +10,7 @@ import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
-import { createSnakeAgentCameraFocus } from "../Libraries/Game/snake/snakeAgentCameraFocus.js";
+import { createSnakeAgentCameraFocus, getSessionFocusedInstance } from "../Libraries/Game/snake/snakeAgentCameraFocus.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { resolveAliveAgentInstanceFromProp } from "../Libraries/Game/snake/resolveAliveAgentInstanceFromProp.js";
 import { getConnectedBodyIds } from "../Libraries/Motion/kineticConstraintGraph.js";
@@ -47,12 +47,11 @@ describe("snake camera focus", () => {
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
         const session = state.sandbox.snakeGame;
-        const cameraFocus = createSnakeAgentCameraFocus(state, session);
-        session.onAgentDied = (instance) => cameraFocus.onAgentDied(instance);
+        createSnakeAgentCameraFocus(state, session);
         const instance = session.instancesByHeadId.get(first.chain.head.id);
-        cameraFocus.setFocusedInstance(instance);
+        session.setFocusedInstance(instance);
         killSnake(state, session, instance);
-        assert.equal(cameraFocus.getFocusedInstance(), null);
+        assert.equal(getSessionFocusedInstance(session), null);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });
 
@@ -88,21 +87,21 @@ describe("snake camera focus", () => {
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
         const session = state.sandbox.snakeGame;
-        const cameraFocus = createSnakeAgentCameraFocus(state, session);
+        createSnakeAgentCameraFocus(state, session);
         const focusAgentFromProp = (propId) => {
             const instance = resolveAliveAgentInstanceFromProp(state, propId);
             if (!instance) return false;
-            if (cameraFocus.getFocusedInstance() === instance) {
+            if (getSessionFocusedInstance(session) === instance) {
                 state.viewport.snapTo(instance.head.x, instance.head.y);
                 return true;
             }
-            cameraFocus.setFocusedInstance(instance);
+            session.setFocusedInstance(instance);
             return true;
         };
         const secondInstance = session.instancesByHeadId.get(second.chain.head.id);
         const tailId = getConnectedBodyIds(state.kinetic, second.chain.head.id).at(-1);
         assert.ok(focusAgentFromProp(tailId));
-        assert.equal(cameraFocus.getFocusedInstance(), secondInstance);
+        assert.equal(getSessionFocusedInstance(session), secondInstance);
         assert.equal(snappedX, second.chain.head.x);
         assert.equal(snappedY, second.chain.head.y);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry)?.id, second.chain.head.id);

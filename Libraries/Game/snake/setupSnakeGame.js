@@ -61,19 +61,18 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     setSandboxCameraTarget(state, centerSnake.chain.head, true);
     state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
-    const cameraFocus = createSnakeAgentCameraFocus(state, session, {
+    createSnakeAgentCameraFocus(state, session, {
         onTargetChanged: () => {
             hud.update();
         },
     });
-    session.onAgentDied = (instance) => cameraFocus.onAgentDied(instance);
     const getFocusedSnakeName = () => {
         const instance = getSessionFocusedInstance(session);
         if (!instance) return "No Target";
         return resolveAgentName(instance.headId, "Snake");
     };
     const hud = mountSnakeHud({
-        onCycleCamera: () => cameraFocus.cycle(),
+        onCycleCamera: () => session.cycleCameraFocus(),
         getFocusedSnakeName,
         renderModeControl: {
             get() {
@@ -116,8 +115,8 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         gameState: state,
         onVisualSettingChange: markLabViewDirty,
     });
-    cameraFocus.setFocusedInstance(centerInstance);
-    cameraFocus.bindInput();
+    session.setFocusedInstance(centerInstance);
+    session.bindCameraFocusInput();
     hud.update();
     return {
         initialViewportZoom: GAME_MODE_ZOOM_DEFAULT,
@@ -130,11 +129,11 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
                 state.viewport.snapTo(instance.head.x, instance.head.y);
                 return true;
             }
-            cameraFocus.setFocusedInstance(instance);
+            session.setFocusedInstance(instance);
             return true;
         },
         releaseCameraFocus() {
-            cameraFocus.clear();
+            session.clearCameraFocus();
             state.sandbox.controller?.session?.clearSelection();
             hud.update();
         },
@@ -174,7 +173,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
         },
         stop() {
-            cameraFocus.destroy();
+            session.destroyCameraFocus();
             const snakeGame = state.sandbox.snakeGame;
             if (snakeGame) stopAllAgents(snakeGame, state);
             hud.destroy();

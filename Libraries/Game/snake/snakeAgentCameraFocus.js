@@ -25,45 +25,35 @@ export function createSnakeAgentCameraFocus(state, session, { onTargetChanged = 
         }
         onTargetChanged?.(next);
     }
-    function getFocusedInstance() {
-        return getSessionFocusedInstance(session);
-    }
-    function cycle() {
+    function cycleCameraFocus() {
         const instances = getFocusableInstances();
         if (instances.length === 0) {
             setFocusedInstance(null);
             return null;
         }
-        const current = getFocusedInstance();
+        const current = getSessionFocusedInstance(session);
         const currentIndex = current ? instances.indexOf(current) : -1;
         setFocusedInstance(instances[(currentIndex + 1) % instances.length]);
-        return getFocusedInstance();
+        return getSessionFocusedInstance(session);
     }
-    function clear() {
+    function clearCameraFocus() {
         setFocusedInstance(null);
-    }
-    function onAgentDied(instance) {
-        if (session.focusedInstance === instance) setFocusedInstance(null);
     }
     function handleKeyDown(e) {
         if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
         if (e.code === triggerKey) {
             e.preventDefault();
-            cycle();
+            cycleCameraFocus();
         }
     }
-    return {
-        setFocusedInstance,
-        getFocusedInstance,
-        cycle,
-        clear,
-        onAgentDied,
-        bindInput() {
-            window.addEventListener("keydown", handleKeyDown);
-        },
-        destroy() {
-            window.removeEventListener("keydown", handleKeyDown);
-            setFocusedInstance(null);
-        },
+    session.setFocusedInstance = setFocusedInstance;
+    session.cycleCameraFocus = cycleCameraFocus;
+    session.clearCameraFocus = clearCameraFocus;
+    session.bindCameraFocusInput = () => {
+        window.addEventListener("keydown", handleKeyDown);
+    };
+    session.destroyCameraFocus = () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        setFocusedInstance(null);
     };
 }

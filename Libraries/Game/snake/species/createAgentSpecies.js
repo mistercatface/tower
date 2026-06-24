@@ -52,7 +52,7 @@ export function createAgentSpecies(profileId) {
             purgeInertAgentsForHead(session.registry, instance.headId);
             markAgentDead(session.registry, instance.headId);
             clearSnakeSteeringLeaseFromProp(instance.head);
-            if (session.onAgentDied) session.onAgentDied(instance);
+            if (session.focusedInstance === instance) session.clearCameraFocus?.();
         },
     };
 }
