@@ -23,7 +23,7 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 **Today:** Every agent `perceiveWithMemory` calls `syncNavReachHorizon` → full forward BFS from agent cell (`decisionReachHorizon` ≈ 32) into module scratch. **~192 BFS passes/tick** at snake+flee+squid counts. Flow fields would **add** backward BFS on top if we wire flee flow first — unacceptable.
 
-**Gated on Phase A (do not ship flow locomotion until green):**
+**Gated on Phase A (superseded by `flow-reach-deprecation.md`):**
 
 - Flee flow steering plugin
 - Per-agent flow window pool ([pathfinding.md](../pathfinding.md) Tier 3 ⬜)
@@ -39,37 +39,10 @@ MUST READ BEFORE CONTINUING: `[hygiene.md](hygiene.md)` · `[objects.md](objects
 
 ---
 
-### Phase A — Reach BFS off main thread **← do first**
+### Phase A — Reach BFS off main thread **← SUPERSEDED**
 
-**Goal:** `runHorizonBfs` disappears from the main-thread profile. Same decision outcomes; only where BFS runs changes. Unblocks Phase B flow locomotion (which would add *more* BFS if reach is still on-thread).
-
-**Immediate next step — reach horizon on the existing flow worker (not Phase C merge, not flee steering yet):**
-
-| Step | Work | File / area |
-|------|------|-------------|
-| **A1** | **Worker reach job** — new message e.g. `updateReachHorizon { startCol, startRow, maxSteps }`; extract forward BFS from `navReachHorizon.js` into a module the worker can import; write `distances` + `visitGen` into a SAB slot (reuse `FlowFieldWorkerEntry` + `PathfindingWorkerClient` slot handshake) | `FlowFieldWorkerEntry.js`, `navReachHorizon.js`, new shared BFS helper |
-| **A2** | **Reach slot pool + host** — N SAB distance buffers (or frontier-bounded windows — see A5); `NavRuntime` / snake tick posts one job per agent, main reads `navReachStepsTo` from slot view instead of module scratch | `FlowFieldGrid.js` or sibling `ReachHorizonHost.js`, `createGroundNavIntentAdapter.js` |
-| **A3** | **Tick barrier** — batch all reach posts, then `waitForSlot` / poll before `buildAgentReachStepsInto` (today BFS is sync inside each `perceiveWithMemory`; must split submit vs read or main still blocks per agent) | `snakePerception.js`, adapter |
-| A4 | **Off-screen throttle** (optional after worker) — skip jobs for off-screen agents; saves worker queue depth, not main-thread BFS | adapter + `reachSyncOffScreenInterval` |
-| A5 | **Frontier-bounded slot** (optional) — slot size `(2×maxSteps+1)²` not full `cols×rows`; smaller SAB, same semantics inside horizon | shared BFS helper |
-| ~~A2 dedupe~~ | **Skip** — A1 profiling showed dup ratio ≈ 1.0; agents rarely share a start cell | — |
-
-**A1 profiling findings (instrumentation discarded — conclusions kept):**
-
-- ~**335 syncs/tick** at horizon 32, **dup ratio ≈ 1.0** → cell dedupe is not the lever.
-- Halving horizon 32→16 cut **visited avg ~1520 → ~370** (~4× less BFS *work*); sync count unchanged (~300/tick). Tuning horizon is optional; **worker move fixes the 15% main-thread line regardless.**
-- Existing flow worker already has: `bindFlowNavArena` (blocked SAB), `bfsDistances`/`bfsQueue` scratch, slot `requestId` handshake. Reach job is a **forward** BFS on `octileNeighbors` — different from backward `computeFlowField`, same worker process.
-
-**Not the first step:**
-
-- **Phase C “unified horizons”** — one backward flow field serving reach lookups; do after reach is off-thread and flee flow exists.
-- **Phase B flee steering** — adds backward BFS on top; ship after Phase A barrier is green.
-
-**Phase A done when:**
-
-- Main-thread profile: **`runHorizonBfs` ≈ 0%** in snake game (worker trace shows reach jobs instead)
-- `navReachHorizon.test.js` + decision/FSM suites green — tests hit worker path or stub slot reads, no `{ stepsTo: () => N }` shims
-- Slot layout documented for Phase C handoff
+**Note:** This phase (per-agent forward reach on worker) has been superseded by the per-target backward flow-field distance cache.
+Please refer to `[flow-reach-deprecation.md](flow-reach-deprecation.md)` for the actual implementation details.
 
 ---
 

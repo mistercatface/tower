@@ -2,9 +2,9 @@ import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
 import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
-import { syncNavReachHorizon } from "../../Navigation/navReachHorizon.js";
+import { buildFlowTargetStepsInto } from "../../Navigation/flowTargetSteps.js";
+import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
-import { buildAgentReachStepsInto } from "./agentReachSteps.js";
 import { perceiveAgentIntentWorldInto } from "./agentIntentPerception.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
@@ -186,6 +186,7 @@ export function createGroundNavIntentAdapter({
     const intentMemory = createAgentIntentMemory(intentMemoryOptions);
     const fleeLatch = createFleeIntentLatch(config);
     const arrivalStamper = createBrainArrivalStamper(brain);
+    const staleCache = createFlowReachStaleCache();
     const visible = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 };
     const routeStatus = { hasDestination: false, hasRoute: false, replanPending: false, routeFailed: false, destReached: false, stuckFrames: 0, pathLen: null };
     const committed = { mode: null, targetId: null };
@@ -226,8 +227,6 @@ export function createGroundNavIntentAdapter({
         perceiveAgentIntentWorldInto(visible, agent, selfHeadId, state, registry, resolveVisibleFood, resolvedVision);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
-        const nav = requireSnakeVisionFrame(state).navTopology;
-        syncNavReachHorizon(nav, agent.x, agent.y, config.decisionReachHorizon ?? 32);
         if (intent) {
             committed.mode = intent.getMode();
             committed.targetId = intent.getTargetId();
@@ -236,7 +235,9 @@ export function createGroundNavIntentAdapter({
             committed.targetId = null;
         }
         readAgentRouteStatusInto(routeStatus, locomotion, agent, state);
-        buildAgentReachStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlots);
+        buildFlowTargetStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlots, {
+            state, agent, staleCache, range: config.decisionReachHorizon ?? 32,
+        });
         buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
         afterPerceive?.(decisionContext, agent, state);
         lastDecisionContext = decisionContext;

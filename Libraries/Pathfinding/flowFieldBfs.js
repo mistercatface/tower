@@ -20,7 +20,7 @@ import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
  */
 export function computeFlowField(
     vectorMap,
-    { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap },
+    { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut },
 ) {
     const isBlocked = (flowIdx) => flowCellBlocked(flowToNavIdx, navBlocked, flowIdx);
     bfsDistances.fill(-1);
@@ -53,4 +53,7 @@ export function computeFlowField(
         }
     }
     vectorMap.set(localVectorMap);
+    if (distancesOut) {
+        distancesOut.set(bfsDistances);
+    }
 }

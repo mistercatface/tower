@@ -3,7 +3,7 @@ import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { FlowFieldWindow } from "./flowFieldWindow.js";
 import { FlowCacheManager } from "./flowCacheManager.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
-const MAX_CACHE = 100;
+const MAX_CACHE = 512;
 const FLOW_DONE = "flowDone";
 const FLOW_WINDOW_DONE = "flowWindowDone";
 export class FlowFieldGrid {
@@ -26,6 +26,7 @@ export class FlowFieldGrid {
         this.sabNeighbors = new SharedArrayBuffer(this.neighborLayout.bufferByteLength(size));
         this.neighborGrid = new Int32Array(this.sabNeighbors).fill(-1);
         this.sabFlowPool = new SharedArrayBuffer(size * MAX_CACHE);
+        this.sabFlowDistPool = new SharedArrayBuffer(size * MAX_CACHE * 4);
         this.cache = new FlowCacheManager(MAX_CACHE, this.window);
         this._topologyKey = "";
         this._windowReady = false;
@@ -35,7 +36,7 @@ export class FlowFieldGrid {
         if (!workerUrl) throw new Error("FlowFieldGrid requires an injected workerUrl");
         this.protocol = new PathfindingWorkerClient(workerUrl, MAX_CACHE, "FlowFieldGrid", (data) => this._handleWorkerMessage(data));
         this._workerHost = this.protocol.host;
-        this.protocol.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool } });
+        this.protocol.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool, sabFlowDistPool: this.sabFlowDistPool } });
         this._syncWindowAliases();
     }
     _syncWindowAliases() {
@@ -160,6 +161,25 @@ export class FlowFieldGrid {
     flowFieldView(slot) {
         const size = this.cols * this.rows;
         return new Uint8Array(this.sabFlowPool, slot * size, size);
+    }
+    flowDistanceView(slot) {
+        const size = this.cols * this.rows;
+        return new Int32Array(this.sabFlowDistPool, slot * size * 4, size);
+    }
+    readFlowStepsAt(slot, worldX, worldY) {
+        const col = this.window.worldToGridX(worldX);
+        const row = this.window.worldToGridY(worldY);
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
+        const idx = row * this.cols + col;
+        const dist = this.flowDistanceView(slot)[idx];
+        return dist >= 0 ? dist : null;
+    }
+    readFlowStepsForTarget(agentX, agentY, targetX, targetY, range = 999999) {
+        this.syncLocalTopology();
+        if (!this.window.ready) return { slot: null, steps: null, ready: false };
+        const slot = this.ensureFlowRequest(targetX, targetY, range);
+        if (slot === null || !this.isFlowSlotReady(slot)) return { slot, steps: null, ready: false };
+        return { slot, steps: this.readFlowStepsAt(slot, agentX, agentY), ready: true };
     }
     ensureFlowRequest(targetX, targetY, range = 999999) {
         return this.cache.getOrRequestSlot(targetX, targetY, range, this.protocol);

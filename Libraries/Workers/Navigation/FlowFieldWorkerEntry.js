@@ -12,6 +12,7 @@ export class FlowBufferManager {
         this.bfsDistances = null;
         this.localVectorMap = null;
         this.bfsQueue = null;
+        this.flowDistPool = null;
     }
     init(data) {
         this.gridWidth = data.GRID_WIDTH;
@@ -23,10 +24,15 @@ export class FlowBufferManager {
         this.bfsDistances = new Int32Array(this.gridSize);
         this.localVectorMap = new Uint8Array(this.gridSize);
         this.bfsQueue = new Int32Array(this.gridSize);
+        this.flowDistPool = new Int32Array(data.sabFlowDistPool);
     }
     getVectorMap(slot) {
         const offset = slot * this.gridSize;
         return this.flowPool.subarray(offset, offset + this.gridSize);
+    }
+    getDistanceMap(slot) {
+        const offset = slot * this.gridSize;
+        return this.flowDistPool.subarray(offset, offset + this.gridSize);
     }
 }
 export class FlowTopologyArena {
@@ -85,6 +91,7 @@ export class FlowFieldWorker {
                 bfsDistances: this.buffers.bfsDistances,
                 bfsQueue: this.buffers.bfsQueue,
                 localVectorMap: this.buffers.localVectorMap,
+                distancesOut: this.buffers.getDistanceMap(slot),
             });
             self.postMessage({ type: "flowDone", slot, requestId });
         }
