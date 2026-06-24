@@ -20,6 +20,22 @@ export function initWorldPropShape(prop) {
         if (!prop.collisionParts?.length) prop.radius = prop.shape.getBoundingRadius();
         return;
     }
+    if (prop.strategy.collisionParts) {
+        prop.collisionParts = prop.strategy.collisionParts.map((part) => {
+            if (typeof part.getBoundingRadius === "function") return part;
+            if (part.type === "Polygon") return new PolygonShape(part.vertices.map((v) => ({ x: v.x, y: v.y })));
+
+            if (part.type === "Circle") return new CircleShape(part.radius);
+
+            throw new Error(`Unknown collision part type: ${part.type}`);
+        });
+        let maxR = 0;
+        for (let i = 0; i < prop.collisionParts.length; i++) maxR = Math.max(maxR, prop.collisionParts[i].getBoundingRadius());
+
+        prop.radius = maxR;
+        prop.shape = prop.collisionParts[0];
+        return;
+    }
     const footprint = prop.strategy.localFootprint;
     if (footprint?.length >= 3) {
         const verts = footprint.map((v) => ({ x: v.x, y: v.y }));
@@ -93,10 +109,29 @@ export function withPropStrategyDefaults(strategy) {
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) return withPropStrategyDefaults({});
     const { spawn, renderMode, ...strategy } = asset.physics;
-    return withPropStrategyDefaults({
-        render3DKey: asset.id,
-        renderMode: renderMode ?? "3d",
-        inspectKey: null,
-        ...strategy,
-    });
+    return withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });
+}
+export function applyCrossPinwheelFootprint(prop, length, thickness) {
+    const halfL = length / 2;
+    const halfT = thickness / 2;
+    prop.collisionParts = [
+        new PolygonShape([
+            { x: -halfL, y: -halfT },
+            { x: halfL, y: -halfT },
+            { x: halfL, y: halfT },
+            { x: -halfL, y: halfT },
+        ]),
+        new PolygonShape([
+            { x: -halfT, y: -halfL },
+            { x: halfT, y: -halfL },
+            { x: halfT, y: halfL },
+            { x: -halfT, y: halfL },
+        ]),
+    ];
+    prop.shape = prop.collisionParts[0];
+    prop.radius = Math.hypot(halfL, halfT);
+    prop.crossLength = length;
+    prop.crossThickness = thickness;
+    invalidateBroadphaseBounds(prop);
+    if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
 }

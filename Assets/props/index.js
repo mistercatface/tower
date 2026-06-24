@@ -22,6 +22,7 @@ import corridor from "./corridor/corridor.asset.js";
 import snake_head from "./snake_head/snake_head.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
 import poolBalls from "./poolBalls.js";
+import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/primitives/index.js";
 
 const catalog = {
@@ -48,6 +49,7 @@ const catalog = {
     corridor,
     snake_head,
     snake_shard,
+    cross_pinwheel,
     ...poolBalls,
 };
 

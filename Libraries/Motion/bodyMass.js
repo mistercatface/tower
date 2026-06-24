@@ -70,6 +70,16 @@ function compoundInertiaFactor(parts) {
 }
 export function kineticFootprintArea(body) {
     if (body.footprintArea != null) return body.footprintArea;
+    const parts = body.collisionParts;
+    if (parts?.length > 1) {
+        let area = 0;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            if (part.type === "Polygon") area += polygonShapeArea(part);
+            else if (part.type === "Circle") area += Math.PI * part.radius * part.radius;
+        }
+        return area;
+    }
     const shape = body.shape ?? body.getShape?.();
     if (shape?.type === "Polygon") return polygonShapeArea(shape);
     if (shape?.type === "Circle") return Math.PI * shape.radius * shape.radius;

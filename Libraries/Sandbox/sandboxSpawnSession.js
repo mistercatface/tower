@@ -20,6 +20,8 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
     let spawnCorridorSurfaceProfileId = null;
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
+    let spawnCrossLength = 32;
+    let spawnCrossThickness = 8;
     let spawnBallRadius = null;
     let spawnVisualOverrideTint = null;
     let spawnVisualOverrideBrightness = 1;
@@ -42,6 +44,8 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         spawnPuzzleAreaRows,
         spawnRoomNodeSurfaceProfileId,
         spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
+        spawnCrossLength,
+        spawnCrossThickness,
         pickSelection,
         notifyUi,
         placement,
@@ -120,6 +124,16 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         getSpawnVisualOverrideBrightness: () => spawnVisualOverrideBrightness,
         setSpawnVisualOverrideBrightness: (brightness) => {
             spawnVisualOverrideBrightness = Math.max(0.25, Math.min(2, brightness));
+        },
+        getSpawnCrossLength: () => spawnCrossLength,
+        setSpawnCrossLength: (len) => {
+            spawnCrossLength = Math.max(8, Math.min(128, Math.round(len)));
+            notifyUi();
+        },
+        getSpawnCrossThickness: () => spawnCrossThickness,
+        setSpawnCrossThickness: (thick) => {
+            spawnCrossThickness = Math.max(2, Math.min(64, Math.round(thick)));
+            notifyUi();
         },
         resolveSpawnVisualOverride,
         spawnAt,

@@ -6,6 +6,7 @@ import { addXY } from "../../Math/Vec2.js";
  * @param {{ x: number, y: number }} body — mutated in place
  */
 export function applyPositionCorrection(body, normalX, normalY, overlap) {
+    if (body.strategy?.pinned) return;
     addXY(body, normalX * overlap, normalY * overlap);
 }
 /**

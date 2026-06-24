@@ -1,6 +1,6 @@
 import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
 import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
-import { applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/propStrategy.js";
+import { applyCrossPinwheelFootprint, applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/propStrategy.js";
 import { assetDefaultBallRadius, blockPresetUsesResizableFootprint, isBallFamilyAsset, isBlockFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { appendActionRow, appendColorField, appendNumberField } from "../../UI/paramFields.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
@@ -12,10 +12,7 @@ function percentToBrightness(percent) {
     return percent / 100;
 }
 function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
-    appendColorField(body, "Tint", {
-        value: tint,
-        onChange: onTintChange,
-    });
+    appendColorField(body, "Tint", { value: tint, onChange: onTintChange });
     appendNumberField(body, "Brightness %", {
         value: brightnessToPercent(brightness),
         step: 5,
@@ -60,9 +57,14 @@ export function appendBlockSpawnFields(body, controller, spawnAsset) {
         },
     });
 }
+export function appendCrossPinwheelSpawnFields(body, controller) {
+    appendNumberField(body, "Cross length", { value: controller.getSpawnCrossLength(), step: 2, min: 8, max: 128, onChange: (val) => controller.setSpawnCrossLength(val) });
+    appendNumberField(body, "Cross thickness", { value: controller.getSpawnCrossThickness(), step: 1, min: 2, max: 64, onChange: (val) => controller.setSpawnCrossThickness(val) });
+}
 export function appendShapeFamilySpawnFields(body, controller, spawnId) {
     const spawnAsset = propCatalog[spawnId];
-    if (isBallFamilyAsset(spawnAsset)) appendBallSpawnFields(body, controller, spawnAsset);
+    if (spawnId === "cross_pinwheel") appendCrossPinwheelSpawnFields(body, controller);
+    else if (isBallFamilyAsset(spawnAsset)) appendBallSpawnFields(body, controller, spawnAsset);
     else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
 }
 export function appendBallSelectedFields(body, selectedProp, asset) {
@@ -146,9 +148,55 @@ export function appendBlockSelectedFields(body, selectedProp, asset) {
         },
     ]);
 }
+export function appendCrossPinwheelSelectedFields(body, selectedProp, asset) {
+    const length = selectedProp.crossLength ?? 32;
+    const thickness = selectedProp.crossThickness ?? 8;
+    appendNumberField(body, "Cross length", {
+        value: length,
+        step: 2,
+        min: 8,
+        max: 128,
+        onChange: (val) => {
+            applyCrossPinwheelFootprint(selectedProp, val, selectedProp.crossThickness ?? 8);
+            markLabViewDirty();
+        },
+    });
+    appendNumberField(body, "Cross thickness", {
+        value: thickness,
+        step: 1,
+        min: 2,
+        max: 64,
+        onChange: (val) => {
+            applyCrossPinwheelFootprint(selectedProp, selectedProp.crossLength ?? 32, val);
+            markLabViewDirty();
+        },
+    });
+    appendCoatFields(body, {
+        tint: resolvePickerHex(selectedProp, asset),
+        brightness: getPropVisualBrightness(selectedProp),
+        onTintChange: (hex) => {
+            setPropVisualTint(selectedProp, hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            setPropVisualBrightness(selectedProp, brightness);
+            markLabViewDirty();
+        },
+    });
+    appendActionRow(body, [
+        {
+            label: "Reset coat",
+            onClick: () => {
+                clearPropVisualOverride(selectedProp);
+                markLabViewDirty();
+            },
+        },
+    ]);
+}
 export function appendShapeFamilySelectedFields(body, selectedProp) {
     if (!selectedProp) return;
     const asset = propCatalog[selectedProp.type];
-    if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
+    if (selectedProp.type === "cross_pinwheel") appendCrossPinwheelSelectedFields(body, selectedProp, asset);
+    else if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
     else if (isBlockFamilyAsset(asset)) appendBlockSelectedFields(body, selectedProp, asset);
 }

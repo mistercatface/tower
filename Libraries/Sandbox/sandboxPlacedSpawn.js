@@ -25,7 +25,10 @@ function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
     const assetRadius = propCatalog[prop.type]?.physics?.radius;
     if (prop.radius != null && assetRadius != null && prop.radius !== assetRadius) entry.radius = prop.radius;
-    if (footprintDiffersFromAsset(prop)) {
+    if (prop.type === "cross_pinwheel") {
+        if (prop.crossLength !== undefined) entry.crossLength = prop.crossLength;
+        if (prop.crossThickness !== undefined) entry.crossThickness = prop.crossThickness;
+    } else if (footprintDiffersFromAsset(prop)) {
         const span = convexFootprintHalfExtents(prop.shape.vertices);
         entry.width = span.x * 2;
         entry.height = span.y * 2;

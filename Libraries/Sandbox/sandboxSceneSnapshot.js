@@ -21,6 +21,7 @@ import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
+import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraints.js";
 import { applyPassagePowerGridState } from "./passagePowerNetwork.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
@@ -144,6 +145,8 @@ function spawnSnapshotProp(state, entry) {
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents, entry.visualOverride);
     if (entry.radius != null) setCirclePropRadius(prop, entry.radius);
+    if (prop && entry.type === "cross_pinwheel" && (entry.crossLength != null || entry.crossThickness != null)) applyCrossPinwheelFootprint(prop, entry.crossLength ?? 32, entry.crossThickness ?? 8);
+
     return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
