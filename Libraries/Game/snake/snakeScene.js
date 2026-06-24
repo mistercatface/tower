@@ -14,6 +14,8 @@ import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
+import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { applyCrossPinwheelFootprint } from "../../Props/propStrategy.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -240,5 +242,11 @@ export async function spawnSnakeCavernScene(state) {
             excludeIndices = pack.occupiedIndices;
         }
     });
+    const centerCell = resolveSnakePlayableCenterCell(state);
+    const { x: cx, y: cy } = state.obstacleGrid.gridToWorld(centerCell.col, centerCell.row);
+    const pinwheel = spawnPlacedSandboxProp(state, cx, cy, "cross_pinwheel", "neutral", 0);
+    applyCrossPinwheelFootprint(pinwheel, 64, 4);
+    pinwheel.height = 2;
+
     return { snakes, navWalkable };
 }

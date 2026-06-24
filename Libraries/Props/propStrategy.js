@@ -63,7 +63,7 @@ function propShapeFootprintKey(prop) {
     const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? 0);
     return `c${Math.round(radius * 4)}`;
 }
-const FACING_STEPS_MAX = 128;
+const FACING_STEPS_MAX = 520;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
 function deriveFacingStepsFromFootprint(prop, baselineSteps) {
     const { x: hx, y: hy } = propFootprintHalfExtents(prop);

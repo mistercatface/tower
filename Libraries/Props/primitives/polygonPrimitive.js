@@ -1,4 +1,4 @@
-import { drawExtrudedConvexPolygon } from "../../Render/Props3D/SolidDraw.js";
+import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import propCatalog from "../../../Assets/props/index.js";
@@ -33,6 +33,7 @@ export function createPolygonPrimitive(visuals) {
             topCross,
         };
         const parts = getEntityCollisionParts(prop);
-        for (let i = 0; i < parts.length; i++) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[i].vertices });
+        if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });
+        else if (parts.length === 1) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[0].vertices });
     };
 }

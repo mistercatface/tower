@@ -40,8 +40,8 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     if (shape) body.shape = shape;
     if (options.facing != null) body.facing = options.facing;
     if (options.isDead) body.isDead = true;
-    if (options.currentState) body.currentState = options.currentState === true ? {} : options.currentState;
-    if (options.needsWallCollision != null) body.needsWallCollision = () => options.needsWallCollision;
+    body.currentState = options.currentState === true || options.currentState == null ? {} : options.currentState;
+    body.needsWallCollision = () => (typeof options.needsWallCollision === "function" ? options.needsWallCollision() : (options.needsWallCollision ?? false));
     if (options.dampedMotion) {
         body.update = function update(dt) {
             this.x += (this.vx ?? 0) * (dt / 1000);

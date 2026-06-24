@@ -5,7 +5,8 @@ export default {
     physics: {
         isKinetic: true,
         pinned: true,
-        friction: 0.05,
+        friction: 0.02,
+        density: 0.0005,
         wallPhysics: { restitution: 0.5, friction: 0.1 },
         collisionParts: [
             {
@@ -28,5 +29,5 @@ export default {
             },
         ],
     },
-    visuals: { colors: { side: "#4a044e", sideShadow: "#2e0232", top: "#d946ef", topHighlight: "#f472b6", stroke: "#fbcfe8" }, world: { height: 16 } },
+    visuals: { lineWidth: 0.5, colors: { side: "#334155", sideShadow: "#1e293b", top: "#64748b", topHighlight: "#94a3b8", stroke: "#1e293b" }, world: { height: 4 } },
 };

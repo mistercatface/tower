@@ -35,7 +35,10 @@ describe("cross pinwheel prop", () => {
         // We shoot a ball from top to bottom hitting the right wing at x = 12, moving in -y direction.
         const projectile = mockKineticCircle(12, 15, 4, 0, -100, {
             strategy: { isKinetic: true },
-            dampedMotion: true
+            update(dt) {
+                this.x += (this.vx ?? 0) * (dt / 1000);
+                this.y += (this.vy ?? 0) * (dt / 1000);
+            }
         });
 
         const tick = createKineticTestTick([pinwheel, projectile]);
@@ -51,6 +54,13 @@ describe("cross pinwheel prop", () => {
         // Run the physics step
         // We run a physics tick with dt = 100
         runKineticPhysics(tick, 100, {
+            updateProp: (prop, subDt) => prop.update(subDt),
+            resolveWalls: () => {},
+            applyContactSideEffects: () => {},
+        });
+
+        // Run a second small step to integrate the angular velocity into facing angle
+        runKineticPhysics(tick, 50, {
             updateProp: (prop, subDt) => prop.update(subDt),
             resolveWalls: () => {},
             applyContactSideEffects: () => {},
