@@ -98,7 +98,7 @@ describe("snake split on impact", () => {
         const members = getOrderedChainMemberIds(state, headId);
         splitSnakeAtStruckSegment(state, snakeGame, headId, members[0]);
         assert.equal(isAliveAgentHead(snakeGame.registry, headId), false);
-        assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
+        assert.equal(snakeGame.instancesByHeadId.has(headId), false);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
     });
 });
@@ -123,7 +123,7 @@ describe("snake min length death", () => {
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
         assert.ok(enforceSnakeMinLength(state, snakeGame, headId));
-        assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
+        assert.equal(snakeGame.instancesByHeadId.has(headId), false);
     });
 
     it("killSnake stops autosim and clears chain links", () => {
@@ -136,7 +136,7 @@ describe("snake min length death", () => {
         assert.equal(state.kinetic.kineticConstraints.length, 2);
         killSnake(state, snakeGame, headId);
         assert.equal(state.kinetic.kineticConstraints.length, 0);
-        assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
+        assert.equal(snakeGame.instancesByHeadId.has(headId), false);
     });
 
     it("killSnake strips nav drive but keeps segment velocity", () => {
@@ -182,21 +182,20 @@ describe("snake min length death", () => {
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
         const head = pack.chain.head;
-        const autosim = {
+        const instance = getAgentInstance(snakeGame, headId);
+        instance.autosim = {
             start() {},
             stop() {},
             tick() {
                 steerRollToward(head, 1, 0, { accel: 10, maxSpeed: 50 });
             },
         };
-        snakeGame.autosimsByHeadId.set(headId, autosim);
         killSnake(state, snakeGame, headId);
-        snakeGame.autosimsByHeadId.set(headId, autosim);
         head.vx = 0;
         head.vy = 0;
-        for (const [id, sim] of snakeGame.autosimsByHeadId) {
-            if (!snakeGame.registry.aliveByHeadId.has(id)) continue;
-            sim.tick(50);
+        for (const liveInstance of snakeGame.instancesByHeadId.values()) {
+            if (!snakeGame.registry.aliveByHeadId.has(liveInstance.headId)) continue;
+            liveInstance.autosim.tick(50);
         }
         assert.equal(head.vx, 0);
         assert.equal(head.vy, 0);
@@ -216,7 +215,7 @@ describe("snake min length death", () => {
         removeChainLinkBetween(state, members[1], members[2]);
         instance.validate(state, snakeGame);
         assert.equal(instance.lifecycle, "dead");
-        assert.equal(snakeGame.autosimsByHeadId.has(headId), false);
+        assert.equal(snakeGame.instancesByHeadId.has(headId), false);
         assert.equal(pack.chain.head._groundRollDrive, undefined);
     });
 

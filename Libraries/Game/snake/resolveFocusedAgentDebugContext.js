@@ -1,4 +1,3 @@
-/** @param {object} state @param {number | null} focusedHeadId */
 export function resolveFocusedAgentDebugContext(state, focusedHeadId) {
     if (focusedHeadId == null) return null;
     const snakeGame = state.sandbox?.snakeGame;
@@ -7,7 +6,7 @@ export function resolveFocusedAgentDebugContext(state, focusedHeadId) {
     if (!head || head.isDead) return null;
     const meta = snakeGame.registry.aliveByHeadId.get(focusedHeadId);
     const instance = snakeGame.instancesByHeadId.get(focusedHeadId);
-    const autosim = instance?.autosim ?? snakeGame.autosimsByHeadId.get(focusedHeadId);
+    const autosim = instance?.autosim;
     if (!autosim || typeof autosim.getBrain !== "function") return null;
     return {
         headId: focusedHeadId,

@@ -12,7 +12,7 @@ import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 import { CameraTargetCycler } from "../Libraries/Sandbox/CameraTargetCycler.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
-import { resolveAliveAgentHeadId } from "../Libraries/Game/snake/resolveAliveAgentHeadId.js";
+import { resolveAliveAgentInstanceFromProp } from "../Libraries/Game/snake/resolveAliveAgentInstanceFromProp.js";
 import { getConnectedBodyIds } from "../Libraries/Motion/kineticConstraintGraph.js";
 
 function createTestState(cols = 32, rows = 32) {
@@ -63,7 +63,7 @@ describe("snake camera focus", () => {
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });
 
-    it("resolves alive head id from any chain segment", () => {
+    it("resolves alive agent instance from any chain segment", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -72,9 +72,10 @@ describe("snake camera focus", () => {
         const members = getConnectedBodyIds(state.kinetic, chain.chain.head.id);
         assert.ok(members.length >= 3);
         const tailId = members[members.length - 1];
-        assert.equal(resolveAliveAgentHeadId(state, chain.chain.head.id), chain.chain.head.id);
-        assert.equal(resolveAliveAgentHeadId(state, tailId), chain.chain.head.id);
-        assert.equal(resolveAliveAgentHeadId(state, "missing"), null);
+        const instance = state.sandbox.snakeGame.instancesByHeadId.get(chain.chain.head.id);
+        assert.equal(resolveAliveAgentInstanceFromProp(state, chain.chain.head.id), instance);
+        assert.equal(resolveAliveAgentInstanceFromProp(state, tailId), instance);
+        assert.equal(resolveAliveAgentInstanceFromProp(state, "missing"), null);
     });
 
     it("focusAgentFromProp snaps camera to the resolved head", () => {
@@ -95,14 +96,13 @@ describe("snake camera focus", () => {
         ]);
         const cameraCycler = new CameraTargetCycler(state, { getTargetIds: () => [...state.sandbox.snakeGame.registry.aliveByHeadId.keys()] });
         const focusAgentFromProp = (propId) => {
-            const headId = resolveAliveAgentHeadId(state, propId);
-            if (!headId) return false;
-            if (cameraCycler.focusedId === headId) {
-                const prop = state.entityRegistry.getLive(headId);
-                if (prop) state.viewport.snapTo(prop.x, prop.y);
+            const instance = resolveAliveAgentInstanceFromProp(state, propId);
+            if (!instance) return false;
+            if (cameraCycler.focusedId === instance.headId) {
+                state.viewport.snapTo(instance.head.x, instance.head.y);
                 return true;
             }
-            cameraCycler.setFocusedId(headId);
+            cameraCycler.setFocusedId(instance.headId);
             return true;
         };
         const tailId = getConnectedBodyIds(state.kinetic, second.chain.head.id).at(-1);

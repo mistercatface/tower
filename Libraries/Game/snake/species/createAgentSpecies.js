@@ -32,12 +32,10 @@ export function createAgentSpecies(profileId) {
     return {
         id: profileId,
         createInstance(state, ctx) {
-            return createAgentInstance(state, { profileId, headId: ctx.headId, spawnGroupId: ctx.spawnGroupId, navWalkable: ctx.navWalkable });
+            return createAgentInstance(state, { profileId, head: ctx.head, headId: ctx.headId, spawnGroupId: ctx.spawnGroupId, navWalkable: ctx.navWalkable });
         },
         register(session, instance) {
             registerAliveAgent(session.registry, instance.headId, profileId, instance);
-            session.instancesByHeadId.set(instance.headId, instance);
-            if (instance.autosim) session.autosimsByHeadId.set(instance.headId, instance.autosim);
         },
         start(instance, state) {
             instance.start(state);
@@ -48,7 +46,6 @@ export function createAgentSpecies(profileId) {
         die(instance, state, session, deathImpact = null) {
             instance.lifecycle = "dead";
             instance.stopSteering(state);
-            session.autosimsByHeadId.delete(instance.headId);
             const connectedMembers = instance.syncMembersFromGraph(state);
             let resolvedMembers = connectedMembers;
             if (features.retireNavOnDeath && typeof instance.retireAllSegments === "function") resolvedMembers = instance.retireAllSegments(state, session, connectedMembers);
@@ -59,9 +56,7 @@ export function createAgentSpecies(profileId) {
             if (features.removeNonStruckSegments) removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFrame);
             purgeInertAgentsForHead(session.registry, instance.headId);
             markAgentDead(session.registry, instance.headId);
-            session.instancesByHeadId.delete(instance.headId);
-            const head = state.entityRegistry.get(instance.headId);
-            if (head) clearSnakeSteeringLeaseFromProp(head);
+            clearSnakeSteeringLeaseFromProp(instance.head);
             if (session.onHeadDied) session.onHeadDied(instance.headId);
         },
         validate(instance, state, session) {

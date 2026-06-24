@@ -52,10 +52,11 @@ export function stubSnakeAutosim() {
 }
 export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
     const resolvedAutosim = autosim ?? stubSnakeAutosim();
-    const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, headId, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
+    const head = state.entityRegistry.getLive(headId);
+    const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
     registerAgentInstance(snakeGame, "snake", instance);
-    grantSnakeSteeringLease(instance, state);
+    grantSnakeSteeringLease(instance);
     return instance;
 }
 export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {}) {
@@ -66,20 +67,19 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
     state.sandbox.snakeGame = snakeGame;
     for (const snake of snakes) {
         const autosim = snake.autosim ?? stubSnakeAutosim();
-        snakeGame.autosimsByHeadId.set(snake.headId, autosim);
         registerSnakeTestInstance(state, snakeGame, { ...snake, autosim });
     }
-    return { registry, autosimsByHeadId: snakeGame.autosimsByHeadId, snakeGame };
+    return { registry, snakeGame };
 }
 export function createWiredSnakeAutosim(state, options) {
     wireSnakeTestNavSession(state);
-    const autosim = createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: options.headId, ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
     const instance = getAgentInstance(state.sandbox.snakeGame, options.headId);
     if (instance) {
+        const autosim = createAgentAutosim(state, { instance, ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
         instance.autosim = autosim;
-        state.sandbox.snakeGame.autosimsByHeadId.set(options.headId, autosim);
+        return autosim;
     }
-    return autosim;
+    throw new Error(`createWiredSnakeAutosim: missing agent instance ${options.headId}`);
 }
 export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

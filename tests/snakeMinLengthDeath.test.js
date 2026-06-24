@@ -193,12 +193,13 @@ describe("snake combat min length", () => {
         const state = createTestState();
         const predator = spawnSnakeChain(state, { col: 8, row: 8 }, { ...snakeChainOptions(6), faction: "red" });
         const prey = spawnSnakeChain(state, { col: 20, row: 8 }, { ...snakeChainOptions(3), faction: "blue" });
-        const { autosimsByHeadId } = wireCombatSnakeGame(state, [
+        wireCombatSnakeGame(state, [
             { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId },
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
-        const predatorAutosim = createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: predator.chain.head.id, navWalkable: state.sandbox.snakeGame.navWalkable });
-        autosimsByHeadId.set(predator.chain.head.id, predatorAutosim);
+        const predatorInstance = state.sandbox.snakeGame.instancesByHeadId.get(predator.chain.head.id);
+        const predatorAutosim = createAgentAutosim(state, { instance: predatorInstance, navWalkable: state.sandbox.snakeGame.navWalkable });
+        predatorInstance.autosim = predatorAutosim;
         const registry = state.sandbox.snakeGame.registry;
         const preyMembers = getOrderedChainMemberIds(state, prey.chain.head.id);
         const struckBody = state.entityRegistry.getLive(preyMembers[1]);
@@ -216,7 +217,7 @@ describe("snake combat min length", () => {
         resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(registry.deadHeadIds.has(prey.chain.head.id), true);
-        assert.equal(autosimsByHeadId.has(prey.chain.head.id), false);
+        assert.equal(state.sandbox.snakeGame.instancesByHeadId.has(prey.chain.head.id), false);
         assert.equal(registry.inertByLeadId.size, 0);
         assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 6);
         assert.equal(state.worldProps.some((prop) => prop.type === SNAKE_SHARD_PROP_ID), true);

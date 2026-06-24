@@ -1,15 +1,13 @@
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
-export function grantSnakeSteeringLease(instance, state) {
+export function grantSnakeSteeringLease(instance) {
     instance.steeringEpoch = (instance.steeringEpoch ?? 0) + 1;
-    const head = state.entityRegistry.get(instance.headId);
-    if (!head) return;
+    const head = instance.head;
     head._snakeSteering = { headId: instance.headId, epoch: instance.steeringEpoch };
 }
-export function revokeSnakeSteeringLease(instance, state) {
+export function revokeSnakeSteeringLease(instance) {
     instance.steeringEpoch = (instance.steeringEpoch ?? 0) + 1;
-    const head = state.entityRegistry.get(instance.headId);
-    if (!head) return;
+    const head = instance.head;
     clearSnakeSteeringLeaseFromProp(head);
     head._snakeSteering = { headId: instance.headId, epoch: instance.steeringEpoch - 1 };
 }

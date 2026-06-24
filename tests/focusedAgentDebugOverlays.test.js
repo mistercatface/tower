@@ -66,8 +66,7 @@ describe("focused agent debug overlays", () => {
         const snakeGame = state.sandbox.snakeGame;
         const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
-        createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
-        const autosim = snakeGame.autosimsByHeadId.get(snake.chain.head.id);
+        const autosim = createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
         autosim.start();
         const prey = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId });

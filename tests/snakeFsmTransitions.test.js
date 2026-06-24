@@ -113,7 +113,7 @@ function mockHeadNav() {
         },
     };
 }
-function createMockIntent(state, selfHeadId, registry) {
+function createMockIntent(state, selfHeadId) {
     const navWalkable = snakeGameNavWalkable(state);
     const headNav = mockHeadNav();
     const head = state.entityRegistry.getLive(selfHeadId);
@@ -126,8 +126,8 @@ function createMockIntent(state, selfHeadId, registry) {
         headNav,
         resolveVisibleFood: () => null,
         resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
-        selfHeadId,
-        registry,
+        session: state.sandbox.snakeGame,
+        agentId: selfHeadId,
         navWalkable,
         rng: () => 0,
     });
@@ -417,7 +417,7 @@ describe("snake FSM transitions", () => {
         const registry = state.sandbox.snakeGame.registry;
         large.head.x = small.head.x + 64;
         large.head.y = small.head.y;
-        const { intent } = createMockIntent(state, small.head.id, registry);
+        const { intent } = createMockIntent(state, small.head.id);
         const seeker = small.head;
         const grid = state.obstacleGrid;
         beginSnakePerceptionFrame(state);
@@ -447,7 +447,7 @@ describe("snake FSM transitions", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         wireSnakeTestGame(state, [{ headId: chain.head.id, spawnGroupId: chain.spawnGroupId }]);
         const registry = state.sandbox.snakeGame.registry;
-        const { intent, headNav } = createMockIntent(state, chain.head.id, registry);
+        const { intent, headNav } = createMockIntent(state, chain.head.id);
         const seeker = chain.head;
         beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
@@ -543,7 +543,8 @@ describe("snake FSM transitions", () => {
         const state = await createFsmTestState();
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, chainOptions());
         const stubNavWalkable = { cells: () => [], has: () => false, pick: () => null, filterInBounds: () => [], rebake: () => {} };
-        assert.throws(() => createAgentAutosim(state, { profileId: AGENT_PROFILE.snake, leaderId: chain.head.id, navWalkable: stubNavWalkable }), /registry/);
+        const instance = { profileId: AGENT_PROFILE.snake, head: chain.head, headId: chain.head.id };
+        assert.throws(() => createAgentAutosim(state, { instance, navWalkable: stubNavWalkable }), /registry/);
     });
     it("satisfied snake ignores same-team smaller snake but hunts opposite-team smaller snake (Red vs Blue)", async () => {
         applySnakeGameConfig({ shared: { fleeRange: 128 } });

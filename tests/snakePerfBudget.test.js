@@ -72,7 +72,7 @@ async function createPerfState(cols = 48, rows = 48) {
 function buildMultiSnakeSession(state) {
     const config = getSnakeGameConfig();
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const { autosimsByHeadId, snakeGame } = wireSnakeTestGame(state);
+    const { snakeGame } = wireSnakeTestGame(state);
     const autosims = [];
     let excludeIndices = null;
     const specs = resolveSnakeSpawnSpecs(config);
@@ -87,7 +87,6 @@ function buildMultiSnakeSession(state) {
         });
         const autosim = createWiredSnakeAutosim(state, { headId: pack.chain.head.id, behaviorById, rng: () => ((i + 1) * 0.17) % 1 });
         autosim.start();
-        autosimsByHeadId.set(pack.chain.head.id, autosim);
         autosims.push({ autosim, head: pack.chain.head });
     }
     return { autosims };

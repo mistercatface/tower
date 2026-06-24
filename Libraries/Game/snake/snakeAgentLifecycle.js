@@ -1,15 +1,11 @@
-import { getSnakeSizeScore } from "./snakeScale.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
-export function tickAgentIntent(state, intent, dtMs, tickFsmLogic) {
+export function tickAgentIntent(state, intent, agent, dtMs, tickFsmLogic) {
     const snakeGame = state.sandbox.snakeGame;
     const soloTick = !snakeGame._batchingPerception;
     if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
     else maybeBeginSnakeAutosimTick(state);
-    const head = state.entityRegistry.getLive(intent.headId);
-    if (head) {
-        tickFsmLogic(head);
-        if (intent.headNav) intent.headNav.tick(head, dtMs);
-    }
+    tickFsmLogic(agent);
+    if (intent.headNav) intent.headNav.tick(agent, dtMs);
     if (soloTick) endSnakePerceptionFrame(state);
 }
 export function reapAgentInstance(state, snakeGame, instance, deathImpact = null) {

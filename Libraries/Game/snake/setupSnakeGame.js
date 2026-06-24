@@ -1,5 +1,5 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
-import { resolveAliveAgentHeadId } from "./resolveAliveAgentHeadId.js";
+import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { CameraTargetCycler } from "../../Sandbox/CameraTargetCycler.js";
@@ -47,9 +47,9 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     }
     const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, spawnExclude.size ? spawnExclude : null);
     const spawnPlan = [
-        { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ headId: s.chain.head.id, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
-        { species: "squid", spawnCtxs: squids.map((s) => ({ headId: s.pack.brain.id, spawnGroupId: s.pack.spawnGroupId, navWalkable: scene.navWalkable })) },
-        { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ headId: f.pack.head.id, spawnGroupId: f.pack.spawnGroupId })) },
+        { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ head: s.chain.head, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
+        { species: "squid", spawnCtxs: squids.map((s) => ({ head: s.pack.brain, spawnGroupId: s.pack.spawnGroupId, navWalkable: scene.navWalkable })) },
+        { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ head: f.pack.head, spawnGroupId: f.pack.spawnGroupId })) },
     ];
     for (let i = 0; i < spawnPlan.length; i++) {
         const { species, spawnCtxs } = spawnPlan[i];
@@ -74,8 +74,9 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     }
     function resolveFocusedAutosim() {
         const focusedId = cameraCycler.focusedId;
-        if (!registry.aliveByHeadId.has(focusedId)) return null;
-        return session.autosimsByHeadId.get(focusedId) ?? null;
+        const instance = session.instancesByHeadId.get(focusedId);
+        if (instance?.lifecycle !== "alive") return null;
+        return instance.autosim;
     }
     function onHeadDied(headId) {
         if (cameraCycler.focusedId === headId) cameraCycler.setFocusedId(null);
@@ -146,14 +147,13 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         cameraTarget: centerSnake.chain.head,
         cycleCameraFocus: () => cameraCycler.cycle(),
         focusAgentFromProp(propId) {
-            const headId = resolveAliveAgentHeadId(state, propId);
-            if (!headId) return false;
-            if (cameraCycler.focusedId === headId) {
-                const prop = state.entityRegistry.getLive(headId);
-                if (prop) state.viewport.snapTo(prop.x, prop.y);
+            const instance = resolveAliveAgentInstanceFromProp(state, propId);
+            if (!instance) return false;
+            if (cameraCycler.focusedId === instance.headId) {
+                state.viewport.snapTo(instance.head.x, instance.head.y);
                 return true;
             }
-            cameraCycler.setFocusedId(headId);
+            cameraCycler.setFocusedId(instance.headId);
             return true;
         },
         releaseCameraFocus() {

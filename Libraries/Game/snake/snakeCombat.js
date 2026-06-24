@@ -253,14 +253,12 @@ function restoreHunterContactDrive(hunterHead, hunterPhysId, preyTarget, speedOv
     hunterHead.vx = vx;
     hunterHead.vy = vy;
 }
-function applySnakeHuntContactDriveForPair(state, snakeGame, hunterInstance, hunterBody, hunterPhysId, preyInstance) {
+function applySnakeHuntContactDriveForPair(hunterInstance, hunterBody, hunterPhysId, preyInstance) {
     if (hunterBody.id !== hunterInstance.headId) return;
-    const autosim = snakeGame.autosimsByHeadId.get(hunterInstance.headId);
+    const autosim = hunterInstance.autosim;
     if (autosim?.getMode?.() !== "seek_prey") return;
     if (autosim.getTargetId?.() !== preyInstance.headId) return;
-    const preyHead = state.entityRegistry.getLive(preyInstance.headId);
-    if (!preyHead) return;
-    restoreHunterContactDrive(hunterBody, hunterPhysId, preyHead);
+    restoreHunterContactDrive(hunterBody, hunterPhysId, preyInstance.head);
 }
 export function applySnakeHuntContactDrive(state, spatialFrame, contacts, snakeGame) {
     if (contacts.count === 0) return;
@@ -271,7 +269,7 @@ export function applySnakeHuntContactDrive(state, spatialFrame, contacts, snakeG
         const instanceA = memberToInstance.get(pair.bodyA.id);
         const instanceB = memberToInstance.get(pair.bodyB.id);
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
-        applySnakeHuntContactDriveForPair(state, snakeGame, instanceA, pair.bodyA, contacts.physIdA[i], instanceB);
-        applySnakeHuntContactDriveForPair(state, snakeGame, instanceB, pair.bodyB, contacts.physIdB[i], instanceA);
+        applySnakeHuntContactDriveForPair(instanceA, pair.bodyA, contacts.physIdA[i], instanceB);
+        applySnakeHuntContactDriveForPair(instanceB, pair.bodyB, contacts.physIdB[i], instanceA);
     }
 }
