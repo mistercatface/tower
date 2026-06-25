@@ -19,11 +19,8 @@ import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "./sn
 import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
-import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
-import { spawnSquidsInScene } from "./squid/spawnSquidsInScene.js";
-import { spawnGunAgentsScene } from "./gunAgent/spawnGunAgentsInScene.js";
-import { tickGunBullets } from "./gunAgent/gunBulletLifecycle.js";
-import { resolveGunBulletContacts } from "./gunAgent/gunBulletContacts.js";
+import { spawnPopulationScene } from "./spawnPopulationInScene.js";
+import { CUSTOM_SYSTEMS } from "./customSystems.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
@@ -39,35 +36,58 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
     let spawnExclude = new Set();
+    const spawnPlan = [];
+
+    // Add snakes
+    spawnPlan.push({
+        species: "snake",
+        spawnCtxs: scene.snakes.map((s) => ({
+            head: s.chain.head,
+            spawnGroupId: s.chain.spawnGroupId,
+            navWalkable: scene.navWalkable
+        }))
+    });
     for (let i = 0; i < scene.snakes.length; i++) {
         const occupied = scene.snakes[i].occupiedIndices;
-        if (!occupied) continue;
-        for (const idx of occupied) spawnExclude.add(idx);
+        if (occupied) {
+            for (const idx of occupied) spawnExclude.add(idx);
+        }
     }
-    const squids = spawnSquidsInScene(state, scene.navWalkable, { excludeIndices: spawnExclude.size ? spawnExclude : null });
-    for (let i = 0; i < squids.length; i++) {
-        const occupied = squids[i].occupiedIndices;
-        if (!occupied) continue;
-        for (const idx of occupied) spawnExclude.add(idx);
+
+    // Spawn other configured populations
+    for (const profileId of Object.keys(config.agentProfiles)) {
+        if (profileId === "snake") continue;
+        const agents = spawnPopulationScene(state, scene.navWalkable, profileId, spawnExclude.size ? spawnExclude : null);
+        
+        spawnPlan.push({
+            species: profileId,
+            spawnCtxs: agents.map((a) => ({
+                head: a.pack.brain ?? a.pack.head,
+                spawnGroupId: a.pack.spawnGroupId,
+                navWalkable: scene.navWalkable
+            }))
+        });
+
+        for (let i = 0; i < agents.length; i++) {
+            const occupied = agents[i].occupiedIndices;
+            if (occupied) {
+                for (const idx of occupied) spawnExclude.add(idx);
+            }
+        }
     }
-    const gunAgents = spawnGunAgentsScene(state, scene.navWalkable, spawnExclude.size ? spawnExclude : null);
-    for (let i = 0; i < gunAgents.length; i++) {
-        const occupied = gunAgents[i].occupiedIndices;
-        if (!occupied) continue;
-        for (const idx of occupied) spawnExclude.add(idx);
-    }
-    const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, spawnExclude.size ? spawnExclude : null);
-    const spawnPlan = [
-        { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ head: s.chain.head, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
-        { species: "squid", spawnCtxs: squids.map((s) => ({ head: s.pack.brain, spawnGroupId: s.pack.spawnGroupId, navWalkable: scene.navWalkable })) },
-        { species: "gun_agent", spawnCtxs: gunAgents.map((g) => ({ head: g.pack.head, spawnGroupId: g.pack.spawnGroupId })) },
-        { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ head: f.pack.head, spawnGroupId: f.pack.spawnGroupId })) },
-    ];
+
     for (let i = 0; i < spawnPlan.length; i++) {
         const { species, spawnCtxs } = spawnPlan[i];
         spawnSpeciesBatch(session, state, species, spawnCtxs);
     }
-    const defaultCameraTarget = gunAgents.length > 0 ? gunAgents[0].pack.head : scene.snakes[0].chain.head;
+
+    let defaultCameraTarget = scene.snakes[0].chain.head;
+    for (const instance of aliveAgentInstances(session.registry)) {
+        if (instance.profileId === "gun_agent") {
+            defaultCameraTarget = instance.head;
+            break;
+        }
+    }
     setSandboxCameraTarget(state, defaultCameraTarget, true);
     state.viewport.snapTo(defaultCameraTarget.x, defaultCameraTarget.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
@@ -151,7 +171,9 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             } finally {
                 snakeGame._batchingPerception = false;
             }
-            tickGunBullets(state, dtMs);
+            for (const sys of CUSTOM_SYSTEMS) {
+                if (sys.tick) sys.tick(state, dtMs);
+            }
             hud.update();
         },
         appendOverlayCommands(out, state) {
@@ -169,7 +191,9 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         },
         applyContactSideEffects(tick, contacts) {
             applyKineticContactSideEffects(tick, contacts);
-            resolveGunBulletContacts(state, tick.frame, contacts);
+            for (const sys of CUSTOM_SYSTEMS) {
+                if (sys.resolveContacts) sys.resolveContacts(state, tick.frame, contacts);
+            }
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);

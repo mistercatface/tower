@@ -6,7 +6,7 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } 
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
@@ -114,7 +114,7 @@ describe("resolveAgentRelationship team hunting", () => {
         resetKineticConstraintIds(6);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
         const smallSnake = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
@@ -128,9 +128,9 @@ describe("resolveAgentRelationship team hunting", () => {
         resetKineticConstraintIds(8);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const charlieA = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "charlie" });
-        const charlieB = spawnFleeAgent(state, { col: 12, row: 10 }, { faction: "charlie" });
-        const delta = spawnFleeAgent(state, { col: 14, row: 10 }, { faction: "delta" });
+        const charlieA = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const charlieB = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "charlie" });
+        const delta = spawnGameAgentChain(state, { col: 14, row: 10 }, "flee_agent", { faction: "delta" });
         for (const pack of [charlieA, charlieB, delta]) {
             const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
             registerAgentInstance(snakeGame, "flee_agent", instance);

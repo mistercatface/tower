@@ -5,8 +5,8 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { resolveFleeAgentForwardDir, spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { spawnFleeAgentsInScene } from "../Libraries/Game/snake/fleeAgent/spawnFleeAgentsInScene.js";
+import { resolveFleeAgentForwardDir, spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { spawnPopulationInScene } from "../Libraries/Game/snake/spawnPopulationInScene.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
@@ -29,7 +29,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         assert.equal(pack.members.length, 1);
         assert.equal(pack.head.type, "boid_triangle");
         assert.equal(pack.head.shape.type, "Circle");
@@ -43,7 +43,7 @@ describe("flee agent spawn", () => {
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { snake: { growDirX: -1, growDirY: 0 } } });
         const forward = resolveFleeAgentForwardDir();
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         assert.ok(Math.abs(pack.head.facing - Math.atan2(forward.y, forward.x)) < 1e-4);
     });
     it("smoothly rotates facing toward movement", async () => {
@@ -51,7 +51,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
@@ -68,7 +68,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { gameplay: { leader: { maxSpeed: 120, accel: 400 } } } } });
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         assert.equal(pack.head.strategy.groundNav.maxSpeed, 120);
         assert.equal(pack.head.strategy.groundNav.accel, 400);
         assert.equal(pack.head.type, "boid_triangle");
@@ -88,7 +88,7 @@ describe("flee agent spawn", () => {
                 },
             },
         });
-        const agents = spawnFleeAgentsInScene(state, snakeGame.navWalkable, { rng: () => 0.5 });
+        const agents = spawnPopulationInScene(state, snakeGame.navWalkable, "flee_agent", { rng: () => 0.5 });
         assert.equal(agents.length, 4);
         assert.deepEqual(
             agents.map((agent) => agent.pack.head.faction),
@@ -104,7 +104,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         assert.equal(getCirclePropRadius(pack.head), 2);
         assert.equal(pack.head.radius, 2);
     });
@@ -114,7 +114,7 @@ describe("flee agent spawn", () => {
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
         const snakeGame = state.sandbox.snakeGame;
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
@@ -132,8 +132,8 @@ describe("flee agent spawn", () => {
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
         const snakeGame = state.sandbox.snakeGame;
-        const seekerPack = spawnFleeAgent(state, { col: 10, row: 10 }, { faction: "charlie" });
-        const targetPack = spawnFleeAgent(state, { col: 12, row: 10 }, { faction: "delta" });
+        const seekerPack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const targetPack = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "delta" });
         const seeker = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId });
         const target = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: targetPack.head, spawnGroupId: targetPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", seeker);
@@ -151,7 +151,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
@@ -184,7 +184,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
@@ -218,7 +218,7 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);

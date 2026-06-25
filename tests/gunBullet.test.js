@@ -5,7 +5,7 @@ import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstan
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { spawnGunAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { hasLineOfSight } from "../Libraries/Game/snake/rangedCombat.js";
 import { resolveGunBulletContacts } from "../Libraries/Game/snake/gunAgent/gunBulletContacts.js";
@@ -20,7 +20,7 @@ describe("gun agent bullets and combat", () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
+        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
         const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
         registerAgentInstance(snakeGame, "gun_agent", gunInstance);
         gunInstance.start(state);
@@ -81,7 +81,7 @@ describe("gun agent bullets and combat", () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
+        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
         const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
         registerAgentInstance(snakeGame, "gun_agent", gunInstance);
         gunInstance.start(state);
@@ -108,7 +108,7 @@ describe("gun agent bullets and combat", () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
+        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
         assert.equal(gunPack.head.type, "boid_triangle");
         const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
         registerAgentInstance(snakeGame, "gun_agent", gunInstance);
@@ -139,7 +139,7 @@ describe("gun agent bullets and combat", () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
+        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
         const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
         registerAgentInstance(snakeGame, "gun_agent", gunInstance);
         gunInstance.start(state);

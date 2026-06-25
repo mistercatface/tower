@@ -106,6 +106,7 @@ export const SNAKE_GAME_DEFAULTS = {
     },
     agentProfiles: {
         snake: {
+            exportType: "snake",
             bodyPropId: "ball",
             headPropId: "snake_head",
             segmentCount: 3,
@@ -175,6 +176,8 @@ export const SNAKE_GAME_DEFAULTS = {
             intent: SNAKE_INTENT,
         },
         flee_agent: {
+            exportType: "flee_agent",
+            spawnSeedOffset: 9173,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
             leaderIndex: 0,
@@ -244,10 +247,15 @@ export const SNAKE_GAME_DEFAULTS = {
             intent: FLEE_INTENT,
         },
         gun_agent: {
+            exportType: "gun_agent",
+            spawnSeedOffset: 4826,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
             leaderIndex: 0,
             faction: "gun",
+            teams: [
+                { faction: "gun", color: null }
+            ],
             attackRange: 48,
             weapon: { maxRange: 128, chargeMs: 1000, cooldownMs: 1500, bulletSpeed: 500, spawnDist: 4.5, aimRotationRadPerSec: 4.71238898038469 },
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
@@ -312,6 +320,13 @@ export const SNAKE_GAME_DEFAULTS = {
             intent: GUN_INTENT,
         },
         squid: {
+            exportType: "squid",
+            spawnSeedOffset: 37,
+            spawnSeedIgnoreMapSeedOffset: true,
+            teams: [
+                { faction: "charlie", color: "#9b59b6" },
+                { faction: "delta", color: "#1abc9c" }
+            ],
             bodyPropId: "ball",
             brainPropId: "snake_head",
             segmentCount: 3,

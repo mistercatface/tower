@@ -8,7 +8,7 @@ import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { spawnFleeAgent, spawnGameAgentChain, spawnSquidChain } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 
 function createTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -28,7 +28,7 @@ describe("spawnGameAgentChain", () => {
         resetKineticConstraintIds(9001);
         const state = createTestState();
         const meta = getSandboxEntityMeta(state);
-        const pack = spawnFleeAgent(state, { col: 8, row: 8 });
+        const pack = spawnGameAgentChain(state, { col: 8, row: 8 }, "flee_agent");
         assert.equal(pack.members.length, 1);
         assert.equal(pack.head.id, pack.leader.id);
         assert.equal(meta.isChainHead(pack.head.id), true);
@@ -39,7 +39,7 @@ describe("spawnGameAgentChain", () => {
         resetKineticConstraintIds(9002);
         const state = createTestState();
         const meta = getSandboxEntityMeta(state);
-        const pack = spawnSquidChain(state, { col: 8, row: 8 }, { faction: "charlie" });
+        const pack = spawnGameAgentChain(state, { col: 8, row: 8 }, "squid", { faction: "charlie" });
         assert.equal(pack.members.length, 3);
         assert.equal(pack.brainIndex, 1);
         assert.equal(pack.brain.id, pack.members[1].id);

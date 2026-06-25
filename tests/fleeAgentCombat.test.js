@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { spawnFleeAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
@@ -15,7 +15,7 @@ import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCom
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 
 function registerFleeCombatAgent(state, snakeGame, cell, faction) {
-    const pack = spawnFleeAgent(state, cell, { faction });
+    const pack = spawnGameAgentChain(state, cell, "flee_agent", { faction });
     const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
     registerAgentInstance(snakeGame, "flee_agent", instance);
     return { pack, instance };
@@ -44,7 +44,7 @@ describe("flee agent escape combat", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
-        const pack = spawnFleeAgent(state, { col: 10, row: 10 });
+        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
