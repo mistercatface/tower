@@ -23,9 +23,6 @@ export function isSquidProfile(instance) {
 export function isFleeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.flee;
 }
-export function isGunProfile(instance) {
-    return instance?.profileId === AGENT_PROFILE.gun;
-}
 export class AgentInstance {
     constructor({ profileId, head, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
         this.profileId = profileId;
@@ -40,7 +37,7 @@ export class AgentInstance {
         this.accumulatedPressure = 0;
         this.peakPressure = 0;
         this.isHeadRouteValid = false;
-        this.baseTint = isFleeProfile(this) || isGunProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
+        this.baseTint = isFleeProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this._sprintOverride = undefined;
         this._intentOverride = undefined;
         this.equippedWeapon = null;

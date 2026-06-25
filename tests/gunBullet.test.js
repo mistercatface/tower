@@ -14,15 +14,15 @@ import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactP
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
 import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
-describe("gun agent bullets and combat", () => {
-    it("can spawn gun agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {
+describe("flee agent bullets and combat", () => {
+    it("can spawn flee agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
-        const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
-        registerAgentInstance(snakeGame, "gun_agent", gunInstance);
-        gunInstance.start(state);
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
         const snakePack = spawnSnakeChain(state, { col: 10, row: 5 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
         const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
         state.nav.observerVisionFrame = {
@@ -37,38 +37,38 @@ describe("gun agent bullets and combat", () => {
             },
             isVisible: () => true,
         };
-        const canSee = hasLineOfSight(state, gunPack.head, snakePack.chain.head);
-        assert.ok(canSee, "Gun agent should see snake");
-        primeSnakeHeadVision(state, gunPack.head, getSnakeGameConfig().shared.visionRange);
+        const canSee = hasLineOfSight(state, fleePack.head, snakePack.chain.head);
+        assert.ok(canSee, "Flee agent should see snake");
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
         assert.equal(snakeGame.activeGunBulletIds.length, 0);
-        gunInstance.tick(state, 100);
-        assert.equal(gunInstance.intent.getMode(), "shoot_enemy");
-        assert.equal(gunInstance.combatAction.phase, "reacting");
+        fleeInstance.tick(state, 16);
+        assert.equal(fleeInstance.intent.getMode(), "shoot_enemy");
+        assert.equal(fleeInstance.combatAction.phase, "reacting");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn bullet immediately");
-        assert.equal(gunPack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while reacting");
-        gunInstance.tick(state, 1000);
+        assert.equal(fleePack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while reacting");
+        fleeInstance.tick(state, 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet after reacting");
-        assert.equal(gunInstance.combatAction.phase, "fire_delay");
-        gunInstance.tick(state, 150);
+        assert.equal(fleeInstance.combatAction.phase, "fire_delay");
+        fleeInstance.tick(state, 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 2, "Should spawn second bullet after fire delay");
-        assert.equal(gunInstance.combatAction.phase, "fire_delay");
-        gunInstance.tick(state, 150);
+        assert.equal(fleeInstance.combatAction.phase, "fire_delay");
+        fleeInstance.tick(state, 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 3, "Should spawn third bullet after fire delay");
-        assert.equal(gunInstance.combatAction.phase, "reloading");
-        gunInstance.tick(state, 500);
-        assert.equal(gunInstance.combatAction.phase, "idle", "Should return to idle after reloading");
+        assert.equal(fleeInstance.combatAction.phase, "reloading");
+        fleeInstance.tick(state, 500);
+        assert.equal(fleeInstance.combatAction.phase, "idle", "Should return to idle after reloading");
         const bulletId = snakeGame.activeGunBulletIds[0];
         const bullet = state.entityRegistry.getLive(bulletId);
         assert.ok(bullet, "Bullet prop must exist");
         assert.equal(bullet._gunBullet, true);
         assert.equal(bullet._armed, true);
-        assert.equal(bullet._shooterHeadId, gunInstance.headId);
+        assert.equal(bullet._shooterHeadId, fleeInstance.headId);
         const head = snakePack.chain.head;
         const mockHead = mockKineticCircle(head.x, head.y, head.radius ?? 2, -100, 0, { id: head.id });
         const mockBullet = mockKineticCircle(head.x - (head.radius ?? 2) - (bullet.radius ?? 1.5) + 2, head.y, bullet.radius ?? 1.5, 100, 0, { id: bullet.id });
         mockBullet._gunBullet = true;
         mockBullet._armed = true;
-        mockBullet._shooterHeadId = gunInstance.headId;
+        mockBullet._shooterHeadId = fleeInstance.headId;
         const tick = createKineticTestTick([mockBullet, mockHead], { cellSize: 50 });
         const pairs = gatherKineticContactPairs(tick);
         assert.ok(pairs.count > 0, "Bullet and snake head should overlap for contact pairs");
@@ -90,10 +90,10 @@ describe("gun agent bullets and combat", () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
-        const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
-        registerAgentInstance(snakeGame, "gun_agent", gunInstance);
-        gunInstance.start(state);
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
         const snakePack = spawnSnakeChain(state, { col: 10, row: 8 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
         state.nav.observerVisionFrame = {
@@ -106,24 +106,24 @@ describe("gun agent bullets and combat", () => {
             }),
             isVisible: () => true,
         };
-        const gunAgent = gunPack.head;
-        gunAgent.facing = 0;
-        primeSnakeHeadVision(state, gunPack.head, getSnakeGameConfig().shared.visionRange);
-        gunInstance.tick(state, 100);
-        assert.equal(gunInstance.intent.getMode(), "shoot_enemy");
-        assert.ok(gunAgent.facing > 0, "Should start rotating toward the target");
-        assert.ok(gunAgent.facing < Math.atan2(snakePack.chain.head.y - gunAgent.y, snakePack.chain.head.x - gunAgent.x) + 1e-4, "Should rotate smoothly without snapping instantly");
+        const fleeAgent = fleePack.head;
+        fleeAgent.facing = 0;
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        fleeInstance.tick(state, 100);
+        assert.equal(fleeInstance.intent.getMode(), "shoot_enemy");
+        assert.ok(fleeAgent.facing > 0, "Should start rotating toward the target");
+        assert.ok(fleeAgent.facing < Math.atan2(snakePack.chain.head.y - fleeAgent.y, snakePack.chain.head.x - fleeAgent.x) + 1e-4, "Should rotate smoothly without snapping instantly");
     });
     it("smoothly rotates facing toward movement while exploring", async () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
-        assert.equal(gunPack.head.type, "boid_triangle");
-        const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
-        registerAgentInstance(snakeGame, "gun_agent", gunInstance);
-        gunInstance.start(state);
-        const food = { id: 9999, x: gunPack.head.x + 32, y: gunPack.head.y, type: "food", isDead: false, snakeFoodValue: 0.5 };
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        assert.equal(fleePack.head.type, "boid_triangle");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
+        const food = { id: 9999, x: fleePack.head.x + 32, y: fleePack.head.y, type: "food", isDead: false, snakeFoodValue: 0.5 };
         state.entityRegistry.register(food);
         state.nav.observerVisionFrame = {
             ensureHeadVision: () => ({
@@ -135,26 +135,26 @@ describe("gun agent bullets and combat", () => {
             }),
             isVisible: () => true,
         };
-        const gunAgent = gunPack.head;
-        gunAgent.facing = -Math.PI / 2;
-        primeSnakeHeadVision(state, gunPack.head, getSnakeGameConfig().shared.visionRange);
-        gunInstance.tick(state, 100);
-        gunAgent.vx = 120;
-        gunAgent.vy = 0;
-        syncBallAgentFacingAfterPhysics(gunInstance, 100);
-        assert.notEqual(gunInstance.intent.getMode(), "shoot_enemy");
-        assert.ok(gunAgent.facing > -Math.PI / 2, "Should rotate facing toward movement");
-        assert.ok(gunAgent.facing < 0, "Should rotate smoothly without snapping instantly");
+        const fleeAgent = fleePack.head;
+        fleeAgent.facing = -Math.PI / 2;
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        fleeInstance.tick(state, 100);
+        fleeAgent.vx = 120;
+        fleeAgent.vy = 0;
+        syncBallAgentFacingAfterPhysics(fleeInstance, 100);
+        assert.notEqual(fleeInstance.intent.getMode(), "shoot_enemy");
+        assert.ok(fleeAgent.facing > -Math.PI / 2, "Should rotate facing toward movement");
+        assert.ok(fleeAgent.facing < 0, "Should rotate smoothly without snapping instantly");
     });
     it("does not charge or shoot while seeking food", async () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
-        const gunPack = spawnGameAgentChain(state, { col: 5, row: 5 }, "gun_agent");
-        const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
-        registerAgentInstance(snakeGame, "gun_agent", gunInstance);
-        gunInstance.start(state);
-        const food = { id: 9999, x: gunPack.head.x + 32, y: gunPack.head.y, type: "food", isDead: false, snakeFoodValue: 0.5 };
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
+        const food = { id: 9999, x: fleePack.head.x + 32, y: fleePack.head.y, type: "food", isDead: false, snakeFoodValue: 0.5 };
         state.entityRegistry.register(food);
         state.nav.observerVisionFrame = {
             ensureHeadVision: () => ({
@@ -166,10 +166,10 @@ describe("gun agent bullets and combat", () => {
             }),
             isVisible: () => true,
         };
-        primeSnakeHeadVision(state, gunPack.head, getSnakeGameConfig().shared.visionRange);
-        gunInstance.tick(state, 100);
-        assert.notEqual(gunInstance.intent.getMode(), "shoot_enemy");
-        assert.equal(gunInstance.combatAction.phase, "idle");
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        fleeInstance.tick(state, 100);
+        assert.notEqual(fleeInstance.intent.getMode(), "shoot_enemy");
+        assert.equal(fleeInstance.combatAction.phase, "idle");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn any bullet");
     });
 });

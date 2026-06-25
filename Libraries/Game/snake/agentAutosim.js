@@ -48,7 +48,7 @@ function resolveMetabolismApi(profileId) {
             feed: (metabolism, value, ctx) => feedSnakeMetabolism(metabolism, value),
             tick: (metabolism, dtMs, drainMultiplier, ctx) => tickSnakeMetabolism(ctx.state, ctx.agentId, metabolism, dtMs, ctx.members, drainMultiplier),
         };
-    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.squid || profileId === AGENT_PROFILE.gun)
+    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.squid)
         return {
             create: createSimpleAgentMetabolism,
             get: getSimpleAgentHunger,
@@ -59,7 +59,7 @@ function resolveMetabolismApi(profileId) {
     throw new Error(`createAgentAutosim: metabolism not wired for profile ${profileId}`);
 }
 function sprintAllowed(profileId, segmentCount, metabolism, config) {
-    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.gun) return getSimpleAgentHunger(metabolism) > 0;
+    if (profileId === AGENT_PROFILE.flee) return getSimpleAgentHunger(metabolism) > 0;
     if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
     if (profileId === AGENT_PROFILE.snake) return segmentCount > getAgentProfile(AGENT_PROFILE.snake, config).minAliveSegmentCount;
     return true;

@@ -51,7 +51,6 @@ const DECISION_SPECS = Object.freeze({
     [AGENT_PROFILE.snake]: createDecisionSpec(AGENT_PROFILE.snake),
     [AGENT_PROFILE.flee]: createDecisionSpec(AGENT_PROFILE.flee),
     [AGENT_PROFILE.squid]: createDecisionSpec(AGENT_PROFILE.squid),
-    [AGENT_PROFILE.gun]: createDecisionSpec(AGENT_PROFILE.gun),
 });
 export function resolveAgentDecisionSpec(profileId) {
     const spec = DECISION_SPECS[profileId];
