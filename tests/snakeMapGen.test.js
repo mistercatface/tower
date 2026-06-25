@@ -149,10 +149,5 @@ describe("snake split map generation", () => {
         const headCell = state.obstacleGrid.worldToGrid(centerSnake.chain.head.x, centerSnake.chain.head.y);
         assert.equal(headCell.col, expectedAnchor.col);
         assert.equal(headCell.row, expectedAnchor.row);
-
-        const pinwheel = state.worldProps.find(p => p.type === "cross_pinwheel");
-        assert.ok(pinwheel, "Cross pinwheel should be spawned on the snake game map");
-        assert.equal(pinwheel.crossLength, 64);
-        assert.equal(pinwheel.crossThickness, 4);
     });
 });

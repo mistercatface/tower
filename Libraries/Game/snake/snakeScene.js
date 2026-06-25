@@ -12,8 +12,6 @@ import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
-import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { applyCrossPinwheelFootprint } from "../../Props/propStrategy.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
@@ -83,58 +81,6 @@ function shuffleInPlace(items, rng = Math.random) {
         const tmp = items[i];
         items[i] = items[j];
         items[j] = tmp;
-    }
-}
-function randomQuantizedBoxHalfExtents(scatter, rng = Math.random) {
-    const steps = (scatter.boxSizeMax - scatter.boxSizeMin) / scatter.boxSizeStep + 1;
-    const width = scatter.boxSizeMin + Math.floor(rng() * steps) * scatter.boxSizeStep;
-    const height = scatter.boxSizeMin + Math.floor(rng() * steps) * scatter.boxSizeStep;
-    return { x: width / 2, y: height / 2 };
-}
-function collectWalkableCellsNear(navWalkable, grid, centerCol, centerRow, radiusCells, excludeIndices) {
-    const cells = [];
-    for (let dc = -radiusCells; dc <= radiusCells; dc++) {
-        for (let dr = -radiusCells; dr <= radiusCells; dr++) {
-            if (dc === 0 && dr === 0) continue;
-            const col = centerCol + dc;
-            const row = centerRow + dr;
-            if (!navWalkable.has(col, row)) continue;
-            if (excludeIndices?.has(colRowToIndex(col, row, grid.cols))) continue;
-            if (cellChebyshevDistance(centerCol, centerRow, col, row) > radiusCells) continue;
-            cells.push({ col, row });
-        }
-    }
-    return cells;
-}
-function spawnPinwheelScatterProps(state, navWalkable, centerCell, scatter, excludeIndices) {
-    if (!scatter) return;
-    const glassCount = scatter.glassCount ?? 0;
-    const crateCount = scatter.crateCount ?? 0;
-    if (glassCount <= 0 && crateCount <= 0) return;
-    const grid = state.obstacleGrid;
-    const cellSize = grid.cellSize;
-    const jitter = cellSize * 0.35;
-    const nearbyCells = collectWalkableCellsNear(navWalkable, grid, centerCell.col, centerCell.row, scatter.radiusCells ?? 6, excludeIndices);
-    if (!nearbyCells.length) return;
-    const batches = [
-        { type: "glass_pane", count: glassCount },
-        { type: "crate", count: crateCount },
-    ];
-    shuffleInPlace(nearbyCells);
-    let cellIndex = 0;
-    const takeWorldPos = (rng) => {
-        if (cellIndex >= nearbyCells.length) return null;
-        const { col, row } = nearbyCells[cellIndex++];
-        const { x, y } = grid.gridToWorld(col, row);
-        return { x: x + (rng() - 0.5) * jitter, y: y + (rng() - 0.5) * jitter };
-    };
-    for (let b = 0; b < batches.length; b++) {
-        const batch = batches[b];
-        for (let i = 0; i < batch.count; i++) {
-            const pos = takeWorldPos(Math.random);
-            if (!pos) return;
-            spawnPlacedSandboxProp(state, pos.x, pos.y, batch.type, "neutral", 0, randomQuantizedBoxHalfExtents(scatter));
-        }
     }
 }
 function applySnakeSplitMapGenBounds(state, paddingCells) {
@@ -263,7 +209,6 @@ export async function spawnSnakeCavernScene(state) {
     navWalkable.rebake();
     const spawnCells = navWalkable.cells();
     const snakes = [];
-    let centerOccupiedIndices = null;
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
         const specs = resolveSnakeSpawnSpecs(config, Math.random);
         const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
@@ -274,7 +219,6 @@ export async function spawnSnakeCavernScene(state) {
         const centerAnchor = resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount: centerSegmentCount, excludeIndices });
         const centerPack = spawnSnakeChain(state, centerAnchor, { excludeIndices, segmentCount: centerSegmentCount, faction: "red" });
         snakes.push(centerPack);
-        centerOccupiedIndices = centerPack.occupiedIndices;
         excludeIndices = centerPack.occupiedIndices;
         const shuffledSpawnCells = spawnCells.slice();
         shuffleInPlace(shuffledSpawnCells);
@@ -288,17 +232,5 @@ export async function spawnSnakeCavernScene(state) {
             excludeIndices = pack.occupiedIndices;
         }
     });
-    const centerCell = resolveSnakePlayableCenterCell(state);
-    const { x: cx, y: cy } = state.obstacleGrid.gridToWorld(centerCell.col, centerCell.row);
-    const pinwheel = spawnPlacedSandboxProp(state, cx, cy, "cross_pinwheel", "neutral", 0);
-    applyCrossPinwheelFootprint(pinwheel, 64, 4);
-    pinwheel.height = 2;
-    const scatter = config.cavern.pinwheelScatter;
-    if (scatter) {
-        withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset + (scatter.seedOffset ?? 0), () => {
-            spawnPinwheelScatterProps(state, navWalkable, centerCell, scatter, centerOccupiedIndices);
-        });
-    }
-
     return { snakes, navWalkable };
 }

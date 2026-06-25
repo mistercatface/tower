@@ -68,7 +68,6 @@ export const SNAKE_GAME_DEFAULTS = {
         fillChance: 0.48,
         iterations: 4,
         openBoundaryRows: 3,
-        pinwheelScatter: { glassCount: 6, crateCount: 6, radiusCells: 7, boxSizeMin: 8, boxSizeMax: 40, boxSizeStep: 8, seedOffset: 91 },
     },
     rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
     showFocusedAgentDebug: false,

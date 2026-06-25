@@ -69,6 +69,8 @@ export function createKineticTestRegistry(liveProps) {
             const index = liveProps.indexOf(prop);
             if (index >= 0) liveProps.splice(index, 1);
         },
+        beginMembershipBatch() {},
+        endMembershipBatch() {},
     };
 }
 
