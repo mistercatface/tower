@@ -188,8 +188,13 @@ function fillProjectedCapPolygon(ctx, corners, fillStyle) {
     ctx.fill();
 }
 function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
+    ctx.save();
+    ctx.beginPath();
+    traceClosedPolygon(ctx, dest4);
+    ctx.clip();
     drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3]);
     drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3]);
+    ctx.restore();
 }
 export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
     const worldSurfaces = state.worldSurfaces;
@@ -251,8 +256,12 @@ export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
     const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, viewport, sFaceBottom);
     const faceTop = projectWallFaceBandInto(p1, p2, topZ, viewport, sharedScratchFace);
     traceProjectedFaceBand(ctx, faceBottom, faceTop);
-    if (state.worldSurfaces) drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face);
-    else {
+    if (state.worldSurfaces) {
+        ctx.save();
+        ctx.clip();
+        drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face);
+        ctx.restore();
+    } else {
         ctx.fillStyle = fillStyle;
         ctx.fill();
     }
