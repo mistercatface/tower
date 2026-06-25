@@ -8,8 +8,16 @@ import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } fro
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;
+const DEFAULT_WEAPON_MAX_RANGE = 128;
 export function resolveRangedWeapon(instance, profile) {
-    return instance?.equippedWeapon ?? profile?.weapon ?? null;
+    const weapon = instance?.equippedWeapon ?? profile?.weapon ?? null;
+    if (!weapon) return null;
+    const config = getSnakeGameConfig();
+    const visionRange = config.shared?.visionRange?.range;
+    const inset = weapon.maxRangeVisionInset;
+    const maxRange = weapon.maxRange ?? (Number.isFinite(visionRange) && Number.isFinite(inset) ? Math.max(0, visionRange - inset) : null) ?? profile?.attackRange ?? DEFAULT_WEAPON_MAX_RANGE;
+    const fleeRange = weapon.fleeRange ?? profile?.attackRange ?? 48;
+    return { ...weapon, maxRange, fleeRange };
 }
 export function hasRangedCombatCapability(instance, profile) {
     return !!(resolveRangedWeapon(instance, profile) || profile?.decision?.modes?.shoot_enemy);
@@ -40,8 +48,8 @@ export function hasLineOfSight(state, seeker, target) {
 export function deriveRangedCombatState(ctx, input, profile) {
     const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile);
     if (!weapon) return null;
-    const maxRange = weapon.maxRange ?? profile.attackRange ?? 128;
-    const fleeRange = profile.attackRange ?? weapon.fleeRange ?? 48;
+    const maxRange = weapon.maxRange;
+    const fleeRange = weapon.fleeRange;
     const action = input.actionState ?? null;
     const seeker = input.agent;
     const state = input.state;
@@ -119,8 +127,8 @@ function combatStateCanAimAtTarget(ctx, target) {
 }
 function targetInWeaponWindow(agent, target, weapon) {
     const dist = Math.hypot(target.x - agent.x, target.y - agent.y);
-    const maxRange = weapon.maxRange ?? 128;
-    const fleeRange = weapon.fleeRange ?? 48;
+    const maxRange = weapon.maxRange;
+    const fleeRange = weapon.fleeRange;
     return dist <= maxRange && dist > fleeRange;
 }
 function aimReadyForShot(agent, target, action, weapon) {

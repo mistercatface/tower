@@ -13,7 +13,7 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
-import { createRangedCombatActionState } from "../Libraries/Game/snake/rangedCombat.js";
+import { createRangedCombatActionState, resolveRangedWeapon } from "../Libraries/Game/snake/rangedCombat.js";
 
 const CELL = 16;
 function sprintCtx(overrides = {}) {
@@ -183,6 +183,14 @@ describe("flee agent decision model", () => {
         assert.equal(ctx.chosenIntent.mode, "shoot_enemy");
         assert.equal(ctx.chosenIntent.targetId, "snake1");
         assert.equal(ctx.combatState.canShoot, true);
+    });
+
+    it("derives flee weapon range from vision range minus inset", () => {
+        applySnakeGameConfig({ shared: { visionRange: { range: 160 } } });
+        const profile = getAgentProfile(AGENT_DECISION_PROFILE.flee);
+        const weapon = resolveRangedWeapon(null, profile);
+        assert.equal(weapon.maxRange, 144);
+        assert.equal(weapon.maxRangeVisionInset, 16);
     });
 
     it("chooses shoot_enemy when an opposite-faction flee agent is visible with line of sight", () => {

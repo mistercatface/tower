@@ -164,7 +164,7 @@ export const SNAKE_GAME_DEFAULTS = {
             faction: "bravo",
             attackRange: 48,
             weapon: {
-                maxRange: 128,
+                maxRangeVisionInset: 16,
                 reactionMs: 150,
                 fireDelayMs: 150,
                 magazineSize: 3,
