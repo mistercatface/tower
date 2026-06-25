@@ -71,43 +71,6 @@ function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fle
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policyOut;
 }
-function createShootIntentLatch() {
-    return createModePolicyLatch({
-        mode: "shoot_enemy",
-        minTicks: 0,
-        holdReason: "shoot_held",
-        refreshWhen: ({ world }) => {
-            const combat = world.decisionContext.combatState;
-            if (!combat) return false;
-            if (combat.phase === "reacting" || combat.phase === "fire_delay" || combat.phase === "reloading") return true;
-            return !!(combat.visibleEnemy && combat.hasLineOfSight && combat.inWeaponRange && !combat.tooClose);
-        },
-        canRelease: ({ world, policy }) => {
-            if (policy.mode === "flee") return true;
-            const combat = world.decisionContext.combatState;
-            if (!combat) return true;
-            if (combat.phase === "reacting" || combat.phase === "fire_delay" || combat.phase === "reloading") return false;
-            if (combat.visibleEnemy && combat.hasLineOfSight && combat.inWeaponRange && !combat.tooClose) return false;
-            return combat.phase === "idle" || combat.phase == null;
-        },
-    });
-}
-function applyShootPolicyLatch({ world, shootLatch, currentMode, sprintConfig, policyIn, policyOut }) {
-    const ctx = world.decisionContext;
-    const resolved = shootLatch.apply(policyIn, { world, currentMode, policy: policyIn });
-    policyOut.mode = resolved.mode;
-    policyOut.targetId = resolved.targetId ?? null;
-    policyOut.reason = resolved.reason ?? null;
-    if (resolved !== policyIn) {
-        if (resolved.mode === "shoot_enemy" && resolved.targetId == null) resolved.targetId = policyIn.targetId ?? ctx.known.enemy?.id ?? null;
-        ctx.chosenIntent = resolved;
-        ctx.chosenReason = resolved.reason ?? null;
-        ctx.targetId = resolved.targetId ?? null;
-        ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
-    }
-    ctx.policyLatch = { ...(ctx.policyLatch ?? {}), shoot: shootLatch.snapshot() };
-    return policyOut;
-}
 function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination, getContext, seekOptionsScratch }) {
     return {
         clearDestination() {
@@ -214,14 +177,13 @@ export function createGroundNavIntentAdapter({
     transitionReason,
     states,
     modeExitDelayTicks = { flee: 30 },
-    useShootPolicyLatch = false,
+    policyExtensions = [],
     extendReturn = () => ({}),
 }) {
     const resolvedVision = visionRange ?? config.visionRange;
     const locomotion = createCellTargetLocomotion(headNav);
     const intentMemory = createAgentIntentMemory(intentMemoryOptions);
     const fleeLatch = createFleeIntentLatch(config);
-    const shootLatch = useShootPolicyLatch ? createShootIntentLatch() : null;
     const arrivalStamper = createBrainArrivalStamper(brain);
     const staleCache = createFlowReachStaleCache();
     const reachSlotList = createFlowTargetStepSlots(reachSlots);
@@ -287,7 +249,7 @@ export function createGroundNavIntentAdapter({
     const resetArrivalAndLatch = () => {
         arrivalStamper.reset();
         fleeLatch.clear();
-        shootLatch?.clear();
+        for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].clear?.();
     };
     intent = createAgentIntent({
         initialMode: "explore",
@@ -298,7 +260,7 @@ export function createGroundNavIntentAdapter({
         perceiveWorld: perceiveWithMemory,
         pickPolicy: (world) => {
             applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn, policyOut: policyScratch });
-            if (shootLatch) applyShootPolicyLatch({ world, shootLatch, currentMode: intent?.getMode(), sprintConfig, policyIn: policyScratch, policyOut: policyScratch });
+            for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].apply({ world, currentMode: intent?.getMode(), sprintConfig, policyIn: policyScratch, policyOut: policyScratch });
             return policyScratch;
         },
         transitionReason,

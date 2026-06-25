@@ -2,6 +2,8 @@ import { decelerateRoll, getKineticRollConfig } from "../../Sandbox/kineticRollA
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
 import { rotateAngleTowards } from "../../Math/Angle.js";
+import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
+import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
@@ -52,14 +54,31 @@ export function deriveRangedCombatState(ctx, input, profile) {
         distWorld = Math.hypot(dx, dy);
     }
     const reachCells = ctx.reachSteps?.enemy;
-    const los = enemy && seeker && state ? hasLineOfSight(state, seeker, enemy) : false;
+    const los = visibleEnemy && seeker && state ? hasLineOfSight(state, seeker, visibleEnemy) : false;
     const inWeaponRange = distWorld != null && distWorld <= maxRange;
     const tooClose = distWorld != null && distWorld <= fleeRange;
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
     const busy = action ? rangedCombatActionIsBusy(action) : false;
     const canShoot = !!visibleEnemy && los && inWeaponRange && !tooClose && phase === "idle";
-    return { enemy, visibleEnemy, distWorld, reachCells, hasLineOfSight: los, inWeaponRange, tooClose, phase, onCooldown, busy, canShoot, weapon };
+    const shouldBackOffEnemy = !!visibleEnemy && tooClose;
+    return {
+        enemy,
+        enemyId: enemy?.id ?? null,
+        visibleEnemy,
+        visibleEnemyId: visibleEnemy?.id ?? null,
+        distWorld,
+        reachCells,
+        hasLineOfSight: los,
+        inWeaponRange,
+        tooClose,
+        shouldBackOffEnemy,
+        phase,
+        onCooldown,
+        busy,
+        canShoot,
+        weapon,
+    };
 }
 function fireBullet(state, shooterInstance, angle, weapon) {
     const shooter = shooterInstance.head;
@@ -89,6 +108,11 @@ function resolveLiveTarget(ctx) {
 function aimRotationRadPerSec(weapon) {
     return weapon.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
 }
+function combatStateCanAimAtTarget(ctx, target) {
+    const combat = ctx.world.decisionContext.combatState;
+    if (combat?.enemyId === target?.id) return combat.hasLineOfSight;
+    return hasLineOfSight(ctx.state, ctx.agent, target);
+}
 function beginReaction(ctx, action, agent, target, weapon, dtMs) {
     action.phase = "reacting";
     action.targetId = target.id;
@@ -107,7 +131,7 @@ function tickReaction(ctx, instance, action, weapon, dtMs) {
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
-    if (target && !target.isDead && hasLineOfSight(ctx.state, agent, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
+    if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
         fireBullet(ctx.state, instance, angle, weapon);
@@ -128,7 +152,7 @@ function tickFireDelay(ctx, instance, action, weapon, dtMs) {
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
-    if (target && !target.isDead && hasLineOfSight(ctx.state, agent, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
+    if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
         fireBullet(ctx.state, instance, angle, weapon);
@@ -149,7 +173,7 @@ function tickReloading(ctx, action, weapon, dtMs) {
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
-    if (target && !target.isDead && hasLineOfSight(ctx.state, agent, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
+    if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0) resetRangedCombatAction(action);
 }
 export function createRangedShootIntentState(instance, resolveWeapon) {
@@ -200,4 +224,46 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
 }
 export function resetInstanceRangedCombatAction(instance) {
     resetRangedCombatAction(instance.combatAction);
+}
+export function createRangedCombatPolicyExtension() {
+    const shootLatch = createModePolicyLatch({
+        mode: "shoot_enemy",
+        minTicks: 0,
+        holdReason: "shoot_held",
+        refreshWhen: ({ world }) => {
+            const combat = world.decisionContext.combatState;
+            if (!combat) return false;
+            if (rangedCombatActionIsBusy(combat)) return true;
+            return combat.canShoot;
+        },
+        canRelease: ({ world, policy }) => {
+            const combat = world.decisionContext.combatState;
+            if (!combat) return true;
+            if (rangedCombatActionIsBusy(combat)) return false;
+            if (policy.mode === "flee") return true;
+            if (combat.canShoot) return false;
+            return combat.phase === "idle" || combat.phase == null;
+        },
+    });
+    return {
+        clear() {
+            shootLatch.clear();
+        },
+        apply({ world, currentMode, sprintConfig, policyIn, policyOut }) {
+            const ctx = world.decisionContext;
+            const resolved = shootLatch.apply(policyIn, { world, currentMode, policy: policyIn });
+            if (resolved.mode === "shoot_enemy" && resolved.targetId == null) resolved.targetId = policyIn.targetId ?? ctx.known.enemy?.id ?? null;
+            policyOut.mode = resolved.mode;
+            policyOut.targetId = resolved.targetId ?? null;
+            policyOut.reason = resolved.reason ?? null;
+            if (resolved !== policyIn) {
+                ctx.chosenIntent = resolved;
+                ctx.chosenReason = resolved.reason ?? null;
+                ctx.targetId = resolved.targetId ?? null;
+                ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
+            }
+            ctx.policyLatch = { ...(ctx.policyLatch ?? {}), shoot: shootLatch.snapshot() };
+            return policyOut;
+        },
+    };
 }

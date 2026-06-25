@@ -86,7 +86,7 @@ describe("flee agent bullets and combat", () => {
         const found = foodIndex.findNearest(bullet.x, bullet.y);
         assert.equal(found?.id, bullet.id, "Spent bullet food should be registered in category index");
     });
-    it("smoothly rotates toward target while charging", async () => {
+    it("smoothly rotates toward target while reacting", async () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);

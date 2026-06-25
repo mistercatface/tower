@@ -10,7 +10,7 @@ import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
-import { createRangedShootIntentState, resetInstanceRangedCombatAction, resolveRangedWeapon } from "./rangedCombat.js";
+import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction, resolveRangedWeapon } from "./rangedCombat.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
@@ -184,7 +184,7 @@ function buildAdapterOptions(profileId, deps) {
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
         transitionReason: transitionReason(intent.seekModes),
         states: createIntentStates(intent.huntMode, instance, profile),
-        useShootPolicyLatch: hasRangedShoot,
+        policyExtensions: hasRangedShoot ? [createRangedCombatPolicyExtension()] : [],
         modeExitDelayTicks: hasRangedShoot ? { flee: 30, shoot_enemy: 15 } : { flee: 30 },
         onIntentClear: hasRangedShoot ? () => resetInstanceRangedCombatAction(instance) : null,
         extendReturn: (returnDeps) => extendReturn(intent, returnDeps),

@@ -15,6 +15,7 @@ const GUARDS = {
         return !Number.isFinite(reach) || reach > max;
     },
     canShootEnemy: (ctx) => !!ctx.combatState?.canShoot,
+    rangedEnemyTooClose: (ctx) => !!ctx.combatState?.tooClose,
 };
 function blockedByGuards(ctx, guards, modeDef) {
     if (!guards) return false;

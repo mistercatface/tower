@@ -221,7 +221,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 modes: {
                     flee: { scorer: "riskAdjustedFlee", mods: ["outnumberedFlee"] },
                     shoot_enemy: { scorer: "rangedAttack", slot: "enemy", weightKey: "shoot_enemy", guards: ["noThreat"] },
-                    seek_enemy: { scorer: "reachTarget", slot: "enemy", weightKey: "enemy", guards: ["noThreat", "canShootEnemy"] },
+                    seek_enemy: { scorer: "reachTarget", slot: "enemy", weightKey: "enemy", guards: ["noThreat", "canShootEnemy", "rangedEnemyTooClose"] },
                     seek_food: { scorer: "foodWithHunger", slot: "food", guards: ["notSatisfied"] },
                     seek_ally: { scorer: "regroupAlly", slot: "ally", cohesion: "flee", guards: ["noThreat", "notDesperate"] },
                     explore: { scorer: "constant", weightKey: "explore" },

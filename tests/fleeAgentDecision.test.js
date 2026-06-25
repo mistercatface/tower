@@ -203,6 +203,57 @@ describe("flee agent decision model", () => {
         assert.equal(ctx.combatState.canShoot, true);
     });
 
+    it("backs off instead of chasing when an enemy flee agent is too close", () => {
+        applySnakeGameConfig();
+        const enemy = mockTarget("flee2");
+        enemy.x = 32;
+        enemy.type = "boid_triangle";
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 2 }),
+            foodFraction: 0.9,
+            agent: { x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        });
+        assert.equal(ctx.combatState.shouldBackOffEnemy, true);
+        assert.equal(ctx.chosenIntent.mode, "flee");
+        assert.equal(ctx.known.threat.id, "flee2");
+        assert.equal(ctx.sprintIntent.want, true);
+    });
+
+    it("does not run combat LOS or shoot for remembered-only enemies", () => {
+        applySnakeGameConfig();
+        let losChecks = 0;
+        const enemy = mockTarget("flee2");
+        enemy.x = 80;
+        enemy.type = "boid_triangle";
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+            visibleWorld: { threat: null, prey: null, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            memoryWorld: { prey: enemy },
+            memorySource: { prey: true },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { x: 0, y: 0 },
+            state: {
+                obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 },
+                nav: {
+                    observerVisionFrame: {
+                        ensureHeadVision: () => ({ cellSet: new Set([0]) }),
+                        isVisible: () => {
+                            losChecks++;
+                            return true;
+                        },
+                    },
+                },
+            },
+            actionState: createRangedCombatActionState(),
+        });
+        assert.equal(losChecks, 0);
+        assert.equal(ctx.combatState.canShoot, false);
+        assert.notEqual(ctx.chosenIntent.mode, "shoot_enemy");
+    });
+
     it("opposing flee agents shoot each other at range in integration", async () => {
         resetKineticConstraintIds(100);
         const { state } = await createSnakeGameHarnessState();
@@ -247,5 +298,36 @@ describe("flee agent decision model", () => {
         charlie.tick(state, 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 3, "should have fired third bullet");
         assert.equal(charlie.combatAction.phase, "reloading");
+    });
+
+    it("opposing flee agents back off when they start inside weapon spacing", async () => {
+        resetKineticConstraintIds(101);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig();
+
+        const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", charlie);
+        charlie.start(state);
+        setSimpleAgentHunger(charlie.metabolism, 0.9);
+
+        const deltaPack = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "delta" });
+        const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", delta);
+        delta.start(state);
+        setSimpleAgentHunger(delta.metabolism, 0.9);
+
+        primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
+        primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
+
+        charlie.tick(state, 16);
+        assert.equal(charlie.intent.getMode(), "flee");
+        assert.equal(charlie.intent.getDecisionContext().combatState.shouldBackOffEnemy, true);
+        const dest = charlie.intent.getDestination();
+        assert.ok(dest, "flee agent should choose a back-off destination");
+        const currentDist = Math.hypot(state.obstacleGrid.worldCol(charliePack.head.x) - state.obstacleGrid.worldCol(deltaPack.head.x), state.obstacleGrid.worldRow(charliePack.head.y) - state.obstacleGrid.worldRow(deltaPack.head.y));
+        const destDist = Math.hypot(dest.col - state.obstacleGrid.worldCol(deltaPack.head.x), dest.row - state.obstacleGrid.worldRow(deltaPack.head.y));
+        assert.ok(destDist > currentDist, "back-off destination should increase distance from the enemy");
     });
 });

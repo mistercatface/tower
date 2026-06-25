@@ -6,7 +6,8 @@ import { clearPropVisualOverride, getPropVisualTint, setPropVisualTint } from ".
 export const DEFAULT_BALL_FACING_TURN_RAD_PER_SEC = Math.PI * 1.5;
 const HEADING_SPEED_MIN = 0.25;
 export function shouldSyncBallAgentFacingToVelocity(combatAction) {
-    return combatAction?.phase !== "charging";
+    const phase = combatAction?.phase;
+    return phase !== "reacting" && phase !== "fire_delay" && phase !== "reloading";
 }
 export function syncBallAgentFacingToVelocity(head, dtMs, turnRadPerSec = DEFAULT_BALL_FACING_TURN_RAD_PER_SEC) {
     const vx = head.vx ?? 0;

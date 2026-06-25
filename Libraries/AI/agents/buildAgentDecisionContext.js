@@ -33,6 +33,16 @@ function writeScoringEnvInto(env, profile) {
     else delete env.sprint;
     return env;
 }
+function applyRangedBackOffThreat(ctx, input) {
+    const combat = ctx.combatState;
+    if (!combat?.shouldBackOffEnemy) return;
+    const threat = combat.visibleEnemy;
+    ctx.visible.threat = threat;
+    ctx.known.threat = threat;
+    ctx.known.threatCount = Math.max(1, ctx.known.threatCount ?? 0);
+    const reachSteps = Number.isFinite(combat.reachCells) ? combat.reachCells : Math.ceil(combat.distWorld / (input.cellSize ?? 16));
+    ctx.threatState = deriveThreatStateInto(ctx.threatScratch, threat, reachSteps, input.cellSize ?? 16, getSharedConfig());
+}
 export function createAgentDecisionContextFrame(profileId) {
     const schema = getAgentProfile(profileId).decision;
     const visible = {};
@@ -99,7 +109,10 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
         ctx.seekerSegmentCount = extra.seekerSegmentCount ?? null;
         ctx.engagementState = extra.engagementState ?? null;
     }
-    if (spec.deriveCombatState) ctx.combatState = spec.deriveCombatState(ctx, input);
+    if (spec.deriveCombatState) {
+        ctx.combatState = spec.deriveCombatState(ctx, input);
+        applyRangedBackOffThreat(ctx, input);
+    }
     return ctx;
 }
 export function pickAgentIntentPolicy(ctx, scores, spec) {
