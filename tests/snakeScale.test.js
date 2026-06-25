@@ -56,8 +56,8 @@ describe("snakeScale", () => {
             segmentRadius: config.startRadius,
             linkSlack: config.agentProfiles.snake.linkSlack,
         });
-        growSnakeChainAfterMeal(state, chain.head.id);
-        growSnakeChainAfterMeal(state, chain.head.id);
+        growSnakeChainAfterMeal(state, chain.head.id, getSnakeGameConfig().agentProfiles.snake);
+        growSnakeChainAfterMeal(state, chain.head.id, getSnakeGameConfig().agentProfiles.snake);
         const members = getChainMemberIds(state, chain.head.id).map((id) => state.entityRegistry.getLive(id));
         for (let i = 0; i < members.length; i++) assert.equal(getCirclePropRadius(members[i]), config.startRadius);
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(members[0], members[1], config.agentProfiles.snake.linkSlack));
@@ -74,7 +74,7 @@ describe("snakeScale", () => {
             segmentRadius: config.startRadius,
             linkSlack: config.agentProfiles.snake.linkSlack,
         });
-        const grow = growSnakeChainAfterMeal(state, chain.head.id);
+        const grow = growSnakeChainAfterMeal(state, chain.head.id, getSnakeGameConfig().agentProfiles.snake);
         assert.equal(grow.segmentRadius, config.startRadius);
         assert.equal(grow.spacing, resolveSnakeSegmentSpacing(config, config.startRadius));
         assert.equal(grow.linkSlack, config.agentProfiles.snake.linkSlack);

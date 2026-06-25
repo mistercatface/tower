@@ -1,30 +1,76 @@
-import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
-import { removeChainLinkBetween, clearChainLinksForProp } from "../../Sandbox/chainLinks.js";
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
+import { removeChainLinkBetween, clearChainLinksForProp } from "../../Sandbox/chainLinks.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-// --- Simple Agent Metabolism ---
-export function createSimpleAgentMetabolism() {
-    return { hunger: 1 };
+// --- Unified Agent Metabolism ---
+/**
+ * Creates a unified metabolism state object for any agent.
+ * Pre-caches relevant configuration values from the profile at instantiation time.
+ */
+export function createAgentMetabolism(profile) {
+    const hungerDrainMs = profile.metabolism?.hungerDrainMs ?? 30_000;
+    const foodValue = profile.metabolism?.foodValue ?? 0.5;
+    const growthCost = profile.metabolism?.growthCost ?? null;
+    const starveShedIntervalMs = profile.metabolism?.starveShedIntervalMs ?? null;
+    return { hunger: profile.initialHunger ?? 1.0, growth: 0, starveMs: 0, hungerDrainMs, foodValue, growthCost, starveShedIntervalMs };
 }
-export function getSimpleAgentHunger(metabolism) {
+export function getAgentHunger(metabolism) {
     return metabolism.hunger;
 }
-export function setSimpleAgentHunger(metabolism, fraction) {
+export function setAgentHunger(metabolism, fraction) {
     metabolism.hunger = Math.max(0, Math.min(1, fraction));
+    metabolism.starveMs = 0;
 }
-export function feedSimpleAgentMetabolism(metabolism, profileId, value = null) {
-    const profile = getAgentProfile(profileId);
-    const foodValue = value ?? profile.metabolism?.foodValue ?? 0.5;
-    metabolism.hunger = Math.min(1, metabolism.hunger + foodValue);
+/**
+ * Feeds the agent metabolism.
+ * Returns the number of segments to grow (if any).
+ */
+export function feedAgentMetabolism(metabolism, value = null) {
+    const foodAmount = value ?? metabolism.foodValue;
+    metabolism.starveMs = 0;
+    metabolism.hunger += foodAmount;
+    let growCount = 0;
+    if (metabolism.hunger > 1.0) {
+        const excess = metabolism.hunger - 1.0;
+        metabolism.hunger = 1.0;
+        if (metabolism.growthCost !== null) {
+            metabolism.growth += excess;
+            while (metabolism.growth >= metabolism.growthCost) {
+                metabolism.growth -= metabolism.growthCost;
+                growCount++;
+            }
+        }
+    }
+    return growCount;
 }
-export function tickSimpleAgentMetabolism(metabolism, profileId, dtMs, drainMultiplier = 1) {
-    const { hungerDrainMs } = getAgentProfile(profileId).metabolism;
-    metabolism.hunger -= (dtMs * drainMultiplier) / hungerDrainMs;
-    if (metabolism.hunger < 0) metabolism.hunger = 0;
+/**
+ * Ticks the agent metabolism.
+ * Returns true if a starvation shed event occurred.
+ */
+export function tickAgentMetabolism(metabolism, dtMs, drainMultiplier = 1, onStarveCycle = null) {
+    metabolism.hunger -= (dtMs * drainMultiplier) / metabolism.hungerDrainMs;
+    if (metabolism.hunger > 0) {
+        metabolism.starveMs = 0;
+        return false;
+    }
+    metabolism.hunger = 0;
+    if (metabolism.starveShedIntervalMs !== null && onStarveCycle) {
+        metabolism.starveMs += dtMs * drainMultiplier;
+        let shed = false;
+        while (metabolism.starveMs >= metabolism.starveShedIntervalMs) {
+            const didShed = onStarveCycle();
+            if (!didShed) {
+                metabolism.starveMs = 0;
+                break;
+            }
+            metabolism.starveMs -= metabolism.starveShedIntervalMs;
+            shed = true;
+        }
+        return shed;
+    }
+    return false;
 }
-// --- Snake Scaling & Growth ---
+// --- Snake Scaling & Growth Helpers ---
 export function getSnakeChainRadius(state, headId) {
     const head = state.entityRegistry.getLive(headId);
     return getCirclePropRadius(head);
@@ -49,39 +95,13 @@ export function getSnakeSizeScore(state, headId, members = null) {
     }
     return score;
 }
-export function growSnakeChainAfterMeal(state, headId, members = null) {
-    const config = getSnakeGameConfig();
+export function growSnakeChainAfterMeal(state, headId, profile) {
     const segmentRadius = getSnakeChainRadius(state, headId);
-    return { segmentRadius, spacing: resolveSnakeSegmentSpacing(config, segmentRadius), linkSlack: config.agentProfiles.snake.linkSlack };
+    const spacing = segmentRadius * 2 * (profile.linkSlack ?? 1);
+    return { segmentRadius, spacing, linkSlack: profile.linkSlack };
 }
-// --- Snake Metabolism & Starvation ---
-export function createSnakeMetabolism() {
-    return { hunger: 1, growth: 0, starveMs: 0 };
-}
-export function getSnakeHunger(metabolism) {
-    return metabolism.hunger;
-}
-export function setSnakeHunger(metabolism, fraction) {
-    metabolism.hunger = Math.max(0, Math.min(1, fraction));
-    metabolism.starveMs = 0;
-}
-export function feedSnakeMetabolism(metabolism, value = getSnakeGameConfig().agentProfiles.snake.metabolism.foodValue) {
-    const { foodValue, growthCost } = getSnakeGameConfig().agentProfiles.snake.metabolism;
-    metabolism.starveMs = 0;
-    metabolism.hunger += value ?? foodValue;
-    if (metabolism.hunger <= 1) return 0;
-    metabolism.growth += metabolism.hunger - 1;
-    metabolism.hunger = 1;
-    let grow = 0;
-    while (metabolism.growth >= growthCost) {
-        metabolism.growth -= growthCost;
-        grow++;
-    }
-    return grow;
-}
-export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
-    const snake = getSnakeGameConfig().agentProfiles.snake;
-    const minSegments = snake.minAliveSegmentCount;
+// --- Snake Starvation & Shrinkage ---
+export function shrinkSnakeChainFromStarvation(state, headId, minSegments, members = null) {
     const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
     if (resolvedMembers.length <= minSegments) return false;
     const tailId = resolvedMembers[resolvedMembers.length - 1];
@@ -91,29 +111,4 @@ export function shrinkSnakeChainFromStarvation(state, headId, members = null) {
     clearChainLinksForProp(state, tailId);
     removeSandboxWorldProp(state, tail);
     return true;
-}
-export function tickSnakeMetabolism(state, headId, metabolism, dtMs, members = null, drainMultiplier = 1) {
-    const snake = getSnakeGameConfig().agentProfiles.snake;
-    const { hungerDrainMs, starveShedIntervalMs } = snake.metabolism;
-    metabolism.hunger -= (dtMs * drainMultiplier) / hungerDrainMs;
-    if (metabolism.hunger > 0) {
-        metabolism.starveMs = 0;
-        return false;
-    }
-    metabolism.hunger = 0;
-    const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
-    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= snake.minAliveSegmentCount) {
-        metabolism.starveMs = 0;
-        return false;
-    }
-    metabolism.starveMs += dtMs * drainMultiplier;
-    let shed = false;
-    while (metabolism.starveMs >= starveShedIntervalMs && getSnakeSegmentCount(state, headId, resolvedMembers) > snake.minAliveSegmentCount) {
-        if (!shrinkSnakeChainFromStarvation(state, headId, resolvedMembers)) break;
-        resolvedMembers.pop();
-        metabolism.starveMs -= starveShedIntervalMs;
-        shed = true;
-    }
-    if (getSnakeSegmentCount(state, headId, resolvedMembers) <= snake.minAliveSegmentCount) metabolism.starveMs = 0;
-    return shed;
 }

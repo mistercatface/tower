@@ -13,6 +13,7 @@ import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncBallAgentPresentation } from "./ballAgent.js";
 import { createRangedCombatActionState, hasRangedCombatCapability } from "./rangedCombat.js";
 import { getAgentCombatTraits, getInstanceCombatTraits, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
+import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
@@ -42,6 +43,10 @@ export class AgentInstance {
         this._intentOverride = undefined;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
+        this.profile = profile;
+        const config = getSnakeGameConfig();
+        const headRadius = getCirclePropRadius(head);
+        this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
         this.combatAction = hasRangedCombatCapability(this, profile) ? createRangedCombatActionState() : null;
     }
     get headId() {

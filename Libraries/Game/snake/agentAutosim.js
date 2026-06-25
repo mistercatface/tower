@@ -7,23 +7,11 @@ import { buildGroundNavIntentAdapterOptions } from "./groundNavIntentProfiles.js
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
-import { getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { canAgentEatSnakeFood, isSnakeShardFood, isSnakeFoodTarget } from "./snakeFood.js";
-import {
-    createSimpleAgentMetabolism,
-    feedSimpleAgentMetabolism,
-    getSimpleAgentHunger,
-    setSimpleAgentHunger,
-    tickSimpleAgentMetabolism,
-    createSnakeMetabolism,
-    feedSnakeMetabolism,
-    getSnakeHunger,
-    setSnakeHunger,
-    tickSnakeMetabolism,
-} from "./agentMetabolism.js";
+import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
+import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism, tickAgentMetabolism, shrinkSnakeChainFromStarvation } from "./agentMetabolism.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted = true) {
@@ -39,29 +27,31 @@ function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted = true) 
 function resolveAgentRadius(leader) {
     return getCirclePropRadius(leader);
 }
-function resolveMetabolismApi(profileId) {
-    if (profileId === AGENT_PROFILE.snake)
-        return {
-            create: createSnakeMetabolism,
-            get: getSnakeHunger,
-            set: setSnakeHunger,
-            feed: (metabolism, value, ctx) => feedSnakeMetabolism(metabolism, value),
-            tick: (metabolism, dtMs, drainMultiplier, ctx) => tickSnakeMetabolism(ctx.state, ctx.agentId, metabolism, dtMs, ctx.members, drainMultiplier),
-        };
-    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.squid)
-        return {
-            create: createSimpleAgentMetabolism,
-            get: getSimpleAgentHunger,
-            set: setSimpleAgentHunger,
-            feed: (metabolism, value) => feedSimpleAgentMetabolism(metabolism, profileId, value),
-            tick: (metabolism, dtMs, drainMultiplier) => tickSimpleAgentMetabolism(metabolism, profileId, dtMs, drainMultiplier),
-        };
-    throw new Error(`createAgentAutosim: metabolism not wired for profile ${profileId}`);
+function resolveMetabolismApi(profile) {
+    return {
+        create: () => createAgentMetabolism(profile),
+        get: getAgentHunger,
+        set: setAgentHunger,
+        feed: feedAgentMetabolism,
+        tick: (metabolism, dtMs, drainMultiplier, ctx) =>
+            tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => {
+                const minSegments = metabolism.minAliveSegmentCount ?? 3;
+                if (ctx?.members) {
+                    if (ctx.members.length <= minSegments) return false;
+                    const didShrink = shrinkSnakeChainFromStarvation(ctx.state, ctx.agentId, minSegments, ctx.members);
+                    if (didShrink) {
+                        ctx.members.pop();
+                        return true;
+                    }
+                }
+                return false;
+            }),
+    };
 }
-function sprintAllowed(profileId, segmentCount, metabolism, config) {
-    if (profileId === AGENT_PROFILE.flee) return getSimpleAgentHunger(metabolism) > 0;
+function sprintAllowed(profileId, segmentCount, metabolism, profile) {
+    if (profileId === AGENT_PROFILE.flee) return getAgentHunger(metabolism) > 0;
     if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
-    if (profileId === AGENT_PROFILE.snake) return segmentCount > getAgentProfile(AGENT_PROFILE.snake, config).minAliveSegmentCount;
+    if (profileId === AGENT_PROFILE.snake) return segmentCount > (profile.minAliveSegmentCount ?? 3);
     return true;
 }
 /** Shared ground-nav autosim for flee, snake, and squid. */
@@ -74,9 +64,8 @@ export function createAgentAutosim(
     const session = state.sandbox.snakeGame;
     const resolvedNavWalkable = navWalkable ?? session.navWalkable;
     const agentCtx = { instance, session, navWalkable: resolvedNavWalkable };
-    const config = getSnakeGameConfig();
-    const profile = getAgentProfile(profileId, config);
-    const metabolismApi = resolveMetabolismApi(profileId);
+    const profile = instance.profile;
+    const metabolismApi = resolveMetabolismApi(profile);
     const metabolism = metabolismApi.create();
     const { brain, sync } = createAgentBrain(visionRange);
     const headNav = createCellTargetHpaNav(state);
@@ -88,7 +77,7 @@ export function createAgentAutosim(
     const resolveEatRadiusValue = (seeker) => {
         if (typeof eatRadius === "function") return eatRadius();
         if (eatRadius != null) return eatRadius;
-        return resolveSnakeEatRadius(config, resolveAgentRadius(instance.head));
+        return instance.eatRadius;
     };
     const resolveSeeker = () => instance.head;
     const resolveChainTailProp = () => {
@@ -113,7 +102,7 @@ export function createAgentAutosim(
         }
         const segmentCount = getConnectedBodyIds(state.kinetic, agentId).length;
         const want = intent.getDecisionContext()?.sprintIntent?.want === true;
-        sprinting = want && sprintAllowed(profileId, segmentCount, metabolism, config);
+        sprinting = want && sprintAllowed(profileId, segmentCount, metabolism, profile);
         const nav = seeker.strategy.groundNav;
         if (!nav) return;
         const sprint = profile.sprint ?? {};
@@ -122,7 +111,7 @@ export function createAgentAutosim(
     };
     const growOneSegment = () => {
         const segmentRadius = resolveAgentRadius(instance.head);
-        const grow = { segmentRadius, spacing: resolveSnakeSegmentSpacing(config, segmentRadius), linkSlack: config.agentProfiles.snake.linkSlack };
+        const grow = { segmentRadius, spacing: segmentRadius * 2 * (profile.linkSlack ?? 1), linkSlack: profile.linkSlack };
         const tail = resolveChainTailProp();
         const newTail = growChainSegment(state, tail, {
             spacing: grow.spacing,
@@ -138,9 +127,10 @@ export function createAgentAutosim(
         instance.memberIds.push(newTail.id);
         instance.memberProps.push(newTail);
     };
-    const feedAndGrow = (value, members) => {
-        let pending = feedSnakeMetabolism(metabolism, value);
-        while (pending > 0 && instance.memberProps.length < getAgentProfile(AGENT_PROFILE.snake, config).maxAliveSegmentCount) {
+    const feedAndGrow = (value) => {
+        let pending = feedAgentMetabolism(metabolism, value);
+        const maxAliveSegmentCount = profile.maxAliveSegmentCount ?? 8;
+        while (pending > 0 && instance.memberProps.length < maxAliveSegmentCount) {
             growOneSegment();
             pending--;
         }
