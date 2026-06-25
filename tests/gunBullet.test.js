@@ -8,7 +8,7 @@ import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { hasLineOfSight } from "../Libraries/Game/snake/rangedCombat.js";
-import { resolveGunBulletContacts, tickGunBullets } from "../Libraries/Game/snake/gunAgent/gunBulletSystem.js";
+import { resolveGunBulletContacts, tickGunBullets, spawnGunBulletProjectile } from "../Libraries/Game/snake/gunAgent/gunBulletSystem.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
@@ -238,5 +238,30 @@ describe("flee agent bullets and combat", () => {
         assert.notEqual(fleeInstance.intent.getMode(), "shoot_enemy");
         assert.equal(fleeInstance.combatAction.phase, "idle");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn any bullet");
+    });
+    it("reclaims projectiles immediately on wall collision", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
+
+        // Spawn a bullet directly
+        const weapon = getSnakeGameConfig().agentProfiles.flee_agent.weapon;
+        const bullet = spawnGunBulletProjectile(state, fleeInstance, 0, weapon);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1);
+        
+        const bulletId = snakeGame.activeGunBulletIds[0];
+        assert.ok(bullet);
+        
+        // Mock a wall collision
+        bullet._wallResolvedCollided = true;
+        
+        // Tick bullets
+        tickGunBullets(state, 16);
+        assert.equal(snakeGame.activeGunBulletIds.length, 0, "Bullet should be removed from active queue on wall collision");
+        assert.equal(state.entityRegistry.getLive(bulletId), null, "Bullet should be released from registry");
     });
 });

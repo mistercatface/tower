@@ -10,9 +10,9 @@ export class Projectile extends Entity {
         this.vx = 0;
         this.vy = 0;
         this.angularVelocity = 0;
-        this.radius = 1;
+        this.radius = 0.75;
         this.mass = 0.5;
-        this.strategy = { isKinetic: true, rolls: true, mass: 0.5, friction: 0.5 };
+        this.strategy = { isKinetic: true, rolls: false, mass: 0.5, friction: 0, propPixelSize: 1.5 };
         this._gunBullet = true;
         this._armed = true;
         this._lifetimeMs = 0;
@@ -22,6 +22,9 @@ export class Projectile extends Entity {
         this._neighbors = [];
         this._activeSlot = -1;
         this.shape = new CircleShape(this.radius);
+    }
+    getCustomSpriteCacheKey() {
+        return this.faction ?? "";
     }
     getShape() {
         return this.shape;
@@ -55,7 +58,7 @@ export function spawnGunBulletProjectile(state, shooterInstance, angle, weapon) 
     const spawnDist = weapon.spawnDist ?? 4.5;
     const muzzleX = shooter.x + Math.cos(angle) * spawnDist;
     const muzzleY = shooter.y + Math.sin(angle) * spawnDist;
-    const bulletSpeed = weapon.bulletSpeed ?? 500;
+    const bulletSpeed = weapon.bulletSpeed ?? 160;
     const vx = Math.cos(angle) * bulletSpeed;
     const vy = Math.sin(angle) * bulletSpeed;
     let proj = projectilePool.pop();
@@ -76,6 +79,9 @@ export function spawnGunBulletProjectile(state, shooterInstance, angle, weapon) 
     proj._neighborsFrameId = -1;
     if (proj._neighbors) proj._neighbors.length = 0;
     proj._activeSlot = -1;
+    proj._wallResolvedFrame = null;
+    proj._wallResolvedCollided = false;
+    proj._wallResolveHits = null;
     delete proj._physId;
     if (!state.projectiles) state.projectiles = [];
     state.projectiles.push(proj);
@@ -114,7 +120,8 @@ export function tickGunBullets(state, dtMs) {
         const maxLifetime = 3000;
         const speedThresholdSq = 50 * 50;
         const outOfBounds = bullet.x < minX || bullet.x > maxX || bullet.y < minY || bullet.y > maxY;
-        if (!bullet._armed || bullet._lifetimeMs > maxLifetime || speedSq < speedThresholdSq || outOfBounds) {
+        const hitWall = !!(bullet._wallResolvedCollided || bullet._wallResolveHits?.length);
+        if (!bullet._armed || bullet._lifetimeMs > maxLifetime || speedSq < speedThresholdSq || outOfBounds || hitWall) {
             bullet._armed = false;
             activeIds[i] = activeIds[activeIds.length - 1];
             activeIds.pop();

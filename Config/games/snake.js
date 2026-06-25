@@ -170,7 +170,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 magazineSize: 3,
                 reloadMs: 500,
                 fireAimToleranceRad: 0.08,
-                bulletSpeed: 500,
+                bulletSpeed: 160,
                 spawnDist: 4.5,
                 aimRotationRadPerSec: 4.71238898038469,
             },

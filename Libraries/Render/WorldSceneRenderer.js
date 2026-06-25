@@ -5,16 +5,50 @@ import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import propCatalog from "../../Assets/props/index.js";
-import { drawSphere } from "./Props3D/sphere.js";
-const projectileVisuals = { panelCount: 4, latBands: 3, panels: ["#444444", "#222222", "#555555", "#333333"], stroke: null };
 function drawProjectile(ctx, prop, viewport) {
-    drawSphere(ctx, prop, viewport, {
-        baseRadius: prop.radius ?? 1,
-        panelCount: projectileVisuals.panelCount,
-        latBands: projectileVisuals.latBands,
-        panelColors: projectileVisuals.panels,
-        stroke: projectileVisuals.stroke,
-    });
+    const length = 1.0;
+    const width = 0.6;
+    let mainColor = "#00f0ff";
+    let glowColor = "rgba(0, 240, 255, 0.4)";
+    if (prop.faction === "charlie") {
+        mainColor = "#ffd700";
+        glowColor = "rgba(255, 215, 0, 0.5)";
+    } else if (prop.faction === "delta") {
+        mainColor = "#00ff88";
+        glowColor = "rgba(0, 255, 136, 0.5)";
+    } else if (prop.faction === "echo") {
+        mainColor = "#ff5500";
+        glowColor = "rgba(255, 85, 0, 0.5)";
+    }
+    ctx.save();
+    ctx.translate(prop.x, prop.y);
+    ctx.rotate(prop.facing ?? 0);
+    // Draw outer glowing capsule trail
+    ctx.beginPath();
+    ctx.ellipse(0, 0, length * 1.5, width * 2.5, 0, 0, Math.PI * 2);
+    const glowGrad = ctx.createLinearGradient(-length * 1.5, 0, length * 1.5, 0);
+    glowGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+    glowGrad.addColorStop(0.3, glowColor);
+    glowGrad.addColorStop(0.7, glowColor);
+    glowGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = glowGrad;
+    ctx.fill();
+    // Draw main laser capsule body
+    ctx.beginPath();
+    ctx.ellipse(0, 0, length, width, 0, 0, Math.PI * 2);
+    const bodyGrad = ctx.createLinearGradient(-length, 0, length, 0);
+    bodyGrad.addColorStop(0, "rgba(255, 255, 255, 0.2)");
+    bodyGrad.addColorStop(0.5, mainColor);
+    bodyGrad.addColorStop(0.8, mainColor);
+    bodyGrad.addColorStop(1, "#ffffff");
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+    // Draw inner white-hot core
+    ctx.beginPath();
+    ctx.ellipse(length * 0.2, 0, length * 0.5, width * 0.4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.restore();
 }
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources, collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
