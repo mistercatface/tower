@@ -1,4 +1,4 @@
-import { tryFractureKineticContact } from "../../Props/propFracture.js";
+import { queueFractureKineticContact, flushDeferredFractures } from "../../Props/propFracture.js";
 import { kineticContactBodiesAt } from "./kineticPairStream.js";
 import { kineticDynamicSlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
@@ -23,6 +23,7 @@ export function applyKineticContactSideEffects(tick, contacts) {
             hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
         }
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-        tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed);
+        queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed);
     }
+    flushDeferredFractures(tick.world, tick.frame);
 }

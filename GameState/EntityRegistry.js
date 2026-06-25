@@ -6,6 +6,7 @@ import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.j
 import { distanceSqToLineSegment } from "../Libraries/Math/Segment2D.js";
 import { hashString, mixHash4 } from "../Libraries/Math/hash.js";
 import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
+import { releaseWorldProp } from "../Libraries/Props/worldPropPool.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
@@ -149,6 +150,8 @@ export class EntityRegistry {
         this._kindSetScratch = new Set();
         /** Reused result buffers per filterId — do not retain references across calls. */
         this._resultSlotByFilterId = Object.create(null);
+        this._batchDepth = 0;
+        this._batchDirty = false;
     }
     /**
      * Registry-owned query result buffer. Cleared on each borrow.
@@ -334,7 +337,21 @@ export class EntityRegistry {
             out.push(entry.ref);
         }
     }
+    beginMembershipBatch() {
+        this._batchDepth++;
+    }
+    endMembershipBatch() {
+        this._batchDepth = Math.max(0, this._batchDepth - 1);
+        if (this._batchDepth === 0 && this._batchDirty) {
+            this._batchDirty = false;
+            this._bumpMembership();
+        }
+    }
     _bumpMembership() {
+        if (this._batchDepth > 0) {
+            this._batchDirty = true;
+            return;
+        }
         this.membershipGen = (this.membershipGen + 1) | 0;
         this._queryCache.clear();
     }
@@ -343,6 +360,19 @@ export class EntityRegistry {
 export function addWorldPropToState(world, prop) {
     world.worldProps.push(prop);
     world.entityRegistry.register("worldProp", prop);
+}
+/** @param {object} world @param {object[]} props */
+export function addWorldPropsToState(world, props) {
+    world.entityRegistry.beginMembershipBatch();
+    try {
+        for (let i = 0; i < props.length; i++) {
+            const prop = props[i];
+            world.worldProps.push(prop);
+            world.entityRegistry.register("worldProp", prop);
+        }
+    } finally {
+        world.entityRegistry.endMembershipBatch();
+    }
 }
 /** @param {object} world @param {object} prop @param {object} [spatialFrame] @param {object | null} [entityMeta] */
 export function removeWorldPropFromState(world, prop, spatialFrame = kineticSpatial, entityMeta = null) {
@@ -353,6 +383,7 @@ export function removeWorldPropFromState(world, prop, spatialFrame = kineticSpat
     pruneKineticConstraintsForBody(world.kinetic, prop.id);
     spatialFrame.evictKineticProp(prop, world.kinetic);
     prop.isDead = true;
+    releaseWorldProp(prop);
 }
 export function visitLiveWorldProps(worldProps, visit) {
     for (let i = 0; i < worldProps.length; i++) {

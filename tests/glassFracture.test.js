@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, tryFractureKineticContact } from "../Libraries/Props/propFracture.js";
+import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, tryFractureKineticContact, spawnGlassShatterShards } from "../Libraries/Props/propFracture.js";
 import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT, measureGlassShard, minShardAreaForPolygon, shatterGlassFootprint, shatterGlassPolygon } from "../Libraries/Props/glassFracture.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
@@ -187,9 +187,13 @@ describe("glass fracture", () => {
         const spawned = [];
         const state = {
             worldProps: spawned,
-            entityRegistry: { register(_kind, frag) { spawned.push(frag); } },
+            entityRegistry: {
+                register(_kind, frag) { spawned.push(frag); },
+                beginMembershipBatch() {},
+                endMembershipBatch() {},
+            },
         };
-        prop.spawnGlassShatter(state, fracture, { admitKineticProp() {}, entityGrid: { remove() {} } });
+        spawnGlassShatterShards(state, prop, fracture, { admitKineticProps() {}, admitKineticProp() {}, entityGrid: { remove() {} } });
         assert.ok(spawned.length >= 2);
         for (const frag of spawned) assert.ok(frag._glassFractureCooldown > 0);
     });

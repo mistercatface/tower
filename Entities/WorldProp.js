@@ -3,10 +3,6 @@ import { applyVelocityDamping } from "../Libraries/Motion/applyDamping.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";
-import { applyChunkGeometryToProp, applyShardGeometryToProp } from "../Libraries/Props/propFracture.js";
-import { GLASS_FRACTURE_COOLDOWN_STEPS } from "../Libraries/Props/glassFracture.js";
-import { addWorldPropToState } from "../GameState/EntityRegistry.js";
-import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { isKinematicallyActive } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
@@ -75,48 +71,6 @@ export class WorldProp extends Entity {
     }
     needsWallCollision() {
         return isKinematicallyActive(this);
-    }
-    spawnFractureFragments(world, fracture, spatialFrame) {
-        const cos = Math.cos(this.facing);
-        const sin = Math.sin(this.facing);
-        for (let i = 0; i < fracture.debris.length; i++) {
-            const geom = fracture.debris[i];
-            const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const frag = new WorldProp(worldPos.x, worldPos.y, this.type, this.facing);
-            applyChunkGeometryToProp(frag, geom);
-            frag.vx = this.vx;
-            frag.vy = this.vy;
-            frag.angularVelocity = this.angularVelocity;
-            addWorldPropToState(world, frag);
-            wakeKineticBody(frag);
-            spatialFrame.admitKineticProp(frag, world);
-        }
-    }
-    spawnGlassShatter(world, fracture, spatialFrame) {
-        const cos = Math.cos(fracture.facing);
-        const sin = Math.sin(fracture.facing);
-        const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
-        const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
-        for (let i = 0; i < fracture.debris.length; i++) {
-            const geom = fracture.debris[i];
-            const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const frag = new WorldProp(worldPos.x, worldPos.y, this.type, fracture.facing);
-            applyShardGeometryToProp(frag, geom);
-            frag.vx = this.vx ?? 0;
-            frag.vy = this.vy ?? 0;
-            const dx = worldPos.x - impactWorld.x;
-            const dy = worldPos.y - impactWorld.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 1e-6) {
-                frag.vx += (dx / dist) * burst;
-                frag.vy += (dy / dist) * burst;
-            }
-            frag.angularVelocity = (this.angularVelocity ?? 0) + (Math.random() - 0.5) * 0.4;
-            frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
-            addWorldPropToState(world, frag);
-            wakeKineticBody(frag);
-            spatialFrame.admitKineticProp(frag, world);
-        }
     }
     update(dt, state, spatialFrame) {
         this.ageMs += dt;

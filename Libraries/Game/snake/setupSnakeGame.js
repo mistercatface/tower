@@ -14,6 +14,7 @@ import { appendFocusedAgentVisibleEntityOverlayCommands } from "./focusedAgentVi
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
+import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
@@ -68,7 +69,6 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     state.followCamera.registerCandidateList(() => {
         const instances = [];
         for (const instance of aliveAgentInstances(session.registry)) if (instance?.lifecycle === "alive" && instance.head && !instance.head.isDead) instances.push(instance.head);
-
         return instances;
     });
     const onTargetChanged = () => {
@@ -168,11 +168,11 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             const snakeGame = state.sandbox.snakeGame;
             if (snakeGame) syncAgentsAfterPhysics(snakeGame, state);
             const index = getPropCategoryIndex(state, "food");
-            const moving = [];
-            index.forEachRegistered((food) => {
-                if (food.strategy?.isKinetic && !food.isSleeping) moving.push(food);
-            });
-            for (let i = 0; i < moving.length; i++) index.reconcile(moving[i]);
+            const active = kineticSpatial._activeKineticBodies;
+            for (let i = 0; i < active.length; i++) {
+                const body = active[i];
+                if (body._cellIndexCell !== undefined && body._cellIndexCell !== -1) index.reconcile(body);
+            }
         },
         stop() {
             state.followCamera.removeOnTargetChanged(onTargetChanged);

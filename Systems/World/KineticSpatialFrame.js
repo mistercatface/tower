@@ -49,7 +49,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 writeKineticBodySlabSnapshot(prop);
             }
         }
-        this._nextPhysId = this._kineticBodies.length;
+        this._nextPhysId = physIdCounter;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
         return this;
@@ -63,6 +63,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const isNew = prop._physId === undefined;
         if (isNew) {
             prop._physId = this._nextPhysId++;
+            if (prop._physId >= 4096) throw new Error(`PhysId limit exceeded: ${prop._physId} >= 4096`);
             this._kineticBodies.push(prop);
         } else this.entityGrid.remove(prop);
         this.entityGrid.insert(prop);
@@ -71,6 +72,31 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
         this.populatedMembershipGen = world.entityRegistry.membershipGen;
         bumpKineticTopologyGeneration(world.kinetic);
+    }
+    /**
+     * Batch admit multiple props.
+     */
+    admitKineticProps(props, world) {
+        let anyAdmitted = false;
+        for (let i = 0; i < props.length; i++) {
+            const prop = props[i];
+            if (!prop || prop.strategy?.spatialRole === "trigger") continue;
+            const isNew = prop._physId === undefined;
+            if (isNew) {
+                prop._physId = this._nextPhysId++;
+                if (prop._physId >= 4096) throw new Error(`PhysId limit exceeded: ${prop._physId} >= 4096`);
+                this._kineticBodies.push(prop);
+            } else this.entityGrid.remove(prop);
+            this.entityGrid.insert(prop);
+            prop._neighborsFrameId = -1;
+            if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
+            anyAdmitted = true;
+        }
+        if (anyAdmitted) {
+            this.frameId = (this.frameId + 1) | 0;
+            this.populatedMembershipGen = world.entityRegistry.membershipGen;
+            bumpKineticTopologyGeneration(world.kinetic);
+        }
     }
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;
