@@ -14,7 +14,6 @@ import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { canAgentEatSnakeFood, isSnakeShardFood } from "./snakeFood.js";
 import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "./agentMetabolism.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
-import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted) {
@@ -213,7 +212,7 @@ export function createAgentAutosim(
                     return;
                 }
             }
-            if (profileId === AGENT_PROFILE.snake && enforceSnakeMinLength(state, snakeGame, instance, members)) return;
+            if (profileId === AGENT_PROFILE.snake && instance.enforceMinLength(state, snakeGame, members)) return;
             if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
                 const food = state.entityRegistry.getLive(intent.getTargetId());
                 if (food && eatFoodShard(seeker, food, members)) return;

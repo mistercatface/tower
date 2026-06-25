@@ -3,7 +3,7 @@ import { clearChainLinksForMembers, removeChainLinkBetween } from "../../Sandbox
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "./snakeSteeringLease.js";
+import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { isAliveAgentHead, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { reapAgentInstance } from "./snakeAgentLifecycle.js";
 import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
@@ -11,7 +11,7 @@ import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
-import { getAgentCombatTraits } from "./agentCombatTraits.js";
+import { getAgentCombatTraits, getInstanceCombatTraits, isChainCombatTopology } from "./agentCombatTraits.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
 }
@@ -66,13 +66,38 @@ export class AgentInstance {
         return this.autosim?.metabolism ?? null;
     }
     start(state) {
-        grantSnakeSteeringLease(this);
+        this.grantSteeringLease();
         this.autosim.start();
         if (isFleeProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     stopSteering(state) {
-        revokeSnakeSteeringLease(this);
+        this.revokeSteeringLease();
         this.autosim.stop();
+    }
+    grantSteeringLease() {
+        this.steeringEpoch = (this.steeringEpoch ?? 0) + 1;
+        const head = this.head;
+        head._snakeSteering = { headId: this.headId, epoch: this.steeringEpoch };
+    }
+    revokeSteeringLease() {
+        this.steeringEpoch = (this.steeringEpoch ?? 0) + 1;
+        const head = this.head;
+        clearSnakeSteeringLeaseFromProp(head);
+        head._snakeSteering = { headId: this.headId, epoch: this.steeringEpoch - 1 };
+    }
+    segmentCount(members = null) {
+        return (members || this.memberIds).length;
+    }
+    enforceMinLength(state, snakeGame, members = null) {
+        const snake = getAgentProfile(AGENT_PROFILE.snake);
+        if (this.segmentCount(members) >= snake.minAliveSegmentCount) return false;
+        this.kill(state, snakeGame, members);
+        return true;
+    }
+    kill(state, snakeGame, members = null, deathImpact = null) {
+        if (!isChainCombatTopology(getInstanceCombatTraits(this))) return null;
+        this.die(state, snakeGame, members, deathImpact);
+        return this;
     }
     tick(state, dtMs, admitted = true) {
         if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;

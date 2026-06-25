@@ -15,7 +15,7 @@ import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
-import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts, killSnake } from "../Libraries/Game/snake/snakeCombat.js";
+import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 
@@ -260,7 +260,7 @@ describe("snake combat min length", () => {
         assert.equal(Math.round(kineticDynamicSlab.vy[hunterHead._physId]), 0);
     });
 
-    it("killSnake only tears down the defeated snake spawn group", () => {
+    it("kill only tears down the defeated snake spawn group", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -272,7 +272,7 @@ describe("snake combat min length", () => {
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
         const preyInstance = state.sandbox.snakeGame.instancesByHeadId.get(prey.chain.head.id);
-        killSnake(state, state.sandbox.snakeGame, preyInstance);
+        preyInstance.kill(state, state.sandbox.snakeGame);
         assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 3);
         assert.equal(getOrderedChainMemberIds(state, prey.chain.head.id).length, 1);
     });

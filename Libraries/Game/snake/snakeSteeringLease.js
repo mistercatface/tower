@@ -1,17 +1,6 @@
 import { isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
-export function grantSnakeSteeringLease(instance) {
-    instance.steeringEpoch = (instance.steeringEpoch ?? 0) + 1;
-    const head = instance.head;
-    head._snakeSteering = { headId: instance.headId, epoch: instance.steeringEpoch };
-}
-export function revokeSnakeSteeringLease(instance) {
-    instance.steeringEpoch = (instance.steeringEpoch ?? 0) + 1;
-    const head = instance.head;
-    clearSnakeSteeringLeaseFromProp(head);
-    head._snakeSteering = { headId: instance.headId, epoch: instance.steeringEpoch - 1 };
-}
 export function clearSnakeSteeringLeaseFromProp(prop) {
     delete prop._snakeSteering;
     clearGroundRollDrive(prop);

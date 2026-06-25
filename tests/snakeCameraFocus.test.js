@@ -8,7 +8,6 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
-import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
@@ -51,7 +50,7 @@ describe("snake camera focus", () => {
         const session = state.sandbox.snakeGame;
         const instance = session.instancesByHeadId.get(first.chain.head.id);
         state.followCamera.focus(instance.head);
-        killSnake(state, session, instance);
+        instance.kill(state, session);
         assert.equal(state.followCamera.targetProp, null);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });

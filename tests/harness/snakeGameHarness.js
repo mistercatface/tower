@@ -23,7 +23,6 @@ import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js"
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
 import { FollowCamera } from "../../Libraries/Sandbox/FollowCamera.js";
 import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
-import { grantSnakeSteeringLease } from "../../Libraries/Game/snake/snakeSteeringLease.js";
 import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 import { getPropCategoryIndex } from "../../GameState/SandboxWorldState.js";
@@ -58,7 +57,7 @@ export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroup
     const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
     registerAgentInstance(snakeGame, "snake", instance);
-    grantSnakeSteeringLease(instance);
+    instance.grantSteeringLease();
     return instance;
 }
 export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {}) {

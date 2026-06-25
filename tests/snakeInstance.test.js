@@ -15,8 +15,6 @@ import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { AgentInstance, createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
-import { grantSnakeSteeringLease, revokeSnakeSteeringLease } from "../Libraries/Game/snake/snakeSteeringLease.js";
-import { killSnake } from "../Libraries/Game/snake/snakeCombat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 
 function createTestState(cols = 32, rows = 32) {
@@ -91,10 +89,10 @@ describe("AgentInstance (snake)", () => {
             lifecycle: "alive",
         });
         registerAgentInstance(state.sandbox.snakeGame, "snake", instance);
-        grantSnakeSteeringLease(instance);
+        instance.grantSteeringLease();
         steerRollToward(head, 1, 0, { accel: 600, maxSpeed: 180 }, state);
         assert.ok(head._groundRollDrive);
-        revokeSnakeSteeringLease(instance);
+        instance.revokeSteeringLease();
         steerRollToward(head, 1, 0, { accel: 600, maxSpeed: 180 }, state);
         assert.equal(head._groundRollDrive, undefined);
         head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 600, maxSpeed: 180 };
@@ -173,10 +171,10 @@ describe("AgentInstance (snake)", () => {
             lifecycle: "alive",
         });
         registerAgentInstance(state.sandbox.snakeGame, "snake", instance);
-        grantSnakeSteeringLease(instance);
+        instance.grantSteeringLease();
         const head = pack.chain.head;
         head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
-        killSnake(state, state.sandbox.snakeGame, instance);
+        instance.kill(state, state.sandbox.snakeGame);
         applyGroundRollDrive(head, 1 / 60, state);
         assert.equal(head._groundRollDrive, undefined);
         assert.equal(head.vx, 0);
