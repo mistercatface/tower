@@ -208,11 +208,11 @@ export function createAgentAutosim(
             if (profileId === AGENT_PROFILE.snake || profileId === AGENT_PROFILE.squid) {
                 if (instance.lifecycle !== "alive") return;
                 if (!instance.isSteerable(state, snakeGame.registry)) {
-                    if (profileId === AGENT_PROFILE.snake) instance.die(state, snakeGame, members);
+                    if (profileId === AGENT_PROFILE.snake) instance.die(state, members);
                     return;
                 }
             }
-            if (profileId === AGENT_PROFILE.snake && instance.enforceMinLength(state, snakeGame, members)) return;
+            if (profileId === AGENT_PROFILE.snake && instance.enforceMinLength(state, members)) return;
             if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
                 const food = state.entityRegistry.getLive(intent.getTargetId());
                 if (food && eatFoodShard(seeker, food, members)) return;

@@ -157,7 +157,7 @@ describe("flee agent spawn", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.equal(instance.lifecycle, "dead");
         assert.ok(snakeGame.registry.deadHeadIds.has(pack.head.id));
         assert.equal(state.entityRegistry.getLive(pack.head.id), null);
@@ -192,7 +192,7 @@ describe("flee agent spawn", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.equal(instance.lifecycle, "dead");
         assert.ok(snakeGame.registry.deadHeadIds.has(pack.head.id));
         assert.equal(state.entityRegistry.getLive(pack.head.id), null);
@@ -226,7 +226,7 @@ describe("flee agent spawn", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(instance.lifecycle, "alive");
         assert.ok(getOrderedChainMemberIds(state, victim.chain.head.id).length < victimMembers.length);

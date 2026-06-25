@@ -22,7 +22,7 @@ function registerSquidAndFlee(state, snakeGame) {
     return { squidPack, squidInstance, fleePack, fleeInstance };
 }
 
-function resolveSquidArmFleeCollision(state, snakeGame, squidPack, fleePack, { relSpeed = 5 } = {}) {
+function resolveSquidArmFleeCollision(state, squidPack, fleePack, { relSpeed = 5 } = {}) {
     const arm = squidPack.members[0];
     const fleeHead = fleePack.head;
     fleeHead.vx = -relSpeed;
@@ -35,7 +35,7 @@ function resolveSquidArmFleeCollision(state, snakeGame, squidPack, fleePack, { r
     const pairs = gatherKineticContactPairs(tick);
     resolveKineticContactPassWithPairs(tick, pairs);
     applyKineticContactSideEffects(tick, kineticContactBuffer);
-    resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+    resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
 }
 
 describe("squid vs flee combat", () => {
@@ -46,7 +46,7 @@ describe("squid vs flee combat", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const { squidPack, fleePack, fleeInstance } = registerSquidAndFlee(state, snakeGame);
-        resolveSquidArmFleeCollision(state, snakeGame, squidPack, fleePack, { relSpeed: 4 });
+        resolveSquidArmFleeCollision(state, squidPack, fleePack, { relSpeed: 4 });
         assert.equal(fleeInstance.lifecycle, "dead");
         assert.ok(snakeGame.registry.deadHeadIds.has(fleePack.head.id));
     });
@@ -70,7 +70,7 @@ describe("squid vs flee combat", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.equal(fleeInstance.lifecycle, "dead");
     });
 });

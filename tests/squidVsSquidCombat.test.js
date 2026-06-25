@@ -22,7 +22,7 @@ function registerSquidPair(state, snakeGame) {
     return { leftPack, leftInstance, rightPack, rightInstance };
 }
 
-function resolveSquidContact(state, snakeGame, props, { leftVx = 40, rightVx = -40 } = {}) {
+function resolveSquidContact(state, props, { leftVx = 40, rightVx = -40 } = {}) {
     props[0].vx = leftVx;
     props[0].vy = 0;
     props[1].vx = rightVx;
@@ -31,7 +31,7 @@ function resolveSquidContact(state, snakeGame, props, { leftVx = 40, rightVx = -
     const pairs = gatherKineticContactPairs(tick);
     resolveKineticContactPassWithPairs(tick, pairs);
     applyKineticContactSideEffects(tick, kineticContactBuffer);
-    resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+    resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
 }
 
 describe("squid vs squid combat", () => {
@@ -46,7 +46,7 @@ describe("squid vs squid combat", () => {
         const rightBrain = rightPack.brain;
         leftBrain.x = rightBrain.x - leftBrain.radius - rightBrain.radius + 1;
         leftBrain.y = rightBrain.y;
-        resolveSquidContact(state, snakeGame, [leftBrain, rightBrain], { leftVx: 60, rightVx: -60 });
+        resolveSquidContact(state, [leftBrain, rightBrain], { leftVx: 60, rightVx: -60 });
         assert.ok(leftInstance.lifecycle === "dead" || rightInstance.lifecycle === "dead");
     });
 
@@ -61,7 +61,7 @@ describe("squid vs squid combat", () => {
         const rightBrain = rightPack.brain;
         leftArm.x = rightBrain.x - leftArm.radius - rightBrain.radius + 1;
         leftArm.y = rightBrain.y;
-        resolveSquidContact(state, snakeGame, [leftArm, rightBrain], { leftVx: 20, rightVx: 0 });
+        resolveSquidContact(state, [leftArm, rightBrain], { leftVx: 20, rightVx: 0 });
         assert.equal(rightInstance.lifecycle, "dead");
         assert.equal(leftInstance.lifecycle, "alive");
     });
@@ -77,7 +77,7 @@ describe("squid vs squid combat", () => {
         const rightArm = rightPack.members[0];
         leftArm.x = rightArm.x - leftArm.radius - rightArm.radius + 1;
         leftArm.y = rightArm.y;
-        resolveSquidContact(state, snakeGame, [...leftPack.members, ...rightPack.members], { leftVx: 24, rightVx: -24 });
+        resolveSquidContact(state, [...leftPack.members, ...rightPack.members], { leftVx: 24, rightVx: -24 });
         assert.ok(leftInstance.lifecycle === "dead" || rightInstance.lifecycle === "dead");
     });
 });

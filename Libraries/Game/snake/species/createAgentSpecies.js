@@ -38,19 +38,20 @@ export function createAgentSpecies(profileId) {
         register(session, instance) {
             registerAliveAgent(session.registry, instance.headId, profileId, instance);
         },
-        die(instance, state, session, deathImpact = null) {
+        die(instance, state, deathImpact = null) {
             instance.lifecycle = "dead";
             instance.stopSteering(state);
+            const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph(state);
             let resolvedMembers = connectedMembers;
-            if (features.retireNavOnDeath && typeof instance.retireAllSegments === "function") resolvedMembers = instance.retireAllSegments(state, session, connectedMembers);
+            if (features.retireNavOnDeath && typeof instance.retireAllSegments === "function") resolvedMembers = instance.retireAllSegments(state, connectedMembers);
             clearChainLinksForMembers(state, resolvedMembers);
             if (features.fracturableBeforeShatter) markSnakeSegmentsFracturable(state, connectedMembers);
             const spatialFrame = deathImpact?.spatialFrame ?? null;
             shatterSnakeSegments(state, spatialFrame, resolvedMembers, deathImpact);
             if (features.removeNonStruckSegments) removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFrame);
-            purgeInertAgentsForHead(session.registry, instance.headId);
-            markAgentDead(session.registry, instance.headId);
+            purgeInertAgentsForHead(snakeGame.registry, instance.headId);
+            markAgentDead(snakeGame.registry, instance.headId);
             clearSnakeSteeringLeaseFromProp(instance.head);
             if (state.followCamera?.targetProp?.id === instance.headId) state.followCamera.clear();
         },

@@ -11,7 +11,8 @@ import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
-import { getAgentCombatTraits, getInstanceCombatTraits, isChainCombatTopology } from "./agentCombatTraits.js";
+import { getAgentCombatTraits, getInstanceCombatTraits, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
+import { resolveRelationshipForInstances } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
 }
@@ -88,15 +89,15 @@ export class AgentInstance {
     segmentCount(members = null) {
         return (members || this.memberIds).length;
     }
-    enforceMinLength(state, snakeGame, members = null) {
+    enforceMinLength(state, members = null) {
         const snake = getAgentProfile(AGENT_PROFILE.snake);
         if (this.segmentCount(members) >= snake.minAliveSegmentCount) return false;
-        this.kill(state, snakeGame, members);
+        this.kill(state, members);
         return true;
     }
-    kill(state, snakeGame, members = null, deathImpact = null) {
+    kill(state, members = null, deathImpact = null) {
         if (!isChainCombatTopology(getInstanceCombatTraits(this))) return null;
-        this.die(state, snakeGame, members, deathImpact);
+        this.die(state, members, deathImpact);
         return this;
     }
     tick(state, dtMs, admitted = true) {
@@ -113,18 +114,19 @@ export class AgentInstance {
         if (isSnakeProfile(this) && members.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) return false;
         return true;
     }
-    validate(state, snakeGame) {
+    validate(state) {
         if (this.lifecycle !== "alive") return;
+        const snakeGame = state.sandbox.snakeGame;
         if (isFleeProfile(this)) {
-            if (this.head.isDead) this.die(state, snakeGame);
+            if (this.head.isDead) this.die(state);
             return;
         }
         if (isSquidProfile(this)) {
-            if (!getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId)) this.die(state, snakeGame);
+            if (!getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId)) this.die(state);
             return;
         }
         if (this.isSteerable(state, snakeGame.registry)) return;
-        this.die(state, snakeGame);
+        this.die(state);
     }
     syncMembersFromGraph(state) {
         if (isSquidProfile(this)) this.memberIds = getConnectedBodyIds(state.kinetic, this.headId);
@@ -223,21 +225,23 @@ export class AgentInstance {
         }
         return [...ids];
     }
-    retireAllSegments(state, snakeGame, connectedMembers = null) {
+    retireAllSegments(state, connectedMembers = null) {
+        const snakeGame = state.sandbox.snakeGame;
         const members = connectedMembers ?? this.syncMembersFromGraph(state);
         const resolvedMembers = this.memberIdsForTeardown(snakeGame, members);
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
     }
-    severInertTail(state, snakeGame, tailIds) {
+    severInertTail(state, tailIds) {
+        const snakeGame = state.sandbox.snakeGame;
         this.retireMemberSegments(state, tailIds);
         markSnakeSegmentsFracturable(state, tailIds);
         registerInertAgent(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
-    die(state, snakeGame, members = null, deathImpact = null) {
-        reapAgentInstance(state, snakeGame, this, deathImpact);
+    die(state, members = null, deathImpact = null) {
+        reapAgentInstance(state, this, deathImpact);
     }
-    splitAtStruckSegment(state, snakeGame, struckSegmentId, victimMembers = null, deathImpact = null) {
+    splitAtStruckSegment(state, struckSegmentId, victimMembers = null, deathImpact = null) {
         if (!getAgentCombatTraits(this.profileId).canSplit) return null;
         const members = victimMembers ?? getConnectedComponentPath(state.kinetic, this.headId);
         const strikeIndex = members.indexOf(struckSegmentId);
@@ -247,10 +251,50 @@ export class AgentInstance {
         if (!removeChainLinkBetween(state, linkA, linkB)) return null;
         const aliveIds = members.slice(0, strikeIndex + 1);
         const tailIds = members.slice(strikeIndex + 1);
-        this.severInertTail(state, snakeGame, tailIds);
+        this.severInertTail(state, tailIds);
         this.memberIds = aliveIds;
-        if (aliveIds.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) this.die(state, snakeGame, aliveIds, deathImpact);
+        if (aliveIds.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) this.die(state, aliveIds, deathImpact);
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
+    }
+    receiveBodyStrike(state, struckSegmentId, strikerInstance, strikerBodyId, relSpeed, deathImpact, victimMembers = null) {
+        const traits = getInstanceCombatTraits(this);
+        // 1. Flee Escape Ram
+        if (traits.victimOfFleeEscapeRam) {
+            const strikerTraits = getInstanceCombatTraits(strikerInstance);
+            if (strikerTraits.fleeEscapeRam) {
+                const areTeammates = resolveRelationshipForInstances(strikerInstance, this) === "ally" || (this.head.faction != null && this.head.faction === strikerInstance.head.faction);
+                if (!areTeammates) {
+                    const config = getSnakeGameConfig();
+                    if (strikerInstance.sprinting && relSpeed >= config.splitImpulseThreshold)
+                        if (strikerInstance.intent?.getMode?.() === "flee")
+                            if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
+                }
+            }
+        }
+        // 2. Head Strike Ram
+        if (traits.victimOfHeadStrikeRam) {
+            const strikerTraits = getInstanceCombatTraits(strikerInstance);
+            if (isChainCombatTopology(traits) && isChainCombatTopology(strikerTraits)) {
+                const config = getSnakeGameConfig();
+                if (relSpeed >= config.splitImpulseThreshold)
+                    if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
+            }
+        }
+        return null;
+    }
+    receivePreyStrike(state, struckBodyId, predatorInstance, predatorBodyId, relSpeed, deathImpact) {
+        const preyTraits = getInstanceCombatTraits(this);
+        const predatorTraits = getInstanceCombatTraits(predatorInstance);
+        const config = getSnakeGameConfig();
+        const chainVsBallPrey = isChainCombatTopology(predatorTraits) && !isChainCombatTopology(preyTraits);
+        const predatorStrikes = chainVsBallPrey || predatorBodyId === predatorInstance.headId;
+        const speedOk = chainVsBallPrey || relSpeed >= config.splitImpulseThreshold;
+        if (predatorStrikes && speedOk)
+            if (!shouldSkipPreyHeadRamKill(predatorTraits, preyTraits, struckBodyId, this.headId)) {
+                this.die(state, null, deathImpact);
+                return true;
+            }
+        return false;
     }
 }
 export function createAgentInstance(state, { profileId, head, spawnGroupId, navWalkable = null, ...autosimOptions }) {

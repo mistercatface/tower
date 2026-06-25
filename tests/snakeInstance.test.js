@@ -125,7 +125,7 @@ describe("AgentInstance (snake)", () => {
             const prop = state.entityRegistry.getLive(members[i]);
             prop._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
         }
-        instance.retireAllSegments(state, state.sandbox.snakeGame);
+        instance.retireAllSegments(state);
         for (let i = 0; i < members.length; i++) {
             const prop = state.entityRegistry.getLive(members[i]);
             assert.equal(prop._groundRollDrive, undefined);
@@ -174,7 +174,7 @@ describe("AgentInstance (snake)", () => {
         instance.grantSteeringLease();
         const head = pack.chain.head;
         head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };
-        instance.kill(state, state.sandbox.snakeGame);
+        instance.kill(state);
         applyGroundRollDrive(head, 1 / 60, state);
         assert.equal(head._groundRollDrive, undefined);
         assert.equal(head.vx, 0);

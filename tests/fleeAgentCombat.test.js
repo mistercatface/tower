@@ -21,7 +21,7 @@ function registerFleeCombatAgent(state, snakeGame, cell, faction) {
     return { pack, instance };
 }
 
-function resolveFleeHeadCollision(state, snakeGame, left, right, { leftVx = 80, leftVy = 0, rightVx = -80, rightVy = 0 } = {}) {
+function resolveFleeHeadCollision(state, left, right, { leftVx = 80, leftVy = 0, rightVx = -80, rightVy = 0 } = {}) {
     const leftHead = left.pack.head;
     const rightHead = right.pack.head;
     leftHead.vx = leftVx;
@@ -34,7 +34,7 @@ function resolveFleeHeadCollision(state, snakeGame, left, right, { leftVx = 80, 
     const pairs = gatherKineticContactPairs(tick);
     resolveKineticContactPassWithPairs(tick, pairs);
     applyKineticContactSideEffects(tick, kineticContactBuffer);
-    resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+    resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
 }
 
 describe("flee agent escape combat", () => {
@@ -66,7 +66,7 @@ describe("flee agent escape combat", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.equal(getOrderedChainMemberIds(state, victim.chain.head.id).length, victimMembers.length);
     });
 
@@ -78,7 +78,7 @@ describe("flee agent escape combat", () => {
         const snakeGame = state.sandbox.snakeGame;
         const charlie = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
         const delta = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "delta");
-        resolveFleeHeadCollision(state, snakeGame, charlie, delta);
+        resolveFleeHeadCollision(state, charlie, delta);
         assert.equal(charlie.instance.lifecycle, "dead");
         assert.equal(delta.instance.lifecycle, "dead");
         assert.ok(snakeGame.registry.deadHeadIds.has(charlie.pack.head.id));
@@ -93,7 +93,7 @@ describe("flee agent escape combat", () => {
         const snakeGame = state.sandbox.snakeGame;
         const striker = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
         const victim = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "delta");
-        resolveFleeHeadCollision(state, snakeGame, striker, victim, { leftVx: 80, rightVx: 0 });
+        resolveFleeHeadCollision(state, striker, victim, { leftVx: 80, rightVx: 0 });
         assert.equal(striker.instance.lifecycle, "alive");
         assert.equal(victim.instance.lifecycle, "dead");
     });
@@ -106,7 +106,7 @@ describe("flee agent escape combat", () => {
         const snakeGame = state.sandbox.snakeGame;
         const left = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
         const right = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "charlie");
-        resolveFleeHeadCollision(state, snakeGame, left, right);
+        resolveFleeHeadCollision(state, left, right);
         assert.equal(left.instance.lifecycle, "alive");
         assert.equal(right.instance.lifecycle, "alive");
     });
@@ -119,7 +119,7 @@ describe("flee agent escape combat", () => {
         const snakeGame = state.sandbox.snakeGame;
         const striker = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
         const victim = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "charlie");
-        resolveFleeHeadCollision(state, snakeGame, striker, victim, { leftVx: 80, rightVx: 0 });
+        resolveFleeHeadCollision(state, striker, victim, { leftVx: 80, rightVx: 0 });
         assert.equal(striker.instance.lifecycle, "alive");
         assert.equal(victim.instance.lifecycle, "alive");
     });
@@ -132,7 +132,7 @@ describe("flee agent escape combat", () => {
         const snakeGame = state.sandbox.snakeGame;
         const left = registerFleeCombatAgent(state, snakeGame, { col: 10, row: 10 }, "charlie");
         const right = registerFleeCombatAgent(state, snakeGame, { col: 12, row: 10 }, "delta");
-        resolveFleeHeadCollision(state, snakeGame, left, right, { leftVx: 12, rightVx: 0 });
+        resolveFleeHeadCollision(state, left, right, { leftVx: 12, rightVx: 0 });
         assert.equal(left.instance.lifecycle, "alive");
         assert.equal(right.instance.lifecycle, "dead");
     });

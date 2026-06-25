@@ -22,7 +22,7 @@ export function registerAgentInstance(session, speciesId, instance) {
     def.register(session, instance);
 }
 export function validateAliveAgents(session, state) {
-    for (const instance of [...aliveAgentInstances(session.registry)]) instance.validate(state, session);
+    for (const instance of [...aliveAgentInstances(session.registry)]) instance.validate(state);
 }
 export function tickAliveAgents(session, state, dtMs) {
     session.orchestrator.beginFrame(state.sandbox.snakeGame.simTick);

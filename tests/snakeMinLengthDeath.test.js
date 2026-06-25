@@ -83,7 +83,7 @@ describe("snake combat min length", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
         const registry = state.sandbox.snakeGame.registry;
         assert.equal(registry.inertByLeadId.size, 0);
@@ -117,7 +117,7 @@ describe("snake combat min length", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
         const registry = state.sandbox.snakeGame.registry;
         assert.equal(registry.inertByLeadId.size, 0);
@@ -149,7 +149,7 @@ describe("snake combat min length", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
         const registry = state.sandbox.snakeGame.registry;
         assert.equal(registry.inertByLeadId.size, 0);
@@ -179,7 +179,7 @@ describe("snake combat min length", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
         const registry = state.sandbox.snakeGame.registry;
         assert.equal(registry.inertByLeadId.size, 0);
@@ -214,7 +214,7 @@ describe("snake combat min length", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         applyKineticContactSideEffects(tick, kineticContactBuffer);
-        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        resolveSnakeCombatFromContacts(state, tick.frame, kineticContactBuffer);
         assert.ok(kineticContactBuffer.count >= 1);
         assert.equal(registry.deadHeadIds.has(prey.chain.head.id), true);
         assert.equal(state.sandbox.snakeGame.instancesByHeadId.has(prey.chain.head.id), false);
@@ -255,7 +255,7 @@ describe("snake combat min length", () => {
         const pairs = gatherKineticContactPairs(tick);
         resolveKineticContactPassWithPairs(tick, pairs);
         assert.ok(kineticContactBuffer.count >= 1);
-        applySnakeHuntContactDrive(state, tick.frame, kineticContactBuffer, state.sandbox.snakeGame);
+        applySnakeHuntContactDrive(state, tick.frame, kineticContactBuffer);
         assert.equal(Math.round(kineticDynamicSlab.vx[hunterHead._physId]), 120);
         assert.equal(Math.round(kineticDynamicSlab.vy[hunterHead._physId]), 0);
     });
@@ -272,7 +272,7 @@ describe("snake combat min length", () => {
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
         const preyInstance = state.sandbox.snakeGame.instancesByHeadId.get(prey.chain.head.id);
-        preyInstance.kill(state, state.sandbox.snakeGame);
+        preyInstance.kill(state);
         assert.equal(getOrderedChainMemberIds(state, predator.chain.head.id).length, 3);
         assert.equal(getOrderedChainMemberIds(state, prey.chain.head.id).length, 1);
     });

@@ -50,7 +50,7 @@ describe("snake camera focus", () => {
         const session = state.sandbox.snakeGame;
         const instance = session.instancesByHeadId.get(first.chain.head.id);
         state.followCamera.focus(instance.head);
-        instance.kill(state, session);
+        instance.kill(state);
         assert.equal(state.followCamera.targetProp, null);
         assert.equal(findSandboxCameraTargetWorldProp(state, state.entityRegistry), null);
     });
