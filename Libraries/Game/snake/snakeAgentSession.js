@@ -1,6 +1,7 @@
 import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { createAgentFrameOrchestrator } from "./agentFrameOrchestrator.js";
+import { syncBallAgentFacingAfterPhysics } from "./ballAgent/syncBallAgentFacingAfterPhysics.js";
 export function createSnakeAgentSession(state, { registry, navWalkable, speciesById }) {
     const config = getSnakeGameConfig();
     const orchestrator = createAgentFrameOrchestrator(config.aiBudget);
@@ -27,6 +28,7 @@ export function validateAliveAgents(session, state) {
     for (const instance of [...aliveAgentInstances(session.registry)]) instance.validate(state);
 }
 export function tickAliveAgents(session, state, dtMs) {
+    session.lastDtMs = dtMs;
     session.orchestrator.beginFrame(state.sandbox.snakeGame.simTick);
     for (const instance of aliveAgentInstances(session.registry)) {
         const admitted = session.orchestrator.shouldThink(instance, state, state.viewport);
@@ -35,10 +37,12 @@ export function tickAliveAgents(session, state, dtMs) {
     session.orchestrator.endFrame();
 }
 export function syncAgentsAfterPhysics(session, state) {
+    const dtMs = session.lastDtMs ?? 16;
     for (const instance of aliveAgentInstances(session.registry)) {
         const def = session.speciesById.get(instance.profileId);
         instance.syncMembersFromGraph(state);
         if (def.pressureDiagnostics) instance.updatePressureDiagnostics(state);
+        syncBallAgentFacingAfterPhysics(instance, instance._lastTickDtMs ?? dtMs);
     }
 }
 export function stopAllAgents(session, state) {

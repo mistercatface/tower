@@ -1,15 +1,7 @@
-export function createGunAgentActionState() {
-    return { phase: "idle", targetId: null, timerMs: 0, aimAngle: 0 };
-}
-export function resetGunAgentActionState(action) {
-    action.phase = "idle";
-    action.targetId = null;
-    action.timerMs = 0;
-    action.aimAngle = 0;
-}
-export function gunAgentActionOnCooldown(action) {
-    return action.phase === "cooldown" && action.timerMs > 0;
-}
-export function gunAgentActionIsBusy(action) {
-    return action.phase === "charging" || gunAgentActionOnCooldown(action);
-}
+export {
+    createRangedCombatActionState as createGunAgentActionState,
+    resetRangedCombatAction as resetGunAgentActionState,
+    rangedCombatActionOnCooldown as gunAgentActionOnCooldown,
+    rangedCombatActionIsBusy as gunAgentActionIsBusy,
+} from "../rangedCombat/rangedCombatActionState.js";
+export { createRangedCombatActionState, resetRangedCombatAction, rangedCombatActionOnCooldown, rangedCombatActionIsBusy } from "../rangedCombat/rangedCombatActionState.js";

@@ -22,6 +22,9 @@ export function getInstanceCombatTraits(instance, config = getSnakeGameConfig())
 export function isChainCombatTopology(traits) {
     return traits.topology === "chain";
 }
+export function isBallCombatTopology(traits) {
+    return traits.topology === "ball";
+}
 export function matchesBrainRamResolver(traits, resolverId) {
     return traits.brainRamResolver === resolverId;
 }

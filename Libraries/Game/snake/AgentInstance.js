@@ -10,9 +10,10 @@ import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
-import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
-import { createGunAgentActionState } from "./gunAgent/gunAgentActionState.js";
-import { getAgentCombatTraits, getInstanceCombatTraits, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
+import { syncBallAgentPresentation } from "./ballAgent/syncBallAgentPresentation.js";
+import { createRangedCombatActionState } from "./rangedCombat/rangedCombatActionState.js";
+import { hasRangedCombatCapability } from "./rangedCombat/resolveRangedWeapon.js";
+import { getAgentCombatTraits, getInstanceCombatTraits, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
@@ -43,7 +44,9 @@ export class AgentInstance {
         this.baseTint = isFleeProfile(this) || isGunProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this._sprintOverride = undefined;
         this._intentOverride = undefined;
-        this.combatAction = isGunProfile(this) ? createGunAgentActionState() : null;
+        this.equippedWeapon = null;
+        const profile = getAgentProfile(profileId);
+        this.combatAction = hasRangedCombatCapability(this, profile) ? createRangedCombatActionState() : null;
     }
     get headId() {
         return this.head.id;
@@ -74,7 +77,7 @@ export class AgentInstance {
     start(state) {
         this.grantSteeringLease();
         this.autosim.start();
-        if (isFleeProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
+        if (isBallCombatTopology(getInstanceCombatTraits(this))) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     stopSteering(state) {
         this.revokeSteeringLease();
@@ -107,9 +110,9 @@ export class AgentInstance {
     }
     tick(state, dtMs, admitted = true) {
         if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;
+        this._lastTickDtMs = dtMs;
         this.autosim.tick(dtMs, admitted);
-        if (isFleeProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
-        else if (isGunProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
+        if (isBallCombatTopology(getInstanceCombatTraits(this))) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;

@@ -12,7 +12,8 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
-import { clearGunAgentCombatAction, createGunShootIntentState } from "./gunAgent/gunAgentShooting.js";
+import { createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat/rangedShootIntentState.js";
+import { resolveRangedWeapon } from "./rangedCombat/resolveRangedWeapon.js";
 const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
@@ -39,10 +40,15 @@ function transitionReason(seekModes) {
         return `mode_${nextMode}`;
     };
 }
-function createIntentStates(huntMode, instance = null) {
+function hasRangedShootMode(profile) {
+    return !!profile.decision?.modes?.shoot_enemy;
+}
+function createIntentStates(huntMode, instance = null, profile = null) {
     const seek = createSeekIntentState();
-    if (instance) return { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), shoot_enemy: createGunShootIntentState(instance), [huntMode]: seek };
-    return { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), [huntMode]: seek };
+    const states = { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), [huntMode]: seek };
+    if (instance && profile && hasRangedShootMode(profile) && resolveRangedWeapon(instance, profile))
+        states.shoot_enemy = createRangedShootIntentState(instance, () => resolveRangedWeapon(instance, profile));
+    return states;
 }
 function resolveCommittedTarget(committedSlots, id, world) {
     if (id == null) return null;
@@ -70,10 +76,12 @@ function buildDecisionContextInto(profileId, decisionContext, input, deps) {
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
     if (fields.seekerSegmentCount) decisionInput.seekerSegmentCount = resolveSegmentCount ? resolveSegmentCount() : null;
     if (fields.session) decisionInput.session = state.sandbox?.snakeGame ?? null;
-    if (profileId === AGENT_PROFILE.gun) {
+    const profile = getAgentProfile(profileId);
+    if (profile.weapon || hasRangedShootMode(profile)) {
         decisionInput.agent = agent;
         decisionInput.state = state;
         decisionInput.actionState = deps.agentCtx.instance.combatAction;
+        decisionInput.equippedWeapon = deps.agentCtx.instance.equippedWeapon ?? null;
     }
     return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
 }
@@ -162,7 +170,7 @@ function buildAdapterOptions(profileId, deps) {
     const { agentCtx, brain, resolveExploreCell, rng, resolveHunger, resolveSegmentCount } = deps;
     const instance = agentCtx.instance;
     const decisionContext = createAgentDecisionContextFrame(profileId);
-    const isGun = profileId === AGENT_PROFILE.gun;
+    const hasRangedShoot = hasRangedShootMode(profile);
     const adapter = {
         reachSlots: intent.reachSlots,
         intentMemoryOptions: intentMemoryOptions(profileId, intent, shared),
@@ -175,10 +183,10 @@ function buildAdapterOptions(profileId, deps) {
         fleeHeldOn: intent.fleeHeldOn,
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
         transitionReason: transitionReason(intent.seekModes),
-        states: isGun ? createIntentStates(intent.huntMode, instance) : createIntentStates(intent.huntMode),
-        useShootPolicyLatch: isGun,
-        modeExitDelayTicks: isGun ? { flee: 30, shoot_enemy: 15 } : { flee: 30 },
-        onIntentClear: isGun ? () => clearGunAgentCombatAction(instance) : null,
+        states: createIntentStates(intent.huntMode, instance, profile),
+        useShootPolicyLatch: hasRangedShoot,
+        modeExitDelayTicks: hasRangedShoot ? { flee: 30, shoot_enemy: 15 } : { flee: 30 },
+        onIntentClear: hasRangedShoot ? () => resetInstanceRangedCombatAction(instance) : null,
         extendReturn: (returnDeps) => extendReturn(intent, returnDeps),
     };
     if (intent.publishEngagement)

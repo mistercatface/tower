@@ -10,7 +10,7 @@ export default {
             {
                 id: "movement_arrow",
                 propId: "tri_wedge",
-                heading: "velocity",
+                heading: "facing",
                 offsetSpace: "parentRadius",
                 offset: { x: 1.65, y: 0 },
                 facingOffset: -Math.PI / 2,
