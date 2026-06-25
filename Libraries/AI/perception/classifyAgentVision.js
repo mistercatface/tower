@@ -1,9 +1,7 @@
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { hasGridCellLineOfSightCached } from "../../Navigation/perception/gridCellVision.js";
+import { hasGridCellLineOfSight } from "../../Navigation/perception/gridCellVision.js";
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
-
 const AGENT_VISION_QUERY_BOUNDS = createAabb();
-
 /**
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
@@ -11,7 +9,6 @@ const AGENT_VISION_QUERY_BOUNDS = createAabb();
 export function classifyAgentVision(seeker, agentCtx, state, frame, vision, options = {}) {
     const { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true, committedTargetId = null, targetStickyFactor = 1.0 } = options;
     const navTopology = frame.navTopology;
-    const visionSession = frame.visionSession;
     const range = agentRange ?? visionRange.range;
     const rangeSq = range * range;
     const originCol = vision?.originCol ?? navTopology.grid.worldCol(seeker.x);
@@ -43,7 +40,7 @@ export function classifyAgentVision(seeker, agentCtx, state, frame, vision, opti
         if (relationship === "neutral") continue;
         const targetCol = navTopology.grid.worldCol(head.x);
         const targetRow = navTopology.grid.worldRow(head.y);
-        if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, targetCol, targetRow)) continue;
+        if (!hasGridCellLineOfSight(navTopology, originCol, originRow, targetCol, targetRow)) continue;
         let compareDistSq = distSq;
         if (committedTargetId !== null && head.id === committedTargetId) compareDistSq *= targetStickyFactor;
         if (relationship === "ally") {

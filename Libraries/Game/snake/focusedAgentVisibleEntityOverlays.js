@@ -25,7 +25,7 @@ export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, sessi
     const head = instance?.head;
     if (!head) return;
     const visionRange = getSharedConfig(config).visionRange;
-    const frame = { navTopology: state.nav.topology, visionSession: null, visionRange };
+    const frame = { navTopology: state.nav.topology, visionRange };
     const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
     const agentCtx = { instance, session };
     const world = classifyAgentVision(head, agentCtx, state, frame, null, perceptionOptions);

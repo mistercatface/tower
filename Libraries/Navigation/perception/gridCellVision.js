@@ -1,7 +1,6 @@
 import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { boundaryBlocksStepFrom } from "../../Spatial/grid/boundaryOccupancy.js";
 import { navCanStep } from "../../Pathfinding/navTopologySab.js";
-import { gridCellLosCacheKey } from "./gridCellVisionSession.js";
 const HEADING_SPEED_MIN = 0.25;
 export function resolveObserverHeading(prop) {
     const vx = prop.vx ?? 0;
@@ -74,14 +73,6 @@ export function hasGridCellLineOfSight(navTopology, col0, row0, col1, row1) {
     }
     return false;
 }
-export function hasGridCellLineOfSightCached(visionSession, navTopology, col0, row0, col1, row1) {
-    if (!visionSession) return hasGridCellLineOfSight(navTopology, col0, row0, col1, row1);
-    const key = gridCellLosCacheKey(col0, row0, col1, row1);
-    if (visionSession.losCache.has(key)) return visionSession.losCache.get(key);
-    const visible = hasGridCellLineOfSight(navTopology, col0, row0, col1, row1);
-    visionSession.losCache.set(key, visible);
-    return visible;
-}
 export function buildVisionCellSet(cells, cols) {
     const set = new Set();
     for (let i = 0; i < cells.length; i++) {
@@ -90,7 +81,7 @@ export function buildVisionCellSet(cells, cols) {
     }
     return set;
 }
-export function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, originCol, originRow, range, cellSet, navTopology, visionSession = null) {
+export function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, originCol, originRow, range, cellSet, navTopology) {
     const grid = navTopology.grid;
     const col = grid.worldCol(pointX);
     const row = grid.worldRow(pointY);
@@ -98,9 +89,9 @@ export function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, o
     const dx = pointX - originX;
     const dy = pointY - originY;
     if (dx * dx + dy * dy > range * range) return false;
-    return hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, col, row);
+    return hasGridCellLineOfSight(navTopology, originCol, originRow, col, row);
 }
-export function collectVisibleGridCells(navTopology, originX, originY, range, visionSession = null) {
+export function collectVisibleGridCells(navTopology, originX, originY, range) {
     const grid = navTopology.grid;
     const originCol = grid.worldCol(originX);
     const originRow = grid.worldRow(originY);
@@ -118,7 +109,7 @@ export function collectVisibleGridCells(navTopology, originX, originY, range, vi
             const dx = x - originX;
             const dy = y - originY;
             if (dx * dx + dy * dy > rangeSq) continue;
-            if (!hasGridCellLineOfSightCached(visionSession, navTopology, originCol, originRow, col, row)) continue;
+            if (!hasGridCellLineOfSight(navTopology, originCol, originRow, col, row)) continue;
             cells.push({ col, row });
         }
     return cells;

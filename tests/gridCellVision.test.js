@@ -130,7 +130,6 @@ describe("grid cell vision", () => {
         const frame = createObserverVisionFrame({
             tickId: 9,
             navTopology: ctx.navTopology,
-            visionSession: null,
             visionRange,
             viewport: { circleInBounds: () => true },
             brainSyncOffScreenInterval: 1,
@@ -143,7 +142,6 @@ describe("grid cell vision", () => {
         const nextFrame = createObserverVisionFrame({
             tickId: 10,
             navTopology: ctx.navTopology,
-            visionSession: null,
             visionRange,
             viewport: { circleInBounds: () => true },
             brainSyncOffScreenInterval: 1,

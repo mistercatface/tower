@@ -38,13 +38,16 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
 }
-const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
-const DIAGONAL_VERTEX_BITS = {
-    "1,1": [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth],
-    "-1,-1": [VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.SeNorth, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeWest],
-    "1,-1": [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast],
-    "-1,1": [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth],
-};
+const CARDINAL_OFFSETS = [
+    { dc: 1, dr: 0, bit: 1 },
+    { dc: 0, dr: 1, bit: 2 },
+    { dc: -1, dr: 0, bit: 4 },
+    { dc: 0, dr: -1, bit: 8 },
+];
+const DIAG_1_1 = [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth];
+const DIAG_N1_N1 = [VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.SeNorth, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeWest];
+const DIAG_1_N1 = [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast];
+const DIAG_N1_1 = [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth];
 export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassability, bounds = null) {
     const { cols, rows } = grid;
     const c0 = bounds ? bounds.startCol : 0;
@@ -59,18 +62,24 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
                 continue;
             }
             let mask = 0;
-            for (const key in CARDINAL_BITS) {
-                const [dc, dr] = key.split(",").map(Number);
+            for (let i = 0; i < CARDINAL_OFFSETS.length; i++) {
+                const { dc, dr, bit } = CARDINAL_OFFSETS[i];
                 const nc = col + dc;
                 const nr = row + dr;
                 if (!cellInRect(nc, nr, cols, rows)) continue;
-                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, col, row, nc, nr)) mask |= CARDINAL_BITS[key];
+                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, col, row, nc, nr)) mask |= bit;
             }
             cardinalOpen[idx] = mask;
         }
 }
+function getCardinalBit(dc, dr) {
+    if (dc === 1) return 1;
+    if (dr === 1) return 2;
+    if (dc === -1) return 4;
+    return 8;
+}
 function cardinalLegOpen(cardinalOpen, cols, col, row, dc, dr) {
-    return (cardinalOpen[colRowToIndex(col, row, cols)] & CARDINAL_BITS[`${dc},${dr}`]) !== 0;
+    return (cardinalOpen[colRowToIndex(col, row, cols)] & getCardinalBit(dc, dr)) !== 0;
 }
 function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
     const shoulderHCol = col + dc;
@@ -89,8 +98,9 @@ export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, co
     const cvx = dc > 0 ? col + dc : col;
     const cvy = dr > 0 ? row + dr : row;
     const mask = vertexPassability[packVertexKey(cvx, cvy, cols)] ?? 0;
-    const need = DIAGONAL_VERTEX_BITS[`${dc},${dr}`];
-    if (!need) return false;
+    let need;
+    if (dc === 1) need = dr === 1 ? DIAG_1_1 : DIAG_1_N1;
+    else need = dr === 1 ? DIAG_N1_1 : DIAG_N1_N1;
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
 }

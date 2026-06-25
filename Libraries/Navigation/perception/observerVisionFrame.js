@@ -26,10 +26,10 @@ function lookupHeadVisionCache(observer, navTopology, visionRange, { force = fal
     if (perceptionTick != null && cache.perceptionTick === perceptionTick) return cache;
     return null;
 }
-function buildHeadVision(observer, navTopology, visionRange, visionSession, { perceptionTick = null } = {}) {
+function buildHeadVision(observer, navTopology, visionRange, { perceptionTick = null } = {}) {
     const key = observerVisionPoseKey(observer, navTopology, visionRange);
     visionFullBuildCount++;
-    const cells = collectVisibleGridCells(navTopology, observer.x, observer.y, visionRange.range, visionSession);
+    const cells = collectVisibleGridCells(navTopology, observer.x, observer.y, visionRange.range);
     const next = { navKey: key.navKey, col: key.col, row: key.row, originCol: key.col, originRow: key.row, heading: resolveObserverHeading(observer), range: visionRange.range, perceptionTick, cells };
     observer._observerVisionCache = next;
     return next;
@@ -38,24 +38,23 @@ function resolveObserverViewportSync(viewport, observer, brainSyncOffScreenInter
     const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
     return { onScreen, brainSyncOffScreenInterval };
 }
-export function queryGridCellVision(observer, candidates, { range, navTopology, visionSession = null }) {
+export function queryGridCellVision(observer, candidates, { range, navTopology }) {
     const visionRange = { range };
-    const vision = buildHeadVision(observer, navTopology, visionRange, visionSession);
+    const vision = buildHeadVision(observer, navTopology, visionRange);
     const cellSet = buildVisionCellSet(vision.cells, navTopology.grid.cols);
     const visible = [];
     for (let i = 0; i < candidates.length; i++) {
         const target = candidates[i];
         if (target === observer || target.isDead) continue;
-        if (!isPointVisibleFromHeadVision(target.x, target.y, observer.x, observer.y, vision.originCol, vision.originRow, range, cellSet, navTopology, visionSession)) continue;
+        if (!isPointVisibleFromHeadVision(target.x, target.y, observer.x, observer.y, vision.originCol, vision.originRow, range, cellSet, navTopology)) continue;
         visible.push(target);
     }
     return { heading: vision.heading, range, cells: vision.cells, visible };
 }
-export function createObserverVisionFrame({ tickId, navTopology, visionSession, visionRange, viewport, brainSyncOffScreenInterval }) {
+export function createObserverVisionFrame({ tickId, navTopology, visionRange, viewport, brainSyncOffScreenInterval }) {
     const frame = {
         tickId,
         navTopology,
-        visionSession,
         visionRange,
         viewport,
         brainSyncOffScreenInterval,
@@ -70,7 +69,7 @@ export function createObserverVisionFrame({ tickId, navTopology, visionSession, 
         ensureHeadVision(observer, visionRangeOverride = visionRange) {
             const cached = lookupHeadVisionCache(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
             if (cached) return cached;
-            return buildHeadVision(observer, navTopology, visionRangeOverride, visionSession, { perceptionTick: frame.tickId });
+            return buildHeadVision(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
         },
     };
     return frame;
