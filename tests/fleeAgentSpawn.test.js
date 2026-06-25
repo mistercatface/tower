@@ -12,7 +12,7 @@ import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
-import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent/syncBallAgentFacingAfterPhysics.js";
+import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
@@ -31,7 +31,7 @@ describe("flee agent spawn", () => {
         applySnakeGameConfig({ startRadius: 2 });
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         assert.equal(pack.members.length, 1);
-        assert.equal(pack.head.type, "flee_ball");
+        assert.equal(pack.head.type, "boid_triangle");
         assert.equal(pack.head.shape.type, "Circle");
         assert.ok(pack.head.strategy?.canChain);
         assert.deepEqual(getOrderedChainMemberIds(state, pack.head.id), [pack.head.id]);
@@ -71,7 +71,7 @@ describe("flee agent spawn", () => {
         const pack = spawnFleeAgent(state, { col: 10, row: 10 });
         assert.equal(pack.head.strategy.groundNav.maxSpeed, 120);
         assert.equal(pack.head.strategy.groundNav.accel, 400);
-        assert.equal(pack.head.type, "flee_ball");
+        assert.equal(pack.head.type, "boid_triangle");
     });
     it("batch spawns flee agents split across configured teams and colors", async () => {
         resetKineticConstraintIds(10);

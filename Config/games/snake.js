@@ -175,7 +175,7 @@ export const SNAKE_GAME_DEFAULTS = {
             intent: SNAKE_INTENT,
         },
         flee_agent: {
-            bodyPropId: "flee_ball",
+            bodyPropId: "boid_triangle",
             segmentCount: 1,
             leaderIndex: 0,
             faction: "bravo",
@@ -244,7 +244,7 @@ export const SNAKE_GAME_DEFAULTS = {
             intent: FLEE_INTENT,
         },
         gun_agent: {
-            bodyPropId: "flee_ball",
+            bodyPropId: "boid_triangle",
             segmentCount: 1,
             leaderIndex: 0,
             faction: "gun",

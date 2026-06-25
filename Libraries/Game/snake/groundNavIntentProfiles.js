@@ -12,8 +12,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
-import { createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat/rangedShootIntentState.js";
-import { resolveRangedWeapon } from "./rangedCombat/resolveRangedWeapon.js";
+import { createRangedShootIntentState, resetInstanceRangedCombatAction, resolveRangedWeapon } from "./rangedCombat.js";
 const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;

@@ -5,7 +5,7 @@ import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
 import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
-import { createRangedCombatActionState } from "../Libraries/Game/snake/rangedCombat/rangedCombatActionState.js";
+import { createRangedCombatActionState } from "../Libraries/Game/snake/rangedCombat.js";
 function dummyInstance(profileId, { faction = "a", segments = 1 } = {}) {
     return { profileId, head: { faction }, memberIds: Array.from({ length: segments }, (_, i) => i) };
 }
@@ -19,7 +19,7 @@ describe("gun agent profile and species", () => {
         const config = getSnakeGameConfig();
         const profile = config.agentProfiles[AGENT_PROFILE.gun];
         assert.ok(profile, "gun agent profile should exist");
-        assert.equal(profile.bodyPropId, "flee_ball");
+        assert.equal(profile.bodyPropId, "boid_triangle");
         assert.equal(profile.faction, "gun");
         assert.deepEqual(profile.decision.scoreOrder, ["flee", "shoot_enemy", "seek_enemy", "seek_food", "seek_ally", "explore"]);
         assert.equal(profile.relationships.snake.type, "proximity");

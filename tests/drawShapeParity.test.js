@@ -92,16 +92,16 @@ describe("draw shape parity", () => {
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
         assert.equal(resolvePropQuantizeSteps(plank).facing, 360);
     });
-    it("flee ball declares a render-only tri wedge facing attachment", () => {
-        const attachment = propCatalog["flee_ball"].visuals.attachments[0];
+    it("boid triangle declares a render-only tri wedge facing attachment", () => {
+        const attachment = propCatalog["boid_triangle"].visuals.attachments[0];
         assert.equal(attachment.id, "movement_arrow");
         assert.equal(attachment.propId, "tri_wedge");
-        assert.equal(attachment.heading, "velocity");
+        assert.equal(attachment.heading, "facing");
         assert.equal(attachment.offsetSpace, "parentRadius");
         assert.equal(attachment.inheritTint, true);
     });
     it("visual attachments resolve from quantized velocity heading", () => {
-        const prop = new WorldProp(0, 0, "flee_ball", 0);
+        const prop = new WorldProp(0, 0, "boid_triangle", 0);
         prop.vx = 0;
         prop.vy = 25;
         const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX: 50, anchorY: 60 });
@@ -118,8 +118,8 @@ describe("draw shape parity", () => {
         assert.ok(child.radius < new WorldProp(0, 0, "tri_wedge", 0).radius);
     });
     it("visual attachments scale and offset from parent radius", () => {
-        const small = new WorldProp(0, 0, "flee_ball", 0);
-        const large = new WorldProp(0, 0, "flee_ball", 0);
+        const small = new WorldProp(0, 0, "boid_triangle", 0);
+        const large = new WorldProp(0, 0, "boid_triangle", 0);
         setCirclePropRadius(large, resolveBodyRadius(small) * 2);
         small.vx = 30;
         large.vx = 30;
@@ -131,8 +131,8 @@ describe("draw shape parity", () => {
         assert.ok(smallChild.height < propCatalog["tri_wedge"].visuals.world.height);
     });
     it("visual attachments expand bake bounds and facing cache keys", () => {
-        const right = new WorldProp(0, 0, "flee_ball", 0);
-        const down = new WorldProp(0, 0, "flee_ball", 0);
+        const right = new WorldProp(0, 0, "boid_triangle", 0);
+        const down = new WorldProp(0, 0, "boid_triangle", 0);
         right.vx = 10;
         down.vy = 10;
         const parentRadius = resolveBodyRadius(right);

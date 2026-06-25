@@ -7,13 +7,13 @@ import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnGunAgent } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { hasLineOfSight } from "../Libraries/Game/snake/gunAgent/gunAgentShooting.js";
+import { hasLineOfSight } from "../Libraries/Game/snake/rangedCombat.js";
 import { resolveGunBulletContacts } from "../Libraries/Game/snake/gunAgent/gunBulletContacts.js";
 import { tickGunBullets } from "../Libraries/Game/snake/gunAgent/gunBulletLifecycle.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
-import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent/syncBallAgentFacingAfterPhysics.js";
+import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
 import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 describe("gun agent bullets and combat", () => {
     it("can spawn gun agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {
@@ -109,7 +109,7 @@ describe("gun agent bullets and combat", () => {
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
         const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
-        assert.equal(gunPack.head.type, "flee_ball");
+        assert.equal(gunPack.head.type, "boid_triangle");
         const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
         registerAgentInstance(snakeGame, "gun_agent", gunInstance);
         gunInstance.start(state);

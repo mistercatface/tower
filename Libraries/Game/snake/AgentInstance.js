@@ -10,9 +10,8 @@ import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
-import { syncBallAgentPresentation } from "./ballAgent/syncBallAgentPresentation.js";
-import { createRangedCombatActionState } from "./rangedCombat/rangedCombatActionState.js";
-import { hasRangedCombatCapability } from "./rangedCombat/resolveRangedWeapon.js";
+import { syncBallAgentPresentation } from "./ballAgent.js";
+import { createRangedCombatActionState, hasRangedCombatCapability } from "./rangedCombat.js";
 import { getAgentCombatTraits, getInstanceCombatTraits, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {

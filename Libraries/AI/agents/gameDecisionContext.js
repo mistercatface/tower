@@ -3,7 +3,7 @@ import { bandFromThresholds } from "./bandFromThresholds.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { scoreCandidateNetsInto, scoreCandidateSet } from "../utility/utilityScoring.js";
 import { deriveSnakeEngagementState } from "../../Game/snake/snakeEngagement.js";
-import { deriveRangedCombatState } from "../../Game/snake/rangedCombat/deriveRangedCombatState.js";
+import { deriveRangedCombatState } from "../../Game/snake/rangedCombat.js";
 import { AGENT_PROFILE, getAgentProfile } from "./agentProfile.js";
 export { AGENT_PROFILE as AGENT_DECISION_PROFILE };
 export { createAgentDecisionContextFrame } from "./buildAgentDecisionContext.js";

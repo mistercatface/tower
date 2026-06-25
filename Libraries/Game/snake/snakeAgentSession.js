@@ -1,7 +1,7 @@
 import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { createAgentFrameOrchestrator } from "./agentFrameOrchestrator.js";
-import { syncBallAgentFacingAfterPhysics } from "./ballAgent/syncBallAgentFacingAfterPhysics.js";
+import { syncBallAgentFacingAfterPhysics } from "./ballAgent.js";
 export function createSnakeAgentSession(state, { registry, navWalkable, speciesById }) {
     const config = getSnakeGameConfig();
     const orchestrator = createAgentFrameOrchestrator(config.aiBudget);
