@@ -79,14 +79,14 @@ function createShootIntentLatch() {
         refreshWhen: ({ world }) => {
             const combat = world.decisionContext.combatState;
             if (!combat) return false;
-            if (combat.phase === "charging" || combat.phase === "cooldown") return true;
+            if (combat.phase === "reacting" || combat.phase === "fire_delay" || combat.phase === "reloading") return true;
             return !!(combat.visibleEnemy && combat.hasLineOfSight && combat.inWeaponRange && !combat.tooClose);
         },
         canRelease: ({ world, policy }) => {
             if (policy.mode === "flee") return true;
             const combat = world.decisionContext.combatState;
             if (!combat) return true;
-            if (combat.phase === "charging" || combat.phase === "cooldown") return false;
+            if (combat.phase === "reacting" || combat.phase === "fire_delay" || combat.phase === "reloading") return false;
             if (combat.visibleEnemy && combat.hasLineOfSight && combat.inWeaponRange && !combat.tooClose) return false;
             return combat.phase === "idle" || combat.phase == null;
         },

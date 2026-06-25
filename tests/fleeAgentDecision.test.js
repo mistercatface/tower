@@ -13,6 +13,7 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { createRangedCombatActionState } from "../Libraries/Game/snake/rangedCombat.js";
 
 const CELL = 16;
 function sprintCtx(overrides = {}) {
@@ -139,7 +140,7 @@ describe("flee agent decision model", () => {
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         setSimpleAgentHunger(instance.metabolism, 0.7);
-        const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
+        const threat = spawnSnakeChain(state, { col: 10, row: 12 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
@@ -158,12 +159,93 @@ describe("flee agent decision model", () => {
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
         setSimpleAgentHunger(instance.metabolism, 0.7);
-        const threat = spawnSnakeChain(state, { col: 10, row: 14 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
+        const threat = spawnSnakeChain(state, { col: 10, row: 12 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
+    });
+
+    it("chooses shoot_enemy when a far snake is visible with line of sight", () => {
+        applySnakeGameConfig();
+        const enemy = mockTarget("snake1");
+        enemy.x = 80;
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        });
+        assert.equal(ctx.chosenIntent.mode, "shoot_enemy");
+        assert.equal(ctx.chosenIntent.targetId, "snake1");
+        assert.equal(ctx.combatState.canShoot, true);
+    });
+
+    it("chooses shoot_enemy when an opposite-faction flee agent is visible with line of sight", () => {
+        applySnakeGameConfig();
+        const enemy = mockTarget("flee2");
+        enemy.x = 80;
+        enemy.type = "boid_triangle";
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        });
+        assert.equal(ctx.chosenIntent.mode, "shoot_enemy");
+        assert.equal(ctx.chosenIntent.targetId, "flee2");
+        assert.equal(ctx.combatState.canShoot, true);
+    });
+
+    it("opposing flee agents shoot each other at range in integration", async () => {
+        resetKineticConstraintIds(100);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig();
+        
+        // Spawn charlie (yellow) flee agent
+        const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", charlie);
+        charlie.start(state);
+        setSimpleAgentHunger(charlie.metabolism, 0.9);
+        charliePack.head.facing = 0;
+
+        // Spawn delta (green) flee agent at distance 80px (5 cells)
+        const deltaPack = spawnGameAgentChain(state, { col: 15, row: 10 }, "flee_agent", { faction: "delta" });
+        const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", delta);
+        delta.start(state);
+        setSimpleAgentHunger(delta.metabolism, 0.9);
+
+        primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
+        primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
+
+        // Tick once to perceive and select mode
+        charlie.tick(state, 16);
+        assert.equal(charlie.intent.getMode(), "shoot_enemy");
+        assert.equal(charlie.intent.getTargetId(), deltaPack.head.id);
+        assert.equal(charlie.combatAction.phase, "reacting");
+
+        // Tick to react
+        snakeGame.activeGunBulletIds = [];
+        charlie.tick(state, 150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "should have fired first bullet after reacting");
+        assert.equal(charlie.combatAction.phase, "fire_delay");
+
+        // Tick for second shot
+        charlie.tick(state, 150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 2, "should have fired second bullet");
+        
+        // Tick for third shot
+        charlie.tick(state, 150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 3, "should have fired third bullet");
+        assert.equal(charlie.combatAction.phase, "reloading");
     });
 });

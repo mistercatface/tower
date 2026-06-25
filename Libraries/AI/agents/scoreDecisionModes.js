@@ -64,7 +64,7 @@ const SCORERS = {
     },
     rangedAttack(ctx, modeDef, weights, pressure) {
         const combat = ctx.combatState;
-        if (!combat?.canShoot && combat?.phase !== "charging") return SCORE_ABSENT;
+        if (!combat?.canShoot && combat?.phase !== "reacting" && combat?.phase !== "fire_delay" && combat?.phase !== "reloading") return SCORE_ABSENT;
         if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
         const weightKey = modeDef.weightKey ?? "shoot_enemy";
         const value = weights[weightKey] ?? weights.enemy ?? weights.explore;

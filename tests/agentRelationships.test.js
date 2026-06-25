@@ -12,7 +12,10 @@ describe("resolveRelationshipForInstances", () => {
         applySnakeGameConfig();
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.flee)), "prey");
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.squid)), "threat");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake)), "threat");
+        const closeSq = 40 * 40;
+        const farSq = 80 * 80;
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), undefined, closeSq), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), undefined, farSq), "prey");
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.squid)), "threat");
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid)), "threat");
     });

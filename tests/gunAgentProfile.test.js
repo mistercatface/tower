@@ -51,7 +51,7 @@ describe("gun agent profile and species", () => {
             reachSteps: { threat: null, enemy: 4, food: null, ally: null },
             foodFraction: 0.9,
             agent: { x: 0, y: 0 },
-            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }) } } },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
             actionState: createRangedCombatActionState(),
         });
         assert.equal(ctx.chosenIntent.mode, "shoot_enemy");

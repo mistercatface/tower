@@ -35,6 +35,7 @@ describe("gun agent bullets and combat", () => {
                     cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 5 * state.obstacleGrid.cols]),
                 };
             },
+            isVisible: () => true,
         };
         const canSee = hasLineOfSight(state, gunPack.head, snakePack.chain.head);
         assert.ok(canSee, "Gun agent should see snake");
@@ -42,11 +43,20 @@ describe("gun agent bullets and combat", () => {
         assert.equal(snakeGame.activeGunBulletIds.length, 0);
         gunInstance.tick(state, 100);
         assert.equal(gunInstance.intent.getMode(), "shoot_enemy");
-        assert.equal(gunInstance.combatAction.phase, "charging");
+        assert.equal(gunInstance.combatAction.phase, "reacting");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn bullet immediately");
-        assert.equal(gunPack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while charging");
+        assert.equal(gunPack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while reacting");
         gunInstance.tick(state, 1000);
-        assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet after charging");
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet after reacting");
+        assert.equal(gunInstance.combatAction.phase, "fire_delay");
+        gunInstance.tick(state, 150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 2, "Should spawn second bullet after fire delay");
+        assert.equal(gunInstance.combatAction.phase, "fire_delay");
+        gunInstance.tick(state, 150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 3, "Should spawn third bullet after fire delay");
+        assert.equal(gunInstance.combatAction.phase, "reloading");
+        gunInstance.tick(state, 500);
+        assert.equal(gunInstance.combatAction.phase, "idle", "Should return to idle after reloading");
         const bulletId = snakeGame.activeGunBulletIds[0];
         const bullet = state.entityRegistry.getLive(bulletId);
         assert.ok(bullet, "Bullet prop must exist");
@@ -68,9 +78,9 @@ describe("gun agent bullets and combat", () => {
         assert.equal(snakeInstance.lifecycle, "dead", "Snake should be killed by bullet");
         assert.equal(mockBullet._armed, false, "Bullet should be disarmed on contact");
         bullet._armed = false;
-        assert.equal(snakeGame.activeGunBulletIds.length, 1);
+        assert.equal(snakeGame.activeGunBulletIds.length, 3);
         tickGunBullets(state, 16);
-        assert.equal(snakeGame.activeGunBulletIds.length, 0, "Disarmed bullet should be removed from active queue");
+        assert.equal(snakeGame.activeGunBulletIds.length, 2, "Disarmed bullet should be removed from active queue");
         assert.ok(isSnakeFoodTarget(bullet), "Bullet should be categorized as edible food target");
         const foodIndex = getPropCategoryIndex(state, "food");
         const found = foodIndex.findNearest(bullet.x, bullet.y);
@@ -94,6 +104,7 @@ describe("gun agent bullets and combat", () => {
                 ],
                 cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 8 * state.obstacleGrid.cols]),
             }),
+            isVisible: () => true,
         };
         const gunAgent = gunPack.head;
         gunAgent.facing = 0;
@@ -122,6 +133,7 @@ describe("gun agent bullets and combat", () => {
                 ],
                 cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 7 + 5 * state.obstacleGrid.cols]),
             }),
+            isVisible: () => true,
         };
         const gunAgent = gunPack.head;
         gunAgent.facing = -Math.PI / 2;
@@ -152,6 +164,7 @@ describe("gun agent bullets and combat", () => {
                 ],
                 cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 7 + 5 * state.obstacleGrid.cols]),
             }),
+            isVisible: () => true,
         };
         primeSnakeHeadVision(state, gunPack.head, getSnakeGameConfig().shared.visionRange);
         gunInstance.tick(state, 100);

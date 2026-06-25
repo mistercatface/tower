@@ -12,7 +12,7 @@ export function hasRangedCombatCapability(instance, profile) {
     return !!(resolveRangedWeapon(instance, profile) || profile?.decision?.modes?.shoot_enemy);
 }
 export function createRangedCombatActionState() {
-    return { phase: "idle", targetId: null, timerMs: 0, aimAngle: 0 };
+    return { phase: "idle", targetId: null, timerMs: 0, aimAngle: 0, shotsFired: 0 };
 }
 export function resetRangedCombatAction(action) {
     if (!action) return;
@@ -20,12 +20,13 @@ export function resetRangedCombatAction(action) {
     action.targetId = null;
     action.timerMs = 0;
     action.aimAngle = 0;
+    action.shotsFired = 0;
 }
 export function rangedCombatActionOnCooldown(action) {
-    return action?.phase === "cooldown" && action.timerMs > 0;
+    return action?.phase === "fire_delay" || action?.phase === "reloading";
 }
 export function rangedCombatActionIsBusy(action) {
-    return action?.phase === "charging" || rangedCombatActionOnCooldown(action);
+    return action?.phase === "reacting" || action?.phase === "fire_delay" || action?.phase === "reloading";
 }
 export function hasLineOfSight(state, seeker, target) {
     const frame = getObserverVisionFrame(state);
@@ -57,7 +58,7 @@ export function deriveRangedCombatState(ctx, input, profile) {
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
     const busy = action ? rangedCombatActionIsBusy(action) : false;
-    const canShoot = !!visibleEnemy && los && inWeaponRange && !tooClose && !onCooldown && phase !== "charging";
+    const canShoot = !!visibleEnemy && los && inWeaponRange && !tooClose && phase === "idle";
     return { enemy, visibleEnemy, distWorld, reachCells, hasLineOfSight: los, inWeaponRange, tooClose, phase, onCooldown, busy, canShoot, weapon };
 }
 function fireBullet(state, shooterInstance, angle, weapon) {
@@ -88,10 +89,10 @@ function resolveLiveTarget(ctx) {
 function aimRotationRadPerSec(weapon) {
     return weapon.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
 }
-function beginCharge(ctx, action, agent, target, weapon, dtMs) {
-    action.phase = "charging";
+function beginReaction(ctx, action, agent, target, weapon, dtMs) {
+    action.phase = "reacting";
     action.targetId = target.id;
-    action.timerMs = weapon.chargeMs ?? 1000;
+    action.timerMs = weapon.reactionMs ?? 1000;
     const targetAngle = Math.atan2(target.y - agent.y, target.x - agent.x);
     const initialAngle = agent.facing !== undefined && !Number.isNaN(agent.facing) ? agent.facing : targetAngle;
     const turnRadPerSec = aimRotationRadPerSec(weapon);
@@ -100,7 +101,7 @@ function beginCharge(ctx, action, agent, target, weapon, dtMs) {
     agent.facing = action.aimAngle;
     decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
 }
-function tickCharge(ctx, instance, action, weapon, dtMs) {
+function tickReaction(ctx, instance, action, weapon, dtMs) {
     const agent = ctx.agent;
     decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
     action.timerMs = Math.max(0, action.timerMs - dtMs);
@@ -110,13 +111,45 @@ function tickCharge(ctx, instance, action, weapon, dtMs) {
     if (action.timerMs <= 0) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
         fireBullet(ctx.state, instance, angle, weapon);
-        action.phase = "cooldown";
-        action.timerMs = weapon.cooldownMs ?? 1500;
-        action.targetId = null;
+        action.shotsFired = (action.shotsFired || 0) + 1;
+        const magSize = weapon.magazineSize ?? 3;
+        if (action.shotsFired < magSize) {
+            action.phase = "fire_delay";
+            action.timerMs = weapon.fireDelayMs ?? 150;
+        } else {
+            action.phase = "reloading";
+            action.timerMs = weapon.reloadMs ?? 500;
+        }
     }
 }
-function tickCooldown(ctx, action, weapon, dtMs) {
+function tickFireDelay(ctx, instance, action, weapon, dtMs) {
+    const agent = ctx.agent;
+    decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
     action.timerMs = Math.max(0, action.timerMs - dtMs);
+    const target = resolveLiveTarget(ctx);
+    const turnRadPerSec = aimRotationRadPerSec(weapon);
+    if (target && !target.isDead && hasLineOfSight(ctx.state, agent, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
+    if (action.timerMs <= 0) {
+        const angle = action.aimAngle ?? agent.facing ?? 0;
+        fireBullet(ctx.state, instance, angle, weapon);
+        action.shotsFired = (action.shotsFired || 0) + 1;
+        const magSize = weapon.magazineSize ?? 3;
+        if (action.shotsFired < magSize) {
+            action.phase = "fire_delay";
+            action.timerMs = weapon.fireDelayMs ?? 150;
+        } else {
+            action.phase = "reloading";
+            action.timerMs = weapon.reloadMs ?? 500;
+        }
+    }
+}
+function tickReloading(ctx, action, weapon, dtMs) {
+    const agent = ctx.agent;
+    if (agent && ctx.state) decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
+    action.timerMs = Math.max(0, action.timerMs - dtMs);
+    const target = resolveLiveTarget(ctx);
+    const turnRadPerSec = aimRotationRadPerSec(weapon);
+    if (target && !target.isDead && hasLineOfSight(ctx.state, agent, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0) resetRangedCombatAction(action);
 }
 export function createRangedShootIntentState(instance, resolveWeapon) {
@@ -127,8 +160,8 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
             if (!weapon) return;
             const action = instance.combatAction;
             const combat = ctx.world.decisionContext.combatState;
-            if (action.phase === "idle" && combat?.canShoot && ctx.target) beginCharge(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
-            else if (action.phase === "charging") tickCharge(ctx, instance, action, weapon, 0);
+            if (action.phase === "idle" && combat?.canShoot && ctx.target) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
+            else if (action.phase === "reacting") tickReaction(ctx, instance, action, weapon, 0);
         },
         update(ctx) {
             const weapon = resolveWeapon(instance);
@@ -136,14 +169,20 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
             const action = instance.combatAction;
             const dtMs = ctx.dtMs ?? 16;
             const combat = ctx.world.decisionContext.combatState;
-            if (action.phase === "cooldown") {
-                tickCooldown(ctx, action, weapon, dtMs);
-                if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "cooldown_done", ctx.policy.targetId);
+            if (action.phase === "reloading") {
+                tickReloading(ctx, action, weapon, dtMs);
+                ctx.effects.holdDestination("shoot_reloading");
+                if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
                 return;
             }
-            if (action.phase === "charging") {
-                tickCharge(ctx, instance, action, weapon, dtMs);
-                ctx.effects.holdDestination("shoot_charge");
+            if (action.phase === "fire_delay") {
+                tickFireDelay(ctx, instance, action, weapon, dtMs);
+                ctx.effects.holdDestination("shoot_fire_delay");
+                return;
+            }
+            if (action.phase === "reacting") {
+                tickReaction(ctx, instance, action, weapon, dtMs);
+                ctx.effects.holdDestination("shoot_reacting");
                 return;
             }
             if (!ctx.target || ctx.target.isDead) {
@@ -151,7 +190,7 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
                 return;
             }
             if (combat?.canShoot) {
-                beginCharge(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
+                beginReaction(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
                 ctx.effects.holdDestination("shoot_start");
                 return;
             }

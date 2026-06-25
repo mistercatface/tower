@@ -120,7 +120,9 @@ describe("resolveAgentRelationship team hunting", () => {
         const smallSnake = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
         registerSnakeTestInstance(state, snakeGame, { headId: smallSnake.head.id, spawnGroupId: smallSnake.spawnGroupId });
         smallSnake.head.faction = "blue";
-        assert.equal(relationship(snakeGame, pack, smallSnake), "threat");
+        const seekerInstance = instanceFor(snakeGame, pack);
+        const targetInstance = instanceFor(snakeGame, smallSnake);
+        assert.equal(resolveRelationshipForInstances(seekerInstance, targetInstance, undefined, 30 * 30), "threat");
     });
 
     it("same-faction flee agents are allies and opposite teams are prey", async () => {
