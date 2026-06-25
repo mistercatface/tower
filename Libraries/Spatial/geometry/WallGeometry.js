@@ -1,5 +1,5 @@
 import { distanceToAabb } from "../../Math/Aabb2D.js";
-import { rectCorners, rotateXY, transformPoint2DInto } from "../../Math/Poly2D.js";
+import { rectCorners, rotateXYInto, transformPoint2DInto } from "../../Math/Poly2D.js";
 import { distanceSqToLineSegment } from "../../Math/Segment2D.js";
 export function getWallReach(wall, padding = wall.padding) {
     return (wall.size / 2) * Math.SQRT2 + padding;
@@ -9,39 +9,48 @@ export function getSegmentFootprintCorners(segment) {
     return rectCorners(segment.x, segment.y, segment.size / 2, segment.angle);
 }
 const LOCAL_SCRATCH = { localX: 0, localY: 0, halfX: 0, halfY: 0 };
-function segmentHalfExtents(segment) {
-    return { halfX: (segment.width !== undefined ? segment.width : segment.size) * 0.5, halfY: (segment.height !== undefined ? segment.height : segment.size) * 0.5 };
-}
+const ROTATE_SCRATCH_A = { x: 0, y: 0 };
+const ROTATE_SCRATCH_B = { x: 0, y: 0 };
+const CLOSEST_POINT_SCRATCH = { x: 0, y: 0 };
+const CIRCLE_SCRATCH = { x: 0, y: 0, radius: 0 };
+const LOCAL_APPROACH_SCRATCH = { x: 0, y: 0 };
+const LOCAL_BOX_SURFACE_SCRATCH = { x: 0, y: 0 };
+const PUSH_NORMAL_SCRATCH = { x: 0, y: 0 };
+const INSIDE_APPROACH_SCRATCH = { nx: 0, ny: 0, dist: 0 };
+const WORLD_NORMAL_SCRATCH = { x: 0, y: 0 };
 export function toSegmentLocal(segment, x, y, out = LOCAL_SCRATCH) {
     const dx = x - segment.x;
     const dy = y - segment.y;
     const cos = Math.cos(-segment.angle);
     const sin = Math.sin(-segment.angle);
-    const { halfX, halfY } = segmentHalfExtents(segment);
+    const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
+    const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
     out.halfX = halfX;
     out.halfY = halfY;
     out.localX = dx * cos - dy * sin;
     out.localY = dx * sin + dy * cos;
     return out;
 }
-export function closestPointOnSegment(wall, x, y) {
+export function closestPointOnSegment(wall, x, y, out = CLOSEST_POINT_SCRATCH) {
     const dx = x - wall.x;
     const dy = y - wall.y;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
-    const { halfX, halfY } = segmentHalfExtents(wall);
+    const halfX = (wall.width !== undefined ? wall.width : wall.size) * 0.5;
+    const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
     let localX = dx * cos - dy * sin;
     let localY = dx * sin + dy * cos;
     localX = Math.max(-halfX, Math.min(halfX, localX));
     localY = Math.max(-halfY, Math.min(halfY, localY));
-    return transformPoint2DInto({ x: 0, y: 0 }, wall.x, wall.y, localX, localY, cos, -sin);
+    return transformPoint2DInto(out, wall.x, wall.y, localX, localY, cos, -sin);
 }
 export function distanceSqToSegment(segment, x, y) {
     const dx = x - segment.x;
     const dy = y - segment.y;
     const cos = Math.cos(-segment.angle);
     const sin = Math.sin(-segment.angle);
-    const { halfX, halfY } = segmentHalfExtents(segment);
+    const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
+    const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
     const localX = dx * cos - dy * sin;
     const localY = dx * sin + dy * cos;
     const closestX = Math.max(-halfX, Math.min(localX, halfX));
@@ -115,8 +124,8 @@ export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
     const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
-    const a = rotateXY(ax - wall.x, ay - wall.y, cos, sin);
-    const b = rotateXY(bx - wall.x, by - wall.y, cos, sin);
+    const a = rotateXYInto(ROTATE_SCRATCH_A, ax - wall.x, ay - wall.y, cos, sin);
+    const b = rotateXYInto(ROTATE_SCRATCH_B, bx - wall.x, by - wall.y, cos, sin);
     return minDistanceSegmentToAabb(a.x, a.y, b.x, b.y, -halfX, -halfY, halfX, halfY);
 }
 /** Closest point on path segment AB to wall box — used for push direction. */
@@ -169,23 +178,27 @@ export function pointToSegmentPaddingDistanceSq(segment, x, y) {
  * @param {number} halfX
  * @param {number} halfY
  */
-function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY) {
+function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY, out = LOCAL_BOX_SURFACE_SCRATCH) {
     const insideX = localX > -halfX && localX < halfX;
     const insideY = localY > -halfY && localY < halfY;
-    if (!insideX || !insideY) return { x: Math.max(-halfX, Math.min(localX, halfX)), y: Math.max(-halfY, Math.min(localY, halfY)) };
+    if (!insideX || !insideY) {
+        out.x = Math.max(-halfX, Math.min(localX, halfX));
+        out.y = Math.max(-halfY, Math.min(localY, halfY));
+        return out;
+    }
     const distToLeft = localX + halfX;
     const distToRight = halfX - localX;
     const distToTop = localY + halfY;
     const distToBottom = halfY - localY;
     const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
     const eps = 1e-6;
-    let sx = localX;
-    let sy = localY;
-    if (Math.abs(minDist - distToLeft) <= eps) sx = -halfX;
-    if (Math.abs(minDist - distToRight) <= eps) sx = halfX;
-    if (Math.abs(minDist - distToTop) <= eps) sy = -halfY;
-    if (Math.abs(minDist - distToBottom) <= eps) sy = halfY;
-    return { x: sx, y: sy };
+    out.x = localX;
+    out.y = localY;
+    if (Math.abs(minDist - distToLeft) <= eps) out.x = -halfX;
+    if (Math.abs(minDist - distToRight) <= eps) out.x = halfX;
+    if (Math.abs(minDist - distToTop) <= eps) out.y = -halfY;
+    if (Math.abs(minDist - distToBottom) <= eps) out.y = halfY;
+    return out;
 }
 /**
  * Outward push normal for a point on an axis-aligned box surface (segment-local space).
@@ -195,7 +208,7 @@ function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY) {
  * @param {number} halfX
  * @param {number} halfY
  */
-function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY) {
+function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY, out = PUSH_NORMAL_SCRATCH) {
     const eps = 1e-4;
     let nx = 0;
     let ny = 0;
@@ -204,8 +217,14 @@ function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY) {
     if (Math.abs(sy + halfY) < eps) ny -= 1;
     if (Math.abs(sy - halfY) < eps) ny += 1;
     const len = Math.hypot(nx, ny);
-    if (len < 1e-8) return { x: 0, y: 1 };
-    return { x: nx / len, y: ny / len };
+    if (len < 1e-8) {
+        out.x = 0;
+        out.y = 1;
+        return out;
+    }
+    out.x = nx / len;
+    out.y = ny / len;
+    return out;
 }
 /**
  * When the circle center sits inside the tile, pick the face it is moving toward.
@@ -217,24 +236,59 @@ function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY) {
  * @param {number} approachX — segment-local
  * @param {number} approachY
  */
-function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, approachY) {
-    const faces = [
-        { nx: -1, ny: 0, dist: localX + halfX },
-        { nx: 1, ny: 0, dist: halfX - localX },
-        { nx: 0, ny: -1, dist: localY + halfY },
-        { nx: 0, ny: 1, dist: halfY - localY },
-    ];
-    let best = null;
-    for (let i = 0; i < faces.length; i++) {
-        const face = faces[i];
-        const toward = approachX * face.nx + approachY * face.ny;
-        if (toward >= -1e-6) continue;
-        if (!best || toward < best.toward - 1e-6 || (Math.abs(toward - best.toward) <= 1e-6 && face.dist < best.dist)) best = { ...face, toward };
+function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, approachY, out = INSIDE_APPROACH_SCRATCH) {
+    let bestNx = 0;
+    let bestNy = 0;
+    let bestDist = 0;
+    let bestToward = Infinity;
+    let found = false;
+    const leftDist = localX + halfX;
+    const rightDist = halfX - localX;
+    const topDist = localY + halfY;
+    const bottomDist = halfY - localY;
+    let toward = -approachX;
+    if (toward < -1e-6) {
+        found = true;
+        bestToward = toward;
+        bestNx = -1;
+        bestNy = 0;
+        bestDist = leftDist;
     }
-    if (best) return { nx: best.nx, ny: best.ny, dist: best.dist };
+    toward = approachX;
+    if (toward < -1e-6 && (!found || toward < bestToward - 1e-6 || (Math.abs(toward - bestToward) <= 1e-6 && rightDist < bestDist))) {
+        found = true;
+        bestToward = toward;
+        bestNx = 1;
+        bestNy = 0;
+        bestDist = rightDist;
+    }
+    toward = -approachY;
+    if (toward < -1e-6 && (!found || toward < bestToward - 1e-6 || (Math.abs(toward - bestToward) <= 1e-6 && topDist < bestDist))) {
+        found = true;
+        bestToward = toward;
+        bestNx = 0;
+        bestNy = -1;
+        bestDist = topDist;
+    }
+    toward = approachY;
+    if (toward < -1e-6 && (!found || toward < bestToward - 1e-6 || (Math.abs(toward - bestToward) <= 1e-6 && bottomDist < bestDist))) {
+        found = true;
+        bestNx = 0;
+        bestNy = 1;
+        bestDist = bottomDist;
+    }
+    if (found) {
+        out.nx = bestNx;
+        out.ny = bestNy;
+        out.dist = bestDist;
+        return out;
+    }
     const surface = closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
     const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, halfX, halfY);
-    return { nx: fn.x, ny: fn.y, dist: Math.min(localX + halfX, halfX - localX, localY + halfY, halfY - localY) };
+    out.nx = fn.x;
+    out.ny = fn.y;
+    out.dist = Math.min(leftDist, rightDist, topDist, bottomDist);
+    return out;
 }
 /** @param {object} segment @param {number} worldX @param {number} worldY */
 export function isStrictlyInsideSegmentBox(segment, worldX, worldY) {
@@ -242,10 +296,10 @@ export function isStrictlyInsideSegmentBox(segment, worldX, worldY) {
     return localX > -halfX && localX < halfX && localY > -halfY && localY < halfY;
 }
 /** @param {object} segment @param {number} worldVx @param {number} worldVy */
-function approachToSegmentLocal(segment, worldVx, worldVy) {
+function approachToSegmentLocal(segment, worldVx, worldVy, out = LOCAL_APPROACH_SCRATCH) {
     const cos = Math.cos(-segment.angle);
     const sin = Math.sin(-segment.angle);
-    return rotateXY(worldVx, worldVy, cos, sin);
+    return rotateXYInto(out, worldVx, worldVy, cos, sin);
 }
 /**
  * @param {object} circle
@@ -255,7 +309,10 @@ function approachToSegmentLocal(segment, worldVx, worldVy) {
 export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segment, { approachX = 0, approachY = 0 } = {}) {
     if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return null;
     const closest = findClosestPointOnPathToWall(ax, ay, bx, by, segment);
-    const circlePen = getCircleSegmentPenetration({ x: closest.x, y: closest.y, radius: capsuleRadius }, segment, { approachX, approachY });
+    CIRCLE_SCRATCH.x = closest.x;
+    CIRCLE_SCRATCH.y = closest.y;
+    CIRCLE_SCRATCH.radius = capsuleRadius;
+    const circlePen = getCircleSegmentPenetration(CIRCLE_SCRATCH, segment, { approachX, approachY });
     if (circlePen) return circlePen;
     if (closest.dist >= capsuleRadius) return null;
     const wallPoint = closestPointOnSegment(segment, closest.x, closest.y);
@@ -299,7 +356,7 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
     }
     const invCos = Math.cos(segment.angle);
     const invSin = Math.sin(segment.angle);
-    const worldNormal = rotateXY(localNormX, localNormY, invCos, invSin);
+    const worldNormal = rotateXYInto(WORLD_NORMAL_SCRATCH, localNormX, localNormY, invCos, invSin);
     return { normalX: worldNormal.x, normalY: worldNormal.y, overlap, distanceSq };
 }
 export function pushPointFromWalls(x, y, walls, clearance) {
