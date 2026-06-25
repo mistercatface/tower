@@ -60,3 +60,4 @@ export function createAgentSpecies(profileId) {
 export const snakeSpecies = createAgentSpecies(AGENT_PROFILE.snake);
 export const fleeAgentSpecies = createAgentSpecies(AGENT_PROFILE.flee);
 export const squidSpecies = createAgentSpecies(AGENT_PROFILE.squid);
+export const gunAgentSpecies = createAgentSpecies(AGENT_PROFILE.gun);

@@ -4,6 +4,7 @@ import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeStartRadius
 import { applyAgentGameplayForIndex } from "./applyAgentGameplay.js";
 export const FLEE_AGENT_EXPORT_TYPE = "flee_agent";
 export const SQUID_CHAIN_EXPORT_TYPE = "squid";
+export const GUN_AGENT_EXPORT_TYPE = "gun_agent";
 export function resolveProfileLeaderIndex(profile) {
     return profile.leaderIndex ?? profile.armSegmentCount ?? 0;
 }
@@ -15,6 +16,7 @@ function resolveChainExportType(profileId, profile, options) {
     if (options.exportType) return options.exportType;
     if (profileId === AGENT_PROFILE.flee) return FLEE_AGENT_EXPORT_TYPE;
     if (profileId === AGENT_PROFILE.squid) return SQUID_CHAIN_EXPORT_TYPE;
+    if (profileId === AGENT_PROFILE.gun) return GUN_AGENT_EXPORT_TYPE;
     return options.exportType ?? null;
 }
 function onChainSegmentSpawned(profileId, leaderIndex) {
@@ -46,7 +48,7 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
     };
     if (profileId === AGENT_PROFILE.snake)
         return { ...base, headPropId: options.headPropId ?? profile.headPropId, bodyPropId: options.bodyPropId ?? profile.bodyPropId, onSegmentSpawned: onChainSegmentSpawned(profileId, leaderIndex) };
-    if (profileId === AGENT_PROFILE.flee)
+    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.gun)
         return { ...base, segmentCount: 1, leaderIndex: 0, bodyPropId: options.bodyPropId ?? profile.bodyPropId, onSegmentSpawned: onChainSegmentSpawned(profileId, 0) };
     if (profileId === AGENT_PROFILE.squid)
         return {
@@ -59,11 +61,11 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
 }
 function finalizeChainSpawn(profileId, chain, { growDirX = -1, growDirY = 0, forwardDir = null } = {}) {
     const leader = chain.leader;
-    if (profileId === AGENT_PROFILE.flee) {
+    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.gun) {
         const forward = forwardDir ?? resolveFleeAgentForwardDir();
         leader.facing = Math.atan2(forward.y, forward.x);
     } else if (profileId === AGENT_PROFILE.squid) leader.facing = Math.atan2(growDirY, growDirX);
-    return { ...chain, brain: leader, brainIndex: chain.leaderIndex, head: profileId === AGENT_PROFILE.flee ? leader : chain.head };
+    return { ...chain, brain: leader, brainIndex: chain.leaderIndex, head: profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.gun ? leader : chain.head };
 }
 /** Spawn a profile-configured agent chain. Flee = 1 segment; snake leader @ 0; squid leader @ profile leaderIndex. */
 export function spawnGameAgentChain(state, anchorCell, profileId, options = {}) {
@@ -80,4 +82,9 @@ export function spawnFleeAgent(state, anchorCell, options = {}) {
 }
 export function spawnSquidChain(state, anchorCell, options = {}) {
     return spawnGameAgentChain(state, anchorCell, AGENT_PROFILE.squid, { faction: options.faction ?? "charlie", ...options });
+}
+export function spawnGunAgent(state, anchorCell, options = {}) {
+    const config = getSnakeGameConfig();
+    const gun = getAgentProfile(AGENT_PROFILE.gun, config);
+    return spawnGameAgentChain(state, anchorCell, AGENT_PROFILE.gun, { ...options, faction: options.faction ?? gun.faction });
 }

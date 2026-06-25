@@ -21,6 +21,9 @@ import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerce
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnFleeAgentsScene } from "./fleeAgent/spawnFleeAgentsInScene.js";
 import { spawnSquidsInScene } from "./squid/spawnSquidsInScene.js";
+import { spawnGunAgentsScene } from "./gunAgent/spawnGunAgentsInScene.js";
+import { tickGunBullets } from "./gunAgent/gunBulletLifecycle.js";
+import { resolveGunBulletContacts } from "./gunAgent/gunBulletContacts.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
@@ -47,20 +50,26 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         if (!occupied) continue;
         for (const idx of occupied) spawnExclude.add(idx);
     }
+    const gunAgents = spawnGunAgentsScene(state, scene.navWalkable, spawnExclude.size ? spawnExclude : null);
+    for (let i = 0; i < gunAgents.length; i++) {
+        const occupied = gunAgents[i].occupiedIndices;
+        if (!occupied) continue;
+        for (const idx of occupied) spawnExclude.add(idx);
+    }
     const fleeAgents = spawnFleeAgentsScene(state, scene.navWalkable, spawnExclude.size ? spawnExclude : null);
     const spawnPlan = [
         { species: "snake", spawnCtxs: scene.snakes.map((s) => ({ head: s.chain.head, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) },
         { species: "squid", spawnCtxs: squids.map((s) => ({ head: s.pack.brain, spawnGroupId: s.pack.spawnGroupId, navWalkable: scene.navWalkable })) },
+        { species: "gun_agent", spawnCtxs: gunAgents.map((g) => ({ head: g.pack.head, spawnGroupId: g.pack.spawnGroupId })) },
         { species: "flee_agent", spawnCtxs: fleeAgents.map((f) => ({ head: f.pack.head, spawnGroupId: f.pack.spawnGroupId })) },
     ];
     for (let i = 0; i < spawnPlan.length; i++) {
         const { species, spawnCtxs } = spawnPlan[i];
         spawnSpeciesBatch(session, state, species, spawnCtxs);
     }
-    const centerSnake = scene.snakes[0];
-    const centerInstance = session.instancesByHeadId.get(centerSnake.chain.head.id);
-    setSandboxCameraTarget(state, centerSnake.chain.head, true);
-    state.viewport.snapTo(centerSnake.chain.head.x, centerSnake.chain.head.y);
+    const defaultCameraTarget = gunAgents.length > 0 ? gunAgents[0].pack.head : scene.snakes[0].chain.head;
+    setSandboxCameraTarget(state, defaultCameraTarget, true);
+    state.viewport.snapTo(defaultCameraTarget.x, defaultCameraTarget.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
     state.followCamera.registerPickResolver((propId) => {
         const instance = resolveAliveAgentInstanceFromProp(state, propId);
@@ -124,13 +133,13 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         gameState: state,
         onVisualSettingChange: markLabViewDirty,
     });
-    state.followCamera.focus(centerSnake.chain.head);
+    state.followCamera.focus(defaultCameraTarget);
     state.followCamera.bindInput();
     hud.update();
     return {
         initialViewportZoom: GAME_MODE_ZOOM_DEFAULT,
         snakes: scene.snakes,
-        cameraTarget: centerSnake.chain.head,
+        cameraTarget: defaultCameraTarget,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
             validateAliveAgents(snakeGame, state);
@@ -142,6 +151,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             } finally {
                 snakeGame._batchingPerception = false;
             }
+            tickGunBullets(state, dtMs);
             hud.update();
         },
         appendOverlayCommands(out, state) {
@@ -159,6 +169,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         },
         applyContactSideEffects(tick, contacts) {
             applyKineticContactSideEffects(tick, contacts);
+            resolveGunBulletContacts(state, tick.frame, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);

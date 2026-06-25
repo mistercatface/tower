@@ -11,7 +11,7 @@ import { getSnakeGameConfig, resolveSnakeEatRadius, resolveSnakeSegmentSpacing }
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
-import { canAgentEatSnakeFood, isSnakeShardFood } from "./snakeFood.js";
+import { canAgentEatSnakeFood, isSnakeShardFood, isSnakeFoodTarget } from "./snakeFood.js";
 import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "./agentMetabolism.js";
 import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
@@ -38,7 +38,7 @@ function resolveMetabolismApi(profileId) {
             feed: (metabolism, value, ctx) => feedSnakeMetabolism(metabolism, value),
             tick: (metabolism, dtMs, drainMultiplier, ctx) => tickSnakeMetabolism(ctx.state, ctx.agentId, metabolism, dtMs, ctx.members, drainMultiplier),
         };
-    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.squid)
+    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.squid || profileId === AGENT_PROFILE.gun)
         return {
             create: createSimpleAgentMetabolism,
             get: getSimpleAgentHunger,
@@ -49,7 +49,7 @@ function resolveMetabolismApi(profileId) {
     throw new Error(`createAgentAutosim: metabolism not wired for profile ${profileId}`);
 }
 function sprintAllowed(profileId, segmentCount, metabolism, config) {
-    if (profileId === AGENT_PROFILE.flee) return getSimpleAgentHunger(metabolism) > 0;
+    if (profileId === AGENT_PROFILE.flee || profileId === AGENT_PROFILE.gun) return getSimpleAgentHunger(metabolism) > 0;
     if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
     if (profileId === AGENT_PROFILE.snake) return segmentCount > getAgentProfile(AGENT_PROFILE.snake, config).minAliveSegmentCount;
     return true;
@@ -136,7 +136,7 @@ export function createAgentAutosim(
         }
     };
     const eatFoodShard = (seeker, food, members = null) => {
-        if (!canAgentEatSnakeFood(seeker, food) || !isSnakeShardFood(food)) return false;
+        if (!canAgentEatSnakeFood(seeker, food) || !isSnakeFoodTarget(food)) return false;
         if (Math.hypot(food.x - seeker.x, food.y - seeker.y) > resolveEatRadiusValue(seeker)) return false;
         const grid = state.obstacleGrid;
         brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
@@ -219,7 +219,7 @@ export function createAgentAutosim(
             }
             const choice = runAgentFsmTick(intent, seeker, state, dtMs, applySprintState, admitted);
             let fedThisTick = false;
-            if (choice?.mode === "seek_food" && choice.target && isSnakeShardFood(choice.target)) fedThisTick = eatFoodShard(seeker, choice.target, members);
+            if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) fedThisTick = eatFoodShard(seeker, choice.target, members);
             const drainMultiplier = sprinting ? (profile.sprint?.hungerDrainMultiplier ?? 1) : 1;
             if (!fedThisTick) metabolismApi.tick(metabolism, dtMs, drainMultiplier, { state, agentId, members });
         },

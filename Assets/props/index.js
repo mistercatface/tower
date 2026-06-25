@@ -6,6 +6,8 @@ import custom_box from "./custom_box/custom_box.asset.js";
 import glass_pane from "./glass_pane/glass_pane.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
 import flee_ball from "./flee_ball/flee_ball.asset.js";
+import gun_ball from "./gun_ball/gun_ball.asset.js";
+import gun_bullet from "./gun_bullet/gun_bullet.asset.js";
 import hex_block from "./hex_block/hex_block.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
 import button_floor from "./button_floor/button_floor.asset.js";
@@ -24,7 +26,6 @@ import snake_shard from "./snake_shard/snake_shard.asset.js";
 import poolBalls from "./poolBalls.js";
 import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/primitives/index.js";
-
 const catalog = {
     ball,
     flipper_left,
@@ -34,6 +35,8 @@ const catalog = {
     glass_pane,
     tri_wedge,
     flee_ball,
+    gun_ball,
+    gun_bullet,
     hex_block,
     pipe_elbow,
     button_floor,
@@ -52,7 +55,6 @@ const catalog = {
     cross_pinwheel,
     ...poolBalls,
 };
-
 function registerPropDrawRecipe(asset) {
     if (asset.physics?.renderMode === "none") {
         asset.drawRecipe = () => {};
@@ -70,10 +72,8 @@ function registerPropDrawRecipe(asset) {
     }
     throw new Error(`Asset "${asset.id}" must define draw or primitive`);
 }
-
 for (const asset of Object.values(catalog)) {
     if (!asset.physics) throw new Error(`Asset "${asset.id}" must include physics`);
     registerPropDrawRecipe(asset);
 }
-
 export default catalog;
