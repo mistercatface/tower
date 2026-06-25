@@ -9,8 +9,8 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 export const SNAKE_SHARD_PROP_ID = "snake_shard";
 const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
-const MIN_SNAKE_SHARDS = 4;
-const MAX_SNAKE_SHARDS = 5;
+const MIN_SNAKE_SHARDS = 2;
+const MAX_SNAKE_SHARDS = 3;
 const FALLBACK_IMPACT_FORCE = 26;
 function propFacing(prop) {
     return prop.facing ?? prop.angle ?? 0;

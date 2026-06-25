@@ -66,8 +66,8 @@ function spawnFastImpactBall(state, x, y, radius = 2) {
 }
 
 function assertSnakeShardCountForOneSegment(shards) {
-    assert.ok(shards.length >= 4);
-    assert.ok(shards.length <= 5);
+    assert.ok(shards.length >= 2);
+    assert.ok(shards.length <= 3);
 }
 
 describe("snake segment fracture", () => {
