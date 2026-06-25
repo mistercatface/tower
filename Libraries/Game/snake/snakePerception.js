@@ -3,13 +3,7 @@ import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 function refreshObserverVisionFrame(state) {
     const config = getSnakeGameConfig();
     const shared = getSharedConfig(config);
-    state.nav.observerVisionFrame = createObserverVisionFrame({
-        tickId: state.sandbox.snakeGame.simTick,
-        navTopology: state.nav.topology,
-        visionRange: shared.visionRange,
-        viewport: state.viewport,
-        brainSyncOffScreenInterval: config.brainSyncOffScreenInterval,
-    });
+    state.nav.observerVisionFrame = createObserverVisionFrame({ tickId: state.sandbox.snakeGame.simTick, navTopology: state.nav.topology, visionRange: shared.visionRange, viewport: state.viewport });
 }
 export function requireSnakeVisionFrame(state) {
     ensureSnakePerceptionTick(state);

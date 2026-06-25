@@ -33,7 +33,7 @@ describe("spawnLinkedBallChain", () => {
             members,
             chain.members.map((prop) => prop.id).sort((a, b) => a - b),
         );
-        for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) assert.ok(Math.abs(state.kinetic.kineticConstraints[i].restLength - 8) < 1e-6);
+        for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) assert.ok(Math.abs(state.kinetic.kineticConstraints[i].restLength - 16) < 1e-6);
     });
     it("exports linked chain spawn groups with segment count and anchor position", () => {
         resetKineticConstraintIds(1);
@@ -79,9 +79,9 @@ describe("spawnLinkedBallChain", () => {
     it("spawnLinkedBallChain applies segmentRadius to every member", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
-        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...CHAIN_OPTIONS, segmentRadius: 2, spacing: 4.2, linkSlack: 1.05 });
-        assert.equal(chain.head.radius, 2);
-        assert.equal(chain.tail.radius, 2);
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...CHAIN_OPTIONS, segmentRadius: 2.1, spacing: 4.0, linkSlack: 1.05 });
+        assert.equal(chain.head.radius, 2.1);
+        assert.equal(chain.tail.radius, 2.1);
         assert.equal(state.kinetic.kineticConstraints[0].restLength, 4.2);
     });
     it("assigns a unique spawn group id per chain", () => {

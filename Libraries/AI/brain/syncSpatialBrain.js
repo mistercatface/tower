@@ -5,10 +5,8 @@ export function createSpatialBrainSync(brain, { visionRange, navMemoryStepPenalt
     let lastPenalty = null;
     return function syncSpatialBrain(agent, state) {
         const frame = getObserverVisionFrame(state);
-        if (frame.shouldSyncBrain(agent)) {
-            const vision = frame.ensureHeadVision(agent, visionRange);
-            brain.stampSeenCells(vision.cells);
-        }
+        const vision = frame.ensureHeadVision(agent, visionRange);
+        brain.stampSeenCells(vision.cells);
         const generation = brain.spatial.generation;
         if (generation !== lastPenaltyGeneration) {
             lastPenalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: navMemoryStepPenalty, falloff: navMemoryStepFalloff });

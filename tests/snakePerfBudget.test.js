@@ -16,6 +16,7 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from
 import { wireSnakeTestGame, createWiredSnakeAutosim, createSnakeNavWalkable, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
+import { tickAliveAgents } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { HPA_REPLAN_PEAK_INFLIGHT_CAP } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { FRAME_MS } from "./frameMs.js";
@@ -93,7 +94,7 @@ function buildMultiSnakeSession(state) {
 }
 describe("snakePerfBudget", () => {
     it("50 snakes with brains stay within wall-clock and replan budget", async () => {
-        applySnakeGameConfig({ snakeCount: 50, brainSyncOffScreenInterval: 4 });
+        applySnakeGameConfig({ snakeCount: 50, aiBudget: { thinkPerFrame: 50, focusedThinkEveryFrame: true, onScreenThinkInterval: 1, offScreenThinkInterval: 4, dormantThinkInterval: 30 } });
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
         const state = await createPerfState();
@@ -105,7 +106,7 @@ describe("snakePerfBudget", () => {
         for (let tick = 0; tick < PERF_TICKS; tick++) {
             snakeGame._batchingPerception = true;
             beginSnakePerceptionFrame(state);
-            for (let i = 0; i < autosims.length; i++) autosims[i].autosim.tick(PERF_DT);
+            tickAliveAgents(snakeGame, state, PERF_DT);
             endSnakePerceptionFrame(state);
             snakeGame._batchingPerception = false;
         }

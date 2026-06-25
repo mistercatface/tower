@@ -74,9 +74,9 @@ export class AgentInstance {
         revokeSnakeSteeringLease(this);
         this.autosim.stop();
     }
-    tick(state, dtMs) {
+    tick(state, dtMs, admitted = true) {
         if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;
-        this.autosim.tick(dtMs);
+        this.autosim.tick(dtMs, admitted);
         if (isFleeProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     isSteerable(state, registry) {

@@ -12,12 +12,8 @@ import path from "node:path";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const userArgs = process.argv.slice(2);
-const testTargets = userArgs.length ? userArgs : ["tests"];
+const testTargets = userArgs.length ? userArgs : ["tests/**/*.test.js"];
 
-const result = spawnSync(
-    process.execPath,
-    ["--import", "./tests/testPreload.js", "--test", "--test-timeout=5000", ...testTargets],
-    { cwd: repoRoot, stdio: "inherit" },
-);
+const result = spawnSync(process.execPath, ["--import", "./tests/testPreload.js", "--test", "--test-timeout=5000", ...testTargets], { cwd: repoRoot, stdio: "inherit" });
 
 process.exit(result.status ?? 1);

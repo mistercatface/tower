@@ -26,9 +26,7 @@ export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, sessi
     const head = instance?.head;
     if (!head) return;
     const visionRange = getSharedConfig(config).visionRange;
-    const frame =
-        state.nav.observerVisionFrame ??
-        createObserverVisionFrame({ tickId: session.simTick ?? 1, navTopology: state.nav.topology, visionRange, viewport: state.viewport, brainSyncOffScreenInterval: 1 });
+    const frame = state.nav.observerVisionFrame ?? createObserverVisionFrame({ tickId: session.simTick ?? 1, navTopology: state.nav.topology, visionRange, viewport: state.viewport });
     const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
     const agentCtx = { instance, session };
     const vision = frame.ensureHeadVision(head, visionRange);

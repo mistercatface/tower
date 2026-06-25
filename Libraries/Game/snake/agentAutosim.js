@@ -17,11 +17,13 @@ import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHun
 import { enforceSnakeMinLength } from "./snakeCombat.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-function runAgentFsmTick(intent, seeker, state, dt, beforeNav) {
+function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted) {
     let choice;
     tickAgentIntent(state, intent, seeker, dt, (agent) => {
-        choice = intent.tick(agent, state);
-        if (beforeNav) beforeNav(agent);
+        if (admitted) {
+            choice = intent.tick(agent, state);
+            if (beforeNav) beforeNav(agent);
+        }
     });
     return choice;
 }
@@ -199,7 +201,7 @@ export function createAgentAutosim(
         getPathOverlay() {
             return intent.headNav.getPathOverlay(resolveSeeker());
         },
-        tick(dtMs) {
+        tick(dtMs, admitted = true) {
             if (!active) return;
             const snakeGame = state.sandbox.snakeGame;
             const seeker = resolveSeeker();
@@ -216,7 +218,7 @@ export function createAgentAutosim(
                 const food = state.entityRegistry.getLive(intent.getTargetId());
                 if (food && eatFoodShard(seeker, food, members)) return;
             }
-            const choice = runAgentFsmTick(intent, seeker, state, dtMs, applySprintState);
+            const choice = runAgentFsmTick(intent, seeker, state, dtMs, applySprintState, admitted);
             let fedThisTick = false;
             if (choice?.mode === "seek_food" && choice.target && isSnakeShardFood(choice.target)) fedThisTick = eatFoodShard(seeker, choice.target, members);
             const drainMultiplier = sprinting ? (profile.sprint?.hungerDrainMultiplier ?? 1) : 1;

@@ -49,7 +49,6 @@ function queryGridCellVision(observer, candidates, { range, navTopology }) {
         navTopology,
         visionRange,
         viewport: { circleInBounds: () => true },
-        brainSyncOffScreenInterval: 1,
     });
     const vision = frame.ensureHeadVision(observer);
     const cellSet = vision.cellSet;
@@ -162,7 +161,6 @@ describe("grid cell vision", () => {
             navTopology: ctx.navTopology,
             visionRange,
             viewport: { circleInBounds: () => true },
-            brainSyncOffScreenInterval: 1,
         });
         const observer = { id: 1, x: 128, y: 128, vx: 10, vy: 0, facing: 0, _brainSyncPass: 1 };
         frame.ensureHeadVision(observer);
@@ -177,7 +175,6 @@ describe("grid cell vision", () => {
             navTopology: ctx.navTopology,
             visionRange,
             viewport: { circleInBounds: () => true },
-            brainSyncOffScreenInterval: 1,
         });
         nextFrame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 2);

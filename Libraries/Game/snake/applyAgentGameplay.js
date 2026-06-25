@@ -5,7 +5,6 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 export function applyAgentGameplay(profileId, prop, role, config = getSnakeGameConfig()) {
     const profile = getAgentProfile(profileId, config);
     const spec = role === "leader" ? (profile.gameplay?.leader ?? {}) : (profile.gameplay?.body ?? {});
-    if (spec.brainSyncPass) prop._brainSyncPass = 0;
     if (spec.maxSpeed != null || spec.accel != null) {
         if (!prop.strategy.groundNav) prop.strategy.groundNav = {};
         if (spec.maxSpeed != null) prop.strategy.groundNav.maxSpeed = spec.maxSpeed;

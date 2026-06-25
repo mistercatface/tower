@@ -46,22 +46,12 @@ function buildHeadVision(observer, navTopology, visionRange, { perceptionTick = 
     observer._observerVisionCache = next;
     return next;
 }
-function resolveObserverViewportSync(viewport, observer, brainSyncOffScreenInterval) {
-    const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
-    return { onScreen, brainSyncOffScreenInterval };
-}
-export function createObserverVisionFrame({ tickId, navTopology, visionRange, viewport, brainSyncOffScreenInterval }) {
+export function createObserverVisionFrame({ tickId, navTopology, visionRange, viewport }) {
     const frame = {
         tickId,
         navTopology,
         visionRange,
         viewport,
-        brainSyncOffScreenInterval,
-        shouldSyncBrain(agent) {
-            agent._brainSyncPass = (agent._brainSyncPass ?? 0) + 1;
-            const { onScreen } = resolveObserverViewportSync(viewport, agent, brainSyncOffScreenInterval);
-            return onScreen || agent._brainSyncPass % brainSyncOffScreenInterval === 0;
-        },
         readHeadVision(observer, visionRangeOverride = visionRange) {
             return lookupHeadVisionCache(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
         },
