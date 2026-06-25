@@ -3,7 +3,7 @@ import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { getNavWalkableCellIndex, pickWalkableCell, createNavWalkableAccess } from "../../Procedural/Mazes/walkableCells.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { linkedChainOccupiedCellIndices, spawnLinkedBallChain } from "../../Sandbox/spawnLinkedBallChain.js";
-import { withSeededRandom } from "../../Random/index.js";
+import { withSeededRandom, shuffleInPlace } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns, generateLabRailMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
@@ -74,14 +74,6 @@ export function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segment
     }
     if (!valid.length) throw new Error("No walkable snake spawn cell with full chain clearance");
     return pickWalkableCell(valid, { cols: grid.cols, excludeIndices, rng });
-}
-function shuffleInPlace(items, rng = Math.random) {
-    for (let i = items.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        const tmp = items[i];
-        items[i] = items[j];
-        items[j] = tmp;
-    }
 }
 function applySnakeSplitMapGenBounds(state, paddingCells) {
     const { cavernConfig, railConfig, playConfig } = state.editor;

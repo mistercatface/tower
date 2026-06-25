@@ -1,15 +1,10 @@
-import { angleDelta, normalizeAngle } from "../../Math/Angle.js";
+import { angleDelta, normalizeAngle, rotateAngleTowards } from "../../Math/Angle.js";
 import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getInstanceCombatTraits, isBallCombatTopology } from "./agentCombatTraits.js";
 import { resolveRangedWeapon } from "./rangedCombat.js";
 import { clearPropVisualOverride, getPropVisualTint, setPropVisualTint } from "../../Color/visualOverride.js";
 export const DEFAULT_BALL_FACING_TURN_RAD_PER_SEC = Math.PI * 1.5;
 const HEADING_SPEED_MIN = 0.25;
-export function rotateAngleTowards(from, to, maxStep) {
-    const diff = angleDelta(from, to);
-    if (Math.abs(diff) <= maxStep) return normalizeAngle(to);
-    return normalizeAngle(from + Math.sign(diff) * maxStep);
-}
 export function shouldSyncBallAgentFacingToVelocity(combatAction) {
     return combatAction?.phase !== "charging";
 }

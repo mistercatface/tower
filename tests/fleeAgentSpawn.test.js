@@ -78,9 +78,9 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({
-            boidCount: 4,
             agentProfiles: {
                 flee_agent: {
+                    populationCount: 4,
                     teams: [
                         { faction: "charlie", color: "#f1c40f" },
                         { faction: "delta", color: "#2ecc71" },

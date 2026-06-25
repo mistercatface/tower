@@ -94,7 +94,7 @@ function buildMultiSnakeSession(state) {
 }
 describe("snakePerfBudget", () => {
     it("50 snakes with brains stay within wall-clock and replan budget", async () => {
-        applySnakeGameConfig({ snakeCount: 50, aiBudget: { thinkPerFrame: 50, focusedThinkEveryFrame: true, onScreenThinkInterval: 1, offScreenThinkInterval: 4, dormantThinkInterval: 30 } });
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 50 } }, aiBudget: { thinkPerFrame: 50, focusedThinkEveryFrame: true, onScreenThinkInterval: 1, offScreenThinkInterval: 4, dormantThinkInterval: 30 } });
         resetKineticConstraintIds(1);
         resetVisionFullBuildCount();
         const state = await createPerfState();

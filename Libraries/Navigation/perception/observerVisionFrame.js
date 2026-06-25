@@ -1,5 +1,6 @@
 import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
 import { buildVisionCellSet, collectVisibleGridCells, resolveObserverHeading } from "./gridCellVision.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 export const OBSERVER_VIEW_RADIUS_SCALE = 2;
 let visionFullBuildCount = 0;
 export function resetVisionFullBuildCount() {
@@ -59,6 +60,14 @@ export function createObserverVisionFrame({ tickId, navTopology, visionRange, vi
             const cached = lookupHeadVisionCache(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
             if (cached) return cached;
             return buildHeadVision(observer, navTopology, visionRangeOverride, { perceptionTick: frame.tickId });
+        },
+        isVisible(observer, targetX, targetY, visionRangeOverride = visionRange) {
+            const vision = frame.ensureHeadVision(observer, visionRangeOverride);
+            if (!vision || !vision.cellSet) return false;
+            const grid = navTopology.grid;
+            const col = grid.worldCol(targetX);
+            const row = grid.worldRow(targetY);
+            return vision.cellSet.has(colRowToIndex(col, row, grid.cols));
         },
     };
     return frame;

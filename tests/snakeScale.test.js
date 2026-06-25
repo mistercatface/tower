@@ -9,7 +9,7 @@ import { getChainMemberIds, resolveChainLinkRestLength } from "../Libraries/Sand
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getSnakeChainRadius, growSnakeChainAfterMeal } from "../Libraries/Game/snake/snakeScale.js";
+import { getSnakeChainRadius, growSnakeChainAfterMeal } from "../Libraries/Game/snake/agentMetabolism.js";
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,

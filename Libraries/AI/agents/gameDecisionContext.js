@@ -2,11 +2,21 @@ import { buildAgentDecisionContextInto, buildAgentDecisionFrameInto, createAgent
 import { bandFromThresholds } from "./bandFromThresholds.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { scoreCandidateNetsInto, scoreCandidateSet } from "../utility/utilityScoring.js";
-import { deriveSnakeEngagementState } from "../../Game/snake/snakeEngagement.js";
 import { deriveRangedCombatState } from "../../Game/snake/rangedCombat.js";
 import { AGENT_PROFILE, getAgentProfile } from "./agentProfile.js";
 export { AGENT_PROFILE as AGENT_DECISION_PROFILE };
 export { createAgentDecisionContextFrame } from "./buildAgentDecisionContext.js";
+export function deriveSnakeEngagementState(ctx, chosenIntent) {
+    const { known, remembered } = ctx;
+    const salience = [];
+    if (known.threat || remembered.threat) salience.push("threat");
+    if (known.prey || remembered.prey) salience.push("prey");
+    if (known.food || remembered.food) salience.push("food");
+    const mode = chosenIntent?.mode ?? null;
+    if (mode === "explore" || mode === "seek_ally" || salience.length === 0) return { active: false, salience, mode };
+    const acting = (mode === "seek_food" && (known.food || remembered.food)) || (mode === "seek_prey" && (known.prey || remembered.prey)) || (mode === "flee" && (known.threat || remembered.threat));
+    return { active: !!acting, salience, mode };
+}
 const DECISION_EXTENSIONS = {
     [AGENT_PROFILE.snake]: {
         allySession: (input) => input.session ?? null,

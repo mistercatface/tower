@@ -27,6 +27,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
             playConfig: { playAreaCols: playAreaCells, playAreaRows: playAreaCells },
             cavernConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9 },
             railConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 },
+            railMazeConfig: createDefaultMapGenBoundsConfig(),
             eraseConfig: createDefaultMapGenBoundsConfig(),
         },
         kinetic: new KineticSession(),
@@ -141,7 +142,7 @@ describe("snake split map generation", () => {
         }
     });
     it("spawns the center-start snake at the nearest walkable cell to the map center", async () => {
-        applySnakeGameConfig({ snakeCount: 3 });
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 3 } } });
         const state = await createSnakeMapGenTestState(64, 42);
         const scene = await spawnSnakeCavernScene(state);
         const centerSnake = scene.snakes[0];

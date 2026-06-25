@@ -12,11 +12,21 @@ import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { canAgentEatSnakeFood, isSnakeShardFood, isSnakeFoodTarget } from "./snakeFood.js";
-import { createSimpleAgentMetabolism, feedSimpleAgentMetabolism, getSimpleAgentHunger, setSimpleAgentHunger, tickSimpleAgentMetabolism } from "./agentMetabolism.js";
-import { createSnakeMetabolism, feedSnakeMetabolism, getSnakeHunger, setSnakeHunger, tickSnakeMetabolism } from "./snakeStarvation.js";
+import {
+    createSimpleAgentMetabolism,
+    feedSimpleAgentMetabolism,
+    getSimpleAgentHunger,
+    setSimpleAgentHunger,
+    tickSimpleAgentMetabolism,
+    createSnakeMetabolism,
+    feedSnakeMetabolism,
+    getSnakeHunger,
+    setSnakeHunger,
+    tickSnakeMetabolism,
+} from "./agentMetabolism.js";
 import { tickAgentIntent } from "./snakeAgentLifecycle.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted) {
+function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted = true) {
     let choice;
     tickAgentIntent(state, intent, seeker, dt, (agent) => {
         if (admitted) {

@@ -1,4 +1,4 @@
-import { withSeededRandom } from "../../Random/index.js";
+import { withSeededRandom, shuffleInPlace } from "../../Random/index.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { linkedChainOccupiedCellIndices } from "../../Sandbox/spawnLinkedBallChain.js";
@@ -7,6 +7,7 @@ import { pickSnakeChainSpawnCell } from "./snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { spawnGameAgentChain } from "./spawnAgentChain.js";
+import { hashString } from "../../Math/hash.js";
 function resolveAgentTeamForIndex(profile, index) {
     const teams = profile.teams;
     if (!Array.isArray(teams) || teams.length === 0) return { faction: profile.faction ?? "neutral", color: null };
@@ -38,11 +39,7 @@ function pickAgentSpawnCell(spawnPool, navWalkable, state, profile, { excludeInd
 }
 function resolvePopulationCount(profileId, config) {
     const profile = config.agentProfiles[profileId];
-    if (profile.populationCount !== undefined) return profile.populationCount;
-    if (profileId === "flee_agent") return config.boidCount ?? 0;
-    if (profileId === "gun_agent") return config.gunAgentCount ?? 0;
-    if (profileId === "squid") return config.squidCount ?? 0;
-    return config[profileId + "Count"] ?? 0;
+    return profile?.populationCount ?? 0;
 }
 export function spawnPopulationInScene(state, navWalkable, profileId, { excludeIndices = null, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
@@ -50,13 +47,7 @@ export function spawnPopulationInScene(state, navWalkable, profileId, { excludeI
     if (count <= 0) return [];
     const profile = getAgentProfile(profileId, config);
     const spawnPool = navWalkable.cells();
-    const shuffledSpawnCells = spawnPool.slice();
-    for (let i = shuffledSpawnCells.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        const tmp = shuffledSpawnCells[i];
-        shuffledSpawnCells[i] = shuffledSpawnCells[j];
-        shuffledSpawnCells[j] = tmp;
-    }
+    const shuffledSpawnCells = shuffleInPlace(spawnPool.slice(), rng);
     let occupied = excludeIndices ? new Set(excludeIndices) : new Set();
     const agents = [];
     for (let i = 0; i < count; i++) {
@@ -83,12 +74,4 @@ export function spawnPopulationScene(state, navWalkable, profileId, excludeIndic
     const baseSeed = state.mapSeed + seedOffset;
     const seed = profile.spawnSeedIgnoreMapSeedOffset ? baseSeed : baseSeed + (config.cavern.mapSeedOffset ?? 0);
     return withSeededRandom(seed, () => spawnPopulationInScene(state, navWalkable, profileId, { excludeIndices, rng: Math.random }));
-}
-function hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i);
-        hash |= 0;
-    }
-    return Math.abs(hash);
 }

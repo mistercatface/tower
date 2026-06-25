@@ -28,6 +28,7 @@ async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
             playConfig: { playAreaCols: playAreaCells, playAreaRows: playAreaCells },
             cavernConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9 },
             railConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 },
+            railMazeConfig: createDefaultMapGenBoundsConfig(),
             eraseConfig: createDefaultMapGenBoundsConfig(),
         },
         kinetic: new KineticSession(),
@@ -40,14 +41,14 @@ async function createSnakeWalkableTestState(playAreaCells = 32, mapSeed = 42) {
 }
 describe("snake navWalkable session", () => {
     it("spawnSnakeCavernScene returns navWalkable bound to playable bounds", async () => {
-        applySnakeGameConfig({ snakeCount: 2 });
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 2 } } });
         const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
         assert.ok(scene.navWalkable);
         assert.ok(scene.navWalkable.cells().length >= 80);
     });
     it("wired navWalkable serves explore picks after wireSnakeTestGame", async () => {
-        applySnakeGameConfig({ snakeCount: 2 });
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 2 } } });
         const state = await createSnakeWalkableTestState(48, 1337);
         const scene = await spawnSnakeCavernScene(state);
         wireSnakeTestGame(state, [], { navWalkable: scene.navWalkable });
@@ -69,7 +70,7 @@ describe("snake navWalkable session", () => {
         }
     });
     it("baked navWalkable drops disconnected cells on the split map", async () => {
-        applySnakeGameConfig({ snakeCount: 1 });
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 1 } } });
         const state = await createSnakeWalkableTestState(48, 42);
         const scene = await spawnSnakeCavernScene(state);
         const player = scene.snakes[0];

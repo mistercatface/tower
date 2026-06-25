@@ -12,7 +12,7 @@ import { createAgentIntentMemory } from "../Libraries/AI/memory/createAgentInten
 import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/agentEngagement.js";
 import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { deriveSnakeEngagementState } from "../Libraries/Game/snake/snakeEngagement.js";
+import { deriveSnakeEngagementState } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 
 function chainOptions(segmentCount) {

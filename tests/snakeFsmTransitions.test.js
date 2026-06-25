@@ -23,7 +23,7 @@ import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.j
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
-import { resolveSnakeExploreCell } from "../Libraries/Game/snake/snakeExplore.js";
+import { resolveSnakeExploreCell } from "../Libraries/Game/snake/groundNavIntentProfiles.js";
 import { createSeekIntentState } from "../Libraries/AI/agentIntent/intentStates.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -253,6 +253,7 @@ describe("snake FSM transitions", () => {
         autosim.start();
         assert.equal(autosim.getMode(), "seek_prey");
         threat.head.x = hunter.head.x + 30;
+        state.entityRegistry._bumpMembership();
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
@@ -395,6 +396,7 @@ describe("snake FSM transitions", () => {
         autosim.start();
         assert.equal(autosim.getMode(), "seek_food");
         large.head.x = small.head.x + 80;
+        state.entityRegistry._bumpMembership();
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");
         assert.equal(autosim.getLastTransitionReason(), "threat_visible");
@@ -579,6 +581,7 @@ describe("snake FSM transitions", () => {
         // Move ally away
         ally.head.x = seeker.head.x;
         ally.head.y = seeker.head.y + 200;
+        state.entityRegistry._bumpMembership();
         // Tick to perceive the enemy
         autosim.tick(FRAME_MS);
         // Seeker should attack enemy snake no matter what, transitioning to seek_prey

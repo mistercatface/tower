@@ -6,7 +6,7 @@ import { setChainHead } from "../../../Libraries/Sandbox/chainLinks.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { SANDBOX_DEFAULT_FACTION, sandboxFactions } from "../../../Libraries/Sandbox/sandboxFaction.js";
 import { collectWalkableCells } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
-import { withSeededRandom } from "../../../Libraries/Random/index.js";
+import { withSeededRandom, shuffleInPlace } from "../../../Libraries/Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns } from "./mapWorld.js";
 const STRESS_CHAIN_SEGMENT_COUNT = 45;
 const STRESS_CHAIN_BALL_TINT = PIPE_SPAWNER_BALL_TINT;
@@ -36,14 +36,6 @@ function buildEmptySandboxDoc(state) {
         props: [],
         roomGraph: { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0 },
     };
-}
-function shuffleInPlace(items) {
-    for (let i = items.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const tmp = items[i];
-        items[i] = items[j];
-        items[j] = tmp;
-    }
 }
 function randomQuantizedBoxSize() {
     const steps = (STRESS_BOX_SIZE_MAX - STRESS_BOX_SIZE_MIN) / STRESS_BOX_SIZE_STEP + 1;

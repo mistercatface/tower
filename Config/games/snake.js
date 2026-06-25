@@ -71,10 +71,6 @@ const GUN_INTENT = {
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 160,
-    boidCount: 48,
-    squidCount: 1,
-    gunAgentCount: 6,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,
@@ -107,6 +103,7 @@ export const SNAKE_GAME_DEFAULTS = {
     agentProfiles: {
         snake: {
             exportType: "snake",
+            populationCount: 160,
             bodyPropId: "ball",
             headPropId: "snake_head",
             segmentCount: 3,
@@ -177,6 +174,7 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         flee_agent: {
             exportType: "flee_agent",
+            populationCount: 48,
             spawnSeedOffset: 9173,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
@@ -248,14 +246,13 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         gun_agent: {
             exportType: "gun_agent",
+            populationCount: 6,
             spawnSeedOffset: 4826,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
             leaderIndex: 0,
             faction: "gun",
-            teams: [
-                { faction: "gun", color: null }
-            ],
+            teams: [{ faction: "gun", color: null }],
             attackRange: 48,
             weapon: { maxRange: 128, chargeMs: 1000, cooldownMs: 1500, bulletSpeed: 500, spawnDist: 4.5, aimRotationRadPerSec: 4.71238898038469 },
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
@@ -321,11 +318,12 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         squid: {
             exportType: "squid",
+            populationCount: 1,
             spawnSeedOffset: 37,
             spawnSeedIgnoreMapSeedOffset: true,
             teams: [
                 { faction: "charlie", color: "#9b59b6" },
-                { faction: "delta", color: "#1abc9c" }
+                { faction: "delta", color: "#1abc9c" },
             ],
             bodyPropId: "ball",
             brainPropId: "snake_head",

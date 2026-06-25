@@ -49,7 +49,7 @@ function createSnakeSceneTestState(cols = 32, rows = 32) {
 
 describe("snake multi-spawn", () => {
     it("derives one spawn spec per snakeCount entry", () => {
-        applySnakeGameConfig({ snakeCount: 3, agentProfiles: { snake: { minAliveSegmentCount: 3, maxAliveSegmentCount: 5 } } });
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 3, minAliveSegmentCount: 3, maxAliveSegmentCount: 5 } } });
         const rolls = [0, 0.5, 0.999];
         const specs = resolveSnakeSpawnSpecs(getSnakeGameConfig(), () => rolls.shift());
         assert.deepEqual(specs.map((spec) => spec.segmentCount), [3, 4, 5]);
@@ -107,9 +107,9 @@ describe("snake multi-spawn", () => {
 });
 
 describe("snake config counts", () => {
-    it("applySnakeGameConfig overrides snakeCount", () => {
-        applySnakeGameConfig({ snakeCount: 30, agentProfiles: { snake: { segmentCount: 3 } } });
-        assert.equal(getSnakeGameConfig().snakeCount, 30);
+    it("applySnakeGameConfig overrides populationCount", () => {
+        applySnakeGameConfig({ agentProfiles: { snake: { populationCount: 30, segmentCount: 3 } } });
+        assert.equal(getSnakeGameConfig().agentProfiles.snake.populationCount, 30);
         assert.equal(resolveSnakeSpawnSpecs().length, 30);
         applySnakeGameConfig();
     });

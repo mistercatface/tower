@@ -45,7 +45,11 @@ function randomIntInclusive(min, max, rng) {
 export function resolveSnakeSpawnSpecs(config = getSnakeGameConfig(), rng = Math.random) {
     const snake = config.agentProfiles.snake;
     const specs = [];
-    for (let i = 0; i < config.snakeCount; i++) specs.push({ segmentCount: snake.minAliveSegmentCount });
+    const count = snake.populationCount ?? 0;
+    for (let i = 0; i < count; i++) {
+        const segs = randomIntInclusive(snake.minAliveSegmentCount ?? 3, snake.maxAliveSegmentCount ?? 3, rng);
+        specs.push({ segmentCount: segs });
+    }
     return specs;
 }
 export function resolveSnakePropRadius(propId) {

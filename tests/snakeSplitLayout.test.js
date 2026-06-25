@@ -27,6 +27,7 @@ async function createSnakeMapGenTestState(playAreaCells, mapSeed) {
             playConfig: { playAreaCols: playAreaCells, playAreaRows: playAreaCells },
             cavernConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9 },
             railConfig: { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 },
+            railMazeConfig: createDefaultMapGenBoundsConfig(),
             eraseConfig: createDefaultMapGenBoundsConfig(),
         },
         kinetic: new KineticSession(),

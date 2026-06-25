@@ -6,7 +6,7 @@ import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { isAliveAgentHead, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { reapAgentInstance } from "./snakeAgentLifecycle.js";
-import { retireSnakeSegmentsFromNav } from "./snakeLifecycle.js";
+import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
@@ -223,7 +223,15 @@ export class AgentInstance {
         if (this.autosim?.isActive?.()) this.isHeadRouteValid = this.autosim.getPathOverlay?.() != null;
     }
     retireMemberSegments(state, memberIds) {
-        retireSnakeSegmentsFromNav(state, memberIds);
+        const meta = getSandboxEntityMeta(state);
+        for (let i = 0; i < memberIds.length; i++) {
+            const prop = state.entityRegistry.get(memberIds[i]);
+            if (!prop) continue;
+            meta.setChainHead(memberIds[i], false);
+            if (prop._snakeSteering) clearSnakeSteeringLeaseFromProp(prop);
+            else clearGroundRollDrive(prop);
+            prop.navStepPenalty = null;
+        }
     }
     memberIdsForTeardown(snakeGame, connectedMembers) {
         const ids = new Set(connectedMembers);

@@ -1,6 +1,4 @@
-import { tickGunBullets } from "./gunAgent/gunBulletLifecycle.js";
-import { resolveGunBulletContacts } from "./gunAgent/gunBulletContacts.js";
-
+import { tickGunBullets, resolveGunBulletContacts } from "./gunAgent/gunBulletSystem.js";
 export const CUSTOM_SYSTEMS = [
     {
         tick(state, dtMs) {
@@ -8,6 +6,6 @@ export const CUSTOM_SYSTEMS = [
         },
         resolveContacts(state, frame, contacts) {
             resolveGunBulletContacts(state, frame, contacts);
-        }
-    }
+        },
+    },
 ];

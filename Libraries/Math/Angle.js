@@ -56,3 +56,8 @@ export function unitVectorFromAngle(angle) {
 export function cardinalUnitVectorFromAngle(angle) {
     return unitVectorFromAngle(quantizeCardinalAngle(angle));
 }
+export function rotateAngleTowards(from, to, maxStep) {
+    const diff = angleDelta(from, to);
+    if (Math.abs(diff) <= maxStep) return normalizeAngle(to);
+    return normalizeAngle(from + Math.sign(diff) * maxStep);
+}

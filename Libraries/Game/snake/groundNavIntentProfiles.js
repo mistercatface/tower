@@ -5,14 +5,15 @@ import { buildAgentDecisionContextIntoFor, createAgentDecisionContextFrame } fro
 import { getAgentProfile, AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-import { resolvePackSteeringOptions } from "./resolvePackSteeringOptions.js";
 import { getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
-import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { createRangedShootIntentState, resetInstanceRangedCombatAction, resolveRangedWeapon } from "./rangedCombat.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
 const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
@@ -199,5 +200,40 @@ export function buildGroundNavIntentAdapterOptions(profileId, deps) {
     if (!getSnakeGameConfig().agentProfiles?.[profileId]) throw new Error(`unknown ground nav intent profile: ${profileId}`);
     const resolvedDeps = resolveGroundNavIntentDeps(profileId, deps);
     return { ...resolvedDeps, ...buildAdapterOptions(profileId, resolvedDeps) };
+}
+const PACK_STEERING_SCRATCH = { packAnchor: { x: 0, y: 0 }, packBlend: 0, maxPackDistCells: 16 };
+export function resolvePackSteeringOptions(ctx, profileId = AGENT_PROFILE.flee) {
+    const cohesion = getAgentProfile(profileId).factionCohesion ?? {};
+    const packBlend = cohesion.fleePackBlend ?? 0;
+    if (packBlend <= 0) return null;
+    const known = ctx?.known;
+    if (!known || (known.allyCount ?? 0) < 1) return null;
+    const centroid = known.allyCentroid;
+    if (centroid) {
+        PACK_STEERING_SCRATCH.packAnchor.x = centroid.x;
+        PACK_STEERING_SCRATCH.packAnchor.y = centroid.y;
+    } else if (known.ally) {
+        PACK_STEERING_SCRATCH.packAnchor.x = known.ally.x;
+        PACK_STEERING_SCRATCH.packAnchor.y = known.ally.y;
+    } else return null;
+    PACK_STEERING_SCRATCH.packBlend = packBlend;
+    PACK_STEERING_SCRATCH.maxPackDistCells = cohesion.maxPackDistCells ?? 16;
+    return PACK_STEERING_SCRATCH;
+}
+export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable) {
+    const shared = getSharedConfig();
+    const grid = state.obstacleGrid;
+    const col = grid.worldCol(seeker.x);
+    const row = grid.worldRow(seeker.y);
+    const openCells = navWalkable.cells();
+    const explorePick = { memory, openCells, rng };
+    let cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: shared.exploreMinTiles });
+    if (!cell && shared.exploreMinTiles > shared.exploreFallbackMinTiles) cell = pickExploreDestination(grid, col, row, { ...explorePick, minTiles: shared.exploreFallbackMinTiles });
+    if (!cell) {
+        console.log("[snake] explore destination fell back to random walkable cell");
+        cell = pickWalkableCell(openCells, { cols: grid.cols, rng });
+    }
+    if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { cols: grid.cols, excludeIndices: new Set([colRowToIndex(col, row, grid.cols)]), rng });
+    return cell;
 }
 export { AGENT_PROFILE };

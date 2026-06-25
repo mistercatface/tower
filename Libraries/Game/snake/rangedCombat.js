@@ -1,8 +1,8 @@
 import { decelerateRoll, getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
-import { rotateAngleTowards, syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
-import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { rotateAngleTowards } from "../../Math/Angle.js";
+import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 export function resolveRangedWeapon(instance, profile) {
@@ -31,12 +31,7 @@ export function hasLineOfSight(state, seeker, target) {
     const frame = getObserverVisionFrame(state);
     if (!frame) return false;
     const config = getSnakeGameConfig();
-    const vision = frame.ensureHeadVision(seeker, config.shared?.visionRange);
-    if (!vision || !vision.cellSet) return false;
-    const grid = state.obstacleGrid;
-    const targetCol = grid.worldCol(target.x);
-    const targetRow = grid.worldRow(target.y);
-    return vision.cellSet.has(colRowToIndex(targetCol, targetRow, grid.cols));
+    return frame.isVisible(seeker, target.x, target.y, config.shared?.visionRange);
 }
 export function deriveRangedCombatState(ctx, input, profile) {
     const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile);
