@@ -126,7 +126,7 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 
 - [x] **Flood fill** — `floodFillRegion` (`VoronoiRegions.js`), capped region growth.
 - [x] **Distance transform / Dijkstra map** — `computeDistanceTransform` (octile BFS from walls), feeds region seeding.
-- [x] **Reachability test** — `gridReachabilityBfs.js`, `pruneUnreachableRegions` (`hpaRegionGraph.js`).
+- [x] **Reachability test** — `flowTargetSteps.js` / `flowReachStaleCache.js`, `pruneUnreachableRegions` (`hpaRegionGraph.js`).
 - [x] **Flow field (vector field from BFS)** — `flowFieldBfs.js` + `FlowFieldGrid.js`, 9-direction byte encoding.
 - [x] **Line of sight / raycast** — `Libraries/Spatial/query/lineOfSight.js`, grid + wall-proxy traversal.
 - [ ] **Path smoothing (funnel / string-pull)** — not present. **To add:** post-process octile cell paths before follow; reuse `lineOfSight.js` for the visibility test. Top recommended unlock — transfers to navmesh later.
@@ -227,7 +227,7 @@ A different lens from the feature tiers below: do the **CS-textbook building blo
 | Flow → steering | ✅ | 80 | `flowSteering.js`, `computeFlowFieldSteering` |
 | Target field cache | ✅ | 75 | `MAX_CACHE = 100` goal slots |
 | Range-limited fields | ✅ | 70 | optional BFS `range` cap |
-| Reachability check (flow wrapper) | — | **deleted** — was dead `checkReachability`; use `flowTargetSteps.js` for AI reach |
+| Reachability check (flow wrapper) | ✅ | 80 | `flowTargetSteps.js` + `flowReachStaleCache.js` for AI reach |
 | Integration/cost-field blending | ⬜ | 0 | direction only, no potential-field cost blend |
 | Per-agent local flow window pool | ⬜ | 0 | sliding R-step horizon per agent; see [AI.md](./AI.md#future-local-flow-horizons) |
 
@@ -502,6 +502,8 @@ Libraries/Sandbox/groundNav/        — direct / flow / HPA ground-nav behaviors
 Libraries/Sandbox/kineticRollActuator.js — the one movement actuator
 Libraries/Spatial/grid/WorldObstacleGrid.js — nav grid, canStep, epochs
 Libraries/Navigation/NavRuntime.js, NavTopology.js — runtime topology + worker sync
+  flowTargetSteps.js                — flow reachability tracking
+  flowReachStaleCache.js            — reachability cache to bypass frequent BFS
 Libraries/Navigation/steering/exploreSteering.js — EQS-scored explore candidate pick
 Libraries/Game/snake/               — snake autosim (HPA head nav)
 tests/hpaGroundNavReplan.test.js, gridNavContext.test.js, eqsScoreOptions.test.js,
@@ -510,4 +512,4 @@ tests/hpaGroundNavReplan.test.js, gridNavContext.test.js, eqsScoreOptions.test.j
 
 ---
 
-*Last updated: roadmap sync after FSM reach phase 1 (flow-backed reach) complete and `NavRuntime`/`NavTopology` naming.*
+*Last updated: Added flowTargetSteps.js and flowReachStaleCache.js for dynamic target reachability checks.*

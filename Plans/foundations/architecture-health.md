@@ -32,14 +32,14 @@ Foundations (grid, nav runtime, workers, caches)
 
 ```text
 TileLabGameState (SharedGameState + sandbox + editor + optional appLaunch)
-  ↔ Apps/Editor/engine.js (RAF tick owns physics, floor, game session hooks)
+  ↔ Apps/Editor/engine.js (RAF tick owns physics, floor, game session hooks, customSystems)
   ↔ preview.js / Render.js (draw path pulls editor + sandbox + surfaces)
   ↔ Libraries/Sandbox/* (behaviors, groundNav, chains, belts, damage, snapshots)
-  ↔ Libraries/Game/snake/* (still imports Sandbox groundNav, spawn, camera, grid edits)
-  ↔ Libraries/AI/* (partially extracted generic intent — good, incomplete)
+  ↔ Libraries/Game/snake/* (consolidated metabolism, dynamic species registry, gun combat, imports groundNav)
+  ↔ Libraries/AI/* (extracted profiles, identity, and generic intent)
 ```
 
-Games are **not** thin at the import graph level. Snake is a moderate tree that still reaches into sandbox locomotion, spawn, and wall damage.
+Games are **not** thin at the import graph level, but species creation has been decoupled via profile configurations (`agentProfile.js`) and dynamic species maps.
 
 ---
 
@@ -123,11 +123,14 @@ They share grid and nav but not a unified host. Snake autosim selects its own in
 - `classifyAgentVision`, `targetMemory`, `utilityScoring`, `createAgentIntent`
 - `agentEngagement` publish/read
 - `NavRuntime` / perception frame
+- Agent profiles (`agentProfile.js`), unique identities (`agentIdentity.js`)
+- Dynamic population spawning in scenes (`spawnPopulationInScene.js`)
+- Consolidated agent metabolism (`agentMetabolism.js`)
 
 **Still snake-adjacent or session-specific:**
 
 - Locomotion: `cellTargetHpaNav` under **Sandbox/groundNav**
-- Spawn/growth: `spawnLinkedBallChain`, `growChainSegment`
+- Chain-specific spawn/growth: `spawnLinkedBallChain`, `growChainSegment`
 - Combat side effects wired in `setupSnakeGame` → `engine.js` hook
 - HUD in game code; overlay append via `appLaunch.session`
 
@@ -136,7 +139,7 @@ They share grid and nav but not a unified host. Snake autosim selects its own in
 - Generic perception → memory → blackboard slot pipeline ([AI.md](../AI.md))
 - Flow fields for agents (infra in pathfinding; locomotion in sandbox only)
 
-**Symptom:** docs say “generic AI ~52%”; import graph says “snake-shaped wiring.”
+**Symptom:** docs say “generic AI ~70%”; import graph is cleaner due to profile-driven config but some sandbox coupling remains.
 
 ---
 
@@ -246,4 +249,4 @@ Update after:
 
 Do **not** duplicate tier checkboxes here — link out instead.
 
-*Last updated: initial structural audit — reflects codebase shape, not aspirational target architecture.*
+*Last updated: Updated with dynamic profiles, agent identities, metabolism consolidation, and ranged combat custom systems hooks.*

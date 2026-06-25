@@ -10,9 +10,7 @@
 
 ## Current task
 
-**Decision engine cleanup** — steps 1–5 done ✅ · next: [`current/fsmroadmap.md`](current/fsmroadmap.md) **step 6 — flow locomotion**
-
-Reach + flat `decisionContext` already shipped ✅
+**Ranged Combat / Gun System Finalization** — Implementing and testing gun bullets, reload phases, bullet-agent collision systems, and integration in custom systems pipeline.
 
 ---
 
@@ -20,7 +18,7 @@ Reach + flat `decisionContext` already shipped ✅
 
 From structural cleanup queue:
 
-0. **Flow flee steering** · [`current/fsmroadmap.md`](current/fsmroadmap.md) step 6
+0. **Finish dynamic species migration** — verify that all code paths completely utilize profile-driven species spawning instead of hardcoded maps.
 1. **Prop catalog passthrough** — delete twin maps · [`stupid.md`](current/stupid.md) P3-3
 2. **Library defaults getters** · [`library_defaults.md`](current/library_defaults.md)
 3. **Sandbox behavior registry threading** · [`passthrough.md`](current/passthrough.md) Tier 3

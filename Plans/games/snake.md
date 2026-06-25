@@ -22,16 +22,17 @@ Launch: `?game=snake` via `runGameLaunch` → game shell (no TileLab sidebar). S
 
 ## Species model
 
-Two agent species share one session via the **species registry** pattern:
+Three agent species share one session via the **profile-driven species registry** pattern:
 
 | Species | ID | Body | Intent modes |
 |---|---|---|---|
 | **Snake** | `snake` | Linked ball chain (`spawnLinkedBallChain`) | explore, seek_food, seek_prey, flee, seek_ally |
-| **Flee agent** | `flee_agent` | Single rolling ball (`spawnFleeAgent`) | explore, seek_food, flee, seek_ally |
+| **Flee agent** | `flee_agent` | Single rolling ball (`spawnPopulationInScene`) | explore, seek_food, flee, seek_ally |
+| **Ball agent** | `ball_agent` | Single ball, facing sync | explore, seek_food, flee, seek_ally, ranged_combat |
 
 ```text
-SNAKE_GAME_SPECIES (Map via createAgentSpecies)
-  createAgentSpecies.js — profile-driven lifecycle, presentation, pack options
+DynamicSpeciesMap (Map lookup via species/index.js)
+  agentProfile.js — config-driven species profiles (lifecycle, weapon config)
 
 createSnakeAgentSession(state, { registry, navWalkable, speciesById })
   registry              — agentPopulationRegistry (alive/dead by headId)
@@ -40,9 +41,9 @@ createSnakeAgentSession(state, { registry, navWalkable, speciesById })
   engagementByHeadId    — published engagement facts (see below)
 ```
 
-**Relationship resolution** (`resolveAgentRelationship`): species-specific. Snakes use faction + segment count (ally / rival / threat / prey). Flee agents treat snakes as threat, same-faction flee balls as ally.
+**Relationship resolution** (`resolveAgentRelationship`): species-specific, configured via profiles. Snakes use faction + segment count (ally / rival / threat / prey). Flee/ball agents treat snakes as threat, same-faction balls as ally.
 
-Registry + session: `Libraries/Game/snake/snakeAgentSession.js`, `Libraries/AI/agents/agentPopulationRegistry.js`.
+Registry + session: `Libraries/Game/snake/snakeAgentSession.js`, `Libraries/AI/agents/agentPopulationRegistry.js`, `Libraries/Game/snake/species/index.js`.
 
 ---
 
@@ -50,15 +51,17 @@ Registry + session: `Libraries/Game/snake/snakeAgentSession.js`, `Libraries/AI/a
 
 ```text
 setupSnakeGame.tick(dt)
+  agentFrameOrchestrator.js            — coordinates simulation frame ticks
   validateAliveAgents
-  beginSnakePerceptionFrame          — batch vision builds per tick
-  tickAliveAgents                    — species.tick → autosim / flee instance
+  beginSnakePerceptionFrame            — batch vision builds per tick
+  tickAliveAgents                      — species.tick → autosim / profile instance
+  customSystems.js                     — runs tickGunBullets and resolveGunBulletContacts
   endSnakePerceptionFrame
   hud.update
 
 Kinetic frame (shared sim):
   physics substeps
-  applyContactSideEffects            — combat, hunt drive, segment fracture
+  applyContactSideEffects              — combat, hunt drive, segment fracture
   syncAgentsAfterPhysics               — chain sync, presentation, diagnostics
 ```
 
@@ -66,23 +69,28 @@ Perception is **batched** when `session._batchingPerception` is set so all heads
 
 ---
 
-## Snake intent stack (adapter pattern)
+## Agent intent stack (adapter pattern)
 
-Generic loop in `Libraries/AI`; snake supplies facts and scorers:
+Generic loop in `Libraries/AI`; species supply facts and scorers:
 
 ```text
 createAgentIntent (generic FSM host)
-  └─ createSnakeForageIntent
-       perceiveSnakeIntentWorld → perceiveAgentWorld → classifyAgentVision
-       snakeIntentMemory → AI/memory/targetMemory.js
-       buildSnakeDecisionContext → snakeDecisionModel.js → utilityScoring
-       publishAgentEngagement(session, headId, engagementState)   ← after decide
-       snakeIntentStates (explore / seek_food / seek_prey / flee / seek_ally)
+  ├─ createSnakeForageIntent (snake)
+  │    perceiveSnakeIntentWorld → perceiveAgentWorld → classifyAgentVision
+  │    snakeIntentMemory → AI/memory/targetMemory.js
+  │    buildSnakeDecisionContext → snakeDecisionModel.js → utilityScoring
+  │    publishAgentEngagement(session, headId, engagementState)
+  │    snakeIntentStates (explore / seek_food / seek_prey / flee / seek_ally)
+  │
+  └─ Dynamic Profile-driven Intents (flee_agent, ball_agent)
+       uses dynamic agentProfile configs for target memory and utility scorers.
+       ball_agent includes ranged_combat intent triggers (aim, fire, reload phases).
 ```
 
-Flee parallel stack: `createFleeExploreIntent` → `fleeDecisionModel`, `fleeIntentMemory`, `fleeWorldPerception`.
+**Ranged Combat / Gun System:**
+Wired in `rangedCombat.js` and `gunAgent/gunBulletSystem.js`. Agents with a configured weapon profile can target and shoot projectiles. Bullet ticks and contacts are evaluated in custom systems runners. Projectiles are rendered as faction-colored capsules directly in `WorldSceneRenderer.js`.
 
-**Locomotion:** both species use per-agent HPA (`cellTargetHpaNav`). Flow fields exist for sandbox drag-nav only — not snake/flee steering yet ([AI.md](../AI.md#future-local-flow-horizons)).
+**Locomotion:** all species use per-agent HPA (`cellTargetHpaNav`). Flow fields exist for sandbox drag-nav only — not steering yet ([AI.md](../AI.md#future-local-flow-horizons)).
 
 ---
 
@@ -115,10 +123,11 @@ Config: `visionRange`, `fleeRange` (defaults to vision range), `lethalThreatRang
 
 ## Metabolism, growth, sprint
 
-- **Hunger bar** (0–1) drains per `metabolism.hungerDrainMs`; eating restores `foodValue`; overflow → growth via `growthCost`
-- **Segments:** `minAliveSegmentCount` … `maxAliveSegmentCount`; starvation sheds on interval
-- **Sprint:** burns hunger faster (`sprint.hungerDrainMultiplier`); modes: flee (severe threat), seek_prey, seek_food under threat
-- **Facts:** `deriveSnakeHungerState` → satisfied / hungry / desperate gates scoring and regroup
+- **Hunger bar** (0–1) drains per `metabolism.hungerDrainMs`; eating restores `foodValue`; overflow → growth via `growthCost`.
+- **Consolidated Metabolism**: All hunger, starvation, scaling, and segment growth logic is managed under `agentMetabolism.js`.
+- **Segments**: `minAliveSegmentCount` … `maxAliveSegmentCount`; starvation sheds on interval.
+- **Sprint**: burns hunger faster (`sprint.hungerDrainMultiplier`); modes: flee (severe threat), seek_prey, seek_food under threat.
+- **Facts**: `deriveSnakeHungerState` → satisfied / hungry / desperate gates scoring and regroup.
 
 ---
 
@@ -127,6 +136,7 @@ Config: `visionRange`, `fleeRange` (defaults to vision range), `lethalThreatRang
 | System | File | Notes |
 |---|---|---|
 | Hunt / strike | `snakeCombat.js`, `snakeStriker.js` | Kinetic ram, faction-aware targeting |
+| Ranged Combat | `rangedCombat.js`, `gunAgent/gunBulletSystem.js` | Projectiles/gun simulation with aim, fire, reload phases |
 | Split | contact resolver + `splitImpulseThreshold` | Smaller snake splits at struck segment |
 | Segment fracture | `snakeSegmentFracture.js` | Retired segments → fracturable food props |
 | Wall damage | `gridWallDamage.js` + config `wallDamage` | Shared `SNAKE_KINETIC_MIN_STRIKE_SPEED` |
@@ -190,10 +200,10 @@ Grouped knobs (override via `applySnakeGameConfig` in tests):
 | Extracted to engine | Still in `Libraries/Game/snake` |
 |---|---|
 | `createAgentIntent`, utility scoring, target memory | `snakeDecisionModel`, hunger/threat facts, seek_ally cohesion scorers |
-| `classifyAgentVision`, `agentWorldPerception` | `snakeIntent`, `snakeIntentMemory`, species relationship rules |
+| `classifyAgentVision`, `agentWorldPerception` | `snakeIntent`, `snakeIntentMemory`, DynamicSpeciesMap resolver |
 | `agentEngagement` publish/read | `deriveSnakeEngagementState`, session wiring |
 | Grid-cell vision, observer frame | `snakePerception` batching, food query |
-| `agentPopulationRegistry` | `createAgentSpecies`, `AgentInstance`, combat traits, scene wiring |
+| `agentPopulationRegistry` | `AgentInstance`, combat traits, `agentMetabolism.js`, `agentFrameOrchestrator.js`, `rangedCombat.js`, `gunAgent/gunBulletSystem.js` |
 
 **Rule of thumb:** if a second game mode would need the same primitive, it belongs in `Libraries/AI` or `Libraries/Navigation`. If it references segment count, snake chains, or shard food, it stays here until a second consumer appears.
 
@@ -201,6 +211,6 @@ Grouped knobs (override via `applySnakeGameConfig` in tests):
 
 ## Key tests
 
-`snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `agentAllyPerception`, `agentAllyMemory`, `focusedAgentDebugOverlays`, `snakeSplit`, `snakeSegmentFracture`, `snakeMulti`, `fleeAgentDecision`, `gridCellVision`.
+`snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `agentAllyPerception`, `agentAllyMemory`, `focusedAgentDebugOverlays`, `snakeSplit`, `snakeSegmentFracture`, `snakeMulti`, `gridCellVision`, `gunBullet.test.js`, `shatterPerformance.test.js`.
 
 Harness: `tests/harness/snakeGameHarness.js`.

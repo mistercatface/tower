@@ -44,10 +44,10 @@ The old navigation service/context wording is no longer the map of reality. Navi
 | Path | State | Role |
 |---|---|---|
 | `Libraries/Motion` | ✅ | Integration, damping, substeps, constraints, islands, sleep, wall collision resolver, kinetic physics pass |
-| `Libraries/Spatial/collision` | ✅ | Broadphase snapshots, SAT/circle narrow phase, manifolds, pair stream, contact solve, side-effect hooks |
-| `Libraries/Spatial/geometry` | ✅ | Wall geometry, circle sweep |
-| `Libraries/Spatial/indexes` | ✅ | Uniform-grid broadphase (`EntityGrid`) |
+| `Libraries/Spatial/collision` | ✅ | Broadphase snapshots, SAT/circle narrow phase (including `SatCollision.js`, `wallResolution.js`, `WallGeometry.js`), contact solve, side-effect hooks |
+| `Libraries/Spatial/indexes` | ✅ | Uniform-grid broadphase (`EntityGrid`), `CellPropIndex` |
 | `Libraries/Spatial/world` | ✅ | `SpatialFrameCore` frame/candidate cache shared by world systems |
+| `Libraries/Props` | ✅ | `worldPropPool.js` object cache/pooling for dynamic props |
 | `Systems/World` | ✅ | Kinetic spatial frame assembly |
 
 ### 3.2 Pathfinding and navigation
@@ -67,6 +67,8 @@ The old navigation service/context wording is no longer the map of reality. Navi
 | Path | State | Role |
 |---|---|---|
 | `Libraries/AI/agentIntent` | ✅ | Generic agent intent FSM host (`createAgentIntent`) |
+| `Libraries/AI/identity` | ✅ | `agentIdentity.js` named agent and identity management |
+| `Libraries/AI/agents` | ✅ | `agentProfile.js` dynamic configuration-driven agent profiles |
 | `Libraries/AI/brain` | ✅ | Spatial memory and memory-to-A* penalty producer |
 | `Libraries/AI/memory` | ✅ | Generic TTL target memory (`targetMemory`) |
 | `Libraries/AI/utility` | ✅ | Generic utility/net-value candidate scoring |
@@ -83,8 +85,9 @@ Current first consumer: snake forage. Generic pieces now live outside `Libraries
 | `Libraries/Render/Props3D` | ✅ | Prop meshes, projection, face culling, primitive renderers |
 | `Libraries/Render/Structure3D` | ✅ | Voxel wall atlas and rail edge rendering |
 | `Libraries/Render/overlays` | ✅ | Overlay command pipeline for editor/sandbox feedback |
+| `Libraries/Render/losShadow` | ✅ | Real-time stencil-based LOS shadow overlay and edge collection |
 | `Libraries/Render/SurfaceTexturing` | ✅ | Sphere/cell/decal texture patches |
-| `Libraries/Render` | ✅ | Scene assembly, prop draw entry, vector mode, map caches |
+| `Libraries/Render` | ✅ | Scene assembly, prop draw entry (with drawProjectile), vector mode, map caches |
 | `Libraries/Canvas` | ✅ | Quantized sprite cache, baked cache, affine texture, offscreen canvas |
 | `Libraries/Spatial/iso` | ✅ | Radial elevation projection, camera, shadow math (`shadowProjection.js` still unwired) |
 | `Libraries/Viewport` | ✅ | Pan/zoom and world/screen transforms |
@@ -148,7 +151,7 @@ Condensed file map (detail in snake doc):
 | Physics / kinetic | `kineticConstraintSolver`, `kineticContactSolver`, `kineticNarrowPhase`, `kineticPairStream`, `kineticIslands`, `kineticSleepProps`, `kineticContactManifold`, `activeKineticBodies`, `bodyMass`, `wallResolution`, `chainLinks`, `chainVsWallGrowth` |
 | Pathfinding / nav | `AStar`, `hpaGroundNavReplan`, `hpaPathSlot`, `hpaStitch`, `hpaRegionGraph`, `gridNavContext`, `hpaBeltNav`, `flowFieldBfs`, `lineOfSight`, corridor tests |
 | AI / decisions | `brain`, `navStepPenalty`, `targetMemory`, `utilityScoring`, `eqsScoreOptions`, `goalSeekAutosim`, `gridCellVision` |
-| Snake game | `snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeForageIntent`, `snakeAutosim`, `snakeMulti`, `snakeStarvation`, `snakePerfBudget`, `snakeMinLengthDeath`, `snakeSplit`, `snakeScale` |
+| Snake game | `snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeForageIntent`, `snakeAutosim`, `snakeMulti`, `snakePerfBudget`, `snakeMinLengthDeath`, `snakeSplit`, `gunBullet`, `shatterPerformance` |
 | Procedural / mazes | `puzzleTemplateBeltCrate`, `lockedRoom`, `railMaze*`, `snakeSplitLayout`, `walkableCells`, `navWalkableIndex` |
 | Rendering / props | `vectorProp`, `drawShapeParity`, `maskCompositor`, `propScale`, `colorVisualOverride`, `shapeFirstProps`, `spawnShapeFamily`, `sandboxSceneSnapshot` |
 
@@ -174,4 +177,4 @@ Coverage read: physics, pathfinding, AI, and snake are the best-tested. Procedur
 
 ---
 
-*Last updated: current engine audit after generic AI utility scoring, target memory, EQS option scoring, effort-aware snake decisions, and nav runtime/topology split. Linked from [ROADMAP.md](./ROADMAP.md) §6.*
+*Last updated: Current engine audit updated with dynamic agent profiles, agent identity, frame orchestrator, ranged combat, and metabolism changes.*

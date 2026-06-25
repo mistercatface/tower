@@ -6,27 +6,27 @@ Progress tracker for agent intelligence: control → perception → memory → s
 
 **Legend:** ✅ shipped · 🟡 partial / scaffolding · ⬜ not started · 🔗 cross-doc dependency.
 
-**Overall AI maturity:** ~**52%** of a full game-AI stack. The engine has real generic AI primitives plus **two full intent consumers**: snake (4-mode forage + team hunting) and flee agents (4-mode explore/flee/seek_food/seek_ally). Shared perception (`classifyAgentVision`), target memory, utility scoring, and faction-aware relationship resolution are wired end-to-end for both species.
+**Overall AI maturity:** ~**70%** of a full game-AI stack. The engine has real generic AI primitives plus **profile-driven dynamic species** (snake, flee_agent, ball_agent). Ranged combat, gun bullet system, and custom tick runners are integrated with a frame orchestrator. Shared perception (`classifyAgentVision`), target memory, utility scoring, and faction-aware relationship resolution are fully wired.
 
 ---
 
 ## Where this sits vs pro game AI
 
-| Capability | This engine | Pro game AI | Gap |
-|---|---|---|---|
-| Control / dispatch | ✅ per-entity behavior registry and active behavior id | controller / behavior component | parity for plumbing |
-| Reactive autonomy | ✅ snake forage + flee 4-mode loop | BT leaf tasks / steering | flee is second consumer |
-| Perception | ✅ vision + LOS + shared agent classifier | sight/hearing/team perception | sight only; ally slot shipped |
-| Spatial memory | ✅ recency-ranked cell memory + A* step penalty | blackboard / influence maps | no shared influence maps |
-| Target memory | ✅ TTL records (threat/prey/food/ally) | target tracking / last-known pos | snake + flee consumers |
-| FSM | ✅ generic host; snake + flee 4 modes each | FSM / hierarchical FSM | no hierarchy |
-| Utility AI | ✅ generic core; snake + flee mode scoring | broad utility action library | no authoring layer |
-| EQS | 🟡 generic weighted option scorer; explore uses it | Unreal EQS | no query catalog/debug UI |
-| Tactical verbs | 🟡 seek, flee, regroup; no flocking | flee/evade/pursue/flock | separation absent |
-| Teams/factions | 🟡 relationships + ally cohesion prep | team-aware targeting | snake regroup + pack flee pending |
-| Strategy / planning | ⬜ none | GOAP / HTN / commander | future |
-| Game theory | ⬜ none | minimax/MCTS/pursuit-evasion | future |
-| Puzzle theory | ⬜ mechanism tests only | solver/difficulty estimator | future procedural bridge |
+| Capability          | This engine                                            | Pro game AI                      | Gap                               |
+| ------------------- | ------------------------------------------------------ | -------------------------------- | --------------------------------- |
+| Control / dispatch  | ✅ per-entity behavior registry and active behavior id | controller / behavior component  | parity for plumbing               |
+| Reactive autonomy   | ✅ snake forage + flee 4-mode loop                     | BT leaf tasks / steering         | flee is second consumer           |
+| Perception          | ✅ vision + LOS + shared agent classifier              | sight/hearing/team perception    | sight only; ally slot shipped     |
+| Spatial memory      | ✅ recency-ranked cell memory + A\* step penalty       | blackboard / influence maps      | no shared influence maps          |
+| Target memory       | ✅ TTL records (threat/prey/food/ally)                 | target tracking / last-known pos | snake + flee consumers            |
+| FSM                 | ✅ generic host; snake + flee 4 modes each             | FSM / hierarchical FSM           | no hierarchy                      |
+| Utility AI          | ✅ generic core; snake + flee mode scoring             | broad utility action library     | no authoring layer                |
+| EQS                 | 🟡 generic weighted option scorer; explore uses it     | Unreal EQS                       | no query catalog/debug UI         |
+| Tactical verbs      | 🟡 seek, flee, regroup; no flocking                    | flee/evade/pursue/flock          | separation absent                 |
+| Teams/factions      | 🟡 relationships + ally cohesion prep                  | team-aware targeting             | snake regroup + pack flee pending |
+| Strategy / planning | ⬜ none                                                | GOAP / HTN / commander           | future                            |
+| Game theory         | ⬜ none                                                | minimax/MCTS/pursuit-evasion     | future                            |
+| Puzzle theory       | ⬜ mechanism tests only                                | solver/difficulty estimator      | future procedural bridge          |
 
 **Takeaway:** control loop and generic packages are proven with **two consumers**. The current gap is cohesion behavior breadth (snake regroup, flee pack flee), movement polish (path smoothing, crowds), and optional abstractions (behavior-tree skeleton, generic slot pipeline). Local flow-field horizons (see [Future: local flow horizons](#future-local-flow-horizons)) are the highest-leverage nav+AI bridge.
 
@@ -85,14 +85,14 @@ flowchart TB
 
 ## Tier 0 — Control foundation
 
-| Item | Status | % | Notes / modules |
-|---|---|---:|---|
-| Behavior registry | ✅ | 85 | `SandboxEditor/createSandboxController.js`, mount wiring |
-| Per-entity active behavior id | ✅ | 80 | `GameState/sandboxEntityMeta.js` |
-| Move-target API | ✅ | 80 | sandbox ground-nav behaviors |
-| Generic agent intent host | ✅ | 75 | `Libraries/AI/agentIntent/createAgentIntent.js` |
-| Behavior priority / stack | ⬜ | 0 | one active behavior at a time |
-| Automatic behavior selection for generic props | ⬜ | 0 | snake autosim selects itself; sandbox props mostly manual |
+| Item                                           | Status |   % | Notes / modules                                           |
+| ---------------------------------------------- | ------ | --: | --------------------------------------------------------- |
+| Behavior registry                              | ✅     |  85 | `SandboxEditor/createSandboxController.js`, mount wiring  |
+| Per-entity active behavior id                  | ✅     |  80 | `GameState/sandboxEntityMeta.js`                          |
+| Move-target API                                | ✅     |  80 | sandbox ground-nav behaviors                              |
+| Generic agent intent host                      | ✅     |  75 | `Libraries/AI/agentIntent/createAgentIntent.js`           |
+| Behavior priority / stack                      | ⬜     |   0 | one active behavior at a time                             |
+| Automatic behavior selection for generic props | ⬜     |   0 | snake autosim selects itself; sandbox props mostly manual |
 
 **Branch progress: 64%**
 
@@ -100,35 +100,36 @@ flowchart TB
 
 ## Tier 1 — Reactive autonomy
 
-| Item | Status | % | Notes / modules |
-|---|---|---:|---|
-| Generic goal-seek autosim | ✅ | 75 | `Libraries/Sandbox/autosim/goalSeekAutosim.js` |
-| Snake eat / grow / replenish loop | ✅ | 85 | `agentAutosim.js`, `snakeStarvation.js`, `snakeScene.js` |
-| Snake 4-mode forage FSM | ✅ | 80 | `createSnakeForageIntent.js`, `snakeIntentStates.js` |
-| Multi-agent snake population | ✅ | 75 | `setupSnakeGame.js`, `snakeMulti.test.js` |
-| Effort-aware prey/food decisions | ✅ | 75 | `snakeDecisionModel.js`, `effort.md` implemented |
-| Flee agent 4-mode FSM | ✅ | 75 | `createFleeExploreIntent.js` — explore, seek_food, seek_ally, flee |
-| Multi-agent flee population | ✅ | 70 | `spawnAgentChain.js`, `AgentInstance.js`, `agentAutosim.js` |
-| Effort-aware flee decisions | ✅ | 70 | `fleeDecisionModel.js`; hunger, sprint reserves, multi-threat flee |
-| Agent-agent avoidance during seek | ⬜ | 0 | 🔗 `pathfinding.md` local separation / flow horizons |
+| Item                              | Status |   % | Notes / modules                                           |
+| --------------------------------- | ------ | --: | --------------------------------------------------------- |
+| Generic goal-seek autosim         | ✅     |  75 | `Libraries/Sandbox/autosim/goalSeekAutosim.js`            |
+| Snake eat / grow / replenish loop | ✅     |  85 | `agentAutosim.js`, `agentMetabolism.js`                   |
+| Snake 4-mode forage FSM           | ✅     |  80 | `createSnakeForageIntent.js`, `snakeIntentStates.js`      |
+| Multi-agent snake population      | ✅     |  75 | `setupSnakeGame.js`, `snakeMulti.test.js`                 |
+| Effort-aware prey/food decisions  | ✅     |  75 | `snakeDecisionModel.js`, `effort.md` implemented          |
+| Flee agent 4-mode FSM             | ✅     |  80 | profile-driven FSM (explore, food, ally, flee)            |
+| Multi-agent dynamic population    | ✅     |  85 | `spawnPopulationInScene.js`, profiles, `AgentInstance.js` |
+| Effort-aware flee decisions       | ✅     |  75 | profile-driven utility scoring                            |
+| Ranged combat / gun agent states  | ✅     |  80 | `gunAgent/gunBulletSystem.js` — aim, fire, reload phases  |
+| Agent-agent avoidance during seek | ⬜     |   0 | 🔗 `pathfinding.md` local separation / flow horizons      |
 
-**Branch progress: 72%**
+**Branch progress: 71%**
 
 ---
 
 ## Tier 2 — Perception and memory
 
-| Item | Status | % | Notes / modules |
-|---|---|---:|---|
-| Grid-cell vision cone | ✅ | 75 | `Navigation/perception/gridCellVision.js` |
-| Observer vision frame | ✅ | 75 | `Navigation/perception/observerVisionFrame.js` |
-| Line of sight | ✅ | 75 | `Spatial/query/lineOfSight.js` |
-| Spatial working memory | ✅ | 70 | `AI/brain/spatialCellMemory.js` |
-| Memory -> A* cost penalty | ✅ | 70 | `AI/brain/navStepPenalty.js` -> `Pathfinding/navStepPenalty.js` |
-| Generic target memory | ✅ | 75 | `AI/memory/targetMemory.js`; snake tracks threat/prey/food/**ally**; flee tracks threat/food/**ally** |
-| Shared agent vision classifier | ✅ | 70 | `AI/perception/classifyAgentVision.js` — threat/prey/ally slots in one pass |
-| Blackboard facts | 🟡 | 55 | snake + flee decision blackboards; `allyState`, score snapshots; no generic typed fact store |
-| Hearing / non-visual stimuli | ⬜ | 0 | sight only |
+| Item                           | Status |   % | Notes / modules                                                                                       |
+| ------------------------------ | ------ | --: | ----------------------------------------------------------------------------------------------------- |
+| Grid-cell vision cone          | ✅     |  75 | `Navigation/perception/gridCellVision.js`                                                             |
+| Observer vision frame          | ✅     |  75 | `Navigation/perception/observerVisionFrame.js`                                                        |
+| Line of sight                  | ✅     |  75 | `Spatial/query/lineOfSight.js`                                                                        |
+| Spatial working memory         | ✅     |  70 | `AI/brain/spatialCellMemory.js`                                                                       |
+| Memory -> A\* cost penalty     | ✅     |  70 | `AI/brain/navStepPenalty.js` -> `Pathfinding/navStepPenalty.js`                                       |
+| Generic target memory          | ✅     |  75 | `AI/memory/targetMemory.js`; snake tracks threat/prey/food/**ally**; flee tracks threat/food/**ally** |
+| Shared agent vision classifier | ✅     |  70 | `AI/perception/classifyAgentVision.js` — threat/prey/ally slots in one pass                           |
+| Blackboard facts               | 🟡     |  55 | snake + flee decision blackboards; `allyState`, score snapshots; no generic typed fact store          |
+| Hearing / non-visual stimuli   | ⬜     |   0 | sight only                                                                                            |
 
 **Branch progress: 68%**
 
@@ -136,32 +137,33 @@ flowchart TB
 
 ## Tier 3 — State machines
 
-| Item | Status | % | Notes / modules |
-|---|---|---:|---|
-| Generic flat intent FSM | ✅ | 75 | `createAgentIntent` |
-| Snake state adapters | ✅ | 80 | explore, seek_food, seek_prey, flee |
-| Flee agent state adapters | ✅ | 75 | explore, seek_food, seek_ally, flee — `createFleeExploreIntent.js` |
-| Per-state effects/context | ✅ | 70 | snake + flee effects/context |
-| Mode exit delay / interruption | ✅ | 65 | flee hysteresis (snake + flee), policy latch |
-| Hierarchical / nested states | ⬜ | 0 | future |
-| Generic slot pipeline refactor | ⬜ | 0 | deferred; snake perception unified via `perceiveSnakeIntentWorld` |
+| Item                           | Status |   % | Notes / modules                                                   |
+| ------------------------------ | ------ | --: | ----------------------------------------------------------------- |
+| Generic flat intent FSM        | ✅     |  75 | `createAgentIntent`                                               |
+| Snake state adapters           | ✅     |  80 | explore, seek_food, seek_prey, flee                               |
+| Flee agent state adapters      | ✅     |  80 | dynamic profile FSM states                                        |
+| Per-state effects/context      | ✅     |  70 | snake + flee/profile effects/context                              |
+| Mode exit delay / interruption | ✅     |  65 | flee hysteresis (snake + flee), policy latch                      |
+| Frame orchestrator             | ✅     |  85 | `agentFrameOrchestrator.js` FSM orchestration layer               |
+| Hierarchical / nested states   | ⬜     |   0 | future                                                            |
+| Generic slot pipeline refactor | ⬜     |   0 | deferred; snake perception unified via `perceiveSnakeIntentWorld` |
 
-**Branch progress: 68%**
+**Branch progress: 57%**
 
 ---
 
 ## Tier 4 — Decision-making: utility, EQS, trees
 
-| Item | Status | % | Notes / modules |
-|---|---|---:|---|
-| Utility scoring core | ✅ | 70 | `AI/utility/utilityScoring.js` |
-| Snake domain utility scorers | ✅ | 75 | flee/prey/food/explore; config-driven enemy prey value |
-| Flee domain utility scorers | ✅ | 70 | flee/food/seek_ally/explore; faction cohesion bonuses |
-| Decision snapshots | ✅ | 75 | score maps, score details, chosen intent, sprint intent (flee) |
-| EQS-style option scoring | ✅ | 55 | `AI/eqs/scoreOptions.js` |
-| Explore as first EQS consumer | ✅ | 55 | `Navigation/steering/exploreSteering.js` |
-| Behavior tree skeleton | ⬜ | 0 | next abstraction above FSM |
-| Generic action/task catalog | ⬜ | 0 | future |
+| Item                          | Status |   % | Notes / modules                                                |
+| ----------------------------- | ------ | --: | -------------------------------------------------------------- |
+| Utility scoring core          | ✅     |  70 | `AI/utility/utilityScoring.js`                                 |
+| Snake domain utility scorers  | ✅     |  75 | flee/prey/food/explore; config-driven enemy prey value         |
+| Flee domain utility scorers   | ✅     |  70 | flee/food/seek_ally/explore; faction cohesion bonuses          |
+| Decision snapshots            | ✅     |  75 | score maps, score details, chosen intent, sprint intent (flee) |
+| EQS-style option scoring      | ✅     |  55 | `AI/eqs/scoreOptions.js`                                       |
+| Explore as first EQS consumer | ✅     |  55 | `Navigation/steering/exploreSteering.js`                       |
+| Behavior tree skeleton        | ⬜     |   0 | next abstraction above FSM                                     |
+| Generic action/task catalog   | ⬜     |   0 | future                                                         |
 
 **Branch progress: 52%**
 
@@ -169,16 +171,16 @@ flowchart TB
 
 ## Tier 5 — Tactical steering verbs
 
-| Item | Status | % | Notes |
-|---|---|---:|---|
-| Seek / arrive / path-follow | ✅ | 80 | 🔗 `pathfinding.md`; snakes/flee use HPA cell-target nav |
-| Memory-aware explore | ✅ | 75 | EQS-scored candidate cells |
-| Flee | ✅ | 70 | snake + flee; flee cells + threat-aware sprint |
-| Pursue | 🟡 | 55 | snake seeks prey; no intercept prediction |
-| Regroup / seek ally | ✅ | 65 | snake + flee `seek_ally` when safe and satisfied |
-| Wander | 🟡 | 30 | explore covers roaming, not smooth wander |
-| Separation / flocking | ⬜ | 0 | 🔗 pathfinding local avoidance / flow horizons |
-| Obstacle avoidance steering | ⬜ | 0 | beyond grid nav |
+| Item                        | Status |   % | Notes                                                    |
+| --------------------------- | ------ | --: | -------------------------------------------------------- |
+| Seek / arrive / path-follow | ✅     |  80 | 🔗 `pathfinding.md`; snakes/flee use HPA cell-target nav |
+| Memory-aware explore        | ✅     |  75 | EQS-scored candidate cells                               |
+| Flee                        | ✅     |  70 | snake + flee; flee cells + threat-aware sprint           |
+| Pursue                      | 🟡     |  55 | snake seeks prey; no intercept prediction                |
+| Regroup / seek ally         | ✅     |  65 | snake + flee `seek_ally` when safe and satisfied         |
+| Wander                      | 🟡     |  30 | explore covers roaming, not smooth wander                |
+| Separation / flocking       | ⬜     |   0 | 🔗 pathfinding local avoidance / flow horizons           |
+| Obstacle avoidance steering | ⬜     |   0 | beyond grid nav                                          |
 
 **Branch progress: 48%**
 
@@ -186,19 +188,19 @@ flowchart TB
 
 ## Tier 6 — Teams, factions, targeting
 
-| Item | Status | % | Notes |
-|---|---|---:|---|
-| Faction metadata + UI | 🟡 | 55 | `sandboxFaction.js`, inspector |
-| Faction persisted in snapshots | ✅ | 70 | scene snapshot |
-| Species relationship resolver | ✅ | 70 | `snakeSpecies`, `fleeAgentSpecies` — ally/rival/prey/threat/neutral |
-| Rival band (size-gap prey/threat) | ✅ | 65 | config `rivalBand.maxSegmentGap` |
-| Ally perception + memory | ✅ | 70 | shared classifier; TTL ally slot; `allyState` on snapshots |
-| Flee treats all snakes as threat | ✅ | 75 | flee never hunts snakes |
-| Flee same-faction regroup (`seek_ally`) | ✅ | 65 | safe + satisfied; large friendly arrival radius |
-| Snake size-scaled regroup (`seek_ally`) | ✅ | 70 | satisfied-only; `referenceSegmentCount` / `maxSegmentScale` |
-| Flee pack vector while fleeing | ✅ | 65 | `fleePackBlend` + distance falloff in `pickFleeCell` |
-| Friendly-fire / team filtering in combat | 🟡 | 40 | relationships filter perception; kinetic ram still faction-blind |
-| Target priority scoring across teams | 🟡 | 45 | config prey value; no multi-target utility catalog |
+| Item                                     | Status |   % | Notes                                                               |
+| ---------------------------------------- | ------ | --: | ------------------------------------------------------------------- |
+| Faction metadata + UI                    | 🟡     |  55 | `sandboxFaction.js`, inspector                                      |
+| Faction persisted in snapshots           | ✅     |  70 | scene snapshot                                                      |
+| Species relationship resolver            | ✅     |  70 | `snakeSpecies`, `fleeAgentSpecies` — ally/rival/prey/threat/neutral |
+| Rival band (size-gap prey/threat)        | ✅     |  65 | config `rivalBand.maxSegmentGap`                                    |
+| Ally perception + memory                 | ✅     |  70 | shared classifier; TTL ally slot; `allyState` on snapshots          |
+| Flee treats all snakes as threat         | ✅     |  75 | flee never hunts snakes                                             |
+| Flee same-faction regroup (`seek_ally`)  | ✅     |  65 | safe + satisfied; large friendly arrival radius                     |
+| Snake size-scaled regroup (`seek_ally`)  | ✅     |  70 | satisfied-only; `referenceSegmentCount` / `maxSegmentScale`         |
+| Flee pack vector while fleeing           | ✅     |  65 | `fleePackBlend` + distance falloff in `pickFleeCell`                |
+| Friendly-fire / team filtering in combat | 🟡     |  40 | relationships filter perception; kinetic ram still faction-blind    |
+| Target priority scoring across teams     | 🟡     |  45 | config prey value; no multi-target utility catalog                  |
 
 **Branch progress: 52%**
 
@@ -206,14 +208,14 @@ flowchart TB
 
 ## Tier 7 — Squads and coordination
 
-| Item | Status | % | Notes |
-|---|---|---:|---|
-| Spawn groups | 🟡 | 40 | physics/input grouping, not tactics |
-| Squad membership / leader | ⬜ | 0 | |
-| Role assignment | ⬜ | 0 | |
-| Formations | ⬜ | 0 | depends on pathfinding group movement |
-| Shared squad blackboard | ⬜ | 0 | ally memory is per-agent today |
-| Pack flee blend | ✅ | 65 | phase 4d — `resolveFleePackOptions` |
+| Item                      | Status |   % | Notes                                 |
+| ------------------------- | ------ | --: | ------------------------------------- |
+| Spawn groups              | 🟡     |  40 | physics/input grouping, not tactics   |
+| Squad membership / leader | ⬜     |   0 |                                       |
+| Role assignment           | ⬜     |   0 |                                       |
+| Formations                | ⬜     |   0 | depends on pathfinding group movement |
+| Shared squad blackboard   | ⬜     |   0 | ally memory is per-agent today        |
+| Pack flee blend           | ✅     |  65 | phase 4d — `resolveFleePackOptions`   |
 
 **Branch progress: 8%**
 
@@ -221,13 +223,13 @@ flowchart TB
 
 ## Tier 8 — Strategy, planning, game theory, puzzle theory
 
-| Area | Status | Notes |
-|---|---|---|
-| AI objectives | ⬜ | “goal” still usually means movement target |
-| GOAP / HTN | ⬜ | future |
-| Minimax / MCTS | ⬜ | future discrete/adversarial work |
-| Puzzle solvability | ⬜ | room/puzzle stamps have mechanism tests, not solution search |
-| Difficulty grading | ⬜ | future procedural/AI bridge |
+| Area               | Status | Notes                                                        |
+| ------------------ | ------ | ------------------------------------------------------------ |
+| AI objectives      | ⬜     | “goal” still usually means movement target                   |
+| GOAP / HTN         | ⬜     | future                                                       |
+| Minimax / MCTS     | ⬜     | future discrete/adversarial work                             |
+| Puzzle solvability | ⬜     | room/puzzle stamps have mechanism tests, not solution search |
+| Difficulty grading | ⬜     | future procedural/AI bridge                                  |
 
 ---
 
@@ -235,22 +237,22 @@ flowchart TB
 
 Phases completed on the snake game proving ground:
 
-| Phase | Status | Summary |
-|---|---|---|
-| **1–2 Team hunting** | ✅ | Faction metadata drives `resolveRelationship`; shared vision classifier |
-| **3 Prey/threat scoring** | ✅ | Config `enemySnakePreyValue`, rival band by segment gap |
-| **4a Ally perception** | ✅ | `ally`, `allyCount`, `allyCentroid` on world view — **`allyDist` deleted in fsmroadmap** |
-| **Prep Ally memory + blackboard** | ✅ | TTL ally slot, `known.ally`, `allyState`, `ALLY_SEEN` / `ALLY_REMEMBERED` |
-| **4b Flee `seek_ally`** | ✅ | Regroup when safe + satisfied; faction cohesion config; friendly arrival radius |
-| **4c Snake regroup (`seek_ally`)** | ✅ | Satisfied-only; size-scaled; friendly arrival radius |
-| **4d Flee pack flee** | ✅ | `fleePackBlend` steers flee retreat toward ally centroid |
-| **Slot pipeline refactor** | ⬜ | Generic perception→memory→blackboard pipeline (deferred) |
+| Phase                              | Status | Summary                                                                                  |
+| ---------------------------------- | ------ | ---------------------------------------------------------------------------------------- |
+| **1–2 Team hunting**               | ✅     | Faction metadata drives `resolveRelationship`; shared vision classifier                  |
+| **3 Prey/threat scoring**          | ✅     | Config `enemySnakePreyValue`, rival band by segment gap                                  |
+| **4a Ally perception**             | ✅     | `ally`, `allyCount`, `allyCentroid` on world view — **`allyDist` deleted in fsmroadmap** |
+| **Prep Ally memory + blackboard**  | ✅     | TTL ally slot, `known.ally`, `allyState`, `ALLY_SEEN` / `ALLY_REMEMBERED`                |
+| **4b Flee `seek_ally`**            | ✅     | Regroup when safe + satisfied; faction cohesion config; friendly arrival radius          |
+| **4c Snake regroup (`seek_ally`)** | ✅     | Satisfied-only; size-scaled; friendly arrival radius                                     |
+| **4d Flee pack flee**              | ✅     | `fleePackBlend` steers flee retreat toward ally centroid                                 |
+| **Slot pipeline refactor**         | ⬜     | Generic perception→memory→blackboard pipeline (deferred)                                 |
 
 Locomotion for both species still uses **per-agent HPA** (`cellTargetHpaNav`). Flow fields exist globally for sandbox drag-nav but are **not** wired into snake/flee intent steering yet. Snake visible-world perception is a single entry point: `perceiveSnakeIntentWorld` → `perceiveAgentWorld` (FSM, HUD, tests).
 
 ---
 
-## Current stacks (snake + flee)
+## Current stacks (snake + profile-driven agents)
 
 ```text
 createAgentIntent (generic)
@@ -258,13 +260,11 @@ createAgentIntent (generic)
     -> classifyAgentVision via snakeIntent / agentWorldPerception
     -> snakeIntentMemory -> AI/memory/targetMemory.js
     -> snakeDecisionModel.js -> AI/utility/utilityScoring.js
-  -> createFleeExploreIntent (flee)
-    -> classifyAgentVision via fleeWorldPerception
-    -> fleeIntentMemory
-    -> fleeDecisionModel.js
+  -> Dynamic Profile Intents (flee_agent, ball_agent, etc.)
+    -> config-driven targetMemory & utilityScoring (via agentProfile.js)
 Navigation/steering/exploreSteering.js -> AI/eqs/scoreOptions.js
-Libraries/Game/snake/species/snakeSpecies.js — ally/rival/prey/threat
-Libraries/Game/snake/species/fleeAgentSpecies.js — ally vs threat vs neutral
+Libraries/AI/agents/agentProfile.js — config-driven species profiles
+Libraries/Game/snake/species/index.js — DynamicSpeciesMap lookup
 ```
 
 Pattern to preserve: generic loop in `Libraries/AI`, domain facts/scorers in game adapters.
@@ -287,14 +287,14 @@ The pathfinding stack already has the building blocks for **per-agent sliding fl
 
 ### Features this unlocks
 
-| Feature | Mechanism |
-|---|---|
-| Reachability-aware hunt/food scoring | `facts.reachSteps` from `flowTargetSteps` ✅ |
-| Crowd lanes | Many agents sharing a goal sample the same local downhill |
-| Field-based flee | Threat repulsion gradient instead of single `pickFleeCell` |
-| Cohesion / pack flee (4d) | Goal = ally centroid; flee = blend threat repulsion + ally attraction |
-| Memory-aware explore | Raise cost on visited cells; explore = follow low-cost gradient |
-| Debug overlays | Intent cones as arrow fields in a local HUD radius |
+| Feature                              | Mechanism                                                             |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| Reachability-aware hunt/food scoring | `facts.reachSteps` from `flowTargetSteps` ✅                          |
+| Crowd lanes                          | Many agents sharing a goal sample the same local downhill             |
+| Field-based flee                     | Threat repulsion gradient instead of single `pickFleeCell`            |
+| Cohesion / pack flee (4d)            | Goal = ally centroid; flee = blend threat repulsion + ally attraction |
+| Memory-aware explore                 | Raise cost on visited cells; explore = follow low-cost gradient       |
+| Debug overlays                       | Intent cones as arrow fields in a local HUD radius                    |
 
 ### Costs and limits
 
@@ -326,22 +326,25 @@ Libraries/AI/brain/ — spatial cell memory and nav penalty producer
 Libraries/AI/memory/targetMemory.js — generic TTL target records
 Libraries/AI/utility/utilityScoring.js — generic score details / candidate maps
 Libraries/AI/eqs/scoreOptions.js — generic weighted option scoring
-Libraries/Navigation/perception/ — vision cone, observer frame, LOS
+Libraries/AI/identity/agentIdentity.js — agent naming and unique identification
+Libraries/AI/agents/agentProfile.js — agent species config profiles
+Libraries/Navigation/perception/ — vision cone, observer frame, LOS query
 Libraries/Navigation/steering/exploreSteering.js — first EQS consumer
-Libraries/Game/snake/createSnakeForageIntent.js — snake adapter
+Libraries/Game/snake/createSnakeForageIntent.js — snake FSM adapter
 Libraries/Game/snake/snakeDecisionModel.js — snake facts and scorers
 Libraries/Game/snake/snakeIntentMemory.js — snake target-memory adapter
-Libraries/Game/snake/fleeAgent/createFleeExploreIntent.js — flee adapter
-Libraries/Game/snake/fleeAgent/fleeDecisionModel.js — flee scorers + sprint intent
-Libraries/Game/snake/fleeAgent/fleeIntentMemory.js — flee target-memory adapter
-Libraries/Game/snake/species/ — relationship resolvers per species
-Config/games/snake.js — fleeAgent, rivalBand, intentMemory, faction cohesion knobs
+Libraries/Game/snake/species/index.js — dynamic species resolver map
+Libraries/Game/snake/agentFrameOrchestrator.js — sim tick FSM coordination
+Libraries/Game/snake/agentMetabolism.js — consolidated metabolism & sizing logic
+Libraries/Game/snake/rangedCombat.js — weapon combat mechanics
+Libraries/Game/snake/gunAgent/gunBulletSystem.js — gun and projectile entity simulation
+Config/games/snake.js — rivalBand, intentMemory, faction cohesion, weapon configs
 tests/agentAllyPerception.test.js, agentAllyMemory.test.js, snakeTeamRelationship.test.js
-tests/fleeAgentDecision.test.js, fleeAgentSpawn.test.js, snakeDecisionModel.test.js
+tests/gunBullet.test.js, tests/shatterPerformance.test.js
 ```
 
 Cross-doc: movement polish and flow fields → [pathfinding.md](./pathfinding.md), puzzle solvability → [procedural.md](./procedural.md), debug overlays → [rendering.md](./rendering.md).
 
 ---
 
-*Last updated: team hunting phases 1–3, ally perception/memory (4a), flee `seek_ally` (4b), shared `classifyAgentVision`, dead-code cleanup (striker / flee scale). Local flow horizon direction documented.*
+_Last updated: dynamic agent profiles, agent identity, frame orchestrator, ranged combat, and metabolism consolidation updates._
