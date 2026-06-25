@@ -2,6 +2,7 @@ import { classifyAgentVision } from "../../AI/perception/classifyAgentVision.js"
 import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { resolveAgentPerceptionOptions } from "./agentIntentPerception.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
+import { createObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 function agentRingStyle(config, slot) {
     const slots = config.focusedAgentDebug?.agentSlots ?? {};
     const fallback = {
@@ -25,10 +26,13 @@ export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, sessi
     const head = instance?.head;
     if (!head) return;
     const visionRange = getSharedConfig(config).visionRange;
-    const frame = { navTopology: state.nav.topology, visionRange };
+    const frame =
+        state.nav.observerVisionFrame ??
+        createObserverVisionFrame({ tickId: session.simTick ?? 1, navTopology: state.nav.topology, visionRange, viewport: state.viewport, brainSyncOffScreenInterval: 1 });
     const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
     const agentCtx = { instance, session };
-    const world = classifyAgentVision(head, agentCtx, state, frame, null, perceptionOptions);
+    const vision = frame.ensureHeadVision(head, visionRange);
+    const world = classifyAgentVision(head, agentCtx, state, frame, vision, perceptionOptions);
     const committedTargetId = instance.intent?.getTargetId?.() ?? null;
     if (world.threat) appendAgentRing(out, world.threat, agentRingStyle(config, "threat"));
     if (world.prey && world.prey.id !== committedTargetId) appendAgentRing(out, world.prey, agentRingStyle(config, "prey"));

@@ -1,5 +1,5 @@
 import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
-import { buildVisionCellSet, collectVisibleGridCells, isPointVisibleFromHeadVision, resolveObserverHeading } from "./gridCellVision.js";
+import { buildVisionCellSet, collectVisibleGridCells, resolveObserverHeading } from "./gridCellVision.js";
 export const OBSERVER_VIEW_RADIUS_SCALE = 2;
 let visionFullBuildCount = 0;
 export function resetVisionFullBuildCount() {
@@ -30,26 +30,25 @@ function buildHeadVision(observer, navTopology, visionRange, { perceptionTick = 
     const key = observerVisionPoseKey(observer, navTopology, visionRange);
     visionFullBuildCount++;
     const cells = collectVisibleGridCells(navTopology, observer.x, observer.y, visionRange.range);
-    const next = { navKey: key.navKey, col: key.col, row: key.row, originCol: key.col, originRow: key.row, heading: resolveObserverHeading(observer), range: visionRange.range, perceptionTick, cells };
+    const cellSet = buildVisionCellSet(cells, navTopology.grid.cols);
+    const next = {
+        navKey: key.navKey,
+        col: key.col,
+        row: key.row,
+        originCol: key.col,
+        originRow: key.row,
+        heading: resolveObserverHeading(observer),
+        range: visionRange.range,
+        perceptionTick,
+        cells,
+        cellSet,
+    };
     observer._observerVisionCache = next;
     return next;
 }
 function resolveObserverViewportSync(viewport, observer, brainSyncOffScreenInterval) {
     const onScreen = viewport.circleInBounds(observer.x, observer.y, observer.radius * OBSERVER_VIEW_RADIUS_SCALE, "props");
     return { onScreen, brainSyncOffScreenInterval };
-}
-export function queryGridCellVision(observer, candidates, { range, navTopology }) {
-    const visionRange = { range };
-    const vision = buildHeadVision(observer, navTopology, visionRange);
-    const cellSet = buildVisionCellSet(vision.cells, navTopology.grid.cols);
-    const visible = [];
-    for (let i = 0; i < candidates.length; i++) {
-        const target = candidates[i];
-        if (target === observer || target.isDead) continue;
-        if (!isPointVisibleFromHeadVision(target.x, target.y, observer.x, observer.y, vision.originCol, vision.originRow, range, cellSet, navTopology)) continue;
-        visible.push(target);
-    }
-    return { heading: vision.heading, range, cells: vision.cells, visible };
 }
 export function createObserverVisionFrame({ tickId, navTopology, visionRange, viewport, brainSyncOffScreenInterval }) {
     const frame = {

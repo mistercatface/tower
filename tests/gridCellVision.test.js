@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { collectVisibleGridCells, hasGridCellLineOfSight, resolveObserverHeading } from "../Libraries/Navigation/perception/gridCellVision.js";
-import { createObserverVisionFrame, getVisionFullBuildCount, queryGridCellVision, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
+import { createObserverVisionFrame, getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
@@ -31,6 +31,36 @@ async function fillRectWalls(ctx, c0, r0, c1, r1) {
     for (let row = r0; row <= r1; row++) for (let col = c0; col <= c1; col++) grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     await syncNavBounds(ctx, c0, c1, r0, r1);
+}
+function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, originCol, originRow, range, cellSet, navTopology) {
+    const grid = navTopology.grid;
+    const col = grid.worldCol(pointX);
+    const row = grid.worldRow(pointY);
+    if (cellSet.has(colRowToIndex(col, row, grid.cols))) return true;
+    const dx = pointX - originX;
+    const dy = pointY - originY;
+    if (dx * dx + dy * dy > range * range) return false;
+    return hasGridCellLineOfSight(navTopology, originCol, originRow, col, row);
+}
+function queryGridCellVision(observer, candidates, { range, navTopology }) {
+    const visionRange = { range };
+    const frame = createObserverVisionFrame({
+        tickId: 1,
+        navTopology,
+        visionRange,
+        viewport: { circleInBounds: () => true },
+        brainSyncOffScreenInterval: 1,
+    });
+    const vision = frame.ensureHeadVision(observer);
+    const cellSet = vision.cellSet;
+    const visible = [];
+    for (let i = 0; i < candidates.length; i++) {
+        const target = candidates[i];
+        if (target === observer || target.isDead) continue;
+        if (!isPointVisibleFromHeadVision(target.x, target.y, observer.x, observer.y, vision.originCol, vision.originRow, range, cellSet, navTopology)) continue;
+        visible.push(target);
+    }
+    return { heading: vision.heading, range, cells: vision.cells, visible };
 }
 describe("grid cell line of sight", () => {
     it("blocks sight through a filled voxel column", async () => {
@@ -139,6 +169,9 @@ describe("grid cell vision", () => {
         assert.equal(getVisionFullBuildCount(), 1);
         assert.ok(frame.readHeadVision(observer));
         assert.equal(getVisionFullBuildCount(), 1);
+        const vision = frame.readHeadVision(observer);
+        assert.ok(vision.cellSet instanceof Set);
+        assert.equal(vision.cellSet.size, vision.cells.length);
         const nextFrame = createObserverVisionFrame({
             tickId: 10,
             navTopology: ctx.navTopology,

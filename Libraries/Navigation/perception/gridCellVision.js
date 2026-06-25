@@ -81,16 +81,6 @@ export function buildVisionCellSet(cells, cols) {
     }
     return set;
 }
-export function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, originCol, originRow, range, cellSet, navTopology) {
-    const grid = navTopology.grid;
-    const col = grid.worldCol(pointX);
-    const row = grid.worldRow(pointY);
-    if (cellSet.has(colRowToIndex(col, row, grid.cols))) return true;
-    const dx = pointX - originX;
-    const dy = pointY - originY;
-    if (dx * dx + dy * dy > range * range) return false;
-    return hasGridCellLineOfSight(navTopology, originCol, originRow, col, row);
-}
 export function collectVisibleGridCells(navTopology, originX, originY, range) {
     const grid = navTopology.grid;
     const originCol = grid.worldCol(originX);

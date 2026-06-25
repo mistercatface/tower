@@ -1,5 +1,5 @@
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { hasGridCellLineOfSight } from "../../Navigation/perception/gridCellVision.js";
+import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
 const AGENT_VISION_QUERY_BOUNDS = createAabb();
 /**
@@ -11,8 +11,6 @@ export function classifyAgentVision(seeker, agentCtx, state, frame, vision, opti
     const navTopology = frame.navTopology;
     const range = agentRange ?? visionRange.range;
     const rangeSq = range * range;
-    const originCol = vision?.originCol ?? navTopology.grid.worldCol(seeker.x);
-    const originRow = vision?.originRow ?? navTopology.grid.worldRow(seeker.y);
     let threat = null;
     let prey = null;
     let ally = null;
@@ -40,7 +38,7 @@ export function classifyAgentVision(seeker, agentCtx, state, frame, vision, opti
         if (relationship === "neutral") continue;
         const targetCol = navTopology.grid.worldCol(head.x);
         const targetRow = navTopology.grid.worldRow(head.y);
-        if (!hasGridCellLineOfSight(navTopology, originCol, originRow, targetCol, targetRow)) continue;
+        if (!vision.cellSet.has(colRowToIndex(targetCol, targetRow, navTopology.grid.cols))) continue;
         let compareDistSq = distSq;
         if (committedTargetId !== null && head.id === committedTargetId) compareDistSq *= targetStickyFactor;
         if (relationship === "ally") {

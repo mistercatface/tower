@@ -12,9 +12,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
-
 const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
-
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
     const resolvers = {};
@@ -22,14 +20,13 @@ function buildVisibleSourceResolvers(profile) {
         const accept = ACCEPT_PREDICATES[config.accept];
         if (!accept) throw new Error(`Unknown accept predicate: ${config.accept}`);
         const categoryId = config.category;
-        resolvers[slotId] = (seeker, state, { frame, visionRange, committedTargetId, targetStickyFactor }) => {
+        resolvers[slotId] = (seeker, state, { frame, visionRange, committedTargetId, targetStickyFactor, vision }) => {
             const index = getPropCategoryIndex(state, categoryId);
-            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, accept, committedTargetId, targetStickyFactor);
+            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, accept, committedTargetId, targetStickyFactor, vision);
         };
     }
     return resolvers;
 }
-
 function transitionReason(seekModes) {
     return (prevMode, nextMode, policy) => {
         if (policy?.reason) return policy.reason;

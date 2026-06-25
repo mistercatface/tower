@@ -10,8 +10,9 @@ import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigation
 import { isEdibleSnakeFoodForSeeker } from "../Libraries/Game/snake/snakeFood.js";
 import { resolveVisibleCategoryInVision } from "../Libraries/AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
-import { requireSnakeVisionFrame } from "../Libraries/Game/snake/snakePerception.js";
+import { requireSnakeVisionFrame, beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
@@ -222,5 +223,31 @@ describe("snake intent integration", () => {
         const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
         const world = perceiveAgentIntentWorld(seeker, agentCtx, state, () => null);
         assert.equal(world.prey, null);
+    });
+
+    it("uses a single head vision build per perceive and caches cellSet", async () => {
+        resetVisionFullBuildCount();
+        const state = await createIntentTestState();
+        const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
+        wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
+        const seeker = chain.head;
+        wireSnakeTestGame(state);
+        const instance = state.sandbox.snakeGame.instancesByHeadId.get(seeker.id);
+        const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
+        assert.equal(getVisionFullBuildCount(), 0);
+        
+        beginSnakePerceptionFrame(state);
+        const foodResolver = (seeker, state, { frame, visionRange, vision }) => {
+            const index = getPropCategoryIndex(state, "food");
+            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, () => true, null, 1.0, vision);
+        };
+        perceiveAgentIntentWorld(seeker, agentCtx, state, { food: foodResolver });
+        endSnakePerceptionFrame(state);
+        
+        assert.equal(getVisionFullBuildCount(), 1);
+        const frame = requireSnakeVisionFrame(state);
+        const vision = frame.readHeadVision(seeker);
+        assert.ok(vision.cellSet instanceof Set);
+        assert.ok(vision.cellSet.size >= 0);
     });
 });

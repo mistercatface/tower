@@ -1,15 +1,10 @@
 import { classifyAgentVision } from "./classifyAgentVision.js";
-import { hasGridCellLineOfSight } from "../../Navigation/perception/gridCellVision.js";
-export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, visionRange, accept, committedTargetId = null, targetStickyFactor = 1.0) {
-    const vision = frame.ensureHeadVision(seeker, visionRange);
-    const nav = frame.navTopology,
-        grid = nav.grid;
-    const originCol = grid.worldCol(seeker.x),
-        originRow = grid.worldRow(seeker.y);
+export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, visionRange, accept, committedTargetId = null, targetStickyFactor = 1.0, vision = null) {
+    const resolvedVision = vision ?? frame.ensureHeadVision(seeker, visionRange);
     const rangeSq = visionRange.range * visionRange.range;
     let best = null,
         bestDistSq = Infinity;
-    for (const { col, row } of vision.cells) {
+    for (const { col, row } of resolvedVision.cells) {
         if (categoryIndex.countAtCell(col, row) === 0) continue;
         const prop = categoryIndex.nearestItemInCell(col, row, seeker.x, seeker.y, (p) => accept(seeker, p));
         if (!prop) continue;
@@ -20,7 +15,6 @@ export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, vis
         let compareDistSq = d;
         if (committedTargetId !== null && prop.id === committedTargetId) compareDistSq *= targetStickyFactor;
         if (compareDistSq >= bestDistSq) continue;
-        if (!hasGridCellLineOfSight(nav, originCol, originRow, col, row)) continue;
         bestDistSq = compareDistSq;
         best = prop;
     }
@@ -37,14 +31,16 @@ export function findNearestVisibleThreat(seeker, agentCtx, state, visionRange, {
     const frame = readVisionFrame(state);
     const resolved = visionRange ?? frame.visionRange;
     const range = agentRange ?? resolved.range;
-    return findNearestVisibleThreatFromVision(seeker, agentCtx, state, frame, null, { visionRange: resolved, agentRange: range, resolveRelationship });
+    const vision = frame.ensureHeadVision(seeker, resolved);
+    return findNearestVisibleThreatFromVision(seeker, agentCtx, state, frame, vision, { visionRange: resolved, agentRange: range, resolveRelationship });
 }
 export function perceiveAgentWorldInto(out, seeker, agentCtx, state, visibleSourceResolvers, visionRange, options) {
     const { readVisionFrame, agentRange, resolveRelationship, committedTargetId = null, targetStickyFactor = 1.0 } = options;
     const frame = readVisionFrame(state);
     const resolved = visionRange ?? frame.visionRange;
     const range = agentRange ?? resolved.range;
-    const agents = classifyVisibleAgentsFromVision(seeker, agentCtx, state, frame, null, { visionRange: resolved, agentRange: range, resolveRelationship, committedTargetId, targetStickyFactor });
+    const vision = frame.ensureHeadVision(seeker, resolved);
+    const agents = classifyVisibleAgentsFromVision(seeker, agentCtx, state, frame, vision, { visionRange: resolved, agentRange: range, resolveRelationship, committedTargetId, targetStickyFactor });
     out.threat = agents.threat;
     out.prey = agents.prey;
     out.ally = agents.ally;
@@ -52,7 +48,8 @@ export function perceiveAgentWorldInto(out, seeker, agentCtx, state, visibleSour
     out.allyCentroid = agents.allyCentroid;
     out.threatCount = agents.threatCount;
     if (visibleSourceResolvers)
-        for (const slotId in visibleSourceResolvers) out[slotId] = visibleSourceResolvers[slotId](seeker, state, { frame, visionRange: resolved, committedTargetId, targetStickyFactor }) ?? null;
+        for (const slotId in visibleSourceResolvers)
+            out[slotId] = visibleSourceResolvers[slotId](seeker, state, { frame, visionRange: resolved, committedTargetId, targetStickyFactor, vision }) ?? null;
     else out.food = null;
     return out;
 }
