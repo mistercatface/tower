@@ -55,12 +55,10 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
     let srcMinY = Math.floor(Math.min(ts0_y, ts1_y, ts2_y));
     let srcMaxX = Math.ceil(Math.max(ts0_x, ts1_x, ts2_x));
     let srcMaxY = Math.ceil(Math.max(ts0_y, ts1_y, ts2_y));
-    if (img.width !== undefined && img.height !== undefined) {
-        srcMinX = Math.max(0, srcMinX);
-        srcMinY = Math.max(0, srcMinY);
-        srcMaxX = Math.min(img.width, srcMaxX);
-        srcMaxY = Math.min(img.height, srcMaxY);
-    }
+    srcMinX = Math.max(0, srcMinX);
+    srcMinY = Math.max(0, srcMinY);
+    srcMaxX = Math.min(img.width, srcMaxX);
+    srcMaxY = Math.min(img.height, srcMaxY);
     const srcW = srcMaxX - srcMinX;
     const srcH = srcMaxY - srcMinY;
     if (srcW <= 0 || srcH <= 0) return;
