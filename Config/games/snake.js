@@ -85,7 +85,7 @@ export const SNAKE_GAME_DEFAULTS = {
     agentProfiles: {
         snake: {
             exportType: "snake",
-            populationCount: 160,
+            populationCount: 48,
             bodyPropId: "ball",
             headPropId: "snake_head",
             segmentCount: 3,
