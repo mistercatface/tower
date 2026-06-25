@@ -1,12 +1,13 @@
 import { decelerateRoll, getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
 import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { wakeKineticBody } from "../../Motion/kineticSleep.js";
-import { rotateAngleTowards } from "../../Math/Angle.js";
+import { angleDelta, rotateAngleTowards } from "../../Math/Angle.js";
 import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;
 export function resolveRangedWeapon(instance, profile) {
     return instance?.equippedWeapon ?? profile?.weapon ?? null;
 }
@@ -108,16 +109,41 @@ function resolveLiveTarget(ctx) {
 function aimRotationRadPerSec(weapon) {
     return weapon.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
 }
+function targetAngleFromAgent(agent, target) {
+    return Math.atan2(target.y - agent.y, target.x - agent.x);
+}
 function combatStateCanAimAtTarget(ctx, target) {
     const combat = ctx.world.decisionContext.combatState;
     if (combat?.enemyId === target?.id) return combat.hasLineOfSight;
     return hasLineOfSight(ctx.state, ctx.agent, target);
 }
+function targetInWeaponWindow(agent, target, weapon) {
+    const dist = Math.hypot(target.x - agent.x, target.y - agent.y);
+    const maxRange = weapon.maxRange ?? 128;
+    const fleeRange = weapon.fleeRange ?? 48;
+    return dist <= maxRange && dist > fleeRange;
+}
+function aimReadyForShot(agent, target, action, weapon) {
+    const aimAngle = action.aimAngle ?? agent.facing ?? targetAngleFromAgent(agent, target);
+    const targetAngle = targetAngleFromAgent(agent, target);
+    return Math.abs(angleDelta(aimAngle, targetAngle)) <= (weapon.fireAimToleranceRad ?? DEFAULT_FIRE_AIM_TOLERANCE_RAD);
+}
+function shotReady(ctx, action, weapon, target) {
+    if (!target || target.isDead) {
+        resetRangedCombatAction(action);
+        return false;
+    }
+    if (!combatStateCanAimAtTarget(ctx, target) || !targetInWeaponWindow(ctx.agent, target, weapon)) {
+        resetRangedCombatAction(action);
+        return false;
+    }
+    return aimReadyForShot(ctx.agent, target, action, weapon);
+}
 function beginReaction(ctx, action, agent, target, weapon, dtMs) {
     action.phase = "reacting";
     action.targetId = target.id;
     action.timerMs = weapon.reactionMs ?? 1000;
-    const targetAngle = Math.atan2(target.y - agent.y, target.x - agent.x);
+    const targetAngle = targetAngleFromAgent(agent, target);
     const initialAngle = agent.facing !== undefined && !Number.isNaN(agent.facing) ? agent.facing : targetAngle;
     const turnRadPerSec = aimRotationRadPerSec(weapon);
     const maxStep = turnRadPerSec * (dtMs / 1000);
@@ -132,7 +158,7 @@ function tickReaction(ctx, instance, action, weapon, dtMs) {
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
-    if (action.timerMs <= 0) {
+    if (action.timerMs <= 0 && shotReady(ctx, action, weapon, target)) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
         fireBullet(ctx.state, instance, angle, weapon);
         action.shotsFired = (action.shotsFired || 0) + 1;
@@ -153,7 +179,7 @@ function tickFireDelay(ctx, instance, action, weapon, dtMs) {
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
-    if (action.timerMs <= 0) {
+    if (action.timerMs <= 0 && shotReady(ctx, action, weapon, target)) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
         fireBullet(ctx.state, instance, angle, weapon);
         action.shotsFired = (action.shotsFired || 0) + 1;

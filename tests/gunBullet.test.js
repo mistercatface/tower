@@ -114,6 +114,77 @@ describe("flee agent bullets and combat", () => {
         assert.ok(fleeAgent.facing > 0, "Should start rotating toward the target");
         assert.ok(fleeAgent.facing < Math.atan2(snakePack.chain.head.y - fleeAgent.y, snakePack.chain.head.x - fleeAgent.x) + 1e-4, "Should rotate smoothly without snapping instantly");
     });
+    it("waits for aim alignment after reaction timer before firing", async () => {
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { weapon: { reactionMs: 1, fireAimToleranceRad: 0.02, aimRotationRadPerSec: 0.5 } } } });
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
+        const snakePack = spawnSnakeChain(state, { col: 10, row: 5 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: () => ({ cells: [{ col: 5, row: 5 }, { col: 10, row: 5 }], cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 5 * state.obstacleGrid.cols]) }),
+            isVisible: () => true,
+        };
+        fleePack.head.facing = Math.PI / 2;
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        fleeInstance.tick(state, 16);
+        fleeInstance.tick(state, 150);
+        assert.equal(fleeInstance.combatAction.phase, "reacting");
+        assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should wait for actual aim alignment");
+        fleeInstance.tick(state, 4000);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should fire once aligned");
+    });
+    it("waits for aim alignment before burst follow-up shots", async () => {
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { weapon: { reactionMs: 1, fireDelayMs: 1, fireAimToleranceRad: 0.02, aimRotationRadPerSec: 0.5 } } } });
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
+        const snakePack = spawnSnakeChain(state, { col: 10, row: 5 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: () => ({ cells: [{ col: 5, row: 5 }, { col: 10, row: 5 }, { col: 10, row: 9 }], cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 5 * state.obstacleGrid.cols, 10 + 9 * state.obstacleGrid.cols]) }),
+            isVisible: () => true,
+        };
+        fleePack.head.facing = 0;
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        fleeInstance.tick(state, 16);
+        fleeInstance.tick(state, 1);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "First shot should fire when already aligned");
+        snakePack.chain.head.y += 64;
+        fleeInstance.tick(state, 150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "Follow-up should wait after target angle changes");
+        assert.equal(fleeInstance.combatAction.phase, "fire_delay");
+        fleeInstance.tick(state, 4000);
+        assert.equal(snakeGame.activeGunBulletIds.length, 2, "Follow-up should fire once re-aligned");
+    });
+    it("fires bullets along unquantized aim rather than sprite buckets", async () => {
+        applySnakeGameConfig({ agentProfiles: { flee_agent: { weapon: { reactionMs: 1, fireAimToleranceRad: 0.001, aimRotationRadPerSec: 100 } } } });
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start(state);
+        const snakePack = spawnSnakeChain(state, { col: 10, row: 6 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: () => ({ cells: [{ col: 5, row: 5 }, { col: 10, row: 6 }], cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 6 * state.obstacleGrid.cols]) }),
+            isVisible: () => true,
+        };
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        fleeInstance.tick(state, 16);
+        fleeInstance.tick(state, 1);
+        const bullet = state.entityRegistry.getLive(snakeGame.activeGunBulletIds[0]);
+        const bulletAngle = Math.atan2(bullet.vy, bullet.vx);
+        const targetAngle = Math.atan2(snakePack.chain.head.y - fleePack.head.y, snakePack.chain.head.x - fleePack.head.x);
+        assert.ok(Math.abs(bulletAngle - targetAngle) < 0.001);
+    });
     it("smoothly rotates facing toward movement while exploring", async () => {
         applySnakeGameConfig();
         const { state } = await createSnakeGameHarnessState();
