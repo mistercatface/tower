@@ -44,7 +44,7 @@ describe("gun agent profile and species", () => {
         
         // Other agent relationships towards gun agent
         assert.equal(resolveRelationshipForInstances(flee, gun), "neutral", "flee agent should ignore gun agent");
-        assert.equal(resolveRelationshipForInstances(snake, gun), "neutral", "snake should treat gun agent as neutral");
+        assert.equal(resolveRelationshipForInstances(snake, gun), "prey", "snake should treat gun agent as prey");
         assert.equal(resolveRelationshipForInstances(squid, gun), "neutral", "squid should treat gun agent as neutral");
     });
 });

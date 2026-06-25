@@ -47,11 +47,18 @@ describe("gun agent bullets and combat", () => {
         assert.ok(canSee, "Gun agent should see snake");
         
         // 3. Shooting
+        gunInstance.autosim.getMode = () => "seek_enemy";
         gunInstance.autosim.getTargetId = () => snakePack.chain.head.id;
         
         assert.equal(snakeGame.activeGunBulletIds.length, 0);
+        // First tick starts the 1-second (1000ms) charge phase
         tickGunAgentShooting(state, gunInstance, 100);
-        assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet");
+        assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn bullet immediately");
+        assert.equal(gunPack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while charging");
+        
+        // Second tick completes the charge phase
+        tickGunAgentShooting(state, gunInstance, 1000);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet after charging");
         
         const bulletId = snakeGame.activeGunBulletIds[0];
         const bullet = state.entityRegistry.getLive(bulletId);
@@ -87,5 +94,70 @@ describe("gun agent bullets and combat", () => {
         const foodIndex = getPropCategoryIndex(state, "food");
         const found = foodIndex.findNearest(bullet.x, bullet.y);
         assert.equal(found?.id, bullet.id, "Spent bullet food should be registered in category index");
+    });
+
+    it("smoothly rotates towards direction of movement when idle", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        
+        const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
+        const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
+        registerAgentInstance(snakeGame, "gun_agent", gunInstance);
+        
+        const gunAgent = gunPack.head;
+        gunAgent.facing = 0;
+        
+        // Velocity pointing downwards (90 degrees, or Math.PI / 2 rad)
+        gunAgent.vx = 0;
+        gunAgent.vy = 100;
+        
+        // No target
+        gunInstance.autosim.getTargetId = () => null;
+        
+        // Tick 100ms
+        tickGunAgentShooting(state, gunInstance, 100);
+        
+        // Target angle is Math.PI / 2 (~1.57). With maxStep = 1.5 * PI * 0.1 = 0.15 * PI (~0.47)
+        // It should have rotated from 0 to ~0.47 rad.
+        assert.ok(gunAgent.facing > 0, "Should start rotating towards moving direction");
+        assert.ok(gunAgent.facing < Math.PI / 2, "Should rotate smoothly without snapping instantly");
+        
+        // Tick another 1000ms
+        tickGunAgentShooting(state, gunInstance, 1000);
+        assert.ok(Math.abs(gunAgent.facing - Math.PI / 2) < 1e-4, "Should successfully reach the direction of movement");
+    });
+
+    it("does not charge or shoot if mode is not seek_enemy", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        
+        const gunPack = spawnGunAgent(state, { col: 5, row: 5 });
+        const gunInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.gun, head: gunPack.head, spawnGroupId: gunPack.spawnGroupId });
+        registerAgentInstance(snakeGame, "gun_agent", gunInstance);
+        
+        // Mock target but set mode to seek_food (e.g. hungry seeking shards)
+        gunInstance.autosim.getMode = () => "seek_food";
+        gunInstance.autosim.getTargetId = () => 9999;
+        
+        // Mock target to exist and be alive
+        const originalGetLive = state.entityRegistry.getLive;
+        state.entityRegistry.getLive = (id) => {
+            if (id === 9999) return { id: 9999, x: 100, y: 100, isDead: false };
+            return originalGetLive.call(state.entityRegistry, id);
+        };
+        
+        // Mock LOS
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: () => ({
+                cells: [{ col: 5, row: 5 }],
+                cellSet: new Set([5 + 5 * state.obstacleGrid.cols])
+            })
+        };
+        
+        tickGunAgentShooting(state, gunInstance, 100);
+        assert.equal(gunPack.head._shootChargeMs ?? 0, 0, "Should not start charging");
+        assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn any bullet");
     });
 });

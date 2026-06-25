@@ -53,10 +53,10 @@ const FLEE_INTENT = {
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 36,
+    snakeCount: 80,
     boidCount: 48,
     squidCount: 1,
-    gunAgentCount: 2,
+    gunAgentCount: 6,
     bodyPressureNudgeWeight: 0.5,
     bodyPressureSpeedDamp: 2.0,
     eatMargin: 2,
@@ -100,7 +100,7 @@ export const SNAKE_GAME_DEFAULTS = {
             metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
             rivalBand: { maxSegmentGap: 2 },
             combat: { topology: "chain", canSplit: true, victimOfFleeEscapeRam: true, victimOfHeadStrikeRam: true, preyHeadRamImmuneLeader: true },
-            relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey", squid: "threat", gun_agent: "neutral" },
+            relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey", squid: "threat", gun_agent: "prey" },
             species: { retireNavOnDeath: true, pressureDiagnostics: true },
             gameplay: { leader: { maxSpeed: 250, accel: 200, friction: 2.0 }, body: { friction: 2.25, density: 0.001 } },
             scoringEnv: { effortFallback: true },
