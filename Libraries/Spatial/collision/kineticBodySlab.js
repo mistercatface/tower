@@ -2,7 +2,7 @@ import { createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphas
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
-const MAX_PHYS_BODIES = 4096;
+import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../../Core/engineLimits.js";
 export const kineticDynamicSlab = {
     x: new Float32Array(MAX_PHYS_BODIES),
     y: new Float32Array(MAX_PHYS_BODIES),

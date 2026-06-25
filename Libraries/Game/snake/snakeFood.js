@@ -2,11 +2,8 @@ import { isSnakeFracturableDeadSegment, SNAKE_SHARD_PROP_ID } from "./snakeSegme
 export function isSnakeShardFood(prop) {
     return prop?.type === SNAKE_SHARD_PROP_ID;
 }
-export function isGunBulletFood(prop) {
-    return !!(prop?._gunBullet && !prop?._armed);
-}
 export function isSnakeFoodTarget(prop) {
-    return isSnakeShardFood(prop) || isSnakeFracturableDeadSegment(prop) || isGunBulletFood(prop);
+    return isSnakeShardFood(prop) || isSnakeFracturableDeadSegment(prop);
 }
 export function canAgentEatSnakeFood(seeker, food) {
     if (!seeker || !food || food.isDead || !isSnakeFoodTarget(food)) return false;

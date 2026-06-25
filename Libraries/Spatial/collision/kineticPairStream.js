@@ -4,8 +4,7 @@ import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapS
 import { classifyKineticPairTier, KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
-const MAX_KINETIC_PAIRS = 4096;
-const MAX_PHYS_BODIES = 4096;
+import { MAX_ENTITIES as MAX_KINETIC_PAIRS, MAX_ENTITIES as MAX_PHYS_BODIES } from "../../../Core/engineLimits.js";
 const PAIR_BODY_KEY_SCALE = 1_000_000;
 export const kineticPairBuffer = {
     count: 0,

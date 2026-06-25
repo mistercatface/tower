@@ -6,7 +6,7 @@ import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 import { countMotionSubsteps, maxActiveKineticSpeedSq } from "./motionSubsteps.js";
 function propBlocksSleep(prop) {
-    const fn = prop.currentState.blocksSleep;
+    const fn = prop.currentState?.blocksSleep;
     if (fn) return fn.call(prop.currentState);
     return false;
 }
@@ -46,6 +46,8 @@ export function runKineticPhysics(tick, dt, hooks) {
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
         for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updateProp(world.worldProps[i], subDt, frame);
+        const projectiles = world.projectiles || [];
+        for (let i = projectiles.length - 1; i >= 0; i--) hooks.updateProp(projectiles[i], subDt, frame);
         frame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(tick, { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects });
         const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);

@@ -4,7 +4,7 @@ import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.
 import { entityBroadphaseExtent, kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-const MAX_ENTITIES = 4096;
+import { MAX_ENTITIES } from "../../../Core/engineLimits.js";
 const GLOBAL_QUERY_RESULT = [];
 export class EntityGrid {
     constructor(cellSize) {

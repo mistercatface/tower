@@ -1,5 +1,6 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { pruneKineticConstraintsForBody } from "../Libraries/Motion/kineticConstraints.js";
+import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
@@ -145,7 +146,7 @@ export class EntityRegistry {
         /** Reused candidate buffer for view queries — do not retain references across calls. */
         this._candidateScratch = [];
         /** Generation-stamped dedupe for spatial candidate fills — indexed by entity id. */
-        this._candidateSeenGen = new Uint32Array(4096);
+        this._candidateSeenGen = new Uint32Array(MAX_ENTITIES);
         this._candidateQueryGen = 0;
         /** Reused kind filter — cleared each top-level view query. */
         this._kindSetScratch = new Set();

@@ -31,6 +31,7 @@ export class SharedGameState {
         this.debugMode = false;
         this.radioSeenThisRun = {};
         this.worldProps = [];
+        this.projectiles = [];
         this.entityRegistry = new EntityRegistry();
         this.kinetic = new KineticSession();
         this.wallResolver = new WallCollisionResolver();

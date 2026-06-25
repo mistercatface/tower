@@ -6,7 +6,6 @@ import custom_box from "./custom_box/custom_box.asset.js";
 import glass_pane from "./glass_pane/glass_pane.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
 import boid_triangle from "./boid_triangle/boid_triangle.asset.js";
-import gun_bullet from "./gun_bullet/gun_bullet.asset.js";
 import hex_block from "./hex_block/hex_block.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
 import button_floor from "./button_floor/button_floor.asset.js";
@@ -34,7 +33,6 @@ const catalog = {
     glass_pane,
     tri_wedge,
     boid_triangle,
-    gun_bullet,
     hex_block,
     pipe_elbow,
     button_floor,

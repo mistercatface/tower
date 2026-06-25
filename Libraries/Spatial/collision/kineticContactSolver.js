@@ -19,7 +19,7 @@ import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 import { checkEntityPairCollisionAt, SAT_RESULT } from "./SatCollision.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 import { contactWarmStartKeyFromPairKey, isRestingKineticContact, warmStartCacheIndex } from "./kineticContactManifold.js";
-const MAX_CONTACTS = 4096;
+import { MAX_ENTITIES as MAX_CONTACTS } from "../../../Core/engineLimits.js";
 const INNER_SOLVE_ITERATIONS = 4;
 const WARM_START_CACHE_SIZE = 16384;
 const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;

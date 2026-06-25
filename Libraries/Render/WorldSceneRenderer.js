@@ -5,6 +5,17 @@ import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import propCatalog from "../../Assets/props/index.js";
+import { drawSphere } from "./Props3D/sphere.js";
+const projectileVisuals = { panelCount: 4, latBands: 3, panels: ["#444444", "#222222", "#555555", "#333333"], stroke: null };
+function drawProjectile(ctx, prop, viewport) {
+    drawSphere(ctx, prop, viewport, {
+        baseRadius: prop.radius ?? 1,
+        panelCount: projectileVisuals.panelCount,
+        latBands: projectileVisuals.latBands,
+        panelColors: projectileVisuals.panels,
+        stroke: projectileVisuals.stroke,
+    });
+}
 import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources, collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
@@ -142,6 +153,14 @@ export class WorldSceneRenderer {
         visibleObjects.length = 0;
         this.visibleDrawableDepths.length = 0;
         this._appendVisible3dProps(state, viewport);
+        const projectiles = state.projectiles || [];
+        for (let i = 0; i < projectiles.length; i++) {
+            const proj = projectiles[i];
+            if (viewport.circleInBounds(proj.x, proj.y, proj.radius, "props")) {
+                const distSq = (proj.x - viewport.x) ** 2 + (proj.y - viewport.y) ** 2;
+                this._appendDrawable(proj, distSq);
+            }
+        }
         const skipWalls = options.skipWalls === true;
         const skipWallCaps = options.skipWallCaps === true;
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
@@ -161,6 +180,10 @@ export class WorldSceneRenderer {
         }
     }
     _drawProp(ctx, prop, viewport) {
+        if (prop._gunBullet) {
+            drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
+            return;
+        }
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = propCatalog[renderKey]?.drawRecipe;
         if (!draw) return;

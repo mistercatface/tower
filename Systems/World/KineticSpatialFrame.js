@@ -3,6 +3,7 @@ import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
 import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
 import { getBroadphaseBounds } from "../../Libraries/Spatial/collision/entityBroadphase.js";
+import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import {
     appendActiveKineticBodySlabPhysId,
     clearActiveKineticBodySlab,
@@ -49,6 +50,15 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 writeKineticBodySlabSnapshot(prop);
             }
         }
+        const projectiles = state.projectiles || [];
+        for (let i = 0; i < projectiles.length; i++) {
+            const proj = projectiles[i];
+            this.insertEntity(proj, physIdCounter++);
+            if (proj.strategy?.isKinetic) {
+                this._kineticBodies.push(proj);
+                writeKineticBodySlabSnapshot(proj);
+            }
+        }
         this._nextPhysId = physIdCounter;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
@@ -63,7 +73,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const isNew = prop._physId === undefined;
         if (isNew) {
             prop._physId = this._nextPhysId++;
-            if (prop._physId >= 4096) throw new Error(`PhysId limit exceeded: ${prop._physId} >= 4096`);
+            if (prop._physId >= MAX_ENTITIES) throw new Error(`PhysId limit exceeded: ${prop._physId} >= ${MAX_ENTITIES}`);
             this._kineticBodies.push(prop);
         } else this.entityGrid.remove(prop);
         this.entityGrid.insert(prop);
@@ -84,7 +94,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const isNew = prop._physId === undefined;
             if (isNew) {
                 prop._physId = this._nextPhysId++;
-                if (prop._physId >= 4096) throw new Error(`PhysId limit exceeded: ${prop._physId} >= 4096`);
+                if (prop._physId >= MAX_ENTITIES) throw new Error(`PhysId limit exceeded: ${prop._physId} >= ${MAX_ENTITIES}`);
                 this._kineticBodies.push(prop);
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);

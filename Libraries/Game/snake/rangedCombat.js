@@ -1,6 +1,5 @@
 import { decelerateRoll, getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
-import { spawnPlacedSandboxProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { wakeKineticBody } from "../../Motion/kineticSleep.js";
+import { spawnGunBulletProjectile } from "./gunAgent/gunBulletSystem.js";
 import { angleDelta, rotateAngleTowards } from "../../Math/Angle.js";
 import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
@@ -90,24 +89,7 @@ export function deriveRangedCombatState(ctx, input, profile) {
     };
 }
 function fireBullet(state, shooterInstance, angle, weapon) {
-    const shooter = shooterInstance.head;
-    const spawnDist = weapon.spawnDist ?? 4.5;
-    const muzzleX = shooter.x + Math.cos(angle) * spawnDist;
-    const muzzleY = shooter.y + Math.sin(angle) * spawnDist;
-    const bulletSpeed = weapon.bulletSpeed ?? 500;
-    const vx = Math.cos(angle) * bulletSpeed;
-    const vy = Math.sin(angle) * bulletSpeed;
-    const bullet = spawnPlacedSandboxProp(state, muzzleX, muzzleY, "gun_bullet", shooter.faction, angle);
-    bullet._gunBullet = true;
-    bullet._armed = true;
-    bullet._shooterHeadId = shooterInstance.headId;
-    bullet.snakeFoodValue = 0.5;
-    bullet.vx = vx;
-    bullet.vy = vy;
-    bullet._lifetimeMs = 0;
-    wakeKineticBody(bullet);
-    const snakeGame = state.sandbox.snakeGame;
-    if (snakeGame?.activeGunBulletIds) snakeGame.activeGunBulletIds.push(bullet.id);
+    spawnGunBulletProjectile(state, shooterInstance, angle, weapon);
 }
 function resolveLiveTarget(ctx) {
     if (ctx.target) return ctx.target;

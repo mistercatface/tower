@@ -13,7 +13,6 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
-import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 describe("flee agent bullets and combat", () => {
     it("can spawn flee agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {
         applySnakeGameConfig();
@@ -65,7 +64,7 @@ describe("flee agent bullets and combat", () => {
         assert.equal(bullet._shooterHeadId, fleeInstance.headId);
         const head = snakePack.chain.head;
         const mockHead = mockKineticCircle(head.x, head.y, head.radius ?? 2, -100, 0, { id: head.id });
-        const mockBullet = mockKineticCircle(head.x - (head.radius ?? 2) - (bullet.radius ?? 1.5) + 2, head.y, bullet.radius ?? 1.5, 100, 0, { id: bullet.id });
+        const mockBullet = mockKineticCircle(head.x - (head.radius ?? 2) - (bullet.radius ?? 1) + 2, head.y, bullet.radius ?? 1, 100, 0, { id: bullet.id });
         mockBullet._gunBullet = true;
         mockBullet._armed = true;
         mockBullet._shooterHeadId = fleeInstance.headId;
@@ -81,10 +80,7 @@ describe("flee agent bullets and combat", () => {
         assert.equal(snakeGame.activeGunBulletIds.length, 3);
         tickGunBullets(state, 16);
         assert.equal(snakeGame.activeGunBulletIds.length, 2, "Disarmed bullet should be removed from active queue");
-        assert.ok(isSnakeFoodTarget(bullet), "Bullet should be categorized as edible food target");
-        const foodIndex = getPropCategoryIndex(state, "food");
-        const found = foodIndex.findNearest(bullet.x, bullet.y);
-        assert.equal(found?.id, bullet.id, "Spent bullet food should be registered in category index");
+        assert.equal(state.entityRegistry.getLive(bullet.id), null, "Spent bullet should be released from registry");
     });
     it("smoothly rotates toward target while reacting", async () => {
         applySnakeGameConfig();

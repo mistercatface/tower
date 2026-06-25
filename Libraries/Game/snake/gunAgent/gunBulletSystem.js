@@ -1,42 +1,124 @@
-import { getPropCategoryIndex } from "../../../../GameState/SandboxWorldState.js";
-import { removeSandboxWorldProp } from "../../../Sandbox/sandboxPlacedSpawn.js";
+import { Entity } from "../../../../Entities/Entity.js";
+import { CircleShape } from "../../../Spatial/collision/Shapes.js";
+import { wakeKineticBody } from "../../../Motion/kineticSleep.js";
+import { integratePropMotion } from "../../../Props/propMotion.js";
 import { kineticPairBodiesAt } from "../../../Spatial/collision/kineticPairStream.js";
 import { resolveAliveAgentInstanceFromProp } from "../resolveAliveAgentInstanceFromProp.js";
+export class Projectile extends Entity {
+    constructor() {
+        super(0, 0, 0, false);
+        this.vx = 0;
+        this.vy = 0;
+        this.angularVelocity = 0;
+        this.radius = 1;
+        this.mass = 0.5;
+        this.strategy = { isKinetic: true, rolls: true, mass: 0.5, friction: 0.5 };
+        this._gunBullet = true;
+        this._armed = true;
+        this._lifetimeMs = 0;
+        this.isSleeping = false;
+        this._sleepFrames = 0;
+        this._neighborsFrameId = -1;
+        this._neighbors = [];
+        this._activeSlot = -1;
+        this.shape = new CircleShape(this.radius);
+    }
+    getShape() {
+        return this.shape;
+    }
+    get momentOfInertia() {
+        return 0.25;
+    }
+    get angle() {
+        return this.facing ?? 0;
+    }
+    set angle(val) {
+        this.facing = val;
+    }
+    needsWallCollision() {
+        return true;
+    }
+    update(dtMs) {
+        this._lifetimeMs = (this._lifetimeMs ?? 0) + dtMs;
+        integratePropMotion(this, dtMs);
+    }
+}
+const projectilePool = [];
+const MAX_PROJECTILES = 512;
+for (let i = 0; i < MAX_PROJECTILES; i++) projectilePool.push(new Projectile());
+export function clearProjectilePool() {
+    projectilePool.length = 0;
+    for (let i = 0; i < MAX_PROJECTILES; i++) projectilePool.push(new Projectile());
+}
+export function spawnGunBulletProjectile(state, shooterInstance, angle, weapon) {
+    const shooter = shooterInstance.head;
+    const spawnDist = weapon.spawnDist ?? 4.5;
+    const muzzleX = shooter.x + Math.cos(angle) * spawnDist;
+    const muzzleY = shooter.y + Math.sin(angle) * spawnDist;
+    const bulletSpeed = weapon.bulletSpeed ?? 500;
+    const vx = Math.cos(angle) * bulletSpeed;
+    const vy = Math.sin(angle) * bulletSpeed;
+    let proj = projectilePool.pop();
+    if (!proj) throw new Error("Projectile pool exhausted! Bounded pool size: " + MAX_PROJECTILES);
+    proj.x = muzzleX;
+    proj.y = muzzleY;
+    proj.vx = vx;
+    proj.vy = vy;
+    proj.angularVelocity = 0;
+    proj.facing = angle;
+    proj.faction = shooter.faction;
+    proj._shooterHeadId = shooterInstance.headId;
+    proj._armed = true;
+    proj._lifetimeMs = 0;
+    proj.isDead = false;
+    proj.isSleeping = false;
+    proj._sleepFrames = 0;
+    proj._neighborsFrameId = -1;
+    if (proj._neighbors) proj._neighbors.length = 0;
+    proj._activeSlot = -1;
+    delete proj._physId;
+    if (!state.projectiles) state.projectiles = [];
+    state.projectiles.push(proj);
+    state.entityRegistry.register("projectile", proj);
+    wakeKineticBody(proj);
+    const snakeGame = state.sandbox.snakeGame;
+    if (snakeGame?.activeGunBulletIds) snakeGame.activeGunBulletIds.push(proj.id);
+    return proj;
+}
+export function releaseProjectile(state, proj) {
+    state.entityRegistry.unregister(proj);
+    if (state.projectiles) {
+        const idx = state.projectiles.indexOf(proj);
+        if (idx >= 0) state.projectiles.splice(idx, 1);
+    }
+    if (projectilePool.indexOf(proj) === -1) projectilePool.push(proj);
+}
 export function tickGunBullets(state, dtMs) {
     const snakeGame = state.sandbox.snakeGame;
     if (!snakeGame || !snakeGame.activeGunBulletIds) return;
     const activeIds = snakeGame.activeGunBulletIds;
+    const grid = state.obstacleGrid;
+    const minX = grid?.minX ?? 0;
+    const maxX = grid?.maxX ?? 2400;
+    const minY = grid?.minY ?? 0;
+    const maxY = grid?.maxY ?? 2400;
     for (let i = activeIds.length - 1; i >= 0; i--) {
         const id = activeIds[i];
         const bullet = state.entityRegistry.getLive(id);
         if (!bullet) {
-            // Bullet was removed/destroyed
             activeIds[i] = activeIds[activeIds.length - 1];
             activeIds.pop();
             continue;
         }
-        // Update lifetime or speed
-        bullet._lifetimeMs = (bullet._lifetimeMs ?? 0) + dtMs;
         const speedSq = bullet.vx * bullet.vx + bullet.vy * bullet.vy;
         const maxLifetime = 3000;
         const speedThresholdSq = 50 * 50;
-        if (!bullet._armed || bullet._lifetimeMs > maxLifetime || speedSq < speedThresholdSq) {
+        const outOfBounds = bullet.x < minX || bullet.x > maxX || bullet.y < minY || bullet.y > maxY;
+        if (!bullet._armed || bullet._lifetimeMs > maxLifetime || speedSq < speedThresholdSq || outOfBounds) {
             bullet._armed = false;
-            // Remove from active list
             activeIds[i] = activeIds[activeIds.length - 1];
             activeIds.pop();
-            // Register as food
-            state.entityRegistry.register("food", bullet);
-            getPropCategoryIndex(state, "food").register(bullet);
-            // Cap total spent bullets
-            if (!snakeGame.spentGunBulletIds) snakeGame.spentGunBulletIds = [];
-            snakeGame.spentGunBulletIds.push(bullet.id);
-            const maxSpent = 50;
-            while (snakeGame.spentGunBulletIds.length > maxSpent) {
-                const oldestId = snakeGame.spentGunBulletIds.shift();
-                const oldestBullet = state.entityRegistry.getLive(oldestId);
-                if (oldestBullet && !oldestBullet.isDead) removeSandboxWorldProp(state, oldestBullet);
-            }
+            releaseProjectile(state, bullet);
         }
     }
 }
@@ -53,16 +135,12 @@ export function resolveGunBulletContacts(state, spatialFrame, contacts) {
         const bullet = isBulletA ? bodyA : bodyB;
         const victim = isBulletA ? bodyB : bodyA;
         if (!victim) continue;
-        // Find if victim resolves to an agent
         const victimInstance = resolveAliveAgentInstanceFromProp(state, victim.id);
         if (!victimInstance) continue;
-        // If victim matches bullet shooter, ignore
         if (victimInstance.headId === bullet._shooterHeadId) continue;
-        // Kill victim
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };
         victimInstance.die(state, null, deathImpact);
-        // Mark bullet spent
         bullet._armed = false;
     }
 }

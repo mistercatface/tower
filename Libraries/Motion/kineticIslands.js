@@ -1,7 +1,7 @@
 import { getKineticConstraintGraph } from "./kineticConstraintGraph.js";
 import { getKineticConstraintsVersion } from "./kineticConstraints.js";
 import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
-const MAX_PHYS_BODIES = 4096;
+import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
 export const islandRootByPhysId = new Int32Array(MAX_PHYS_BODIES);
 islandRootByPhysId.fill(-1);
 function clearBodyIslandFields(body) {
