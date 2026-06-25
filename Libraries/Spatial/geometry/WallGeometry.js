@@ -9,30 +9,41 @@ export function getSegmentFootprintCorners(segment) {
     return rectCorners(segment.x, segment.y, segment.size / 2, segment.angle);
 }
 const LOCAL_SCRATCH = { localX: 0, localY: 0, halfX: 0, halfY: 0 };
+function segmentHalfExtents(segment) {
+    return { halfX: (segment.width !== undefined ? segment.width : segment.size) * 0.5, halfY: (segment.height !== undefined ? segment.height : segment.size) * 0.5 };
+}
 export function toSegmentLocal(segment, x, y, out = LOCAL_SCRATCH) {
     const dx = x - segment.x;
     const dy = y - segment.y;
-    if (segment._cos === undefined || segment._sin === undefined || segment._cachedAngle !== segment.angle) {
-        segment._cachedAngle = segment.angle;
-        segment._cos = Math.cos(-segment.angle);
-        segment._sin = Math.sin(-segment.angle);
-    }
-    out.halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
-    out.halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
-    out.localX = dx * segment._cos - dy * segment._sin;
-    out.localY = dx * segment._sin + dy * segment._cos;
+    const cos = Math.cos(-segment.angle);
+    const sin = Math.sin(-segment.angle);
+    const { halfX, halfY } = segmentHalfExtents(segment);
+    out.halfX = halfX;
+    out.halfY = halfY;
+    out.localX = dx * cos - dy * sin;
+    out.localY = dx * sin + dy * cos;
     return out;
 }
 export function closestPointOnSegment(wall, x, y) {
-    let { localX, localY, halfX, halfY } = toSegmentLocal(wall, x, y);
+    const dx = x - wall.x;
+    const dy = y - wall.y;
+    const cos = Math.cos(-wall.angle);
+    const sin = Math.sin(-wall.angle);
+    const { halfX, halfY } = segmentHalfExtents(wall);
+    let localX = dx * cos - dy * sin;
+    let localY = dx * sin + dy * cos;
     localX = Math.max(-halfX, Math.min(halfX, localX));
     localY = Math.max(-halfY, Math.min(halfY, localY));
-    const worldCos = wall._cos;
-    const worldSin = -wall._sin;
-    return transformPoint2DInto({ x: 0, y: 0 }, wall.x, wall.y, localX, localY, worldCos, worldSin);
+    return transformPoint2DInto({ x: 0, y: 0 }, wall.x, wall.y, localX, localY, cos, -sin);
 }
 export function distanceSqToSegment(segment, x, y) {
-    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, x, y);
+    const dx = x - segment.x;
+    const dy = y - segment.y;
+    const cos = Math.cos(-segment.angle);
+    const sin = Math.sin(-segment.angle);
+    const { halfX, halfY } = segmentHalfExtents(segment);
+    const localX = dx * cos - dy * sin;
+    const localY = dx * sin + dy * cos;
     const closestX = Math.max(-halfX, Math.min(localX, halfX));
     const closestY = Math.max(-halfY, Math.min(localY, halfY));
     const distDX = localX - closestX;

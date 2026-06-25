@@ -144,8 +144,9 @@ export class EntityRegistry {
         this._viewQueryDepth = 0;
         /** Reused candidate buffer for view queries — do not retain references across calls. */
         this._candidateScratch = [];
-        /** Reused id set for spatial candidate dedupe — cleared each spatial fill. */
-        this._candidateSeenIds = new Set();
+        /** Generation-stamped dedupe for spatial candidate fills — indexed by entity id. */
+        this._candidateSeenGen = new Uint32Array(4096);
+        this._candidateQueryGen = 0;
         /** Reused kind filter — cleared each top-level view query. */
         this._kindSetScratch = new Set();
         /** Reused result buffers per filterId — do not retain references across calls. */
@@ -289,6 +290,22 @@ export class EntityRegistry {
             this._viewQueryDepth--;
         }
     }
+    /** @param {number} entityId @param {number} queryGen */
+    _stampCandidateSeen(entityId, queryGen) {
+        const id = entityId | 0;
+        let seenGen = this._candidateSeenGen;
+        if (id >= seenGen.length) {
+            const next = new Uint32Array(Math.max(id + 1, seenGen.length * 2));
+            next.set(seenGen);
+            seenGen = this._candidateSeenGen = next;
+        }
+        seenGen[id] = queryGen;
+    }
+    /** @param {number} entityId @param {number} queryGen */
+    _candidateWasSeen(entityId, queryGen) {
+        const id = entityId | 0;
+        return id < this._candidateSeenGen.length && this._candidateSeenGen[id] === queryGen;
+    }
     /** @param {string[]} kinds @returns {Set<string>} */
     _kindSetForQuery(kinds) {
         if (this._viewQueryDepth > 1) return new Set(kinds);
@@ -321,17 +338,16 @@ export class EntityRegistry {
      * @param {import("../Libraries/Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
      */
     _fillSpatialViewCandidates(out, bounds, kindSet, spatialFrame) {
-        const seen = this._viewQueryDepth === 1 ? this._candidateSeenIds : new Set();
-        seen.clear();
+        const queryGen = ++this._candidateQueryGen;
         const entities = spatialFrame.collectEntitiesInBounds(bounds);
         for (let i = 0; i < entities.length; i++) {
             const entry = this._entries.get(entities[i].id);
             if (!entry || !kindSet.has(entry.kind)) continue;
             out.push(entry.ref);
-            seen.add(entry.ref.id);
+            this._stampCandidateSeen(entry.ref.id, queryGen);
         }
         for (const entry of this._entries.values()) {
-            if (!kindSet.has(entry.kind) || seen.has(entry.ref.id)) continue;
+            if (!kindSet.has(entry.kind) || this._candidateWasSeen(entry.ref.id, queryGen)) continue;
             const tileIdx = entry.ref._gridTileIdx;
             if (tileIdx != null && tileIdx !== -1) continue;
             out.push(entry.ref);

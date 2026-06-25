@@ -14,6 +14,14 @@ const matchFloor = (p) => p.strategy?.renderMode === "floor";
 const FLOOR_QUERY_OPTIONS = { hitTest: "aabb", filterId: "floor", match: matchFloor };
 const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
+function bindWallFaceScratch(scratch, drawable, state) {
+    scratch.wallHeight = drawable.wallHeight;
+    scratch.wallBaseZ = drawable.wallBaseZ;
+    scratch.wallCapHeight = drawable.wallCapHeight;
+    scratch.cacheObj = drawable;
+    scratch.atlasFaceId = undefined;
+    scratch.damageTintRatio = resolveWallDamageTintRatioForDrawable(getGridWallDamageSession(state), drawable);
+}
 function parallelInsertionSort(drawables, depths, start, end) {
     for (let i = start + 1; i <= end; i++) {
         const keyDrawable = drawables[i];

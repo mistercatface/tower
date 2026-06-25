@@ -51,6 +51,7 @@ export function writeActiveKineticBodySlabPose(body) {
     slab.vx[physId] = body.vx ?? 0;
     slab.vy[physId] = body.vy ?? 0;
     slab.w[physId] = body.angularVelocity ?? 0;
+    body._broadphaseDirty = true;
 }
 export function writeStaticKineticSlabSlot(body) {
     const physId = body._physId;

@@ -1,5 +1,5 @@
 import { collisionSettings } from "../Collision/collisionDefaults.js";
-import { isKinematicallyActive, pairBroadphaseOverlap } from "../Spatial/collision/entityBroadphase.js";
+import { isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "../Spatial/collision/entityBroadphase.js";
 import { shareKineticIsland } from "./kineticIslands.js";
 export function kineticSleepFramesRequired() {
     return collisionSettings.kineticSleep.frames;
@@ -49,7 +49,7 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSl
 function isKineticSleepNeighbor(other) {
     return Boolean(other.strategy?.isKinetic);
 }
-export function hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps = pairBroadphaseOverlap, skipNeighbor = () => false } = {}) {
+export function hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps = pairBroadphaseOverlapSnapshotted, skipNeighbor = () => false } = {}) {
     for (let i = 0; i < neighbors.length; i++) {
         const other = neighbors[i];
         if (other === prop || !isKineticSleepNeighbor(other)) continue;
@@ -63,7 +63,7 @@ export function hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps = pairB
 export function evaluateKineticSleepEligible(prop, neighbors, { blocksSleep = () => false, pairOverlaps } = {}) {
     return canSleepKinetic(prop, { blocksSleep }) && !hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps, skipNeighbor: shareKineticIsland });
 }
-export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame, { blocksSleep = () => false, pairOverlaps = pairBroadphaseOverlap } = {}) {
+export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame, { blocksSleep = () => false, pairOverlaps = pairBroadphaseOverlapSnapshotted } = {}) {
     for (let i = 0; i < islandMembers.length; i++) if (!canSleepKinetic(islandMembers[i], { blocksSleep })) return false;
     for (let i = 0; i < islandMembers.length; i++) {
         const prop = islandMembers[i];

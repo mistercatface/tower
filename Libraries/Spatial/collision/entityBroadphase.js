@@ -34,6 +34,7 @@ function ensureBroadphaseCache(entity) {
     if (!entity.broadphaseSnapshot) entity.broadphaseSnapshot = createBroadphaseSnapshot();
 }
 export function invalidateBroadphaseBounds(entity) {
+    entity._broadphaseDirty = true;
     if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
 function unionLocalHalfExtents(parts) {
@@ -111,19 +112,21 @@ export function getBroadphaseBounds(entity) {
     ensureBroadphaseCache(entity);
     const x = entity.x;
     const y = entity.y;
+    const angle = entityAngle(entity);
+    const snapshot = entity.broadphaseSnapshot;
+    if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle) return entity.broadphaseBounds;
     const parts = getEntityCollisionParts(entity);
     const multiPart = parts.length > 1;
     const shape = entity.getShape();
-    const angle = entityAngle(entity);
     const span = multiPart ? entityCollisionSpan(entity) : shapeSpan(shape);
-    const snapshot = entity.broadphaseSnapshot;
     const shapeKey = multiPart ? "multi" : shape.type;
-    if (snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shapeKey && snapshot.shapeSpan === span) return entity.broadphaseBounds;
+    if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shapeKey && snapshot.shapeSpan === span) return entity.broadphaseBounds;
     snapshot.x = x;
     snapshot.y = y;
     snapshot.angle = angle;
     snapshot.shapeType = shapeKey;
     snapshot.shapeSpan = span;
+    entity._broadphaseDirty = false;
     if (multiPart) return broadphaseBoundsFromCollisionPartsInto(entity.broadphaseBounds, parts, x, y, angle);
     return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle);
 }
