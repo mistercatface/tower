@@ -14,6 +14,7 @@ const GUARDS = {
         const max = modeDef?.maxPreyReach ?? 3;
         return !Number.isFinite(reach) || reach > max;
     },
+    canShootEnemy: (ctx) => !!ctx.combatState?.canShoot,
 };
 function blockedByGuards(ctx, guards, modeDef) {
     if (!guards) return false;
@@ -60,6 +61,14 @@ const SCORERS = {
         const weightKey = modeDef.weightKey ?? modeDef.slot;
         const value = weights[weightKey] ?? weights.explore;
         return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+    },
+    rangedAttack(ctx, modeDef, weights, pressure) {
+        const combat = ctx.combatState;
+        if (!combat?.canShoot && combat?.phase !== "charging") return SCORE_ABSENT;
+        if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const weightKey = modeDef.weightKey ?? "shoot_enemy";
+        const value = weights[weightKey] ?? weights.enemy ?? weights.explore;
+        return netScoreDetail(value, combat.reachCells ?? ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
     },
     regroupAlly(ctx, modeDef, weights, pressure, env) {
         const slot = modeDef.slot;

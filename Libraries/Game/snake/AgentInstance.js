@@ -11,7 +11,7 @@ import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncFleeAgentPresentation } from "./fleeAgent/syncFleeAgentPresentation.js";
-import { tickGunAgentShooting } from "./gunAgent/gunAgentShooting.js";
+import { createGunAgentActionState } from "./gunAgent/gunAgentActionState.js";
 import { getAgentCombatTraits, getInstanceCombatTraits, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {
@@ -43,6 +43,7 @@ export class AgentInstance {
         this.baseTint = isFleeProfile(this) || isGunProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this._sprintOverride = undefined;
         this._intentOverride = undefined;
+        this.combatAction = isGunProfile(this) ? createGunAgentActionState() : null;
     }
     get headId() {
         return this.head.id;
@@ -108,10 +109,7 @@ export class AgentInstance {
         if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;
         this.autosim.tick(dtMs, admitted);
         if (isFleeProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
-        else if (isGunProfile(this)) {
-            syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
-            tickGunAgentShooting(state, this, dtMs);
-        }
+        else if (isGunProfile(this)) syncFleeAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;

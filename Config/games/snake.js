@@ -51,9 +51,27 @@ const FLEE_INTENT = {
     publishEngagement: false,
     decisionFields: {},
 };
+const GUN_INTENT = {
+    reachSlots: {
+        threat: { targetKey: "threat", mode: "flee" },
+        enemy: { targetKey: "prey", mode: "seek_enemy" },
+        food: { targetKey: "food", mode: "seek_food" },
+        ally: { targetKey: "ally", mode: "seek_ally" },
+    },
+    committedSlots: ["food", "enemy", "ally"],
+    seekModes: ["shoot_enemy", "seek_enemy", "seek_food", "seek_ally"],
+    huntMode: "seek_enemy",
+    fleeHeldOn: "flee",
+    clearMemoryOnIntentClear: true,
+    filterAllyForEngagement: false,
+    fleePackBlend: true,
+    fleeExploreFallback: true,
+    publishEngagement: false,
+    decisionFields: {},
+};
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
-    snakeCount: 80,
+    snakeCount: 160,
     boidCount: 48,
     squidCount: 1,
     gunAgentCount: 6,
@@ -230,8 +248,15 @@ export const SNAKE_GAME_DEFAULTS = {
             segmentCount: 1,
             leaderIndex: 0,
             faction: "gun",
+            attackRange: 48,
+            weapon: { maxRange: 128, chargeMs: 1000, cooldownMs: 1500, bulletSpeed: 500, spawnDist: 4.5, aimRotationRadPerSec: 4.71238898038469 },
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
-            relationships: { snake: "prey", flee_agent: "neutral", gun_agent: "ally", squid: "neutral" },
+            relationships: {
+                snake: { type: "proximity", near: "threat", far: "prey", range: 48 },
+                flee_agent: "neutral",
+                gun_agent: "ally",
+                squid: "neutral",
+            },
             species: {},
             gameplay: { leader: { maxSpeed: 100, accel: 200 } },
             initialHunger: 0.85,
@@ -251,10 +276,11 @@ export const SNAKE_GAME_DEFAULTS = {
                 rules: [
                     { mode: "flee", rule: "severeOrLethalThreat", guards: ["minHunger"], want: true, reason: "escape" },
                     { mode: "seek_food", rule: "severeNonLethalThreat", guards: ["minHunger", "bandDesperate"], want: true, reason: "race" },
+                    { mode: "shoot_enemy", rule: "always", want: true, reason: "attack" },
                     { mode: "seek_enemy", rule: "always", want: true, reason: "attack" },
                 ],
             },
-            decisionWeights: { flee: 400, enemy: 420, food: 360, seek_ally: 280, explore: 100 },
+            decisionWeights: { flee: 400, shoot_enemy: 460, enemy: 420, food: 360, seek_ally: 280, explore: 100 },
             factionCohesion: { arrivalRadius: 24, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
             decisionPressure: {
                 foodHungerBonus: 280,
@@ -265,8 +291,8 @@ export const SNAKE_GAME_DEFAULTS = {
                 effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } },
             },
             decision: {
-                scoreOrder: ["seek_enemy", "flee", "seek_food", "seek_ally", "explore"],
-                targetLost: { seek_enemy: "enemy", seek_food: "food", seek_ally: "ally" },
+                scoreOrder: ["flee", "shoot_enemy", "seek_enemy", "seek_food", "seek_ally", "explore"],
+                targetLost: { shoot_enemy: "enemy", seek_enemy: "enemy", seek_food: "food", seek_ally: "ally" },
                 remembered: [{ key: "threat" }, { key: "enemy", memoryKey: "prey" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }],
                 eventTargets: ["threat", "food", "enemy", "ally"],
                 slots: { threat: {}, enemy: { visibleFrom: "prey", memoryKey: "prey", hideVisibleWhenMemory: true, known: "visibleOrRemembered" }, food: {}, ally: { hideVisibleWhenMemory: true } },
@@ -280,14 +306,15 @@ export const SNAKE_GAME_DEFAULTS = {
                 },
                 modes: {
                     flee: { scorer: "riskAdjustedFlee", mods: ["outnumberedFlee"] },
-                    seek_enemy: { scorer: "reachTarget", slot: "enemy", weightKey: "enemy", guards: ["noThreat"] },
+                    shoot_enemy: { scorer: "rangedAttack", slot: "enemy", weightKey: "shoot_enemy", guards: ["noThreat"] },
+                    seek_enemy: { scorer: "reachTarget", slot: "enemy", weightKey: "enemy", guards: ["noThreat", "canShootEnemy"] },
                     seek_food: { scorer: "foodWithHunger", slot: "food", guards: ["notSatisfied"] },
                     seek_ally: { scorer: "regroupAlly", slot: "ally", cohesion: "flee", guards: ["noThreat", "notDesperate"] },
                     explore: { scorer: "constant", weightKey: "explore" },
                 },
             },
             visibleSources: { food: { category: "food", accept: "edibleFood" } },
-            intent: FLEE_INTENT,
+            intent: GUN_INTENT,
         },
         squid: {
             bodyPropId: "ball",

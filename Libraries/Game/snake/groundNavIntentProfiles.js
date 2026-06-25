@@ -12,6 +12,7 @@ import { resolveSnakeExploreCell } from "./snakeExplore.js";
 import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
+import { clearGunAgentCombatAction, createGunShootIntentState } from "./gunAgent/gunAgentShooting.js";
 const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
@@ -32,12 +33,15 @@ function transitionReason(seekModes) {
         if (policy?.reason) return policy.reason;
         if (nextMode === "flee") return "threat_visible";
         if (prevMode === "flee") return "threat_clear";
+        if (nextMode === "shoot_enemy") return "enemy_in_range";
+        if (prevMode === "shoot_enemy" && nextMode !== "shoot_enemy") return "shoot_complete";
         if (seekModes.includes(prevMode) && nextMode !== prevMode) return "target_lost";
         return `mode_${nextMode}`;
     };
 }
-function createIntentStates(huntMode) {
+function createIntentStates(huntMode, instance = null) {
     const seek = createSeekIntentState();
+    if (instance) return { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), shoot_enemy: createGunShootIntentState(instance), [huntMode]: seek };
     return { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), [huntMode]: seek };
 }
 function resolveCommittedTarget(committedSlots, id, world) {
@@ -66,6 +70,11 @@ function buildDecisionContextInto(profileId, decisionContext, input, deps) {
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
     if (fields.seekerSegmentCount) decisionInput.seekerSegmentCount = resolveSegmentCount ? resolveSegmentCount() : null;
     if (fields.session) decisionInput.session = state.sandbox?.snakeGame ?? null;
+    if (profileId === AGENT_PROFILE.gun) {
+        decisionInput.agent = agent;
+        decisionInput.state = state;
+        decisionInput.actionState = deps.agentCtx.instance.combatAction;
+    }
     return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
 }
 function resolveAgentRadius(leader) {
@@ -85,7 +94,7 @@ function defaultSeekArrivalRadius(profileId, profile, config, shared, instance, 
             return { arrivalRadius: cohesion.arrivalRadius ?? (profileId === AGENT_PROFILE.snake ? 32 : 24), lockOnTarget: true, terminalHoming };
         }
         const huntArrival = Math.max(2, resolveAgentRadius(instance.head) * 0.25);
-        if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
+        if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy" || mode === "shoot_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         if (!isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         return { arrivalRadius: resolveEatRadiusValue(config, instance, eatRadius), lockOnTarget: true, terminalHoming };
     };
@@ -129,9 +138,10 @@ function setFleeDestination(intent, args, profileId) {
     return null;
 }
 function extendReturn(intent, deps) {
-    const { intent: intentApi, locomotion, intentMemory, getLastDecisionContext } = deps;
+    const { intent: intentApi, locomotion, intentMemory, getLastDecisionContext, setTickDt } = deps;
     const api = {
-        tick(agent, state) {
+        tick(agent, state, dtMs = 16) {
+            setTickDt?.(dtMs);
             intentApi.perceive(agent, state);
             return intentApi.transition(agent, state);
         },
@@ -150,7 +160,9 @@ function buildAdapterOptions(profileId, deps) {
     const intent = profile.intent;
     const shared = getSharedConfig();
     const { agentCtx, brain, resolveExploreCell, rng, resolveHunger, resolveSegmentCount } = deps;
+    const instance = agentCtx.instance;
     const decisionContext = createAgentDecisionContextFrame(profileId);
+    const isGun = profileId === AGENT_PROFILE.gun;
     const adapter = {
         reachSlots: intent.reachSlots,
         intentMemoryOptions: intentMemoryOptions(profileId, intent, shared),
@@ -163,7 +175,10 @@ function buildAdapterOptions(profileId, deps) {
         fleeHeldOn: intent.fleeHeldOn,
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
         transitionReason: transitionReason(intent.seekModes),
-        states: createIntentStates(intent.huntMode),
+        states: isGun ? createIntentStates(intent.huntMode, instance) : createIntentStates(intent.huntMode),
+        useShootPolicyLatch: isGun,
+        modeExitDelayTicks: isGun ? { flee: 30, shoot_enemy: 15 } : { flee: 30 },
+        onIntentClear: isGun ? () => clearGunAgentCombatAction(instance) : null,
         extendReturn: (returnDeps) => extendReturn(intent, returnDeps),
     };
     if (intent.publishEngagement)

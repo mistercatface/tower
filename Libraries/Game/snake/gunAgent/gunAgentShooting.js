@@ -2,8 +2,10 @@ import { spawnPlacedSandboxProp } from "../../../Sandbox/sandboxPlacedSpawn.js";
 import { wakeKineticBody } from "../../../Motion/kineticSleep.js";
 import { colRowToIndex } from "../../../Spatial/grid/GridUtils.js";
 import { getObserverVisionFrame } from "../../../Navigation/perception/observerVisionFrame.js";
+import { getAgentProfile, AGENT_PROFILE } from "../../../AI/agents/agentProfile.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { decelerateRoll, getKineticRollConfig } from "../../../Sandbox/kineticRollActuator.js";
+import { resetGunAgentActionState } from "./gunAgentActionState.js";
 export function hasLineOfSight(state, seeker, target) {
     const frame = getObserverVisionFrame(state);
     if (!frame) return false;
@@ -15,7 +17,6 @@ export function hasLineOfSight(state, seeker, target) {
     const targetRow = grid.worldRow(target.y);
     return vision.cellSet.has(colRowToIndex(targetCol, targetRow, grid.cols));
 }
-const AIM_ROTATION_SPEED_RAD_PER_SEC = Math.PI * 1.5;
 function shortestAngleDistance(from, to) {
     let diff = to - from;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -26,12 +27,15 @@ function rotateTowards(from, to, maxStep) {
     if (Math.abs(diff) <= maxStep) return to;
     return from + Math.sign(diff) * maxStep;
 }
-function fireBullet(state, gunAgentInstance, angle) {
+function resolveWeaponConfig() {
+    return getAgentProfile(AGENT_PROFILE.gun).weapon ?? {};
+}
+function fireBullet(state, gunAgentInstance, angle, weapon) {
     const gunAgent = gunAgentInstance.head;
-    const spawnDist = 4.5;
+    const spawnDist = weapon.spawnDist ?? 4.5;
     const muzzleX = gunAgent.x + Math.cos(angle) * spawnDist;
     const muzzleY = gunAgent.y + Math.sin(angle) * spawnDist;
-    const bulletSpeed = 500;
+    const bulletSpeed = weapon.bulletSpeed ?? 500;
     const vx = Math.cos(angle) * bulletSpeed;
     const vy = Math.sin(angle) * bulletSpeed;
     const bullet = spawnPlacedSandboxProp(state, muzzleX, muzzleY, "gun_bullet", gunAgent.faction, angle);
@@ -46,82 +50,98 @@ function fireBullet(state, gunAgentInstance, angle) {
     const snakeGame = state.sandbox.snakeGame;
     if (snakeGame && snakeGame.activeGunBulletIds) snakeGame.activeGunBulletIds.push(bullet.id);
 }
-function updateFacingToVelocity(gunAgent, dtMs) {
+function updateFacingToVelocity(gunAgent, dtMs, aimRotationRadPerSec) {
     const vx = gunAgent.vx ?? 0;
     const vy = gunAgent.vy ?? 0;
     const speed = Math.hypot(vx, vy);
     if (speed >= 0.25) {
         const moveAngle = Math.atan2(vy, vx);
-        const maxStep = AIM_ROTATION_SPEED_RAD_PER_SEC * (dtMs / 1000);
+        const maxStep = aimRotationRadPerSec * (dtMs / 1000);
         gunAgent.facing = rotateTowards(gunAgent.facing ?? moveAngle, moveAngle, maxStep);
     }
 }
-export function tickGunAgentShooting(state, gunAgentInstance, dtMs) {
-    const gunAgent = gunAgentInstance.head;
-    if (gunAgent.isDead) return;
-    const autosim = gunAgentInstance.autosim;
-    if (!autosim) return;
-    // Cooldown management
-    if (gunAgent._shootCooldownMs === undefined) gunAgent._shootCooldownMs = 0;
-    if (gunAgent._shootCooldownMs > 0) {
-        gunAgent._shootCooldownMs = Math.max(0, gunAgent._shootCooldownMs - dtMs);
-        updateFacingToVelocity(gunAgent, dtMs);
-        return;
-    }
-    // Only fire when in seek_enemy mode (combat)
-    if (autosim.getMode() !== "seek_enemy") {
-        gunAgent._shootChargeMs = 0;
-        updateFacingToVelocity(gunAgent, dtMs);
-        return;
-    }
-    // Charging phase
-    if (gunAgent._shootChargeMs !== undefined && gunAgent._shootChargeMs > 0) {
-        gunAgent._shootChargeMs = Math.max(0, gunAgent._shootChargeMs - dtMs);
-        const config = getKineticRollConfig(gunAgent);
-        decelerateRoll(gunAgent, config, state);
-        if (autosim) {
-            const targetId = autosim.getTargetId();
-            if (targetId != null) {
-                const target = state.entityRegistry.getLive(targetId);
-                if (target && !target.isDead && hasLineOfSight(state, gunAgent, target)) {
-                    const targetAngle = Math.atan2(target.y - gunAgent.y, target.x - gunAgent.x);
-                    const maxStep = AIM_ROTATION_SPEED_RAD_PER_SEC * (dtMs / 1000);
-                    gunAgent._shootAngle = rotateTowards(gunAgent._shootAngle ?? targetAngle, targetAngle, maxStep);
-                    gunAgent.facing = gunAgent._shootAngle;
-                }
-            }
-        }
-        if (gunAgent._shootChargeMs <= 0) {
-            const angle = gunAgent._shootAngle ?? gunAgent.facing ?? 0;
-            fireBullet(state, gunAgentInstance, angle);
-            gunAgent._shootCooldownMs = 1500;
-        }
-        return;
-    }
-    // Idle phase -> Check target from autosim
-    const targetId = autosim.getTargetId();
-    if (targetId == null) {
-        updateFacingToVelocity(gunAgent, dtMs);
-        return;
-    }
-    const target = state.entityRegistry.getLive(targetId);
-    if (!target || target.isDead) {
-        updateFacingToVelocity(gunAgent, dtMs);
-        return;
-    }
-    // Line of Sight check
-    if (!hasLineOfSight(state, gunAgent, target)) {
-        updateFacingToVelocity(gunAgent, dtMs);
-        return;
-    }
-    // Start charging!
-    gunAgent._shootChargeMs = 1000;
-    const config = getKineticRollConfig(gunAgent);
-    decelerateRoll(gunAgent, config, state);
+function resolveLiveTarget(ctx) {
+    if (ctx.target) return ctx.target;
+    if (ctx.targetId == null) return null;
+    return ctx.state.entityRegistry.getLive(ctx.targetId);
+}
+function beginCharge(ctx, action, gunAgent, target, weapon, dtMs) {
+    action.phase = "charging";
+    action.targetId = target.id;
+    action.timerMs = weapon.chargeMs ?? 1000;
     const targetAngle = Math.atan2(target.y - gunAgent.y, target.x - gunAgent.x);
-    const initialAngle = gunAgent.facing !== undefined && !isNaN(gunAgent.facing) ? gunAgent.facing : targetAngle;
-    gunAgent._shootAngle = initialAngle;
-    const maxStep = AIM_ROTATION_SPEED_RAD_PER_SEC * (dtMs / 1000);
-    gunAgent._shootAngle = rotateTowards(gunAgent._shootAngle, targetAngle, maxStep);
-    gunAgent.facing = gunAgent._shootAngle;
+    const initialAngle = gunAgent.facing !== undefined && !Number.isNaN(gunAgent.facing) ? gunAgent.facing : targetAngle;
+    action.aimAngle = initialAngle;
+    const maxStep = (weapon.aimRotationRadPerSec ?? Math.PI * 1.5) * (dtMs / 1000);
+    action.aimAngle = rotateTowards(action.aimAngle, targetAngle, maxStep);
+    gunAgent.facing = action.aimAngle;
+    const config = getKineticRollConfig(gunAgent);
+    decelerateRoll(gunAgent, config, ctx.state);
+}
+function tickCharge(ctx, instance, action, weapon, dtMs) {
+    const gunAgent = ctx.agent;
+    const config = getKineticRollConfig(gunAgent);
+    decelerateRoll(gunAgent, config, ctx.state);
+    action.timerMs = Math.max(0, action.timerMs - dtMs);
+    const target = resolveLiveTarget(ctx);
+    const aimRotationRadPerSec = weapon.aimRotationRadPerSec ?? Math.PI * 1.5;
+    if (target && !target.isDead && hasLineOfSight(ctx.state, gunAgent, target)) {
+        const targetAngle = Math.atan2(target.y - gunAgent.y, target.x - gunAgent.x);
+        const maxStep = aimRotationRadPerSec * (dtMs / 1000);
+        action.aimAngle = rotateTowards(action.aimAngle ?? targetAngle, targetAngle, maxStep);
+        gunAgent.facing = action.aimAngle;
+    }
+    if (action.timerMs <= 0) {
+        const angle = action.aimAngle ?? gunAgent.facing ?? 0;
+        fireBullet(ctx.state, instance, angle, weapon);
+        action.phase = "cooldown";
+        action.timerMs = weapon.cooldownMs ?? 1500;
+        action.targetId = null;
+    }
+}
+function tickCooldown(ctx, action, weapon, dtMs) {
+    action.timerMs = Math.max(0, action.timerMs - dtMs);
+    if (action.timerMs <= 0) resetGunAgentActionState(action);
+    updateFacingToVelocity(ctx.agent, dtMs, weapon.aimRotationRadPerSec ?? Math.PI * 1.5);
+}
+export function createGunShootIntentState(instance) {
+    const weapon = resolveWeaponConfig();
+    return {
+        enter(ctx) {
+            ctx.effects.clearDestination();
+            const action = instance.combatAction;
+            const combat = ctx.world.decisionContext.combatState;
+            if (action.phase === "idle" && combat?.canShoot && ctx.target) beginCharge(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
+            else if (action.phase === "charging") tickCharge(ctx, instance, action, weapon, 0);
+        },
+        update(ctx) {
+            const action = instance.combatAction;
+            const dtMs = ctx.dtMs ?? 16;
+            const combat = ctx.world.decisionContext.combatState;
+            if (action.phase === "cooldown") {
+                tickCooldown(ctx, action, weapon, dtMs);
+                if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "cooldown_done", ctx.policy.targetId);
+                return;
+            }
+            if (action.phase === "charging") {
+                tickCharge(ctx, instance, action, weapon, dtMs);
+                ctx.effects.holdDestination("shoot_charge");
+                return;
+            }
+            if (!ctx.target || ctx.target.isDead) {
+                ctx.effects.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
+                return;
+            }
+            if (combat?.canShoot) {
+                beginCharge(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
+                ctx.effects.holdDestination("shoot_start");
+                return;
+            }
+            updateFacingToVelocity(ctx.agent, dtMs, weapon.aimRotationRadPerSec ?? Math.PI * 1.5);
+            ctx.effects.holdDestination("shoot_wait");
+        },
+    };
+}
+export function clearGunAgentCombatAction(instance) {
+    resetGunAgentActionState(instance.combatAction);
 }

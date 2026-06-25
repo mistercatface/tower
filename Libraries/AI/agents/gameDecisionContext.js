@@ -3,6 +3,7 @@ import { bandFromThresholds } from "./bandFromThresholds.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { scoreCandidateNetsInto, scoreCandidateSet } from "../utility/utilityScoring.js";
 import { deriveSnakeEngagementState } from "../../Game/snake/snakeEngagement.js";
+import { deriveGunCombatState } from "../../Game/snake/gunAgent/deriveGunCombatState.js";
 import { AGENT_PROFILE, getAgentProfile } from "./agentProfile.js";
 export { AGENT_PROFILE as AGENT_DECISION_PROFILE };
 export { createAgentDecisionContextFrame } from "./buildAgentDecisionContext.js";
@@ -20,6 +21,7 @@ const DECISION_EXTENSIONS = {
             ctx.engagementState = deriveSnakeEngagementState(ctx, chosenIntent);
         },
     },
+    [AGENT_PROFILE.gun]: { deriveCombatState: (ctx, input) => deriveGunCombatState(ctx, input) },
 };
 function createDecisionSpec(profileId) {
     const profile = () => getAgentProfile(profileId);

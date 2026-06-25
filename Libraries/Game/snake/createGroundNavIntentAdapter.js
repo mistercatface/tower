@@ -71,6 +71,38 @@ function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fle
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policyOut;
 }
+function createShootIntentLatch() {
+    return createModePolicyLatch({
+        mode: "shoot_enemy",
+        minTicks: 0,
+        holdReason: "shoot_held",
+        refreshWhen: ({ world }) => {
+            const phase = world.decisionContext.combatState?.phase;
+            return phase === "charging" || phase === "cooldown";
+        },
+        canRelease: ({ world, policy }) => {
+            if (policy.mode === "flee") return true;
+            const phase = world.decisionContext.combatState?.phase;
+            return phase === "idle" || phase == null;
+        },
+    });
+}
+function applyShootPolicyLatch({ world, shootLatch, currentMode, sprintConfig, policyIn, policyOut }) {
+    const ctx = world.decisionContext;
+    const resolved = shootLatch.apply(policyIn, { world, currentMode, policy: policyIn });
+    policyOut.mode = resolved.mode;
+    policyOut.targetId = resolved.targetId ?? null;
+    policyOut.reason = resolved.reason ?? null;
+    if (resolved !== policyIn) {
+        if (resolved.mode === "shoot_enemy" && resolved.targetId == null) resolved.targetId = policyIn.targetId ?? ctx.known.enemy?.id ?? null;
+        ctx.chosenIntent = resolved;
+        ctx.chosenReason = resolved.reason ?? null;
+        ctx.targetId = resolved.targetId ?? null;
+        ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
+    }
+    ctx.policyLatch = { ...(ctx.policyLatch ?? {}), shoot: shootLatch.snapshot() };
+    return policyOut;
+}
 function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination, getContext, seekOptionsScratch }) {
     return {
         clearDestination() {
@@ -177,12 +209,14 @@ export function createGroundNavIntentAdapter({
     transitionReason,
     states,
     modeExitDelayTicks = { flee: 30 },
+    useShootPolicyLatch = false,
     extendReturn = () => ({}),
 }) {
     const resolvedVision = visionRange ?? config.visionRange;
     const locomotion = createCellTargetLocomotion(headNav);
     const intentMemory = createAgentIntentMemory(intentMemoryOptions);
     const fleeLatch = createFleeIntentLatch(config);
+    const shootLatch = useShootPolicyLatch ? createShootIntentLatch() : null;
     const arrivalStamper = createBrainArrivalStamper(brain);
     const staleCache = createFlowReachStaleCache();
     const reachSlotList = createFlowTargetStepSlots(reachSlots);
@@ -212,6 +246,7 @@ export function createGroundNavIntentAdapter({
         fleeTarget: null,
         locomotion: null,
         effects: null,
+        dtMs: 16,
     };
     const cellTargetEffects = createStableCellTargetIntentEffects({
         locomotion,
@@ -247,6 +282,7 @@ export function createGroundNavIntentAdapter({
     const resetArrivalAndLatch = () => {
         arrivalStamper.reset();
         fleeLatch.clear();
+        shootLatch?.clear();
     };
     intent = createAgentIntent({
         initialMode: "explore",
@@ -255,7 +291,11 @@ export function createGroundNavIntentAdapter({
             arrivalStamper.stamp(agent, state.obstacleGrid);
         },
         perceiveWorld: perceiveWithMemory,
-        pickPolicy: (world) => applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn, policyOut: policyScratch }),
+        pickPolicy: (world) => {
+            applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn, policyOut: policyScratch });
+            if (shootLatch) applyShootPolicyLatch({ world, shootLatch, currentMode: intent?.getMode(), sprintConfig, policyIn: policyScratch, policyOut: policyScratch });
+            return policyScratch;
+        },
         transitionReason,
         states,
         modeExitDelayTicks,
@@ -307,5 +347,16 @@ export function createGroundNavIntentAdapter({
             return locomotion.hasMoveTarget(null, null);
         },
     };
-    return { ...base, ...extendReturn({ intent, locomotion, intentMemory, getLastDecisionContext: () => lastDecisionContext }) };
+    return {
+        ...base,
+        ...extendReturn({
+            intent,
+            locomotion,
+            intentMemory,
+            getLastDecisionContext: () => lastDecisionContext,
+            setTickDt: (dtMs) => {
+                intentContext.dtMs = dtMs;
+            },
+        }),
+    };
 }

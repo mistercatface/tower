@@ -20,7 +20,7 @@ function runAgentFsmTick(intent, seeker, state, dt, beforeNav, admitted) {
     let choice;
     tickAgentIntent(state, intent, seeker, dt, (agent) => {
         if (admitted) {
-            choice = intent.tick(agent, state);
+            choice = intent.tick(agent, state, dt);
             if (beforeNav) beforeNav(agent);
         }
     });

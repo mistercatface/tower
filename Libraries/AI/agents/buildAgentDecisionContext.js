@@ -75,6 +75,7 @@ export function createAgentDecisionContextFrame(profileId) {
         recentFailures: [],
         seekerFaction: null,
         seekerSegmentCount: null,
+        combatState: null,
     };
 }
 export function buildAgentDecisionFrameInto(ctx, spec, input) {
@@ -98,6 +99,7 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
         ctx.seekerSegmentCount = extra.seekerSegmentCount ?? null;
         ctx.engagementState = extra.engagementState ?? null;
     }
+    if (spec.deriveCombatState) ctx.combatState = spec.deriveCombatState(ctx, input);
     return ctx;
 }
 export function pickAgentIntentPolicy(ctx, scores, spec) {
@@ -106,6 +108,7 @@ export function pickAgentIntentPolicy(ctx, scores, spec) {
     if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(ctx, "threat"));
     if (mode === "explore") return { mode: "explore", targetId: null };
     const slotKey = schema.targetLost[mode];
+    if (!slotKey || !ctx.known[slotKey]) return { mode, targetId: null, reason: ctx.chosenReason ?? null };
     return intentPolicy(mode, ctx.known[slotKey].id, policyReasonForTarget(ctx, slotKey));
 }
 export function buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDetails = false } = {}) {
