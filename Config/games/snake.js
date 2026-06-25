@@ -174,7 +174,7 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         flee_agent: {
             exportType: "flee_agent",
-            populationCount: 48,
+            populationCount: 128,
             spawnSeedOffset: 9173,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
