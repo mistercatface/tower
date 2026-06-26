@@ -160,13 +160,13 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
         instanceA.receiveBodyStrike(state, pair.bodyA.id, instanceB, pair.bodyB.id, relSpeed, deathImpactA);
     }
 }
-function restoreHunterContactDrive(hunterInstance, hunterPhysId, preyTarget, speedOverride = null) {
+function restoreHunterContactDrive(hunterInstance, hunterPhysId, preyTarget) {
     const hunterHead = hunterInstance.head;
     const dx = preyTarget.x - hunterHead.x;
     const dy = preyTarget.y - hunterHead.y;
     const dist = Math.hypot(dx, dy);
     if (dist <= 0) return;
-    const speed = speedOverride ?? hunterHead.strategy.groundNav.maxSpeed;
+    const speed = hunterHead.strategy.groundNav.maxSpeed;
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
     kineticDynamicSlab.vx[hunterPhysId] = vx;

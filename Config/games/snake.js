@@ -16,7 +16,6 @@ const SNAKE_INTENT = {
     fleePackBlend: false,
     fleeExploreFallback: false,
     publishEngagement: true,
-    returnShape: "fsmSnapshot",
     decisionFields: { seekerFaction: true, seekerSegmentCount: true, session: true },
 };
 const SQUID_INTENT = {
@@ -30,7 +29,6 @@ const SQUID_INTENT = {
     fleePackBlend: false,
     fleeExploreFallback: false,
     publishEngagement: false,
-    returnShape: "fsmSnapshot",
     decisionFields: { seekerFaction: true, seekerSegmentCount: true },
 };
 const FLEE_INTENT = {

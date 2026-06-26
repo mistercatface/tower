@@ -38,10 +38,8 @@ export function createAgentAutosim(state, instance) {
             const tail = instance.memberProps[i];
             if (tail && !tail.isDead) return tail;
         }
-        throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
     };
-    const rng = Math.random;
-    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger: () => getAgentHunger(metabolism), brain, sync, headNav, agentCtx, rng }));
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, brain, sync, headNav, agentCtx }));
     instance.intent = intent;
     instance.brain = brain;
     instance.headNav = headNav;
@@ -79,7 +77,7 @@ export function createAgentAutosim(state, instance) {
         const grid = state.obstacleGrid;
         brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
         intent.clearTrackedGoal();
-        intent.headNav.clearDestination();
+        headNav.clearDestination();
         removeSandboxWorldProp(state, food);
         if (profileId === AGENT_PROFILE.snake) feedAndGrow(food.snakeFoodValue ?? foodValue);
         else feedAgentMetabolism(metabolism, food.snakeFoodValue ?? foodValue);
@@ -103,7 +101,7 @@ export function createAgentAutosim(state, instance) {
             return active;
         },
         getPathOverlay() {
-            return intent.headNav.getPathOverlay(instance.head);
+            return headNav.getPathOverlay(instance.head);
         },
         tick(dtMs, admitted = true) {
             if (!active) return;
@@ -126,7 +124,7 @@ export function createAgentAutosim(state, instance) {
             instance.sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(metabolism) > 0;
             seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
             seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
-            intent.headNav.tick(seeker, dtMs);
+            headNav.tick(seeker, dtMs);
             if (soloTick) endSnakePerceptionFrame(state);
             let fedThisTick = false;
             let foodTarget = null;

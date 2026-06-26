@@ -20,6 +20,7 @@ import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
+import { getAgentHunger } from "./agentMetabolism.js";
 import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
@@ -86,7 +87,7 @@ function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fle
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policyOut;
 }
-function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, rng, seekArrivalRadius, setFleeDestination, getContext, seekOptionsScratch }) {
+function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, getContext, seekOptionsScratch }) {
     return {
         clearDestination() {
             const ctx = getContext();
@@ -94,7 +95,7 @@ function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, b
         },
         setExploreDestination() {
             const ctx = getContext();
-            const cell = resolveExploreCell(ctx.agent, ctx.state, brain.spatial, rng);
+            const cell = resolveExploreCell(ctx.agent, ctx.state, brain.spatial, Math.random);
             if (cell) locomotion.setExplore(ctx.agent, ctx.state, cell);
             return cell;
         },
@@ -132,38 +133,6 @@ function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarge
     ctx.fleeTarget = ctx.world.decisionContext.known.threat;
     ctx.locomotion = locomotion;
     return ctx;
-}
-export function getGroundNavFsmSnapshot({ intent, locomotion, agent, state, intentMemory, lastDecisionContext }) {
-    const loco = locomotion.getStatus(agent, state);
-    const dest = locomotion.getDestination();
-    let replanReason = null;
-    if (loco.lastReplanReason) replanReason = loco.lastReplanReason;
-    else if (loco.replanPending) replanReason = "pending";
-    else if (dest && !loco.hasRoute) replanReason = "no_route";
-    return {
-        mode: intent.getMode(),
-        destCell: dest ? { col: dest.col, row: dest.row } : null,
-        pathLen: loco.pathLen,
-        replanReason,
-        navPhase: loco.navPhase,
-        routeGoal: loco.routeGoal,
-        terminalGoal: loco.terminalGoal,
-        routeCommitFrames: loco.routeCommitFrames,
-        routeId: loco.routeId,
-        lastAcceptedRouteReason: loco.lastAcceptedRouteReason,
-        lastAcceptedPathLen: loco.lastAcceptedPathLen,
-        lastAcceptedProgressIdx: loco.lastAcceptedProgressIdx,
-        lastAcceptedTarget: loco.lastAcceptedTargetX == null || loco.lastAcceptedTargetY == null ? null : { x: loco.lastAcceptedTargetX, y: loco.lastAcceptedTargetY },
-        targetDistance: loco.targetDistance,
-        targetLos: loco.targetLos,
-        stuckFrames: loco.stuckFrames,
-        vx: agent.vx,
-        vy: agent.vy,
-        lastTransition: intent.getLastTransitionReason(),
-        intentMemory: intentMemory.snapshot(),
-        intentEvents: lastDecisionContext?.events ?? [],
-        decision: lastDecisionContext,
-    };
 }
 const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
 const PACK_STEERING_SCRATCH = { packAnchor: { x: 0, y: 0 }, packBlend: 0, maxPackDistCells: 16 };
@@ -210,7 +179,7 @@ function resolveCommittedTarget(committedSlots, id, world) {
     }
     return null;
 }
-function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveHunger, resolveSegmentCount) {
+function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveSegmentCount) {
     const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
     const instance = agentCtx.instance;
     const profile = instance.profile;
@@ -223,7 +192,7 @@ function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, age
         reachSteps,
         cellSize: state.obstacleGrid.cellSize,
         shared: agentCtx.session.config.shared,
-        foodFraction: resolveHunger ? resolveHunger() : null,
+        foodFraction: getAgentHunger(instance.metabolism),
     };
     const fields = profile.intent.decisionFields ?? {};
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
@@ -254,7 +223,7 @@ function defaultSeekArrivalRadius(profileId, profile, shared, instance) {
     };
 }
 function setFleeDestination(intent, args, instance) {
-    const { agent, state, world, avoidCell, locomotion, navWalkable, config, brain, rng, resolveExploreCell } = args;
+    const { agent, state, world, avoidCell, locomotion, navWalkable, config, brain, resolveExploreCell } = args;
     const threat = world.decisionContext.known.threat;
     if (!threat) return null;
     const packOptions = intent.fleePackBlend ? resolvePackSteeringOptions(world.decisionContext, instance) : null;
@@ -264,24 +233,11 @@ function setFleeDestination(intent, args, instance) {
         return cell;
     }
     if (intent.fleeExploreFallback) {
-        const exploreCell = resolveExploreCell(agent, state, brain.spatial, rng);
+        const exploreCell = resolveExploreCell(agent, state, brain.spatial, Math.random);
         if (exploreCell) locomotion.setExplore(agent, state, exploreCell);
         return exploreCell;
     }
     return null;
-}
-function extendReturn(intent, deps) {
-    const { intent: intentApi, locomotion, intentMemory, getLastDecisionContext, setTickDt } = deps;
-    const api = {
-        tick(agent, state, dtMs = 16) {
-            setTickDt?.(dtMs);
-            intentApi.perceive(agent, state);
-            return intentApi.transition(agent, state);
-        },
-    };
-    if (intent.returnShape === "fsmSnapshot")
-        api.getFsmSnapshot = (agent, state) => getGroundNavFsmSnapshot({ intent: intentApi, locomotion, agent, state, intentMemory, lastDecisionContext: getLastDecisionContext() });
-    return api;
 }
 export function resolvePackSteeringOptions(ctx, instance) {
     const cohesion = instance.profile.factionCohesion ?? {};
@@ -316,7 +272,7 @@ export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable,
     if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { cols: grid.cols, excludeIndices: new Set([colRowToIndex(col, row, grid.cols)]), rng });
     return cell;
 }
-export function buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger, brain, sync, headNav, agentCtx, rng = Math.random }) {
+export function buildGroundNavIntentAdapterOptions({ state, instance, brain, sync, headNav, agentCtx }) {
     const profile = instance.profile;
     const profileId = instance.profileId;
     const intent = profile.intent;
@@ -339,16 +295,14 @@ export function buildGroundNavIntentAdapterOptions({ state, instance, resolveHun
         visibleSourceResolvers,
         resolveExploreCell,
         seekArrivalRadius,
-        resolveHunger,
         resolveSegmentCount,
-        rng,
         reachSlots: intent.reachSlots,
         intentMemoryOptions,
         config: shared,
         decisionContext,
-        buildDecisionContext: (input) => buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveHunger, resolveSegmentCount),
+        buildDecisionContext: (input) => buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveSegmentCount),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
-        setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable, config: shared, brain, rng, resolveExploreCell }, instance),
+        setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable, config: shared, brain, resolveExploreCell }, instance),
         sprintConfig: profile.sprint,
         fleeHeldOn: intent.fleeHeldOn,
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
@@ -357,7 +311,6 @@ export function buildGroundNavIntentAdapterOptions({ state, instance, resolveHun
         policyExtensions: hasRangedShoot ? [createRangedCombatPolicyExtension()] : [],
         modeExitDelayTicks: hasRangedShoot ? { flee: 30, shoot_enemy: 15 } : { flee: 30 },
         onIntentClear: hasRangedShoot ? () => resetInstanceRangedCombatAction(instance) : null,
-        extendReturn: (returnDeps) => extendReturn(intent, returnDeps),
     };
     if (intent.publishEngagement)
         adapter.afterPerceive = (decisionContext, _agent, state) => {
@@ -374,9 +327,7 @@ export function createGroundNavIntentAdapter({
     agentCtx,
     visionRange,
     seekArrivalRadius,
-    resolveHunger,
     resolveSegmentCount = null,
-    rng = Math.random,
     config,
     intentMemoryOptions,
     reachSlots,
@@ -393,7 +344,6 @@ export function createGroundNavIntentAdapter({
     states,
     modeExitDelayTicks = { flee: 30 },
     policyExtensions = [],
-    extendReturn = () => ({}),
 }) {
     const resolvedVision = visionRange ?? config.visionRange;
     const locomotion = createCellTargetLocomotion(headNav);
@@ -441,7 +391,6 @@ export function createGroundNavIntentAdapter({
         locomotion,
         resolveExploreCell,
         brain,
-        rng,
         seekArrivalRadius,
         setFleeDestination,
         getContext: () => intentContext,
@@ -507,15 +456,16 @@ export function createGroundNavIntentAdapter({
     const base = {
         ...intent,
         headId: agentCtx.instance.headId,
-        headNav,
+        tick(agent, state, dtMs = 16) {
+            intentContext.dtMs = dtMs;
+            intent.perceive(agent, state);
+            return intent.transition(agent, state);
+        },
         getDestination() {
             return locomotion.getDestination();
         },
         getDecisionContext() {
             return lastDecisionContext;
-        },
-        getIntentMemorySnapshot() {
-            return intentMemory.snapshot();
         },
         resetMemory() {
             brain.clearMemory();
@@ -537,16 +487,5 @@ export function createGroundNavIntentAdapter({
             return locomotion.hasMoveTarget(null, null);
         },
     };
-    return {
-        ...base,
-        ...extendReturn({
-            intent,
-            locomotion,
-            intentMemory,
-            getLastDecisionContext: () => lastDecisionContext,
-            setTickDt: (dtMs) => {
-                intentContext.dtMs = dtMs;
-            },
-        }),
-    };
+    return base;
 }
