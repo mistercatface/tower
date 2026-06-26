@@ -24,7 +24,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { perceiveAgentWorld } from "../Libraries/AI/perception/agentWorldPerception.js";
-import { buildAgentPerceptionOptions } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
+import { buildTestAgentPerceptionOptions } from "./harness/snakeGameHarness.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 
 function findNearestVisibleSnakeFood(state, seeker) {
@@ -223,7 +223,7 @@ describe("snake intent integration", () => {
         const instance = state.sandbox.snakeGame.instancesByHeadId.get(seeker.id);
         const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
         const shared = getSnakeGameConfig().shared;
-        const options = buildAgentPerceptionOptions(shared.visionRange, shared, agentCtx);
+        const options = buildTestAgentPerceptionOptions(shared.visionRange, shared, agentCtx, null);
         const world = perceiveAgentWorld(seeker, agentCtx, state, () => null, shared.visionRange, options);
         assert.equal(world.prey, null);
     });
@@ -244,7 +244,7 @@ describe("snake intent integration", () => {
             return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, () => true, null, 1.0, vision);
         };
         const shared = getSnakeGameConfig().shared;
-        const options = buildAgentPerceptionOptions(shared.visionRange, shared, agentCtx);
+        const options = buildTestAgentPerceptionOptions(shared.visionRange, shared, agentCtx, null);
         perceiveAgentWorld(seeker, agentCtx, state, { food: foodResolver }, shared.visionRange, options);
         endSnakePerceptionFrame(state);
         

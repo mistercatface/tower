@@ -1,5 +1,6 @@
 import { classifyAgentVision } from "../../AI/perception/classifyAgentVision.js";
-import { buildAgentPerceptionOptions } from "./createGroundNavIntentAdapter.js";
+import { resolveRelationshipForInstances } from "./agentRelationships.js";
+import { requireSnakeVisionFrame } from "./snakePerception.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
 import { createObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 function agentRingStyle(config, slot) {
@@ -29,10 +30,16 @@ export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, sessi
     const visionRange = instance.visionRange;
     const frame = state.nav.observerVisionFrame ?? createObserverVisionFrame({ tickId: session.simTick ?? 1, navTopology: state.nav.topology, visionRange, viewport: state.viewport });
     const agentCtx = { instance, session };
-    const perceptionOptions = buildAgentPerceptionOptions(visionRange, shared, agentCtx, instance.intent?.getTargetId() ?? null);
+    const committedTargetId = instance.intent.getTargetId();
+    const perceptionOptions = {
+        readVisionFrame: requireSnakeVisionFrame,
+        agentRange: shared.fleeRange ?? visionRange.range,
+        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, distSq),
+        committedTargetId,
+        targetStickyFactor: shared.targetingHysteresis.targetStickyFactor ?? 0.75,
+    };
     const vision = frame.ensureHeadVision(head, visionRange);
     const world = classifyAgentVision(head, agentCtx, state, frame, vision, perceptionOptions);
-    const committedTargetId = instance.intent?.getTargetId?.() ?? null;
     if (world.threat) appendAgentRing(out, world.threat, agentRingStyle(config, "threat"));
     if (world.prey && world.prey.id !== committedTargetId) appendAgentRing(out, world.prey, agentRingStyle(config, "prey"));
     if (world.ally) appendAgentRing(out, world.ally, agentRingStyle(config, "ally"));

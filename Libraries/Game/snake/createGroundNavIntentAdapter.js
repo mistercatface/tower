@@ -8,15 +8,6 @@ import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHp
 import { perceiveAgentWorldInto } from "../../AI/perception/agentWorldPerception.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
-export function buildAgentPerceptionOptions(visionRange, shared, agentCtx, committedTargetId = null) {
-    return {
-        readVisionFrame: requireSnakeVisionFrame,
-        agentRange: shared.fleeRange ?? visionRange.range,
-        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, distSq),
-        committedTargetId,
-        targetStickyFactor: shared.targetingHysteresis?.targetStickyFactor ?? 0.75,
-    };
-}
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
     const dest = locomotion.getDestination();
     const status = locomotion.getStatus(agent, state);
@@ -237,15 +228,13 @@ export function createGroundNavIntentAdapter({
     });
     intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
-        perceiveAgentWorldInto(
-            visible,
-            agent,
-            agentCtx,
-            state,
-            visibleSourceResolvers,
-            resolvedVision,
-            buildAgentPerceptionOptions(resolvedVision, config, agentCtx, intent ? intent.getTargetId() : null),
-        );
+        perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, {
+            readVisionFrame: requireSnakeVisionFrame,
+            agentRange: config.fleeRange ?? resolvedVision.range,
+            resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, distSq),
+            committedTargetId: intent.getTargetId(),
+            targetStickyFactor: config.targetingHysteresis.targetStickyFactor ?? 0.75,
+        });
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         if (intent) {

@@ -23,9 +23,20 @@ import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js"
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
 import { FollowCamera } from "../../Libraries/Sandbox/FollowCamera.js";
 import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
-import { beginSnakePerceptionFrame } from "../../Libraries/Game/snake/snakePerception.js";
+import { beginSnakePerceptionFrame, requireSnakeVisionFrame } from "../../Libraries/Game/snake/snakePerception.js";
+import { resolveRelationshipForInstances } from "../../Libraries/Game/snake/agentRelationships.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 import { getPropCategoryIndex } from "../../GameState/SandboxWorldState.js";
+
+export function buildTestAgentPerceptionOptions(visionRange, shared, agentCtx, committedTargetId) {
+    return {
+        readVisionFrame: requireSnakeVisionFrame,
+        agentRange: shared.fleeRange ?? visionRange.range,
+        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, distSq),
+        committedTargetId,
+        targetStickyFactor: shared.targetingHysteresis?.targetStickyFactor ?? 0.75,
+    };
+}
 export function wireSnakeTestNavSession(state) {
     if (!state.nav?.session) throw new Error("wireSnakeTestNavSession: state.nav with session is required");
     state.nav.settings = { stuckMoveThreshold: 0.5, stuckReplanFrames: 30, idlePathReplanMs: 5000, ...state.nav.settings };
