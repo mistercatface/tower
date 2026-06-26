@@ -238,12 +238,7 @@ function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, age
     }
     return buildAgentDecisionContextInto(decisionContext, decisionSpec, decisionInput, { includeScoreDetails: false });
 }
-function resolveEatRadiusValue(instance, eatRadius) {
-    if (typeof eatRadius === "function") return eatRadius();
-    if (eatRadius != null) return eatRadius;
-    return instance.eatRadius;
-}
-function defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadius) {
+function defaultSeekArrivalRadius(profileId, profile, shared, instance) {
     const huntMode = profile.intent?.huntMode ?? "seek_prey";
     const terminalHoming = shared.terminalHoming;
     const headRadius = getCirclePropRadius(instance.head);
@@ -255,7 +250,7 @@ function defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadiu
         const huntArrival = Math.max(2, headRadius * 0.25);
         if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy" || mode === "shoot_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         if (!isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
-        return { arrivalRadius: resolveEatRadiusValue(instance, eatRadius), lockOnTarget: true, terminalHoming };
+        return { arrivalRadius: instance.eatRadius, lockOnTarget: true, terminalHoming };
     };
 }
 function setFleeDestination(intent, args, instance) {
@@ -322,7 +317,7 @@ export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable,
     return cell;
 }
 export function buildGroundNavIntentAdapterOptions(deps) {
-    const { state, agentCtx, metabolismApi, metabolism, eatRadius, brain, sync, headNav, rng = Math.random } = deps;
+    const { state, agentCtx, metabolismApi, metabolism, brain, sync, headNav, rng = Math.random } = deps;
     const instance = deps.instance ?? agentCtx.instance;
     const profile = instance.profile;
     const profileId = instance.profileId;
@@ -331,7 +326,7 @@ export function buildGroundNavIntentAdapterOptions(deps) {
     const navWalkable = agentCtx.navWalkable;
     const visibleSourceResolvers = deps.visibleSourceResolvers ?? buildVisibleSourceResolvers(profile);
     const resolveExploreCell = deps.resolveExploreCell ?? ((seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, shared));
-    const seekArrivalRadius = deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadius);
+    const seekArrivalRadius = deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, shared, instance);
     const resolveHunger = deps.resolveHunger ?? (metabolismApi && metabolism ? () => metabolismApi.get(metabolism) : null);
     const resolveSegmentCount = deps.resolveSegmentCount ?? (state && instance ? () => getConnectedBodyIds(state.kinetic, instance.headId).length : null);
     const decisionSpec = buildAgentDecisionSpec(profileId, profile);

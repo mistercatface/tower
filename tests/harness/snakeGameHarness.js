@@ -27,7 +27,6 @@ import { beginSnakePerceptionFrame, requireSnakeVisionFrame } from "../../Librar
 import { resolveRelationshipForInstances } from "../../Libraries/Game/snake/agentRelationships.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 import { getPropCategoryIndex } from "../../GameState/SandboxWorldState.js";
-
 export function buildTestAgentPerceptionOptions(visionRange, shared, agentCtx, committedTargetId) {
     return {
         readVisionFrame: requireSnakeVisionFrame,
@@ -83,10 +82,11 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
     }
     return { registry, snakeGame };
 }
-export function createWiredSnakeAutosim(state, { headId, behaviorById, ...autosimOptions }) {
+export function createWiredSnakeAutosim(state, { headId, behaviorById, eatRadius = null, ...autosimOptions }) {
     wireSnakeTestNavSession(state);
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     if (instance) {
+        if (eatRadius != null) instance.eatRadius = eatRadius;
         const autosim = createAgentAutosim(state, instance, autosimOptions);
         instance.autosim = autosim;
         return autosim;

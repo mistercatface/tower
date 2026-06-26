@@ -14,9 +14,6 @@ import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
 import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism, tickAgentMetabolism, shrinkSnakeChainFromStarvation } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-function resolveAgentRadius(leader) {
-    return getCirclePropRadius(leader);
-}
 function sprintAllowed(profileId, segmentCount, metabolism, profile) {
     if (profileId === AGENT_PROFILE.flee) return getAgentHunger(metabolism) > 0;
     if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
@@ -24,7 +21,7 @@ function sprintAllowed(profileId, segmentCount, metabolism, profile) {
     return true;
 }
 /** Shared ground-nav autosim for flee, snake, and squid. */
-export function createAgentAutosim(state, instance, { rng = Math.random, initialFoodFraction = null, eatRadius = null, ballType = null, growDirX = null, growDirY = null } = {}) {
+export function createAgentAutosim(state, instance, { rng = Math.random, initialFoodFraction = null, ballType = null, growDirX = null, growDirY = null } = {}) {
     const profileId = instance.profileId;
     const agentId = instance.headId;
     const session = state.sandbox.snakeGame;
@@ -43,12 +40,6 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
     const baseMaxSpeed = instance.leaderGameplay.maxSpeed;
     const baseAccel = instance.leaderGameplay.accel;
     const sprint = profile.sprint ?? {};
-    const resolveEatRadiusValue = (seeker) => {
-        if (typeof eatRadius === "function") return eatRadius();
-        if (eatRadius != null) return eatRadius;
-        return instance.eatRadius;
-    };
-    const resolveSeeker = () => instance.head;
     const resolveChainTailProp = () => {
         for (let i = instance.memberProps.length - 1; i >= 0; i--) {
             const tail = instance.memberProps[i];
@@ -56,13 +47,11 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
         }
         throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
     };
-    const intent = createGroundNavIntentAdapter(
-        buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger: () => getAgentHunger(metabolism), eatRadius, brain, sync, headNav, agentCtx, rng }),
-    );
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger: () => getAgentHunger(metabolism), brain, sync, headNav, agentCtx, rng }));
     let active = false;
     let sprinting = false;
     const growOneSegment = () => {
-        const segmentRadius = resolveAgentRadius(instance.head);
+        const segmentRadius = getCirclePropRadius(instance.head);
         const grow = { segmentRadius, spacing: segmentRadius * 2 * (profile.linkSlack ?? 1), linkSlack: profile.linkSlack };
         const tail = resolveChainTailProp();
         const newTail = growChainSegment(state, tail, {
@@ -89,7 +78,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
     };
     const eatFoodShard = (seeker, food, members = null) => {
         if (!canAgentEatSnakeFood(seeker, food) || !isSnakeFoodTarget(food)) return false;
-        if (Math.hypot(food.x - seeker.x, food.y - seeker.y) > resolveEatRadiusValue(seeker)) return false;
+        if (Math.hypot(food.x - seeker.x, food.y - seeker.y) > instance.eatRadius) return false;
         const grid = state.obstacleGrid;
         brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
         intent.clearTrackedGoal();
@@ -118,7 +107,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
             intent.resetMode();
             if (intent.resetMemory) intent.resetMemory();
             const snakeGame = state.sandbox.snakeGame;
-            const seeker = resolveSeeker();
+            const seeker = instance.head;
             const members = getConnectedBodyIds(state.kinetic, agentId);
             const soloTick = !snakeGame._batchingPerception;
             if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
@@ -132,8 +121,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
         },
         stop() {
             active = false;
-            const seeker = resolveSeeker();
-            intent.clear(seeker, state);
+            intent.clear(instance.head, state);
         },
         isActive() {
             return active;
@@ -154,19 +142,18 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
             return intent.getLastTransitionReason();
         },
         getFsmSnapshot() {
-            const seeker = resolveSeeker();
-            return intent.getFsmSnapshot?.(seeker, state) ?? null;
+            return intent.getFsmSnapshot?.(instance.head, state) ?? null;
         },
         getFoodTimerFraction() {
             return getAgentHunger(metabolism);
         },
         getPathOverlay() {
-            return intent.headNav.getPathOverlay(resolveSeeker());
+            return intent.headNav.getPathOverlay(instance.head);
         },
         tick(dtMs, admitted = true) {
             if (!active) return;
             const snakeGame = state.sandbox.snakeGame;
-            const seeker = resolveSeeker();
+            const seeker = instance.head;
             const members = getConnectedBodyIds(state.kinetic, agentId);
             if (profileId === AGENT_PROFILE.snake || profileId === AGENT_PROFILE.squid) {
                 if (instance.lifecycle !== "alive") return;
