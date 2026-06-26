@@ -23,7 +23,8 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { perceiveAgentIntentWorld } from "../Libraries/Game/snake/agentIntentPerception.js";
+import { perceiveAgentWorld } from "../Libraries/AI/perception/agentWorldPerception.js";
+import { resolveAgentPerceptionOptions } from "../Libraries/Game/snake/agentIntentPerception.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 
 function findNearestVisibleSnakeFood(state, seeker) {
@@ -222,7 +223,8 @@ describe("snake intent integration", () => {
         const instance = state.sandbox.snakeGame.instancesByHeadId.get(seeker.id);
         const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
         const shared = getSnakeGameConfig().shared;
-        const world = perceiveAgentIntentWorld(seeker, agentCtx, state, () => null, shared.visionRange, shared);
+        const options = resolveAgentPerceptionOptions(shared.visionRange, shared, agentCtx);
+        const world = perceiveAgentWorld(seeker, agentCtx, state, () => null, shared.visionRange, options);
         assert.equal(world.prey, null);
     });
 
@@ -243,7 +245,8 @@ describe("snake intent integration", () => {
             return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, () => true, null, 1.0, vision);
         };
         const shared = getSnakeGameConfig().shared;
-        perceiveAgentIntentWorld(seeker, agentCtx, state, { food: foodResolver }, shared.visionRange, shared);
+        const options = resolveAgentPerceptionOptions(shared.visionRange, shared, agentCtx);
+        perceiveAgentWorld(seeker, agentCtx, state, { food: foodResolver }, shared.visionRange, options);
         endSnakePerceptionFrame(state);
         
         assert.equal(getVisionFullBuildCount(), 1);

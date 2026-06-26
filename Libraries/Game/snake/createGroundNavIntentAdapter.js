@@ -5,7 +5,8 @@ import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { buildFlowTargetStepsInto, createFlowTargetStepSlots } from "../../Navigation/flowTargetSteps.js";
 import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
-import { perceiveAgentIntentWorldInto } from "./agentIntentPerception.js";
+import { perceiveAgentWorldInto } from "../../AI/perception/agentWorldPerception.js";
+import { resolveAgentPerceptionOptions } from "./agentIntentPerception.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
     const dest = locomotion.getDestination();
@@ -227,7 +228,7 @@ export function createGroundNavIntentAdapter({
     });
     intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
-        perceiveAgentIntentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, config);
+        perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, resolveAgentPerceptionOptions(resolvedVision, config, agentCtx));
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         if (intent) {
