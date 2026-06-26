@@ -28,33 +28,31 @@ export function computeWallImpactDamage(preSpeed, approachDot, config) {
     const angleT = Math.min(1, Math.max(config.minAngleFactor, -approachDot / preSpeed));
     return config.maxHitDamage * speedT * angleT;
 }
-export function createGridWallDamageSession() {
-    return { pendingBreaks: new Map() };
-}
 export function getGridWallDamageState(state) {
     return state.sandbox?.gridWallDamage ?? null;
 }
 export function createGridWallDamage(state, config) {
-    return { config, session: createGridWallDamageSession(), commit: createDeferredGridWallCommit(state) };
+    return { config, pendingBreaks: new Map(), commit: createDeferredGridWallCommit(state) };
 }
 export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
     const wallDamage = getGridWallDamageState(state);
     const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
     const collided = wallResolver.resolve(entity, spatialFrame);
     if (!wallDamage || !entity._wallResolveHits?.length) return collided;
-    queueWallHits(wallDamage.session, state.obstacleGrid, entity._wallResolveHits, preSpeed, wallDamage.config);
+    queueWallHits(wallDamage, state.obstacleGrid, entity._wallResolveHits, preSpeed);
     return collided;
 }
 export function flushPendingWallDamage(state) {
     const wallDamage = getGridWallDamageState(state);
     if (!wallDamage) return null;
-    return applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
+    return applyPendingWallDamage(state, wallDamage);
 }
 function targetToSegment(target) {
     if (target.kind === "voxel") return { gridCol: target.col, gridRow: target.row, isStaticGridProxy: true, isEdgeRail: false };
     return { gridCol: target.col, gridRow: target.row, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
 }
-export function queueWallHits(session, grid, hits, preSpeed, config) {
+export function queueWallHits(wallDamage, grid, hits, preSpeed) {
+    const config = wallDamage.config;
     for (let i = 0; i < hits.length; i++) {
         const hit = hits[i];
         const target = resolveWallDamageTarget(grid, hit.segment);
@@ -62,21 +60,21 @@ export function queueWallHits(session, grid, hits, preSpeed, config) {
         const damage = computeWallImpactDamage(preSpeed, hit.approachDot, config);
         if (damage < config.maxHitDamage) continue;
         const key = wallDamageKey(target);
-        if (!session.pendingBreaks.has(key)) session.pendingBreaks.set(key, { target, damage, hit });
+        if (!wallDamage.pendingBreaks.has(key)) wallDamage.pendingBreaks.set(key, { target, damage, hit });
     }
 }
-export function applyPendingWallDamage(state, session, commit) {
-    if (!session.pendingBreaks.size) return null;
+export function applyPendingWallDamage(state, wallDamage) {
+    if (!wallDamage.pendingBreaks.size) return null;
     const grid = state.obstacleGrid;
     const voxels = [];
     const rails = [];
-    for (const item of session.pendingBreaks.values()) {
+    for (const item of wallDamage.pendingBreaks.values()) {
         const target = item.target;
         if (!resolveWallDamageTarget(grid, targetToSegment(target))) continue;
         if (target.kind === "voxel") voxels.push({ col: target.col, row: target.row });
         else rails.push({ col: target.col, row: target.row, side: target.side });
     }
-    session.pendingBreaks.clear();
-    if (voxels.length || rails.length) commit.clearWalls({ voxels, rails });
-    return commit.flush();
+    wallDamage.pendingBreaks.clear();
+    if (voxels.length || rails.length) wallDamage.commit.clearWalls({ voxels, rails });
+    return wallDamage.commit.flush();
 }

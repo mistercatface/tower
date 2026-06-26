@@ -50,10 +50,10 @@ describe("kinetic wall damage", () => {
             },
         };
         resolveKineticWallDamage(state, entity, {}, wallResolver);
-        assert.equal(state.sandbox.gridWallDamage.session.pendingBreaks.get("v:6,6").damage, 45);
+        assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:6,6").damage, 45);
         flushPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, 6, 6));
-        assert.equal(state.sandbox.gridWallDamage.session.pendingBreaks.size, 0);
+        assert.equal(state.sandbox.gridWallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("resolveWallDamageTarget distinguishes voxel and rail segments", async () => {
@@ -74,10 +74,10 @@ describe("kinetic wall damage", () => {
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
         const hit = { approachDot: -112, normalX: 1, normalY: 0, segment };
-        queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
-        await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
+        queueWallHits(wallDamage, grid, [hit], 560);
+        await applyPendingWallDamage(state, wallDamage);
         assert.ok(cellIsStaticWall(grid, 3, 3));
-        assert.equal(wallDamage.session.pendingBreaks.size, 0);
+        assert.equal(wallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("one max-power head-on hit destroys a voxel wall", async () => {
@@ -87,10 +87,10 @@ describe("kinetic wall damage", () => {
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
         const hit = { approachDot: -560, normalX: 1, normalY: 0, segment };
-        queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
-        await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
+        queueWallHits(wallDamage, grid, [hit], 560);
+        await applyPendingWallDamage(state, wallDamage);
         assert.ok(!cellIsStaticWall(grid, 3, 3));
-        assert.equal(wallDamage.session.pendingBreaks.size, 0);
+        assert.equal(wallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("one max-power head-on hit destroys a rail wall", async () => {
@@ -100,10 +100,10 @@ describe("kinetic wall damage", () => {
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 5, gridRow: 5, gridSide: 0, isStaticGridProxy: false, isEdgeRail: true };
         const hit = { approachDot: -560, normalX: 0, normalY: 1, segment };
-        queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
-        await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
+        queueWallHits(wallDamage, grid, [hit], 560);
+        await applyPendingWallDamage(state, wallDamage);
         assert.ok(!isRailWallEdge(grid.edgeStore.get(5, 5, 0, grid.cols)));
-        assert.equal(wallDamage.session.pendingBreaks.size, 0);
+        assert.equal(wallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("wallDamageKey round-trips voxel and rail targets", () => {
