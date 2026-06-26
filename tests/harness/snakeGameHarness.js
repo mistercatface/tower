@@ -11,6 +11,7 @@ import { spawnLinkedBallChain } from "../../Libraries/Sandbox/spawnLinkedBallCha
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { createDirectGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
+import { createCellTargetHpaNav } from "../../Libraries/Sandbox/groundNav/cellTargetHpaNav.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeChainSpawnOptions, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createAgentAutosim } from "../../Libraries/Game/snake/agentAutosim.js";
@@ -70,6 +71,7 @@ export function bindAgentInstanceSession(instance, snakeGame, state) {
     instance.entityRegistry = state.entityRegistry;
     instance.kinetic = state.kinetic;
     instance.entityMeta = getSandboxEntityMeta(state);
+    instance.headNav = createCellTargetHpaNav(state);
 }
 export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
     const resolvedAutosim = autosim ?? stubSnakeAutosim();

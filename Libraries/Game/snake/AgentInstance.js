@@ -2,6 +2,7 @@ import { getConnectedBodyIds, getConnectedComponentPath, getLinearChainOrderedMe
 import { clearChainLinksForMembers, clearChainLinksForProp, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
+import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
@@ -375,6 +376,7 @@ export function createAgentInstance(state, { profileId, head, spawnGroupId }) {
     instance.entityRegistry = state.entityRegistry;
     instance.kinetic = state.kinetic;
     instance.entityMeta = getSandboxEntityMeta(state);
+    instance.headNav = createCellTargetHpaNav(state);
     instance.syncMembersFromGraph();
     instance.autosim = createAgentAutosim(state, instance);
     return instance;
