@@ -66,7 +66,6 @@ export function stubSnakeAutosim() {
 }
 export function bindAgentInstanceSession(instance, snakeGame, state) {
     instance.session = snakeGame;
-    instance.registry = snakeGame.registry;
     instance.navWalkable = snakeGame.navWalkable;
     instance.entityRegistry = state.entityRegistry;
     instance.kinetic = state.kinetic;

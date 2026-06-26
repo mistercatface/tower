@@ -4,7 +4,7 @@ import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
-import { isAliveAgentHead, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
+import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
@@ -91,7 +91,7 @@ export class AgentInstance {
         this.autosim.tick(dtMs, admitted);
     }
     isSteerable() {
-        if (this.lifecycle !== "alive" || !isAliveAgentHead(this.registry, this.headId)) return false;
+        if (this.lifecycle !== "alive") return false;
         if (this.head.isDead) return false;
         if (this.profile.topology === "single") return true;
         if (!this.entityMeta.isChainHead(this.headId)) return false;
@@ -277,7 +277,6 @@ export function createAgentInstance(state, { profileId, head, spawnGroupId }) {
     const session = state.sandbox?.snakeGame;
     if (session) {
         instance.session = session;
-        instance.registry = session.registry;
         instance.navWalkable = session.navWalkable;
     }
     instance.entityRegistry = state.entityRegistry;
