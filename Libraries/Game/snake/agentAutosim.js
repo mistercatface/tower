@@ -113,7 +113,6 @@ export function createAgentAutosim(state, instance) {
                 instance.die(state);
                 return;
             }
-            if (profile.topology === "chain" && instance.enforceMinLength(state, members)) return;
             const soloTick = !session._batchingPerception;
             if (session._batchingPerception) ensureSnakePerceptionTick(state);
             else maybeBeginSnakeAutosimTick(state);
