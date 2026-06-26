@@ -209,8 +209,8 @@ export class AgentInstance {
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
     }
-    shedTailFromStarvation(state, minSegments = this.minAliveSegmentCount) {
-        if (this.memberIds.length <= minSegments) return null;
+    shedTailFromStarvation(state) {
+        if (this.memberIds.length <= this.minAliveSegmentCount) return null;
         const tailId = this.memberIds[this.memberIds.length - 1];
         const prevId = this.memberIds[this.memberIds.length - 2];
         const tail = this.entityRegistry.getLive(tailId);

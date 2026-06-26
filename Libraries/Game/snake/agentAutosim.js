@@ -125,11 +125,7 @@ export function createAgentAutosim(state, instance) {
             else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = entityRegistry.getLive(intent.getTargetId());
             if (foodTarget) fedThisTick = eatFoodShard(seeker, foodTarget);
             const drainMultiplier = instance.sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
-            if (!fedThisTick)
-                tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => {
-                    const minSegments = metabolism.minAliveSegmentCount ?? 3;
-                    return instance.shedTailFromStarvation(state, minSegments) != null;
-                });
+            if (!fedThisTick) tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => instance.shedTailFromStarvation(state) != null);
         },
     };
     return autosim;

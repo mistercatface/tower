@@ -60,10 +60,7 @@ function createStarvationTestInstance(state, chain) {
 describe("snake metabolism", () => {
     const profile = { metabolism: META, minAliveSegmentCount: 3 };
     const tickMetab = (state, instance, m, dtMs, drainMultiplier = 1) => {
-        return tickAgentMetabolism(m, dtMs, drainMultiplier, () => {
-            const minSegments = m.minAliveSegmentCount ?? 3;
-            return instance.shedTailFromStarvation(state, minSegments) != null;
-        });
+        return tickAgentMetabolism(m, dtMs, drainMultiplier, () => instance.shedTailFromStarvation(state) != null);
     };
 
     it("setSnakeHunger clamps and getSnakeHunger reads the bar", () => {
