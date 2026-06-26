@@ -17,7 +17,7 @@ function mergeAlly(visibleWorld, record, state, session, filterAllyForEngagement
 export function createAgentIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60, filterAllyForEngagement = false } = {}) {
     const memory = createTargetMemory(INTENT_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks });
     const memorySource = { threat: false, prey: false, food: false, ally: false };
-    const world = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0, memory: null, memorySource };
+    const world = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0, memorySource };
     return {
         update(seeker, state, visibleWorld) {
             const grid = state.obstacleGrid;
@@ -41,7 +41,6 @@ export function createAgentIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90
             world.threatCount = visibleWorld.threatCount ?? 0;
             world.allyCount = visibleWorld.ally ? (visibleWorld.allyCount ?? 1) : ally ? 1 : 0;
             world.allyCentroid = visibleWorld.ally ? (visibleWorld.allyCentroid ?? null) : null;
-            world.memory = memory.snapshot();
             memorySource.threat = !visibleWorld.threat && !!threat;
             memorySource.prey = !visibleWorld.prey && !!prey;
             memorySource.food = !visibleWorld.food && !!food;
@@ -63,7 +62,6 @@ export function createAgentIntentMemory({ threatTtlTicks = 45, preyTtlTicks = 90
             world.allyCount = 0;
             world.allyCentroid = null;
             world.threatCount = 0;
-            world.memory = null;
             memorySource.threat = false;
             memorySource.prey = false;
             memorySource.food = false;
