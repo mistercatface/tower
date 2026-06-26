@@ -14,7 +14,6 @@ import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedComb
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
-import { getAgentHunger } from "./agentMetabolism.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
 }
@@ -39,7 +38,7 @@ export class AgentInstance {
         this.peakPressure = 0;
         this.isHeadRouteValid = false;
         this.baseTint = isFleeProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
-        this._sprintOverride = undefined;
+        this._sprinting = false;
         this._intentOverride = undefined;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
@@ -74,22 +73,10 @@ export class AgentInstance {
         this._intentOverride = value;
     }
     get sprinting() {
-        if (this._sprintOverride !== undefined) return this._sprintOverride;
-        const intent = this.intent;
-        if (!intent) return false;
-        const want = intent.getDecisionContext()?.sprintIntent?.want === true;
-        if (!want) return false;
-        const profileId = this.profileId;
-        const segmentCount = this.segmentCount();
-        const metabolism = this.metabolism;
-        const profile = this.profile;
-        if (profileId === AGENT_PROFILE.flee) return getAgentHunger(metabolism) > 0;
-        if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
-        if (profileId === AGENT_PROFILE.snake) return segmentCount > (profile.minAliveSegmentCount ?? 3);
-        return true;
+        return this._sprinting === true;
     }
     set sprinting(value) {
-        this._sprintOverride = value;
+        this._sprinting = value === true;
     }
     get brain() {
         return this.autosim?.getBrain?.() ?? null;

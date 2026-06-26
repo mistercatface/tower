@@ -20,6 +20,9 @@ function sprintAllowed(profileId, segmentCount, metabolism, profile) {
     if (profileId === AGENT_PROFILE.snake) return segmentCount > (profile.minAliveSegmentCount ?? 3);
     return true;
 }
+function computeSprinting(intent, profileId, segmentCount, metabolism, profile) {
+    return intent.getDecisionContext()?.sprintIntent?.want === true && sprintAllowed(profileId, segmentCount, metabolism, profile);
+}
 /** Shared ground-nav autosim for flee, snake, and squid. */
 export function createAgentAutosim(state, instance) {
     const profileId = instance.profileId;
@@ -50,7 +53,6 @@ export function createAgentAutosim(state, instance) {
     const rng = instance.rng ?? Math.random;
     const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger: () => getAgentHunger(metabolism), brain, sync, headNav, agentCtx, rng }));
     let active = false;
-    let sprinting = false;
     const growOneSegment = () => {
         const segmentRadius = getCirclePropRadius(instance.head);
         const grow = { segmentRadius, spacing: segmentRadius * 2 * (profile.linkSlack ?? 1), linkSlack: profile.linkSlack };
@@ -114,15 +116,16 @@ export function createAgentAutosim(state, instance) {
             if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
             else maybeBeginSnakeAutosimTick(state);
             intent.tick(seeker, state, 0);
-            sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && sprintAllowed(profileId, members.length, metabolism, profile);
+            instance.sprinting = computeSprinting(intent, profileId, members.length, metabolism, profile);
             if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
-            seeker.strategy.groundNav.maxSpeed = sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
-            seeker.strategy.groundNav.accel = sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
+            seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
+            seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
             intent.headNav.tick(seeker, 0);
             if (soloTick) endSnakePerceptionFrame(state);
         },
         stop() {
             active = false;
+            instance.sprinting = false;
             intent.clear(instance.head, state);
         },
         isActive() {
@@ -154,16 +157,16 @@ export function createAgentAutosim(state, instance) {
             let choice;
             if (admitted) {
                 choice = intent.tick(seeker, state, dtMs);
-                sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && sprintAllowed(profileId, members.length, metabolism, profile);
+                instance.sprinting = computeSprinting(intent, profileId, members.length, metabolism, profile);
                 if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
-                seeker.strategy.groundNav.maxSpeed = sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
-                seeker.strategy.groundNav.accel = sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
+                seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
+                seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
             }
             intent.headNav.tick(seeker, dtMs);
             if (soloTick) endSnakePerceptionFrame(state);
             let fedThisTick = false;
             if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) fedThisTick = eatFoodShard(seeker, choice.target, members);
-            const drainMultiplier = sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
+            const drainMultiplier = instance.sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
             if (!fedThisTick)
                 tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => {
                     const minSegments = metabolism.minAliveSegmentCount ?? 3;
