@@ -1,17 +1,8 @@
-import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { isChainCombatTopology, matchesBrainRamResolver } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js";
-function buildAgentMemberToInstanceMap(state, snakeGame) {
-    const map = new Map();
-    for (const instance of aliveAgentInstances(snakeGame.registry)) {
-        const members = instance.syncMembersFromGraph();
-        for (let i = 0; i < members.length; i++) map.set(members[i], instance);
-    }
-    return map;
-}
 function contactWorldPointForBody(spatialFrame, contacts, i, targetBody) {
     const physIdA = contacts.physIdA[i];
     const physIdB = contacts.physIdB[i];
@@ -114,13 +105,13 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
     const snakeGame = state.sandbox.snakeGame;
-    const memberToInstance = buildAgentMemberToInstanceMap(state, snakeGame);
+    const instancesByMemberId = snakeGame.instancesByMemberId;
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
-        const instanceA = memberToInstance.get(pair.bodyA.id);
-        const instanceB = memberToInstance.get(pair.bodyB.id);
-        if (!instanceA || !instanceB || instanceA === instanceB) continue;
+        const instanceA = instancesByMemberId.get(pair.bodyA.id);
+        const instanceB = instancesByMemberId.get(pair.bodyB.id);
+        if (!instanceA || !instanceB || instanceA.lifecycle !== "alive" || instanceB.lifecycle !== "alive" || instanceA === instanceB) continue;
         const traitsA = instanceA.combatTraits;
         const traitsB = instanceB.combatTraits;
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
@@ -184,13 +175,13 @@ function applySnakeHuntContactDriveForPair(hunterInstance, hunterBody, hunterPhy
 export function applySnakeHuntContactDrive(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
     const snakeGame = state.sandbox.snakeGame;
-    const memberToInstance = buildAgentMemberToInstanceMap(state, snakeGame);
+    const instancesByMemberId = snakeGame.instancesByMemberId;
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
         if (!pair) continue;
-        const instanceA = memberToInstance.get(pair.bodyA.id);
-        const instanceB = memberToInstance.get(pair.bodyB.id);
-        if (!instanceA || !instanceB || instanceA === instanceB) continue;
+        const instanceA = instancesByMemberId.get(pair.bodyA.id);
+        const instanceB = instancesByMemberId.get(pair.bodyB.id);
+        if (!instanceA || !instanceB || instanceA.lifecycle !== "alive" || instanceB.lifecycle !== "alive" || instanceA === instanceB) continue;
         applySnakeHuntContactDriveForPair(instanceA, pair.bodyA, contacts.physIdA[i], instanceB);
         applySnakeHuntContactDriveForPair(instanceB, pair.bodyB, contacts.physIdB[i], instanceA);
     }
