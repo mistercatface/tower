@@ -108,15 +108,13 @@ export function createAgentAutosim(state, instance) {
         tick(dtMs, admitted = true) {
             if (!active) return;
             const seeker = instance.head;
-            const members = getConnectedBodyIds(kinetic, agentId);
-            if (profileId === AGENT_PROFILE.snake || profileId === AGENT_PROFILE.squid) {
-                if (instance.lifecycle !== "alive") return;
-                if (!instance.isSteerable(state, registry)) {
-                    if (profileId === AGENT_PROFILE.snake) instance.die(state, members);
-                    return;
-                }
+            const members = instance.memberIds;
+            if (instance.lifecycle !== "alive") return;
+            if (!instance.isSteerable(state, registry)) {
+                if (profile.topology === "chain") instance.die(state, members);
+                return;
             }
-            if (profileId === AGENT_PROFILE.snake && instance.enforceMinLength(state, members)) return;
+            if (profile.topology === "chain" && instance.enforceMinLength(state, members)) return;
             const soloTick = !session._batchingPerception;
             if (session._batchingPerception) ensureSnakePerceptionTick(state);
             else maybeBeginSnakeAutosimTick(state);

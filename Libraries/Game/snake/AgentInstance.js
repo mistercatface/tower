@@ -14,15 +14,6 @@ import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedComb
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
-export function isSnakeProfile(instance) {
-    return instance?.profileId === AGENT_PROFILE.snake;
-}
-export function isSquidProfile(instance) {
-    return instance?.profileId === AGENT_PROFILE.squid;
-}
-export function isFleeProfile(instance) {
-    return instance?.profileId === AGENT_PROFILE.flee;
-}
 export class AgentInstance {
     constructor({ profileId, head, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
         this.profileId = profileId;
@@ -37,7 +28,6 @@ export class AgentInstance {
         this.accumulatedPressure = 0;
         this.peakPressure = 0;
         this.isHeadRouteValid = false;
-        this.baseTint = isFleeProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this.sprinting = false;
         this.intent = null;
         this.brain = null;
@@ -46,6 +36,7 @@ export class AgentInstance {
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
         this.profile = profile;
+        this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this.leaderGameplay = profile.gameplay.leader;
         this.bodyGameplay = profile.gameplay.body;
         this.minAliveSegmentCount = profile.minAliveSegmentCount ?? 1;
@@ -101,32 +92,25 @@ export class AgentInstance {
     }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;
+        if (this.head.isDead) return false;
+        if (this.profile.topology === "single") return true;
         if (!getSandboxEntityMeta(state).isChainHead(this.headId)) return false;
-        if (isSquidProfile(this)) return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
+        if (this.profile.topology === "cluster") return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
         const members = getConnectedComponentPath(state.kinetic, this.headId);
         if (members[0] !== this.headId) return false;
-        if (isSnakeProfile(this) && members.length < this.minAliveSegmentCount) return false;
+        if (members.length < this.minAliveSegmentCount) return false;
         return true;
     }
     validate(state) {
-        if (this.lifecycle !== "alive") return;
-        const snakeGame = this.session || state.sandbox.snakeGame;
-        if (isFleeProfile(this)) {
-            if (this.head.isDead) this.die(state);
-            return;
-        }
-        if (isSquidProfile(this)) {
-            if (!getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId)) this.die(state);
-            return;
-        }
-        if (this.isSteerable(state, snakeGame.registry)) return;
+        if (this.isSteerable(state, this.session.registry)) return;
         this.die(state);
     }
     syncMembersFromGraph(state) {
         const kinetic = this.kinetic || state.kinetic;
         const entityRegistry = this.entityRegistry || state.entityRegistry;
-        if (isSquidProfile(this)) this.memberIds = getConnectedBodyIds(kinetic, this.headId);
-        else this.memberIds = getConnectedComponentPath(kinetic, this.headId);
+        if (this.profile.topology === "cluster") this.memberIds = getConnectedBodyIds(kinetic, this.headId);
+        else if (this.profile.topology === "chain") this.memberIds = getConnectedComponentPath(kinetic, this.headId);
+        else this.memberIds = [this.headId];
         this.memberProps.length = 0;
         for (let i = 0; i < this.memberIds.length; i++) {
             const prop = entityRegistry.getLive(this.memberIds[i]);
@@ -138,7 +122,7 @@ export class AgentInstance {
         return getLinearChainOrderedMembers(state.kinetic, this.headId);
     }
     updatePressureDiagnostics(state) {
-        if (!isSnakeProfile(this)) return;
+        if (!this.profile.species?.pressureDiagnostics) return;
         if (this.lifecycle !== "alive") {
             this.segmentWallPressures.clear();
             this.accumulatedPressure = 0;

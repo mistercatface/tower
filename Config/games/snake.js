@@ -83,6 +83,7 @@ export const SNAKE_GAME_DEFAULTS = {
     agentProfiles: {
         snake: {
             exportType: "snake",
+            topology: "chain",
             populationCount: 48,
             bodyPropId: "ball",
             headPropId: "snake_head",
@@ -159,6 +160,8 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         flee_agent: {
             exportType: "flee_agent",
+            topology: "single",
+            useFactionTint: true,
             populationCount: 256,
             spawnSeedOffset: 9173,
             bodyPropId: "boid_triangle",
@@ -245,6 +248,7 @@ export const SNAKE_GAME_DEFAULTS = {
         },
         squid: {
             exportType: "squid",
+            topology: "cluster",
             populationCount: 1,
             spawnSeedOffset: 37,
             spawnSeedIgnoreMapSeedOffset: true,
