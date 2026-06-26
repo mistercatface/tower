@@ -170,7 +170,7 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
                 ? computeCircleWallContact({ x: bx, y: by }, best.normalX, best.normalY, shape.radius)
                 : computePolygonWallContact({ x: bx, y: by }, best.normalX, best.normalY, best.overlap, best.cx, best.cy);
         const approachDot = applyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
-        hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap });
+        hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
     }
     return { collided, hits };
 }

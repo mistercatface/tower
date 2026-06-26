@@ -12,12 +12,23 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { WorldProp } from "../Entities/WorldProp.js";
+import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 const WALL_DAMAGE = resolveSnakeWallDamageConfig();
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
     const navigation = await createWorkerNavigation(grid);
-    const state = { obstacleGrid: grid, sandbox: {}, worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} }, nav: navigation };
+    const state = {
+        obstacleGrid: grid,
+        sandbox: {},
+        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} },
+        nav: navigation,
+        worldProps: [],
+        entityRegistry: new EntityRegistry(),
+        kinetic: { kineticConstraints: [] }
+    };
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return state;
 }
@@ -94,5 +105,121 @@ describe("kinetic wall damage", () => {
     it("wallDamageKey round-trips voxel and rail targets", () => {
         assert.equal(wallDamageKey({ kind: "voxel", col: 1, row: 2 }), "v:1,2");
         assert.equal(wallDamageKey({ kind: "rail", col: 3, row: 4, side: 1 }), "r:3,4:1");
+    });
+    it("voxel wall hit clears grid wall, spawns a voxel chunk prop, and fractures it", async () => {
+        const state = await createWallDamageTestState();
+        state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
+        
+        const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
+        const entity = { id: 101, type: "crate", vx: 560, vy: 0 };
+        const wallResolver = {
+            resolve(body) {
+                body._wallResolveHits = [{
+                    approachDot: -560,
+                    normalX: 1,
+                    normalY: 0,
+                    segment,
+                    contactX: 3 * 16 + 8,
+                    contactY: 3 * 16 + 8
+                }];
+                return true;
+            },
+        };
+        
+        resolveKineticWallDamage(state, entity, {}, wallResolver);
+        
+        const queued = state.sandbox.gridWallDamage.pendingBreaks.get("v:3,3");
+        assert.ok(queued);
+        assert.equal(queued.contactX, 3 * 16 + 8);
+        assert.equal(queued.normalX, 1);
+        assert.equal(queued.sourceVx, 560);
+        assert.equal(queued.sourceId, 101);
+        assert.equal(queued.sourceKind, "crate");
+        
+        flushPendingWallDamage(state);
+        
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, 3, 3));
+        assert.ok(state.worldProps.length > 0);
+        
+        const chunkProp = state.worldProps.find(p => p.type === "wall_voxel_chunk");
+        assert.ok(chunkProp);
+        assert.equal(chunkProp.height, 32);
+        assert.ok(chunkProp.chunks?.length > 0);
+        
+        terminateWorkerNavigation(state.nav);
+    });
+    it("rail wall hit clears edge wall, spawns a rail chunk prop, and fractures it", async () => {
+        const state = await createWallDamageTestState();
+        state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 2, thicknessLevel: 4 }]);
+        
+        const segment = { gridCol: 4, gridRow: 4, gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
+        const entity = { id: 102, type: "ball", vx: 0, vy: -560 };
+        const wallResolver = {
+            resolve(body) {
+                body._wallResolveHits = [{
+                    approachDot: -560,
+                    normalX: 0,
+                    normalY: -1,
+                    segment,
+                    contactX: 4 * 16 + 8,
+                    contactY: 4 * 16 + 16
+                }];
+                return true;
+            },
+        };
+        
+        resolveKineticWallDamage(state, entity, {}, wallResolver);
+        
+        const queued = state.sandbox.gridWallDamage.pendingBreaks.get("r:4,4:1");
+        assert.ok(queued);
+        assert.equal(queued.contactY, 4 * 16 + 16);
+        assert.equal(queued.normalY, -1);
+        
+        flushPendingWallDamage(state);
+        
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 1, state.obstacleGrid.cols)));
+        assert.ok(state.worldProps.length > 0);
+        const chunkProp = state.worldProps.find(p => p.type === "wall_rail_chunk");
+        assert.ok(chunkProp);
+        assert.equal(chunkProp.height, 32);
+        
+        terminateWorkerNavigation(state.nav);
+    });
+    it("real rail proxy integration test", async () => {
+        const state = await createWallDamageTestState();
+        state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        
+        stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 2, thicknessLevel: 4 }]);
+        
+        const ballProp = new WorldProp(14, 8, "ball", 0);
+        ballProp.vx = 560;
+        ballProp.vy = 0;
+        
+        const resolver = new WallCollisionResolver();
+        const candidates = [];
+        state.obstacleGrid.appendStaticWallProxiesNearWorld(ballProp.x, ballProp.y, ballProp.radius + 32, candidates);
+        
+        const railProxy = candidates.find(c => c.isEdgeRail && c.gridCol === 4 && c.gridRow === 4 && c.gridSide === 1);
+        assert.ok(railProxy, "obstacle grid should emit rail proxy");
+        
+        const spatialFrame = {
+            frameId: 42,
+            getWallCandidates: () => candidates
+        };
+        
+        resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);
+        assert.ok(state.sandbox.gridWallDamage.pendingBreaks.has("r:4,4:1"));
+        
+        flushPendingWallDamage(state);
+        
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 1, state.obstacleGrid.cols)));
+        assert.ok(state.worldProps.length > 0);
+        const chunkProp = state.worldProps.find(p => p.type === "wall_rail_chunk");
+        assert.ok(chunkProp);
+        assert.equal(chunkProp.height, 32);
+        
+        terminateWorkerNavigation(state.nav);
     });
 });

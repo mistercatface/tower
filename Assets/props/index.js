@@ -23,6 +23,8 @@ import snake_head from "./snake_head/snake_head.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
 import poolBalls from "./poolBalls.js";
 import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
+import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
+import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
 import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/primitives/index.js";
 const catalog = {
     ball,
@@ -49,6 +51,8 @@ const catalog = {
     snake_head,
     snake_shard,
     cross_pinwheel,
+    wall_voxel_chunk,
+    wall_rail_chunk,
     ...poolBalls,
 };
 function registerPropDrawRecipe(asset) {
