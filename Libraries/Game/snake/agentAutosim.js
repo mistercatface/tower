@@ -111,7 +111,7 @@ export function createAgentAutosim(state, instance) {
             const members = instance.memberIds;
             if (instance.lifecycle !== "alive") return;
             if (!instance.isSteerable(state, registry)) {
-                if (profile.topology === "chain") instance.die(state, members);
+                instance.die(state, members);
                 return;
             }
             if (profile.topology === "chain" && instance.enforceMinLength(state, members)) return;

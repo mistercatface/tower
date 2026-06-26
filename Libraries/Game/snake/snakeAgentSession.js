@@ -25,9 +25,6 @@ export function registerAgentInstance(session, speciesId, instance) {
     if (!def) throw new Error(`Unknown agent species: ${speciesId}`);
     def.register(session, instance);
 }
-export function validateAliveAgents(session, state) {
-    for (const instance of [...aliveAgentInstances(session.registry)]) instance.validate(state);
-}
 export function tickAliveAgents(session, state, dtMs) {
     session.lastDtMs = dtMs;
     session.orchestrator.beginFrame(state.sandbox.snakeGame.simTick);

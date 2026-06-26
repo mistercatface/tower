@@ -13,6 +13,7 @@ import { isAliveAgentHead } from "../Libraries/AI/agents/agentPopulationRegistry
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
+import { createAgentAutosim } from "../Libraries/Game/snake/agentAutosim.js";
 
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -207,7 +208,7 @@ describe("snake min length death", () => {
         assert.equal(head._groundRollDrive, undefined);
     });
 
-    it("instance validate kills a head orphaned below min segment count", () => {
+    it("autosim liveness gate kills a head orphaned below min segment count", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
         const state = createTestState();
@@ -215,10 +216,12 @@ describe("snake min length death", () => {
         const headId = pack.chain.head.id;
         const snakeGame = mockSnakeGame(state, [headId]);
         const instance = snakeGame.instancesByHeadId.get(headId);
+        instance.autosim = createAgentAutosim(state, instance);
+        instance.autosim.start();
         const members = getOrderedChainMemberIds(state, headId);
         removeChainLinkBetween(state, members[0], members[1]);
         removeChainLinkBetween(state, members[1], members[2]);
-        instance.validate(state);
+        instance.tick(state, 16);
         assert.equal(instance.lifecycle, "dead");
         assert.equal(snakeGame.instancesByHeadId.has(headId), false);
         assert.equal(pack.chain.head._groundRollDrive, undefined);

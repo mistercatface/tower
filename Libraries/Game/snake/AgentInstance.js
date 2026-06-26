@@ -54,11 +54,11 @@ export class AgentInstance {
     get headId() {
         return this.head.id;
     }
-    start(state) {
+    start() {
         this.grantSteeringLease();
         this.autosim.start();
     }
-    stopSteering(state) {
+    stopSteering() {
         this.revokeSteeringLease();
         this.autosim.stop();
     }
@@ -100,10 +100,6 @@ export class AgentInstance {
         if (members[0] !== this.headId) return false;
         if (members.length < this.minAliveSegmentCount) return false;
         return true;
-    }
-    validate(state) {
-        if (this.isSteerable(state, this.session.registry)) return;
-        this.die(state);
     }
     syncMembersFromGraph(state) {
         const kinetic = this.kinetic || state.kinetic;
@@ -214,21 +210,18 @@ export class AgentInstance {
         return [...ids];
     }
     retireAllSegments(state, connectedMembers = null) {
-        const snakeGame = this.session || state.sandbox.snakeGame;
         const members = connectedMembers ?? this.syncMembersFromGraph(state);
-        const resolvedMembers = this.memberIdsForTeardown(snakeGame, members);
+        const resolvedMembers = this.memberIdsForTeardown(this.session, members);
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
     }
     severInertTail(state, tailIds) {
-        const snakeGame = this.session || state.sandbox.snakeGame;
         this.retireMemberSegments(state, tailIds);
         markSnakeSegmentsFracturable(state, tailIds);
-        registerInertAgent(snakeGame.registry, tailIds[0], tailIds, this.headId);
+        registerInertAgent(this.session.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, members = null, deathImpact = null) {
-        const snakeGame = this.session || state.sandbox.snakeGame;
-        snakeGame.speciesById.get(this.profileId).die(this, state, deathImpact);
+        this.session.speciesById.get(this.profileId).die(this, state, deathImpact);
     }
     splitAtStruckSegment(state, struckSegmentId, victimMembers = null, deathImpact = null) {
         if (!this.combatTraits.canSplit) return null;

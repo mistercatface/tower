@@ -5,7 +5,7 @@ import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
 import { createAgentPopulationRegistry, aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
-import { createSnakeAgentSession, spawnSpeciesBatch, validateAliveAgents, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
+import { createSnakeAgentSession, spawnSpeciesBatch, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "./species/index.js";
 import { spawnSnakeCavernScene } from "./snakeScene.js";
 import { mountSnakeHud } from "./snakeHud.js";
@@ -135,7 +135,6 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         cameraTarget: defaultCameraTarget,
         tick(dtMs) {
             const snakeGame = state.sandbox.snakeGame;
-            validateAliveAgents(snakeGame, state);
             snakeGame._batchingPerception = true;
             try {
                 beginSnakePerceptionFrame(state);
@@ -166,7 +165,6 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             resolveSnakeCombatFromContacts(state, tick.frame, contacts);
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
-            validateAliveAgents(state.sandbox.snakeGame, state);
         },
         afterKineticPhysics() {
             const snakeGame = state.sandbox.snakeGame;
