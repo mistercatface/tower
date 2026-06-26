@@ -11,7 +11,6 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { findSandboxCameraTargetWorldProp } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
-import { resolveAliveAgentInstanceFromProp } from "../Libraries/Game/snake/resolveAliveAgentInstanceFromProp.js";
 import { getConnectedBodyIds } from "../Libraries/Motion/kineticConstraintGraph.js";
 
 function createTestState(cols = 32, rows = 32) {
@@ -65,9 +64,9 @@ describe("snake camera focus", () => {
         assert.ok(members.length >= 3);
         const tailId = members[members.length - 1];
         const instance = state.sandbox.snakeGame.instancesByHeadId.get(chain.chain.head.id);
-        assert.equal(resolveAliveAgentInstanceFromProp(state, chain.chain.head.id), instance);
-        assert.equal(resolveAliveAgentInstanceFromProp(state, tailId), instance);
-        assert.equal(resolveAliveAgentInstanceFromProp(state, "missing"), null);
+        assert.equal(state.sandbox.snakeGame.instancesByMemberId.get(chain.chain.head.id), instance);
+        assert.equal(state.sandbox.snakeGame.instancesByMemberId.get(tailId), instance);
+        assert.equal(state.sandbox.snakeGame.instancesByMemberId.get("missing"), undefined);
     });
 
     it("focusFromPropId snaps camera to the resolved head", () => {
@@ -87,8 +86,8 @@ describe("snake camera focus", () => {
             { headId: second.chain.head.id, spawnGroupId: second.chain.spawnGroupId },
         ]);
         state.followCamera.registerPickResolver((propId) => {
-            const instance = resolveAliveAgentInstanceFromProp(state, propId);
-            return instance ? instance.head : null;
+            const instance = state.sandbox.snakeGame.instancesByMemberId.get(propId);
+            return instance?.lifecycle === "alive" ? instance.head : null;
         });
         const tailId = getConnectedBodyIds(state.kinetic, second.chain.head.id).at(-1);
         assert.ok(state.followCamera.focusFromPropId(tailId));

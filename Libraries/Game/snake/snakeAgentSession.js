@@ -10,6 +10,7 @@ export function createSnakeAgentSession({ registry, navWalkable, speciesById }) 
         registry,
         speciesById,
         instancesByHeadId: registry.instancesByHeadId,
+        instancesByMemberId: registry.instancesByMemberId,
         engagementByHeadId: new Map(),
         navWalkable,
         simTick: 0,

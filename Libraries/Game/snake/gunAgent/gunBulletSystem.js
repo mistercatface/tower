@@ -3,7 +3,6 @@ import { CircleShape } from "../../../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../../../Motion/kineticSleep.js";
 import { integratePropMotion } from "../../../Props/propMotion.js";
 import { kineticPairBodiesAt } from "../../../Spatial/collision/kineticPairStream.js";
-import { resolveAliveAgentInstanceFromProp } from "../resolveAliveAgentInstanceFromProp.js";
 export class Projectile extends Entity {
     constructor() {
         super(0, 0, 0, false);
@@ -142,8 +141,8 @@ export function resolveGunBulletContacts(state, spatialFrame, contacts) {
         const bullet = isBulletA ? bodyA : bodyB;
         const victim = isBulletA ? bodyB : bodyA;
         if (!victim) continue;
-        const victimInstance = resolveAliveAgentInstanceFromProp(state, victim.id);
-        if (!victimInstance) continue;
+        const victimInstance = state.sandbox.snakeGame.instancesByMemberId.get(victim.id);
+        if (!victimInstance || victimInstance.lifecycle !== "alive") continue;
         if (victimInstance.headId === bullet._shooterHeadId) continue;
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };

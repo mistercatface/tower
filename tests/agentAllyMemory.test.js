@@ -31,7 +31,7 @@ function chainOptions(segmentCount) {
 
 describe("agent engagement", () => {
     it("publishAgentEngagement stores state on session", () => {
-        const session = createSnakeAgentSession({ registry: { instancesByHeadId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() }, navWalkable: null, speciesById: new Map() });
+        const session = createSnakeAgentSession({ registry: { instancesByHeadId: new Map(), instancesByMemberId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() }, navWalkable: null, speciesById: new Map() });
         const engagement = { active: true, salience: ["food"], mode: "seek_food" };
         publishAgentEngagement(session, 5, engagement);
         assert.deepEqual(readAgentEngagement(session, 5), engagement);

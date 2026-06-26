@@ -1,5 +1,5 @@
 export function createAgentPopulationRegistry() {
-    return { instancesByHeadId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() };
+    return { instancesByHeadId: new Map(), instancesByMemberId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() };
 }
 export function registerAliveAgent(registry, headId, _species, instance) {
     registry.instancesByHeadId.set(headId, instance);
@@ -12,6 +12,8 @@ export function registerInertAgent(registry, leadSegmentId, memberIds, sourceHea
     registry.inertByLeadId.set(leadSegmentId, { leadSegmentId, memberIds, sourceHeadId, lifecycle: "inert" });
 }
 export function markAgentDead(registry, headId) {
+    const instance = registry.instancesByHeadId.get(headId);
+    if (instance) for (let i = 0; i < instance.memberIds.length; i++) registry.instancesByMemberId.delete(instance.memberIds[i]);
     registry.instancesByHeadId.delete(headId);
     registry.deadHeadIds.add(headId);
 }

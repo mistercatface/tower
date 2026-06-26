@@ -1,4 +1,3 @@
-import { resolveAliveAgentInstanceFromProp } from "./resolveAliveAgentInstanceFromProp.js";
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
@@ -65,8 +64,8 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     state.viewport.snapTo(defaultCameraTarget.x, defaultCameraTarget.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config.wallDamage));
     state.followCamera.registerPickResolver((propId) => {
-        const instance = resolveAliveAgentInstanceFromProp(state, propId);
-        return instance ? instance.head : null;
+        const instance = session.instancesByMemberId.get(propId);
+        return instance?.lifecycle === "alive" ? instance.head : null;
     });
     state.followCamera.registerCandidateList(() => {
         const instances = [];

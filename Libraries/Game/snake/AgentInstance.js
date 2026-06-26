@@ -119,6 +119,8 @@ export class AgentInstance {
         return true;
     }
     syncMembersFromGraph() {
+        const registry = this.session.registry;
+        for (let i = 0; i < this.memberIds.length; i++) if (registry.instancesByMemberId.get(this.memberIds[i]) === this) registry.instancesByMemberId.delete(this.memberIds[i]);
         if (this.profile.topology === "cluster") this.memberIds = getConnectedBodyIds(this.kinetic, this.headId);
         else if (this.profile.topology === "chain") this.memberIds = getConnectedComponentPath(this.kinetic, this.headId);
         else this.memberIds = [this.headId];
@@ -126,6 +128,7 @@ export class AgentInstance {
         for (let i = 0; i < this.memberIds.length; i++) {
             const prop = this.entityRegistry.getLive(this.memberIds[i]);
             if (prop) this.memberProps.push(prop);
+            registry.instancesByMemberId.set(this.memberIds[i], this);
         }
         return this.memberIds;
     }
