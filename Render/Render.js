@@ -3,7 +3,6 @@ import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
-import { drawDamagedVoxelRoofOverlays } from "../Libraries/Render/Structure3D/wallDamageDraw.js";
 /**
  * @typedef {object} SimulationSceneHooks
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
@@ -43,7 +42,6 @@ export class Renderer {
         }
         this.render3D.draw3DBuildings(this.ctx, state, viewport);
         state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
-        drawDamagedVoxelRoofOverlays(this.ctx, state, viewport);
     }
     /** @param {import("./WorldRenderMode.js").WorldRenderMode} mode */
     applyWorldRenderMode(mode) {

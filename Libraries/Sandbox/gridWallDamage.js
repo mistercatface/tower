@@ -1,9 +1,7 @@
-import { emptyCellBounds, growCellBounds } from "../DataStructures/CellRect.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { isRailWallEdge } from "../Spatial/grid/CellEdge.js";
 import { cellIsStaticWall } from "../Spatial/grid/gridCellTopology.js";
 import { createDeferredGridWallCommit } from "./deferredGridWallCommit.js";
-import { invalidateWallDamageDraw } from "./wallDamageInvalidation.js";
 /** @typedef {{ maxHp: number, minStrikeSpeed: number, referenceMaxSpeed: number, maxHitDamage: number, minAngleFactor: number }} WallDamageConfig */
 /** @typedef {{ config: WallDamageConfig, session: ReturnType<typeof createGridWallDamageSession>, commit: import("./deferredGridWallCommit.js").DeferredGridWallCommit }} GridWallDamageState */
 /** @typedef {{ kind: "voxel", col: number, row: number } | { kind: "rail", col: number, row: number, side: number }} WallDamageTarget */
@@ -42,7 +40,6 @@ export function computeWallImpactDamage(preSpeed, approachDot, config) {
 export function createGridWallDamageSession(maxHp = 100) {
     return {
         maxHp,
-        damageRevision: 0,
         /** @type {Map<string, WallDamageEntry>} */
         entries: new Map(),
         /** @type {Map<string, number>} */
@@ -80,20 +77,6 @@ export function flushPendingWallDamage(state) {
     const wallDamage = getGridWallDamageState(state);
     if (!wallDamage) return null;
     return applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, wallDamage.config);
-}
-/** @param {ReturnType<typeof createGridWallDamageSession>} session @param {WallDamageTarget} target */
-export function resolveWallDamageTintRatio(session, target) {
-    if (!session) return 0;
-    const entry = session.entries.get(wallDamageKey(target));
-    if (!entry || entry.hp >= session.maxHp) return 0;
-    return Math.min(1, Math.max(0, 1 - entry.hp / session.maxHp));
-}
-/** @param {ReturnType<typeof createGridWallDamageSession> | null} session @param {object} drawable */
-export function resolveWallDamageTintRatioForDrawable(session, drawable) {
-    if (!session?.entries.size || drawable.gridCol == null || drawable.gridRow == null) return 0;
-    if (drawable.innerP1x !== undefined && drawable.gridSide != null)
-        return resolveWallDamageTintRatio(session, { kind: "rail", col: drawable.gridCol, row: drawable.gridRow, side: drawable.gridSide });
-    return resolveWallDamageTintRatio(session, { kind: "voxel", col: drawable.gridCol, row: drawable.gridRow });
 }
 function entryForTarget(target, maxHp) {
     if (target.kind === "voxel") return { kind: "voxel", col: target.col, row: target.row, hp: maxHp };
@@ -143,8 +126,6 @@ export function applyPendingWallDamage(state, session, commit, config) {
     const grid = state.obstacleGrid;
     const voxels = [];
     const rails = [];
-    /** @type {import("../DataStructures/CellRect.js").CellBounds | null} */
-    let damageBounds = null;
     for (const [key, damage] of session.pendingDamage) {
         const target = parseWallDamageKey(key);
         if (!target) continue;
@@ -155,14 +136,12 @@ export function applyPendingWallDamage(state, session, commit, config) {
         const entry = ensureWallDamageEntry(session, grid, target, config.maxHp);
         if (!entry) continue;
         entry.hp -= damage;
-        damageBounds = growCellBounds(damageBounds ?? emptyCellBounds(), entry.col, entry.row);
         if (entry.hp > 0) continue;
         session.entries.delete(key);
         if (entry.kind === "voxel") voxels.push({ col: entry.col, row: entry.row });
         else rails.push({ col: entry.col, row: entry.row, side: entry.side });
     }
     session.pendingDamage.clear();
-    if (damageBounds) invalidateWallDamageDraw(state, damageBounds);
     if (voxels.length || rails.length) commit.clearWalls({ voxels, rails });
     return commit.flush();
 }

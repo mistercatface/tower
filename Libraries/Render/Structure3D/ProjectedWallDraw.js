@@ -7,10 +7,9 @@ import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/
 import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
-import { applyProjectedCapDamageOverlay, applyProjectedWallFaceDamageOverlay } from "./wallDamageDraw.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { surfaceProfileDefaults } from "../../Procedural/SurfaceProfileProvider.js";
-export const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
+const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
 const sBandPoint1 = { x: 0, y: 0 };
@@ -202,7 +201,6 @@ export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
     projectRailWallTopCornersInto(sCapCorners, box, viewport);
     if (!worldSurfaces) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
         return;
     }
     const profileId = resolveWallProfileId(state, box.cx, box.cy, face.cacheObj);
@@ -210,47 +208,12 @@ export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
     const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, state, profileId, sCapSrc);
     if (!capCanvas) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
         return;
     }
     blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
-    if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
-}
-export function drawProjectedHorizontalCap(ctx, minX, minY, maxX, maxY, z, viewport, state, face) {
-    const worldSurfaces = state.worldSurfaces;
-    const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    projectRailWallTopCornersInto(
-        sCapCorners,
-        { outerP1x: minX, outerP1y: minY, outerP2x: maxX, outerP2y: minY, innerP2x: maxX, innerP2y: maxY, innerP1x: minX, innerP1y: maxY, wallCapHeight: z },
-        viewport,
-    );
-    if (!worldSurfaces) {
-        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
-        return;
-    }
-    const cx = (minX + maxX) * 0.5;
-    const cy = (minY + maxY) * 0.5;
-    const profileId = resolveWallProfileId(state, cx, cy, face.cacheObj);
-    sCapUv0.x = minX;
-    sCapUv0.y = minY;
-    sCapUv1.x = maxX;
-    sCapUv1.y = minY;
-    sCapUv2.x = maxX;
-    sCapUv2.y = maxY;
-    sCapUv3.x = minX;
-    sCapUv3.y = maxY;
-    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, z, state, profileId, sCapSrc);
-    if (!capCanvas) {
-        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
-        return;
-    }
-    blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
-    if (face.damageTintRatio > 0) applyProjectedCapDamageOverlay(ctx, sCapCorners, face.damageTintRatio);
 }
 export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
-    const { wallHeight, wallBaseZ, damageTintRatio = 0 } = face;
+    const { wallHeight, wallBaseZ } = face;
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const topZ = wallBaseZ + wallHeight;
     const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, viewport, sFaceBottom);
@@ -265,5 +228,4 @@ export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
     }
-    if (damageTintRatio > 0) applyProjectedWallFaceDamageOverlay(ctx, faceBottom, faceTop, damageTintRatio);
 }

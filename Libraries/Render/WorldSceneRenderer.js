@@ -2,7 +2,6 @@
 import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
-import { getGridWallDamageSession, resolveWallDamageTintRatioForDrawable } from "../Sandbox/gridWallDamage.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import propCatalog from "../../Assets/props/index.js";
 function drawProjectile(ctx, prop, viewport) {
@@ -59,13 +58,12 @@ const matchFloor = (p) => p.strategy?.renderMode === "floor";
 const FLOOR_QUERY_OPTIONS = { hitTest: "aabb", filterId: "floor", match: matchFloor };
 const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
-function bindWallFaceScratch(scratch, drawable, state) {
+function bindWallFaceScratch(scratch, drawable) {
     scratch.wallHeight = drawable.wallHeight;
     scratch.wallBaseZ = drawable.wallBaseZ;
     scratch.wallCapHeight = drawable.wallCapHeight;
     scratch.cacheObj = drawable;
     scratch.atlasFaceId = undefined;
-    scratch.damageTintRatio = resolveWallDamageTintRatioForDrawable(getGridWallDamageSession(state), drawable);
 }
 function parallelInsertionSort(drawables, depths, start, end) {
     for (let i = start + 1; i <= end; i++) {
@@ -124,7 +122,7 @@ export class WorldSceneRenderer {
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];
         this.forcefieldEdgeDrawables = [];
-        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, damageTintRatio: 0 };
+        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined };
     }
     _appendDrawable(drawable, distSq) {
         this.visibleDrawables.push(drawable);
@@ -158,9 +156,8 @@ export class WorldSceneRenderer {
         }
     }
     _appendVisibleStaticGridWalls(state, viewport) {
-        const wallDamageRevision = getGridWallDamageSession(state)?.damageRevision ?? 0;
-        collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.staticGridDrawables, wallDamageRevision);
-        collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.staticGridEdgeRailDrawables, wallDamageRevision);
+        collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.staticGridDrawables);
+        collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.staticGridEdgeRailDrawables);
         for (let i = 0; i < this.staticGridDrawables.length; i++) {
             const d = this.staticGridDrawables[i];
             this._appendDrawable(d, d._distSq);
@@ -205,10 +202,10 @@ export class WorldSceneRenderer {
             if (obj.strategy) this._drawProp(ctx, obj, viewport);
             else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, viewport);
             else if (obj.p1) {
-                bindWallFaceScratch(face, obj, state);
+                bindWallFaceScratch(face, obj);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, viewport, state, face);
             } else if (obj.innerP1x !== undefined) {
-                bindWallFaceScratch(face, obj, state);
+                bindWallFaceScratch(face, obj);
                 drawProjectedGridEdgeRail(ctx, obj, viewport, state, face, skipWallCaps);
             }
         }

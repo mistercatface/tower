@@ -374,12 +374,6 @@ export function collectRailWallBoxesInAabb(grid, bounds, out) {
 export function defaultWallCapPx(settings) {
     return settings.wallHeightCells * settings.cellSize;
 }
-export function defaultWallHeightPx(settings) {
-    return defaultWallCapPx(settings);
-}
-export function resolveSegmentWallHeightPx(segment, settings) {
-    return segment?.wallHeight ?? defaultWallCapPx(settings);
-}
 export function resolveWallCapHeightPx(capHeight, settings) {
     return capHeight ?? defaultWallCapPx(settings);
 }
