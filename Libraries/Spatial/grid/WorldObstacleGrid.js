@@ -181,16 +181,16 @@ export class WorldObstacleGrid {
                     proxy.size = 0;
                     proxy.padding = 0;
                     proxy.isDead = false;
-                    proxy.isStaticGridFace = true;
-                    proxy.isStaticGridProxy = false;
-                    proxy.isEdgeRail = true;
-                    proxy.gridCol = col;
-                    proxy.gridRow = row;
-                    proxy.gridSide = side;
                     proxy.shape = undefined;
                 }
                 this._staticWallProxyCount++;
                 proxy._obstacleGrid = this;
+                proxy.isStaticGridFace = true;
+                proxy.isStaticGridProxy = false;
+                proxy.isEdgeRail = true;
+                proxy.gridCol = col;
+                proxy.gridRow = row;
+                proxy.gridSide = side;
                 proxy.x = (p1x + p2x) * 0.5;
                 proxy.y = (p1y + p2y) * 0.5;
                 proxy.angle = Math.atan2(dy, dx);
