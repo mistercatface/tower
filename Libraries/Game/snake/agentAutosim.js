@@ -123,7 +123,7 @@ export function createAgentAutosim(
             exportType: SNAKE_CHAIN_EXPORT_TYPE,
         });
         copySnakeChainTintFromHead(instance.head, newTail);
-        applyAgentGameplay(profile.gameplay.body, newTail);
+        applyAgentGameplay(instance.bodyGameplay, newTail);
         instance.memberIds.push(newTail.id);
         instance.memberProps.push(newTail);
     };

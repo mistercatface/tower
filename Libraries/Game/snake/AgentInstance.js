@@ -44,12 +44,14 @@ export class AgentInstance {
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
         this.profile = profile;
+        this.leaderGameplay = profile.gameplay.leader;
+        this.bodyGameplay = profile.gameplay.body;
         this.minAliveSegmentCount = profile.minAliveSegmentCount ?? 1;
         const config = getSnakeGameConfig();
         const headRadius = getCirclePropRadius(head);
         this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
         this.splitImpulseThreshold = config.splitImpulseThreshold;
-        this.leaderMaxSpeed = profile.gameplay?.leader?.maxSpeed;
+        this.leaderMaxSpeed = this.leaderGameplay.maxSpeed;
         this.combatTraits = getAgentCombatTraits(profileId);
         this.resolvedWeapon = resolveRangedWeapon(this, profile);
         this.aimTurnRadPerSec = this.resolvedWeapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
