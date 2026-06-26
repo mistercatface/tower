@@ -20,6 +20,9 @@ export function createAgentAutosim(state, instance) {
     const agentId = instance.headId;
     const session = state.sandbox.snakeGame;
     const shared = session.config.shared;
+    const registry = session.registry;
+    const entityRegistry = state.entityRegistry;
+    const kinetic = state.kinetic;
     const agentCtx = { instance, session, navWalkable: session.navWalkable };
     const profile = instance.profile;
     const metabolism = createAgentMetabolism(profile);
@@ -104,19 +107,18 @@ export function createAgentAutosim(state, instance) {
         },
         tick(dtMs, admitted = true) {
             if (!active) return;
-            const snakeGame = state.sandbox.snakeGame;
             const seeker = instance.head;
-            const members = getConnectedBodyIds(state.kinetic, agentId);
+            const members = getConnectedBodyIds(kinetic, agentId);
             if (profileId === AGENT_PROFILE.snake || profileId === AGENT_PROFILE.squid) {
                 if (instance.lifecycle !== "alive") return;
-                if (!instance.isSteerable(state, snakeGame.registry)) {
+                if (!instance.isSteerable(state, registry)) {
                     if (profileId === AGENT_PROFILE.snake) instance.die(state, members);
                     return;
                 }
             }
             if (profileId === AGENT_PROFILE.snake && instance.enforceMinLength(state, members)) return;
-            const soloTick = !snakeGame._batchingPerception;
-            if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
+            const soloTick = !session._batchingPerception;
+            if (session._batchingPerception) ensureSnakePerceptionTick(state);
             else maybeBeginSnakeAutosimTick(state);
             let choice;
             if (admitted) choice = intent.tick(seeker, state, dtMs);
@@ -128,7 +130,7 @@ export function createAgentAutosim(state, instance) {
             let fedThisTick = false;
             let foodTarget = null;
             if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) foodTarget = choice.target;
-            else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = state.entityRegistry.getLive(intent.getTargetId());
+            else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = entityRegistry.getLive(intent.getTargetId());
             if (foodTarget) fedThisTick = eatFoodShard(seeker, foodTarget);
             const drainMultiplier = instance.sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
             if (!fedThisTick)

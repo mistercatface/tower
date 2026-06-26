@@ -110,7 +110,7 @@ export class AgentInstance {
     }
     validate(state) {
         if (this.lifecycle !== "alive") return;
-        const snakeGame = state.sandbox.snakeGame;
+        const snakeGame = this.session || state.sandbox.snakeGame;
         if (isFleeProfile(this)) {
             if (this.head.isDead) this.die(state);
             return;
@@ -123,11 +123,13 @@ export class AgentInstance {
         this.die(state);
     }
     syncMembersFromGraph(state) {
-        if (isSquidProfile(this)) this.memberIds = getConnectedBodyIds(state.kinetic, this.headId);
-        else this.memberIds = getConnectedComponentPath(state.kinetic, this.headId);
+        const kinetic = this.kinetic || state.kinetic;
+        const entityRegistry = this.entityRegistry || state.entityRegistry;
+        if (isSquidProfile(this)) this.memberIds = getConnectedBodyIds(kinetic, this.headId);
+        else this.memberIds = getConnectedComponentPath(kinetic, this.headId);
         this.memberProps.length = 0;
         for (let i = 0; i < this.memberIds.length; i++) {
-            const prop = state.entityRegistry.getLive(this.memberIds[i]);
+            const prop = entityRegistry.getLive(this.memberIds[i]);
             if (prop) this.memberProps.push(prop);
         }
         return this.memberIds;
@@ -228,20 +230,21 @@ export class AgentInstance {
         return [...ids];
     }
     retireAllSegments(state, connectedMembers = null) {
-        const snakeGame = state.sandbox.snakeGame;
+        const snakeGame = this.session || state.sandbox.snakeGame;
         const members = connectedMembers ?? this.syncMembersFromGraph(state);
         const resolvedMembers = this.memberIdsForTeardown(snakeGame, members);
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
     }
     severInertTail(state, tailIds) {
-        const snakeGame = state.sandbox.snakeGame;
+        const snakeGame = this.session || state.sandbox.snakeGame;
         this.retireMemberSegments(state, tailIds);
         markSnakeSegmentsFracturable(state, tailIds);
         registerInertAgent(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, members = null, deathImpact = null) {
-        state.sandbox.snakeGame.speciesById.get(this.profileId).die(this, state, deathImpact);
+        const snakeGame = this.session || state.sandbox.snakeGame;
+        snakeGame.speciesById.get(this.profileId).die(this, state, deathImpact);
     }
     splitAtStruckSegment(state, struckSegmentId, victimMembers = null, deathImpact = null) {
         if (!this.combatTraits.canSplit) return null;
@@ -296,6 +299,14 @@ export class AgentInstance {
 }
 export function createAgentInstance(state, { profileId, head, spawnGroupId }) {
     const instance = new AgentInstance({ profileId, head, spawnGroupId, lifecycle: "alive" });
+    const session = state.sandbox?.snakeGame;
+    if (session) {
+        instance.session = session;
+        instance.registry = session.registry;
+        instance.navWalkable = session.navWalkable;
+    }
+    instance.entityRegistry = state.entityRegistry;
+    instance.kinetic = state.kinetic;
     instance.syncMembersFromGraph(state);
     instance.autosim = createAgentAutosim(state, instance);
     return instance;
