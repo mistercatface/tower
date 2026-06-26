@@ -101,7 +101,7 @@ function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, b
         setSeekDestination(target) {
             const ctx = getContext();
             if (!target) return;
-            const seekOptions = typeof seekArrivalRadius === "function" ? seekArrivalRadius(ctx.mode, ctx.agent, target, ctx.state) : seekArrivalRadius;
+            const seekOptions = seekArrivalRadius(ctx.mode, ctx.agent, target, ctx.state);
             if (typeof seekOptions === "object" && seekOptions !== null) {
                 seekOptionsScratch.arrivalRadius = seekOptions.arrivalRadius;
                 seekOptionsScratch.lockOnTarget = seekOptions.lockOnTarget;
@@ -316,19 +316,16 @@ export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable,
     if (cell && cell.col === col && cell.row === row) cell = pickWalkableCell(openCells, { cols: grid.cols, excludeIndices: new Set([colRowToIndex(col, row, grid.cols)]), rng });
     return cell;
 }
-export function buildGroundNavIntentAdapterOptions(deps) {
-    const { state, agentCtx, metabolismApi, metabolism, brain, sync, headNav, rng = Math.random } = deps;
-    const instance = deps.instance ?? agentCtx.instance;
+export function buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger, brain, sync, headNav, agentCtx, rng = Math.random }) {
     const profile = instance.profile;
     const profileId = instance.profileId;
     const intent = profile.intent;
     const shared = agentCtx.session.config.shared;
     const navWalkable = agentCtx.navWalkable;
-    const visibleSourceResolvers = deps.visibleSourceResolvers ?? buildVisibleSourceResolvers(profile);
-    const resolveExploreCell = deps.resolveExploreCell ?? ((seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, shared));
-    const seekArrivalRadius = deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, shared, instance);
-    const resolveHunger = deps.resolveHunger ?? (metabolismApi && metabolism ? () => metabolismApi.get(metabolism) : null);
-    const resolveSegmentCount = deps.resolveSegmentCount ?? (state && instance ? () => getConnectedBodyIds(state.kinetic, instance.headId).length : null);
+    const visibleSourceResolvers = buildVisibleSourceResolvers(profile);
+    const resolveExploreCell = (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, shared);
+    const seekArrivalRadius = defaultSeekArrivalRadius(profileId, profile, shared, instance);
+    const resolveSegmentCount = () => (state && instance ? getConnectedBodyIds(state.kinetic, instance.headId).length : 0);
     const decisionSpec = buildAgentDecisionSpec(profileId, profile);
     const decisionContext = createAgentDecisionContextFrame(profileId, decisionSpec.decisionSchema);
     const hasRangedShoot = hasRangedShootMode(profile);

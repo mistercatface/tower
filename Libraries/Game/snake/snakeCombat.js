@@ -176,9 +176,9 @@ function restoreHunterContactDrive(hunterInstance, hunterPhysId, preyTarget, spe
 }
 function applySnakeHuntContactDriveForPair(hunterInstance, hunterBody, hunterPhysId, preyInstance) {
     if (hunterBody.id !== hunterInstance.headId) return;
-    const autosim = hunterInstance.autosim;
-    if (autosim?.getMode?.() !== "seek_prey") return;
-    if (autosim.getTargetId?.() !== preyInstance.headId) return;
+    const intent = hunterInstance.intent;
+    if (intent?.getMode?.() !== "seek_prey") return;
+    if (intent.getTargetId?.() !== preyInstance.headId) return;
     restoreHunterContactDrive(hunterInstance, hunterPhysId, preyInstance.head);
 }
 export function applySnakeHuntContactDrive(state, spatialFrame, contacts) {

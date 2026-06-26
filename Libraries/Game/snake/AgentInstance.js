@@ -14,6 +14,7 @@ import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedComb
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
+import { getAgentHunger } from "./agentMetabolism.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
 }
@@ -63,14 +64,29 @@ export class AgentInstance {
     }
     get intent() {
         if (this._intentOverride !== undefined) return this._intentOverride;
-        return this.autosim?.getIntent?.() ?? null;
+        const autosim = this.autosim;
+        if (!autosim) return null;
+        if (typeof autosim.getIntent === "function") return autosim.getIntent();
+        if (typeof autosim.getMode === "function" || typeof autosim.getTargetId === "function") return autosim;
+        return null;
     }
     set intent(value) {
         this._intentOverride = value;
     }
     get sprinting() {
         if (this._sprintOverride !== undefined) return this._sprintOverride;
-        return this.autosim?.isSprinting?.() ?? false;
+        const intent = this.intent;
+        if (!intent) return false;
+        const want = intent.getDecisionContext()?.sprintIntent?.want === true;
+        if (!want) return false;
+        const profileId = this.profileId;
+        const segmentCount = this.segmentCount();
+        const metabolism = this.metabolism;
+        const profile = this.profile;
+        if (profileId === AGENT_PROFILE.flee) return getAgentHunger(metabolism) > 0;
+        if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
+        if (profileId === AGENT_PROFILE.snake) return segmentCount > (profile.minAliveSegmentCount ?? 3);
+        return true;
     }
     set sprinting(value) {
         this._sprintOverride = value;
@@ -318,9 +334,9 @@ export class AgentInstance {
         return false;
     }
 }
-export function createAgentInstance(state, { profileId, head, spawnGroupId, ...autosimOptions }) {
+export function createAgentInstance(state, { profileId, head, spawnGroupId }) {
     const instance = new AgentInstance({ profileId, head, spawnGroupId, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
-    instance.autosim = createAgentAutosim(state, instance, autosimOptions);
+    instance.autosim = createAgentAutosim(state, instance);
     return instance;
 }

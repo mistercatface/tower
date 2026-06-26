@@ -13,6 +13,7 @@ import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hp
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeChainSpawnOptions, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
 import { createAgentAutosim } from "../../Libraries/Game/snake/agentAutosim.js";
+import { getAgentHunger, setAgentHunger } from "../../Libraries/Game/snake/agentMetabolism.js";
 import { AGENT_PROFILE } from "../../Libraries/AI/agents/agentProfile.js";
 import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
 import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFracture.js";
@@ -82,13 +83,32 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
     }
     return { registry, snakeGame };
 }
-export function createWiredSnakeAutosim(state, { headId, behaviorById, eatRadius = null, ...autosimOptions }) {
+export function createWiredSnakeAutosim(state, { headId, behaviorById, eatRadius = null, initialFoodFraction = null, rng = null }) {
     wireSnakeTestNavSession(state);
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     if (instance) {
         if (eatRadius != null) instance.eatRadius = eatRadius;
-        const autosim = createAgentAutosim(state, instance, autosimOptions);
+        if (rng != null) instance.rng = rng;
+        const autosim = createAgentAutosim(state, instance);
         instance.autosim = autosim;
+        
+        // Convenience introspection getters/methods for tests
+        autosim.instance = instance;
+        autosim.getMode = () => instance.intent?.getMode() ?? null;
+        autosim.getTargetId = () => instance.intent?.getTargetId() ?? null;
+        autosim.getDestination = () => instance.intent?.getDestination() ?? null;
+        autosim.getLastTransitionReason = () => instance.intent?.getLastTransitionReason() ?? null;
+        autosim.getFsmSnapshot = () => instance.intent?.getFsmSnapshot?.(instance.head, state) ?? null;
+        autosim.isSprinting = () => instance.sprinting;
+        autosim.getFoodTimerFraction = () => getAgentHunger(autosim.metabolism);
+
+        if (initialFoodFraction != null) {
+            const originalStart = autosim.start;
+            autosim.start = function() {
+                originalStart.call(autosim, initialFoodFraction);
+            };
+        }
+        
         return autosim;
     }
     throw new Error(`createWiredSnakeAutosim: missing agent instance ${headId}`);

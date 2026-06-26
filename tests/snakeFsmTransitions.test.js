@@ -121,16 +121,14 @@ function createMockIntent(state, headId) {
     const shared = state.sandbox.snakeGame.config.shared;
     const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
-    const intentDeps = {
-        profileId: AGENT_DECISION_PROFILE.snake,
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({
+        instance,
         brain,
         sync,
         headNav,
-        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, shared),
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
         rng: () => 0,
-    };
-    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions(intentDeps));
+    }));
     return { intent, headNav };
 }
 describe("snake FSM transitions", () => {

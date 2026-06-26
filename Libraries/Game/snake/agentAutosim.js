@@ -21,7 +21,7 @@ function sprintAllowed(profileId, segmentCount, metabolism, profile) {
     return true;
 }
 /** Shared ground-nav autosim for flee, snake, and squid. */
-export function createAgentAutosim(state, instance, { rng = Math.random, initialFoodFraction = null, ballType = null, growDirX = null, growDirY = null } = {}) {
+export function createAgentAutosim(state, instance) {
     const profileId = instance.profileId;
     const agentId = instance.headId;
     const session = state.sandbox.snakeGame;
@@ -34,9 +34,9 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
     const headNav = createCellTargetHpaNav(state);
     const foodValue = profile.metabolism?.foodValue;
     const snakeProfile = profileId === AGENT_PROFILE.snake ? profile : null;
-    const resolvedBallType = ballType ?? profile.bodyPropId ?? snakeProfile?.bodyPropId;
-    const resolvedGrowDirX = growDirX ?? profile.growDirX ?? -1;
-    const resolvedGrowDirY = growDirY ?? profile.growDirY ?? 0;
+    const resolvedBallType = profile.bodyPropId ?? snakeProfile?.bodyPropId;
+    const resolvedGrowDirX = profile.growDirX ?? -1;
+    const resolvedGrowDirY = profile.growDirY ?? 0;
     const baseMaxSpeed = instance.leaderGameplay.maxSpeed;
     const baseAccel = instance.leaderGameplay.accel;
     const sprint = profile.sprint ?? {};
@@ -47,6 +47,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
         }
         throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
     };
+    const rng = instance.rng ?? Math.random;
     const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger: () => getAgentHunger(metabolism), brain, sync, headNav, agentCtx, rng }));
     let active = false;
     let sprinting = false;
@@ -88,7 +89,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
         else feedAgentMetabolism(metabolism, food.snakeFoodValue ?? foodValue);
         return true;
     };
-    const initialHunger = initialFoodFraction ?? profile.initialHunger ?? 1;
+    const initialHunger = profile.initialHunger ?? 1;
     const autosim = {
         headId: agentId,
         metabolism,
@@ -101,9 +102,9 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
         getHeadNav() {
             return headNav;
         },
-        start() {
+        start(initialHungerOverride = null) {
             active = true;
-            setAgentHunger(metabolism, initialHunger);
+            setAgentHunger(metabolism, initialHungerOverride ?? initialHunger);
             intent.resetMode();
             if (intent.resetMemory) intent.resetMemory();
             const snakeGame = state.sandbox.snakeGame;
@@ -114,6 +115,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
             else maybeBeginSnakeAutosimTick(state);
             intent.tick(seeker, state, 0);
             sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && sprintAllowed(profileId, members.length, metabolism, profile);
+            if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
             seeker.strategy.groundNav.maxSpeed = sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
             seeker.strategy.groundNav.accel = sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
             intent.headNav.tick(seeker, 0);
@@ -125,27 +127,6 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
         },
         isActive() {
             return active;
-        },
-        isSprinting() {
-            return sprinting;
-        },
-        getMode() {
-            return intent.getMode();
-        },
-        getTargetId() {
-            return intent.getTargetId();
-        },
-        getDestination() {
-            return intent.getDestination();
-        },
-        getLastTransitionReason() {
-            return intent.getLastTransitionReason();
-        },
-        getFsmSnapshot() {
-            return intent.getFsmSnapshot?.(instance.head, state) ?? null;
-        },
-        getFoodTimerFraction() {
-            return getAgentHunger(metabolism);
         },
         getPathOverlay() {
             return intent.headNav.getPathOverlay(instance.head);
@@ -174,6 +155,7 @@ export function createAgentAutosim(state, instance, { rng = Math.random, initial
             if (admitted) {
                 choice = intent.tick(seeker, state, dtMs);
                 sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && sprintAllowed(profileId, members.length, metabolism, profile);
+                if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
                 seeker.strategy.groundNav.maxSpeed = sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
                 seeker.strategy.groundNav.accel = sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
             }

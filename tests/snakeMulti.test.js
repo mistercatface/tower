@@ -59,7 +59,7 @@ describe("snake multi-spawn", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const tintHex = pickSnakeChainTintHex(() => 0.25);
+        const tintHex = pickSnakeChainTintHex(null, () => 0.25);
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.25 });
         assert.equal(pack.tintHex, tintHex);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
