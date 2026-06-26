@@ -2,7 +2,7 @@ import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profil
 import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
-import { invalidateWallSurfaceDraw } from "../../../Libraries/Sandbox/wallDamageInvalidation.js";
+import { invalidateWallSurfaceDraw } from "../../../Libraries/Sandbox/wallDrawInvalidation.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { drawAnimatedSurfaceZones } from "../../../Libraries/WorldSurface/animatedSurfaceDraw.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";

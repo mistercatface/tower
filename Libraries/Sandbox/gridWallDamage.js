@@ -50,10 +50,6 @@ export function createGridWallDamageSession(maxHp = 100) {
 export function getGridWallDamageState(state) {
     return state.sandbox?.gridWallDamage ?? null;
 }
-/** @param {object} state */
-export function getGridWallDamageSession(state) {
-    return getGridWallDamageState(state)?.session ?? null;
-}
 /** @param {object} state @param {WallDamageConfig} config */
 export function createGridWallDamage(state, config) {
     return { config, session: createGridWallDamageSession(config.maxHp), commit: createDeferredGridWallCommit(state) };

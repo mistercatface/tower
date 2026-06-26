@@ -10,7 +10,6 @@ import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "./gridNavEpoch.js";
-import { clearWallCells } from "./wallGridBake.js";
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
@@ -281,7 +280,10 @@ export class WorldObstacleGrid {
         const baseCol = this.worldCol(originCol * this.cellSize);
         const baseRow = this.worldRow(originRow * this.cellSize);
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
-        if (!additive) clearWallCells(this.grid, this.cols, gridBounds);
+        if (!additive)
+            forEachDenseCellInRect(gridBounds.startCol, gridBounds.endCol, gridBounds.startRow, gridBounds.endRow, this.cols, (_c, _r, idx) => {
+                this.grid[idx] = 0;
+            });
         let changed = false;
         const stampSize = rows * cols;
         for (let i = 0; i < stampSize; i++) {
