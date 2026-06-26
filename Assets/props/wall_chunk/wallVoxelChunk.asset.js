@@ -12,6 +12,7 @@ export default {
             { x: -8, y: 8 },
         ],
         wallPhysics: { restitution: 0.1, friction: 0.8 },
+        quantizeSteps: { facing: 64 },
         fracture: true,
         fractureMode: "glass",
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 6, randomRange: 17 },
