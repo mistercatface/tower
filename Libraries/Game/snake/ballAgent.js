@@ -1,7 +1,5 @@
 import { angleDelta, normalizeAngle, rotateAngleTowards } from "../../Math/Angle.js";
-import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { isBallCombatTopology } from "./agentCombatTraits.js";
-import { resolveRangedWeapon } from "./rangedCombat.js";
 import { clearPropVisualOverride, getPropVisualTint, setPropVisualTint } from "../../Color/visualOverride.js";
 export const DEFAULT_BALL_FACING_TURN_RAD_PER_SEC = Math.PI * 1.5;
 const HEADING_SPEED_MIN = 0.25;
@@ -28,10 +26,7 @@ export function syncBallAgentFacingToTarget(head, target, dtMs, turnRadPerSec = 
 export function syncBallAgentFacingAfterPhysics(instance, dtMs) {
     if (!instance || !isBallCombatTopology(instance.combatTraits)) return;
     if (!shouldSyncBallAgentFacingToVelocity(instance.combatAction)) return;
-    const profile = getAgentProfile(instance.profileId);
-    const weapon = resolveRangedWeapon(instance, profile);
-    const turnRadPerSec = weapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
-    syncBallAgentFacingToVelocity(instance.head, dtMs, turnRadPerSec);
+    syncBallAgentFacingToVelocity(instance.head, dtMs, instance.aimTurnRadPerSec);
 }
 export function syncBallAgentPresentation(prop, { baseTint }) {
     const wantTint = baseTint;
