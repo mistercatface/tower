@@ -5,7 +5,6 @@ import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { isAliveAgentHead, registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
-import { reapAgentInstance } from "./snakeAgentLifecycle.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
@@ -266,7 +265,7 @@ export class AgentInstance {
         registerInertAgent(snakeGame.registry, tailIds[0], tailIds, this.headId);
     }
     die(state, members = null, deathImpact = null) {
-        reapAgentInstance(state, this, deathImpact);
+        state.sandbox.snakeGame.speciesById.get(this.profileId).die(this, state, deathImpact);
     }
     splitAtStruckSegment(state, struckSegmentId, victimMembers = null, deathImpact = null) {
         if (!this.combatTraits.canSplit) return null;
