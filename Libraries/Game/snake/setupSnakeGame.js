@@ -149,10 +149,10 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         appendOverlayCommands(out, state) {
             const overlayConfig = getSnakeGameConfig();
             if (overlayConfig.showFocusedAgentDebug !== true) return;
-            const snakeGame = state.sandbox?.snakeGame;
+            const snakeGame = state.sandbox.snakeGame;
             const prop = state.followCamera?.targetProp;
             if (!prop) return;
-            const instance = snakeGame?.instancesByHeadId.get(prop.id);
+            const instance = snakeGame.instancesByHeadId.get(prop.id);
             if (!instance?.brain) return;
             appendFocusedAgentVisibleEntityOverlayCommands(out, state, snakeGame);
             const pathOverlay = instance.autosim.getPathOverlay();
