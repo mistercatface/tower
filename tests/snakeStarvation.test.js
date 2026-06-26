@@ -11,6 +11,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getSnakeChainRadius, createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, tickAgentMetabolism } from "../Libraries/Game/snake/agentMetabolism.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -94,12 +95,17 @@ describe("snake metabolism", () => {
         const headId = chain.head.id;
         const instance = createStarvationTestInstance(state, chain);
         const radiusBefore = getSnakeChainRadius(state, headId);
+        const shedTailId = instance.memberIds[instance.memberIds.length - 1];
         const m = createAgentMetabolism(profile);
         setAgentHunger(m, 0);
         assert.ok(tickMetab(state, instance, m, 10_000));
         assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
         assert.equal(getSnakeChainRadius(state, headId), radiusBefore);
         assert.equal(getAgentHunger(m), 0);
+        const shedTail = state.entityRegistry.get(shedTailId);
+        assert.ok(shedTail);
+        assert.ok(isSnakeFoodTarget(shedTail));
+        assert.equal(shedTail.snakeFoodValue, META.growthCost);
     });
     it("stays starving across sheds instead of bouncing to satisfied", async () => {
         applySnakeGameConfig({ agentProfiles: { snake: { metabolism: META, minAliveSegmentCount: 3 } } });

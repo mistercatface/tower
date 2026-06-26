@@ -1,6 +1,5 @@
 import { getConnectedBodyIds, getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
 import { clearChainLinksForMembers, clearChainLinksForProp, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
-import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
@@ -217,7 +216,9 @@ export class AgentInstance {
         const tail = this.entityRegistry.getLive(tailId);
         removeChainLinkBetween(state, prevId, tailId);
         clearChainLinksForProp(state, tailId);
-        removeSandboxWorldProp(state, tail);
+        this.retireMemberSegments(state, [tailId]);
+        tail.snakeFoodValue = this.profile.metabolism?.growthCost ?? getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost;
+        markSnakeSegmentsFracturable(state, [tailId]);
         this.memberIds.pop();
         this.memberProps.pop();
         return tailId;
