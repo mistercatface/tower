@@ -1,5 +1,6 @@
 import { getConnectedBodyIds, getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
-import { clearChainLinksForMembers, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
+import { clearChainLinksForMembers, clearChainLinksForProp, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
+import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
@@ -208,6 +209,18 @@ export class AgentInstance {
         const resolvedMembers = this.memberIdsForTeardown(this.session, members);
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
+    }
+    shedTailFromStarvation(state, minSegments = this.minAliveSegmentCount) {
+        if (this.memberIds.length <= minSegments) return null;
+        const tailId = this.memberIds[this.memberIds.length - 1];
+        const prevId = this.memberIds[this.memberIds.length - 2];
+        const tail = this.entityRegistry.getLive(tailId);
+        removeChainLinkBetween(state, prevId, tailId);
+        clearChainLinksForProp(state, tailId);
+        removeSandboxWorldProp(state, tail);
+        this.memberIds.pop();
+        this.memberProps.pop();
+        return tailId;
     }
     severInertTail(state, tailIds) {
         this.retireMemberSegments(state, tailIds);

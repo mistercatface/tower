@@ -1,4 +1,3 @@
-import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { createBrain } from "../../AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
@@ -11,17 +10,15 @@ import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
-import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism, tickAgentMetabolism, shrinkSnakeChainFromStarvation } from "./agentMetabolism.js";
+import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism, tickAgentMetabolism } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 /** Shared ground-nav autosim for flee, snake, and squid. */
 export function createAgentAutosim(state, instance) {
     const profileId = instance.profileId;
-    const agentId = instance.headId;
     const session = state.sandbox.snakeGame;
     const shared = session.config.shared;
     const entityRegistry = state.entityRegistry;
-    const kinetic = state.kinetic;
     const agentCtx = { instance, session, navWalkable: session.navWalkable };
     const profile = instance.profile;
     const metabolism = createAgentMetabolism(profile);
@@ -107,7 +104,6 @@ export function createAgentAutosim(state, instance) {
         tick(dtMs, admitted = true) {
             if (!active) return;
             const seeker = instance.head;
-            const members = instance.memberIds;
             if (instance.lifecycle !== "alive") return;
             if (!instance.isSteerable()) {
                 instance.die(state);
@@ -132,11 +128,7 @@ export function createAgentAutosim(state, instance) {
             if (!fedThisTick)
                 tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => {
                     const minSegments = metabolism.minAliveSegmentCount ?? 3;
-                    if (members.length <= minSegments) return false;
-                    const removedTailId = shrinkSnakeChainFromStarvation(state, agentId, minSegments, members);
-                    if (removedTailId == null) return false;
-                    instance.memberProps.pop();
-                    return true;
+                    return instance.shedTailFromStarvation(state, minSegments) != null;
                 });
         },
     };

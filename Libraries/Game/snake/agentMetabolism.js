@@ -1,6 +1,4 @@
 import { getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
-import { removeChainLinkBetween, clearChainLinksForProp } from "../../Sandbox/chainLinks.js";
-import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 // --- Unified Agent Metabolism ---
 /**
@@ -99,17 +97,4 @@ export function growSnakeChainAfterMeal(state, headId, profile) {
     const segmentRadius = getSnakeChainRadius(state, headId);
     const spacing = segmentRadius * 2 * (profile.linkSlack ?? 1);
     return { segmentRadius, spacing, linkSlack: profile.linkSlack };
-}
-// --- Snake Starvation & Shrinkage ---
-export function shrinkSnakeChainFromStarvation(state, headId, minSegments, members = null) {
-    const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
-    if (resolvedMembers.length <= minSegments) return null;
-    const tailId = resolvedMembers[resolvedMembers.length - 1];
-    const prevId = resolvedMembers[resolvedMembers.length - 2];
-    const tail = state.entityRegistry.getLive(tailId);
-    removeChainLinkBetween(state, prevId, tailId);
-    clearChainLinksForProp(state, tailId);
-    removeSandboxWorldProp(state, tail);
-    resolvedMembers.pop();
-    return tailId;
 }

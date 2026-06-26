@@ -9,7 +9,10 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getSnakeChainRadius, createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, tickAgentMetabolism, shrinkSnakeChainFromStarvation } from "../Libraries/Game/snake/agentMetabolism.js";
+import { getSnakeChainRadius, createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, tickAgentMetabolism } from "../Libraries/Game/snake/agentMetabolism.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 async function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -44,15 +47,21 @@ function chainOptions(segmentCount) {
     };
 }
 const META = { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 };
+function createStarvationTestInstance(state, chain) {
+    const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head: chain.head, spawnGroupId: chain.spawnGroupId, lifecycle: "alive" });
+    instance.entityRegistry = state.entityRegistry;
+    instance.kinetic = state.kinetic;
+    instance.entityMeta = getSandboxEntityMeta(state);
+    instance.syncMembersFromGraph();
+    return instance;
+}
 
 describe("snake metabolism", () => {
     const profile = { metabolism: META, minAliveSegmentCount: 3 };
-    const tickMetab = (state, headId, m, dtMs, members = null, drainMultiplier = 1) => {
-        const resolvedMembers = members || getOrderedChainMemberIds(state, headId);
+    const tickMetab = (state, instance, m, dtMs, drainMultiplier = 1) => {
         return tickAgentMetabolism(m, dtMs, drainMultiplier, () => {
             const minSegments = m.minAliveSegmentCount ?? 3;
-            if (resolvedMembers.length <= minSegments) return false;
-            return shrinkSnakeChainFromStarvation(state, headId, minSegments, resolvedMembers) != null;
+            return instance.shedTailFromStarvation(state, minSegments) != null;
         });
     };
 
@@ -83,10 +92,11 @@ describe("snake metabolism", () => {
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(5));
         const headId = chain.head.id;
+        const instance = createStarvationTestInstance(state, chain);
         const radiusBefore = getSnakeChainRadius(state, headId);
         const m = createAgentMetabolism(profile);
         setAgentHunger(m, 0);
-        assert.ok(tickMetab(state, headId, m, 10_000));
+        assert.ok(tickMetab(state, instance, m, 10_000));
         assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
         assert.equal(getSnakeChainRadius(state, headId), radiusBefore);
         assert.equal(getAgentHunger(m), 0);
@@ -97,12 +107,13 @@ describe("snake metabolism", () => {
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(6));
         const headId = chain.head.id;
+        const instance = createStarvationTestInstance(state, chain);
         const m = createAgentMetabolism(profile);
         setAgentHunger(m, 0);
-        assert.ok(tickMetab(state, headId, m, 10_000));
+        assert.ok(tickMetab(state, instance, m, 10_000));
         assert.equal(getOrderedChainMemberIds(state, headId).length, 5);
         assert.equal(getAgentHunger(m), 0);
-        assert.ok(tickMetab(state, headId, m, 10_000));
+        assert.ok(tickMetab(state, instance, m, 10_000));
         assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
         assert.equal(getAgentHunger(m), 0);
     });
@@ -112,9 +123,10 @@ describe("snake metabolism", () => {
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(3));
         const headId = chain.head.id;
+        const instance = createStarvationTestInstance(state, chain);
         const m = createAgentMetabolism(profile);
         setAgentHunger(m, 0);
-        assert.equal(tickMetab(state, headId, m, 30_000), false);
+        assert.equal(tickMetab(state, instance, m, 30_000), false);
         assert.equal(getOrderedChainMemberIds(state, headId).length, 3);
         assert.equal(getAgentHunger(m), 0);
     });
@@ -124,11 +136,12 @@ describe("snake metabolism", () => {
         const state = await createTestState();
         const chain = spawnLinkedBallChain(state, { col: 8, row: 8 }, chainOptions(5));
         const headId = chain.head.id;
+        const instance = createStarvationTestInstance(state, chain);
         const m = createAgentMetabolism(profile);
         setAgentHunger(m, 0);
-        assert.equal(tickMetab(state, headId, m, 5_000, null, 1), false);
+        assert.equal(tickMetab(state, instance, m, 5_000, 1), false);
         assert.equal(getOrderedChainMemberIds(state, headId).length, 5);
-        assert.ok(tickMetab(state, headId, m, 5_000, null, 2.5));
+        assert.ok(tickMetab(state, instance, m, 5_000, 2.5));
         assert.equal(getOrderedChainMemberIds(state, headId).length, 4);
     });
 });
