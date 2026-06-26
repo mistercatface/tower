@@ -37,11 +37,11 @@ function pushSchemaEventTargets(events, visible, remembered, visibleWorld, event
         );
     }
 }
-function writeScoringEnvInto(env, profile) {
-    env.cohesion = profile.factionCohesion ?? {};
-    if (profile.scoringEnv?.effortFallback) env.effortFallback = profile.decisionPressure;
+function writeScoringEnvInto(env, spec) {
+    env.cohesion = spec.scoringCohesion;
+    if (spec.scoringEffortFallback != null) env.effortFallback = spec.scoringEffortFallback;
     else delete env.effortFallback;
-    if (profile.scoringEnv?.sprint) env.sprint = profile.sprint;
+    if (spec.scoringSprint != null) env.sprint = spec.scoringSprint;
     else delete env.sprint;
     return env;
 }
@@ -55,8 +55,7 @@ function applyRangedBackOffThreat(ctx, input) {
     const reachSteps = Number.isFinite(combat.reachCells) ? combat.reachCells : Math.ceil(combat.distWorld / (input.cellSize ?? 16));
     ctx.threatState = deriveThreatStateInto(ctx.threatScratch, threat, reachSteps, input.cellSize ?? 16, input.shared);
 }
-export function createAgentDecisionContextFrame(profileId) {
-    const schema = getAgentProfile(profileId).decision;
+export function createAgentDecisionContextFrame(profileId, schema = getAgentProfile(profileId).decision) {
     const visible = {};
     const remembered = {};
     const known = {};
@@ -101,7 +100,7 @@ export function createAgentDecisionContextFrame(profileId) {
     };
 }
 export function buildAgentDecisionFrameInto(ctx, spec, input) {
-    const schema = spec.decisionSchema();
+    const schema = spec.decisionSchema;
     mergeSlotsFromSchemaInto(ctx, schema, input.visibleWorld, input.memoryWorld ?? null, input.memorySource ?? null, input);
     ctx.reachSteps = input.reachSteps ?? EMPTY_AGENT_REACH_STEPS;
     ctx.committedTarget = input.committedTarget ?? null;
@@ -128,7 +127,7 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
     return ctx;
 }
 export function pickAgentIntentPolicy(ctx, scores, spec) {
-    const schema = spec.decisionSchema();
+    const schema = spec.decisionSchema;
     const mode = pickBestScoreKey(scores, schema.scoreOrder).chosenKey;
     if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(ctx, "threat"));
     if (mode === "explore") return { mode: "explore", targetId: null };
@@ -137,13 +136,13 @@ export function pickAgentIntentPolicy(ctx, scores, spec) {
     return intentPolicy(mode, ctx.known[slotKey].id, policyReasonForTarget(ctx, slotKey));
 }
 export function buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDetails = false } = {}) {
-    const schema = spec.decisionSchema();
+    const schema = spec.decisionSchema;
     const foodFraction = input.foodFraction ?? null;
-    const hungerTier = bandFromThresholds(foodFraction, spec.hungerBands());
+    const hungerTier = bandFromThresholds(foodFraction, spec.hungerBands);
     buildAgentDecisionFrameInto(ctx, spec, { ...input, foodFraction, hungerTier });
-    const weights = spec.weights();
-    const pressure = spec.pressure();
-    writeScoringEnvInto(ctx.scoringEnv, getAgentProfile(spec.profileId));
+    const weights = spec.weights;
+    const pressure = spec.pressure;
+    writeScoringEnvInto(ctx.scoringEnv, spec);
     const details = scoreDecisionCandidateDetails(ctx, schema, weights, pressure, ctx.scoringEnv);
     const pickPolicy = input.pickPolicy ?? ((frame, scores) => pickAgentIntentPolicy(frame, scores, spec));
     if (includeScoreDetails) {
@@ -157,7 +156,7 @@ export function buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDe
         ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
     }
     spec.afterPick?.(ctx, ctx.chosenIntent, input);
-    ctx.sprintIntent = deriveSprintIntent(ctx.chosenIntent.mode, ctx, spec.sprintConfig());
+    ctx.sprintIntent = deriveSprintIntent(ctx.chosenIntent.mode, ctx, spec.sprintConfig);
     ctx.chosenReason = ctx.chosenIntent.reason ?? null;
     ctx.targetId = ctx.chosenIntent.targetId ?? null;
     return ctx;

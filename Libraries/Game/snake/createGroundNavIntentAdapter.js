@@ -4,7 +4,8 @@ import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js"
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
-import { buildAgentDecisionContextIntoFor, createAgentDecisionContextFrame } from "../../AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionContextInto } from "../../AI/agents/buildAgentDecisionContext.js";
+import { buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/gameDecisionContext.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { buildFlowTargetStepsInto, createFlowTargetStepSlots } from "../../Navigation/flowTargetSteps.js";
 import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.js";
@@ -209,11 +210,10 @@ function resolveCommittedTarget(committedSlots, id, world) {
     }
     return null;
 }
-function buildDecisionContextInto(decisionContext, input, agentCtx, resolveHunger, resolveSegmentCount) {
+function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveHunger, resolveSegmentCount) {
     const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
     const instance = agentCtx.instance;
     const profile = instance.profile;
-    const profileId = instance.profileId;
     const decisionInput = {
         visibleWorld: visible,
         memoryWorld,
@@ -236,7 +236,7 @@ function buildDecisionContextInto(decisionContext, input, agentCtx, resolveHunge
         decisionInput.equippedWeapon = instance.equippedWeapon ?? null;
         decisionInput.weaponVisionRange = instance.visionRange.range;
     }
-    return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
+    return buildAgentDecisionContextInto(decisionContext, decisionSpec, decisionInput, { includeScoreDetails: false });
 }
 function resolveEatRadiusValue(instance, eatRadius) {
     if (typeof eatRadius === "function") return eatRadius();
@@ -334,7 +334,8 @@ export function buildGroundNavIntentAdapterOptions(deps) {
     const seekArrivalRadius = deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadius);
     const resolveHunger = deps.resolveHunger ?? (metabolismApi && metabolism ? () => metabolismApi.get(metabolism) : null);
     const resolveSegmentCount = deps.resolveSegmentCount ?? (state && instance ? () => getConnectedBodyIds(state.kinetic, instance.headId).length : null);
-    const decisionContext = createAgentDecisionContextFrame(profileId);
+    const decisionSpec = buildAgentDecisionSpec(profileId, profile);
+    const decisionContext = createAgentDecisionContextFrame(profileId, decisionSpec.decisionSchema);
     const hasRangedShoot = hasRangedShootMode(profile);
     const intentMemoryOptions = intent.filterAllyForEngagement ? { ...shared.intentMemory, filterAllyForEngagement: true } : shared.intentMemory;
     const adapter = {
@@ -353,7 +354,7 @@ export function buildGroundNavIntentAdapterOptions(deps) {
         intentMemoryOptions,
         config: shared,
         decisionContext,
-        buildDecisionContext: (input) => buildDecisionContextInto(decisionContext, input, agentCtx, resolveHunger, resolveSegmentCount),
+        buildDecisionContext: (input) => buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveHunger, resolveSegmentCount),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
         setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable, config: shared, brain, rng, resolveExploreCell }, instance),
         sprintConfig: profile.sprint,

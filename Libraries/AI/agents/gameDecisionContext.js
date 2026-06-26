@@ -32,61 +32,51 @@ const DECISION_EXTENSIONS = {
         },
     },
 };
-function createDecisionSpec(profileId) {
-    const profile = () => getAgentProfile(profileId);
+export function buildAgentDecisionSpec(profileId, profile = getAgentProfile(profileId)) {
     const spec = {
         profileId,
-        decisionSchema: () => profile().decision,
-        hungerBands: () => profile().hungerBands,
-        weights: () => profile().decisionWeights,
-        pressure: () => profile().decisionPressure,
-        sprintConfig: () => profile().sprint,
+        decisionSchema: profile.decision,
+        hungerBands: profile.hungerBands,
+        weights: profile.decisionWeights,
+        pressure: profile.decisionPressure,
+        sprintConfig: profile.sprint,
+        scoringCohesion: profile.factionCohesion ?? {},
+        scoringEffortFallback: profile.scoringEnv?.effortFallback ? profile.decisionPressure : null,
+        scoringSprint: profile.scoringEnv?.sprint ? profile.sprint : null,
         ...(DECISION_EXTENSIONS[profileId] ?? {}),
     };
-    const prof = profile();
-    if (prof.weapon || prof.decision?.modes?.shoot_enemy) spec.deriveCombatState = (ctx, input) => deriveRangedCombatState(ctx, input, prof);
-    return spec;
-}
-const DECISION_SPECS = Object.freeze({
-    [AGENT_PROFILE.snake]: createDecisionSpec(AGENT_PROFILE.snake),
-    [AGENT_PROFILE.flee]: createDecisionSpec(AGENT_PROFILE.flee),
-    [AGENT_PROFILE.squid]: createDecisionSpec(AGENT_PROFILE.squid),
-});
-export function resolveAgentDecisionSpec(profileId) {
-    const spec = DECISION_SPECS[profileId];
-    if (!spec) throw new Error(`unknown agent decision profile: ${profileId}`);
+    if (profile.weapon || profile.decision?.modes?.shoot_enemy) spec.deriveCombatState = (ctx, input) => deriveRangedCombatState(ctx, input, profile);
     return spec;
 }
 export function buildAgentDecisionFrameFor(profileId, input) {
-    const spec = resolveAgentDecisionSpec(profileId);
+    const spec = buildAgentDecisionSpec(profileId);
     const ctx = createAgentDecisionContextFrame(profileId);
     const foodFraction = input.foodFraction ?? null;
-    const hungerTier = bandFromThresholds(foodFraction, spec.hungerBands());
+    const hungerTier = bandFromThresholds(foodFraction, spec.hungerBands);
     buildAgentDecisionFrameInto(ctx, spec, { ...input, foodFraction, hungerTier, profileId });
     return ctx;
 }
 export function buildAgentDecisionContextFor(profileId, input) {
-    const spec = resolveAgentDecisionSpec(profileId);
+    const spec = buildAgentDecisionSpec(profileId);
     const ctx = createAgentDecisionContextFrame(profileId);
     return buildAgentDecisionContextInto(ctx, spec, { ...input, profileId }, { includeScoreDetails: true });
 }
 export function buildAgentDecisionContextIntoFor(profileId, ctx, input, options) {
-    return buildAgentDecisionContextInto(ctx, resolveAgentDecisionSpec(profileId), { ...input, profileId }, options);
+    return buildAgentDecisionContextInto(ctx, buildAgentDecisionSpec(profileId), { ...input, profileId }, options);
 }
 export function scoreAgentIntentCandidateDetails(profileId, ctx, weights = null, pressure = null) {
-    const spec = resolveAgentDecisionSpec(profileId);
-    const profile = getAgentProfile(profileId);
-    const env = { cohesion: profile.factionCohesion ?? {} };
-    if (profile.scoringEnv?.effortFallback) env.effortFallback = profile.decisionPressure;
-    if (profile.scoringEnv?.sprint) env.sprint = profile.sprint;
-    return scoreDecisionCandidateDetails(ctx, spec.decisionSchema(), weights ?? spec.weights(), pressure ?? spec.pressure(), env);
+    const spec = buildAgentDecisionSpec(profileId);
+    const env = { cohesion: spec.scoringCohesion };
+    if (spec.scoringEffortFallback != null) env.effortFallback = spec.scoringEffortFallback;
+    if (spec.scoringSprint != null) env.sprint = spec.scoringSprint;
+    return scoreDecisionCandidateDetails(ctx, spec.decisionSchema, weights ?? spec.weights, pressure ?? spec.pressure, env);
 }
 export function scoreAgentIntentCandidates(profileId, ctx, weights = null, pressure = null) {
-    const spec = resolveAgentDecisionSpec(profileId);
-    return scoreCandidateSet(scoreAgentIntentCandidateDetails(profileId, ctx, weights, pressure), spec.decisionSchema().scoreOrder).candidateScores;
+    const spec = buildAgentDecisionSpec(profileId);
+    return scoreCandidateSet(scoreAgentIntentCandidateDetails(profileId, ctx, weights, pressure), spec.decisionSchema.scoreOrder).candidateScores;
 }
 export function pickAgentIntentPolicyFor(profileId, ctx, scores = null) {
-    const spec = resolveAgentDecisionSpec(profileId);
+    const spec = buildAgentDecisionSpec(profileId);
     const resolvedScores = scores ?? scoreAgentIntentCandidates(profileId, ctx);
     return pickAgentIntentPolicy(ctx, resolvedScores, spec);
 }
