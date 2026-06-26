@@ -54,11 +54,11 @@ export class AgentInstance {
     get headId() {
         return this.head.id;
     }
-    start() {
+    start(state) {
         this.grantSteeringLease();
         this.autosim.start();
     }
-    stopSteering() {
+    stopSteering(state) {
         this.revokeSteeringLease();
         this.autosim.stop();
     }
