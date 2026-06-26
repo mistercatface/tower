@@ -15,7 +15,7 @@ import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";
-import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
+import { resolveSnakeCombatFromContacts } from "../Libraries/Game/snake/snakeCombat.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { SNAKE_SHARD_PROP_ID } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 

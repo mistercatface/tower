@@ -15,10 +15,8 @@ export function createSnakeAgentSession({ registry, navWalkable, speciesById }) 
         navWalkable,
         simTick: 0,
         lastVisionBeginTick: -1,
-        focusedInstance: null,
         orchestrator,
         activeGunBulletIds: [],
-        spentGunBulletIds: [],
     };
 }
 export function registerAgentInstance(session, speciesId, instance) {

@@ -162,7 +162,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             applyKineticContactSideEffects(tick, contacts);
             for (const sys of CUSTOM_SYSTEMS) if (sys.resolveContacts) sys.resolveContacts(state, tick.frame, contacts);
             resolveSnakeCombatFromContacts(state, tick.frame, contacts);
-            applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
+            applySnakeHuntContactDrive(state, tick.frame, contacts);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
         },
         afterKineticPhysics() {

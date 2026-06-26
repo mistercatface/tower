@@ -42,10 +42,6 @@ export class Projectile extends Entity {
 const projectilePool = [];
 const MAX_PROJECTILES = 512;
 for (let i = 0; i < MAX_PROJECTILES; i++) projectilePool.push(new Projectile());
-export function clearProjectilePool() {
-    projectilePool.length = 0;
-    for (let i = 0; i < MAX_PROJECTILES; i++) projectilePool.push(new Projectile());
-}
 export function spawnGunBulletProjectile(state, shooterInstance, angle, weapon) {
     const shooter = shooterInstance.head;
     const spawnDist = weapon.spawnDist ?? 4.5;
