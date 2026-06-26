@@ -26,7 +26,7 @@ function pickAgentSpawnCell(spawnPool, navWalkable, state, profile, config, { ex
         const spacing = resolveSnakeSegmentSpacing(profile.linkSlack, config.startRadius);
         const growDirX = profile.growDirX ?? -1;
         const growDirY = profile.growDirY ?? 0;
-        return pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices, rng });
+        return pickSnakeChainSpawnCell(spawnPool, navWalkable, state, segmentCount, spacing, growDirX, growDirY, excludeIndices, rng);
     }
     const valid = [];
     for (let i = 0; i < spawnPool.length; i++) {
