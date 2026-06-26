@@ -1,6 +1,6 @@
 import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
 import { getAgentProfile, AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
+import { resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { applyAgentGameplayForIndex } from "./applyAgentGameplay.js";
 export function resolveProfileLeaderIndex(profile) {
     return profile.leaderIndex ?? profile.armSegmentCount ?? 0;
@@ -56,7 +56,7 @@ function finalizeChainSpawn(profileId, chain, { growDirX = -1, growDirY = 0, for
 }
 /** Spawn a profile-configured agent chain. */
 export function spawnGameAgentChain(state, anchorCell, profileId, options = {}) {
-    const config = getSnakeGameConfig();
+    const config = state.sandbox.snakeGame.config;
     const spec = buildChainSpawnSpec(profileId, config, options);
     const chain = spawnAgentChain(state, anchorCell, spec);
     return finalizeChainSpawn(profileId, chain, { growDirX: spec.growDirX, growDirY: spec.growDirY, forwardDir: options.forwardDir });

@@ -41,8 +41,7 @@ export function rangedCombatActionIsBusy(action) {
 export function hasLineOfSight(state, seeker, target) {
     const frame = getObserverVisionFrame(state);
     if (!frame) return false;
-    const config = getSnakeGameConfig();
-    return frame.isVisible(seeker, target.x, target.y, config.shared?.visionRange);
+    return frame.isVisible(seeker, target.x, target.y, state.sandbox.snakeGame.config?.shared?.visionRange);
 }
 export function deriveRangedCombatState(ctx, input, profile) {
     const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile);

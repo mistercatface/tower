@@ -1,8 +1,6 @@
 import { createObserverVisionFrame, getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
-import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 function refreshObserverVisionFrame(state) {
-    const config = getSnakeGameConfig();
-    const shared = getSharedConfig(config);
+    const shared = state.sandbox.snakeGame.config?.shared ?? {};
     state.nav.observerVisionFrame = createObserverVisionFrame({ tickId: state.sandbox.snakeGame.simTick, navTopology: state.nav.topology, visionRange: shared.visionRange, viewport: state.viewport });
 }
 export function requireSnakeVisionFrame(state) {

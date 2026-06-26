@@ -29,7 +29,8 @@ function resolveProximityRelationship(rule, profile, config, distSq) {
     if (distSq == null) return rule.far ?? "neutral";
     return distSq <= range * range ? rule.near : (rule.far ?? "neutral");
 }
-export function resolveRelationshipForInstances(seekerInstance, targetInstance, config = getSnakeGameConfig(), distSq = null) {
+export function resolveRelationshipForInstances(seekerInstance, targetInstance, distSq = null) {
+    const config = getSnakeGameConfig();
     const profile = getAgentProfile(seekerInstance.profileId, config);
     const rule = profile.relationships?.[targetInstance.profileId];
     if (rule == null) return "neutral";

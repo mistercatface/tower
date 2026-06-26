@@ -1,5 +1,4 @@
 import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getInstanceCombatTraits, isChainCombatTopology, matchesBrainRamResolver } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
@@ -115,8 +114,8 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
-    const config = getSnakeGameConfig();
     const snakeGame = state.sandbox.snakeGame;
+    const config = snakeGame.config;
     const memberToInstance = buildAgentMemberToInstanceMap(state, snakeGame);
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
@@ -145,8 +144,8 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
         const bothSquidDuel = matchesBrainRamResolver(traitsA, "squidVsSquid") && matchesBrainRamResolver(traitsB, "squidVsSquid");
         if (!bothSquidDuel && isChainCombatTopology(traitsA) && isChainCombatTopology(traitsB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
         const distSq = headDistSq(instanceA, instanceB);
-        const relationshipAB = resolveRelationshipForInstances(instanceA, instanceB, undefined, distSq);
-        const relationshipBA = resolveRelationshipForInstances(instanceB, instanceA, undefined, distSq);
+        const relationshipAB = resolveRelationshipForInstances(instanceA, instanceB, distSq);
+        const relationshipBA = resolveRelationshipForInstances(instanceB, instanceA, distSq);
         if (relationshipAB === "prey" || relationshipBA === "prey") {
             const predatorInstance = relationshipAB === "prey" ? instanceA : instanceB;
             const preyInstance = relationshipAB === "prey" ? instanceB : instanceA;

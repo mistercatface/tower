@@ -282,7 +282,7 @@ export class AgentInstance {
             if (strikerTraits.fleeEscapeRam) {
                 const areTeammates = resolveRelationshipForInstances(strikerInstance, this) === "ally" || (this.head.faction != null && this.head.faction === strikerInstance.head.faction);
                 if (!areTeammates) {
-                    const config = getSnakeGameConfig();
+                    const config = state.sandbox.snakeGame.config;
                     if (strikerInstance.sprinting && relSpeed >= config.splitImpulseThreshold)
                         if (strikerInstance.intent?.getMode?.() === "flee")
                             if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
@@ -293,7 +293,7 @@ export class AgentInstance {
         if (traits.victimOfHeadStrikeRam) {
             const strikerTraits = getInstanceCombatTraits(strikerInstance);
             if (isChainCombatTopology(traits) && isChainCombatTopology(strikerTraits)) {
-                const config = getSnakeGameConfig();
+                const config = state.sandbox.snakeGame.config;
                 if (relSpeed >= config.splitImpulseThreshold)
                     if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
             }
@@ -303,7 +303,7 @@ export class AgentInstance {
     receivePreyStrike(state, struckBodyId, predatorInstance, predatorBodyId, relSpeed, deathImpact) {
         const preyTraits = getInstanceCombatTraits(this);
         const predatorTraits = getInstanceCombatTraits(predatorInstance);
-        const config = getSnakeGameConfig();
+        const config = state.sandbox.snakeGame.config;
         const chainVsBallPrey = isChainCombatTopology(predatorTraits) && !isChainCombatTopology(preyTraits);
         const predatorStrikes = chainVsBallPrey || predatorBodyId === predatorInstance.headId;
         const speedOk = chainVsBallPrey || relSpeed >= config.splitImpulseThreshold;

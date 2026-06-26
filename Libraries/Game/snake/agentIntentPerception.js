@@ -8,7 +8,7 @@ export function resolveAgentPerceptionOptions(state, visionRange = null, agentCt
     return {
         readVisionFrame: requireSnakeVisionFrame,
         agentRange: shared.fleeRange ?? resolved.range,
-        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, undefined, distSq),
+        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, distSq),
         committedTargetId: agentCtx?.instance?.intent?.getTargetId() ?? null,
         targetStickyFactor: shared.targetingHysteresis?.targetStickyFactor ?? 0.75,
     };
