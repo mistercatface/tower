@@ -1,30 +1,19 @@
-import { getPropVisualTint, randomVisualTintHex, setPropVisualTint } from "../../Color/visualOverride.js";
-import { hueToPickerHex } from "../../Color/hex.js";
+import { getPropVisualTint, setPropVisualTint } from "../../Color/visualOverride.js";
+export function resolveAgentTeamForIndex(profile, index) {
+    const teams = profile.teams;
+    if (!Array.isArray(teams) || teams.length === 0) return { faction: profile.faction ?? "neutral", color: null };
+    return teams[index % teams.length] ?? teams[0];
+}
+export function resolveAgentTeamForFaction(profile, faction) {
+    const teams = profile.teams;
+    if (Array.isArray(teams)) for (let i = 0; i < teams.length; i++) if (teams[i].faction === faction) return teams[i];
+    return { faction, color: null };
+}
 export function applySnakeChainTint(members, tintHex) {
+    if (tintHex == null) return;
     for (let i = 0; i < members.length; i++) setPropVisualTint(members[i], tintHex);
 }
 export function copySnakeChainTintFromHead(head, prop) {
     const tint = getPropVisualTint(head);
     if (tint != null) setPropVisualTint(prop, tint);
-}
-export function pickSnakeChainTintHex(faction = null, rng = Math.random) {
-    if (faction === "red") {
-        const hue = (350 + rng() * 30) % 360;
-        const sat = 70 + rng() * 15;
-        const light = 45 + rng() * 12;
-        return hueToPickerHex(hue, sat, light);
-    }
-    if (faction === "blue") {
-        const hue = 205 + rng() * 40;
-        const sat = 70 + rng() * 15;
-        const light = 45 + rng() * 12;
-        return hueToPickerHex(hue, sat, light);
-    }
-    if (faction === "purple") {
-        const hue = 265 + rng() * 35;
-        const sat = 70 + rng() * 15;
-        const light = 45 + rng() * 12;
-        return hueToPickerHex(hue, sat, light);
-    }
-    return randomVisualTintHex(rng);
 }

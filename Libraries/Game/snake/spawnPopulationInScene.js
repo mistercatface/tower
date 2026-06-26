@@ -8,11 +8,7 @@ import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentit
 import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { spawnGameAgentChain } from "./spawnAgentChain.js";
 import { hashString } from "../../Math/hash.js";
-function resolveAgentTeamForIndex(profile, index) {
-    const teams = profile.teams;
-    if (!Array.isArray(teams) || teams.length === 0) return { faction: profile.faction ?? "neutral", color: null };
-    return teams[index % teams.length] ?? teams[0];
-}
+import { applySnakeChainTint, resolveAgentTeamForIndex } from "./snakeChainColor.js";
 function isValidAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices }) {
     const { col, row } = anchorCell;
     if (!navWalkable.has(col, row)) return false;
@@ -58,7 +54,7 @@ export function spawnPopulationInScene(state, navWalkable, profileId, { excludeI
         const leader = pack.brain ?? pack.head;
         setAgentIdentity(leader.id, { name: identityName, color: team.color });
         const members = pack.members ?? [pack.head];
-        if (team.color) for (let m = 0; m < members.length; m++) members[m].tint = team.color;
+        applySnakeChainTint(members, team.color);
         const occupiedIndices = new Set(occupied);
         for (const idx of linkedChainOccupiedCellIndices(members, state.obstacleGrid)) occupiedIndices.add(idx);
         agents.push({ pack, tintHex: team.color, occupiedIndices });

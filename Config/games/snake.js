@@ -90,6 +90,11 @@ export const SNAKE_GAME_DEFAULTS = {
             headPropId: "snake_head",
             segmentCount: 3,
             leaderIndex: 0,
+            teams: [
+                { faction: "red", color: "#e74c3c" },
+                { faction: "blue", color: "#3498db" },
+                { faction: "purple", color: "#9b59b6" },
+            ],
             linkSlack: 1.0,
             growDirX: -1,
             growDirY: 0,

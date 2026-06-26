@@ -12,7 +12,6 @@ import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGr
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
-import { pickSnakeChainTintHex } from "../Libraries/Game/snake/snakeChainColor.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { FRAME_MS } from "./frameMs.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -59,7 +58,7 @@ describe("snake multi-spawn", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const tintHex = pickSnakeChainTintHex(null, () => 0.25);
+        const tintHex = getSnakeGameConfig().agentProfiles.snake.teams[0].color;
         const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.25 });
         assert.equal(pack.tintHex, tintHex);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
@@ -70,13 +69,15 @@ describe("snake multi-spawn", () => {
         }
     });
 
-    it("two chains get different random tints", () => {
+    it("team index selects configured tint", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, rng: () => 0.1 });
-        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, excludeIndices: first.occupiedIndices, rng: () => 0.9 });
-        assert.notEqual(first.tintHex, second.tintHex);
+        const teams = getSnakeGameConfig().agentProfiles.snake.teams;
+        const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, teamIndex: 0, rng: () => 0.1 });
+        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, teamIndex: 1, excludeIndices: first.occupiedIndices, rng: () => 0.9 });
+        assert.equal(first.tintHex, teams[0].color);
+        assert.equal(second.tintHex, teams[1].color);
     });
 
     it("new segment inherits head tint after eating", () => {
