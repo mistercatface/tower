@@ -35,11 +35,6 @@ export function rangedCombatActionOnCooldown(action) {
 export function rangedCombatActionIsBusy(action) {
     return action?.phase === "reacting" || action?.phase === "fire_delay" || action?.phase === "reloading";
 }
-export function hasLineOfSight(state, seeker, target) {
-    const frame = getObserverVisionFrame(state);
-    if (!frame) return false;
-    return frame.isVisible(seeker, target.x, target.y, state.sandbox.snakeGame.config?.shared?.visionRange);
-}
 export function deriveRangedCombatState(ctx, input, profile) {
     const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
     if (!weapon) return null;
@@ -58,7 +53,7 @@ export function deriveRangedCombatState(ctx, input, profile) {
         distWorld = Math.hypot(dx, dy);
     }
     const reachCells = ctx.reachSteps?.enemy;
-    const los = visibleEnemy && seeker && state ? hasLineOfSight(state, seeker, visibleEnemy) : false;
+    const los = visibleEnemy ? getObserverVisionFrame(state).isVisible(seeker, visibleEnemy.x, visibleEnemy.y) : false;
     const inWeaponRange = distWorld != null && distWorld <= maxRange;
     const tooClose = distWorld != null && distWorld <= fleeRange;
     const phase = action?.phase ?? "idle";
@@ -101,7 +96,7 @@ function targetAngleFromAgent(agent, target) {
 function combatStateCanAimAtTarget(ctx, target) {
     const combat = ctx.world.decisionContext.combatState;
     if (combat?.enemyId === target?.id) return combat.hasLineOfSight;
-    return hasLineOfSight(ctx.state, ctx.agent, target);
+    return getObserverVisionFrame(ctx.state).isVisible(ctx.agent, target.x, target.y);
 }
 function targetInWeaponWindow(agent, target, weapon) {
     const dist = Math.hypot(target.x - agent.x, target.y - agent.y);

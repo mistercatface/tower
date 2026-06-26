@@ -7,7 +7,7 @@ import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { hasLineOfSight } from "../Libraries/Game/snake/rangedCombat.js";
+import { getObserverVisionFrame } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { resolveGunBulletContacts, tickGunBullets, spawnGunBulletProjectile } from "../Libraries/Game/snake/gunAgent/gunBulletSystem.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
@@ -36,7 +36,7 @@ describe("flee agent bullets and combat", () => {
             },
             isVisible: () => true,
         };
-        const canSee = hasLineOfSight(state, fleePack.head, snakePack.chain.head);
+        const canSee = getObserverVisionFrame(state).isVisible(fleePack.head, snakePack.chain.head.x, snakePack.chain.head.y);
         assert.ok(canSee, "Flee agent should see snake");
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
         assert.equal(snakeGame.activeGunBulletIds.length, 0);
