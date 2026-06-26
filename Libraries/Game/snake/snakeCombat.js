@@ -7,7 +7,7 @@ import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js
 function buildAgentMemberToInstanceMap(state, snakeGame) {
     const map = new Map();
     for (const instance of aliveAgentInstances(snakeGame.registry)) {
-        const members = instance.syncMembersFromGraph(state);
+        const members = instance.syncMembersFromGraph();
         for (let i = 0; i < members.length; i++) map.set(members[i], instance);
     }
     return map;

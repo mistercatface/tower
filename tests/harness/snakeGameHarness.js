@@ -8,6 +8,7 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { createDefaultMapGenBoundsConfig } from "../../Libraries/Sandbox/mapGenBounds.js";
 import { resetKineticConstraintIds } from "../../Libraries/Motion/kineticConstraints.js";
 import { spawnLinkedBallChain } from "../../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { createDirectGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
@@ -69,13 +70,14 @@ export function bindAgentInstanceSession(instance, snakeGame, state) {
     instance.navWalkable = snakeGame.navWalkable;
     instance.entityRegistry = state.entityRegistry;
     instance.kinetic = state.kinetic;
+    instance.entityMeta = getSandboxEntityMeta(state);
 }
 export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
     const resolvedAutosim = autosim ?? stubSnakeAutosim();
     const head = state.entityRegistry.getLive(headId);
     const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
     bindAgentInstanceSession(instance, snakeGame, state);
-    instance.syncMembersFromGraph(state);
+    instance.syncMembersFromGraph();
     registerAgentInstance(snakeGame, "snake", instance);
     instance.grantSteeringLease();
     return instance;

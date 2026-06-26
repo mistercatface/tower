@@ -36,7 +36,7 @@ export function createAgentSpecies(profileId) {
             instance.lifecycle = "dead";
             instance.stopSteering();
             const snakeGame = state.sandbox.snakeGame;
-            const connectedMembers = instance.syncMembersFromGraph(state);
+            const connectedMembers = instance.syncMembersFromGraph();
             let resolvedMembers = connectedMembers;
             if (retireNavOnDeath) resolvedMembers = instance.retireAllSegments(state, connectedMembers);
             clearChainLinksForMembers(state, resolvedMembers);

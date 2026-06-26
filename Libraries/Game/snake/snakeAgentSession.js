@@ -38,12 +38,12 @@ export function syncAgentsAfterPhysics(session, state) {
     const dtMs = session.lastDtMs ?? 16;
     for (const instance of aliveAgentInstances(session.registry)) {
         const def = session.speciesById.get(instance.profileId);
-        instance.syncMembersFromGraph(state);
+        instance.syncMembersFromGraph();
         if (def.pressureDiagnostics) instance.updatePressureDiagnostics(state);
         syncBallAgentFacingAfterPhysics(instance, instance._lastTickDtMs ?? dtMs);
     }
 }
-export function stopAllAgents(session, state) {
+export function stopAllAgents(session) {
     for (const instance of aliveAgentInstances(session.registry)) instance.stopSteering();
 }
 export function spawnSpeciesBatch(session, state, speciesId, spawnCtxs) {

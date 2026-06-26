@@ -20,7 +20,6 @@ export function createAgentAutosim(state, instance) {
     const agentId = instance.headId;
     const session = state.sandbox.snakeGame;
     const shared = session.config.shared;
-    const registry = session.registry;
     const entityRegistry = state.entityRegistry;
     const kinetic = state.kinetic;
     const agentCtx = { instance, session, navWalkable: session.navWalkable };
@@ -110,7 +109,7 @@ export function createAgentAutosim(state, instance) {
             const seeker = instance.head;
             const members = instance.memberIds;
             if (instance.lifecycle !== "alive") return;
-            if (!instance.isSteerable(state, registry)) {
+            if (!instance.isSteerable()) {
                 instance.die(state);
                 return;
             }

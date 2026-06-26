@@ -180,7 +180,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             state.followCamera.removeOnTargetChanged(onTargetChanged);
             state.followCamera.destroy();
             const snakeGame = state.sandbox.snakeGame;
-            if (snakeGame) stopAllAgents(snakeGame, state);
+            if (snakeGame) stopAllAgents(snakeGame);
             hud.destroy();
         },
     };

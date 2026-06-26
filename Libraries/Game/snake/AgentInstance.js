@@ -90,26 +90,24 @@ export class AgentInstance {
         this._lastTickDtMs = dtMs;
         this.autosim.tick(dtMs, admitted);
     }
-    isSteerable(state, registry) {
-        if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;
+    isSteerable() {
+        if (this.lifecycle !== "alive" || !isAliveAgentHead(this.registry, this.headId)) return false;
         if (this.head.isDead) return false;
         if (this.profile.topology === "single") return true;
-        if (!getSandboxEntityMeta(state).isChainHead(this.headId)) return false;
-        if (this.profile.topology === "cluster") return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
-        const members = getConnectedComponentPath(state.kinetic, this.headId);
+        if (!this.entityMeta.isChainHead(this.headId)) return false;
+        if (this.profile.topology === "cluster") return getConnectedBodyIds(this.kinetic, this.headId).includes(this.headId);
+        const members = getConnectedComponentPath(this.kinetic, this.headId);
         if (members[0] !== this.headId) return false;
         if (members.length < this.minAliveSegmentCount) return false;
         return true;
     }
-    syncMembersFromGraph(state) {
-        const kinetic = this.kinetic || state.kinetic;
-        const entityRegistry = this.entityRegistry || state.entityRegistry;
-        if (this.profile.topology === "cluster") this.memberIds = getConnectedBodyIds(kinetic, this.headId);
-        else if (this.profile.topology === "chain") this.memberIds = getConnectedComponentPath(kinetic, this.headId);
+    syncMembersFromGraph() {
+        if (this.profile.topology === "cluster") this.memberIds = getConnectedBodyIds(this.kinetic, this.headId);
+        else if (this.profile.topology === "chain") this.memberIds = getConnectedComponentPath(this.kinetic, this.headId);
         else this.memberIds = [this.headId];
         this.memberProps.length = 0;
         for (let i = 0; i < this.memberIds.length; i++) {
-            const prop = entityRegistry.getLive(this.memberIds[i]);
+            const prop = this.entityRegistry.getLive(this.memberIds[i]);
             if (prop) this.memberProps.push(prop);
         }
         return this.memberIds;
@@ -150,7 +148,7 @@ export class AgentInstance {
             this.isHeadRouteValid = false;
             return;
         }
-        const members = this.syncMembersFromGraph(state);
+        const members = this.syncMembersFromGraph();
         const activeIds = new Set(members);
         for (const segmentId of this.segmentWallPressures.keys()) if (!activeIds.has(segmentId)) this.segmentWallPressures.delete(segmentId);
         for (let i = 0; i < this.memberProps.length; i++) {
@@ -210,7 +208,7 @@ export class AgentInstance {
         return [...ids];
     }
     retireAllSegments(state, connectedMembers = null) {
-        const members = connectedMembers ?? this.syncMembersFromGraph(state);
+        const members = connectedMembers ?? this.syncMembersFromGraph();
         const resolvedMembers = this.memberIdsForTeardown(this.session, members);
         this.retireMemberSegments(state, resolvedMembers);
         return resolvedMembers;
@@ -284,7 +282,8 @@ export function createAgentInstance(state, { profileId, head, spawnGroupId }) {
     }
     instance.entityRegistry = state.entityRegistry;
     instance.kinetic = state.kinetic;
-    instance.syncMembersFromGraph(state);
+    instance.entityMeta = getSandboxEntityMeta(state);
+    instance.syncMembersFromGraph();
     instance.autosim = createAgentAutosim(state, instance);
     return instance;
 }
