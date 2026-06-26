@@ -199,30 +199,37 @@ function buildGlassShards(points, apexX, apexY, shardCount, random) {
     let startIndex = 0;
     let lastStartIdx = -1;
     while (startIndex < angles.length) {
-        let accepted = false;
-        let endIndex = startIndex + 1;
-        for (; endIndex <= angles.length; endIndex++) {
-            const a0 = angles[startIndex];
-            const a1 = endIndex < angles.length ? angles[endIndex] : angles[0] + Math.PI * 2;
-            const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
-            if (poly.length < 3) continue;
-            if (acceptGlassShard(poly, points)) {
+        const a0 = angles[startIndex];
+        const a1 = startIndex === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[startIndex + 1];
+        const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
+        if (poly.length < 3) {
+            startIndex++;
+            continue;
+        }
+        if (acceptGlassShard(poly, points)) {
+            shards.push(buildShardGeometry(poly));
+            lastStartIdx = startIndex;
+            startIndex++;
+        } else {
+            let merged = false;
+            if (lastStartIdx !== -1) {
+                const prevA0 = angles[lastStartIdx];
+                const angleDiff = a1 - prevA0;
+                if (angleDiff < Math.PI * 0.95) {
+                    const mergedPoly = wedgePolygonIntersection(points, apexX, apexY, prevA0, a1);
+                    if (mergedPoly.length >= 3) {
+                        shards.pop();
+                        shards.push(buildShardGeometry(mergedPoly));
+                        merged = true;
+                    }
+                }
+            }
+            if (merged) startIndex++;
+            else {
                 shards.push(buildShardGeometry(poly));
                 lastStartIdx = startIndex;
-                accepted = true;
-                break;
+                startIndex++;
             }
-        }
-        if (accepted) startIndex = endIndex;
-        else {
-            if (lastStartIdx !== -1) {
-                shards.pop();
-                const a0 = angles[lastStartIdx];
-                const a1 = angles[0] + Math.PI * 2;
-                const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
-                if (poly.length >= 3) shards.push(buildShardGeometry(poly));
-            }
-            break;
         }
     }
     return shards;

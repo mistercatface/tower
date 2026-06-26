@@ -84,6 +84,7 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
                 sourceSpeed: preSpeed,
                 sourceId: entity ? (entity.id ?? entity._physId) : null,
                 sourceKind: entity ? entity.type : null,
+                sourceMass: entity ? (entity.mass ?? 1) : 1,
             });
         }
     }
@@ -120,6 +121,7 @@ export function applyPendingWallDamage(state, wallDamage) {
                 sourceSpeed: item.sourceSpeed,
                 sourceId: item.sourceId,
                 sourceKind: item.sourceKind,
+                sourceMass: item.sourceMass ?? 1,
             });
         } else {
             const info = getRailWallInfo(grid, target.col, target.row, target.side);
@@ -151,6 +153,7 @@ export function applyPendingWallDamage(state, wallDamage) {
                 sourceSpeed: item.sourceSpeed,
                 sourceId: item.sourceId,
                 sourceKind: item.sourceKind,
+                sourceMass: item.sourceMass ?? 1,
             });
         }
     }
@@ -174,8 +177,11 @@ export function applyPendingWallDamage(state, wallDamage) {
         const prop = acquireWorldProp(desc.x, desc.y, propType, desc.angle);
         applyPropBoxFootprint(prop, desc.width / 2, desc.height / 2);
         prop.height = desc.wallHeight;
-        // Push prop opposite to collision normal
-        const speed = Math.max(20, desc.sourceSpeed * 0.6);
+        // Push prop opposite to collision normal scaled by mass ratio
+        const sourceMass = desc.sourceMass ?? 1;
+        const propMass = prop.mass ?? 1;
+        const massFactor = sourceMass / (sourceMass + propMass);
+        const speed = Math.max(20, desc.sourceSpeed * 0.6 * (massFactor * 2));
         prop.vx = -desc.normalX * speed;
         prop.vy = -desc.normalY * speed;
         prop.angularVelocity = (Math.random() - 0.5) * 2.0;
@@ -185,11 +191,9 @@ export function applyPendingWallDamage(state, wallDamage) {
         // Apply impact fracture
         const impactForce = desc.sourceSpeed * 0.5 + 10;
         const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
-        if (fracture) {
+        if (fracture)
             if (prop.strategy?.fractureMode === "glass") {
-                const safeFrame = (spatialFrame && typeof spatialFrame.evictKineticProp === "function")
-                    ? spatialFrame
-                    : { evictKineticProp() {}, ...spatialFrame };
+                const safeFrame = spatialFrame && typeof spatialFrame.evictKineticProp === "function" ? spatialFrame : { evictKineticProp() {}, ...spatialFrame };
                 removeWorldPropFromState(state, prop, safeFrame);
                 const shards = spawnGlassShatterShards(state, prop, fracture, safeFrame);
                 for (let i = 0; i < shards.length; i++) shards[i].height = prop.height;
@@ -198,7 +202,6 @@ export function applyPendingWallDamage(state, wallDamage) {
                 for (let i = 0; i < shards.length; i++) shards[i].height = prop.height;
                 wakeKineticBody(prop);
             }
-        }
     }
     return commitBounds;
 }
