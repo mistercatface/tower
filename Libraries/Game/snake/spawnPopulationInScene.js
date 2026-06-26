@@ -2,7 +2,7 @@ import { withSeededRandom, shuffleInPlace } from "../../Random/index.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { linkedChainOccupiedCellIndices } from "../../Sandbox/spawnLinkedBallChain.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "./snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 import { getAgentProfile } from "../../AI/agents/agentProfile.js";
@@ -19,12 +19,11 @@ function isValidAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices 
     if (excludeIndices?.has(colRowToIndex(col, row, grid.cols))) return false;
     return true;
 }
-function pickAgentSpawnCell(spawnPool, navWalkable, state, profile, { excludeIndices, rng = Math.random }) {
+function pickAgentSpawnCell(spawnPool, navWalkable, state, profile, config, { excludeIndices, rng = Math.random }) {
     const grid = state.obstacleGrid;
     const segmentCount = profile.segmentCount ?? 1;
     if (segmentCount > 1) {
-        const config = getSnakeGameConfig();
-        const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
+        const spacing = resolveSnakeSegmentSpacing(profile.linkSlack, config.startRadius);
         const growDirX = profile.growDirX ?? -1;
         const growDirY = profile.growDirY ?? 0;
         return pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segmentCount, spacing, growDirX, growDirY, excludeIndices, rng });
@@ -51,7 +50,7 @@ export function spawnPopulationInScene(state, navWalkable, profileId, { excludeI
     let occupied = excludeIndices ? new Set(excludeIndices) : new Set();
     const agents = [];
     for (let i = 0; i < count; i++) {
-        const anchorCell = pickAgentSpawnCell(shuffledSpawnCells, navWalkable, state, profile, { excludeIndices: occupied, rng });
+        const anchorCell = pickAgentSpawnCell(shuffledSpawnCells, navWalkable, state, profile, config, { excludeIndices: occupied, rng });
         if (!anchorCell) break;
         const team = resolveAgentTeamForIndex(profile, i);
         const pack = spawnGameAgentChain(state, anchorCell, profileId, { faction: team.faction });

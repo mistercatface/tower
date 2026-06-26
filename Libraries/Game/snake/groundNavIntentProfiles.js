@@ -7,7 +7,7 @@ import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
-import { getSharedConfig, getSnakeGameConfig, resolveSnakeEatRadius } from "./snakeGameConfig.js";
+import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction, resolveRangedWeapon } from "./rangedCombat.js";
@@ -88,12 +88,12 @@ function buildDecisionContextInto(profileId, decisionContext, input, deps) {
 function resolveAgentRadius(leader) {
     return getCirclePropRadius(leader);
 }
-function resolveEatRadiusValue(config, instance, eatRadius) {
+function resolveEatRadiusValue(instance, eatRadius) {
     if (typeof eatRadius === "function") return eatRadius();
     if (eatRadius != null) return eatRadius;
-    return resolveSnakeEatRadius(config, resolveAgentRadius(instance.head));
+    return instance.eatRadius;
 }
-function defaultSeekArrivalRadius(profileId, profile, config, shared, instance, eatRadius) {
+function defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadius) {
     const huntMode = profile.intent?.huntMode ?? "seek_prey";
     const terminalHoming = shared.terminalHoming;
     return (mode, agent, target) => {
@@ -104,13 +104,12 @@ function defaultSeekArrivalRadius(profileId, profile, config, shared, instance, 
         const huntArrival = Math.max(2, resolveAgentRadius(instance.head) * 0.25);
         if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy" || mode === "shoot_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         if (!isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
-        return { arrivalRadius: resolveEatRadiusValue(config, instance, eatRadius), lockOnTarget: true, terminalHoming };
+        return { arrivalRadius: resolveEatRadiusValue(instance, eatRadius), lockOnTarget: true, terminalHoming };
     };
 }
 function resolveGroundNavIntentDeps(profileId, deps) {
-    const config = getSnakeGameConfig();
-    const profile = getAgentProfile(profileId, config);
-    const shared = getSharedConfig(config);
+    const profile = getAgentProfile(profileId);
+    const shared = getSharedConfig();
     const { state, agentCtx, metabolismApi, metabolism, eatRadius } = deps;
     const instance = deps.instance ?? agentCtx.instance;
     const navWalkable = agentCtx.navWalkable;
@@ -122,7 +121,7 @@ function resolveGroundNavIntentDeps(profileId, deps) {
         visionRange: deps.visionRange ?? shared.visionRange,
         visibleSourceResolvers: deps.visibleSourceResolvers ?? buildVisibleSourceResolvers(profile),
         resolveExploreCell: deps.resolveExploreCell ?? ((seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable)),
-        seekArrivalRadius: deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, config, shared, instance, eatRadius),
+        seekArrivalRadius: deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadius),
         resolveHunger: deps.resolveHunger ?? (metabolismApi && metabolism ? () => metabolismApi.get(metabolism) : null),
         resolveSegmentCount: deps.resolveSegmentCount ?? (state && instance ? () => getConnectedBodyIds(state.kinetic, instance.headId).length : null),
         rng: deps.rng ?? Math.random,
@@ -197,7 +196,7 @@ function buildAdapterOptions(profileId, deps) {
     return adapter;
 }
 export function buildGroundNavIntentAdapterOptions(profileId, deps) {
-    if (!getSnakeGameConfig().agentProfiles?.[profileId]) throw new Error(`unknown ground nav intent profile: ${profileId}`);
+    getAgentProfile(profileId);
     const resolvedDeps = resolveGroundNavIntentDeps(profileId, deps);
     return { ...resolvedDeps, ...buildAdapterOptions(profileId, resolvedDeps) };
 }

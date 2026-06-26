@@ -63,7 +63,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     const defaultCameraTarget = fleeAgentHeads.length > 0 ? fleeAgentHeads[Math.floor(Math.random() * fleeAgentHeads.length)] : scene.snakes[0].chain.head;
     setSandboxCameraTarget(state, defaultCameraTarget, true);
     state.viewport.snapTo(defaultCameraTarget.x, defaultCameraTarget.y);
-    state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config));
+    state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config.wallDamage));
     state.followCamera.registerPickResolver((propId) => {
         const instance = resolveAliveAgentInstanceFromProp(state, propId);
         return instance ? instance.head : null;

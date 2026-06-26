@@ -7,7 +7,7 @@ import { withSeededRandom, shuffleInPlace } from "../../Random/index.js";
 import { applyPlayAreaConfig, generateLabCaverns, generateLabRailMaze, clearSnakeRegionPaddingStrip } from "../../../Apps/Editor/world/mapWorld.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
-import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs, resolveSnakeStartRadius } from "./snakeGameConfig.js";
+import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs } from "./snakeGameConfig.js";
 import { applySnakeChainTint, pickSnakeChainTintHex } from "./snakeChainColor.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
@@ -156,7 +156,7 @@ export function resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount
     const centerCell = resolveSnakePlayableCenterCell(state);
     return pickSnakeChainSpawnCellNearestTo(navWalkable.cells(), navWalkable, state, centerCell.col, centerCell.row, {
         segmentCount,
-        spacing: resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config)),
+        spacing: resolveSnakeSegmentSpacing(config.agentProfiles.snake.linkSlack, config.startRadius),
         growDirX: config.agentProfiles.snake.growDirX,
         growDirY: config.agentProfiles.snake.growDirY,
         excludeIndices,
@@ -168,14 +168,14 @@ async function spawnSnakeCavernMap(state) {
 export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, faction = null, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
     const snake = config.agentProfiles.snake;
-    const startRadius = resolveSnakeStartRadius(config);
+    const startRadius = config.startRadius;
     const resolvedSegmentCount = segmentCount ?? snake.segmentCount;
     const name = pickRandomName(rng);
     const resolvedFaction = faction;
     const tintHex = pickSnakeChainTintHex(resolvedFaction, rng);
     const chain = spawnLinkedBallChain(state, anchorCell, {
         segmentCount: resolvedSegmentCount,
-        spacing: resolveSnakeSegmentSpacing(config, startRadius),
+        spacing: resolveSnakeSegmentSpacing(snake.linkSlack, startRadius),
         segmentRadius: startRadius,
         linkSlack: snake.linkSlack,
         ballType: snake.bodyPropId,
@@ -202,8 +202,13 @@ export async function spawnSnakeCavernScene(state) {
     const spawnCells = navWalkable.cells();
     const snakes = [];
     withSeededRandom(state.mapSeed + config.cavern.mapSeedOffset, () => {
-        const specs = resolveSnakeSpawnSpecs(config, Math.random);
-        const spacing = resolveSnakeSegmentSpacing(config, resolveSnakeStartRadius(config));
+        const specs = resolveSnakeSpawnSpecs(
+            config.agentProfiles.snake.minAliveSegmentCount ?? 3,
+            config.agentProfiles.snake.maxAliveSegmentCount ?? 3,
+            config.agentProfiles.snake.populationCount ?? 0,
+            Math.random,
+        );
+        const spacing = resolveSnakeSegmentSpacing(config.agentProfiles.snake.linkSlack, config.startRadius);
         const growDirX = config.agentProfiles.snake.growDirX;
         const growDirY = config.agentProfiles.snake.growDirY;
         let excludeIndices = null;
