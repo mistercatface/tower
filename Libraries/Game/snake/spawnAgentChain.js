@@ -44,20 +44,18 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
     if (bodyPropId) base.bodyPropId = bodyPropId;
     return base;
 }
-function finalizeChainSpawn(profileId, chain, { growDirX = -1, growDirY = 0, forwardDir = null } = {}) {
+function finalizeChainSpawn(chain, spec, forwardDir = null) {
     const leader = chain.leader;
-    const profile = getAgentProfile(profileId);
-    // Check if agent moves like a ball (single segment facing forward)
-    if (profile.segmentCount === 1) {
+    if (spec.segmentCount === 1) {
         const forward = forwardDir ?? resolveFleeAgentForwardDir();
         leader.facing = Math.atan2(forward.y, forward.x);
-    } else leader.facing = Math.atan2(growDirY, growDirX);
-    return { ...chain, brain: leader, brainIndex: chain.leaderIndex, head: profile.segmentCount === 1 ? leader : chain.head };
+    } else leader.facing = Math.atan2(spec.growDirY, spec.growDirX);
+    return { ...chain, brain: leader, brainIndex: chain.leaderIndex, head: spec.segmentCount === 1 ? leader : chain.head };
 }
 /** Spawn a profile-configured agent chain. */
 export function spawnGameAgentChain(state, anchorCell, profileId, options = {}) {
     const config = state.sandbox.snakeGame.config;
     const spec = buildChainSpawnSpec(profileId, config, options);
     const chain = spawnAgentChain(state, anchorCell, spec);
-    return finalizeChainSpawn(profileId, chain, { growDirX: spec.growDirX, growDirY: spec.growDirY, forwardDir: options.forwardDir });
+    return finalizeChainSpawn(chain, spec, options.forwardDir);
 }
