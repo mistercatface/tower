@@ -9,17 +9,32 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 
 function createTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
-    return {
+    const cavernConfig = createDefaultMapGenBoundsConfig();
+    cavernConfig.boundsCol = 0;
+    cavernConfig.boundsRow = 0;
+    cavernConfig.boundsCols = 32;
+    cavernConfig.boundsRows = 32;
+    const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
+        editor: { cavernConfig },
+        nav: {
+            topology: {
+                canStep: (c0, r0, c1, r1) => !grid.isBlocked(c1, r1),
+            },
+        },
     };
+    wireSnakeTestGame(state);
+    return state;
 }
 
 describe("spawnGameAgentChain", () => {

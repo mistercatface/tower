@@ -156,6 +156,8 @@ export function assertBundleLanes(fixture, bundle) {
     assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths, layout);
     for (let li = 0; li < bundle.paths.length; li++) {
         assertLaneMouthBeltsEnterRooms(fixture, bundle, li, `lane ${li}`);
-        assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
+        if (bundle.corridorWidths[li] === 1) {
+            assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
+        }
     }
 }

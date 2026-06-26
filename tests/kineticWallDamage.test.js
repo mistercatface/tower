@@ -17,7 +17,7 @@ async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
     const navigation = await createWorkerNavigation(grid);
-    const state = { obstacleGrid: grid, sandbox: {}, worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} }, navigation };
+    const state = { obstacleGrid: grid, sandbox: {}, worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} }, nav: navigation };
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return state;
 }

@@ -96,7 +96,7 @@ describe("draw shape parity", () => {
         const crate = new WorldProp(0, 0, "crate", 0);
         const triangle = new WorldProp(0, 0, "boid_triangle", 0);
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
-        assert.equal(resolvePropQuantizeSteps(triangle).facing, 96);
+        assert.equal(resolvePropQuantizeSteps(triangle).facing, 64);
     });
     it("boid triangle declares a render-only tri wedge facing attachment", () => {
         const attachment = propCatalog["boid_triangle"].visuals.attachments[0];

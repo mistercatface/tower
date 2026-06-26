@@ -42,7 +42,7 @@ describe("HpaAbstractGraph Suite", () => {
             return { cost: 5, path: [legQuery.start, legQuery.target] };
         };
 
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = graph.buildExtended(query, 64, resolveLegCost);
+        const { extendedGraph, startTemp, targetTemp, tempLegs } = graph.buildExtended(query, { startRegion: -1, targetRegion: -1 }, 64, resolveLegCost);
 
         assert.equal(extendedGraph.nodeCount, 3);
         assert.equal(extendedGraph.nodeCol[startTemp], 2);

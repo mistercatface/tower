@@ -35,7 +35,7 @@ describe("PromiseWorkerPoolHost", () => {
         await new Promise((resolve) => queueMicrotask(resolve));
         assert.equal(pool.isBusy(0), false);
         assert.equal(pool.getMeta(0), null);
-        assert.deepEqual(completions, [{ workerIndex: 0, id: 7, bitmaps: ["mock-bitmap"], error: undefined }]);
+        assert.deepEqual(completions, [{ workerIndex: 0, id: 7, bitmaps: ["mock-bitmap"], error: undefined, metrics: undefined }]);
     });
 
     it("forEachIdle skips busy workers", () => {

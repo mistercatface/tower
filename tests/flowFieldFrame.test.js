@@ -6,8 +6,25 @@ import { FlowFieldWindow } from "../Libraries/Pathfinding/flowFieldWindow.js";
 import { FlowCacheManager } from "../Libraries/Pathfinding/flowCacheManager.js";
 import { sampleFlowDirection } from "../Libraries/Pathfinding/sampleFlowDirection.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Pathfinding/neighborGridLayout.js";
-import { gridReachabilityBfs } from "../Libraries/Pathfinding/gridReachabilityBfs.js";
 import { FlatGridView } from "../Libraries/Pathfinding/FlatGridView.js";
+import { bfsTypedIndices } from "../Libraries/DataStructures/gridBfs.js";
+
+function gridReachabilityBfs(grid, startIdx, targetIdx, blockedFn) {
+    if (startIdx === targetIdx) return true;
+    const layout = grid.neighborLayout;
+    const neighborGrid = grid.neighbors;
+    const res = bfsTypedIndices(startIdx, grid.cellCount, (idx, visited, queuePush) => {
+        if (idx === targetIdx) return true;
+        const base = layout.cellBase(idx);
+        for (let dir = 0; dir < layout.directionCount; dir++) {
+            const nIdx = neighborGrid[base + dir];
+            if (nIdx !== -1 && !visited[nIdx] && !blockedFn(nIdx)) {
+                queuePush(nIdx);
+            }
+        }
+    });
+    return res === true;
+}
 
 describe("flow field centered grid frame", () => {
     it("converts between world and flow cells", () => {
