@@ -25,19 +25,9 @@ function entityAngle(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
 }
-function shapeSpan(shape) {
-    if (shape.type === "Circle") return shape.radius;
-    return shape.boundingRadius ?? shape.getBoundingRadius?.() ?? 0;
-}
-function ensureBroadphaseCache(entity) {
-    if (!entity.broadphaseBounds) entity.broadphaseBounds = createBroadphaseBounds();
-    if (!entity.broadphaseSnapshot) entity.broadphaseSnapshot = createBroadphaseSnapshot();
-}
-export function invalidateBroadphaseBounds(entity) {
-    entity._broadphaseDirty = true;
-    if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
-}
-function unionLocalHalfExtents(parts) {
+function entityCollisionSpan(entity) {
+    const parts = getEntityCollisionParts(entity);
+    if (parts.length <= 1) return parts[0].getBoundingRadius();
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
@@ -59,13 +49,15 @@ function unionLocalHalfExtents(parts) {
             maxY = Math.max(maxY, verts[i].y);
         }
     }
-    return { x: (maxX - minX) * 0.5, y: (maxY - minY) * 0.5 };
+    return lengthXY((maxX - minX) * 0.5, (maxY - minY) * 0.5);
 }
-function entityCollisionSpan(entity) {
-    const parts = getEntityCollisionParts(entity);
-    if (parts.length <= 1) return shapeSpan(parts[0]);
-    const { x, y } = unionLocalHalfExtents(parts);
-    return lengthXY(x, y);
+function ensureBroadphaseCache(entity) {
+    if (!entity.broadphaseBounds) entity.broadphaseBounds = createBroadphaseBounds();
+    if (!entity.broadphaseSnapshot) entity.broadphaseSnapshot = createBroadphaseSnapshot();
+}
+export function invalidateBroadphaseBounds(entity) {
+    entity._broadphaseDirty = true;
+    if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
 const ENTITY_AABB_SCRATCH = createAabb();
 export function entityBroadphaseAabbInto(out, entity) {
@@ -118,7 +110,7 @@ export function getBroadphaseBounds(entity) {
     const parts = getEntityCollisionParts(entity);
     const multiPart = parts.length > 1;
     const shape = entity.shape;
-    const span = multiPart ? entityCollisionSpan(entity) : shapeSpan(shape);
+    const span = multiPart ? entityCollisionSpan(entity) : shape.getBoundingRadius();
     const shapeKey = multiPart ? "multi" : shape.type;
     if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shapeKey && snapshot.shapeSpan === span) return entity.broadphaseBounds;
     snapshot.x = x;
