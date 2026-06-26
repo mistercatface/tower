@@ -87,7 +87,6 @@ export class AgentInstance {
         return this;
     }
     tick(dtMs, admitted = true) {
-        this._lastTickDtMs = dtMs;
         this.autosim.tick(dtMs, admitted);
     }
     isSteerable() {

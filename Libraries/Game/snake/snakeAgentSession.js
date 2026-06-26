@@ -35,12 +35,12 @@ export function tickAliveAgents(session, state, dtMs) {
     session.orchestrator.endFrame();
 }
 export function syncAgentsAfterPhysics(session, state) {
-    const dtMs = session.lastDtMs ?? 16;
+    const dtMs = session.lastDtMs;
     for (const instance of aliveAgentInstances(session.registry)) {
         const def = session.speciesById.get(instance.profileId);
         instance.syncMembersFromGraph();
         if (def.pressureDiagnostics) instance.updatePressureDiagnostics(state);
-        syncBallAgentFacingAfterPhysics(instance, instance._lastTickDtMs ?? dtMs);
+        syncBallAgentFacingAfterPhysics(instance, dtMs);
     }
 }
 export function stopAllAgents(session) {
