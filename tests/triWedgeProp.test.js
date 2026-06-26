@@ -4,7 +4,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 describe("tri wedge prop", () => {
     it("builds PolygonShape from asset localFootprint", () => {
         const prop = new WorldProp(0, 0, "tri_wedge", 0);
-        const shape = prop.getShape();
+        const shape = prop.shape;
         assert.equal(shape.type, "Polygon");
         assert.equal(shape.vertices.length, 3);
         assert.ok(shape.vertices[0].x < 0);

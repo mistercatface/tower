@@ -23,7 +23,7 @@ describe("kinetic contact pipeline", () => {
         const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
-        assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.getShape(), wedge.x, wedge.y, entityFacing(wedge), wedge.getShape()));
+        assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
         const tick = createKineticTestTick([ball, wedge]);
         resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(kineticContactBuffer.count, 1);

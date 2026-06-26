@@ -117,7 +117,7 @@ export function getBroadphaseBounds(entity) {
     if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle) return entity.broadphaseBounds;
     const parts = getEntityCollisionParts(entity);
     const multiPart = parts.length > 1;
-    const shape = entity.getShape();
+    const shape = entity.shape;
     const span = multiPart ? entityCollisionSpan(entity) : shapeSpan(shape);
     const shapeKey = multiPart ? "multi" : shape.type;
     if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shapeKey && snapshot.shapeSpan === span) return entity.broadphaseBounds;

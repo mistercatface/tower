@@ -13,11 +13,11 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
         const candidates = spatialFrame.collectEntitiesInBounds(floorShape.aabb);
         const next = floorShape._nextOccupants;
         next.clear();
-        const zoneShape = floorShape.getShape ? floorShape.getShape() : floorShape.shape;
+        const zoneShape = floorShape.shape;
         for (let i = 0; i < candidates.length; i++) {
             const entity = candidates[i];
             if (!entity || entity.isDead) continue;
-            const shape = entity.getShape();
+            const shape = entity.shape;
             if (!SatCollision.checkCollision(entity.x, entity.y, entityFacing(entity), shape, floorShape.x, floorShape.y, entityFacing(floorShape), zoneShape)) continue;
             next.add(entity.id);
             if (!floorShape._occupants.has(entity.id)) onEnter(floorShape, entity);

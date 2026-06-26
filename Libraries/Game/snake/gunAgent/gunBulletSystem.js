@@ -25,9 +25,6 @@ export class Projectile extends Entity {
     getCustomSpriteCacheKey() {
         return this.faction ?? "";
     }
-    getShape() {
-        return this.shape;
-    }
     get angle() {
         return this.facing ?? 0;
     }

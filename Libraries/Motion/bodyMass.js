@@ -80,7 +80,7 @@ export function kineticFootprintArea(body) {
         }
         return area;
     }
-    const shape = body.shape ?? body.getShape?.();
+    const shape = body.shape;
     if (shape?.type === "Polygon") return polygonShapeArea(shape);
     if (shape?.type === "Circle") return Math.PI * shape.radius * shape.radius;
     const r = body.radius ?? 0;
@@ -97,7 +97,7 @@ export function kineticInertiaFromBody(body) {
     const m = massFromBody(body);
     const parts = body.collisionParts;
     if (parts?.length > 1) return m * compoundInertiaFactor(parts);
-    const shape = body.shape ?? body.getShape?.();
+    const shape = body.shape;
     if (shape?.type === "Polygon") {
         const inertiaFactor = polygonShapeInertiaFactor(shape);
         return m * inertiaFactor;
@@ -106,7 +106,7 @@ export function kineticInertiaFromBody(body) {
     return (m * r * r) / 2;
 }
 export function syncKineticRigidBody(body) {
-    body.getShape?.();
+    body.strategy?.syncCollisionShape?.(body);
     body.mass = kineticMassFromFootprint(body);
 }
 export function massFromBody(body) {

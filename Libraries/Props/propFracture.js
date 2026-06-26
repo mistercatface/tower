@@ -20,12 +20,12 @@ function isChunkFracture(prop) {
 }
 function glassFootprintArea(prop) {
     if (prop.footprintArea != null) return prop.footprintArea;
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type === "Polygon") return Math.abs(polygonSignedArea2D(shape.vertices));
     return 0;
 }
 function canGlassFractureSplit(prop, minSize) {
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type !== "Polygon") return false;
     const { x, y } = convexFootprintHalfExtents(shape.vertices);
     if (Math.max(x, y) * 2 < minSize) return false;
@@ -36,13 +36,13 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     if (!prop?.strategy?.fracture) return false;
     if (isGlassFracture(prop)) return canGlassFractureSplit(prop, minSize);
     if (!isChunkFracture(prop)) return false;
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     const { x, y } = shape?.type === "Polygon" ? convexFootprintHalfExtents(shape.vertices) : { x: prop.radius, y: prop.radius };
     if (x * 2 < minSize * 2 || y * 2 < minSize * 2) return false;
     return Boolean(prop.chunks && prop.chunks.length > 1);
 }
 function flatVertsFromShape(prop) {
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     const flat = new Float32Array(shape.vertices.length * 2);
     for (let i = 0; i < shape.vertices.length; i++) {
         flat[i * 2] = shape.vertices[i].x;

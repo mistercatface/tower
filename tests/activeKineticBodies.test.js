@@ -23,9 +23,7 @@ function mockKineticBody(isSleeping = false) {
         get momentOfInertia() {
             return this.mass * this.radius * this.radius * 0.5;
         },
-        getShape() {
-            return new CircleShape(radius);
-        },
+        shape: new CircleShape(radius),
     };
 }
 function mockCircleProp(x, y, radius) {
@@ -41,9 +39,7 @@ function mockCircleProp(x, y, radius) {
         get momentOfInertia() {
             return this.mass * this.radius * this.radius * 0.5;
         },
-        getShape() {
-            return new CircleShape(radius);
-        },
+        shape: new CircleShape(radius),
     };
 }
 const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };

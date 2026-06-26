@@ -9,7 +9,7 @@ import { isRotatingEntity, pairBroadphaseOverlap, shouldResolveKineticPair } fro
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
-        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
         if (!collided) return;
         const overlap = SAT_RESULT[0];
         const nx = SAT_RESULT[1];

@@ -48,7 +48,7 @@ function buildVirtualPropStrategy(type) {
 }
 function scaleVirtualPropShape(prop, scale) {
     if (scale === 1) return;
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type === "Circle") {
         prop.shape = new CircleShape(shape.radius * scale);
         prop.radius = prop.shape.radius;

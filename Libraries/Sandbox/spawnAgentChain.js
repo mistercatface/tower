@@ -11,7 +11,7 @@ function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, 
 function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     if (headScaleFn) headScaleFn(prop, segmentRadius);
     else if (segmentRadius != null) {
-        const shape = prop.getShape?.() ?? prop.shape;
+        const shape = prop.shape;
         if (shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, segmentRadius);
         else setCirclePropRadius(prop, segmentRadius);
     }

@@ -1,5 +1,4 @@
 import { hasLineOfSight } from "../Libraries/Spatial/query/lineOfSight.js";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 let nextEntityId = 1;
 export class Entity {
     constructor(x, y, angle = 0, isDead = false) {
@@ -23,10 +22,6 @@ export class Entity {
         this.shape = null;
     }
     render(ctx, ...caches) {}
-    getShape() {
-        if (!this.shape) this.shape = new CircleShape(this.radius || 0);
-        return this.shape;
-    }
     getBoundingRadius() {
         if (this.shape) return this.shape.getBoundingRadius();
         return this.radius || 0;

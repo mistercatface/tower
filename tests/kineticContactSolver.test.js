@@ -11,7 +11,7 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { dotXY } from "../Libraries/Math/Vec2.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 function pairStillOverlaps(a, b) {
-    return SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+    return SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
 }
 function slabPairStillOverlaps(a, b) {
     return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
@@ -19,7 +19,7 @@ function slabPairStillOverlaps(a, b) {
 function separatePairUntilClear(a, b, maxPasses = 8) {
     let last = null;
     for (let pass = 0; pass < maxPasses; pass++) {
-        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
         if (!collided) return last;
         last = {
             overlap: SAT_RESULT[0],

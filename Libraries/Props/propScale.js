@@ -3,13 +3,13 @@ import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphas
 import { kineticMassFromFootprint, syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 export function getPolygonPropBoundingRadius(prop) {
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
     return prop.radius ?? null;
 }
 export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type !== "Polygon") throw new Error(`scalePolygonPropFootprint requires a polygon prop, got ${shape?.type ?? "none"}`);
     const scaled = shape.vertices.map((vertex) => ({ x: vertex.x * scale, y: vertex.y * scale }));
     prop.shape = new PolygonShape(scaled);
@@ -29,7 +29,7 @@ export function setPolygonPropBoundingRadius(prop, boundingRadius) {
     scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
 }
 export function getCirclePropRadius(prop) {
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type === "Circle") return shape.radius;
     return prop.radius ?? null;
 }
@@ -39,7 +39,6 @@ export function setCirclePropRadius(prop, radius) {
         prop.strategy.radius = radius;
         prop.strategy.syncCollisionShape(prop);
         prop.stateTimer = (prop.stateTimer ?? 0) + 1;
-        delete prop._cachedShape;
         invalidateBroadphaseBounds(prop);
         if (prop.strategy?.isKinetic) {
             prop.mass = kineticMassFromFootprint(prop);
@@ -47,7 +46,7 @@ export function setCirclePropRadius(prop, radius) {
         }
         return;
     }
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type !== "Circle") throw new Error(`setCirclePropRadius requires a circle prop, got ${shape?.type ?? "none"}`);
     prop.shape = new CircleShape(radius);
     prop.radius = radius;

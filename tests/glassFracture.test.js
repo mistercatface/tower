@@ -67,7 +67,7 @@ function makeOverlappingGlassShards() {
     b._glassFractureCooldown = 0;
     a.vx = 120;
     b.vx = -120;
-    assert.ok(SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape()));
+    assert.ok(SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape));
     return { a, b };
 }
 
@@ -223,7 +223,7 @@ describe("glass fracture", () => {
         glass.vx = 120;
         crate.vx = -40;
         const tick = createKineticTestTick([glass, crate]);
-        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.getShape(), crate.x, crate.y, entityFacing(crate), crate.getShape()));
+        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.shape, crate.x, crate.y, entityFacing(crate), crate.shape));
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveGlassPropCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
@@ -235,7 +235,7 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(glass, 24, 18);
         glass.vx = 0;
         ball.vx = -200;
-        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.getShape(), ball.x, ball.y, entityFacing(ball), ball.getShape()));
+        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, { resolveWalls() {} });
         const count = liveGlassPropCount(tick.world);

@@ -124,7 +124,7 @@ export class SpatialFrameCore {
     /**
      * Broadphase around a query anchor (e.g. zone centroid + shape). Does not require insertion.
      *
-     * @param {{ x: number, y: number, getShape?: () => import("../collision/Shapes.js").Shape }} anchor
+     * @param {{ x: number, y: number, shape?: import("../collision/Shapes.js").Shape }} anchor
      * @param {object | null} [exclude]
      * @returns {object[]}
      */

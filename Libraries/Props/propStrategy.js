@@ -24,14 +24,11 @@ export function initWorldPropShape(prop) {
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
             if (typeof part.getBoundingRadius === "function") return part;
             if (part.type === "Polygon") return new PolygonShape(part.vertices.map((v) => ({ x: v.x, y: v.y })));
-
             if (part.type === "Circle") return new CircleShape(part.radius);
-
             throw new Error(`Unknown collision part type: ${part.type}`);
         });
         let maxR = 0;
         for (let i = 0; i < prop.collisionParts.length; i++) maxR = Math.max(maxR, prop.collisionParts[i].getBoundingRadius());
-
         prop.radius = maxR;
         prop.shape = prop.collisionParts[0];
         return;
@@ -48,13 +45,13 @@ export function initWorldPropShape(prop) {
     prop.shape = new CircleShape(prop.radius);
 }
 export function propFootprintHalfExtents(prop) {
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type === "Polygon") return convexFootprintHalfExtents(shape.vertices);
     const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? prop.strategy?.radius ?? 0);
     return { x: radius, y: radius };
 }
 function propShapeFootprintKey(prop) {
-    const shape = prop.getShape?.() ?? prop.shape;
+    const shape = prop.shape;
     if (shape?.type === "Polygon") {
         let key = shape.vertices.map((v) => `${Math.round(v.x)},${Math.round(v.y)}`).join("_");
         if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;

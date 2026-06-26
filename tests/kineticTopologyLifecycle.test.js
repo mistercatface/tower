@@ -98,7 +98,7 @@ describe("kinetic topology lifecycle", () => {
         const ball = new WorldProp(18, 0, "ball", 0);
         applyPropBoxFootprint(glass, 24, 18);
         ball.vx = -200;
-        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.getShape(), ball.x, ball.y, entityFacing(ball), ball.getShape()));
+        assert.ok(SatCollision.checkCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, { resolveWalls() {} });
         assert.ok(tick.world.worldProps.length > 2);

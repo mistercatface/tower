@@ -45,17 +45,6 @@ export class WorldProp extends Entity {
         if (this.strategy?.isKinetic) wakeKineticBody(this);
         transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
     }
-    getShape() {
-        if (typeof this.strategy.syncCollisionShape === "function") {
-            if (this._cachedShapeRevision !== this.stateTimer || !this._cachedShape) {
-                this._cachedShape = this.strategy.syncCollisionShape(this);
-                this._cachedShapeRevision = this.stateTimer;
-                if (!this.collisionParts?.length) this.radius = this._cachedShape.getBoundingRadius();
-            }
-            return this._cachedShape;
-        }
-        return this.shape;
-    }
     getCollisionParts() {
         return getEntityCollisionParts(this);
     }

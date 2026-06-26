@@ -36,9 +36,7 @@ function mockBall(x, y) {
         y,
         type: "ball",
         strategy: { isKinetic: true },
-        getShape() {
-            return new CircleShape(4);
-        },
+        shape: new CircleShape(4),
     };
 }
 function createState(props) {
@@ -100,9 +98,7 @@ describe("chain links", () => {
             type: "tri_wedge",
             radius: 10,
             strategy: { isKinetic: true, canChain: true },
-            getShape() {
-                return new CircleShape(10);
-            },
+            shape: new CircleShape(10),
         };
         const state = createState([head, wedge]);
         assert.ok(addChainLink(state, head.id, wedge.id, 1.05));

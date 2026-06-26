@@ -10,7 +10,7 @@ import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from 
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
-        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.getShape(), b.x, b.y, entityFacing(b), b.getShape());
+        const collided = SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
         if (!collided) return;
         const overlap = SAT_RESULT[0];
         const nx = SAT_RESULT[1];

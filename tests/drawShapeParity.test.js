@@ -35,7 +35,7 @@ function createMockCtx() {
 describe("draw shape parity", () => {
     it("hex block shares polygon sim and draw footprint with six vertices", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
-        const shape = prop.getShape();
+        const shape = prop.shape;
         assert.equal(shape.type, "Polygon");
         assert.equal(shape.vertices.length, 6);
         assert.ok(Math.abs(polygonSignedArea2D(shape.vertices)) > 160);
@@ -75,8 +75,8 @@ describe("draw shape parity", () => {
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
         draw(createMockCtx(), prop, viewport);
-        assert.equal(prop.getShape().vertices[1].x, 12);
-        assert.equal(prop.getShape().vertices[2].y, 5);
+        assert.equal(prop.shape.vertices[1].x, 12);
+        assert.equal(prop.shape.vertices[2].y, 5);
     });
     it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
         const prop = new WorldProp(0, 0, "ball", 0);

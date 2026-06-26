@@ -15,13 +15,13 @@ function mockWallSegment(x, y, size = 16) {
 }
 function shapeOverlapsWall(prop, wall) {
     const segShape = ensureWallSegmentPolygonShape(wall);
-    return SatCollision.checkCollision(prop.x, prop.y, entityFacing(prop), prop.getShape(), wall.x, wall.y, entityFacing(wall), segShape);
+    return SatCollision.checkCollision(prop.x, prop.y, entityFacing(prop), prop.shape, wall.x, wall.y, entityFacing(wall), segShape);
 }
 function resolveWallUntilClear(prop, segments, maxPasses = 6) {
     const wp = prop.strategy?.wallPhysics;
     for (let pass = 0; pass < maxPasses; pass++) {
         if (!shapeOverlapsWall(prop, segments[0])) return;
-        resolveBodyAgainstWallSegments(prop, prop.getShape(), segments, { restitution: wp?.restitution ?? 0, friction: wp?.friction ?? 0.9 });
+        resolveBodyAgainstWallSegments(prop, prop.shape, segments, { restitution: wp?.restitution ?? 0, friction: wp?.friction ?? 0.9 });
     }
 }
 function bar16x8(x, y) {
@@ -36,7 +36,7 @@ describe("polygon wall resolution", () => {
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
-        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.getShape(), [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction });
+        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction });
         assert.ok(collided);
         assert.ok(hits.length > 0);
         assert.ok(hits[0].normalX > 0.9);
@@ -50,7 +50,7 @@ describe("polygon wall resolution", () => {
         const floor = mockWallSegment(0, 16);
         assert.ok(shapeOverlapsWall(wedge, floor));
         resolveWallUntilClear(wedge, [floor]);
-        const collided = SatCollision.checkCollision(wedge.x, wedge.y, entityFacing(wedge), wedge.getShape(), floor.x, floor.y, entityFacing(floor), ensureWallSegmentPolygonShape(floor));
+        const collided = SatCollision.checkCollision(wedge.x, wedge.y, entityFacing(wedge), wedge.shape, floor.x, floor.y, entityFacing(floor), ensureWallSegmentPolygonShape(floor));
         if (collided) assert.ok(SAT_RESULT[2] < -0.5 || dotXY(SAT_RESULT[1], SAT_RESULT[2], 0, wedge.y - floor.y) > 0);
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });
@@ -59,7 +59,7 @@ describe("polygon wall resolution", () => {
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
-        resolveBodyAgainstWallSegments(bar, bar.getShape(), [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction });
+        resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction });
         assert.ok(bar.vx > -40);
     });
     it("collision pipeline resolves resting polygon at zero linear speed", () => {
@@ -69,7 +69,7 @@ describe("polygon wall resolution", () => {
         bar._physId = 0;
         writeActiveKineticBodySlabPose(bar);
         writeStaticKineticSlabSlot(bar);
-        writeBroadphaseFromBounds(bar._physId, bar.getShape());
+        writeBroadphaseFromBounds(bar._physId, bar.shape);
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();

@@ -33,11 +33,8 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
         get momentOfInertia() {
             return this.mass * this.radius * this.radius * 0.5;
         },
-        getShape() {
-            return shape ?? new CircleShape(this.radius);
-        },
+        shape: shape ?? new CircleShape(radius),
     };
-    if (shape) body.shape = shape;
     if (options.facing != null) body.facing = options.facing;
     if (options.isDead) body.isDead = true;
     body.currentState = options.currentState === true || options.currentState == null ? {} : options.currentState;

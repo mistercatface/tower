@@ -8,7 +8,7 @@ export const LIBRARY_DEFAULT_BAKE_PIXEL_SIZE = 32;
  */
 export function resolveBodyRadius(body, fallback = LIBRARY_DEFAULT_BODY_RADIUS) {
     if (!body) return fallback;
-    const shape = body.shape ?? body.getShape?.();
+    const shape = body.shape;
     if (shape?.type === "Circle") return shape.radius;
     return body._baseRadius ?? body.radius ?? fallback;
 }

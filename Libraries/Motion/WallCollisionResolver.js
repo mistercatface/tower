@@ -20,7 +20,7 @@ export class WallCollisionResolver {
             return false;
         }
         const wp = entity.strategy?.wallPhysics;
-        const parts = entity.getCollisionParts?.() ?? [entity.getShape()];
+        const parts = entity.getCollisionParts?.() ?? [entity.shape];
         let collided = false;
         /** @type {import("../Spatial/collision/wallResolution.js").WallHit[]} */
         const hits = [];

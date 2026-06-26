@@ -8,14 +8,12 @@ function boxProp(x, y, hx, hy, facing = 0) {
         y,
         facing,
         radius: Math.hypot(hx, hy),
-        getShape() {
-            return new PolygonShape([
-                { x: -hx, y: -hy },
-                { x: hx, y: -hy },
-                { x: hx, y: hy },
-                { x: -hx, y: hy },
-            ]);
-        },
+        shape: new PolygonShape([
+            { x: -hx, y: -hy },
+            { x: hx, y: -hy },
+            { x: hx, y: hy },
+            { x: -hx, y: hy },
+        ]),
     };
 }
 describe("worldPropContainsPoint", () => {
@@ -39,9 +37,7 @@ describe("worldPropContainsPoint", () => {
             x: 0,
             y: 0,
             radius: 5,
-            getShape() {
-                return { type: "Circle", radius: 5 };
-            },
+            shape: { type: "Circle", radius: 5 },
         };
         assert.equal(worldPropContainsPoint(prop, 4, 0, 0), true);
         assert.equal(worldPropContainsPoint(prop, 6, 0, 0), false);

@@ -5,7 +5,7 @@ import propCatalog from "../../../Assets/props/index.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, viewport) => {
-        const shape = prop.shape ?? prop.getShape?.();
+        const shape = prop.shape;
         if (shape?.type !== "Polygon") return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
         const height = prop.height ?? world?.height ?? 12;
