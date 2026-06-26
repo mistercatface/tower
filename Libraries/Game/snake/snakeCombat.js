@@ -64,11 +64,11 @@ function tryResolveFleeBallHeadRam(state, spatialFrame, contacts, i, instanceA, 
     const victims = classifyFleeRamVictims(contacts, i);
     if (victims.killA) {
         const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
-        instanceA.die(state, null, impactA);
+        instanceA.die(state, impactA);
     }
     if (victims.killB) {
         const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
-        instanceB.die(state, null, impactB);
+        instanceB.die(state, impactB);
     }
     return true;
 }
@@ -85,11 +85,11 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
         const victims = classifyFleeRamVictims(contacts, i);
         if (victims.killA) {
             const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
-            instanceA.die(state, null, impactA);
+            instanceA.die(state, impactA);
         }
         if (victims.killB) {
             const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
-            instanceB.die(state, null, impactB);
+            instanceB.die(state, impactB);
         }
         return victims.killA || victims.killB;
     }
@@ -98,17 +98,17 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
         const victims = classifyFleeRamVictims(contacts, i);
         if (victims.killA) {
             const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
-            instanceA.die(state, null, impactA);
+            instanceA.die(state, impactA);
         }
         if (victims.killB) {
             const impactB = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyB.id, bodyB, relSpeed);
-            instanceB.die(state, null, impactB);
+            instanceB.die(state, impactB);
         }
         return victims.killA || victims.killB;
     }
     const deathImpact = snakeDeathImpactFromContact(spatialFrame, contacts, i, bLeader ? bodyB.id : bodyA.id, bLeader ? bodyB : bodyA, relSpeed);
-    if (bLeader) instanceB.die(state, null, deathImpact);
-    else instanceA.die(state, null, deathImpact);
+    if (bLeader) instanceB.die(state, deathImpact);
+    else instanceA.die(state, deathImpact);
     return true;
 }
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {

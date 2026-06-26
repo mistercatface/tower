@@ -54,11 +54,11 @@ export class AgentInstance {
     get headId() {
         return this.head.id;
     }
-    start(state) {
+    start() {
         this.grantSteeringLease();
         this.autosim.start();
     }
-    stopSteering(state) {
+    stopSteering() {
         this.revokeSteeringLease();
         this.autosim.stop();
     }
@@ -83,10 +83,10 @@ export class AgentInstance {
     }
     kill(state, members = null, deathImpact = null) {
         if (!isChainCombatTopology(this.combatTraits)) return null;
-        this.die(state, members, deathImpact);
+        this.die(state, deathImpact);
         return this;
     }
-    tick(state, dtMs, admitted = true) {
+    tick(dtMs, admitted = true) {
         this._lastTickDtMs = dtMs;
         this.autosim.tick(dtMs, admitted);
     }
@@ -220,7 +220,7 @@ export class AgentInstance {
         markSnakeSegmentsFracturable(state, tailIds);
         registerInertAgent(this.session.registry, tailIds[0], tailIds, this.headId);
     }
-    die(state, members = null, deathImpact = null) {
+    die(state, deathImpact = null) {
         this.session.speciesById.get(this.profileId).die(this, state, deathImpact);
     }
     splitAtStruckSegment(state, struckSegmentId, victimMembers = null, deathImpact = null) {
@@ -235,7 +235,7 @@ export class AgentInstance {
         const tailIds = members.slice(strikeIndex + 1);
         this.severInertTail(state, tailIds);
         this.memberIds = aliveIds;
-        if (aliveIds.length < this.minAliveSegmentCount) this.die(state, aliveIds, deathImpact);
+        if (aliveIds.length < this.minAliveSegmentCount) this.die(state, deathImpact);
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
     receiveBodyStrike(state, struckSegmentId, strikerInstance, strikerBodyId, relSpeed, deathImpact, victimMembers = null) {
@@ -268,7 +268,7 @@ export class AgentInstance {
         const speedOk = chainVsBallPrey || relSpeed >= this.splitImpulseThreshold;
         if (predatorStrikes && speedOk)
             if (!shouldSkipPreyHeadRamKill(predatorTraits, preyTraits, struckBodyId, this.headId)) {
-                this.die(state, null, deathImpact);
+                this.die(state, deathImpact);
                 return true;
             }
         return false;

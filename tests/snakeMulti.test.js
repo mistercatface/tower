@@ -7,9 +7,6 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
-import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
-import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
-import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/hex.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
@@ -59,7 +56,7 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const tintHex = getSnakeGameConfig().agentProfiles.snake.teams[0].color;
-        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.25 });
+        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3.25 });
         assert.equal(pack.tintHex, tintHex);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
         assert.equal(memberIds.length, 3);
@@ -74,8 +71,8 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const teams = getSnakeGameConfig().agentProfiles.snake.teams;
-        const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, teamIndex: 0, rng: () => 0.1 });
-        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, teamIndex: 1, excludeIndices: first.occupiedIndices, rng: () => 0.9 });
+        const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, teamIndex: 0.1 });
+        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, teamIndex: 1, excludeIndices: first.occupiedIndices.9 });
         assert.equal(first.tintHex, teams[0].color);
         assert.equal(second.tintHex, teams[1].color);
     });
@@ -84,19 +81,10 @@ describe("snake multi-spawn", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
+        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3.5 });
         wireSnakeGameForHead(state, pack.chain.head.id, pack.chain.spawnGroupId);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
-        const behaviorById = new Map([
-            [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
-            [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
-        ]);
-        const autosim = createWiredSnakeAutosim(state, {
-            headId: pack.chain.head.id,
-            behaviorById,
-            eatRadius: 20,
-            rng: () => 0,
-        });
+        const autosim = createWiredSnakeAutosim(state, { headId: pack.chain.head.id, eatRadius: 20 });
         autosim.start();
         pack.chain.head.x = food.x;
         pack.chain.head.y = food.y;

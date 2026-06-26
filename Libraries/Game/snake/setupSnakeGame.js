@@ -31,7 +31,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const registry = createAgentPopulationRegistry();
-    const session = createSnakeAgentSession(state, { registry, navWalkable: scene.navWalkable, speciesById: SNAKE_GAME_SPECIES });
+    const session = createSnakeAgentSession({ registry, navWalkable: scene.navWalkable, speciesById: SNAKE_GAME_SPECIES });
     state.sandbox.snakeGame = session;
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
@@ -39,7 +39,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     let spawnExclude = new Set();
     const spawnPlan = [];
     // Add snakes
-    spawnPlan.push({ species: "snake", spawnCtxs: scene.snakes.map((s) => ({ head: s.chain.head, spawnGroupId: s.chain.spawnGroupId, navWalkable: scene.navWalkable })) });
+    spawnPlan.push({ species: "snake", spawnCtxs: scene.snakes.map((s) => ({ head: s.chain.head, spawnGroupId: s.chain.spawnGroupId })) });
     for (let i = 0; i < scene.snakes.length; i++) {
         const occupied = scene.snakes[i].occupiedIndices;
         if (occupied) for (const idx of occupied) spawnExclude.add(idx);
@@ -48,7 +48,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     for (const profileId of Object.keys(config.agentProfiles)) {
         if (profileId === "snake") continue;
         const agents = spawnPopulationScene(state, scene.navWalkable, profileId, spawnExclude.size ? spawnExclude : null);
-        spawnPlan.push({ species: profileId, spawnCtxs: agents.map((a) => ({ head: a.pack.brain ?? a.pack.head, spawnGroupId: a.pack.spawnGroupId, navWalkable: scene.navWalkable })) });
+        spawnPlan.push({ species: profileId, spawnCtxs: agents.map((a) => ({ head: a.pack.brain ?? a.pack.head, spawnGroupId: a.pack.spawnGroupId })) });
         for (let i = 0; i < agents.length; i++) {
             const occupied = agents[i].occupiedIndices;
             if (occupied) for (const idx of occupied) spawnExclude.add(idx);

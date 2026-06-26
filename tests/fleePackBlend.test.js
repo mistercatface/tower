@@ -65,7 +65,7 @@ describe("flee pack blend (4d)", () => {
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
-        instance.start(state);
+        instance.start();
         const predator = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId });
         fleePack.head.facing = 0;
@@ -74,7 +74,7 @@ describe("flee pack blend (4d)", () => {
         predator.chain.head.x = fleePack.head.x + 32;
         predator.chain.head.y = fleePack.head.y;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick(state, 16);
+        instance.tick( 16);
         assert.equal(instance.intent.getMode(), "flee");
         const snapshot = instance.intent.getDecisionContext();
         assert.ok((snapshot.allyState?.count ?? 0) >= 1);

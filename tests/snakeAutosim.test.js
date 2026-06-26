@@ -8,9 +8,6 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
-import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
-import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { FRAME_MS } from "./frameMs.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
@@ -46,13 +43,6 @@ function createSnakeAutosimTestState(cols = 32, rows = 32) {
     };
 }
 
-function snakeBehaviorById(state) {
-    return new Map([
-        [HPA_GROUND_NAV_BEHAVIOR_ID, createHpaGroundNavBehavior(state)],
-        [DIRECT_GROUND_NAV_BEHAVIOR_ID, createDirectGroundNavBehavior(state)],
-    ]);
-}
-
 function snakeChainOptions() {
     const config = getSnakeGameConfig();
     return {
@@ -75,13 +65,7 @@ describe("snakeAutosim", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
-        const behaviorById = snakeBehaviorById(state);
-        const autosim = createWiredSnakeAutosim(state, {
-            headId: chain.head.id,
-            behaviorById,
-            eatRadius: 20,
-            rng: () => 0,
-        });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20 });
         autosim.start();
         chain.head.x = food.x;
         chain.head.y = food.y;
@@ -100,13 +84,7 @@ describe("snakeAutosim", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
-        const behaviorById = snakeBehaviorById(state);
-        const autosim = createWiredSnakeAutosim(state, {
-            headId: chain.head.id,
-            behaviorById,
-            eatRadius: 20,
-            rng: () => 0,
-        });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20 });
         autosim.start();
         chain.head.x = food.x;
         chain.head.y = food.y;
@@ -122,11 +100,7 @@ describe("snakeAutosim", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, snakeChainOptions());
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
-        const autosim = createWiredSnakeAutosim(state, {
-            headId: chain.head.id,
-            eatRadius: 20,
-            rng: () => 0,
-        });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20 });
         autosim.start();
         chain.head.x = food.x;
         chain.head.y = food.y;
@@ -144,7 +118,7 @@ describe("snakeAutosim", () => {
         const chain = spawnLinkedBallChain(state, { col: 10, row: 10 }, { ...snakeChainOptions(), segmentCount: 4 });
         wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
-        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20 });
         autosim.start();
         removeSandboxWorldProp(state, chain.tail);
         assert.equal(getChainMemberIds(state, chain.head.id).length, 3);

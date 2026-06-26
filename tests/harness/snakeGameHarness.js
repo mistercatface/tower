@@ -63,10 +63,18 @@ export function snakeGameNavWalkable(state) {
 export function stubSnakeAutosim() {
     return { start() {}, stop() {} };
 }
+export function bindAgentInstanceSession(instance, snakeGame, state) {
+    instance.session = snakeGame;
+    instance.registry = snakeGame.registry;
+    instance.navWalkable = snakeGame.navWalkable;
+    instance.entityRegistry = state.entityRegistry;
+    instance.kinetic = state.kinetic;
+}
 export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
     const resolvedAutosim = autosim ?? stubSnakeAutosim();
     const head = state.entityRegistry.getLive(headId);
     const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
+    bindAgentInstanceSession(instance, snakeGame, state);
     instance.syncMembersFromGraph(state);
     registerAgentInstance(snakeGame, "snake", instance);
     instance.grantSteeringLease();
@@ -76,7 +84,7 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
     if (state.nav?.session) wireSnakeTestNavSession(state);
     const registry = createAgentPopulationRegistry();
     const resolvedNavWalkable = navWalkable ?? createSnakeNavWalkable(state);
-    const snakeGame = createSnakeAgentSession(state, { registry, navWalkable: resolvedNavWalkable, speciesById: SNAKE_GAME_SPECIES });
+    const snakeGame = createSnakeAgentSession({ registry, navWalkable: resolvedNavWalkable, speciesById: SNAKE_GAME_SPECIES });
     state.sandbox.snakeGame = snakeGame;
     for (const snake of snakes) {
         const autosim = snake.autosim ?? stubSnakeAutosim();
@@ -84,7 +92,7 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
     }
     return { registry, snakeGame };
 }
-export function createWiredSnakeAutosim(state, { headId, behaviorById, eatRadius = null, initialFoodFraction = null, rng = null }) {
+export function createWiredSnakeAutosim(state, { headId, eatRadius = null, initialFoodFraction = null }) {
     wireSnakeTestNavSession(state);
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     if (!instance) throw new Error(`createWiredSnakeAutosim: missing agent instance ${headId}`);
@@ -138,7 +146,7 @@ export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     ]);
     state.sandbox.controller = { getBehaviorByIdMap: () => behaviorById };
     wireSnakeTestNavSession(state);
-    return { state, behaviorById, hpaBehavior };
+    return { state, hpaBehavior };
 }
 export function wireSnakeGameForHead(state, headId, spawnGroupId = `test:${headId}`) {
     return wireSnakeTestGame(state, [{ headId, spawnGroupId }]).registry;
@@ -165,7 +173,7 @@ export async function buildSnakeGameSession(state) {
     wireSnakeGameForHead(state, chain.head.id, chain.spawnGroupId);
     const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
     const behaviorById = state.sandbox.controller.getBehaviorByIdMap();
-    const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, behaviorById, eatRadius: 20, rng: () => 0 });
+    const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20 });
     autosim.start();
     return {
         food,

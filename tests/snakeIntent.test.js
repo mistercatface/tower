@@ -87,7 +87,7 @@ describe("explore steering", () => {
             { col: 11, row: 10 },
             { col: 20, row: 10 },
         ];
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0.75 });
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells.75 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
     });
@@ -153,7 +153,7 @@ describe("snake intent integration", () => {
         stampWall(state.obstacleGrid, 7, 8);
         stampWall(state.obstacleGrid, 8, 8);
         await state.nav.commitEdit({ startCol: 4, endCol: 9, startRow: 7, endRow: 9 });
-        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20, rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: chain.head.id, eatRadius: 20 });
         autosim.start();
         assert.equal(autosim.getMode(), "explore");
         assert.ok(autosim.getDestination());
@@ -179,7 +179,7 @@ describe("snake intent integration", () => {
         small.head.facing = 0;
         large.head.x = small.head.x + 80;
         large.head.y = small.head.y;
-        const autosim = createWiredSnakeAutosim(state, { headId: small.head.id, behaviorById: snakeBehaviors(state), rng: () => 0 });
+        const autosim = createWiredSnakeAutosim(state, { headId: small.head.id });
         autosim.start();
         autosim.tick(FRAME_MS);
         assert.equal(autosim.getMode(), "flee");

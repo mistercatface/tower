@@ -42,7 +42,7 @@ describe("focused agent debug overlays", () => {
         const snakeGame = state.sandbox.snakeGame;
         const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
         const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
-        const autosim = createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
+        const autosim = createWiredSnakeAutosim(state, { headId: snake.chain.head.id });
         autosim.start();
         const prey = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId });
@@ -72,7 +72,7 @@ describe("focused agent debug overlays", () => {
         const snakeGame = state.sandbox.snakeGame;
         const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
         const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
-        createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
+        createWiredSnakeAutosim(state, { headId: snake.chain.head.id });
         spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 3, faction: "blue", exportType: "snake" });
         state.followCamera.focus(snakeInstance.head);
         const simTickBefore = snakeGame.simTick;
@@ -91,7 +91,7 @@ describe("focused agent debug overlays", () => {
         const snakeGame = state.sandbox.snakeGame;
         const snake = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 4, faction: "red", exportType: "snake" });
         const snakeInstance = registerSnakeTestInstance(state, snakeGame, { headId: snake.chain.head.id, spawnGroupId: snake.chain.spawnGroupId });
-        createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
+        createWiredSnakeAutosim(state, { headId: snake.chain.head.id });
         state.followCamera.focus(snakeInstance.head);
         const commands = [];
         const instance = snakeGame.instancesByHeadId.get(state.followCamera.targetProp.id);

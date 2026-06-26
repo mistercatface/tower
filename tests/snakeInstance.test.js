@@ -15,7 +15,7 @@ import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { AgentInstance, createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
-import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
+import { createSnakeNavWalkable, bindAgentInstanceSession } from "./harness/snakeGameHarness.js";
 
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -66,7 +66,7 @@ describe("AgentInstance (snake)", () => {
             autosim: { stop() { delete head._groundRollDrive; } },
             lifecycle: "alive",
         });
-        instance.stopSteering(state);
+        instance.stopSteering();
         assert.equal(head._groundRollDrive, undefined);
         assert.ok(head._snakeSteering);
         assert.notEqual(head._snakeSteering.epoch, instance.steeringEpoch);
@@ -79,7 +79,7 @@ describe("AgentInstance (snake)", () => {
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const head = pack.chain.head;
         const registry = createAgentPopulationRegistry();
-        const session = createSnakeAgentSession(state, { registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
+        const session = createSnakeAgentSession({ registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
         state.sandbox.snakeGame = session;
         const instance = new AgentInstance({
             profileId: AGENT_PROFILE.snake,
@@ -89,6 +89,7 @@ describe("AgentInstance (snake)", () => {
             lifecycle: "alive",
         });
         registerAgentInstance(state.sandbox.snakeGame, "snake", instance);
+        bindAgentInstanceSession(instance, session, state);
         instance.grantSteeringLease();
         steerRollToward(head, 1, 0, { accel: 600, maxSpeed: 180 }, state);
         assert.ok(head._groundRollDrive);
@@ -109,7 +110,7 @@ describe("AgentInstance (snake)", () => {
         const head = pack.chain.head;
         const headId = pack.chain.head.id;
         const registry = createAgentPopulationRegistry();
-        const session = createSnakeAgentSession(state, { registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
+        const session = createSnakeAgentSession({ registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
         state.sandbox.snakeGame = session;
         const instance = new AgentInstance({
             profileId: AGENT_PROFILE.snake,
@@ -120,6 +121,7 @@ describe("AgentInstance (snake)", () => {
             memberIds: getOrderedChainMemberIds(state, headId),
         });
         registerAgentInstance(state.sandbox.snakeGame, "snake", instance);
+        bindAgentInstanceSession(instance, session, state);
         const members = getOrderedChainMemberIds(state, headId);
         for (let i = 0; i < members.length; i++) {
             const prop = state.entityRegistry.getLive(members[i]);
@@ -138,7 +140,7 @@ describe("AgentInstance (snake)", () => {
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const registry = createAgentPopulationRegistry();
-        const session = createSnakeAgentSession(state, { registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
+        const session = createSnakeAgentSession({ registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
         state.sandbox.snakeGame = session;
         const instance = createAgentInstance(state, {
             profileId: AGENT_PROFILE.snake,
@@ -161,7 +163,7 @@ describe("AgentInstance (snake)", () => {
         const state = createTestState();
         const pack = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
         const registry = createAgentPopulationRegistry();
-        const session = createSnakeAgentSession(state, { registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
+        const session = createSnakeAgentSession({ registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
         state.sandbox.snakeGame = session;
         const instance = new AgentInstance({
             profileId: AGENT_PROFILE.snake,
@@ -171,6 +173,7 @@ describe("AgentInstance (snake)", () => {
             lifecycle: "alive",
         });
         registerAgentInstance(state.sandbox.snakeGame, "snake", instance);
+        bindAgentInstanceSession(instance, session, state);
         instance.grantSteeringLease();
         const head = pack.chain.head;
         head._groundRollDrive = { kind: "thrust", dirX: 1, dirY: 0, accel: 5, maxSpeed: 10 };

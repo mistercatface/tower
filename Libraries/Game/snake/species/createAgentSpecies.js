@@ -34,7 +34,7 @@ export function createAgentSpecies(profileId) {
         },
         die(instance, state, deathImpact = null) {
             instance.lifecycle = "dead";
-            instance.stopSteering(state);
+            instance.stopSteering();
             const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph(state);
             let resolvedMembers = connectedMembers;

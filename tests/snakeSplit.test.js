@@ -221,7 +221,7 @@ describe("snake min length death", () => {
         const members = getOrderedChainMemberIds(state, headId);
         removeChainLinkBetween(state, members[0], members[1]);
         removeChainLinkBetween(state, members[1], members[2]);
-        instance.tick(state, 16);
+        instance.tick( 16);
         assert.equal(instance.lifecycle, "dead");
         assert.equal(snakeGame.instancesByHeadId.has(headId), false);
         assert.equal(pack.chain.head._groundRollDrive, undefined);

@@ -147,7 +147,7 @@ export function resolveGunBulletContacts(state, spatialFrame, contacts) {
         if (victimInstance.headId === bullet._shooterHeadId) continue;
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };
-        victimInstance.die(state, null, deathImpact);
+        victimInstance.die(state, deathImpact);
         bullet._armed = false;
     }
 }

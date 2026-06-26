@@ -94,14 +94,14 @@ describe("flee agent decision model", () => {
         const allyPack = spawnGameAgentChain(state, { col: 14, row: 10 }, "flee_agent", { faction: "bravo" });
         const seeker = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", seeker);
-        seeker.start(state);
+        seeker.start();
         setAgentHunger(seeker.metabolism, 0.9);
         seekerPack.head.facing = 0;
         allyPack.head.x = seekerPack.head.x + 64;
         allyPack.head.y = seekerPack.head.y;
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
         primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().shared.visionRange);
-        seeker.tick(state, 16);
+        seeker.tick( 16);
         assert.equal(seeker.intent.getMode(), "seek_ally");
         assert.equal(seeker.intent.getTargetId(), allyPack.head.id);
     });
@@ -143,13 +143,13 @@ describe("flee agent decision model", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
+        instance.start();
         setAgentHunger(instance.metabolism, 0.7);
         const threat = spawnSnakeChain(state, { col: 10, row: 12 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick(state, 16);
+        instance.tick( 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
     });
@@ -162,13 +162,13 @@ describe("flee agent decision model", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
+        instance.start();
         setAgentHunger(instance.metabolism, 0.7);
         const threat = spawnSnakeChain(state, { col: 10, row: 12 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick(state, 16);
+        instance.tick( 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
     });
@@ -277,7 +277,7 @@ describe("flee agent decision model", () => {
         const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
         const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", charlie);
-        charlie.start(state);
+        charlie.start();
         setAgentHunger(charlie.metabolism, 0.9);
         charliePack.head.facing = 0;
 
@@ -285,30 +285,30 @@ describe("flee agent decision model", () => {
         const deltaPack = spawnGameAgentChain(state, { col: 15, row: 10 }, "flee_agent", { faction: "delta" });
         const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", delta);
-        delta.start(state);
+        delta.start();
         setAgentHunger(delta.metabolism, 0.9);
 
         primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
         primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
 
         // Tick once to perceive and select mode
-        charlie.tick(state, 16);
+        charlie.tick( 16);
         assert.equal(charlie.intent.getMode(), "shoot_enemy");
         assert.equal(charlie.intent.getTargetId(), deltaPack.head.id);
         assert.equal(charlie.combatAction.phase, "reacting");
 
         // Tick to react
         snakeGame.activeGunBulletIds = [];
-        charlie.tick(state, 150);
+        charlie.tick( 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "should have fired first bullet after reacting");
         assert.equal(charlie.combatAction.phase, "fire_delay");
 
         // Tick for second shot
-        charlie.tick(state, 150);
+        charlie.tick( 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 2, "should have fired second bullet");
         
         // Tick for third shot
-        charlie.tick(state, 150);
+        charlie.tick( 150);
         assert.equal(snakeGame.activeGunBulletIds.length, 3, "should have fired third bullet");
         assert.equal(charlie.combatAction.phase, "reloading");
     });
@@ -322,19 +322,19 @@ describe("flee agent decision model", () => {
         const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
         const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", charlie);
-        charlie.start(state);
+        charlie.start();
         setAgentHunger(charlie.metabolism, 0.9);
 
         const deltaPack = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "delta" });
         const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", delta);
-        delta.start(state);
+        delta.start();
         setAgentHunger(delta.metabolism, 0.9);
 
         primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
         primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
 
-        charlie.tick(state, 16);
+        charlie.tick( 16);
         assert.equal(charlie.intent.getMode(), "flee");
         assert.equal(charlie.intent.getDecisionContext().combatState.shouldBackOffEnemy, true);
         const dest = charlie.intent.getDestination();

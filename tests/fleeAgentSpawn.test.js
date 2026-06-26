@@ -55,9 +55,9 @@ describe("flee agent spawn", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
+        instance.start();
         pack.head.facing = -Math.PI / 2;
-        instance.tick(state, 100);
+        instance.tick( 100);
         pack.head.vx = 100;
         pack.head.vy = 0;
         syncBallAgentFacingAfterPhysics(instance, 100);
@@ -108,7 +108,7 @@ describe("flee agent spawn", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
+        instance.start();
         applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { growDirX: 1 } } });
         const predator = spawnSnakeChain(state, { col: 12, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { growDirX: -1 } } });
@@ -141,7 +141,7 @@ describe("flee agent spawn", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
+        instance.start();
         instance.sprinting = true;
         applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { growDirX: 1 } } });
         const predator = spawnSnakeChain(state, { col: 12, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
@@ -175,7 +175,7 @@ describe("flee agent spawn", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
+        instance.start();
         instance.sprinting = true;
         instance.intent = { getMode: () => "flee" };
         const victim = spawnSnakeChain(state, { col: 20, row: 10 }, { segmentCount: 5, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
