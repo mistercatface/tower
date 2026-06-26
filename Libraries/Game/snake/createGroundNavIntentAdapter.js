@@ -227,7 +227,7 @@ export function createGroundNavIntentAdapter({
     });
     intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
-        perceiveAgentIntentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision);
+        perceiveAgentIntentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, config);
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         if (intent) {

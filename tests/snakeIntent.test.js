@@ -221,7 +221,8 @@ describe("snake intent integration", () => {
         primeSnakeHeadVision(state, seeker);
         const instance = state.sandbox.snakeGame.instancesByHeadId.get(seeker.id);
         const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
-        const world = perceiveAgentIntentWorld(seeker, agentCtx, state, () => null);
+        const shared = getSnakeGameConfig().shared;
+        const world = perceiveAgentIntentWorld(seeker, agentCtx, state, () => null, shared.visionRange, shared);
         assert.equal(world.prey, null);
     });
 
@@ -241,7 +242,8 @@ describe("snake intent integration", () => {
             const index = getPropCategoryIndex(state, "food");
             return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, () => true, null, 1.0, vision);
         };
-        perceiveAgentIntentWorld(seeker, agentCtx, state, { food: foodResolver });
+        const shared = getSnakeGameConfig().shared;
+        perceiveAgentIntentWorld(seeker, agentCtx, state, { food: foodResolver }, shared.visionRange, shared);
         endSnakePerceptionFrame(state);
         
         assert.equal(getVisionFullBuildCount(), 1);

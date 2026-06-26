@@ -21,15 +21,16 @@ function appendAgentRing(out, agent, style) {
 /** Read-only visible threat/prey/ally rings — same LOS pass as combat, no vision cache or sim tick. */
 export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, session) {
     const config = session.config;
+    const shared = getSharedConfig(config);
     const prop = state.followCamera?.targetProp;
     if (!prop) return;
     const instance = session.instancesByHeadId.get(prop.id);
     const head = instance?.head;
     if (!head) return;
-    const visionRange = getSharedConfig(config).visionRange;
+    const visionRange = shared.visionRange;
     const frame = state.nav.observerVisionFrame ?? createObserverVisionFrame({ tickId: session.simTick ?? 1, navTopology: state.nav.topology, visionRange, viewport: state.viewport });
-    const perceptionOptions = resolveAgentPerceptionOptions(state, visionRange);
     const agentCtx = { instance, session };
+    const perceptionOptions = resolveAgentPerceptionOptions(visionRange, shared, agentCtx);
     const vision = frame.ensureHeadVision(head, visionRange);
     const world = classifyAgentVision(head, agentCtx, state, frame, vision, perceptionOptions);
     const committedTargetId = instance.intent?.getTargetId?.() ?? null;
