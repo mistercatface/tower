@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
+import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { bakeRelationshipRules, resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 
 function instance(profileId, { faction = "a", segments = 3 } = {}) {
-    return { profileId, head: { faction }, memberIds: Array.from({ length: segments }, (_, i) => i) };
+    const config = getSnakeGameConfig();
+    const profile = getAgentProfile(profileId, config);
+    return {
+        profileId,
+        head: { faction },
+        memberIds: Array.from({ length: segments }, (_, i) => i),
+        relationshipRules: bakeRelationshipRules(profile, config),
+    };
 }
 describe("resolveRelationshipForInstances", () => {
     it("returns static relationship strings from profile table", () => {

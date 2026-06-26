@@ -14,7 +14,7 @@ import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC, syncBallAgentPresentation } from 
 import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-import { resolveRelationshipForInstances } from "./agentRelationships.js";
+import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {
     return instance?.profileId === AGENT_PROFILE.snake;
 }
@@ -54,6 +54,7 @@ export class AgentInstance {
         this.splitImpulseThreshold = config.splitImpulseThreshold;
         this.leaderMaxSpeed = this.leaderGameplay.maxSpeed;
         this.combatTraits = { ...COMBAT_TRAIT_DEFAULTS, ...profile.combat };
+        this.relationshipRules = bakeRelationshipRules(profile, config);
         this.resolvedWeapon = resolveRangedWeapon(this, profile, this.visionRange.range);
         this.aimTurnRadPerSec = this.resolvedWeapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
         this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? createRangedCombatActionState() : null;

@@ -1,15 +1,4 @@
-import { getAgentProfile } from "../../AI/agents/agentProfile.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
-let _bakedConfig = null;
-const _bakedRulesByProfile = new Map();
-function getBakedRules(profileId) {
-    const config = getSnakeGameConfig();
-    if (config !== _bakedConfig) {
-        _bakedRulesByProfile.clear();
-        _bakedConfig = config;
-    }
-    if (_bakedRulesByProfile.has(profileId)) return _bakedRulesByProfile.get(profileId);
-    const profile = getAgentProfile(profileId, config);
+export function bakeRelationshipRules(profile, config) {
     const baked = {};
     for (const [targetId, rule] of Object.entries(profile.relationships ?? {})) {
         if (typeof rule === "string") {
@@ -21,7 +10,6 @@ function getBakedRules(profileId) {
         if (rule.type === "proximity") r._range = rule.range ?? profile.attackRange ?? config.shared?.lethalThreatRange ?? 48;
         baked[targetId] = r;
     }
-    _bakedRulesByProfile.set(profileId, baked);
     return baked;
 }
 function readInstanceSegmentCount(instance) {
@@ -52,8 +40,7 @@ function resolveProximityRelationship(rule, distSq) {
     return distSq <= rule._range * rule._range ? rule.near : (rule.far ?? "neutral");
 }
 export function resolveRelationshipForInstances(seekerInstance, targetInstance, distSq = null) {
-    const rules = getBakedRules(seekerInstance.profileId);
-    const rule = rules[targetInstance.profileId];
+    const rule = seekerInstance.relationshipRules[targetInstance.profileId];
     if (rule == null) return "neutral";
     if (typeof rule === "string") return rule;
     if (rule.type === "proximity") return resolveProximityRelationship(rule, distSq);
