@@ -1,12 +1,9 @@
 import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
-import { getAgentProfile, AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 export function resolveProfileLeaderIndex(profile) {
     return profile.leaderIndex ?? profile.armSegmentCount ?? 0;
-}
-export function resolveFleeAgentForwardDir(snakeProfile = getAgentProfile(AGENT_PROFILE.snake)) {
-    return { x: -snakeProfile.growDirX, y: -snakeProfile.growDirY };
 }
 function applySpawnedChainGameplay(profile, chain) {
     const leaderGameplay = profile.gameplay.leader;
@@ -52,10 +49,8 @@ function buildChainSpawnSpec(profile, config, options = {}) {
 }
 function finalizeChainSpawn(chain, spec, forwardDir = null) {
     const leader = chain.leader;
-    if (spec.segmentCount === 1) {
-        const forward = forwardDir ?? resolveFleeAgentForwardDir();
-        leader.facing = Math.atan2(forward.y, forward.x);
-    } else leader.facing = Math.atan2(spec.growDirY, spec.growDirX);
+    if (spec.segmentCount === 1) leader.facing = forwardDir ? Math.atan2(forwardDir.y, forwardDir.x) : Math.atan2(-spec.growDirY, -spec.growDirX);
+    else leader.facing = Math.atan2(spec.growDirY, spec.growDirX);
     return { ...chain, brain: leader, brainIndex: chain.leaderIndex, head: spec.segmentCount === 1 ? leader : chain.head };
 }
 /** Spawn a profile-configured agent chain. */
