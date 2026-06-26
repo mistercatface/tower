@@ -52,12 +52,7 @@ describe("snake metabolism", () => {
         return tickAgentMetabolism(m, dtMs, drainMultiplier, () => {
             const minSegments = m.minAliveSegmentCount ?? 3;
             if (resolvedMembers.length <= minSegments) return false;
-            const didShrink = shrinkSnakeChainFromStarvation(state, headId, minSegments, resolvedMembers);
-            if (didShrink) {
-                resolvedMembers.pop();
-                return true;
-            }
-            return false;
+            return shrinkSnakeChainFromStarvation(state, headId, minSegments, resolvedMembers) != null;
         });
     };
 

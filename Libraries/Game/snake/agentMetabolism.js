@@ -103,12 +103,13 @@ export function growSnakeChainAfterMeal(state, headId, profile) {
 // --- Snake Starvation & Shrinkage ---
 export function shrinkSnakeChainFromStarvation(state, headId, minSegments, members = null) {
     const resolvedMembers = members || getConnectedComponentPath(state.kinetic, headId);
-    if (resolvedMembers.length <= minSegments) return false;
+    if (resolvedMembers.length <= minSegments) return null;
     const tailId = resolvedMembers[resolvedMembers.length - 1];
     const prevId = resolvedMembers[resolvedMembers.length - 2];
     const tail = state.entityRegistry.getLive(tailId);
     removeChainLinkBetween(state, prevId, tailId);
     clearChainLinksForProp(state, tailId);
     removeSandboxWorldProp(state, tail);
-    return true;
+    resolvedMembers.pop();
+    return tailId;
 }

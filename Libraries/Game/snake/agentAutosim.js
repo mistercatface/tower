@@ -133,9 +133,9 @@ export function createAgentAutosim(state, instance) {
                 tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => {
                     const minSegments = metabolism.minAliveSegmentCount ?? 3;
                     if (members.length <= minSegments) return false;
-                    const didShrink = shrinkSnakeChainFromStarvation(state, agentId, minSegments, members);
-                    if (!didShrink) return false;
-                    members.pop();
+                    const removedTailId = shrinkSnakeChainFromStarvation(state, agentId, minSegments, members);
+                    if (removedTailId == null) return false;
+                    instance.memberProps.pop();
                     return true;
                 });
         },
