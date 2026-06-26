@@ -1,6 +1,6 @@
 import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
-import { getInstanceCombatTraits, isChainCombatTopology, matchesBrainRamResolver } from "./agentCombatTraits.js";
+import { isChainCombatTopology, matchesBrainRamResolver } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../../Spatial/collision/kineticBodySlab.js";
@@ -123,8 +123,8 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
         const instanceA = memberToInstance.get(pair.bodyA.id);
         const instanceB = memberToInstance.get(pair.bodyB.id);
         if (!instanceA || !instanceB || instanceA === instanceB) continue;
-        const traitsA = getInstanceCombatTraits(instanceA);
-        const traitsB = getInstanceCombatTraits(instanceB);
+        const traitsA = instanceA.combatTraits;
+        const traitsB = instanceB.combatTraits;
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         if (tryResolveFleeBallHeadRam(state, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, pair.bodyA, pair.bodyB, relSpeed)) continue;
         const fleeChainPair = fleeChainContactPair(instanceA, traitsA, instanceB, traitsB, pair.bodyA, pair.bodyB);

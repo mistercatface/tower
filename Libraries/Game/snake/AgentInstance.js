@@ -11,8 +11,8 @@ import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { syncBallAgentPresentation } from "./ballAgent.js";
-import { createRangedCombatActionState, hasRangedCombatCapability } from "./rangedCombat.js";
-import { getAgentCombatTraits, getInstanceCombatTraits, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
+import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
+import { getAgentCombatTraits, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 export function isSnakeProfile(instance) {
@@ -47,7 +47,10 @@ export class AgentInstance {
         const config = getSnakeGameConfig();
         const headRadius = getCirclePropRadius(head);
         this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
-        this.combatAction = hasRangedCombatCapability(this, profile) ? createRangedCombatActionState() : null;
+        this.splitImpulseThreshold = config.splitImpulseThreshold;
+        this.combatTraits = getAgentCombatTraits(profileId);
+        this.resolvedWeapon = resolveRangedWeapon(this, profile);
+        this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? createRangedCombatActionState() : null;
     }
     get headId() {
         return this.head.id;
@@ -78,7 +81,7 @@ export class AgentInstance {
     start(state) {
         this.grantSteeringLease();
         this.autosim.start();
-        if (isBallCombatTopology(getInstanceCombatTraits(this))) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
+        if (isBallCombatTopology(this.combatTraits)) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     stopSteering(state) {
         this.revokeSteeringLease();
@@ -105,7 +108,7 @@ export class AgentInstance {
         return true;
     }
     kill(state, members = null, deathImpact = null) {
-        if (!isChainCombatTopology(getInstanceCombatTraits(this))) return null;
+        if (!isChainCombatTopology(this.combatTraits)) return null;
         this.die(state, members, deathImpact);
         return this;
     }
@@ -113,7 +116,7 @@ export class AgentInstance {
         if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;
         this._lastTickDtMs = dtMs;
         this.autosim.tick(dtMs, admitted);
-        if (isBallCombatTopology(getInstanceCombatTraits(this))) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
+        if (isBallCombatTopology(this.combatTraits)) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;
@@ -260,7 +263,7 @@ export class AgentInstance {
         reapAgentInstance(state, this, deathImpact);
     }
     splitAtStruckSegment(state, struckSegmentId, victimMembers = null, deathImpact = null) {
-        if (!getAgentCombatTraits(this.profileId).canSplit) return null;
+        if (!this.combatTraits.canSplit) return null;
         const members = victimMembers ?? getConnectedComponentPath(state.kinetic, this.headId);
         const strikeIndex = members.indexOf(struckSegmentId);
         if (strikeIndex < 0 || strikeIndex >= members.length - 1) return null;
@@ -275,38 +278,33 @@ export class AgentInstance {
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
     receiveBodyStrike(state, struckSegmentId, strikerInstance, strikerBodyId, relSpeed, deathImpact, victimMembers = null) {
-        const traits = getInstanceCombatTraits(this);
+        const traits = this.combatTraits;
         // 1. Flee Escape Ram
         if (traits.victimOfFleeEscapeRam) {
-            const strikerTraits = getInstanceCombatTraits(strikerInstance);
+            const strikerTraits = strikerInstance.combatTraits;
             if (strikerTraits.fleeEscapeRam) {
                 const areTeammates = resolveRelationshipForInstances(strikerInstance, this) === "ally" || (this.head.faction != null && this.head.faction === strikerInstance.head.faction);
-                if (!areTeammates) {
-                    const config = state.sandbox.snakeGame.config;
-                    if (strikerInstance.sprinting && relSpeed >= config.splitImpulseThreshold)
+                if (!areTeammates)
+                    if (strikerInstance.sprinting && relSpeed >= this.splitImpulseThreshold)
                         if (strikerInstance.intent?.getMode?.() === "flee")
                             if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
-                }
             }
         }
         // 2. Head Strike Ram
         if (traits.victimOfHeadStrikeRam) {
-            const strikerTraits = getInstanceCombatTraits(strikerInstance);
-            if (isChainCombatTopology(traits) && isChainCombatTopology(strikerTraits)) {
-                const config = state.sandbox.snakeGame.config;
-                if (relSpeed >= config.splitImpulseThreshold)
+            const strikerTraits = strikerInstance.combatTraits;
+            if (isChainCombatTopology(traits) && isChainCombatTopology(strikerTraits))
+                if (relSpeed >= this.splitImpulseThreshold)
                     if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
-            }
         }
         return null;
     }
     receivePreyStrike(state, struckBodyId, predatorInstance, predatorBodyId, relSpeed, deathImpact) {
-        const preyTraits = getInstanceCombatTraits(this);
-        const predatorTraits = getInstanceCombatTraits(predatorInstance);
-        const config = state.sandbox.snakeGame.config;
+        const preyTraits = this.combatTraits;
+        const predatorTraits = predatorInstance.combatTraits;
         const chainVsBallPrey = isChainCombatTopology(predatorTraits) && !isChainCombatTopology(preyTraits);
         const predatorStrikes = chainVsBallPrey || predatorBodyId === predatorInstance.headId;
-        const speedOk = chainVsBallPrey || relSpeed >= config.splitImpulseThreshold;
+        const speedOk = chainVsBallPrey || relSpeed >= this.splitImpulseThreshold;
         if (predatorStrikes && speedOk)
             if (!shouldSkipPreyHeadRamKill(predatorTraits, preyTraits, struckBodyId, this.headId)) {
                 this.die(state, null, deathImpact);

@@ -11,13 +11,13 @@ const COMBAT_TRAIT_DEFAULTS = Object.freeze({
     preyHeadRamImmuneLeader: false,
     preyHeadRamImmuneNonLeader: false,
 });
-export function getAgentCombatTraits(profileId, config = getSnakeGameConfig()) {
-    const profile = getAgentProfile(profileId, config);
+export function getAgentCombatTraits(profileId) {
+    const profile = getAgentProfile(profileId, getSnakeGameConfig());
     return { ...COMBAT_TRAIT_DEFAULTS, ...profile.combat };
 }
-export function getInstanceCombatTraits(instance, config = getSnakeGameConfig()) {
+export function getInstanceCombatTraits(instance) {
     if (!instance?.profileId) return COMBAT_TRAIT_DEFAULTS;
-    return getAgentCombatTraits(instance.profileId, config);
+    return getAgentCombatTraits(instance.profileId);
 }
 export function isChainCombatTopology(traits) {
     return traits.topology === "chain";

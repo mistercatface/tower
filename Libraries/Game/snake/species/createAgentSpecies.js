@@ -7,8 +7,8 @@ import { createAgentInstance } from "../AgentInstance.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { removeWorldPropFromState } from "../../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../../GameState/sandboxEntityMeta.js";
-function resolveSpeciesFeatures(profileId, config = getSnakeGameConfig()) {
-    const profile = getAgentProfile(profileId, config);
+function resolveSpeciesFeatures(profileId) {
+    const profile = getAgentProfile(profileId, getSnakeGameConfig());
     const species = profile.species ?? {};
     return {
         retireNavOnDeath: species.retireNavOnDeath === true,
@@ -57,4 +57,3 @@ export function createAgentSpecies(profileId) {
         },
     };
 }
-

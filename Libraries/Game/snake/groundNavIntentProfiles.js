@@ -10,7 +10,7 @@ import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
 import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
-import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction, resolveRangedWeapon } from "./rangedCombat.js";
+import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
@@ -46,8 +46,7 @@ function hasRangedShootMode(profile) {
 function createIntentStates(huntMode, instance = null, profile = null) {
     const seek = createSeekIntentState();
     const states = { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), [huntMode]: seek };
-    if (instance && profile && hasRangedShootMode(profile) && resolveRangedWeapon(instance, profile))
-        states.shoot_enemy = createRangedShootIntentState(instance, () => resolveRangedWeapon(instance, profile));
+    if (instance && profile && hasRangedShootMode(profile) && instance.resolvedWeapon) states.shoot_enemy = createRangedShootIntentState(instance, () => instance.resolvedWeapon);
     return states;
 }
 function resolveCommittedTarget(committedSlots, id, world) {
