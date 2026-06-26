@@ -25,7 +25,7 @@ export function createAgentAutosim(state, instance) {
     const metabolism = createAgentMetabolism(profile);
     const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
-    const headNav = createCellTargetHpaNav(state);
+    instance.headNav = createCellTargetHpaNav(state);
     const foodValue = profile.metabolism?.foodValue;
     const resolvedBallType = profile.bodyPropId;
     const resolvedGrowDirX = profile.growDirX ?? -1;
@@ -39,10 +39,9 @@ export function createAgentAutosim(state, instance) {
             if (tail && !tail.isDead) return tail;
         }
     };
-    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, brain, sync, headNav, agentCtx }));
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, brain, sync, headNav: instance.headNav, agentCtx }));
     instance.intent = intent;
     instance.brain = brain;
-    instance.headNav = headNav;
     instance.metabolism = metabolism;
     let active = false;
     const growOneSegment = () => {
@@ -77,7 +76,7 @@ export function createAgentAutosim(state, instance) {
         const grid = state.obstacleGrid;
         brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
         intent.clearTrackedGoal();
-        headNav.clearDestination();
+        instance.headNav.clearDestination();
         removeSandboxWorldProp(state, food);
         if (profileId === AGENT_PROFILE.snake) feedAndGrow(food.snakeFoodValue ?? foodValue);
         else feedAgentMetabolism(metabolism, food.snakeFoodValue ?? foodValue);
@@ -101,7 +100,7 @@ export function createAgentAutosim(state, instance) {
             return active;
         },
         getPathOverlay() {
-            return headNav.getPathOverlay(instance.head);
+            return instance.headNav.getPathOverlay(instance.head);
         },
         tick(dtMs, admitted = true) {
             if (!active) return;
@@ -124,7 +123,7 @@ export function createAgentAutosim(state, instance) {
             instance.sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(metabolism) > 0;
             seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
             seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
-            headNav.tick(seeker, dtMs);
+            instance.headNav.tick(seeker, dtMs);
             if (soloTick) endSnakePerceptionFrame(state);
             let fedThisTick = false;
             let foodTarget = null;
