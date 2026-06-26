@@ -2,9 +2,6 @@ import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
 import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
-export function resolveProfileLeaderIndex(profile) {
-    return profile.leaderIndex ?? profile.armSegmentCount ?? 0;
-}
 function applySpawnedChainGameplay(profile, chain) {
     const leaderGameplay = profile.gameplay.leader;
     const bodyGameplay = profile.gameplay.body;
@@ -20,7 +17,7 @@ function applySpawnedChainGameplay(profile, chain) {
     }
 }
 function buildChainSpawnSpec(profile, config, options = {}) {
-    const leaderIndex = resolveProfileLeaderIndex(profile);
+    const leaderIndex = profile.leaderIndex ?? profile.armSegmentCount ?? 0;
     const segmentCount = options.segmentCount ?? profile.segmentCount ?? 1;
     const segmentRadius = options.segmentRadius ?? config.startRadius;
     const spacing = options.spacing ?? resolveSnakeSegmentSpacing(profile.linkSlack, segmentRadius);
