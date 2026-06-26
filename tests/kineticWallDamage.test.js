@@ -142,10 +142,9 @@ describe("kinetic wall damage", () => {
         assert.ok(!cellIsStaticWall(state.obstacleGrid, 3, 3));
         assert.ok(state.worldProps.length > 0);
         
-        const chunkProp = state.worldProps.find(p => p.type === "wall_voxel_chunk");
-        assert.ok(chunkProp);
-        assert.equal(chunkProp.height, 32);
-        assert.ok(chunkProp.chunks?.length > 0);
+        const shards = state.worldProps.filter(p => p.type === "wall_voxel_chunk");
+        assert.ok(shards.length > 0);
+        assert.ok(shards.every(s => s.height === 32));
         
         terminateWorkerNavigation(state.nav);
     });
@@ -181,9 +180,9 @@ describe("kinetic wall damage", () => {
         
         assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 1, state.obstacleGrid.cols)));
         assert.ok(state.worldProps.length > 0);
-        const chunkProp = state.worldProps.find(p => p.type === "wall_rail_chunk");
-        assert.ok(chunkProp);
-        assert.equal(chunkProp.height, 32);
+        const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
+        assert.ok(shards.length > 0);
+        assert.ok(shards.every(s => s.height === 32));
         
         terminateWorkerNavigation(state.nav);
     });
@@ -216,9 +215,9 @@ describe("kinetic wall damage", () => {
         
         assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 1, state.obstacleGrid.cols)));
         assert.ok(state.worldProps.length > 0);
-        const chunkProp = state.worldProps.find(p => p.type === "wall_rail_chunk");
-        assert.ok(chunkProp);
-        assert.equal(chunkProp.height, 32);
+        const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
+        assert.ok(shards.length > 0);
+        assert.ok(shards.every(s => s.height === 32));
         
         terminateWorkerNavigation(state.nav);
     });

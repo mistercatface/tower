@@ -13,7 +13,7 @@ export default {
         ],
         wallPhysics: { restitution: 0.1, friction: 0.8 },
         fracture: true,
-        fractureMode: "chunk",
+        fractureMode: "glass",
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 6, randomRange: 17 },
     },
     visuals: { colors: NEUTRAL_BOX_COLORS, world: { height: 12 } },
