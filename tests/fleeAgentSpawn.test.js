@@ -7,7 +7,7 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { spawnPopulationInScene } from "../Libraries/Game/snake/spawnPopulationInScene.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
@@ -53,7 +53,7 @@ describe("flee agent spawn", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         pack.head.facing = -Math.PI / 2;
@@ -106,7 +106,7 @@ describe("flee agent spawn", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         applySnakeGameConfig({ splitImpulseThreshold: 30, agentProfiles: { snake: { growDirX: 1 } } });
@@ -139,7 +139,7 @@ describe("flee agent spawn", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         instance.sprinting = true;
@@ -173,7 +173,7 @@ describe("flee agent spawn", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         instance.sprinting = true;

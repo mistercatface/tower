@@ -7,7 +7,7 @@ import { resolvePackSteeringOptions } from "../Libraries/Game/snake/createGround
 import { buildAgentDecisionFrameFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
@@ -62,9 +62,9 @@ describe("flee pack blend (4d)", () => {
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.5, maxPackDistCells: 24 } } }, shared: { fleeTiles: 8 } });
         const fleePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "bravo" });
         const allyPack = spawnGameAgentChain(state, { col: 10, row: 6 }, "flee_agent", { faction: "bravo" });
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
-        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
         instance.start();
         const predator = spawnSnakeChain(state, { col: 14, row: 10 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: predator.chain.head.id, spawnGroupId: predator.chain.spawnGroupId });

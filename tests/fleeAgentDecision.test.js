@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { setAgentHunger } from "../Libraries/Game/snake/agentMetabolism.js";
 import { buildAgentDecisionContextFor, scoreAgentIntentCandidateDetails, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
@@ -92,14 +92,14 @@ describe("flee agent decision model", () => {
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.5 } } } });
         const seekerPack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "bravo" });
         const allyPack = spawnGameAgentChain(state, { col: 14, row: 10 }, "flee_agent", { faction: "bravo" });
-        const seeker = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId });
+        const seeker = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", seeker);
         seeker.start();
         setAgentHunger(seeker.metabolism, 0.9);
         seekerPack.head.facing = 0;
         allyPack.head.x = seekerPack.head.x + 64;
         allyPack.head.y = seekerPack.head.y;
-        registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
+        registerAgentInstance(snakeGame, "flee_agent", new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
         primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().shared.visionRange);
         seeker.autosim.tick(16);
         assert.equal(seeker.intent.getMode(), "seek_ally");
@@ -141,7 +141,7 @@ describe("flee agent decision model", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.7);
@@ -160,7 +160,7 @@ describe("flee agent decision model", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.7);
@@ -275,7 +275,7 @@ describe("flee agent decision model", () => {
         
         // Spawn charlie (yellow) flee agent
         const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
-        const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        const charlie = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", charlie);
         charlie.start();
         setAgentHunger(charlie.metabolism, 0.9);
@@ -283,7 +283,7 @@ describe("flee agent decision model", () => {
 
         // Spawn delta (green) flee agent at distance 80px (5 cells)
         const deltaPack = spawnGameAgentChain(state, { col: 15, row: 10 }, "flee_agent", { faction: "delta" });
-        const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
+        const delta = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", delta);
         delta.start();
         setAgentHunger(delta.metabolism, 0.9);
@@ -320,13 +320,13 @@ describe("flee agent decision model", () => {
         applySnakeGameConfig();
 
         const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
-        const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        const charlie = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", charlie);
         charlie.start();
         setAgentHunger(charlie.metabolism, 0.9);
 
         const deltaPack = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "delta" });
-        const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
+        const delta = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", delta);
         delta.start();
         setAgentHunger(delta.metabolism, 0.9);

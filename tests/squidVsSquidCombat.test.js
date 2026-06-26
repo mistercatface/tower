@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
@@ -14,10 +14,10 @@ import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeG
 
 function registerSquidPair(state, snakeGame) {
     const leftPack = spawnGameAgentChain(state, { col: 10, row: 10 }, "squid", { faction: "charlie" });
-    const leftInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.squid, head: leftPack.brain, spawnGroupId: leftPack.spawnGroupId });
+    const leftInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.squid, head: leftPack.brain, spawnGroupId: leftPack.spawnGroupId });
     registerAgentInstance(snakeGame, "squid", leftInstance);
     const rightPack = spawnGameAgentChain(state, { col: 14, row: 10 }, "squid", { faction: "delta" });
-    const rightInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.squid, head: rightPack.brain, spawnGroupId: rightPack.spawnGroupId });
+    const rightInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.squid, head: rightPack.brain, spawnGroupId: rightPack.spawnGroupId });
     registerAgentInstance(snakeGame, "squid", rightInstance);
     return { leftPack, leftInstance, rightPack, rightInstance };
 }

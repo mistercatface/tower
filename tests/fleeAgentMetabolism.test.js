@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getAgentIdentity, setAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
@@ -50,7 +50,7 @@ describe("flee agent metabolism", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.2);
@@ -66,7 +66,7 @@ describe("flee agent metabolism", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2 });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.2);
@@ -82,7 +82,7 @@ describe("flee agent metabolism", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 60_000, foodValue: 0.4 } } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.2);
@@ -109,7 +109,7 @@ describe("flee agent metabolism", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { initialHunger: 1 } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         for (let col = 11; col <= 17; col++) stampWall(state.obstacleGrid, col, 10);
@@ -126,7 +126,7 @@ describe("flee agent metabolism", () => {
         const { snakeGame } = wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.2);
@@ -146,7 +146,7 @@ describe("flee agent metabolism", () => {
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.3 } } } });
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         setAgentIdentity(pack.head.id, { name: "Bolt", color: "#7ad4ff" });
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         assert.equal(instance.baseTint, "#7ad4ff");

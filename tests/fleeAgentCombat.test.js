@@ -5,7 +5,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
@@ -16,7 +16,7 @@ import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstan
 
 function registerFleeCombatAgent(state, snakeGame, cell, faction) {
     const pack = spawnGameAgentChain(state, cell, "flee_agent", { faction });
-    const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+    const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
     registerAgentInstance(snakeGame, "flee_agent", instance);
     return { pack, instance };
 }
@@ -45,7 +45,7 @@ describe("flee agent escape combat", () => {
         wireSnakeTestGame(state);
         const snakeGame = state.sandbox.snakeGame;
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         instance.sprinting = true;

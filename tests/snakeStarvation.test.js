@@ -13,7 +13,10 @@ import { getSnakeChainRadius, createAgentMetabolism, feedAgentMetabolism, getAge
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
+import { createAgentPopulationRegistry } from "../Libraries/AI/agents/agentPopulationRegistry.js";
+import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
+import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 async function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -49,12 +52,11 @@ function chainOptions(segmentCount) {
 }
 const META = { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 };
 function createStarvationTestInstance(state, chain) {
-    const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head: chain.head, spawnGroupId: chain.spawnGroupId, lifecycle: "alive" });
-    instance.entityRegistry = state.entityRegistry;
-    instance.kinetic = state.kinetic;
-    instance.entityMeta = getSandboxEntityMeta(state);
-    instance.syncMembersFromGraph();
-    return instance;
+    if (!state.sandbox.snakeGame) {
+        const registry = createAgentPopulationRegistry();
+        state.sandbox.snakeGame = createSnakeAgentSession({ registry, navWalkable: createSnakeNavWalkable(state), speciesById: SNAKE_GAME_SPECIES });
+    }
+    return new AgentInstance(state, { profileId: AGENT_PROFILE.snake, head: chain.head, spawnGroupId: chain.spawnGroupId });
 }
 
 describe("snake metabolism", () => {

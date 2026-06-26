@@ -7,7 +7,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 
@@ -115,7 +115,7 @@ describe("resolveAgentRelationship team hunting", () => {
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+        const fleeInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
         const smallSnake = spawnLinkedBallChain(state, { col: 14, row: 10 }, chainOptions(3));
         registerSnakeTestInstance(state, snakeGame, { headId: smallSnake.head.id, spawnGroupId: smallSnake.spawnGroupId });
@@ -134,7 +134,7 @@ describe("resolveAgentRelationship team hunting", () => {
         const charlieB = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "charlie" });
         const delta = spawnGameAgentChain(state, { col: 14, row: 10 }, "flee_agent", { faction: "delta" });
         for (const pack of [charlieA, charlieB, delta]) {
-            const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
+            const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
             registerAgentInstance(snakeGame, "flee_agent", instance);
         }
         assert.equal(relationship(snakeGame, charlieA, charlieB), "ally");

@@ -23,11 +23,10 @@ import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
 export class AgentInstance {
-    constructor({ profileId, head, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
+    constructor(state, { profileId, head, spawnGroupId, lifecycle = "alive", memberIds = [] }) {
         this.profileId = profileId;
         this.head = head;
         this.spawnGroupId = spawnGroupId;
-        this.autosim = autosim;
         this.lifecycle = lifecycle;
         this.memberIds = memberIds;
         this.memberProps = [];
@@ -39,7 +38,6 @@ export class AgentInstance {
         this.sprinting = false;
         this.intent = null;
         this.brain = null;
-        this.headNav = null;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
         this.profile = profile;
@@ -64,6 +62,15 @@ export class AgentInstance {
         this.resolvedWeapon = resolveRangedWeapon(this, profile, this.visionRange.range);
         this.aimTurnRadPerSec = this.resolvedWeapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
         this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? createRangedCombatActionState() : null;
+        const session = state.sandbox.snakeGame;
+        this.session = session;
+        this.navWalkable = session.navWalkable;
+        this.entityRegistry = state.entityRegistry;
+        this.kinetic = state.kinetic;
+        this.entityMeta = getSandboxEntityMeta(state);
+        this.headNav = createCellTargetHpaNav(state);
+        this.syncMembersFromGraph();
+        this.autosim = createAgentAutosim(state, this);
     }
     get headId() {
         return this.head.id;
@@ -365,19 +372,4 @@ export class AgentInstance {
             }
         return false;
     }
-}
-export function createAgentInstance(state, { profileId, head, spawnGroupId }) {
-    const instance = new AgentInstance({ profileId, head, spawnGroupId, lifecycle: "alive" });
-    const session = state.sandbox?.snakeGame;
-    if (session) {
-        instance.session = session;
-        instance.navWalkable = session.navWalkable;
-    }
-    instance.entityRegistry = state.entityRegistry;
-    instance.kinetic = state.kinetic;
-    instance.entityMeta = getSandboxEntityMeta(state);
-    instance.headNav = createCellTargetHpaNav(state);
-    instance.syncMembersFromGraph();
-    instance.autosim = createAgentAutosim(state, instance);
-    return instance;
 }

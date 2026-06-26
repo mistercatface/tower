@@ -3,7 +3,7 @@ import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../.
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "../snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
-import { createAgentInstance } from "../AgentInstance.js";
+import { AgentInstance } from "../AgentInstance.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { removeWorldPropFromState } from "../../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../../GameState/sandboxEntityMeta.js";
@@ -27,7 +27,7 @@ export function createAgentSpecies(profileId) {
         id: profileId,
         pressureDiagnostics,
         createInstance(state, ctx) {
-            return createAgentInstance(state, { profileId, head: ctx.head, spawnGroupId: ctx.spawnGroupId });
+            return new AgentInstance(state, { profileId, head: ctx.head, spawnGroupId: ctx.spawnGroupId });
         },
         register(session, instance) {
             registerAliveAgent(session.registry, instance.headId, profileId, instance);

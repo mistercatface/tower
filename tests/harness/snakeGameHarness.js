@@ -65,20 +65,11 @@ export function snakeGameNavWalkable(state) {
 export function stubSnakeAutosim() {
     return { start() {}, stop() {} };
 }
-export function bindAgentInstanceSession(instance, snakeGame, state) {
-    instance.session = snakeGame;
-    instance.navWalkable = snakeGame.navWalkable;
-    instance.entityRegistry = state.entityRegistry;
-    instance.kinetic = state.kinetic;
-    instance.entityMeta = getSandboxEntityMeta(state);
-    instance.headNav = createCellTargetHpaNav(state);
-}
 export function registerSnakeTestInstance(state, snakeGame, { headId, spawnGroupId, autosim = null }) {
     const resolvedAutosim = autosim ?? stubSnakeAutosim();
     const head = state.entityRegistry.getLive(headId);
-    const instance = new AgentInstance({ profileId: AGENT_PROFILE.snake, head, spawnGroupId, autosim: resolvedAutosim, lifecycle: "alive" });
-    bindAgentInstanceSession(instance, snakeGame, state);
-    instance.syncMembersFromGraph();
+    const instance = new AgentInstance(state, { profileId: AGENT_PROFILE.snake, head, spawnGroupId, lifecycle: "alive" });
+    instance.autosim = resolvedAutosim;
     registerAgentInstance(snakeGame, "snake", instance);
     instance.grantSteeringLease();
     return instance;

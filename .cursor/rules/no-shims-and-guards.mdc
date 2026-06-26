@@ -46,6 +46,29 @@ When implementing a change, remove the old path in the same pass. Do not leave:
 
 If migration is genuinely multi-step, say so explicitly and list what still removes — do not ship interim redundancy as the default state.
 
+## Tests adapt to production contracts
+
+Never add production branches, optional constructor modes, null-state paths, or fallback wiring just to keep tests easy to instantiate.
+
+- If production code requires `state`, `session`, `registry`, `headNav`, `autosim`, or other runtime wiring, require it directly. Do not support `null`, `undefined`, partial objects, or test-only shortcuts in production constructors/functions.
+- Do not add `if (state) ... else ...`, `if (autosim !== undefined) ...`, optional chaining, or default stub objects because a test wants a lighter setup.
+- Test harnesses must build the real required state or override/mutate after construction inside test code. Production contracts stay strict.
+- If a test breaks after tightening production wiring, fix the test setup. Do not loosen production code.
+
+```javascript
+// ❌ BAD — production constructor supports a test-only no-state mode
+constructor(state, opts) {
+    if (state) this.autosim = createAutosim(state, this);
+    else this.autosim = opts.autosim ?? null;
+}
+
+// ✅ GOOD — production requires the real runtime state
+constructor(state, opts) {
+    this.session = state.sandbox.snakeGame;
+    this.autosim = createAutosim(state, this);
+}
+```
+
 ## No in-memory migration theater
 
 Sandbox/editor sim state is **runtime-only** unless explicitly persisted (save/load, localStorage, server). A page refresh starts clean. See also `browser-static-catalog.mdc` — prop/recipe registries are static module data, not session state to thread or reload.
@@ -93,4 +116,5 @@ prop.facing = quantizeCardinalAngle(angle);
 - Did this PR touch an unused `index.js` barrel? Revert unless adding a real top-level API entry.
 - Would this new file be imported from 5+ places for <20 lines total? Inline or extend an existing module.
 - Is anything left that exists only because the old API used to? Delete it now.
+- Did production code gain an optional path only because a test wanted partial setup? Remove it and fix the test.
 - Did I add sync/teardown "for users who didn't refresh"? Remove it — refresh is not a migration scenario here.

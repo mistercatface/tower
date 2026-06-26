@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
+import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
@@ -14,10 +14,10 @@ import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeG
 
 function registerSquidAndFlee(state, snakeGame) {
     const squidPack = spawnGameAgentChain(state, { col: 10, row: 10 }, "squid", { faction: "charlie" });
-    const squidInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.squid, head: squidPack.brain, spawnGroupId: squidPack.spawnGroupId });
+    const squidInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.squid, head: squidPack.brain, spawnGroupId: squidPack.spawnGroupId });
     registerAgentInstance(snakeGame, "squid", squidInstance);
     const fleePack = spawnGameAgentChain(state, { col: 14, row: 10 }, "flee_agent", { faction: "bravo" });
-    const fleeInstance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+    const fleeInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
     registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
     return { squidPack, squidInstance, fleePack, fleeInstance };
 }
