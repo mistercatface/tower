@@ -25,7 +25,7 @@ export function computeWallBreakStrength(preSpeed, approachDot, config) {
     if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
     const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
     const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
-    const angleT = Math.min(1, Math.max(config.minAngleFactor, -approachDot / preSpeed));
+    const angleT = Math.min(1, -approachDot / preSpeed);
     return speedT * angleT;
 }
 export function getGridWallDamageState(state) {
