@@ -7,16 +7,6 @@ import { createAgentInstance } from "../AgentInstance.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { removeWorldPropFromState } from "../../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../../GameState/sandboxEntityMeta.js";
-function resolveSpeciesFeatures(profileId) {
-    const profile = getAgentProfile(profileId, getSnakeGameConfig());
-    const species = profile.species ?? {};
-    return {
-        retireNavOnDeath: species.retireNavOnDeath === true,
-        fracturableBeforeShatter: species.fracturableBeforeShatter === true,
-        removeNonStruckSegments: species.removeNonStruckSegments === true,
-        pressureDiagnostics: species.pressureDiagnostics === true,
-    };
-}
 function removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFrame) {
     const struckId = deathImpact?.struckSegmentId ?? null;
     const meta = getSandboxEntityMeta(state);
@@ -28,10 +18,14 @@ function removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFr
     }
 }
 export function createAgentSpecies(profileId) {
-    const features = resolveSpeciesFeatures(profileId);
+    const species = getAgentProfile(profileId, getSnakeGameConfig()).species ?? {};
+    const retireNavOnDeath = species.retireNavOnDeath === true;
+    const fracturableBeforeShatter = species.fracturableBeforeShatter === true;
+    const removeNonStruckSegmentsOnDeath = species.removeNonStruckSegments === true;
+    const pressureDiagnostics = species.pressureDiagnostics === true;
     return {
         id: profileId,
-        pressureDiagnostics: features.pressureDiagnostics,
+        pressureDiagnostics,
         createInstance(state, ctx) {
             return createAgentInstance(state, { profileId, head: ctx.head, spawnGroupId: ctx.spawnGroupId });
         },
@@ -44,12 +38,12 @@ export function createAgentSpecies(profileId) {
             const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph(state);
             let resolvedMembers = connectedMembers;
-            if (features.retireNavOnDeath && typeof instance.retireAllSegments === "function") resolvedMembers = instance.retireAllSegments(state, connectedMembers);
+            if (retireNavOnDeath && typeof instance.retireAllSegments === "function") resolvedMembers = instance.retireAllSegments(state, connectedMembers);
             clearChainLinksForMembers(state, resolvedMembers);
-            if (features.fracturableBeforeShatter) markSnakeSegmentsFracturable(state, connectedMembers);
+            if (fracturableBeforeShatter) markSnakeSegmentsFracturable(state, connectedMembers);
             const spatialFrame = deathImpact?.spatialFrame ?? null;
             shatterSnakeSegments(state, spatialFrame, resolvedMembers, deathImpact);
-            if (features.removeNonStruckSegments) removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFrame);
+            if (removeNonStruckSegmentsOnDeath) removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFrame);
             purgeInertAgentsForHead(snakeGame.registry, instance.headId);
             markAgentDead(snakeGame.registry, instance.headId);
             clearSnakeSteeringLeaseFromProp(instance.head);
