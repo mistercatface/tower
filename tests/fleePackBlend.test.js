@@ -74,7 +74,7 @@ describe("flee pack blend (4d)", () => {
         predator.chain.head.x = fleePack.head.x + 32;
         predator.chain.head.y = fleePack.head.y;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "flee");
         const snapshot = instance.intent.getDecisionContext();
         assert.ok((snapshot.allyState?.count ?? 0) >= 1);

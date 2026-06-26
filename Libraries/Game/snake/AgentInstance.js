@@ -86,9 +86,6 @@ export class AgentInstance {
         this.die(state, deathImpact);
         return this;
     }
-    tick(dtMs, admitted = true) {
-        this.autosim.tick(dtMs, admitted);
-    }
     isSteerable() {
         if (this.lifecycle !== "alive") return false;
         if (this.head.isDead) return false;

@@ -40,21 +40,21 @@ describe("flee agent bullets and combat", () => {
         assert.ok(canSee, "Flee agent should see snake");
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
         assert.equal(snakeGame.activeGunBulletIds.length, 0);
-        fleeInstance.tick( 16);
+        fleeInstance.autosim.tick(16);
         assert.equal(fleeInstance.intent.getMode(), "shoot_enemy");
         assert.equal(fleeInstance.combatAction.phase, "reacting");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn bullet immediately");
         assert.equal(fleePack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while reacting");
-        fleeInstance.tick( 150);
+        fleeInstance.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet after reacting");
         assert.equal(fleeInstance.combatAction.phase, "fire_delay");
-        fleeInstance.tick( 150);
+        fleeInstance.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 2, "Should spawn second bullet after fire delay");
         assert.equal(fleeInstance.combatAction.phase, "fire_delay");
-        fleeInstance.tick( 150);
+        fleeInstance.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 3, "Should spawn third bullet after fire delay");
         assert.equal(fleeInstance.combatAction.phase, "reloading");
-        fleeInstance.tick( 500);
+        fleeInstance.autosim.tick(500);
         assert.equal(fleeInstance.combatAction.phase, "idle", "Should return to idle after reloading");
         const bulletId = snakeGame.activeGunBulletIds[0];
         const bullet = state.entityRegistry.getLive(bulletId);
@@ -105,7 +105,7 @@ describe("flee agent bullets and combat", () => {
         const fleeAgent = fleePack.head;
         fleeAgent.facing = 0;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        fleeInstance.tick( 100);
+        fleeInstance.autosim.tick(100);
         assert.equal(fleeInstance.intent.getMode(), "shoot_enemy");
         assert.ok(fleeAgent.facing > 0, "Should start rotating toward the target");
         assert.ok(fleeAgent.facing < Math.atan2(snakePack.chain.head.y - fleeAgent.y, snakePack.chain.head.x - fleeAgent.x) + 1e-4, "Should rotate smoothly without snapping instantly");
@@ -126,11 +126,11 @@ describe("flee agent bullets and combat", () => {
         };
         fleePack.head.facing = Math.PI / 2;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        fleeInstance.tick( 16);
-        fleeInstance.tick( 150);
+        fleeInstance.autosim.tick(16);
+        fleeInstance.autosim.tick(150);
         assert.equal(fleeInstance.combatAction.phase, "reacting");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should wait for actual aim alignment");
-        fleeInstance.tick( 4000);
+        fleeInstance.autosim.tick(4000);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should fire once aligned");
     });
     it("waits for aim alignment before burst follow-up shots", async () => {
@@ -149,14 +149,14 @@ describe("flee agent bullets and combat", () => {
         };
         fleePack.head.facing = 0;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        fleeInstance.tick( 16);
-        fleeInstance.tick( 1);
+        fleeInstance.autosim.tick(16);
+        fleeInstance.autosim.tick(1);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "First shot should fire when already aligned");
         snakePack.chain.head.y += 64;
-        fleeInstance.tick( 150);
+        fleeInstance.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "Follow-up should wait after target angle changes");
         assert.equal(fleeInstance.combatAction.phase, "fire_delay");
-        fleeInstance.tick( 4000);
+        fleeInstance.autosim.tick(4000);
         assert.equal(snakeGame.activeGunBulletIds.length, 2, "Follow-up should fire once re-aligned");
     });
     it("fires bullets along unquantized aim rather than sprite buckets", async () => {
@@ -174,8 +174,8 @@ describe("flee agent bullets and combat", () => {
             isVisible: () => true,
         };
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        fleeInstance.tick( 16);
-        fleeInstance.tick( 1);
+        fleeInstance.autosim.tick(16);
+        fleeInstance.autosim.tick(1);
         const bullet = state.entityRegistry.getLive(snakeGame.activeGunBulletIds[0]);
         const bulletAngle = Math.atan2(bullet.vy, bullet.vx);
         const targetAngle = Math.atan2(snakePack.chain.head.y - fleePack.head.y, snakePack.chain.head.x - fleePack.head.x);
@@ -205,7 +205,7 @@ describe("flee agent bullets and combat", () => {
         const fleeAgent = fleePack.head;
         fleeAgent.facing = -Math.PI / 2;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        fleeInstance.tick( 100);
+        fleeInstance.autosim.tick(100);
         fleeAgent.vx = 120;
         fleeAgent.vy = 0;
         syncBallAgentFacingAfterPhysics(fleeInstance, 100);
@@ -234,7 +234,7 @@ describe("flee agent bullets and combat", () => {
             isVisible: () => true,
         };
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
-        fleeInstance.tick( 100);
+        fleeInstance.autosim.tick(100);
         assert.notEqual(fleeInstance.intent.getMode(), "shoot_enemy");
         assert.equal(fleeInstance.combatAction.phase, "idle");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn any bullet");

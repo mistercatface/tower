@@ -30,7 +30,7 @@ export function tickAliveAgents(session, state, dtMs) {
     session.orchestrator.beginFrame(state.sandbox.snakeGame.simTick, session.registry.instancesByHeadId.size);
     for (const instance of aliveAgentInstances(session.registry)) {
         const admitted = session.orchestrator.shouldThink(instance, state, state.viewport);
-        instance.tick(dtMs, admitted);
+        instance.autosim.tick(dtMs, admitted);
     }
     session.orchestrator.endFrame();
 }

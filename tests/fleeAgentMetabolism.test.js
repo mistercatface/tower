@@ -56,7 +56,7 @@ describe("flee agent metabolism", () => {
         setAgentHunger(instance.metabolism, 0.2);
         spawnSnakeFoodShardAtCell(state, { col: 10, row: 10 }, { foodValue: 0.4 });
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.ok(getAgentHunger(instance.metabolism) >= 0.6);
     });
@@ -72,7 +72,7 @@ describe("flee agent metabolism", () => {
         setAgentHunger(instance.metabolism, 0.2);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.equal(instance.intent.getTargetId(), food.id);
     });
@@ -88,18 +88,18 @@ describe("flee agent metabolism", () => {
         setAgentHunger(instance.metabolism, 0.2);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: 0.4 });
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.ok(instance.intent.getDestination()?.lockOnTarget, "food seek should lock onto the shard for terminal homing");
         const foodLive = state.entityRegistry.getLive(food.id);
         const eatRadius = resolveSnakeEatRadius(getSnakeGameConfig(), getCirclePropRadius(pack.head));
         pack.head.x = foodLive.x + eatRadius + 2;
         pack.head.y = foodLive.y;
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.ok(state.entityRegistry.getLive(food.id));
         pack.head.x = foodLive.x + eatRadius - 0.5;
         pack.head.y = foodLive.y;
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(state.entityRegistry.getLive(food.id), null);
         assert.ok(getAgentHunger(instance.metabolism) > 0.55);
     });
@@ -115,7 +115,7 @@ describe("flee agent metabolism", () => {
         for (let col = 11; col <= 17; col++) stampWall(state.obstacleGrid, col, 10);
         const food = spawnSnakeFoodShardAtCell(state, { col: 18, row: 10 });
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "explore");
         assert.ok(state.entityRegistry.getLive(food.id));
         assert.ok(getAgentHunger(instance.metabolism) > 0.99);
@@ -132,11 +132,11 @@ describe("flee agent metabolism", () => {
         setAgentHunger(instance.metabolism, 0.2);
         spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 });
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "seek_food");
         spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "flee");
     });
     it("keeps base color while sprinting flee", async () => {
@@ -152,7 +152,7 @@ describe("flee agent metabolism", () => {
         assert.equal(instance.baseTint, "#7ad4ff");
         spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
         assert.equal(instance.baseTint, "#7ad4ff");

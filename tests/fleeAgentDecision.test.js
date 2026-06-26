@@ -101,7 +101,7 @@ describe("flee agent decision model", () => {
         allyPack.head.y = seekerPack.head.y;
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
         primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().shared.visionRange);
-        seeker.tick( 16);
+        seeker.autosim.tick(16);
         assert.equal(seeker.intent.getMode(), "seek_ally");
         assert.equal(seeker.intent.getTargetId(), allyPack.head.id);
     });
@@ -149,7 +149,7 @@ describe("flee agent decision model", () => {
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
     });
@@ -168,7 +168,7 @@ describe("flee agent decision model", () => {
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick( 16);
+        instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
     });
@@ -292,23 +292,23 @@ describe("flee agent decision model", () => {
         primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
 
         // Tick once to perceive and select mode
-        charlie.tick( 16);
+        charlie.autosim.tick(16);
         assert.equal(charlie.intent.getMode(), "shoot_enemy");
         assert.equal(charlie.intent.getTargetId(), deltaPack.head.id);
         assert.equal(charlie.combatAction.phase, "reacting");
 
         // Tick to react
         snakeGame.activeGunBulletIds = [];
-        charlie.tick( 150);
+        charlie.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "should have fired first bullet after reacting");
         assert.equal(charlie.combatAction.phase, "fire_delay");
 
         // Tick for second shot
-        charlie.tick( 150);
+        charlie.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 2, "should have fired second bullet");
         
         // Tick for third shot
-        charlie.tick( 150);
+        charlie.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 3, "should have fired third bullet");
         assert.equal(charlie.combatAction.phase, "reloading");
     });
@@ -334,7 +334,7 @@ describe("flee agent decision model", () => {
         primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
         primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
 
-        charlie.tick( 16);
+        charlie.autosim.tick(16);
         assert.equal(charlie.intent.getMode(), "flee");
         assert.equal(charlie.intent.getDecisionContext().combatState.shouldBackOffEnemy, true);
         const dest = charlie.intent.getDestination();

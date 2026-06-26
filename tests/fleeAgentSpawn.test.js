@@ -57,7 +57,7 @@ describe("flee agent spawn", () => {
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         pack.head.facing = -Math.PI / 2;
-        instance.tick( 100);
+        instance.autosim.tick(100);
         pack.head.vx = 100;
         pack.head.vy = 0;
         syncBallAgentFacingAfterPhysics(instance, 100);
