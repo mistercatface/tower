@@ -5,7 +5,6 @@ import { KINETIC_PAIR_TIER } from "../../Spatial/collision/kineticNarrowPhase.js
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { buildCircleImpactShards, spawnShardPropsFromGeometry } from "../../Props/propFracture.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 export const SNAKE_SHARD_PROP_ID = "snake_shard";
 const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
@@ -66,7 +65,9 @@ export function fractureSnakeSegmentGeometry(segment, impact, random = Math.rand
 }
 export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = null, random = Math.random) {
     const geometries = fractureSnakeSegmentGeometry(segment, impact, random);
-    const foodValue = geometries.length ? getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost / geometries.length : 0;
+    const config = state.sandbox.snakeGame?.config;
+    const growthCost = config?.agentProfiles?.snake?.metabolism?.growthCost ?? 1.0;
+    const foodValue = geometries.length ? growthCost / geometries.length : 0;
     return spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, spatialFrame, (shard) => {
         copyVisualOverride(segment, shard);
         shard.snakeFoodValue = foodValue;
@@ -109,6 +110,9 @@ function contactWorldPointForBody(contacts, i, targetBody) {
 }
 export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
+    const config = state.sandbox.snakeGame?.config;
+    const splitImpulseThreshold = config?.splitImpulseThreshold ?? 35;
+    const growthCost = config?.agentProfiles?.snake?.metabolism?.growthCost ?? 1.0;
     const fracturedIds = new Set();
     const deferredRetiredFractures = [];
     for (let i = 0; i < contacts.count; i++) {
@@ -119,7 +123,7 @@ export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, co
             if (!segment?.[FRACTURABLE_DEAD_SEGMENT_FLAG]) continue;
             if (fracturedIds.has(segment.id)) continue;
             const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-            if (relSpeed < getSnakeGameConfig().splitImpulseThreshold) continue;
+            if (relSpeed < splitImpulseThreshold) continue;
             const hit = contactWorldPointForBody(contacts, i, segment);
             fracturedIds.add(segment.id);
             deferredRetiredFractures.push({ segment, hit, relSpeed });
@@ -134,7 +138,7 @@ export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, co
                 const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;
                 const impact = resolveSegmentImpact(segment, radius, { worldX: hit.x, worldY: hit.y, impactForce: relSpeed, struckSegmentId: segment.id, spatialFrame }, i);
                 const geometries = fractureSnakeSegmentGeometry(segment, impact);
-                const foodValue = geometries.length ? getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost / geometries.length : 0;
+                const foodValue = geometries.length ? growthCost / geometries.length : 0;
                 const shards = spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, null, (shard) => {
                     copyVisualOverride(segment, shard);
                     shard.snakeFoodValue = foodValue;

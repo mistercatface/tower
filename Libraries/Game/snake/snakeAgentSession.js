@@ -6,6 +6,7 @@ export function createSnakeAgentSession(state, { registry, navWalkable, speciesB
     const config = getSnakeGameConfig();
     const orchestrator = createAgentFrameOrchestrator(config.aiBudget);
     return {
+        config,
         registry,
         speciesById,
         instancesByHeadId: registry.instancesByHeadId,
