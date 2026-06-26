@@ -42,6 +42,7 @@ describe("agent engagement", () => {
     it("deriveSnakeEngagementState marks seek_food with visible food as active", () => {
         const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { threat: null, prey: null, food: { id: 1 }, ally: null, allyCount: 0, allyCentroid: null },
+            shared: getSnakeGameConfig().shared,
         });
         const engagement = deriveSnakeEngagementState(ctx, { mode: "seek_food", targetId: 1 });
         assert.equal(engagement.active, true);
@@ -52,6 +53,7 @@ describe("agent engagement", () => {
     it("deriveSnakeEngagementState marks explore and seek_ally as inactive", () => {
         const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { threat: null, prey: null, food: { id: 1 }, ally: null, allyCount: 0, allyCentroid: null },
+            shared: getSnakeGameConfig().shared,
         });
         assert.equal(deriveSnakeEngagementState(ctx, { mode: "explore" }).active, false);
         assert.equal(deriveSnakeEngagementState(ctx, { mode: "seek_ally", targetId: 2 }).active, false);
@@ -60,6 +62,7 @@ describe("agent engagement", () => {
     it("deriveSnakeEngagementState requires acting on salient target for active modes", () => {
         const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { threat: null, prey: null, food: { id: 1 }, ally: null, allyCount: 0, allyCentroid: null },
+            shared: getSnakeGameConfig().shared,
         });
         assert.equal(deriveSnakeEngagementState(ctx, { mode: "seek_prey" }).active, false);
         assert.equal(deriveSnakeEngagementState(ctx, { mode: "flee" }).active, false);
@@ -100,7 +103,7 @@ describe("ally intent memory", () => {
         applySnakeGameConfig();
         const visibleWorld = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null };
         const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyCount: 1, allyCentroid: null };
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, memoryWorld, memorySource: { ally: true } });
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, memoryWorld, memorySource: { ally: true }, shared: getSnakeGameConfig().shared });
         assert.equal(ctx.known.ally.id, 42);
         assert.equal(ctx.allyState.remembered, true);
         assert.equal(ctx.allyState.visible, false);
@@ -127,7 +130,7 @@ describe("ally intent memory", () => {
         };
         memory.update(seekerPack.head, state, visible);
         const enriched = memory.enrichWorld(state, { ...visible, ally: null, allyCount: 0, allyCentroid: null });
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, { visibleWorld: enriched, memoryWorld: enriched, memorySource: enriched.memorySource });
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, { visibleWorld: enriched, memoryWorld: enriched, memorySource: enriched.memorySource, shared: getSnakeGameConfig().shared });
         assert.equal(ctx.allyState.ally.id, allyPack.head.id);
         assert.equal(ctx.allyState.remembered, true);
     });

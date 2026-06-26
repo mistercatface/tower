@@ -4,7 +4,7 @@ import { applySnakeGameConfig, getSharedConfig, getSnakeGameConfig } from "../Li
 import { buildAgentDecisionContextFor, buildAgentDecisionFrameFor, pickAgentIntentPolicyFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
-import { deriveThreatState } from "../Libraries/AI/agents/deriveThreatState.js";
+import { deriveThreatState } from "../Libraries/AI/agents/buildAgentDecisionContext.js";
 import { bandFromThresholds } from "../Libraries/AI/agents/bandFromThresholds.js";
 import { createModePolicyLatch } from "../Libraries/AI/agentIntent/policyHysteresis.js";
 const TEST_HUNGER_BANDS = [
@@ -35,14 +35,14 @@ function inferReachSteps(visibleWorld, { committedTarget, routeStatus, memoryWor
 }
 function context(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), cellSize: CELL, ...rest });
+    return buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), cellSize: CELL, shared: getSnakeGameConfig().shared, ...rest });
 }
 function snake(id, extra = {}) {
     return { id, x: 0, y: 0, isDead: false, ...extra };
 }
 function decisionFrame(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), ...rest });
+    return buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), shared: getSnakeGameConfig().shared, ...rest });
 }
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {

@@ -23,6 +23,10 @@ function fleeReach(overrides = {}) {
     return { threat: null, enemy: null, food: null, ally: null, ...overrides };
 }
 
+function fleeDecisionInput(input) {
+    return { cellSize: CELL, shared: getSnakeGameConfig().shared, ...input };
+}
+
 function mockTarget(id) {
     return { id, x: 0, y: 0, type: "snake_head", isDead: false };
 }
@@ -52,10 +56,10 @@ describe("flee agent decision model", () => {
 
     it("explores when only smaller snakes are visible and no food", () => {
         applySnakeGameConfig();
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: { threat: null, food: null, ally: null, allyCount: 0, threatCount: 0 },
             foodFraction: 0.55,
-        });
+        }));
         assert.equal(ctx.chosenIntent.mode, "explore");
         assert.equal(ctx.sprintIntent.want, false);
     });
@@ -63,7 +67,7 @@ describe("flee agent decision model", () => {
     it("seek_ally beats explore when a visible ally is present and hunger is satisfied", () => {
         applySnakeGameConfig();
         const ally = mockTarget("ally1");
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: {
                 threat: null,
                 food: null,
@@ -74,7 +78,7 @@ describe("flee agent decision model", () => {
             },
             reachSteps: fleeReach({ ally: 4 }),
             foodFraction: 0.9,
-        });
+        }));
         assert.equal(ctx.chosenIntent.mode, "seek_ally");
         assert.equal(ctx.chosenIntent.targetId, "ally1");
         assert.ok(ctx.candidateScores.seek_ally > ctx.candidateScores.explore);
@@ -103,11 +107,11 @@ describe("flee agent decision model", () => {
 
     it("flee beats explore when a visible threat is present", () => {
         applySnakeGameConfig();
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: { threat: mockTarget("t1"), food: null, threatCount: 1 },
             reachSteps: fleeReach({ threat: 4 }),
             foodFraction: 0.55,
-        });
+        }));
         assert.equal(ctx.chosenIntent.mode, "flee");
         assert.equal(ctx.sprintIntent.want, true);
     });
@@ -172,14 +176,14 @@ describe("flee agent decision model", () => {
         applySnakeGameConfig();
         const enemy = mockTarget("snake1");
         enemy.x = 80;
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
             reachSteps: fleeReach({ enemy: 4 }),
             foodFraction: 0.9,
             agent: { x: 0, y: 0 },
             state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
             actionState: createRangedCombatActionState(),
-        });
+        }));
         assert.equal(ctx.chosenIntent.mode, "shoot_enemy");
         assert.equal(ctx.chosenIntent.targetId, "snake1");
         assert.equal(ctx.combatState.canShoot, true);
@@ -198,14 +202,14 @@ describe("flee agent decision model", () => {
         const enemy = mockTarget("flee2");
         enemy.x = 80;
         enemy.type = "boid_triangle";
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
             reachSteps: fleeReach({ enemy: 4 }),
             foodFraction: 0.9,
             agent: { x: 0, y: 0 },
             state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
             actionState: createRangedCombatActionState(),
-        });
+        }));
         assert.equal(ctx.chosenIntent.mode, "shoot_enemy");
         assert.equal(ctx.chosenIntent.targetId, "flee2");
         assert.equal(ctx.combatState.canShoot, true);
@@ -216,14 +220,14 @@ describe("flee agent decision model", () => {
         const enemy = mockTarget("flee2");
         enemy.x = 32;
         enemy.type = "boid_triangle";
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
             reachSteps: fleeReach({ enemy: 2 }),
             foodFraction: 0.9,
             agent: { x: 0, y: 0 },
             state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
             actionState: createRangedCombatActionState(),
-        });
+        }));
         assert.equal(ctx.combatState.shouldBackOffEnemy, true);
         assert.equal(ctx.chosenIntent.mode, "flee");
         assert.equal(ctx.known.threat.id, "flee2");
@@ -236,7 +240,7 @@ describe("flee agent decision model", () => {
         const enemy = mockTarget("flee2");
         enemy.x = 80;
         enemy.type = "boid_triangle";
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
             visibleWorld: { threat: null, prey: null, food: null, ally: null, allyCount: 0, threatCount: 0 },
             memoryWorld: { prey: enemy },
             memorySource: { prey: true },
@@ -256,7 +260,7 @@ describe("flee agent decision model", () => {
                 },
             },
             actionState: createRangedCombatActionState(),
-        });
+        }));
         assert.equal(losChecks, 0);
         assert.equal(ctx.combatState.canShoot, false);
         assert.notEqual(ctx.chosenIntent.mode, "shoot_enemy");

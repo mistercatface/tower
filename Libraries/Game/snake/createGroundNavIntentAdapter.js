@@ -222,6 +222,7 @@ function buildDecisionContextInto(decisionContext, input, agentCtx, resolveHunge
         routeStatus,
         reachSteps,
         cellSize: state.obstacleGrid.cellSize,
+        shared: agentCtx.session.config.shared,
         foodFraction: resolveHunger ? resolveHunger() : null,
     };
     const fields = profile.intent.decisionFields ?? {};

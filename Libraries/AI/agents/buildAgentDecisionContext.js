@@ -1,14 +1,26 @@
 import { bandFromThresholds } from "./bandFromThresholds.js";
 import { deriveAllyStateInto } from "./deriveAllyState.js";
-import { deriveThreatStateInto } from "./deriveThreatState.js";
 import { mergeSlotsFromSchemaInto } from "./mergeSlotsFromSchema.js";
 import { scoreDecisionCandidateDetails } from "./scoreDecisionModes.js";
 import { deriveSprintIntent } from "./deriveSprintIntent.js";
 import { pushTargetEvents, routeEventsInto, intentPolicy, policyReasonForTarget } from "../agentIntent/targetEvents.js";
 import { pickBestScoreKey, scoreCandidateNetsInto, scoreCandidateSet } from "../utility/utilityScoring.js";
 import { getAgentProfile } from "./agentProfile.js";
-import { getSharedConfig } from "../../Game/snake/snakeGameConfig.js";
 const EMPTY_AGENT_REACH_STEPS = Object.freeze({ threat: null, prey: null, enemy: null, food: null, ally: null });
+function deriveThreatStateInto(out, visibleThreat, reachSteps, cellSize, shared) {
+    if (!visibleThreat || reachSteps == null) return null;
+    const visionSpec = shared.visionRange ?? {};
+    const fleeRange = shared.fleeRange ?? visionSpec.range;
+    const fleeRangeCells = Math.ceil(fleeRange / cellSize);
+    const lethalThreatRangeCells = Math.ceil(shared.lethalThreatRange / cellSize);
+    out.dist = reachSteps;
+    out.severity = Math.max(0, Math.min(1, (fleeRangeCells - reachSteps) / fleeRangeCells));
+    out.lethal = reachSteps <= lethalThreatRangeCells;
+    return out;
+}
+export function deriveThreatState(visibleThreat, reachSteps, cellSize, shared) {
+    return deriveThreatStateInto({ dist: 0, severity: 0, lethal: false }, visibleThreat, reachSteps, cellSize, shared);
+}
 function pushSchemaEventTargets(events, visible, remembered, visibleWorld, eventTargets) {
     for (let i = 0; i < eventTargets.length; i++) {
         const slot = eventTargets[i];
@@ -41,7 +53,7 @@ function applyRangedBackOffThreat(ctx, input) {
     ctx.known.threat = threat;
     ctx.known.threatCount = Math.max(1, ctx.known.threatCount ?? 0);
     const reachSteps = Number.isFinite(combat.reachCells) ? combat.reachCells : Math.ceil(combat.distWorld / (input.cellSize ?? 16));
-    ctx.threatState = deriveThreatStateInto(ctx.threatScratch, threat, reachSteps, input.cellSize ?? 16, getSharedConfig());
+    ctx.threatState = deriveThreatStateInto(ctx.threatScratch, threat, reachSteps, input.cellSize ?? 16, input.shared);
 }
 export function createAgentDecisionContextFrame(profileId) {
     const schema = getAgentProfile(profileId).decision;
@@ -96,7 +108,7 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
     ctx.routeStatus = input.routeStatus ?? null;
     ctx.foodFraction = input.foodFraction ?? null;
     ctx.hungerTier = input.hungerTier ?? null;
-    ctx.threatState = deriveThreatStateInto(ctx.threatScratch, input.visibleWorld?.threat, input.reachSteps?.threat, input.cellSize ?? 16, getSharedConfig());
+    ctx.threatState = deriveThreatStateInto(ctx.threatScratch, input.visibleWorld?.threat, input.reachSteps?.threat, input.cellSize ?? 16, input.shared);
     routeEventsInto(ctx.events, input.routeStatus);
     pushSchemaEventTargets(ctx.events, ctx.visible, ctx.remembered, input.visibleWorld, schema.eventTargets);
     for (const [mode, slotKey] of Object.entries(schema.targetLost)) if (!ctx.known[slotKey] && input.committedTarget?.mode === mode) ctx.events.push("TARGET_LOST");

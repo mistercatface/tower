@@ -21,7 +21,7 @@ function fleePackInstance() {
 describe("flee pack blend (4d)", () => {
     it("resolvePackSteeringOptions returns null without allies", () => {
         applySnakeGameConfig({ agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.35 } } } });
-        const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld: { threat: { id: 1 }, allyCount: 0 } });
+        const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld: { threat: { id: 1 }, allyCount: 0 }, shared: getSnakeGameConfig().shared });
         assert.equal(resolvePackSteeringOptions(bb, fleePackInstance()), null);
     });
 
@@ -29,6 +29,7 @@ describe("flee pack blend (4d)", () => {
         applySnakeGameConfig({ agentProfiles: { flee_agent: { factionCohesion: { fleePackBlend: 0.35, maxPackDistCells: 16 } } } });
         const bb = buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, {
             visibleWorld: { ally: { id: 2, x: 80, y: 40 }, allyCount: 1, allyCentroid: { x: 80, y: 40 } },
+            shared: getSnakeGameConfig().shared,
         });
         assert.deepEqual(resolvePackSteeringOptions(bb, fleePackInstance()), { packAnchor: { x: 80, y: 40 }, packBlend: 0.35, maxPackDistCells: 16 });
     });
