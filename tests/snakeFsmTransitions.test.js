@@ -12,8 +12,7 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createGroundNavIntentAdapter } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
-import { buildGroundNavIntentAdapterOptions } from "../Libraries/Game/snake/groundNavIntentProfiles.js";
+import { createGroundNavIntentAdapter, buildGroundNavIntentAdapterOptions, resolveSnakeExploreCell } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { createAgentBrain } from "../Libraries/Game/snake/agentBrain.js";
@@ -23,7 +22,6 @@ import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.j
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
-import { resolveSnakeExploreCell } from "../Libraries/Game/snake/groundNavIntentProfiles.js";
 import { createSeekIntentState } from "../Libraries/AI/agentIntent/intentStates.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
@@ -125,7 +123,7 @@ function createMockIntent(state, headId) {
         brain,
         sync,
         headNav,
-        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable),
+        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, getSnakeGameConfig().shared),
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
         rng: () => 0,
     };

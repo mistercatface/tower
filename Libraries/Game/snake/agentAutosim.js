@@ -3,7 +3,7 @@ import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createAgentBrain } from "./agentBrain.js";
 import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
-import { buildGroundNavIntentAdapterOptions } from "./groundNavIntentProfiles.js";
+import { buildGroundNavIntentAdapterOptions } from "./createGroundNavIntentAdapter.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
