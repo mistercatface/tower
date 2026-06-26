@@ -14,15 +14,6 @@ import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
 import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism, tickAgentMetabolism, shrinkSnakeChainFromStarvation } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-function sprintAllowed(profileId, segmentCount, metabolism, profile) {
-    if (profileId === AGENT_PROFILE.flee) return getAgentHunger(metabolism) > 0;
-    if (profileId === AGENT_PROFILE.squid) return segmentCount >= 2;
-    if (profileId === AGENT_PROFILE.snake) return segmentCount > (profile.minAliveSegmentCount ?? 3);
-    return true;
-}
-function computeSprinting(intent, profileId, segmentCount, metabolism, profile) {
-    return intent.getDecisionContext()?.sprintIntent?.want === true && sprintAllowed(profileId, segmentCount, metabolism, profile);
-}
 /** Shared ground-nav autosim for flee, snake, and squid. */
 export function createAgentAutosim(state, instance) {
     const profileId = instance.profileId;
@@ -104,9 +95,9 @@ export function createAgentAutosim(state, instance) {
         getHeadNav() {
             return headNav;
         },
-        start(initialHungerOverride = null) {
+        start() {
             active = true;
-            setAgentHunger(metabolism, initialHungerOverride ?? initialHunger);
+            setAgentHunger(metabolism, initialHunger);
             intent.resetMode();
             if (intent.resetMemory) intent.resetMemory();
             const snakeGame = state.sandbox.snakeGame;
@@ -116,10 +107,6 @@ export function createAgentAutosim(state, instance) {
             if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
             else maybeBeginSnakeAutosimTick(state);
             intent.tick(seeker, state, 0);
-            instance.sprinting = computeSprinting(intent, profileId, members.length, metabolism, profile);
-            if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
-            seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
-            seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
             intent.headNav.tick(seeker, 0);
             if (soloTick) endSnakePerceptionFrame(state);
         },
@@ -157,7 +144,7 @@ export function createAgentAutosim(state, instance) {
             let choice;
             if (admitted) {
                 choice = intent.tick(seeker, state, dtMs);
-                instance.sprinting = computeSprinting(intent, profileId, members.length, metabolism, profile);
+                instance.sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(metabolism) > 0;
                 if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
                 seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
                 seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;

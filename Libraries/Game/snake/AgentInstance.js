@@ -38,7 +38,7 @@ export class AgentInstance {
         this.peakPressure = 0;
         this.isHeadRouteValid = false;
         this.baseTint = isFleeProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
-        this._sprinting = false;
+        this.sprinting = false;
         this._intentOverride = undefined;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
@@ -71,12 +71,6 @@ export class AgentInstance {
     }
     set intent(value) {
         this._intentOverride = value;
-    }
-    get sprinting() {
-        return this._sprinting === true;
-    }
-    set sprinting(value) {
-        this._sprinting = value === true;
     }
     get brain() {
         return this.autosim?.getBrain?.() ?? null;
