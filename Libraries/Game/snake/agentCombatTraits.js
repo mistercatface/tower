@@ -15,10 +15,6 @@ export function getAgentCombatTraits(profileId) {
     const profile = getAgentProfile(profileId, getSnakeGameConfig());
     return { ...COMBAT_TRAIT_DEFAULTS, ...profile.combat };
 }
-export function getInstanceCombatTraits(instance) {
-    if (!instance?.profileId) return COMBAT_TRAIT_DEFAULTS;
-    return getAgentCombatTraits(instance.profileId);
-}
 export function isChainCombatTopology(traits) {
     return traits.topology === "chain";
 }

@@ -1,9 +1,14 @@
 import { getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+let _bakedConfig = null;
 const _bakedRulesByProfile = new Map();
 function getBakedRules(profileId) {
-    if (_bakedRulesByProfile.has(profileId)) return _bakedRulesByProfile.get(profileId);
     const config = getSnakeGameConfig();
+    if (config !== _bakedConfig) {
+        _bakedRulesByProfile.clear();
+        _bakedConfig = config;
+    }
+    if (_bakedRulesByProfile.has(profileId)) return _bakedRulesByProfile.get(profileId);
     const profile = getAgentProfile(profileId, config);
     const baked = {};
     for (const [targetId, rule] of Object.entries(profile.relationships ?? {})) {

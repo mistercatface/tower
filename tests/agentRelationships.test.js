@@ -14,8 +14,8 @@ describe("resolveRelationshipForInstances", () => {
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.squid)), "threat");
         const closeSq = 40 * 40;
         const farSq = 80 * 80;
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), undefined, closeSq), "threat");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), undefined, farSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), closeSq), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), farSq), "prey");
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.squid)), "threat");
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid)), "threat");
     });
@@ -24,11 +24,11 @@ describe("resolveRelationshipForInstances", () => {
         applySnakeGameConfig();
         const closeSq = 40 * 40;
         const farSq = 80 * 80;
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), undefined, closeSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), undefined, farSq), "neutral");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.snake), undefined, closeSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), undefined, closeSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), undefined, farSq), "threat");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), closeSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), farSq), "neutral");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.snake), closeSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), closeSq), "prey");
+        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), farSq), "threat");
     });
 
     it("sizeBand same faction returns configured ally or neutral", () => {

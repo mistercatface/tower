@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
@@ -94,12 +94,11 @@ describe("focused agent debug overlays", () => {
         createWiredSnakeAutosim(state, { headId: snake.chain.head.id, behaviorById: new Map() });
         state.followCamera.focus(snakeInstance.head);
         const commands = [];
-        const overlayConfig = getSnakeGameConfig();
         const instance = snakeGame.instancesByHeadId.get(state.followCamera.targetProp.id);
-        appendFocusedAgentVisibleEntityOverlayCommands(commands, state, snakeGame, overlayConfig);
+        appendFocusedAgentVisibleEntityOverlayCommands(commands, state, snakeGame);
         const pathOverlay = instance.autosim.getPathOverlay?.();
-        if (pathOverlay) appendFocusedAgentPathPreviewCommands(commands, pathOverlay, instance.head.radius, overlayConfig);
-        appendFocusedAgentTargetOverlayCommands(commands, state, snakeGame, overlayConfig);
+        if (pathOverlay) appendFocusedAgentPathPreviewCommands(commands, pathOverlay, instance.head.radius);
+        appendFocusedAgentTargetOverlayCommands(commands, state, snakeGame);
         assert.ok(commands.every((cmd) => cmd.kind === "polyline" || cmd.kind === "circleFillStroke" || commands.length === 0));
         assert.ok(commands.every((cmd) => cmd.kind !== "aabb"));
     });

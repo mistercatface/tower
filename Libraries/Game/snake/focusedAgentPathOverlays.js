@@ -12,9 +12,9 @@ function focusedPathPreviewStyle(config) {
         nodeRadiusScale: style.nodeRadiusScale ?? 0.45,
     };
 }
-export function appendFocusedAgentPathPreviewCommands(out, pathOverlay, headRadius, config = getSnakeGameConfig()) {
+export function appendFocusedAgentPathPreviewCommands(out, pathOverlay, headRadius) {
     if (!pathOverlay?.pathNodes?.length) return;
-    const style = focusedPathPreviewStyle(config);
+    const style = focusedPathPreviewStyle(getSnakeGameConfig());
     const headR = headRadius ?? 3;
     const lineWidth = Math.max(0.75, headR * style.lineWidthScale);
     const nodeR = Math.max(1.5, headR * style.nodeRadiusScale);

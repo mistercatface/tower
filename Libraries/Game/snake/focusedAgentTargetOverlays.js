@@ -1,4 +1,3 @@
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
 function focusedTargetRingStyle(config) {
     const style = config.focusedAgentDebug?.targetRing ?? {};
@@ -25,13 +24,13 @@ function readIntentTarget(instance) {
     if (!intent) return null;
     return { mode: intent.getMode?.() ?? null, targetId: intent.getTargetId?.() ?? null, destination: intent.getDestination?.() ?? null };
 }
-export function appendFocusedAgentTargetOverlayCommands(out, state, session, config = getSnakeGameConfig()) {
+export function appendFocusedAgentTargetOverlayCommands(out, state, session) {
     const prop = state.followCamera?.targetProp;
     if (!prop) return;
     const instance = session.instancesByHeadId.get(prop.id);
     const target = resolveCommittedTargetWorld(state, readIntentTarget(instance));
     if (!target) return;
-    const style = focusedTargetRingStyle(config);
+    const style = focusedTargetRingStyle(session.config);
     const radius = target.kind === "entity" ? target.radius + style.entityPad : target.radius * style.cellScale;
     out.push(overlayCircleFillStroke(target.x, target.y, radius, { fill: style.fill, stroke: style.stroke, lineWidth: 1.5 }));
 }

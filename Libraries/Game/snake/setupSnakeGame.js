@@ -155,15 +155,15 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             if (!prop) return;
             const instance = snakeGame?.instancesByHeadId.get(prop.id);
             if (!instance?.autosim || typeof instance.autosim.getBrain !== "function") return;
-            appendFocusedAgentVisibleEntityOverlayCommands(out, state, snakeGame, overlayConfig);
+            appendFocusedAgentVisibleEntityOverlayCommands(out, state, snakeGame);
             const pathOverlay = instance.autosim.getPathOverlay?.();
-            if (pathOverlay) appendFocusedAgentPathPreviewCommands(out, pathOverlay, instance.head.radius, overlayConfig);
-            appendFocusedAgentTargetOverlayCommands(out, state, snakeGame, overlayConfig);
+            if (pathOverlay) appendFocusedAgentPathPreviewCommands(out, pathOverlay, instance.head.radius);
+            appendFocusedAgentTargetOverlayCommands(out, state, snakeGame);
         },
         applyContactSideEffects(tick, contacts) {
             applyKineticContactSideEffects(tick, contacts);
             for (const sys of CUSTOM_SYSTEMS) if (sys.resolveContacts) sys.resolveContacts(state, tick.frame, contacts);
-            resolveSnakeCombatFromContacts(state, tick.frame, contacts, state.sandbox.snakeGame);
+            resolveSnakeCombatFromContacts(state, tick.frame, contacts);
             applySnakeHuntContactDrive(state, tick.frame, contacts, state.sandbox.snakeGame);
             fractureRetiredSnakeSegmentsFromContacts(state, tick.frame, contacts);
             validateAliveAgents(state.sandbox.snakeGame, state);
