@@ -456,10 +456,13 @@ export function createGroundNavIntentAdapter({
     const base = {
         ...intent,
         headId: agentCtx.instance.headId,
+        sprintWanted: false,
         tick(agent, state, dtMs = 16) {
             intentContext.dtMs = dtMs;
             intent.perceive(agent, state);
-            return intent.transition(agent, state);
+            const choice = intent.transition(agent, state);
+            base.sprintWanted = lastDecisionContext.sprintIntent.want === true;
+            return choice;
         },
         getDestination() {
             return locomotion.getDestination();

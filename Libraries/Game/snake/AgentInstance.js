@@ -5,7 +5,7 @@ import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { advanceAgentMetabolismHunger, feedAgentMetabolism, getAgentHunger } from "./agentMetabolism.js";
+import { advanceAgentMetabolismHunger, feedAgentMetabolism } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
@@ -252,7 +252,7 @@ export class AgentInstance {
         return shed;
     }
     applySprintMovementIntent() {
-        this.sprinting = this.intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(this.metabolism) > 0;
+        this.sprinting = this.intent.sprintWanted && this.metabolism.hunger > 0;
         const groundNav = this.head.strategy.groundNav;
         groundNav.maxSpeed = this.sprinting ? this.sprintMaxSpeed : this.walkMaxSpeed;
         groundNav.accel = this.sprinting ? this.sprintAccel : this.walkAccel;
