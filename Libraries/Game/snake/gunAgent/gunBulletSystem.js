@@ -28,9 +28,6 @@ export class Projectile extends Entity {
     getShape() {
         return this.shape;
     }
-    get momentOfInertia() {
-        return 0.25;
-    }
     get angle() {
         return this.facing ?? 0;
     }
@@ -142,11 +139,12 @@ export function resolveGunBulletContacts(state, spatialFrame, contacts) {
         const victim = isBulletA ? bodyB : bodyA;
         if (!victim) continue;
         const victimInstance = state.sandbox.snakeGame.instancesByMemberId.get(victim.id);
-        if (!victimInstance || victimInstance.lifecycle !== "alive") continue;
-        if (victimInstance.headId === bullet._shooterHeadId) continue;
-        const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-        const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };
-        victimInstance.die(state, deathImpact);
+        if (victimInstance?.headId === bullet._shooterHeadId) continue;
+        if (victimInstance?.lifecycle === "alive") {
+            const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+            const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };
+            victimInstance.die(state, deathImpact);
+        }
         bullet._armed = false;
     }
 }
