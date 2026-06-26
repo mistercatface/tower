@@ -50,10 +50,11 @@ export class AgentInstance {
         const config = getSnakeGameConfig();
         const headRadius = getCirclePropRadius(head);
         this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
+        this.visionRange = config.shared.visionRange;
         this.splitImpulseThreshold = config.splitImpulseThreshold;
         this.leaderMaxSpeed = this.leaderGameplay.maxSpeed;
         this.combatTraits = { ...COMBAT_TRAIT_DEFAULTS, ...profile.combat };
-        this.resolvedWeapon = resolveRangedWeapon(this, profile);
+        this.resolvedWeapon = resolveRangedWeapon(this, profile, this.visionRange.range);
         this.aimTurnRadPerSec = this.resolvedWeapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
         this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? createRangedCombatActionState() : null;
     }

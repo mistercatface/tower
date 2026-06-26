@@ -188,7 +188,7 @@ describe("flee agent decision model", () => {
     it("derives flee weapon range from vision range minus inset", () => {
         applySnakeGameConfig({ shared: { visionRange: { range: 160 } } });
         const profile = getAgentProfile(AGENT_DECISION_PROFILE.flee);
-        const weapon = resolveRangedWeapon(null, profile);
+        const weapon = resolveRangedWeapon(null, profile, 160);
         assert.equal(weapon.maxRange, 144);
         assert.equal(weapon.maxRangeVisionInset, 16);
     });

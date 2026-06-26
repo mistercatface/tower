@@ -81,6 +81,7 @@ function buildDecisionContextInto(profileId, decisionContext, input, deps) {
         decisionInput.state = state;
         decisionInput.actionState = deps.agentCtx.instance.combatAction;
         decisionInput.equippedWeapon = deps.agentCtx.instance.equippedWeapon ?? null;
+        decisionInput.weaponVisionRange = deps.agentCtx.instance.visionRange.range;
     }
     return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
 }

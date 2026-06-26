@@ -5,21 +5,18 @@ import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js"
 import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
 import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
 const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;
 const DEFAULT_WEAPON_MAX_RANGE = 128;
-export function resolveRangedWeapon(instance, profile) {
+export function resolveRangedWeapon(instance, profile, visionRange = null) {
     const weapon = instance?.equippedWeapon ?? profile?.weapon ?? null;
     if (!weapon) return null;
-    const config = getSnakeGameConfig();
-    const visionRange = config.shared?.visionRange?.range;
     const inset = weapon.maxRangeVisionInset;
     const maxRange = weapon.maxRange ?? (Number.isFinite(visionRange) && Number.isFinite(inset) ? Math.max(0, visionRange - inset) : null) ?? profile?.attackRange ?? DEFAULT_WEAPON_MAX_RANGE;
     const fleeRange = weapon.fleeRange ?? profile?.attackRange ?? 48;
     return { ...weapon, maxRange, fleeRange };
 }
-export function hasRangedCombatCapability(instance, profile) {
-    return !!(resolveRangedWeapon(instance, profile) || profile?.decision?.modes?.shoot_enemy);
+export function hasRangedCombatCapability(instance, profile, visionRange = null) {
+    return !!(resolveRangedWeapon(instance, profile, visionRange) || profile?.decision?.modes?.shoot_enemy);
 }
 export function createRangedCombatActionState() {
     return { phase: "idle", targetId: null, timerMs: 0, aimAngle: 0, shotsFired: 0 };
@@ -44,7 +41,7 @@ export function hasLineOfSight(state, seeker, target) {
     return frame.isVisible(seeker, target.x, target.y, state.sandbox.snakeGame.config?.shared?.visionRange);
 }
 export function deriveRangedCombatState(ctx, input, profile) {
-    const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile);
+    const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
     if (!weapon) return null;
     const maxRange = weapon.maxRange;
     const fleeRange = weapon.fleeRange;
