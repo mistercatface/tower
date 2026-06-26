@@ -50,9 +50,10 @@ describe("kinetic wall damage", () => {
             },
         };
         resolveKineticWallDamage(state, entity, {}, wallResolver);
-        assert.equal(state.sandbox.gridWallDamage.session.pendingDamage.get("v:6,6"), 45);
+        assert.equal(state.sandbox.gridWallDamage.session.pendingBreaks.get("v:6,6").damage, 45);
         flushPendingWallDamage(state);
-        assert.ok(state.sandbox.gridWallDamage.session.entries.get("v:6,6").hp < 100);
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, 6, 6));
+        assert.equal(state.sandbox.gridWallDamage.session.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("resolveWallDamageTarget distinguishes voxel and rail segments", async () => {
@@ -66,33 +67,43 @@ describe("kinetic wall damage", () => {
         assert.equal(resolveWallDamageTarget(grid, railSeg)?.kind, "rail");
         terminateWorkerNavigation(state.nav);
     });
-    it("three max-power head-on hits destroy a voxel wall", async () => {
+    it("grazing hits do not break a voxel wall", async () => {
+        const state = await createWallDamageTestState();
+        const grid = state.obstacleGrid;
+        stampVoxel(grid, 3, 3);
+        const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
+        const hit = { approachDot: -112, normalX: 1, normalY: 0, segment };
+        queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
+        await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
+        assert.ok(cellIsStaticWall(grid, 3, 3));
+        assert.equal(wallDamage.session.pendingBreaks.size, 0);
+        terminateWorkerNavigation(state.nav);
+    });
+    it("one max-power head-on hit destroys a voxel wall", async () => {
         const state = await createWallDamageTestState();
         const grid = state.obstacleGrid;
         stampVoxel(grid, 3, 3);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
         const hit = { approachDot: -560, normalX: 1, normalY: 0, segment };
-        for (let i = 0; i < 3; i++) {
-            queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
-            await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, WALL_DAMAGE);
-        }
+        queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
+        await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
         assert.ok(!cellIsStaticWall(grid, 3, 3));
-        assert.equal(wallDamage.session.entries.size, 0);
+        assert.equal(wallDamage.session.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
-    it("three max-power head-on hits destroy a rail wall", async () => {
+    it("one max-power head-on hit destroys a rail wall", async () => {
         const state = await createWallDamageTestState();
         const grid = state.obstacleGrid;
         stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridCol: 5, gridRow: 5, gridSide: 0, isStaticGridProxy: false, isEdgeRail: true };
         const hit = { approachDot: -560, normalX: 0, normalY: 1, segment };
-        for (let i = 0; i < 3; i++) {
-            queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
-            await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit, WALL_DAMAGE);
-        }
+        queueWallHits(wallDamage.session, grid, [hit], 560, WALL_DAMAGE);
+        await applyPendingWallDamage(state, wallDamage.session, wallDamage.commit);
         assert.ok(!isRailWallEdge(grid.edgeStore.get(5, 5, 0, grid.cols)));
+        assert.equal(wallDamage.session.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("wallDamageKey round-trips voxel and rail targets", () => {

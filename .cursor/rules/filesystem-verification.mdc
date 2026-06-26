@@ -1,0 +1,14 @@
+---
+description: Treat direct filesystem checks as authoritative after deletes, moves, and archive work
+alwaysApply: true
+---
+
+# Filesystem Verification — direct checks win
+
+Search output is not authoritative for file existence.
+
+- Do not treat `rg`, semantic search, terminal output, prior tool results, or transcript summaries as proof that a file exists or was deleted.
+- After delete, move, rename, or archive work, verify the exact source and destination paths with direct filesystem tools: `ReadFile` for known files, or `Glob` scoped to the parent directory.
+- If search says a file exists but `ReadFile` says `File not found`, treat the direct filesystem check as authoritative.
+- Do not report a file as deleted, moved, renamed, or archived until the exact source and destination paths are verified.
+- When source and destination have similar names, cite the full path internally while verifying so `Libraries/World/foo.js` is not confused with `Libraries/Spatial/grid/foo.js`.
