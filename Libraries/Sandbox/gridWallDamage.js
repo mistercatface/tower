@@ -21,12 +21,12 @@ export function resolveWallDamageTarget(grid, segment) {
     }
     return null;
 }
-export function computeWallImpactDamage(preSpeed, approachDot, config) {
+export function computeWallBreakStrength(preSpeed, approachDot, config) {
     if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
     const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
     const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
     const angleT = Math.min(1, Math.max(config.minAngleFactor, -approachDot / preSpeed));
-    return config.maxHitDamage * speedT * angleT;
+    return speedT * angleT;
 }
 export function getGridWallDamageState(state) {
     return state.sandbox?.gridWallDamage ?? null;
@@ -57,10 +57,10 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed) {
         const hit = hits[i];
         const target = resolveWallDamageTarget(grid, hit.segment);
         if (!target) continue;
-        const damage = computeWallImpactDamage(preSpeed, hit.approachDot, config);
-        if (damage < config.maxHitDamage) continue;
+        const strength = computeWallBreakStrength(preSpeed, hit.approachDot, config);
+        if (strength < config.minBreakStrength) continue;
         const key = wallDamageKey(target);
-        if (!wallDamage.pendingBreaks.has(key)) wallDamage.pendingBreaks.set(key, { target, damage, hit });
+        if (!wallDamage.pendingBreaks.has(key)) wallDamage.pendingBreaks.set(key, { target, strength, hit });
     }
 }
 export function applyPendingWallDamage(state, wallDamage) {

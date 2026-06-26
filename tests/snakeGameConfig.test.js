@@ -24,7 +24,7 @@ describe("snakeGameConfig", () => {
         assert.equal(wallDamage.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
         assert.equal(wallDamage.minStrikeSpeed, getSnakeGameConfig().kineticMinStrikeSpeed);
         assert.equal(wallDamage.referenceMaxSpeed, 560);
-        assert.equal(wallDamage.maxHp, SNAKE_GAME_DEFAULTS.wallDamage.maxHp);
+        assert.equal(wallDamage.minBreakStrength, SNAKE_GAME_DEFAULTS.wallDamage.minBreakStrength);
     });
 
     it("applySnakeGameConfig merges overrides onto defaults", () => {
@@ -39,9 +39,9 @@ describe("snakeGameConfig", () => {
     it("pure helper calls return correct calculations without config objects", () => {
         assert.equal(resolveSnakeSegmentSpacing(1.5, 4), 4 * 2 * 1.5);
         assert.equal(resolveSnakeEatRadius(3, 5, 2), 2 + 3 + 5);
-        const wallDamage = resolveSnakeWallDamageConfig({ maxHp: 100, referenceMaxSpeed: 500 });
+        const wallDamage = resolveSnakeWallDamageConfig({ minBreakStrength: 0.8, referenceMaxSpeed: 500 });
         assert.equal(wallDamage.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
         assert.equal(wallDamage.referenceMaxSpeed, 500);
-        assert.equal(wallDamage.maxHp, 100);
+        assert.equal(wallDamage.minBreakStrength, 0.8);
     });
 });

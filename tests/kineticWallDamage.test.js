@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
-import { applyPendingWallDamage, computeWallImpactDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";
+import { applyPendingWallDamage, computeWallBreakStrength, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { isRailWallEdge } from "../Libraries/Spatial/grid/CellEdge.js";
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
@@ -29,13 +29,13 @@ describe("kinetic wall damage", () => {
         assert.equal(WALL_DAMAGE.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
         assert.equal(WALL_DAMAGE.referenceMaxSpeed, 560);
     });
-    it("computeWallImpactDamage scales with speed and approach angle", () => {
-        assert.equal(computeWallImpactDamage(20, -20, WALL_DAMAGE), 0);
-        assert.equal(computeWallImpactDamage(560, 10, WALL_DAMAGE), 0);
-        const maxHit = computeWallImpactDamage(560, -560, WALL_DAMAGE);
-        assert.ok(Math.abs(maxHit - 45) < 0.001);
-        const graze = computeWallImpactDamage(560, -112, WALL_DAMAGE);
-        assert.ok(Math.abs(graze - 9) < 0.001);
+    it("computeWallBreakStrength scales with speed and approach angle", () => {
+        assert.equal(computeWallBreakStrength(20, -20, WALL_DAMAGE), 0);
+        assert.equal(computeWallBreakStrength(560, 10, WALL_DAMAGE), 0);
+        const maxHit = computeWallBreakStrength(560, -560, WALL_DAMAGE);
+        assert.ok(Math.abs(maxHit - 1) < 0.001);
+        const graze = computeWallBreakStrength(560, -112, WALL_DAMAGE);
+        assert.ok(Math.abs(graze - 0.2) < 0.001);
     });
     it("resolveKineticWallDamage queues hits for any kinetic body", async () => {
         const state = await createWallDamageTestState();
@@ -50,7 +50,7 @@ describe("kinetic wall damage", () => {
             },
         };
         resolveKineticWallDamage(state, entity, {}, wallResolver);
-        assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:6,6").damage, 45);
+        assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:6,6").strength, 1);
         flushPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, 6, 6));
         assert.equal(state.sandbox.gridWallDamage.pendingBreaks.size, 0);

@@ -63,7 +63,7 @@ export const SNAKE_GAME_DEFAULTS = {
     aiBudget: { thinkPerFrame: 32, focusedThinkEveryFrame: true, onScreenThinkInterval: 1, offScreenThinkInterval: 4, dormantThinkInterval: 30 },
     splitImpulseThreshold: 35,
     kineticMinStrikeSpeed: SNAKE_KINETIC_MIN_STRIKE_SPEED,
-    wallDamage: { maxHp: 100, maxHitDamage: 45, minAngleFactor: 0.2, referenceMaxSpeed: 560 },
+    wallDamage: { minBreakStrength: 1, minAngleFactor: 0.2, referenceMaxSpeed: 560 },
     shared: {
         visionRange: { range: 128 },
         decisionReachHorizon: 32,
