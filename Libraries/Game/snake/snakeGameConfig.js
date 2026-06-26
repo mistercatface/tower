@@ -8,9 +8,6 @@ export function applySnakeGameConfig(overrides) {
 export function getSnakeGameConfig() {
     return activeSnakeGameConfig;
 }
-export function getSharedConfig(config = getSnakeGameConfig()) {
-    return config.shared ?? {};
-}
 export function resolveSnakePropRadius(propId) {
     return propCatalog[propId].physics.radius;
 }
@@ -75,9 +72,6 @@ export function resolveSnakeChainSpawnOptions(config = getSnakeGameConfig(), seg
         growDirX: snake.growDirX,
         growDirY: snake.growDirY,
     };
-}
-export function resolveSnakeStartRadius(config = getSnakeGameConfig()) {
-    return config.startRadius;
 }
 export function resolveSnakeWallDamageConfig(wallDamageConfigOrConfig = getSnakeGameConfig()) {
     if (wallDamageConfigOrConfig && typeof wallDamageConfigOrConfig === "object" && wallDamageConfigOrConfig.agentProfiles) {

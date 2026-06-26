@@ -6,7 +6,7 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
-import { setSimpleAgentHunger } from "../Libraries/Game/snake/agentMetabolism.js";
+import { setAgentHunger } from "../Libraries/Game/snake/agentMetabolism.js";
 import { buildAgentDecisionContextFor, scoreAgentIntentCandidateDetails, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
@@ -24,7 +24,8 @@ function fleeReach(overrides = {}) {
 }
 
 function fleeDecisionInput(input) {
-    return { cellSize: CELL, shared: getSnakeGameConfig().shared, ...input };
+    const shared = getSnakeGameConfig().shared;
+    return { cellSize: CELL, shared, weaponVisionRange: shared.visionRange.range, ...input };
 }
 
 function mockTarget(id) {
@@ -94,7 +95,7 @@ describe("flee agent decision model", () => {
         const seeker = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", seeker);
         seeker.start(state);
-        setSimpleAgentHunger(seeker.metabolism, 0.9);
+        setAgentHunger(seeker.metabolism, 0.9);
         seekerPack.head.facing = 0;
         allyPack.head.x = seekerPack.head.x + 64;
         allyPack.head.y = seekerPack.head.y;
@@ -143,7 +144,7 @@ describe("flee agent decision model", () => {
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
-        setSimpleAgentHunger(instance.metabolism, 0.7);
+        setAgentHunger(instance.metabolism, 0.7);
         const threat = spawnSnakeChain(state, { col: 10, row: 12 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
@@ -162,7 +163,7 @@ describe("flee agent decision model", () => {
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
-        setSimpleAgentHunger(instance.metabolism, 0.7);
+        setAgentHunger(instance.metabolism, 0.7);
         const threat = spawnSnakeChain(state, { col: 10, row: 12 }, { segmentCount: 6, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "snake", exportType: "snake" });
         registerSnakeTestInstance(state, snakeGame, { headId: threat.chain.head.id, spawnGroupId: threat.chain.spawnGroupId });
         threat.chain.head.faction = "snake";
@@ -277,7 +278,7 @@ describe("flee agent decision model", () => {
         const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", charlie);
         charlie.start(state);
-        setSimpleAgentHunger(charlie.metabolism, 0.9);
+        setAgentHunger(charlie.metabolism, 0.9);
         charliePack.head.facing = 0;
 
         // Spawn delta (green) flee agent at distance 80px (5 cells)
@@ -285,7 +286,7 @@ describe("flee agent decision model", () => {
         const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", delta);
         delta.start(state);
-        setSimpleAgentHunger(delta.metabolism, 0.9);
+        setAgentHunger(delta.metabolism, 0.9);
 
         primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
         primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
@@ -322,13 +323,13 @@ describe("flee agent decision model", () => {
         const charlie = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", charlie);
         charlie.start(state);
-        setSimpleAgentHunger(charlie.metabolism, 0.9);
+        setAgentHunger(charlie.metabolism, 0.9);
 
         const deltaPack = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "delta" });
         const delta = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", delta);
         delta.start(state);
-        setSimpleAgentHunger(delta.metabolism, 0.9);
+        setAgentHunger(delta.metabolism, 0.9);
 
         primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
         primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);

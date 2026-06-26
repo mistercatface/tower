@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySnakeGameConfig, getSharedConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { buildAgentDecisionContextFor, buildAgentDecisionFrameFor, pickAgentIntentPolicyFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
@@ -160,7 +160,7 @@ describe("committed target effort uses route length", () => {
 describe("threat severity facts (PR6)", () => {
     it("derives severity from distance and flags lethal range", () => {
         applySnakeGameConfig({ shared: { fleeRange: 128, lethalThreatRange: 48 } });
-        const shared = getSharedConfig();
+        const shared = getSnakeGameConfig().shared;
         assert.equal(deriveThreatState(null, 10, CELL, shared), null);
         assert.equal(deriveThreatState(snake(1), null, CELL, shared), null);
         assert.equal(deriveThreatState(snake(1), 4, CELL, shared).severity, 0.5);

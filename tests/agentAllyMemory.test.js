@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { applySnakeGameConfig, getSharedConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
+import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
@@ -83,7 +83,7 @@ describe("ally intent memory", () => {
         publishAgentEngagement(snakeGame, ally.head.id, { active: true, salience: ["food"], mode: "seek_food" });
         seeker.head.faction = "red";
         ally.head.faction = "red";
-        const memory = createAgentIntentMemory({ ...getSharedConfig().intentMemory, filterAllyForEngagement: true });
+        const memory = createAgentIntentMemory({ ...getSnakeGameConfig().shared.intentMemory, filterAllyForEngagement: true });
         const visible = { threat: null, prey: null, food: null, ally: ally.head, allyCount: 1, allyCentroid: { x: ally.head.x, y: ally.head.y } };
         const empty = { ...visible, ally: null, allyCount: 0, allyCentroid: null };
         memory.update(seeker.head, state, visible);
@@ -119,7 +119,7 @@ describe("ally intent memory", () => {
         const allyPack = spawnGameAgentChain(state, { col: 14, row: 10 }, "flee_agent", { faction: "bravo" });
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId }));
         registerAgentInstance(snakeGame, "flee_agent", createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: allyPack.head, spawnGroupId: allyPack.spawnGroupId }));
-        const memory = createAgentIntentMemory(getSharedConfig().intentMemory);
+        const memory = createAgentIntentMemory(getSnakeGameConfig().shared.intentMemory);
         const visible = {
             threat: null,
             food: null,
