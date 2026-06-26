@@ -13,6 +13,3 @@ export function applyAgentGameplay(profile, prop, role) {
         if (prop.strategy.isKinetic) syncKineticRigidBody(prop);
     }
 }
-export function applyAgentGameplayForIndex(profile, prop, segmentIndex, leaderIndex) {
-    applyAgentGameplay(profile, prop, segmentIndex === leaderIndex ? "leader" : "body");
-}

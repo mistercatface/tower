@@ -1,21 +1,26 @@
 import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
 import { getAgentProfile, AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
-import { applyAgentGameplayForIndex } from "./applyAgentGameplay.js";
+import { applyAgentGameplay } from "./applyAgentGameplay.js";
 export function resolveProfileLeaderIndex(profile) {
     return profile.leaderIndex ?? profile.armSegmentCount ?? 0;
 }
 export function resolveFleeAgentForwardDir(snakeProfile = getAgentProfile(AGENT_PROFILE.snake)) {
     return { x: -snakeProfile.growDirX, y: -snakeProfile.growDirY };
 }
-function onChainSegmentSpawned(profile, leaderIndex) {
-    return (prop, index) => {
-        prop.strategy.canChain = true;
-        applyAgentGameplayForIndex(profile, prop, index, leaderIndex);
-    };
+function applySpawnedChainGameplay(profile, chain) {
+    for (let i = 0; i < chain.leaderIndex; i++) {
+        chain.members[i].strategy.canChain = true;
+        applyAgentGameplay(profile, chain.members[i], "body");
+    }
+    chain.leader.strategy.canChain = true;
+    applyAgentGameplay(profile, chain.leader, "leader");
+    for (let i = chain.leaderIndex + 1; i < chain.members.length; i++) {
+        chain.members[i].strategy.canChain = true;
+        applyAgentGameplay(profile, chain.members[i], "body");
+    }
 }
-function buildChainSpawnSpec(profileId, config, options = {}) {
-    const profile = getAgentProfile(profileId, config);
+function buildChainSpawnSpec(profile, config, options = {}) {
     const leaderIndex = resolveProfileLeaderIndex(profile);
     const segmentCount = options.segmentCount ?? profile.segmentCount ?? 1;
     const segmentRadius = options.segmentRadius ?? config.startRadius;
@@ -34,7 +39,6 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
         faction: options.faction,
         exportType: options.exportType ?? profile.exportType ?? null,
         spawnGroupId: options.spawnGroupId,
-        onSegmentSpawned: onChainSegmentSpawned(profile, leaderIndex),
     };
     const headPropId = options.headPropId ?? profile.headPropId;
     const bodyPropId = options.bodyPropId ?? profile.bodyPropId;
@@ -55,7 +59,9 @@ function finalizeChainSpawn(chain, spec, forwardDir = null) {
 /** Spawn a profile-configured agent chain. */
 export function spawnGameAgentChain(state, anchorCell, profileId, options = {}) {
     const config = state.sandbox.snakeGame.config;
-    const spec = buildChainSpawnSpec(profileId, config, options);
+    const profile = getAgentProfile(profileId, config);
+    const spec = buildChainSpawnSpec(profile, config, options);
     const chain = spawnAgentChain(state, anchorCell, spec);
+    applySpawnedChainGameplay(profile, chain);
     return finalizeChainSpawn(chain, spec, options.forwardDir);
 }

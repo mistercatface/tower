@@ -34,7 +34,7 @@ describe("applyAgentGameplay", () => {
         assert.equal(segment.strategy.density, 0.001);
     });
 
-    it("applyAgentGameplayForIndex picks leader vs body by index", () => {
+    it("applies distinct leader and body gameplay specs", () => {
         applySnakeGameConfig();
         const leader = mockProp();
         const body = mockProp({ isKinetic: true });
