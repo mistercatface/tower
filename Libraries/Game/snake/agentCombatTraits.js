@@ -1,6 +1,4 @@
-import { getAgentProfile } from "../../AI/agents/agentProfile.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
-const COMBAT_TRAIT_DEFAULTS = Object.freeze({
+export const COMBAT_TRAIT_DEFAULTS = Object.freeze({
     topology: "ball",
     canSplit: false,
     fleeBallHeadRam: false,
@@ -11,10 +9,6 @@ const COMBAT_TRAIT_DEFAULTS = Object.freeze({
     preyHeadRamImmuneLeader: false,
     preyHeadRamImmuneNonLeader: false,
 });
-export function getAgentCombatTraits(profileId) {
-    const profile = getAgentProfile(profileId, getSnakeGameConfig());
-    return { ...COMBAT_TRAIT_DEFAULTS, ...profile.combat };
-}
 export function isChainCombatTopology(traits) {
     return traits.topology === "chain";
 }
