@@ -1,6 +1,5 @@
 import { classifyAgentVision } from "../../AI/perception/classifyAgentVision.js";
-import { getSharedConfig } from "./snakeGameConfig.js";
-import { resolveAgentPerceptionOptions } from "./agentIntentPerception.js";
+import { buildAgentPerceptionOptions } from "./createGroundNavIntentAdapter.js";
 import { overlayCircleFillStroke } from "../../Render/overlays/overlayCommands.js";
 import { createObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 function agentRingStyle(config, slot) {
@@ -21,16 +20,16 @@ function appendAgentRing(out, agent, style) {
 /** Read-only visible threat/prey/ally rings — same LOS pass as combat, no vision cache or sim tick. */
 export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, session) {
     const config = session.config;
-    const shared = getSharedConfig(config);
+    const shared = config.shared;
     const prop = state.followCamera?.targetProp;
     if (!prop) return;
     const instance = session.instancesByHeadId.get(prop.id);
     const head = instance?.head;
     if (!head) return;
-    const visionRange = shared.visionRange;
+    const visionRange = instance.visionRange;
     const frame = state.nav.observerVisionFrame ?? createObserverVisionFrame({ tickId: session.simTick ?? 1, navTopology: state.nav.topology, visionRange, viewport: state.viewport });
     const agentCtx = { instance, session };
-    const perceptionOptions = resolveAgentPerceptionOptions(visionRange, shared, agentCtx);
+    const perceptionOptions = buildAgentPerceptionOptions(visionRange, shared, agentCtx, instance.intent?.getTargetId() ?? null);
     const vision = frame.ensureHeadVision(head, visionRange);
     const world = classifyAgentVision(head, agentCtx, state, frame, vision, perceptionOptions);
     const committedTargetId = instance.intent?.getTargetId?.() ?? null;

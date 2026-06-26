@@ -87,9 +87,7 @@ export function createAgentAutosim(
         }
         throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
     };
-    const intent = createGroundNavIntentAdapter(
-        buildGroundNavIntentAdapterOptions(profileId, { state, instance, metabolismApi, metabolism, eatRadius, brain, sync, headNav, agentCtx, visionRange, rng }),
-    );
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, metabolismApi, metabolism, eatRadius, brain, sync, headNav, agentCtx, rng }));
     let active = false;
     let sprinting = false;
     let baseMaxSpeed = null;

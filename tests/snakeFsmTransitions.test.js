@@ -129,7 +129,7 @@ function createMockIntent(state, headId) {
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
         rng: () => 0,
     };
-    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions(AGENT_DECISION_PROFILE.snake, intentDeps));
+    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions(intentDeps));
     return { intent, headNav };
 }
 describe("snake FSM transitions", () => {

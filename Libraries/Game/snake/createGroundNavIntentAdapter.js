@@ -6,8 +6,17 @@ import { buildFlowTargetStepsInto, createFlowTargetStepSlots } from "../../Navig
 import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { perceiveAgentWorldInto } from "../../AI/perception/agentWorldPerception.js";
-import { resolveAgentPerceptionOptions } from "./agentIntentPerception.js";
+import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
+export function buildAgentPerceptionOptions(visionRange, shared, agentCtx, committedTargetId = null) {
+    return {
+        readVisionFrame: requireSnakeVisionFrame,
+        agentRange: shared.fleeRange ?? visionRange.range,
+        resolveRelationship: (selfInstance, targetInstance, _gameState, distSq) => resolveRelationshipForInstances(selfInstance, targetInstance, distSq),
+        committedTargetId,
+        targetStickyFactor: shared.targetingHysteresis?.targetStickyFactor ?? 0.75,
+    };
+}
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
     const dest = locomotion.getDestination();
     const status = locomotion.getStatus(agent, state);
@@ -228,7 +237,15 @@ export function createGroundNavIntentAdapter({
     });
     intentContext.effects = cellTargetEffects;
     const perceiveWithMemory = (agent, state) => {
-        perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, resolveAgentPerceptionOptions(resolvedVision, config, agentCtx));
+        perceiveAgentWorldInto(
+            visible,
+            agent,
+            agentCtx,
+            state,
+            visibleSourceResolvers,
+            resolvedVision,
+            buildAgentPerceptionOptions(resolvedVision, config, agentCtx, intent ? intent.getTargetId() : null),
+        );
         intentMemory.update(agent, state, visible);
         const memoryWorld = intentMemory.enrichWorld(state, visible);
         if (intent) {

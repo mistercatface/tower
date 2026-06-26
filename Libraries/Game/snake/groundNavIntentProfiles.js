@@ -7,7 +7,7 @@ import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { getGroundNavFsmSnapshot } from "./createGroundNavIntentAdapter.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
-import { getSharedConfig, getSnakeGameConfig } from "./snakeGameConfig.js";
+import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat.js";
@@ -58,9 +58,12 @@ function resolveCommittedTarget(committedSlots, id, world) {
     }
     return null;
 }
-function buildDecisionContextInto(profileId, decisionContext, input, deps) {
+function buildDecisionContextInto(decisionContext, input, deps) {
     const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
     const { resolveHunger, resolveSegmentCount } = deps;
+    const instance = deps.agentCtx.instance;
+    const profile = instance.profile;
+    const profileId = instance.profileId;
     const decisionInput = {
         visibleWorld: visible,
         memoryWorld,
@@ -71,17 +74,16 @@ function buildDecisionContextInto(profileId, decisionContext, input, deps) {
         cellSize: state.obstacleGrid.cellSize,
         foodFraction: resolveHunger ? resolveHunger() : null,
     };
-    const fields = getAgentProfile(profileId).intent.decisionFields ?? {};
+    const fields = profile.intent.decisionFields ?? {};
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
     if (fields.seekerSegmentCount) decisionInput.seekerSegmentCount = resolveSegmentCount ? resolveSegmentCount() : null;
-    if (fields.session) decisionInput.session = state.sandbox?.snakeGame ?? null;
-    const profile = getAgentProfile(profileId);
+    if (fields.session) decisionInput.session = state.sandbox.snakeGame;
     if (profile.weapon || hasRangedShootMode(profile)) {
         decisionInput.agent = agent;
         decisionInput.state = state;
-        decisionInput.actionState = deps.agentCtx.instance.combatAction;
-        decisionInput.equippedWeapon = deps.agentCtx.instance.equippedWeapon ?? null;
-        decisionInput.weaponVisionRange = deps.agentCtx.instance.visionRange.range;
+        decisionInput.actionState = instance.combatAction;
+        decisionInput.equippedWeapon = instance.equippedWeapon ?? null;
+        decisionInput.weaponVisionRange = instance.visionRange.range;
     }
     return buildAgentDecisionContextIntoFor(profileId, decisionContext, decisionInput, { includeScoreDetails: false });
 }
@@ -107,18 +109,19 @@ function defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadiu
         return { arrivalRadius: resolveEatRadiusValue(instance, eatRadius), lockOnTarget: true, terminalHoming };
     };
 }
-function resolveGroundNavIntentDeps(profileId, deps) {
-    const profile = getAgentProfile(profileId);
-    const shared = getSharedConfig();
+function resolveGroundNavIntentDeps(deps) {
     const { state, agentCtx, metabolismApi, metabolism, eatRadius } = deps;
     const instance = deps.instance ?? agentCtx.instance;
+    const profile = instance.profile;
+    const profileId = instance.profileId;
+    const shared = agentCtx.session.config.shared;
     const navWalkable = agentCtx.navWalkable;
     return {
         brain: deps.brain,
         sync: deps.sync,
         headNav: deps.headNav,
         agentCtx,
-        visionRange: deps.visionRange ?? shared.visionRange,
+        visionRange: instance.visionRange,
         visibleSourceResolvers: deps.visibleSourceResolvers ?? buildVisibleSourceResolvers(profile),
         resolveExploreCell: deps.resolveExploreCell ?? ((seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable)),
         seekArrivalRadius: deps.seekArrivalRadius ?? defaultSeekArrivalRadius(profileId, profile, shared, instance, eatRadius),
@@ -157,25 +160,26 @@ function extendReturn(intent, deps) {
         api.getFsmSnapshot = (agent, state) => getGroundNavFsmSnapshot({ intent: intentApi, locomotion, agent, state, intentMemory, lastDecisionContext: getLastDecisionContext() });
     return api;
 }
-function intentMemoryOptions(profileId, intent, shared) {
+function intentMemoryOptions(intent, shared) {
     const base = shared.intentMemory;
     if (!intent.filterAllyForEngagement) return base;
     return { ...base, filterAllyForEngagement: true };
 }
-function buildAdapterOptions(profileId, deps) {
-    const profile = getAgentProfile(profileId);
-    const intent = profile.intent;
-    const shared = getSharedConfig();
+function buildAdapterOptions(deps) {
     const { agentCtx, brain, resolveExploreCell, rng, resolveHunger, resolveSegmentCount } = deps;
     const instance = agentCtx.instance;
+    const profile = instance.profile;
+    const profileId = instance.profileId;
+    const intent = profile.intent;
+    const shared = agentCtx.session.config.shared;
     const decisionContext = createAgentDecisionContextFrame(profileId);
     const hasRangedShoot = hasRangedShootMode(profile);
     const adapter = {
         reachSlots: intent.reachSlots,
-        intentMemoryOptions: intentMemoryOptions(profileId, intent, shared),
+        intentMemoryOptions: intentMemoryOptions(intent, shared),
         config: shared,
         decisionContext,
-        buildDecisionContext: (input) => buildDecisionContextInto(profileId, decisionContext, input, deps),
+        buildDecisionContext: (input) => buildDecisionContextInto(decisionContext, input, deps),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
         setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable: agentCtx.navWalkable, config: shared, brain, rng, resolveExploreCell }, profileId),
         sprintConfig: profile.sprint,
@@ -190,15 +194,13 @@ function buildAdapterOptions(profileId, deps) {
     };
     if (intent.publishEngagement)
         adapter.afterPerceive = (decisionContext, _agent, state) => {
-            const snakeGame = state.sandbox?.snakeGame;
-            if (snakeGame) publishAgentEngagement(snakeGame, agentCtx.instance.headId, decisionContext.engagementState);
+            publishAgentEngagement(state.sandbox.snakeGame, instance.headId, decisionContext.engagementState);
         };
     return adapter;
 }
-export function buildGroundNavIntentAdapterOptions(profileId, deps) {
-    getAgentProfile(profileId);
-    const resolvedDeps = resolveGroundNavIntentDeps(profileId, deps);
-    return { ...resolvedDeps, ...buildAdapterOptions(profileId, resolvedDeps) };
+export function buildGroundNavIntentAdapterOptions(deps) {
+    const resolvedDeps = resolveGroundNavIntentDeps(deps);
+    return { ...resolvedDeps, ...buildAdapterOptions(resolvedDeps) };
 }
 const PACK_STEERING_SCRATCH = { packAnchor: { x: 0, y: 0 }, packBlend: 0, maxPackDistCells: 16 };
 export function resolvePackSteeringOptions(ctx, profileId = AGENT_PROFILE.flee) {
@@ -220,7 +222,7 @@ export function resolvePackSteeringOptions(ctx, profileId = AGENT_PROFILE.flee) 
     return PACK_STEERING_SCRATCH;
 }
 export function resolveSnakeExploreCell(seeker, state, memory, rng, navWalkable) {
-    const shared = getSharedConfig();
+    const shared = getSnakeGameConfig().shared;
     const grid = state.obstacleGrid;
     const col = grid.worldCol(seeker.x);
     const row = grid.worldRow(seeker.y);
