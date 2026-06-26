@@ -5,7 +5,7 @@ import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { advanceAgentMetabolismHunger, feedAgentMetabolism } from "./agentMetabolism.js";
+import { advanceAgentMetabolismHunger, feedAgentMetabolism, getAgentHunger } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
@@ -44,8 +44,14 @@ export class AgentInstance {
         const profile = getAgentProfile(profileId);
         this.profile = profile;
         this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
-        this.leaderGameplay = profile.gameplay.leader;
         this.bodyGameplay = profile.gameplay.body;
+        this.walkMaxSpeed = profile.gameplay.leader.maxSpeed;
+        this.walkAccel = profile.gameplay.leader.accel;
+        if (profile.sprint) {
+            this.sprintMaxSpeed = this.walkMaxSpeed * profile.sprint.speedMultiplier;
+            this.sprintAccel = this.walkAccel * profile.sprint.accelMultiplier;
+            this.sprintHungerDrainMultiplier = profile.sprint.hungerDrainMultiplier ?? 1;
+        }
         this.minAliveSegmentCount = profile.minAliveSegmentCount ?? 1;
         const config = getSnakeGameConfig();
         const headRadius = getCirclePropRadius(head);
@@ -244,6 +250,15 @@ export class AgentInstance {
             shed = true;
         }
         return shed;
+    }
+    applySprintMovementIntent() {
+        this.sprinting = this.intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(this.metabolism) > 0;
+        const groundNav = this.head.strategy.groundNav;
+        groundNav.maxSpeed = this.sprinting ? this.sprintMaxSpeed : this.walkMaxSpeed;
+        groundNav.accel = this.sprinting ? this.sprintAccel : this.walkAccel;
+    }
+    hungerDrainMultiplier() {
+        return this.sprinting ? this.sprintHungerDrainMultiplier : 1;
     }
     resolveChainTailProp() {
         for (let i = this.memberProps.length - 1; i >= 0; i--) {

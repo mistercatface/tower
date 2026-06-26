@@ -4,7 +4,7 @@ import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js"
 import { buildGroundNavIntentAdapterOptions } from "./createGroundNavIntentAdapter.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { isSnakeFoodTarget } from "./snakeFood.js";
-import { createAgentMetabolism, getAgentHunger, setAgentHunger } from "./agentMetabolism.js";
+import { createAgentMetabolism, setAgentHunger } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 export function createAgentAutosim(state, instance) {
     const session = state.sandbox.snakeGame;
@@ -16,9 +16,6 @@ export function createAgentAutosim(state, instance) {
     const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
     instance.headNav = createCellTargetHpaNav(state);
-    const baseMaxSpeed = instance.leaderGameplay.maxSpeed;
-    const baseAccel = instance.leaderGameplay.accel;
-    const sprint = profile.sprint ?? {};
     const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, brain, sync, headNav: instance.headNav, agentCtx }));
     instance.intent = intent;
     instance.brain = brain;
@@ -57,9 +54,7 @@ export function createAgentAutosim(state, instance) {
             else maybeBeginSnakeAutosimTick(state);
             let choice;
             if (admitted) choice = intent.tick(seeker, state, dtMs);
-            instance.sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(metabolism) > 0;
-            seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
-            seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
+            instance.applySprintMovementIntent();
             instance.headNav.tick(seeker, dtMs);
             if (soloTick) endSnakePerceptionFrame(state);
             let fedThisTick = false;
@@ -67,7 +62,7 @@ export function createAgentAutosim(state, instance) {
             if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) foodTarget = choice.target;
             else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = entityRegistry.getLive(intent.getTargetId());
             if (foodTarget) fedThisTick = instance.eatFoodTarget(state, foodTarget);
-            const drainMultiplier = instance.sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
+            const drainMultiplier = instance.hungerDrainMultiplier();
             if (!fedThisTick) instance.tickMetabolism(state, dtMs, drainMultiplier);
         },
     };

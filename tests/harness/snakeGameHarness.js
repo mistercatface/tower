@@ -98,7 +98,7 @@ export function createWiredSnakeAutosim(state, { headId, eatRadius = null, initi
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     if (!instance) throw new Error(`createWiredSnakeAutosim: missing agent instance ${headId}`);
     if (eatRadius != null) instance.eatRadius = eatRadius;
-    applyAgentGameplay(instance.leaderGameplay, instance.head);
+    applyAgentGameplay(instance.profile.gameplay.leader, instance.head);
     const autosim = createAgentAutosim(state, instance);
     instance.autosim = autosim;
     // Test-only read views over the public instance surface. No production code depends on these.
