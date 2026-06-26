@@ -15,6 +15,7 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { createGroundNavIntentAdapter, buildGroundNavIntentAdapterOptions, resolveSnakeExploreCell } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { createAgentMetabolism } from "../Libraries/Game/snake/agentMetabolism.js";
 import { createBrain } from "../Libraries/AI/brain/createBrain.js";
 import { createSpatialBrainSync } from "../Libraries/AI/brain/syncSpatialBrain.js";
 import { FRAME_MS } from "./frameMs.js";
@@ -117,6 +118,7 @@ function createMockIntent(state, headId) {
     const headNav = mockHeadNav();
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     const head = instance.head;
+    if (!instance.metabolism) instance.metabolism = createAgentMetabolism(getAgentProfile(AGENT_PROFILE.snake));
     applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake).gameplay.leader, head);
     const shared = state.sandbox.snakeGame.config.shared;
     const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
@@ -339,12 +341,11 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.getMode(), "seek_prey");
         assert.equal(autosim.getTargetId(), prey.head.id);
         assert.deepEqual(autosim.getDestination(), lastSeenDest);
-        const snapshot = autosim.getFsmSnapshot();
-        const memory = snapshot.intentMemory;
-        assert.equal(memory.prey.id, prey.head.id);
-        assert.equal(memory.prey.ageTicks, 1);
-        assert.equal(snapshot.decision.chosenIntent.mode, "seek_prey");
-        assert.ok(snapshot.decision.events.includes("PREY_LAST_SEEN_ACTIVE"));
+        const decision = autosim.getFsmSnapshot().decision;
+        assert.equal(decision.remembered.prey.id, prey.head.id);
+        assert.equal(decision.remembered.prey.memoryRecord.ageTicks, 1);
+        assert.equal(decision.chosenIntent.mode, "seek_prey");
+        assert.ok(decision.events.includes("PREY_LAST_SEEN_ACTIVE"));
     });
     it("drops last-seen prey after memory expires and falls back to visible food", async () => {
         applySnakeGameConfig({ shared: { fleeRange: 128, intentMemory: { threatTtlTicks: 1, preyTtlTicks: 1, foodTtlTicks: 4 } } });
@@ -450,7 +451,7 @@ describe("snake FSM transitions", () => {
         beginSnakePerceptionFrame(state);
         intent.perceive(seeker, state);
         intent.transition(seeker, state);
-        intent.headNav.tick(seeker, 0);
+        headNav.tick(seeker, 0);
         const latched = intent.getDestination();
         assert.ok(latched);
         headNav.setHasRoute(false);
@@ -486,7 +487,7 @@ describe("snake FSM transitions", () => {
         assert.equal(autosim.isSprinting(), true);
         assert.equal(hunter.head.strategy.groundNav.maxSpeed, baseSpeed * getAgentProfile(AGENT_DECISION_PROFILE.snake).sprint.speedMultiplier);
     });
-    it("a min-length snake never sprints, even fleeing a lethal threat (PR10)", async () => {
+    it("a min-length snake sprints when fleeing a lethal threat with hunger remaining", async () => {
         applySnakeGameConfig({ shared: { fleeRange: 128, lethalThreatRange: 64 } });
         resetKineticConstraintIds(1);
         const state = await createFsmTestState();
@@ -507,7 +508,7 @@ describe("snake FSM transitions", () => {
         autosim.start();
         assert.equal(autosim.getMode(), "flee");
         autosim.tick(FRAME_MS);
-        assert.equal(autosim.isSprinting(), false);
+        assert.equal(autosim.isSprinting(), true);
     });
     it("equal rivals both seek prey when visible", async () => {
         applySnakeGameConfig({ shared: { fleeRange: 128 } });

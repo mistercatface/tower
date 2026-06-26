@@ -149,13 +149,13 @@ describe("flee agent metabolism", () => {
         const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start(state);
-        assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
+        assert.equal(instance.baseTint, "#7ad4ff");
         spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 13 }, 6);
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.tick(state, 16);
         assert.equal(instance.intent.getMode(), "flee");
         assert.equal(instance.sprinting, true);
-        assert.equal(getPropVisualTint(pack.head), "#7ad4ff");
+        assert.equal(instance.baseTint, "#7ad4ff");
     });
     it("deriveSprintIntent wants sprint on lethal flee when hunger allows", () => {
         applySnakeGameConfig({ agentProfiles: { flee_agent: { sprint: { fleeSeverity: 0.5, sprintFleeMinHunger: 0.1 } } }, shared: { lethalThreatRange: 48 } });

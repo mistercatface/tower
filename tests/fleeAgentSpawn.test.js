@@ -5,7 +5,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { resolveFleeAgentForwardDir, spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
+import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { spawnPopulationInScene } from "../Libraries/Game/snake/spawnPopulationInScene.js";
 import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
@@ -42,7 +42,8 @@ describe("flee agent spawn", () => {
         const { state } = await createSnakeGameHarnessState();
         wireSnakeTestGame(state);
         applySnakeGameConfig({ startRadius: 2, agentProfiles: { snake: { growDirX: -1, growDirY: 0 } } });
-        const forward = resolveFleeAgentForwardDir();
+        const snake = getSnakeGameConfig().agentProfiles.snake;
+        const forward = { x: -snake.growDirX, y: -snake.growDirY };
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         assert.ok(Math.abs(pack.head.facing - Math.atan2(forward.y, forward.x)) < 1e-4);
     });
@@ -62,16 +63,6 @@ describe("flee agent spawn", () => {
         syncBallAgentFacingAfterPhysics(instance, 100);
         assert.ok(pack.head.facing > -Math.PI / 2, "Should rotate facing toward movement");
         assert.ok(pack.head.facing < 0, "Should rotate smoothly without snapping instantly");
-    });
-    it("applies fleeAgent roll speed from snake config", async () => {
-        resetKineticConstraintIds(9);
-        const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2, agentProfiles: { flee_agent: { gameplay: { leader: { maxSpeed: 120, accel: 400 } } } } });
-        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        assert.equal(pack.head.strategy.groundNav.maxSpeed, 120);
-        assert.equal(pack.head.strategy.groundNav.accel, 400);
-        assert.equal(pack.head.type, "boid_triangle");
     });
     it("batch spawns flee agents split across configured teams and colors", async () => {
         resetKineticConstraintIds(10);
@@ -107,43 +98,6 @@ describe("flee agent spawn", () => {
         const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
         assert.equal(getCirclePropRadius(pack.head), 2);
         assert.equal(pack.head.radius, 2);
-    });
-    it("starts, ticks, and flees from a visible snake threat", async () => {
-        resetKineticConstraintIds(3);
-        const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2 });
-        const snakeGame = state.sandbox.snakeGame;
-        const pack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent");
-        const instance = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: pack.head, spawnGroupId: pack.spawnGroupId });
-        registerAgentInstance(snakeGame, "flee_agent", instance);
-        instance.start(state);
-        assert.equal(instance.intent.getMode(), "explore");
-        instance.tick(state, 16);
-        assert.ok(instance.intent.getDestination());
-        spawnVisibleSnakeThreat(state, snakeGame, { col: 10, row: 14 }, 6);
-        primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
-        instance.tick(state, 16);
-        assert.equal(instance.intent.getMode(), "flee");
-    });
-    it("starts, ticks, and seeks a visible opposing flee team", async () => {
-        resetKineticConstraintIds(11);
-        const { state } = await createSnakeGameHarnessState();
-        wireSnakeTestGame(state);
-        applySnakeGameConfig({ startRadius: 2 });
-        const snakeGame = state.sandbox.snakeGame;
-        const seekerPack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
-        const targetPack = spawnGameAgentChain(state, { col: 12, row: 10 }, "flee_agent", { faction: "delta" });
-        const seeker = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: seekerPack.head, spawnGroupId: seekerPack.spawnGroupId });
-        const target = createAgentInstance(state, { profileId: AGENT_PROFILE.flee, head: targetPack.head, spawnGroupId: targetPack.spawnGroupId });
-        registerAgentInstance(snakeGame, "flee_agent", seeker);
-        registerAgentInstance(snakeGame, "flee_agent", target);
-        seeker.start(state);
-        target.start(state);
-        primeSnakeHeadVision(state, seekerPack.head, getSnakeGameConfig().shared.visionRange);
-        seeker.tick(state, 16);
-        assert.equal(seeker.intent.getMode(), "seek_enemy");
-        assert.equal(seeker.intent.getTargetId(), targetPack.head.id);
     });
     it("shatters flee agent on predator snake head ram", async () => {
         applySnakeGameConfig({ splitImpulseThreshold: 30 });

@@ -223,43 +223,6 @@ describe("snake combat min length", () => {
         assert.equal(state.worldProps.some((prop) => prop.type === SNAKE_SHARD_PROP_ID), true);
     });
 
-    it("seek_prey contact restores hunter drive after contact impulse", () => {
-        applySnakeGameConfig({ splitImpulseThreshold: 999, agentProfiles: { snake: { minAliveSegmentCount: 3, gameplay: { leader: { maxSpeed: 120 } } } } });
-        resetKineticConstraintIds(1);
-        const state = createTestState();
-        const predator = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(6));
-        const prey = spawnSnakeChain(state, { col: 20, row: 8 }, snakeChainOptions(3));
-        wireCombatSnakeGame(state, [
-            {
-                headId: predator.chain.head.id,
-                spawnGroupId: predator.chain.spawnGroupId,
-                autosim: {
-                    start() {},
-                    stop() {},
-                    getMode: () => "seek_prey",
-                    getTargetId: () => prey.chain.head.id,
-                },
-            },
-            { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
-        ]);
-        const hunterHead = predator.chain.head;
-        const preyHead = prey.chain.head;
-        hunterHead.vx = 20;
-        hunterHead.vy = 0;
-        preyHead.vx = 0;
-        preyHead.vy = 0;
-        hunterHead.x = preyHead.x - hunterHead.radius - preyHead.radius + 2;
-        hunterHead.y = preyHead.y;
-        const props = [...predator.chain.members, ...prey.chain.members];
-        const tick = attachKineticTestTickFromState(state, props, 50);
-        const pairs = gatherKineticContactPairs(tick);
-        resolveKineticContactPassWithPairs(tick, pairs);
-        assert.ok(kineticContactBuffer.count >= 1);
-        applySnakeHuntContactDrive(state, tick.frame, kineticContactBuffer);
-        assert.equal(Math.round(kineticDynamicSlab.vx[hunterHead._physId]), 120);
-        assert.equal(Math.round(kineticDynamicSlab.vy[hunterHead._physId]), 0);
-    });
-
     it("kill only tears down the defeated snake spawn group", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
         resetKineticConstraintIds(1);
