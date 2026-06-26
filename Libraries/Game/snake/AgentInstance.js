@@ -1,9 +1,11 @@
 import { getConnectedBodyIds, getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
 import { clearChainLinksForMembers, clearChainLinksForProp, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
+import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
+import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { advanceAgentMetabolismHunger } from "./agentMetabolism.js";
+import { advanceAgentMetabolismHunger, feedAgentMetabolism } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
@@ -11,10 +13,14 @@ import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
+import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
+import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
+import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
+import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
 export class AgentInstance {
     constructor({ profileId, head, spawnGroupId, autosim = null, lifecycle = "alive", memberIds = [] }) {
         this.profileId = profileId;
@@ -238,6 +244,52 @@ export class AgentInstance {
             shed = true;
         }
         return shed;
+    }
+    resolveChainTailProp() {
+        for (let i = this.memberProps.length - 1; i >= 0; i--) {
+            const tail = this.memberProps[i];
+            if (tail && !tail.isDead) return tail;
+        }
+    }
+    growOneSegment(state) {
+        const profile = this.profile;
+        const segmentRadius = getCirclePropRadius(this.head);
+        const spacing = segmentRadius * 2 * (profile.linkSlack ?? 1);
+        const newTail = growChainSegment(state, this.resolveChainTailProp(), {
+            spacing,
+            segmentRadius,
+            linkSlack: profile.linkSlack,
+            ballType: profile.bodyPropId,
+            growDirX: profile.growDirX ?? -1,
+            growDirY: profile.growDirY ?? 0,
+            exportType: SNAKE_CHAIN_EXPORT_TYPE,
+        });
+        copySnakeChainTintFromHead(this.head, newTail);
+        applyAgentGameplay(this.bodyGameplay, newTail);
+        this.memberIds.push(newTail.id);
+        this.memberProps.push(newTail);
+    }
+    feedAndGrow(state, value) {
+        let pending = feedAgentMetabolism(this.metabolism, value);
+        const maxAliveSegmentCount = this.profile.maxAliveSegmentCount ?? 8;
+        while (pending > 0 && this.memberProps.length < maxAliveSegmentCount) {
+            this.growOneSegment(state);
+            pending--;
+        }
+    }
+    eatFoodTarget(state, food) {
+        const seeker = this.head;
+        if (!canAgentEatSnakeFood(seeker, food) || !isSnakeFoodTarget(food)) return false;
+        if (Math.hypot(food.x - seeker.x, food.y - seeker.y) > this.eatRadius) return false;
+        const grid = state.obstacleGrid;
+        this.brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
+        this.intent.clearTrackedGoal();
+        this.headNav.clearDestination();
+        removeSandboxWorldProp(state, food);
+        const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
+        if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
+        else feedAgentMetabolism(this.metabolism, foodValue);
+        return true;
     }
     severInertTail(state, tailIds) {
         this.retireMemberSegments(state, tailIds);
