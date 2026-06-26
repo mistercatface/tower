@@ -1,0 +1,214 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
+import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
+import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
+let mockPhysId = 0;
+function mockKineticBody(isSleeping = false) {
+    const radius = 10;
+    return {
+        x: 0,
+        y: 0,
+        radius,
+        isSleeping,
+        isDead: false,
+        strategy: { isKinetic: true },
+        _sleepFrames: 0,
+        _physId: mockPhysId++,
+        mass: radius,
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
+        getShape() {
+            return new CircleShape(radius);
+        },
+    };
+}
+function mockCircleProp(x, y, radius) {
+    return {
+        id: 1,
+        x,
+        y,
+        radius,
+        mass: radius,
+        isSleeping: false,
+        isDead: false,
+        strategy: { isKinetic: true },
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
+        getShape() {
+            return new CircleShape(radius);
+        },
+    };
+}
+const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
+const mockState = { entityRegistry: { membershipGen: 1 }, kinetic: createKineticSession() };
+describe("active kinetic bodies", () => {
+    it("syncActiveKineticBodies keeps only awake bodies", () => {
+        const frame = new KineticSpatialFrame(50);
+        const awake = mockKineticBody(false);
+        const asleep = mockKineticBody(true);
+        frame._kineticBodies.push(awake, asleep);
+        frame.syncActiveKineticBodies();
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(frame._activeKineticBodies[0], awake);
+        assert.equal(kineticDynamicSlab.activePhysCount, 1);
+        assert.equal(kineticDynamicSlab.activePhysIds[0], awake._physId);
+    });
+    it("activateKineticBody wakes and appends once", () => {
+        const frame = new KineticSpatialFrame(50);
+        const prop = mockKineticBody(true);
+        frame._kineticBodies.push(prop);
+        frame.syncActiveKineticBodies();
+        assert.equal(frame._activeKineticBodies.length, 0);
+        frame.activateKineticBody(prop);
+        assert.equal(prop.isSleeping, false);
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(prop._activeSlot, 0);
+        assert.equal(kineticDynamicSlab.activeSlot[prop._physId], 0);
+        frame.activateKineticBody(prop);
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(prop._activeSlot, 0);
+    });
+    it("scheduled activation batches island peers on flush", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const head = mockCircleProp(0, 0, 10);
+        const tail = mockCircleProp(20, 0, 10);
+        frame.insertEntity(head, 0);
+        frame.insertEntity(tail, 1);
+        head._physId = 0;
+        tail._physId = 1;
+        head._kineticIslandPeers = [head, tail];
+        tail._kineticIslandPeers = [head, tail];
+        head._kineticLinkNeighbors = [tail];
+        tail._kineticLinkNeighbors = [head];
+        head.isSleeping = true;
+        tail.isSleeping = true;
+        frame._kineticBodies.push(head, tail);
+        frame.syncActiveKineticBodies();
+        assert.equal(frame._activeKineticBodies.length, 0);
+        frame.scheduleKineticActivation(head);
+        assert.equal(frame._activeKineticBodies.length, 0);
+        frame.flushScheduledKineticActivations();
+        assert.equal(frame._activeKineticBodies.length, 2);
+        assert.equal(head._activeSlot, 0);
+        assert.equal(tail._activeSlot, 1);
+        assert.equal(kineticDynamicSlab.activePhysCount, 2);
+        assert.equal(kineticDynamicSlab.activePhysIds[0], head._physId);
+        assert.equal(kineticDynamicSlab.activePhysIds[1], tail._physId);
+    });
+    it("sleeping kinetic body drops out of active list on next sync", () => {
+        const frame = new KineticSpatialFrame(50);
+        const prop = mockKineticBody(false);
+        frame._kineticBodies.push(prop);
+        frame.syncActiveKineticBodies();
+        assert.equal(frame._activeKineticBodies.length, 1);
+        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(prop, true);
+        assert.equal(prop.isSleeping, true);
+        frame.syncActiveKineticBodies();
+        assert.equal(frame._activeKineticBodies.length, 0);
+        assert.equal(kineticDynamicSlab.activePhysCount, 0);
+    });
+    it("admitKineticProp makes mid-frame spawns visible to neighbor queries", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const anchor = mockCircleProp(0, 0, 10);
+        frame.insertEntity(anchor, 0);
+        frame._kineticBodies.push(anchor);
+        frame._nextPhysId = 1;
+        const fragment = mockCircleProp(24, 0, 8);
+        frame.admitKineticProp(fragment, mockState);
+        const neighbors = frame.getNeighbors(anchor);
+        assert.ok(neighbors.includes(fragment));
+        assert.ok(frame._activeKineticBodies.includes(fragment));
+        assert.equal(kineticDynamicSlab.activeSlot[fragment._physId], fragment._activeSlot);
+    });
+    it("mid-frame admit syncs slab pose so writeback does not snap spawns to origin", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const anchor = mockCircleProp(0, 0, 10);
+        frame.insertEntity(anchor, 0);
+        frame._kineticBodies.push(anchor);
+        frame._nextPhysId = 1;
+        const fragment = mockCircleProp(240, 180, 8);
+        frame.admitKineticProp(fragment, mockState);
+        assert.equal(kineticDynamicSlab.x[fragment._physId], 240);
+        assert.equal(kineticDynamicSlab.y[fragment._physId], 180);
+        writebackActiveKineticBodySlab(frame._activeKineticBodies);
+        assert.equal(fragment.x, 240);
+        assert.equal(fragment.y, 180);
+    });
+    it("admitKineticProp reindexes props after geometry or position changes", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const mover = mockCircleProp(0, 0, 10);
+        frame.insertEntity(mover, 0);
+        frame._kineticBodies.push(mover);
+        frame._nextPhysId = 1;
+        const witness = mockCircleProp(200, 0, 8);
+        frame.admitKineticProp(witness, mockState);
+        assert.equal(frame.getNeighbors(witness).includes(mover), false);
+        mover.x = 200;
+        frame.admitKineticProp(mover, mockState);
+        assert.ok(frame.getNeighbors(witness).includes(mover));
+    });
+    it("activateKineticBody skips island peers missing _physId", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const head = mockCircleProp(0, 0, 10);
+        const tail = mockCircleProp(20, 0, 10);
+        frame.insertEntity(head, 0);
+        frame.insertEntity(tail, 1);
+        head._kineticIslandPeers = [head, tail];
+        tail._kineticIslandPeers = [head, tail];
+        delete tail._physId;
+        frame._kineticBodies.push(head, tail);
+        frame.syncActiveKineticBodies();
+        frame.activateKineticBody(head);
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(frame._activeKineticBodies[0], head);
+        assert.equal(kineticDynamicSlab.activePhysCount, 1);
+        assert.equal(kineticDynamicSlab.activePhysIds[0], head._physId);
+        frame._activeKineticBodies.push(tail);
+        frame.reindexKineticBodies(frame._activeKineticBodies);
+        assert.equal(frame._activeKineticBodies.length, 1);
+        assert.equal(frame._activeKineticBodies[0], head);
+    });
+    it("scheduled activation wakes direct link neighbors only on long chains", () => {
+        const frame = new KineticSpatialFrame(50);
+        frame.resetFrame(mockGrid);
+        const head = mockCircleProp(0, 0, 10);
+        const mid = mockCircleProp(20, 0, 10);
+        const tail = mockCircleProp(40, 0, 10);
+        frame.insertEntity(head, 0);
+        frame.insertEntity(mid, 1);
+        frame.insertEntity(tail, 2);
+        head._physId = 0;
+        mid._physId = 1;
+        tail._physId = 2;
+        head._kineticIslandPeers = [head, mid, tail];
+        mid._kineticIslandPeers = [head, mid, tail];
+        tail._kineticIslandPeers = [head, mid, tail];
+        head._kineticLinkNeighbors = [mid];
+        mid._kineticLinkNeighbors = [head, tail];
+        tail._kineticLinkNeighbors = [mid];
+        head.isSleeping = true;
+        mid.isSleeping = true;
+        tail.isSleeping = true;
+        frame._kineticBodies.push(head, mid, tail);
+        frame.syncActiveKineticBodies();
+        frame.scheduleKineticActivation(head);
+        frame.flushScheduledKineticActivations();
+        assert.equal(head.isSleeping, false);
+        assert.equal(mid.isSleeping, false);
+        assert.equal(tail.isSleeping, true);
+        assert.equal(frame._activeKineticBodies.length, 2);
+        assert.equal(kineticDynamicSlab.activePhysCount, 2);
+    });
+});
