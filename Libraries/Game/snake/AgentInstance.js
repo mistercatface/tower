@@ -3,6 +3,7 @@ import { clearChainLinksForMembers, clearChainLinksForProp, removeChainLinkBetwe
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
+import { advanceAgentMetabolismHunger } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/agentPopulationRegistry.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
@@ -222,6 +223,21 @@ export class AgentInstance {
         this.memberIds.pop();
         this.memberProps.pop();
         return tailId;
+    }
+    tickMetabolism(state, dtMs, drainMultiplier = 1) {
+        const metabolism = this.metabolism;
+        const starving = advanceAgentMetabolismHunger(metabolism, dtMs, drainMultiplier);
+        if (!starving || metabolism.starveShedIntervalMs === null) return false;
+        let shed = false;
+        while (metabolism.starveMs >= metabolism.starveShedIntervalMs) {
+            if (!this.shedTailFromStarvation(state)) {
+                metabolism.starveMs = 0;
+                break;
+            }
+            metabolism.starveMs -= metabolism.starveShedIntervalMs;
+            shed = true;
+        }
+        return shed;
     }
     severInertTail(state, tailIds) {
         this.retireMemberSegments(state, tailIds);

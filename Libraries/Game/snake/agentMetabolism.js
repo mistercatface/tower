@@ -42,31 +42,17 @@ export function feedAgentMetabolism(metabolism, value = null) {
     return growCount;
 }
 /**
- * Ticks the agent metabolism.
- * Returns true if a starvation shed event occurred.
+ * Drains hunger for one tick. Returns true when hunger has hit zero (starving).
  */
-export function tickAgentMetabolism(metabolism, dtMs, drainMultiplier = 1, onStarveCycle = null) {
+export function advanceAgentMetabolismHunger(metabolism, dtMs, drainMultiplier = 1) {
     metabolism.hunger -= (dtMs * drainMultiplier) / metabolism.hungerDrainMs;
     if (metabolism.hunger > 0) {
         metabolism.starveMs = 0;
         return false;
     }
     metabolism.hunger = 0;
-    if (metabolism.starveShedIntervalMs !== null && onStarveCycle) {
-        metabolism.starveMs += dtMs * drainMultiplier;
-        let shed = false;
-        while (metabolism.starveMs >= metabolism.starveShedIntervalMs) {
-            const didShed = onStarveCycle();
-            if (!didShed) {
-                metabolism.starveMs = 0;
-                break;
-            }
-            metabolism.starveMs -= metabolism.starveShedIntervalMs;
-            shed = true;
-        }
-        return shed;
-    }
-    return false;
+    if (metabolism.starveShedIntervalMs !== null) metabolism.starveMs += dtMs * drainMultiplier;
+    return true;
 }
 // --- Snake Scaling & Growth Helpers ---
 export function getSnakeChainRadius(state, headId) {

@@ -10,10 +10,9 @@ import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
 import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
-import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism, tickAgentMetabolism } from "./agentMetabolism.js";
+import { createAgentMetabolism, getAgentHunger, setAgentHunger, feedAgentMetabolism } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-/** Shared ground-nav autosim for flee, snake, and squid. */
 export function createAgentAutosim(state, instance) {
     const profileId = instance.profileId;
     const session = state.sandbox.snakeGame;
@@ -125,7 +124,7 @@ export function createAgentAutosim(state, instance) {
             else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = entityRegistry.getLive(intent.getTargetId());
             if (foodTarget) fedThisTick = eatFoodShard(seeker, foodTarget);
             const drainMultiplier = instance.sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
-            if (!fedThisTick) tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => instance.shedTailFromStarvation(state) != null);
+            if (!fedThisTick) instance.tickMetabolism(state, dtMs, drainMultiplier);
         },
     };
     return autosim;

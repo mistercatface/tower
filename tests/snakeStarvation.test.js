@@ -9,7 +9,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getSnakeChainRadius, createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, tickAgentMetabolism } from "../Libraries/Game/snake/agentMetabolism.js";
+import { getSnakeChainRadius, createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger } from "../Libraries/Game/snake/agentMetabolism.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
@@ -60,7 +60,8 @@ function createStarvationTestInstance(state, chain) {
 describe("snake metabolism", () => {
     const profile = { metabolism: META, minAliveSegmentCount: 3 };
     const tickMetab = (state, instance, m, dtMs, drainMultiplier = 1) => {
-        return tickAgentMetabolism(m, dtMs, drainMultiplier, () => instance.shedTailFromStarvation(state) != null);
+        instance.metabolism = m;
+        return instance.tickMetabolism(state, dtMs, drainMultiplier);
     };
 
     it("setSnakeHunger clamps and getSnakeHunger reads the bar", () => {

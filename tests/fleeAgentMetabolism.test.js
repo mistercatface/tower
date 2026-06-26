@@ -8,7 +8,7 @@ import { createAgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getAgentIdentity, setAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
-import { createAgentMetabolism, getAgentHunger, setAgentHunger, tickAgentMetabolism } from "../Libraries/Game/snake/agentMetabolism.js";
+import { createAgentMetabolism, getAgentHunger, setAgentHunger, advanceAgentMetabolismHunger } from "../Libraries/Game/snake/agentMetabolism.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { resolveSnakeEatRadius } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
@@ -32,16 +32,16 @@ describe("flee agent metabolism", () => {
         applySnakeGameConfig({ agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 } } } });
         const metabolism = createAgentMetabolism(getAgentProfile(AGENT_PROFILE.flee));
         setAgentHunger(metabolism, 0.1);
-        tickAgentMetabolism(metabolism, 500, 1);
+        advanceAgentMetabolismHunger(metabolism, 500, 1);
         assert.equal(getAgentHunger(metabolism), 0);
-        tickAgentMetabolism(metabolism, 500, 1);
+        advanceAgentMetabolismHunger(metabolism, 500, 1);
         assert.equal(getAgentHunger(metabolism), 0);
     });
     it("sprint multiplies hunger drain", () => {
         applySnakeGameConfig({ agentProfiles: { flee_agent: { metabolism: { hungerDrainMs: 1000, foodValue: 0.5 }, sprint: { hungerDrainMultiplier: 2 } } } });
         const metabolism = createAgentMetabolism(getAgentProfile(AGENT_PROFILE.flee));
         setAgentHunger(metabolism, 1);
-        tickAgentMetabolism(metabolism, 500, 2);
+        advanceAgentMetabolismHunger(metabolism, 500, 2);
         assert.ok(getAgentHunger(metabolism) < 0.5);
     });
     it("refills hunger from shard pickup while seeking food", async () => {
