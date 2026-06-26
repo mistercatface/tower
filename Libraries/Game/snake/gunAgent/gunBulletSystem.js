@@ -3,6 +3,8 @@ import { CircleShape } from "../../../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../../../Motion/kineticSleep.js";
 import { integratePropMotion } from "../../../Props/propMotion.js";
 import { kineticPairBodiesAt } from "../../../Spatial/collision/kineticPairStream.js";
+import { canFracturePropSplit } from "../../../Props/propFracture.js";
+import { kineticDynamicSlab } from "../../../Spatial/collision/kineticBodySlab.js";
 export class Projectile extends Entity {
     constructor() {
         super(0, 0, 0, false);
@@ -118,6 +120,17 @@ export function tickGunBullets(state, dtMs) {
         }
     }
 }
+function setBodyVelocity(body, vx, vy, w = null) {
+    body.vx = vx;
+    body.vy = vy;
+    if (w !== null) body.angularVelocity = w;
+    const physId = body._physId;
+    if (physId !== undefined && physId !== -1) {
+        kineticDynamicSlab.vx[physId] = vx;
+        kineticDynamicSlab.vy[physId] = vy;
+        if (w !== null) kineticDynamicSlab.w[physId] = w;
+    }
+}
 export function resolveGunBulletContacts(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
     for (let i = 0; i < contacts.count; i++) {
@@ -133,11 +146,19 @@ export function resolveGunBulletContacts(state, spatialFrame, contacts) {
         if (!victim) continue;
         const victimInstance = state.sandbox.snakeGame.instancesByMemberId.get(victim.id);
         if (victimInstance?.headId === bullet._shooterHeadId) continue;
-        if (victimInstance?.lifecycle === "alive") {
-            const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-            const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };
-            victimInstance.die(state, deathImpact);
+        const isDebris = victim.type === "snake_shard" || victim.type === "wall_voxel_chunk" || victim.type === "wall_rail_chunk" || (victim.strategy?.fracture && !canFracturePropSplit(victim));
+        if (isDebris) {
+            bullet._armed = true;
+            const preVx = isBulletA ? contacts.dynamic.preVxA[i] : contacts.dynamic.preVxB[i];
+            const preVy = isBulletA ? contacts.dynamic.preVyA[i] : contacts.dynamic.preVyB[i];
+            setBodyVelocity(bullet, preVx, preVy);
+        } else {
+            if (victimInstance?.lifecycle === "alive") {
+                const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+                const deathImpact = { worldX: victim.x, worldY: victim.y, impactForce: relSpeed, struckSegmentId: victim.id, spatialFrame };
+                victimInstance.die(state, deathImpact);
+            }
+            bullet._armed = false;
         }
-        bullet._armed = false;
     }
 }

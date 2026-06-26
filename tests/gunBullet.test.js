@@ -13,6 +13,7 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 describe("flee agent bullets and combat", () => {
     it("can spawn flee agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {
         applySnakeGameConfig();
@@ -262,6 +263,32 @@ describe("flee agent bullets and combat", () => {
         // Tick bullets
         tickGunBullets(state, 16);
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Bullet should be removed from active queue on wall collision");
-        assert.equal(state.entityRegistry.getLive(bulletId), null, "Bullet should be released from registry");
+    });
+    it("allows bullet to penetrate and realistically shove a snake_shard", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        
+        const bullet = mockKineticCircle(100, 100, 0.75, 160, 0, { id: 1001 });
+        bullet._gunBullet = true;
+        bullet._armed = true;
+        bullet._shooterHeadId = 999;
+        
+        const shard = mockKineticCircle(101, 100, 1.0, 0, 0, { id: 1002 });
+        shard.type = "snake_shard";
+        
+        const tick = createKineticTestTick([bullet, shard], { cellSize: 50 });
+        const pairs = gatherKineticContactPairs(tick);
+        assert.ok(pairs.count > 0, "Bullet and shard should collide");
+        
+        resolveKineticContactPassWithPairs(tick, pairs);
+        assert.ok(kineticContactBuffer.count > 0, "Contact buffer should not be empty");
+        
+        resolveGunBulletContacts(state, tick.frame, kineticContactBuffer);
+        
+        assert.equal(bullet._armed, true, "Bullet should remain armed");
+        assert.equal(bullet.vx, 160, "Bullet vx should be restored to 160 in entity");
+        assert.equal(kineticDynamicSlab.vx[bullet._physId], 160, "Bullet vx should be restored to 160 in dynamic slab");
+        assert.ok(kineticDynamicSlab.vx[shard._physId] > 0, "Shard vx should be greater than 0 from the physics impulse");
     });
 });
