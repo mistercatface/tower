@@ -1,4 +1,3 @@
-import { hasLineOfSight } from "../Libraries/Spatial/query/lineOfSight.js";
 let nextEntityId = 1;
 export class Entity {
     constructor(x, y, angle = 0, isDead = false) {
@@ -22,15 +21,4 @@ export class Entity {
         this.shape = null;
     }
     render(ctx, ...caches) {}
-    getBoundingRadius() {
-        if (this.shape) return this.shape.getBoundingRadius();
-        return this.radius || 0;
-    }
-    hasLineOfSightFromPoint(x, y, state, { sourceRadius = 0 } = {}) {
-        return hasLineOfSight(x, y, this.x, this.y, state.obstacleGrid, sourceRadius, this.radius ?? 0);
-    }
-    hasLineOfSightTo(other, state) {
-        if (!other) return false;
-        return hasLineOfSight(this.x, this.y, other.x, other.y, state.obstacleGrid, this.radius ?? 0, other.radius ?? 0);
-    }
 }

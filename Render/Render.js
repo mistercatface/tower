@@ -87,8 +87,7 @@ export class Renderer {
         if (!collection) return;
         for (let i = 0; i < collection.length; i++) {
             const entity = collection[i];
-            const radius = entity.getBoundingRadius?.() ?? entity.radius ?? 20;
-            if (!viewport.circleInBounds(entity.x, entity.y, radius, "props")) continue;
+            if (!viewport.circleInBounds(entity.x, entity.y, entity.radius, "props")) continue;
             entity.render(this.ctx, this, state);
         }
     }

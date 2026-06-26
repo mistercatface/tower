@@ -107,7 +107,7 @@ export function createFlowGroundNavBehavior(state) {
                     dirY = dir.y;
                 }
             }
-            return { mode: "flow", propX: prop.x, propY: prop.y, propRadius: prop.getBoundingRadius?.() ?? prop.radius ?? 8, dirX, dirY, targetX: steerTarget.x, targetY: steerTarget.y };
+            return { mode: "flow", propX: prop.x, propY: prop.y, propRadius: prop.radius ?? 8, dirX, dirY, targetX: steerTarget.x, targetY: steerTarget.y };
         },
         reset() {
             propRuns.clear();

@@ -230,7 +230,7 @@ export function entityIntersectsAabb(ref, bounds, hitTest) {
         if (!aabb) return false;
         return aabbOverlap(aabb, bounds);
     }
-    const radius = ref.getBoundingRadius?.() ?? ref.radius ?? 0;
+    const radius = ref.radius ?? 0;
     return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
 }
 const AABB_HASH_F64 = new Float64Array(4);
