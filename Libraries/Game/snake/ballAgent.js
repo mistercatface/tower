@@ -28,14 +28,3 @@ export function syncBallAgentFacingAfterPhysics(instance, dtMs) {
     if (!shouldSyncBallAgentFacingToVelocity(instance.combatAction)) return;
     syncBallAgentFacingToVelocity(instance.head, dtMs, instance.aimTurnRadPerSec);
 }
-export function syncBallAgentPresentation(prop, { baseTint }) {
-    const wantTint = baseTint;
-    const current = getPropVisualTint(prop);
-    if (wantTint) {
-        if (current === wantTint) return;
-        setPropVisualTint(prop, wantTint);
-        return;
-    }
-    if (!prop.visualOverride?.tint) return;
-    clearPropVisualOverride(prop);
-}

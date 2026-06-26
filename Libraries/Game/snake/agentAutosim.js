@@ -27,8 +27,7 @@ export function createAgentAutosim(state, instance) {
     const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
     const headNav = createCellTargetHpaNav(state);
     const foodValue = profile.metabolism?.foodValue;
-    const snakeProfile = profileId === AGENT_PROFILE.snake ? profile : null;
-    const resolvedBallType = profile.bodyPropId ?? snakeProfile?.bodyPropId;
+    const resolvedBallType = profile.bodyPropId;
     const resolvedGrowDirX = profile.growDirX ?? -1;
     const resolvedGrowDirY = profile.growDirY ?? 0;
     const baseMaxSpeed = instance.leaderGameplay.maxSpeed;
@@ -41,8 +40,12 @@ export function createAgentAutosim(state, instance) {
         }
         throw new Error(`Cannot grow chain ${agentId}: no live tail segment`);
     };
-    const rng = instance.rng ?? Math.random;
+    const rng = Math.random;
     const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, resolveHunger: () => getAgentHunger(metabolism), brain, sync, headNav, agentCtx, rng }));
+    instance.intent = intent;
+    instance.brain = brain;
+    instance.headNav = headNav;
+    instance.metabolism = metabolism;
     let active = false;
     const growOneSegment = () => {
         const segmentRadius = getCirclePropRadius(instance.head);
@@ -70,7 +73,7 @@ export function createAgentAutosim(state, instance) {
             pending--;
         }
     };
-    const eatFoodShard = (seeker, food, members = null) => {
+    const eatFoodShard = (seeker, food) => {
         if (!canAgentEatSnakeFood(seeker, food) || !isSnakeFoodTarget(food)) return false;
         if (Math.hypot(food.x - seeker.x, food.y - seeker.y) > instance.eatRadius) return false;
         const grid = state.obstacleGrid;
@@ -78,37 +81,18 @@ export function createAgentAutosim(state, instance) {
         intent.clearTrackedGoal();
         intent.headNav.clearDestination();
         removeSandboxWorldProp(state, food);
-        if (profileId === AGENT_PROFILE.snake) feedAndGrow(food.snakeFoodValue ?? foodValue, members);
+        if (profileId === AGENT_PROFILE.snake) feedAndGrow(food.snakeFoodValue ?? foodValue);
         else feedAgentMetabolism(metabolism, food.snakeFoodValue ?? foodValue);
         return true;
     };
     const initialHunger = profile.initialHunger ?? 1;
     const autosim = {
-        headId: agentId,
-        metabolism,
-        getIntent() {
-            return intent;
-        },
-        getBrain() {
-            return brain;
-        },
-        getHeadNav() {
-            return headNav;
-        },
         start() {
             active = true;
+            instance.sprinting = false;
             setAgentHunger(metabolism, initialHunger);
             intent.resetMode();
-            if (intent.resetMemory) intent.resetMemory();
-            const snakeGame = state.sandbox.snakeGame;
-            const seeker = instance.head;
-            const members = getConnectedBodyIds(state.kinetic, agentId);
-            const soloTick = !snakeGame._batchingPerception;
-            if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
-            else maybeBeginSnakeAutosimTick(state);
-            intent.tick(seeker, state, 0);
-            intent.headNav.tick(seeker, 0);
-            if (soloTick) endSnakePerceptionFrame(state);
+            intent.resetMemory();
         },
         stop() {
             active = false;
@@ -134,25 +118,21 @@ export function createAgentAutosim(state, instance) {
                 }
             }
             if (profileId === AGENT_PROFILE.snake && instance.enforceMinLength(state, members)) return;
-            if (intent.getMode() === "seek_food" && intent.getTargetId() != null) {
-                const food = state.entityRegistry.getLive(intent.getTargetId());
-                if (food && eatFoodShard(seeker, food, members)) return;
-            }
             const soloTick = !snakeGame._batchingPerception;
             if (snakeGame._batchingPerception) ensureSnakePerceptionTick(state);
             else maybeBeginSnakeAutosimTick(state);
             let choice;
-            if (admitted) {
-                choice = intent.tick(seeker, state, dtMs);
-                instance.sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(metabolism) > 0;
-                if (!seeker.strategy.groundNav) seeker.strategy.groundNav = {};
-                seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
-                seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
-            }
+            if (admitted) choice = intent.tick(seeker, state, dtMs);
+            instance.sprinting = intent.getDecisionContext()?.sprintIntent?.want === true && getAgentHunger(metabolism) > 0;
+            seeker.strategy.groundNav.maxSpeed = instance.sprinting ? baseMaxSpeed * sprint.speedMultiplier : baseMaxSpeed;
+            seeker.strategy.groundNav.accel = instance.sprinting ? baseAccel * sprint.accelMultiplier : baseAccel;
             intent.headNav.tick(seeker, dtMs);
             if (soloTick) endSnakePerceptionFrame(state);
             let fedThisTick = false;
-            if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) fedThisTick = eatFoodShard(seeker, choice.target, members);
+            let foodTarget = null;
+            if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) foodTarget = choice.target;
+            else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = state.entityRegistry.getLive(intent.getTargetId());
+            if (foodTarget) fedThisTick = eatFoodShard(seeker, foodTarget);
             const drainMultiplier = instance.sprinting ? (sprint.hungerDrainMultiplier ?? 1) : 1;
             if (!fedThisTick)
                 tickAgentMetabolism(metabolism, dtMs, drainMultiplier, () => {

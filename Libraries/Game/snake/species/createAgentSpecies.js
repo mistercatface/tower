@@ -38,7 +38,7 @@ export function createAgentSpecies(profileId) {
             const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph(state);
             let resolvedMembers = connectedMembers;
-            if (retireNavOnDeath && typeof instance.retireAllSegments === "function") resolvedMembers = instance.retireAllSegments(state, connectedMembers);
+            if (retireNavOnDeath) resolvedMembers = instance.retireAllSegments(state, connectedMembers);
             clearChainLinksForMembers(state, resolvedMembers);
             if (fracturableBeforeShatter) markSnakeSegmentsFracturable(state, connectedMembers);
             const spatialFrame = deathImpact?.spatialFrame ?? null;

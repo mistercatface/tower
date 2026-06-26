@@ -9,7 +9,7 @@ import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
-import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC, syncBallAgentPresentation } from "./ballAgent.js";
+import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
@@ -39,7 +39,10 @@ export class AgentInstance {
         this.isHeadRouteValid = false;
         this.baseTint = isFleeProfile(this) ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this.sprinting = false;
-        this._intentOverride = undefined;
+        this.intent = null;
+        this.brain = null;
+        this.headNav = null;
+        this.metabolism = null;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
         this.profile = profile;
@@ -51,7 +54,6 @@ export class AgentInstance {
         this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
         this.visionRange = config.shared.visionRange;
         this.splitImpulseThreshold = config.splitImpulseThreshold;
-        this.leaderMaxSpeed = this.leaderGameplay.maxSpeed;
         this.combatTraits = { ...COMBAT_TRAIT_DEFAULTS, ...profile.combat };
         this.relationshipRules = bakeRelationshipRules(profile, config);
         this.resolvedWeapon = resolveRangedWeapon(this, profile, this.visionRange.range);
@@ -61,30 +63,9 @@ export class AgentInstance {
     get headId() {
         return this.head.id;
     }
-    get intent() {
-        if (this._intentOverride !== undefined) return this._intentOverride;
-        const autosim = this.autosim;
-        if (!autosim) return null;
-        if (typeof autosim.getIntent === "function") return autosim.getIntent();
-        if (typeof autosim.getMode === "function" || typeof autosim.getTargetId === "function") return autosim;
-        return null;
-    }
-    set intent(value) {
-        this._intentOverride = value;
-    }
-    get brain() {
-        return this.autosim?.getBrain?.() ?? null;
-    }
-    get headNav() {
-        return this.autosim?.getHeadNav?.() ?? null;
-    }
-    get metabolism() {
-        return this.autosim?.metabolism ?? null;
-    }
     start(state) {
         this.grantSteeringLease();
         this.autosim.start();
-        if (isBallCombatTopology(this.combatTraits)) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     stopSteering(state) {
         this.revokeSteeringLease();
@@ -115,10 +96,8 @@ export class AgentInstance {
         return this;
     }
     tick(state, dtMs, admitted = true) {
-        if (this.lifecycle !== "alive" || !this.autosim?.isActive?.()) return;
         this._lastTickDtMs = dtMs;
         this.autosim.tick(dtMs, admitted);
-        if (isBallCombatTopology(this.combatTraits)) syncBallAgentPresentation(this.head, { baseTint: this.baseTint });
     }
     isSteerable(state, registry) {
         if (this.lifecycle !== "alive" || !isAliveAgentHead(registry, this.headId)) return false;
@@ -227,7 +206,7 @@ export class AgentInstance {
         this.accumulatedPressure = totalPressure;
         this.peakPressure = peakPressure;
         this.isHeadRouteValid = false;
-        if (this.autosim?.isActive?.()) this.isHeadRouteValid = this.autosim.getPathOverlay?.() != null;
+        if (this.autosim.isActive()) this.isHeadRouteValid = this.autosim.getPathOverlay() != null;
     }
     retireMemberSegments(state, memberIds) {
         const meta = getSandboxEntityMeta(state);
@@ -288,7 +267,7 @@ export class AgentInstance {
                 const areTeammates = resolveRelationshipForInstances(strikerInstance, this) === "ally" || (this.head.faction != null && this.head.faction === strikerInstance.head.faction);
                 if (!areTeammates)
                     if (strikerInstance.sprinting && relSpeed >= this.splitImpulseThreshold)
-                        if (strikerInstance.intent?.getMode?.() === "flee")
+                        if (strikerInstance.intent.getMode() === "flee")
                             if (strikerBodyId === strikerInstance.headId && struckSegmentId !== this.headId) return this.splitAtStruckSegment(state, struckSegmentId, victimMembers, deathImpact);
             }
         }

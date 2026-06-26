@@ -22,7 +22,7 @@ export function resolveCommittedTargetWorld(state, intentTarget) {
 function readIntentTarget(instance) {
     const intent = instance?.intent;
     if (!intent) return null;
-    return { mode: intent.getMode?.() ?? null, targetId: intent.getTargetId?.() ?? null, destination: intent.getDestination?.() ?? null };
+    return { mode: intent.getMode(), targetId: intent.getTargetId(), destination: intent.getDestination() };
 }
 export function appendFocusedAgentTargetOverlayCommands(out, state, session) {
     const prop = state.followCamera?.targetProp;

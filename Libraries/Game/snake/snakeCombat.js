@@ -166,7 +166,7 @@ function restoreHunterContactDrive(hunterInstance, hunterPhysId, preyTarget, spe
     const dy = preyTarget.y - hunterHead.y;
     const dist = Math.hypot(dx, dy);
     if (dist <= 0) return;
-    const speed = speedOverride ?? hunterInstance.leaderMaxSpeed ?? Math.hypot(kineticDynamicSlab.vx[hunterPhysId], kineticDynamicSlab.vy[hunterPhysId]);
+    const speed = speedOverride ?? hunterHead.strategy.groundNav.maxSpeed;
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
     kineticDynamicSlab.vx[hunterPhysId] = vx;
@@ -177,8 +177,8 @@ function restoreHunterContactDrive(hunterInstance, hunterPhysId, preyTarget, spe
 function applySnakeHuntContactDriveForPair(hunterInstance, hunterBody, hunterPhysId, preyInstance) {
     if (hunterBody.id !== hunterInstance.headId) return;
     const intent = hunterInstance.intent;
-    if (intent?.getMode?.() !== "seek_prey") return;
-    if (intent.getTargetId?.() !== preyInstance.headId) return;
+    if (intent.getMode() !== "seek_prey") return;
+    if (intent.getTargetId() !== preyInstance.headId) return;
     restoreHunterContactDrive(hunterInstance, hunterPhysId, preyInstance.head);
 }
 export function applySnakeHuntContactDrive(state, spatialFrame, contacts) {
