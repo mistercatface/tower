@@ -183,8 +183,8 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
     });
     setAgentIdentity(chain.head.id, { name, color: tintHex });
     applySnakeChainTint(chain.members, tintHex);
-    applyAgentGameplay(AGENT_PROFILE.snake, chain.head, "leader");
-    for (let i = 1; i < chain.members.length; i++) applyAgentGameplay(AGENT_PROFILE.snake, chain.members[i], "body");
+    applyAgentGameplay(snake, chain.head, "leader");
+    for (let i = 1; i < chain.members.length; i++) applyAgentGameplay(snake, chain.members[i], "body");
     const occupiedIndices = new Set(excludeIndices ?? []);
     const occupied = linkedChainOccupiedCellIndices(chain.members, state.obstacleGrid);
     for (const idx of occupied) occupiedIndices.add(idx);

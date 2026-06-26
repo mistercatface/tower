@@ -8,10 +8,10 @@ export function resolveProfileLeaderIndex(profile) {
 export function resolveFleeAgentForwardDir(snakeProfile = getAgentProfile(AGENT_PROFILE.snake)) {
     return { x: -snakeProfile.growDirX, y: -snakeProfile.growDirY };
 }
-function onChainSegmentSpawned(profileId, leaderIndex) {
+function onChainSegmentSpawned(profile, leaderIndex) {
     return (prop, index) => {
         prop.strategy.canChain = true;
-        applyAgentGameplayForIndex(profileId, prop, index, leaderIndex);
+        applyAgentGameplayForIndex(profile, prop, index, leaderIndex);
     };
 }
 function buildChainSpawnSpec(profileId, config, options = {}) {
@@ -34,7 +34,7 @@ function buildChainSpawnSpec(profileId, config, options = {}) {
         faction: options.faction,
         exportType: options.exportType ?? profile.exportType ?? null,
         spawnGroupId: options.spawnGroupId,
-        onSegmentSpawned: onChainSegmentSpawned(profileId, leaderIndex),
+        onSegmentSpawned: onChainSegmentSpawned(profile, leaderIndex),
     };
     const headPropId = options.headPropId ?? profile.headPropId;
     const bodyPropId = options.bodyPropId ?? profile.bodyPropId;

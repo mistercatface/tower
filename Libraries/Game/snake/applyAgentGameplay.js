@@ -1,9 +1,6 @@
 import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
-import { getAgentProfile } from "../../AI/agents/agentProfile.js";
-import { getSnakeGameConfig } from "./snakeGameConfig.js";
 /** Apply profile locomotion/presentation to a spawned chain segment. role: "leader" | "body". */
-export function applyAgentGameplay(profileId, prop, role) {
-    const profile = getAgentProfile(profileId, getSnakeGameConfig());
+export function applyAgentGameplay(profile, prop, role) {
     const spec = role === "leader" ? (profile.gameplay?.leader ?? {}) : (profile.gameplay?.body ?? {});
     if (spec.maxSpeed != null || spec.accel != null) {
         if (!prop.strategy.groundNav) prop.strategy.groundNav = {};
@@ -16,6 +13,6 @@ export function applyAgentGameplay(profileId, prop, role) {
         if (prop.strategy.isKinetic) syncKineticRigidBody(prop);
     }
 }
-export function applyAgentGameplayForIndex(profileId, prop, segmentIndex, leaderIndex) {
-    applyAgentGameplay(profileId, prop, segmentIndex === leaderIndex ? "leader" : "body");
+export function applyAgentGameplayForIndex(profile, prop, segmentIndex, leaderIndex) {
+    applyAgentGameplay(profile, prop, segmentIndex === leaderIndex ? "leader" : "body");
 }

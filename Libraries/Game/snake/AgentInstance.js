@@ -49,6 +49,7 @@ export class AgentInstance {
         const headRadius = getCirclePropRadius(head);
         this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
         this.splitImpulseThreshold = config.splitImpulseThreshold;
+        this.leaderMaxSpeed = profile.gameplay?.leader?.maxSpeed;
         this.combatTraits = getAgentCombatTraits(profileId);
         this.resolvedWeapon = resolveRangedWeapon(this, profile);
         this.aimTurnRadPerSec = this.resolvedWeapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;

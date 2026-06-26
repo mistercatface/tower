@@ -1,5 +1,4 @@
 import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
-import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
 import { isChainCombatTopology, matchesBrainRamResolver } from "./agentCombatTraits.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { kineticPairBodiesAt } from "../../Spatial/collision/kineticPairStream.js";
@@ -73,16 +72,16 @@ function tryResolveFleeBallHeadRam(state, spatialFrame, contacts, i, instanceA, 
     }
     return true;
 }
-function squidDuelSpeedOk(relSpeed, config) {
-    return relSpeed >= Math.min(config.splitImpulseThreshold, 10);
+function squidDuelSpeedOk(relSpeed, splitImpulseThreshold) {
+    return relSpeed >= Math.min(splitImpulseThreshold, 10);
 }
-function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, bodyA, bodyB, relSpeed, config, resolverId) {
+function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, bodyA, bodyB, relSpeed, resolverId) {
     if (!matchesBrainRamResolver(traitsA, resolverId) || !matchesBrainRamResolver(traitsB, resolverId)) return false;
     if (areTeammates(instanceA, instanceB)) return false;
     const aLeader = bodyA.id === instanceA.headId;
     const bLeader = bodyB.id === instanceB.headId;
     if (!aLeader && !bLeader) {
-        if (!squidDuelSpeedOk(relSpeed, config)) return false;
+        if (!squidDuelSpeedOk(relSpeed, instanceA.splitImpulseThreshold)) return false;
         const victims = classifyFleeRamVictims(contacts, i);
         if (victims.killA) {
             const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
@@ -95,7 +94,7 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
         return victims.killA || victims.killB;
     }
     if (aLeader && bLeader) {
-        if (!squidDuelSpeedOk(relSpeed, config)) return false;
+        if (!squidDuelSpeedOk(relSpeed, instanceA.splitImpulseThreshold)) return false;
         const victims = classifyFleeRamVictims(contacts, i);
         if (victims.killA) {
             const impactA = snakeDeathImpactFromContact(spatialFrame, contacts, i, bodyA.id, bodyA, relSpeed);
@@ -115,7 +114,6 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
     const snakeGame = state.sandbox.snakeGame;
-    const config = snakeGame.config;
     const memberToInstance = buildAgentMemberToInstanceMap(state, snakeGame);
     for (let i = 0; i < contacts.count; i++) {
         const pair = kineticPairBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
@@ -140,7 +138,7 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
             )
         )
             continue;
-        if (tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, pair.bodyA, pair.bodyB, relSpeed, config, "squidVsSquid")) continue;
+        if (tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA, instanceB, traitsB, pair.bodyA, pair.bodyB, relSpeed, "squidVsSquid")) continue;
         const bothSquidDuel = matchesBrainRamResolver(traitsA, "squidVsSquid") && matchesBrainRamResolver(traitsB, "squidVsSquid");
         if (!bothSquidDuel && isChainCombatTopology(traitsA) && isChainCombatTopology(traitsB) && pair.bodyA.id === instanceA.headId && pair.bodyB.id === instanceB.headId) continue;
         const distSq = headDistSq(instanceA, instanceB);
@@ -162,12 +160,13 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
         instanceA.receiveBodyStrike(state, pair.bodyA.id, instanceB, pair.bodyB.id, relSpeed, deathImpactA);
     }
 }
-function restoreHunterContactDrive(hunterHead, hunterPhysId, preyTarget, speedOverride = null) {
+function restoreHunterContactDrive(hunterInstance, hunterPhysId, preyTarget, speedOverride = null) {
+    const hunterHead = hunterInstance.head;
     const dx = preyTarget.x - hunterHead.x;
     const dy = preyTarget.y - hunterHead.y;
     const dist = Math.hypot(dx, dy);
     if (dist <= 0) return;
-    const speed = speedOverride ?? getAgentProfile(AGENT_PROFILE.snake).gameplay?.leader?.maxSpeed ?? Math.hypot(kineticDynamicSlab.vx[hunterPhysId], kineticDynamicSlab.vy[hunterPhysId]);
+    const speed = speedOverride ?? hunterInstance.leaderMaxSpeed ?? Math.hypot(kineticDynamicSlab.vx[hunterPhysId], kineticDynamicSlab.vy[hunterPhysId]);
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
     kineticDynamicSlab.vx[hunterPhysId] = vx;
@@ -180,7 +179,7 @@ function applySnakeHuntContactDriveForPair(hunterInstance, hunterBody, hunterPhy
     const autosim = hunterInstance.autosim;
     if (autosim?.getMode?.() !== "seek_prey") return;
     if (autosim.getTargetId?.() !== preyInstance.headId) return;
-    restoreHunterContactDrive(hunterBody, hunterPhysId, preyInstance.head);
+    restoreHunterContactDrive(hunterInstance, hunterPhysId, preyInstance.head);
 }
 export function applySnakeHuntContactDrive(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
