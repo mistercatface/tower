@@ -44,6 +44,7 @@ export class AgentInstance {
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
         this.profile = profile;
+        this.minAliveSegmentCount = profile.minAliveSegmentCount ?? 1;
         const config = getSnakeGameConfig();
         const headRadius = getCirclePropRadius(head);
         this.eatRadius = headRadius + config.foodPickupRadius + config.eatMargin;
@@ -102,8 +103,7 @@ export class AgentInstance {
         return (members || this.memberIds).length;
     }
     enforceMinLength(state, members = null) {
-        const snake = getAgentProfile(AGENT_PROFILE.snake);
-        if (this.segmentCount(members) >= snake.minAliveSegmentCount) return false;
+        if (this.segmentCount(members) >= this.minAliveSegmentCount) return false;
         this.kill(state, members);
         return true;
     }
@@ -124,7 +124,7 @@ export class AgentInstance {
         if (isSquidProfile(this)) return getConnectedBodyIds(state.kinetic, this.headId).includes(this.headId);
         const members = getConnectedComponentPath(state.kinetic, this.headId);
         if (members[0] !== this.headId) return false;
-        if (isSnakeProfile(this) && members.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) return false;
+        if (isSnakeProfile(this) && members.length < this.minAliveSegmentCount) return false;
         return true;
     }
     validate(state) {
@@ -274,7 +274,7 @@ export class AgentInstance {
         const tailIds = members.slice(strikeIndex + 1);
         this.severInertTail(state, tailIds);
         this.memberIds = aliveIds;
-        if (aliveIds.length < getAgentProfile(AGENT_PROFILE.snake).minAliveSegmentCount) this.die(state, aliveIds, deathImpact);
+        if (aliveIds.length < this.minAliveSegmentCount) this.die(state, aliveIds, deathImpact);
         return { aliveHeadId: this.headId, aliveIds, inertLeadId: tailIds[0], inertIds: tailIds };
     }
     receiveBodyStrike(state, struckSegmentId, strikerInstance, strikerBodyId, relSpeed, deathImpact, victimMembers = null) {
