@@ -12,7 +12,7 @@ describe("applyAgentGameplay", () => {
     it("snake leader reads gameplay.leader.maxSpeed override", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { gameplay: { leader: { maxSpeed: 95 } } } } });
         const head = mockProp();
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake), head, "leader");
+        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake).gameplay.leader, head);
         assert.equal(head.strategy.groundNav.maxSpeed, 95);
         applySnakeGameConfig();
     });
@@ -20,7 +20,7 @@ describe("applyAgentGameplay", () => {
     it("flee leader applies maxSpeed and accel from gameplay.leader", () => {
         applySnakeGameConfig({ agentProfiles: { flee_agent: { gameplay: { leader: { maxSpeed: 120, accel: 400 } } } } });
         const head = mockProp();
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.flee), head, "leader");
+        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.flee).gameplay.leader, head);
         assert.equal(head.strategy.groundNav.maxSpeed, 120);
         assert.equal(head.strategy.groundNav.accel, 400);
         applySnakeGameConfig();
@@ -29,7 +29,7 @@ describe("applyAgentGameplay", () => {
     it("squid body applies segment friction and density from gameplay.body", () => {
         applySnakeGameConfig();
         const segment = mockProp({ isKinetic: true });
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.squid), segment, "body");
+        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.squid).gameplay.body, segment);
         assert.equal(segment.strategy.friction, 2.5);
         assert.equal(segment.strategy.density, 0.001);
     });
@@ -38,8 +38,9 @@ describe("applyAgentGameplay", () => {
         applySnakeGameConfig();
         const leader = mockProp();
         const body = mockProp({ isKinetic: true });
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.squid), leader, "leader");
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.squid), body, "body");
+        const profile = getAgentProfile(AGENT_PROFILE.squid);
+        applyAgentGameplay(profile.gameplay.leader, leader);
+        applyAgentGameplay(profile.gameplay.body, body);
         assert.equal(leader.strategy.groundNav.maxSpeed, 180);
         assert.equal(body.strategy.friction, 2.5);
     });

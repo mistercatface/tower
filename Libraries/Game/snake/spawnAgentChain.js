@@ -9,15 +9,17 @@ export function resolveFleeAgentForwardDir(snakeProfile = getAgentProfile(AGENT_
     return { x: -snakeProfile.growDirX, y: -snakeProfile.growDirY };
 }
 function applySpawnedChainGameplay(profile, chain) {
+    const leaderGameplay = profile.gameplay.leader;
+    const bodyGameplay = profile.gameplay.body;
     for (let i = 0; i < chain.leaderIndex; i++) {
         chain.members[i].strategy.canChain = true;
-        applyAgentGameplay(profile, chain.members[i], "body");
+        applyAgentGameplay(bodyGameplay, chain.members[i]);
     }
     chain.leader.strategy.canChain = true;
-    applyAgentGameplay(profile, chain.leader, "leader");
+    applyAgentGameplay(leaderGameplay, chain.leader);
     for (let i = chain.leaderIndex + 1; i < chain.members.length; i++) {
         chain.members[i].strategy.canChain = true;
-        applyAgentGameplay(profile, chain.members[i], "body");
+        applyAgentGameplay(bodyGameplay, chain.members[i]);
     }
 }
 function buildChainSpawnSpec(profile, config, options = {}) {

@@ -118,7 +118,7 @@ function createMockIntent(state, headId) {
     const headNav = mockHeadNav();
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     const head = instance.head;
-    applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake), head, "leader");
+    applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake).gameplay.leader, head);
     const { brain, sync } = createAgentBrain();
     const intentDeps = {
         profileId: AGENT_DECISION_PROFILE.snake,
@@ -475,7 +475,7 @@ describe("snake FSM transitions", () => {
             { chain: hunter, faction: "red" },
             { chain: prey, faction: "blue" },
         ]);
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake), hunter.head, "leader");
+        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake).gameplay.leader, hunter.head);
         hunter.head.facing = 0;
         prey.head.x = hunter.head.x + 64;
         prey.head.y = hunter.head.y;
