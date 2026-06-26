@@ -5,7 +5,7 @@ export default {
     sandbox: { tags: ["shapes"], spawnLabel: "Wall Rail Chunk" },
     physics: {
         isKinetic: true,
-        density: 0.08,
+        density: 0.04,
         localFootprint: [
             { x: -8, y: -2 },
             { x: 8, y: -2 },

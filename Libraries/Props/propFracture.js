@@ -116,15 +116,21 @@ export function buildCircleImpactShards(radius, localHit, impactForce, { minShar
     }
     return shards;
 }
+function propWorldPosition(prop) {
+    const physId = prop._physId;
+    if (physId !== undefined) return { x: kineticDynamicSlab.x[physId], y: kineticDynamicSlab.y[physId] };
+    return { x: prop.x, y: prop.y };
+}
 export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shardPropId, spatialFrame = null, configureShard = null) {
     const facing = propFacing(sourceProp);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const motion = currentPropMotion(sourceProp);
     const spawned = [];
+    const sourcePos = propWorldPosition(sourceProp);
     for (let i = 0; i < geometries.length; i++) {
         const geom = geometries[i];
-        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, sourceProp.x, sourceProp.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
+        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, sourcePos.x, sourcePos.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
         const shard = acquireWorldProp(worldPos.x, worldPos.y, shardPropId, facing);
         if (geom.collisionParts) applyChunkGeometryToProp(shard, geom);
         else applyShardGeometryToProp(shard, geom);
@@ -178,11 +184,7 @@ function geometryFromChunkComponent(comp, atOrigin) {
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
     return splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => geometryFromChunkComponent(comp, false));
 }
-function propWorldPosition(prop) {
-    const physId = prop._physId;
-    if (physId !== undefined) return { x: kineticDynamicSlab.x[physId], y: kineticDynamicSlab.y[physId] };
-    return { x: prop.x, y: prop.y };
-}
+
 function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
     if (components.length <= 1) return null;
