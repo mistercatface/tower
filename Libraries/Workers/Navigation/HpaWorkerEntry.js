@@ -194,23 +194,17 @@ export class HpaRegionGraphManager {
             navGraph: navView,
             maxCellsPerChunk: this.buffers.maxCellsPerChunk,
             minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk,
-            seedWorldX: data.seedWorldX,
-            seedWorldY: data.seedWorldY,
         });
         this.regionGraphState = {
             ...built,
             maxCellsPerChunk: this.buffers.maxCellsPerChunk,
             minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk,
             damagePadding: data.damagePadding,
-            seedWorldX: data.seedWorldX,
-            seedWorldY: data.seedWorldY,
             distToWall: null,
         };
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, data) {
-        if (data.seedWorldX != null) this.regionGraphState.seedWorldX = data.seedWorldX;
-        if (data.seedWorldY != null) this.regionGraphState.seedWorldY = data.seedWorldY;
         rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView);
         return this.writeRegionGraphToSab(gridFrame);
     }

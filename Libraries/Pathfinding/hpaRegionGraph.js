@@ -263,6 +263,11 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     }
     for (const node of graph.nodes()) node.edges = node.edges.filter((e) => graph.getNode(e.targetId));
 }
+function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph) {
+    const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
+    const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
+    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY);
+}
 /**
  * @param {{
  *   blocked: Uint8Array,
@@ -270,12 +275,10 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
  *   navGraph: object,
  *   maxCellsPerChunk: number,
  *   minCellsPerChunk: number,
- *   seedWorldX?: number | null,
- *   seedWorldY?: number | null,
  * }} opts
  */
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, seedWorldX = null, seedWorldY = null } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Array(size).fill(null);
@@ -283,7 +286,7 @@ export function buildFullRegionGraph(opts) {
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
-    if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
     return { ...graph.exportState(), graph };
 }
 /**
@@ -294,8 +297,6 @@ export function buildFullRegionGraph(opts) {
  *   maxCellsPerChunk: number,
  *   minCellsPerChunk: number,
  *   damagePadding?: number,
- *   seedWorldX?: number | null,
- *   seedWorldY?: number | null,
  *   distToWall?: Float32Array | null,
  * }} state
  * @param {import("../DataStructures/CellRect.js").CellBounds} bounds
@@ -304,7 +305,7 @@ export function buildFullRegionGraph(opts) {
  * @param {{ canStep: (fromCol: number, fromRow: number, toCol: number, toRow: number) => boolean }} navGraph
  */
 export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph) {
-    const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12, seedWorldX = null, seedWorldY = null } = state;
+    const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
     const graph = state.graph instanceof HpaRegionGraph ? state.graph : HpaRegionGraph.fromState(state, frame);
@@ -322,7 +323,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of graph.collectRegionIdsInBounds(box)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
-    if (seedWorldX != null && seedWorldY != null) pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
     graph.syncState(state);
     return state;
 }

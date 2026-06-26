@@ -31,8 +31,6 @@ export class NavRuntime {
         this._graphSyncGeneration = 0;
         /** @type {NavWalkableSyncHook | null} */
         this._navWalkableSyncHook = null;
-        /** @type {((grid: WorldObstacleGrid, bounds: CellBounds | null) => { x: number, y: number }) | null} */
-        this._resolvePruneWorld = null;
         grid._navTopologyRef = this.topology;
     }
     /** Current grid topology key (changes on every nav-affecting edit). */
@@ -58,10 +56,6 @@ export class NavRuntime {
     setNavWalkableSyncHook(hook) {
         this._navWalkableSyncHook = hook;
     }
-    /** @param {(grid: WorldObstacleGrid, bounds: CellBounds | null) => { x: number, y: number }} fn */
-    setPruneSeedResolver(fn) {
-        this._resolvePruneWorld = fn;
-    }
     /**
      * @param {CellBounds | CellBounds[] | null} bounds
      * @param {{ fullNavSync?: boolean }} [options]
@@ -83,16 +77,10 @@ export class NavRuntime {
     awaitWorkerNavReady() {
         return this._workerNavGraphSyncChain;
     }
-    /** @param {CellBounds | null} damageBounds */
-    _resolvePruneSeed(grid, damageBounds) {
-        if (this._resolvePruneWorld) return this._resolvePruneWorld(grid, damageBounds);
-        return { x: (grid.minX + grid.maxX) / 2, y: (grid.minY + grid.maxY) / 2 };
-    }
     async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
         const graphEpoch = this._graphSyncGeneration + 1;
-        const seed = this._resolvePruneSeed(grid, damageBounds);
         const fullGraph = topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds);
-        await this.worker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, seed.x, seed.y, fullGraph);
+        await this.worker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, fullGraph);
         this._graphSyncGeneration = graphEpoch;
         this._navWalkableSyncHook?.(damageBounds);
     }

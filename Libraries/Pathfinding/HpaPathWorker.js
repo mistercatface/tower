@@ -148,30 +148,21 @@ export class HpaPathWorker {
         this._graphPatchChain = this._graphPatchChain.then(run, run);
         return this._graphPatchChain;
     }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds @param {number} graphEpoch @param {number} seedWorldX @param {number} seedWorldY @param {boolean} fullGraph */
-    async syncObstacleNavGraph(grid, damageBounds, graphEpoch, seedWorldX, seedWorldY, fullGraph) {
+    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds @param {number} graphEpoch @param {boolean} fullGraph */
+    async syncObstacleNavGraph(grid, damageBounds, graphEpoch, fullGraph) {
         await this.scheduleNavTopologySyncAwait(grid, fullGraph ? null : damageBounds);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
-        this.setPruneSeed(seedWorldX, seedWorldY);
         if (fullGraph) {
-            await this._postGraphPatch(
-                "buildRegionGraphFull",
-                { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk, seedWorldX, seedWorldY },
-                graphEpoch,
-            );
+            await this._postGraphPatch("buildRegionGraphFull", { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk }, graphEpoch);
             return;
         }
         const box = expandRegionDamageBounds(damageBounds, this._gridFrame, this._damagePadding);
-        await this._postGraphPatch("patchRegionGraph", { gridFrameKey: this._gridFrame.key, bounds: box, seedWorldX: seedWorldX ?? null, seedWorldY: seedWorldY ?? null }, graphEpoch);
+        await this._postGraphPatch("patchRegionGraph", { gridFrameKey: this._gridFrame.key, bounds: box }, graphEpoch);
     }
     async awaitGraphReady() {
         if (this._navSyncPromise) await this._navSyncPromise;
         await this._graphPatchChain;
-    }
-    setPruneSeed(worldX, worldY) {
-        this._pruneSeedWorldX = worldX;
-        this._pruneSeedWorldY = worldY;
     }
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
     isRegionGraphReady(grid = this.navGraph) {
@@ -435,11 +426,7 @@ export class HpaPathWorker {
         await this.scheduleNavTopologySyncAwait(request.obstacleGrid, null);
         if (!isNavTopologyReady(this, request.obstacleGrid)) return null;
         this.releaseOwnedPathSlot(navState);
-        if (this._graphEpoch < request.graphEpoch) {
-            const seedX = this._pruneSeedWorldX ?? (request.obstacleGrid.minX + request.obstacleGrid.maxX) / 2;
-            const seedY = this._pruneSeedWorldY ?? (request.obstacleGrid.minY + request.obstacleGrid.maxY) / 2;
-            await this.syncObstacleNavGraph(request.obstacleGrid, null, request.graphEpoch, seedX, seedY, true);
-        }
+        if (this._graphEpoch < request.graphEpoch) await this.syncObstacleNavGraph(request.obstacleGrid, null, request.graphEpoch, true);
         if (!(await this._ensureWorkerGraphReady(request.graphEpoch))) return null;
         const slot = this.leaseSlot();
         let workerOut = null;
