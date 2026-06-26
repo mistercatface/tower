@@ -40,7 +40,7 @@ function chainAnchorOccupiedCells(grid, anchorCell, segmentCount, spacing, growD
     }
     return cells;
 }
-function isValidSnakeChainAnchorCell(navWalkable, grid, anchorCell, { segmentCount, spacing, growDirX, growDirY, excludeIndices }) {
+function isValidSnakeChainAnchorCell(navWalkable, grid, anchorCell, segmentCount, spacing, growDirX, growDirY, excludeIndices) {
     const cells = chainAnchorOccupiedCells(grid, anchorCell, segmentCount, spacing, growDirX, growDirY);
     for (let i = 0; i < cells.length; i++) {
         const { col, row } = cells[i];
@@ -55,7 +55,7 @@ function pickSnakeChainSpawnCellNearestTo(spawnPool, navWalkable, state, targetC
     let bestDist = Infinity;
     for (let i = 0; i < spawnPool.length; i++) {
         const cell = spawnPool[i];
-        if (!isValidSnakeChainAnchorCell(navWalkable, grid, cell, { segmentCount, spacing, growDirX, growDirY, excludeIndices })) continue;
+        if (!isValidSnakeChainAnchorCell(navWalkable, grid, cell, segmentCount, spacing, growDirX, growDirY, excludeIndices)) continue;
         const dist = cellChebyshevDistance(targetCol, targetRow, cell.col, cell.row);
         if (dist < bestDist) {
             bestDist = dist;
@@ -70,7 +70,7 @@ export function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, { segment
     const valid = [];
     for (let i = 0; i < spawnPool.length; i++) {
         const cell = spawnPool[i];
-        if (isValidSnakeChainAnchorCell(navWalkable, grid, cell, { segmentCount, spacing, growDirX, growDirY, excludeIndices })) valid.push(cell);
+        if (isValidSnakeChainAnchorCell(navWalkable, grid, cell, segmentCount, spacing, growDirX, growDirY, excludeIndices)) valid.push(cell);
     }
     if (!valid.length) throw new Error("No walkable snake spawn cell with full chain clearance");
     return pickWalkableCell(valid, { cols: grid.cols, excludeIndices, rng });
