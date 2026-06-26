@@ -319,9 +319,9 @@ export class AgentInstance {
         return false;
     }
 }
-export function createAgentInstance(state, { profileId, head, spawnGroupId, navWalkable = null, ...autosimOptions }) {
+export function createAgentInstance(state, { profileId, head, spawnGroupId, ...autosimOptions }) {
     const instance = new AgentInstance({ profileId, head, spawnGroupId, lifecycle: "alive" });
     instance.syncMembersFromGraph(state);
-    instance.autosim = createAgentAutosim(state, { instance, navWalkable, ...autosimOptions });
+    instance.autosim = createAgentAutosim(state, instance, autosimOptions);
     return instance;
 }

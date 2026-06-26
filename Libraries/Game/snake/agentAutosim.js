@@ -1,10 +1,11 @@
 import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
+import { createBrain } from "../../AI/brain/createBrain.js";
+import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
-import { createAgentBrain } from "./agentBrain.js";
 import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
 import { buildGroundNavIntentAdapterOptions } from "./createGroundNavIntentAdapter.js";
-import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
@@ -55,19 +56,17 @@ function sprintAllowed(profileId, segmentCount, metabolism, profile) {
     return true;
 }
 /** Shared ground-nav autosim for flee, snake, and squid. */
-export function createAgentAutosim(
-    state,
-    { instance, navWalkable = null, rng = Math.random, visionRange = null, initialFoodFraction = null, eatRadius = null, ballType = null, growDirX = null, growDirY = null },
-) {
+export function createAgentAutosim(state, instance, { rng = Math.random, initialFoodFraction = null, eatRadius = null, ballType = null, growDirX = null, growDirY = null } = {}) {
     const profileId = instance.profileId;
     const agentId = instance.headId;
     const session = state.sandbox.snakeGame;
-    const resolvedNavWalkable = navWalkable ?? session.navWalkable;
-    const agentCtx = { instance, session, navWalkable: resolvedNavWalkable };
+    const shared = session.config.shared;
+    const agentCtx = { instance, session, navWalkable: session.navWalkable };
     const profile = instance.profile;
     const metabolismApi = resolveMetabolismApi(profile);
     const metabolism = metabolismApi.create();
-    const { brain, sync } = createAgentBrain(visionRange);
+    const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
+    const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
     const headNav = createCellTargetHpaNav(state);
     const foodValue = profile.metabolism?.foodValue;
     const snakeProfile = profileId === AGENT_PROFILE.snake ? profile : null;

@@ -15,7 +15,8 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { createGroundNavIntentAdapter, buildGroundNavIntentAdapterOptions, resolveSnakeExploreCell } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
-import { createAgentBrain } from "../Libraries/Game/snake/agentBrain.js";
+import { createBrain } from "../Libraries/AI/brain/createBrain.js";
+import { createSpatialBrainSync } from "../Libraries/AI/brain/syncSpatialBrain.js";
 import { FRAME_MS } from "./frameMs.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
 import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.js";
@@ -117,13 +118,15 @@ function createMockIntent(state, headId) {
     const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     const head = instance.head;
     applyAgentGameplay(getAgentProfile(AGENT_PROFILE.snake).gameplay.leader, head);
-    const { brain, sync } = createAgentBrain();
+    const shared = state.sandbox.snakeGame.config.shared;
+    const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
+    const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
     const intentDeps = {
         profileId: AGENT_DECISION_PROFILE.snake,
         brain,
         sync,
         headNav,
-        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, getSnakeGameConfig().shared),
+        resolveExploreCell: (seeker, gameState, memory, exploreRng) => resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, navWalkable, shared),
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
         rng: () => 0,
     };

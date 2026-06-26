@@ -198,7 +198,7 @@ describe("snake combat min length", () => {
             { headId: prey.chain.head.id, spawnGroupId: prey.chain.spawnGroupId },
         ]);
         const predatorInstance = state.sandbox.snakeGame.instancesByHeadId.get(predator.chain.head.id);
-        const predatorAutosim = createAgentAutosim(state, { instance: predatorInstance, navWalkable: state.sandbox.snakeGame.navWalkable });
+        const predatorAutosim = createAgentAutosim(state, predatorInstance);
         predatorInstance.autosim = predatorAutosim;
         const registry = state.sandbox.snakeGame.registry;
         const preyMembers = getOrderedChainMemberIds(state, prey.chain.head.id);

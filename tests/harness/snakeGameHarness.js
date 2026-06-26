@@ -83,15 +83,15 @@ export function wireSnakeTestGame(state, snakes = [], { navWalkable = null } = {
     }
     return { registry, snakeGame };
 }
-export function createWiredSnakeAutosim(state, options) {
+export function createWiredSnakeAutosim(state, { headId, behaviorById, ...autosimOptions }) {
     wireSnakeTestNavSession(state);
-    const instance = state.sandbox.snakeGame.instancesByHeadId.get(options.headId);
+    const instance = state.sandbox.snakeGame.instancesByHeadId.get(headId);
     if (instance) {
-        const autosim = createAgentAutosim(state, { instance, ...options, navWalkable: state.sandbox.snakeGame.navWalkable });
+        const autosim = createAgentAutosim(state, instance, autosimOptions);
         instance.autosim = autosim;
         return autosim;
     }
-    throw new Error(`createWiredSnakeAutosim: missing agent instance ${options.headId}`);
+    throw new Error(`createWiredSnakeAutosim: missing agent instance ${headId}`);
 }
 export async function createSnakeGameHarnessState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
