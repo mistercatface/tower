@@ -146,7 +146,7 @@ function clipHalfPlane(points, ax, ay, nx, ny) {
     }
     return out;
 }
-function wedgePolygonIntersection(points, apexX, apexY, angle0, angle1) {
+export function wedgePolygonIntersection(points, apexX, apexY, angle0, angle1) {
     const nx0 = -Math.sin(angle0);
     const ny0 = Math.cos(angle0);
     const nx1 = Math.sin(angle1);
@@ -196,13 +196,34 @@ function buildGlassShards(points, apexX, apexY, shardCount, random) {
     }
     angles.sort((a, b) => a - b);
     const shards = [];
-    for (let i = 0; i < angles.length; i++) {
-        const a0 = angles[i];
-        const a1 = i === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[i + 1];
-        const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
-        if (poly.length < 3) continue;
-        if (!acceptGlassShard(poly, points)) continue;
-        shards.push(buildShardGeometry(poly));
+    let startIndex = 0;
+    let lastStartIdx = -1;
+    while (startIndex < angles.length) {
+        let accepted = false;
+        let endIndex = startIndex + 1;
+        for (; endIndex <= angles.length; endIndex++) {
+            const a0 = angles[startIndex];
+            const a1 = endIndex < angles.length ? angles[endIndex] : angles[0] + Math.PI * 2;
+            const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
+            if (poly.length < 3) continue;
+            if (acceptGlassShard(poly, points)) {
+                shards.push(buildShardGeometry(poly));
+                lastStartIdx = startIndex;
+                accepted = true;
+                break;
+            }
+        }
+        if (accepted) startIndex = endIndex;
+        else {
+            if (lastStartIdx !== -1) {
+                shards.pop();
+                const a0 = angles[lastStartIdx];
+                const a1 = angles[0] + Math.PI * 2;
+                const poly = wedgePolygonIntersection(points, apexX, apexY, a0, a1);
+                if (poly.length >= 3) shards.push(buildShardGeometry(poly));
+            }
+            break;
+        }
     }
     return shards;
 }
@@ -212,11 +233,12 @@ function shardCountForPolygon(points, impactForce, apexX, apexY) {
     const minArea = minShardAreaForPolygon(points);
     const areaCap = Math.max(2, Math.floor(area / minArea));
     const angleCap = Math.floor((Math.PI * 2) / GLASS_MIN_WEDGE_ANGLE);
-    let count = Math.max(4, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
+    const minShardsAllowed = Math.min(4, areaCap);
+    let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
     count = Math.min(count, areaCap, angleCap);
     const boundaryDist = minDistToPolygonBoundary(apexX, apexY, points);
     const boundaryFactor = Math.min(1, boundaryDist / (span * 0.14));
-    count = Math.max(4, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
+    count = Math.max(minShardsAllowed, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
     return count;
 }
 export function buildShardGeometry(points) {
@@ -236,11 +258,14 @@ export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, ran
     const { x: apexX, y: apexY } = resolveShatterApex(points, hitX, hitY);
     let shardCount = shardCountForPolygon(points, impactForce, apexX, apexY);
     let shards = buildGlassShards(points, apexX, apexY, shardCount, random);
+    const minArea = minShardAreaForPolygon(points);
+    const areaCap = Math.max(2, Math.floor(parentArea / minArea));
+    const minShardsAllowed = Math.min(4, areaCap);
     for (let attempt = 0; attempt < 4; attempt++) {
         let totalArea = 0;
         for (let i = 0; i < shards.length; i++) totalArea += shards[i].footprintArea;
         if (shards.length >= 2 && totalArea >= parentArea * 0.92) return shards;
-        shardCount = Math.max(4, Math.floor(shardCount * 0.72));
+        shardCount = Math.max(minShardsAllowed, Math.floor(shardCount * 0.72));
         shards = buildGlassShards(points, apexX, apexY, shardCount, random);
     }
     return shards.length >= 2 ? shards : [];

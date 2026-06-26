@@ -243,4 +243,22 @@ describe("glass fracture", () => {
         assert.ok(count <= GLASS_MAX_SHARDS_PER_SHATTER + 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
     });
+
+    it("shattered glass shards conserve the total area of the parent shape without gaps", () => {
+        const flat = new Float32Array([-16, -16, 16, -16, 16, 16, -16, 16]);
+        const parentArea = 32 * 32; // 1024
+        // Shatter at various points and verify the total area matches
+        for (let i = 0; i < 5; i++) {
+            const hitX = (Math.random() - 0.5) * 20;
+            const hitY = (Math.random() - 0.5) * 20;
+            const shards = shatterGlassPolygon(flat, hitX, hitY, 30, Math.random);
+            assert.ok(shards.length >= 2, "Should produce at least 2 shards");
+            let totalArea = 0;
+            for (const shard of shards) {
+                totalArea += shard.footprintArea;
+            }
+            assert.ok(Math.abs(totalArea - parentArea) < 1e-3, `Expected total area close to ${parentArea}, got ${totalArea}`);
+        }
+    });
 });
+

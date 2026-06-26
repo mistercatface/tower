@@ -8,7 +8,7 @@ import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
 import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts } from "./chunkFracture.js";
-import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon } from "./glassFracture.js";
+import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon, wedgePolygonIntersection } from "./glassFracture.js";
 import { acquireWorldProp } from "./worldPropPool.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
@@ -101,17 +101,18 @@ export function buildCircleImpactShards(radius, localHit, impactForce, { minShar
     const inset = hitDist > 1e-6 ? Math.min(radius * 0.42, hitDist * 0.45) / hitDist : 0;
     const apex = { x: localHit.x * inset, y: localHit.y * inset };
     const start = Math.atan2(localHit.y, localHit.x) - Math.PI / count;
+    const polySides = 16;
+    const parentPoints = [];
+    for (let i = 0; i < polySides; i++) {
+        const angle = (i * Math.PI * 2) / polySides;
+        parentPoints.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
+    }
     const shards = [];
     for (let i = 0; i < count; i++) {
         const a0 = start + (i * Math.PI * 2) / count;
         const a1 = start + ((i + 1) * Math.PI * 2) / count;
-        shards.push(
-            buildShardGeometry([
-                { x: apex.x, y: apex.y },
-                { x: Math.cos(a0) * radius, y: Math.sin(a0) * radius },
-                { x: Math.cos(a1) * radius, y: Math.sin(a1) * radius },
-            ]),
-        );
+        const poly = wedgePolygonIntersection(parentPoints, apex.x, apex.y, a0, a1);
+        if (poly.length >= 3) shards.push(buildShardGeometry(poly));
     }
     return shards;
 }
