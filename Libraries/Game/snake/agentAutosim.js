@@ -4,7 +4,7 @@ import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js"
 import { buildGroundNavIntentAdapterOptions } from "./createGroundNavIntentAdapter.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { isSnakeFoodTarget } from "./snakeFood.js";
-import { createAgentMetabolism, setAgentHunger } from "./agentMetabolism.js";
+import { setAgentHunger } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 export function createAgentAutosim(state, instance) {
     const session = state.sandbox.snakeGame;
@@ -12,21 +12,19 @@ export function createAgentAutosim(state, instance) {
     const entityRegistry = state.entityRegistry;
     const agentCtx = { instance, session, navWalkable: session.navWalkable };
     const profile = instance.profile;
-    const metabolism = createAgentMetabolism(profile);
     const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
     instance.headNav = createCellTargetHpaNav(state);
     const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({ state, instance, brain, sync, headNav: instance.headNav, agentCtx }));
     instance.intent = intent;
     instance.brain = brain;
-    instance.metabolism = metabolism;
     let active = false;
     const initialHunger = profile.initialHunger ?? 1;
     const autosim = {
         start() {
             active = true;
             instance.sprinting = false;
-            setAgentHunger(metabolism, initialHunger);
+            setAgentHunger(instance.metabolism, initialHunger);
             intent.resetMode();
             intent.resetMemory();
         },
