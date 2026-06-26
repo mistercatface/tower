@@ -27,7 +27,7 @@ export function registerAgentInstance(session, speciesId, instance) {
 }
 export function tickAliveAgents(session, state, dtMs) {
     session.lastDtMs = dtMs;
-    session.orchestrator.beginFrame(state.sandbox.snakeGame.simTick);
+    session.orchestrator.beginFrame(state.sandbox.snakeGame.simTick, session.registry.instancesByHeadId.size);
     for (const instance of aliveAgentInstances(session.registry)) {
         const admitted = session.orchestrator.shouldThink(instance, state, state.viewport);
         instance.tick(dtMs, admitted);
