@@ -241,20 +241,9 @@ export function drawExtrudedConvexPolygon(
             const ry = topLx * sin + topLy * cos;
             srcCorners.push({ x: (rx + offset) * scale, y: (ry + offset) * scale });
         }
-        if (body.topCorners.length >= 3) {
-            for (let i = 1; i < body.topCorners.length - 1; i++) {
-                drawImageTriangle(
-                    ctx,
-                    textures.capCanvas,
-                    srcCorners[0],
-                    srcCorners[i],
-                    srcCorners[i + 1],
-                    body.topCorners[0],
-                    body.topCorners[i],
-                    body.topCorners[i + 1]
-                );
-            }
-        }
+        if (body.topCorners.length >= 3)
+            for (let i = 1; i < body.topCorners.length - 1; i++)
+                drawImageTriangle(ctx, textures.capCanvas, srcCorners[0], srcCorners[i], srcCorners[i + 1], body.topCorners[0], body.topCorners[i], body.topCorners[i + 1]);
         ctx.restore();
         if (stroke) {
             ctx.strokeStyle = stroke;
