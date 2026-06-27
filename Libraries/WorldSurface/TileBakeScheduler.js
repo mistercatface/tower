@@ -1,5 +1,5 @@
 import { MinHeap } from "../DataStructures/MinHeap.js";
-import { groundChunkWorkerDedupeKey, wallAtlasWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
+import { groundChunkWorkerDedupeKey, wallAtlasWorkerDedupeKey } from "./SurfaceBakeCacheKeys.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { TileBakeMetricsAccumulator, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
 export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0 };

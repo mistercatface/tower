@@ -1,31 +1,37 @@
-import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
-export class SurfaceProfileRevisionBook {
-    revision(profileId) {
-        return getSurfaceProfileRevision(profileId);
-    }
+export function horizontalZCacheTag(zLevel = 0) {
+    return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
+}
+export function groundChunkCacheKey(chunkCol, chunkRow, profileId, profileRevision, zLevel = 0) {
+    return `chunk:${profileRevision}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+}
+export function staticRoofMaskCacheKey(chunkCol, chunkRow, zLevel) {
+    return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
+}
+export function staticRoofDrawCacheKey(chunkCol, chunkRow, profileId, profileRevision, zLevel) {
+    return `staticRoofDraw:${groundChunkCacheKey(chunkCol, chunkRow, profileId, profileRevision, zLevel)}`;
+}
+export function groundChunkWorkerDedupeKey(payload, profileRevision) {
+    return `${groundChunkCacheKey(payload.chunkCol, payload.chunkRow, payload.profileId, profileRevision, payload.zLevel ?? 0)}:${payload.seed ?? 0}`;
+}
+export function wallAtlasWorkerDedupeKey(payload, profileRevision) {
+    const p1 = payload.p1;
+    const p2 = payload.p2;
+    return `wall:${profileRevision}:${payload.profileId}:${p1.x.toFixed(1)},${p1.y.toFixed(1)}-${p2.x.toFixed(1)},${p2.y.toFixed(1)}:${payload.width}x${payload.height}:${payload.wallHeight ?? 0}:${payload.seed ?? 0}`;
 }
 export class SurfaceBakeCacheKeys {
-    constructor(settings, surfaceSpace, revisions = new SurfaceProfileRevisionBook()) {
-        this.settings = settings;
+    constructor(surfaceSpace) {
         this.surfaceSpace = surfaceSpace;
-        this.revisions = revisions;
     }
-    profileRevision(profileId) {
-        return this.revisions.revision(profileId);
+    groundChunkKey(chunkCol, chunkRow, profileId, zLevel = 0) {
+        return groundChunkCacheKey(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
     }
-    groundChunk(chunkCol, chunkRow, profileId, zLevel = 0) {
-        return groundChunkCachePrefix(chunkCol, chunkRow, profileId, this.profileRevision(profileId), zLevel);
+    staticRoofDrawKey(chunkCol, chunkRow, profileId, zLevel) {
+        return staticRoofDrawCacheKey(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
     }
-    staticRoofMask(chunkCol, chunkRow, zLevel) {
-        return staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
-    }
-    staticRoofDraw(chunkCol, chunkRow, profileId, zLevel) {
-        return staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, this.profileRevision(profileId), zLevel);
-    }
-    wallAtlas(p1, p2, surfaceSeed, profileId, atlasHeight) {
+    wallAtlasKey(p1, p2, surfaceSeed, profileId, atlasHeight) {
         const atlas = this.surfaceSpace.wallAtlas(p1, p2);
-        const rev = this.profileRevision(profileId);
+        const rev = getSurfaceProfileRevision(profileId);
         const key = `wall:${rev}:${profileId}:${surfaceSeed}:${atlasHeight}:${atlas.keyX1},${atlas.keyY1}-${atlas.keyX2},${atlas.keyY2}`;
         return { key, wrappedP1: atlas.wrappedP1, wrappedP2: atlas.wrappedP2, rev };
     }
