@@ -6,7 +6,7 @@ import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
-import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { SurfaceBakeCacheKeys } from "./SurfaceBakeCacheKeys.js";
 import { SurfaceSpatialMap } from "./SurfaceSpatialMap.js";
@@ -177,6 +177,20 @@ export class WorldSurfaceEngine {
         d.viewport = viewport;
         d.state = state;
         d.beforeDraw = beforeDraw;
+    }
+    drawGround(ctx, state, viewport) {
+        this.bindGroundChunkDraw(ctx, state, viewport);
+        this.drawGroundPlaneChunks();
+    }
+    drawRoofs(ctx, state, viewport) {
+        this.bindGroundChunkDraw(ctx, state, viewport);
+        this.drawStaticRoofChunksForLevels(state.obstacleGrid.collectStaticFillZLevels());
+    }
+    drawFlatWallRails(ctx, state, viewport) {
+        this.bindGroundChunkDraw(ctx, state, viewport);
+        const zLevels = state.obstacleGrid.collectStaticStructureZLevels();
+        const levels = zLevels.length ? zLevels : [defaultWallCapPx(this.settings)];
+        this.drawFlatRailFloorChunksForLevels(levels);
     }
     _beginVisibleChunkDraw() {
         const d = this._chunkDraw;

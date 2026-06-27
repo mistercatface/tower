@@ -6,7 +6,7 @@ import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
-import { WorldSurfaceSystem } from "../Render/game/WorldSurfaceSystem.js";
+import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { EntityRegistry } from "./EntityRegistry.js";
 import { KineticSession } from "./KineticSession.js";
@@ -22,7 +22,7 @@ export class SharedGameState {
         const session = new HpaPathSession(worker);
         this.flowFieldGrid = new FlowFieldGrid(gridSettings.cellSize, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows), this.obstacleGrid, FLOW_FIELD_WORKER_URL, worker);
         this.nav = new NavRuntime({ grid: this.obstacleGrid, worker, session, flowFieldGrid: this.flowFieldGrid, settings: navigationSettings });
-        this.worldSurfaces = new WorldSurfaceSystem(gameWorldSurfaceSettings);
+        this.worldSurfaces = new WorldSurfaceEngine(gameWorldSurfaceSettings);
         this.viewport = null;
         this.lastTime = 0;
         this.gameTime = 0;
