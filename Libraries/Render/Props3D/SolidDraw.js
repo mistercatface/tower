@@ -162,7 +162,7 @@ export function drawExtrudedConvexPolygon(
     ctx,
     prop,
     viewport,
-    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing, state = null },
+    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
     if (prop.wallChunkProfileId) stroke = null;
     const projection = projectVertical(prop.x, prop.y, height, viewport);
