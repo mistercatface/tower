@@ -27,16 +27,6 @@ export function projectWorldPointToScreenInto(out, viewport, worldX, worldY, hei
     projectWorldPointInto(out, worldX, worldY, height, viewport);
     return viewport.worldToScreenInto(out, out.x, out.y);
 }
-export function projectWorldRectCorners(originX, originY, sizePx, height, viewport) {
-    const out = [
-        { x: 0, y: 0 },
-        { x: 0, y: 0 },
-        { x: 0, y: 0 },
-        { x: 0, y: 0 },
-    ];
-    projectWorldAabbCornersInto(out, originX, originY, originX + sizePx, originY + sizePx, height, viewport);
-    return out;
-}
 export function projectWorldAabbCornersInto(out4, minX, minY, maxX, maxY, height, viewport) {
     projectWorldPointInto(out4[0], minX, minY, height, viewport);
     projectWorldPointInto(out4[1], maxX, minY, height, viewport);
