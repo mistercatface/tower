@@ -1,7 +1,7 @@
 /**
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
  */
-import { aabbCenterX, aabbCenterY, createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
+import { aabbCenterX, aabbCenterY, aabbHeight, aabbWidth, createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
@@ -12,7 +12,7 @@ import { staticRoofMaskCacheKey, SurfaceBakeCacheKeys } from "./SurfaceBakeCache
 import { SurfaceSpatialMap } from "./SurfaceSpatialMap.js";
 import { createWallFaceAxes, wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
-import { drawBakedTexture, drawProjectedHorizontalChunkAt, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
+import { drawProjectedHorizontalChunkAt, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 export class WorldSurfaceEngine {
@@ -261,7 +261,7 @@ export class WorldSurfaceEngine {
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 this.surfaceSpace.chunkBoundsInto(chunkBounds, obstacleGrid, chunkCol, chunkRow);
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, 0)) continue;
-                drawBakedTexture(ctx, resolved.canvas, chunkBounds);
+                ctx.drawImage(resolved.canvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
             }
     }
     drawStaticRoofChunks() {
@@ -314,7 +314,7 @@ export class WorldSurfaceEngine {
                         ctx.restore();
                         continue;
                     }
-                    drawBakedTexture(ctx, resolved.canvas, chunkBounds);
+                    ctx.drawImage(resolved.canvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
                 }
                 ctx.restore();
             }
