@@ -59,6 +59,9 @@ export function floorOccupancyStampDrawCacheKey(grid) {
 export function bumpFloorOccupancyStampDrawRevision(grid) {
     grid._floorStampDrawRevision = ((grid._floorStampDrawRevision ?? 0) + 1) | 0;
 }
+export function bumpSurfaceMaterialRevision(grid) {
+    grid.surfaceMaterialRevision = ((grid.surfaceMaterialRevision ?? 0) + 1) | 0;
+}
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {string} key */
 export function setGridPassagePowerNavKey(grid, key) {
     grid._passagePowerNavKey = key;

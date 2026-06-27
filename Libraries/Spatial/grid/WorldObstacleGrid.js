@@ -3,13 +3,14 @@ import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { cellEdgeEndpoints, blockingPassageEdgeAt, edgeRailCollisionShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
+import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
 import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { syncBeltCellToEdges, clearBeltCellEdges } from "./navGridMutations.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "./gridNavEpoch.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision, bumpSurfaceMaterialRevision } from "./gridNavEpoch.js";
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
@@ -26,7 +27,9 @@ export class WorldObstacleGrid {
         this.grid = new Uint8Array(0);
         this.edgeStore = new CellEdgeStore();
         this.floorStore = new FloorCellStore();
+        this.surfaceMaterials = new SurfaceMaterialStore();
         this.wallGridRevision = 0;
+        this.surfaceMaterialRevision = 0;
         this._structureZLevelsRevision = -1;
         this._structureZLevels = [];
         this._fillZLevels = [];
@@ -219,6 +222,8 @@ export class WorldObstacleGrid {
         this.grid = new Uint8Array(size);
         this.edgeStore.reset(size);
         this.floorStore.reset(size);
+        this.surfaceMaterials.reset();
+        bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
@@ -253,10 +258,12 @@ export class WorldObstacleGrid {
         const oldSlots = this.edgeStore.slots;
         const oldFloorKind = this.floorStore.kind;
         const oldFloorFacing = this.floorStore.facing;
+        const oldSurfaceMaterials = this.surfaceMaterials.snapshot();
         const oldSize = oldCols * oldRows;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
-            if (level === 0 && !this.edgeStore.hasAnyAtIdx(idx) && !this.floorStore.hasAnyAtIdx(idx)) continue;
+            if (level === 0 && !this.edgeStore.hasAnyAtIdx(idx) && !this.floorStore.hasAnyAtIdx(idx) && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx))
+                continue;
             const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
@@ -267,7 +274,9 @@ export class WorldObstacleGrid {
         }
         this.edgeStore.remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
+        this.surfaceMaterials.remap(oldSurfaceMaterials, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.grid = newGrid;
+        bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
@@ -313,6 +322,22 @@ export class WorldObstacleGrid {
     }
     clearCellEdges(col, row) {
         clearAllBoundariesAtCell(this, col, row, { bumpRevision: false });
+    }
+    setCellSurfaceProfileAtIdx(idx, profileId) {
+        this.surfaceMaterials.setCellAtIdx(idx, profileId);
+        bumpSurfaceMaterialRevision(this);
+    }
+    clearCellSurfaceProfileAtIdx(idx) {
+        this.surfaceMaterials.clearCellAtIdx(idx);
+        bumpSurfaceMaterialRevision(this);
+    }
+    setEdgeSurfaceProfile(col, row, side, profileId) {
+        this.surfaceMaterials.writeEdgeMirrored(col, row, side, this.cols, this.rows, profileId);
+        bumpSurfaceMaterialRevision(this);
+    }
+    clearEdgeSurfaceProfile(col, row, side) {
+        this.surfaceMaterials.clearEdgeMirrored(col, row, side, this.cols, this.rows);
+        bumpSurfaceMaterialRevision(this);
     }
     getCellEdge(col, row, side) {
         return this.edgeStore.get(col, row, side, this.cols);

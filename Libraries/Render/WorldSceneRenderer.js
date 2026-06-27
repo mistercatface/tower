@@ -65,6 +65,11 @@ function bindWallFaceScratch(scratch, drawable) {
     scratch.wallCapHeight = drawable.wallCapHeight;
     scratch.cacheObj = drawable;
     scratch.atlasFaceId = undefined;
+    scratch.gridCol = drawable.gridCol;
+    scratch.gridRow = drawable.gridRow;
+    scratch.gridSide = drawable.gridSide;
+    scratch.gridIdx = drawable.gridIdx;
+    scratch.isEdgeRail = drawable.innerP1x !== undefined;
 }
 function prepareWallChunkPropTextures(state, prop) {
     if (!prop.wallChunkProfileId || !state?.worldSurfaces) return;
@@ -129,7 +134,7 @@ export class WorldSceneRenderer {
         this.staticGridDrawables = [];
         this.staticGridEdgeRailDrawables = [];
         this.forcefieldEdgeDrawables = [];
-        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined };
+        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridCol: 0, gridRow: 0, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     _appendDrawable(drawable, distSq) {
         this.visibleDrawables.push(drawable);
