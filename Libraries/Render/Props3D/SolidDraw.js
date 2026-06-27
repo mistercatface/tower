@@ -181,17 +181,6 @@ export function drawExtrudedConvexPolygon(
     // Check if textured wall chunk prop
     let textures = null;
     if (prop.wallChunkProfileId && prop._wallChunkTextures?.ready) textures = prop._wallChunkTextures;
-    const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
-    baseGrad.addColorStop(0.0, baseColors.light);
-    baseGrad.addColorStop(0.5, baseColors.mid);
-    baseGrad.addColorStop(1.0, baseColors.dark);
-    ctx.fillStyle = baseGrad;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    traceClosedPolygon(ctx, body.baseCorners);
-    ctx.fill();
-    if (stroke) ctx.stroke();
     if (textures) {
         const drawTexturedSideFace = (face) => {
             ctx.save();
@@ -211,11 +200,6 @@ export function drawExtrudedConvexPolygon(
         };
         for (const face of backFaces) drawTexturedSideFace(face);
         for (const face of frontFaces) drawTexturedSideFace(face);
-    } else {
-        for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
-        for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
-    }
-    if (textures) {
         ctx.save();
         ctx.beginPath();
         traceClosedPolygon(ctx, body.topCorners);
@@ -248,6 +232,19 @@ export function drawExtrudedConvexPolygon(
             ctx.stroke();
         }
     } else {
+        const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
+        baseGrad.addColorStop(0.0, baseColors.light);
+        baseGrad.addColorStop(0.5, baseColors.mid);
+        baseGrad.addColorStop(1.0, baseColors.dark);
+        ctx.fillStyle = baseGrad;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        traceClosedPolygon(ctx, body.baseCorners);
+        ctx.fill();
+        if (stroke) ctx.stroke();
+        for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
+        for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
         const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
         topGrad.addColorStop(0.0, topColors.light);
         topGrad.addColorStop(0.5, topColors.mid);
@@ -259,14 +256,14 @@ export function drawExtrudedConvexPolygon(
         traceClosedPolygon(ctx, body.topCorners);
         ctx.fill();
         if (stroke) ctx.stroke();
-    }
-    if (topCross && body.topCorners.length === 4) {
-        ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
-        ctx.lineWidth = topCross.lineWidth ?? 0.8;
-        ctx.beginPath();
-        traceSegment(ctx, body.topCorners[0].x, (body.topCorners[0].y + body.topCorners[2].y) / 2, body.topCorners[1].x, (body.topCorners[1].y + body.topCorners[3].y) / 2);
-        traceSegment(ctx, (body.topCorners[0].x + body.topCorners[1].x) / 2, body.topCorners[0].y, (body.topCorners[2].x + body.topCorners[3].x) / 2, body.topCorners[2].y);
-        ctx.stroke();
+        if (topCross && body.topCorners.length === 4) {
+            ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
+            ctx.lineWidth = topCross.lineWidth ?? 0.8;
+            ctx.beginPath();
+            traceSegment(ctx, body.topCorners[0].x, (body.topCorners[0].y + body.topCorners[2].y) / 2, body.topCorners[1].x, (body.topCorners[1].y + body.topCorners[3].y) / 2);
+            traceSegment(ctx, (body.topCorners[0].x + body.topCorners[1].x) / 2, body.topCorners[0].y, (body.topCorners[2].x + body.topCorners[3].x) / 2, body.topCorners[2].y);
+            ctx.stroke();
+        }
     }
 }
 export function drawExtrudedCompoundPolygon(
