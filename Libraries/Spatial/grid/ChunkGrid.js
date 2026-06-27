@@ -16,12 +16,12 @@ export function gridBoundsToChunkRange(startCol, endCol, startRow, endRow, cells
         maxChunkRow: Math.floor(endRow / cellsPerChunk),
     };
 }
-export function worldBoundsToChunkRange(minX, minY, maxX, maxY, gridMinX, gridMinY, chunkSizePx) {
+export function worldBoundsToChunkRange(bounds, gridMinX, gridMinY, chunkSizePx) {
     return {
-        minChunkCol: worldToChunkCol(minX, gridMinX, chunkSizePx),
-        maxChunkCol: worldToChunkCol(maxX - 1, gridMinX, chunkSizePx),
-        minChunkRow: worldToChunkRow(minY, gridMinY, chunkSizePx),
-        maxChunkRow: worldToChunkRow(maxY - 1, gridMinY, chunkSizePx),
+        minChunkCol: worldToChunkCol(bounds.minX, gridMinX, chunkSizePx),
+        maxChunkCol: worldToChunkCol(bounds.maxX - 1, gridMinX, chunkSizePx),
+        minChunkRow: worldToChunkRow(bounds.minY, gridMinY, chunkSizePx),
+        maxChunkRow: worldToChunkRow(bounds.maxY - 1, gridMinY, chunkSizePx),
     };
 }
 export function chunkKey(chunkCol, chunkRow) {

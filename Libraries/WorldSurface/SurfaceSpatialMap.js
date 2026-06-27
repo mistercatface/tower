@@ -18,10 +18,10 @@ export class SurfaceSpatialMap {
     cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
         const worldBounds = cellBoundsToWorldBoundsInto(this._cellBoundsAabb, bounds, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        return worldBoundsToChunkRange(worldBounds.minX, worldBounds.minY, worldBounds.maxX, worldBounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+        return worldBoundsToChunkRange(worldBounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
     viewportChunkRange(bounds, obstacleGrid, chunkSizePx) {
-        return worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+        return worldBoundsToChunkRange(bounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
     wallAtlas(p1, p2) {
         const chunkWorldSize = this.settings.chunkWorldSize;
