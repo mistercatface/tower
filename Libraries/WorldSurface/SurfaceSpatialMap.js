@@ -46,9 +46,6 @@ export class SurfaceSpatialMap {
         const wy2 = wy1 + dy;
         return { wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 }, keyX1: wx1.toFixed(1), keyY1: wy1.toFixed(1), keyX2: wx2.toFixed(1), keyY2: wy2.toFixed(1) };
     }
-    wallCenter(p1, p2) {
-        return { centerX: (p1.x + p2.x) / 2, centerY: (p1.y + p2.y) / 2 };
-    }
     horizontalSample(worldCorners, obstacleGrid) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid);
         const pointsBounds = expandPointsAabbInto(this._pointsAabb, worldCorners);

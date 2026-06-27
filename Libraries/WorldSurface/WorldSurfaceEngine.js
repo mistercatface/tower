@@ -72,7 +72,6 @@ export class WorldSurfaceEngine {
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
-        const center = this.surfaceSpace.wallCenter(p1, p2);
         const bakeProfileId = profileId;
         return this._scheduleBake(key, () =>
             TileWorkerCoordinator.requestWallAtlasBake({
@@ -82,8 +81,8 @@ export class WorldSurfaceEngine {
                 p2,
                 seed: surfaceSeed,
                 profileId: bakeProfileId,
-                centerX: center.centerX,
-                centerY: center.centerY,
+                centerX: (p1.x + p2.x) / 2,
+                centerY: (p1.y + p2.y) / 2,
                 wallHeight: hVal,
             }),
         );
