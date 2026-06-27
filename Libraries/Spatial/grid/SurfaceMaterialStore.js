@@ -64,8 +64,9 @@ export class SurfaceMaterialStore {
     clearChunk(chunkCol, chunkRow) {
         this.chunkProfileIds.delete(chunkProfileKey(chunkCol, chunkRow));
     }
-    setChunkRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId) {
-        for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++) for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) this.setChunk(chunkCol, chunkRow, profileId);
+    setChunkRange(chunkBounds, profileId) {
+        for (let chunkRow = chunkBounds.startRow; chunkRow <= chunkBounds.endRow; chunkRow++)
+            for (let chunkCol = chunkBounds.startCol; chunkCol <= chunkBounds.endCol; chunkCol++) this.setChunk(chunkCol, chunkRow, profileId);
     }
     getCellAtIdx(idx) {
         return this.cellProfileIds.get(idx) ?? null;

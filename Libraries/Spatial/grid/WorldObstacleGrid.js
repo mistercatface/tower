@@ -350,9 +350,9 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.clearChunk(chunkCol, chunkRow);
         bumpSurfaceMaterialRevision(this);
     }
-    setChunkSurfaceProfileRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId, cellsPerChunk = 0) {
+    setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk = 0) {
         if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
-        this.surfaceMaterials.setChunkRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId);
+        this.surfaceMaterials.setChunkRange(chunkBounds, profileId);
         bumpSurfaceMaterialRevision(this);
     }
     getCellEdge(col, row, side) {

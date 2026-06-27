@@ -24,7 +24,7 @@ export class WorldSurfaceEngine {
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this.chunkDrawBounds = createAabb();
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
-        this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, minChunkCol: 0, maxChunkCol: 0, minChunkRow: 0, maxChunkRow: 0 };
+        this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkRange: { startCol: 0, endCol: 0, startRow: 0, endRow: 0 } };
         this._resolvedChunkCanvas = null;
         this._chunkBounds = createAabb();
         this.activeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
@@ -38,8 +38,8 @@ export class WorldSurfaceEngine {
         const obstacleGrid = state.obstacleGrid;
         const range = this.surfaceSpace.cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk);
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
-        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
-            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
+        for (let chunkRow = range.startRow; chunkRow <= range.endRow; chunkRow++)
+            for (let chunkCol = range.startCol; chunkCol <= range.endCol; chunkCol++) {
                 const profileId = resolveChunkSurfaceProfileId(obstacleGrid, chunkCol, chunkRow, this.activeSurfaceProfileId);
                 for (const zLevel of zLevels) {
                     this.surfaceCache.delete(this.cacheKeys.staticRoofMaskKey(chunkCol, chunkRow, zLevel));
@@ -197,10 +197,7 @@ export class WorldSurfaceEngine {
         frame.state = d.state;
         frame.zLevel = zLevel;
         const range = this.surfaceSpace.viewportChunkRange(bounds, obstacleGrid, chunkSizePx);
-        frame.minChunkCol = range.minChunkCol;
-        frame.maxChunkCol = range.maxChunkCol;
-        frame.minChunkRow = range.minChunkRow;
-        frame.maxChunkRow = range.maxChunkRow;
+        frame.chunkRange = range;
         return frame;
     }
     _fillDrawableGroundChunkCanvas(chunkCol, chunkRow, zLevel) {
@@ -217,10 +214,10 @@ export class WorldSurfaceEngine {
         const frame = this._beginVisibleChunkDraw();
         if (!frame) return;
         const ctx = d.ctx;
-        const { obstacleGrid, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow } = frame;
+        const { obstacleGrid, chunkRange } = frame;
         const chunkBounds = this._chunkBounds;
-        for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
-            for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
+        for (let chunkRow = chunkRange.startRow; chunkRow <= chunkRange.endRow; chunkRow++)
+            for (let chunkCol = chunkRange.startCol; chunkCol <= chunkRange.endCol; chunkCol++) {
                 this.surfaceSpace.chunkBoundsInto(chunkBounds, obstacleGrid, chunkCol, chunkRow);
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, 0)) continue;
                 ctx.drawImage(this._resolvedChunkCanvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
@@ -269,10 +266,10 @@ export class WorldSurfaceEngine {
         const frame = this._beginVisibleChunkDraw();
         if (!frame) return;
         const ctx = d.ctx;
-        const { obstacleGrid, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow, viewport } = frame;
+        const { obstacleGrid, chunkRange, viewport } = frame;
         const chunkBounds = this._chunkBounds;
-        for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
-            for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
+        for (let chunkRow = chunkRange.startRow; chunkRow <= chunkRange.endRow; chunkRow++)
+            for (let chunkCol = chunkRange.startCol; chunkCol <= chunkRange.endCol; chunkCol++) {
                 this.surfaceSpace.chunkBoundsInto(chunkBounds, obstacleGrid, chunkCol, chunkRow);
                 if (mode === ELEVATED_CHUNK_ROOF) {
                     if (!chunkHasBlockedCells(obstacleGrid, chunkBounds) && !chunkHasStaticRoofAtLevel(obstacleGrid, chunkBounds, zLevel)) continue;

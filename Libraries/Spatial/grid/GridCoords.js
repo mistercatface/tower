@@ -26,19 +26,19 @@ export function cellToChunkCoord(cell, cellsPerChunk) {
 export function remapChunkCoord(chunkCoord, cellOffset, cellsPerChunk) {
     return cellToChunkCoord(chunkCoord * cellsPerChunk + cellOffset, cellsPerChunk);
 }
-export function cellBoundsToChunkRange(startCol, startRow, endCol, endRow, cellsPerChunk) {
+export function cellBoundsToChunkRange(cellBounds, cellsPerChunk) {
     return {
-        minChunkCol: cellToChunkCoord(startCol, cellsPerChunk),
-        minChunkRow: cellToChunkCoord(startRow, cellsPerChunk),
-        maxChunkCol: cellToChunkCoord(endCol, cellsPerChunk),
-        maxChunkRow: cellToChunkCoord(endRow, cellsPerChunk),
+        startCol: cellToChunkCoord(cellBounds.startCol, cellsPerChunk),
+        startRow: cellToChunkCoord(cellBounds.startRow, cellsPerChunk),
+        endCol: cellToChunkCoord(cellBounds.endCol, cellsPerChunk),
+        endRow: cellToChunkCoord(cellBounds.endRow, cellsPerChunk),
     };
 }
-export function chunkRangeToCellBounds(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, cellsPerChunk, gridCols, gridRows) {
-    const startCol = Math.max(0, minChunkCol * cellsPerChunk);
-    const startRow = Math.max(0, minChunkRow * cellsPerChunk);
-    const endCol = Math.min(gridCols - 1, (maxChunkCol + 1) * cellsPerChunk - 1);
-    const endRow = Math.min(gridRows - 1, (maxChunkRow + 1) * cellsPerChunk - 1);
+export function chunkRangeToCellBounds(chunkBounds, cellsPerChunk, gridCols, gridRows) {
+    const startCol = Math.max(0, chunkBounds.startCol * cellsPerChunk);
+    const startRow = Math.max(0, chunkBounds.startRow * cellsPerChunk);
+    const endCol = Math.min(gridCols - 1, (chunkBounds.endCol + 1) * cellsPerChunk - 1);
+    const endRow = Math.min(gridRows - 1, (chunkBounds.endRow + 1) * cellsPerChunk - 1);
     if (startCol > endCol || startRow > endRow) return null;
     return { startCol, endCol, startRow, endRow };
 }

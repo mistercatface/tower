@@ -39,10 +39,10 @@ export class SurfaceSpatialMap {
     }
     boundsToChunkRange(bounds, gridMinX, gridMinY, chunkSizePx) {
         return {
-            minChunkCol: this.worldToChunkCol(bounds.minX, gridMinX, chunkSizePx),
-            maxChunkCol: this.worldToChunkCol(bounds.maxX - 1, gridMinX, chunkSizePx),
-            minChunkRow: this.worldToChunkRow(bounds.minY, gridMinY, chunkSizePx),
-            maxChunkRow: this.worldToChunkRow(bounds.maxY - 1, gridMinY, chunkSizePx),
+            startCol: this.worldToChunkCol(bounds.minX, gridMinX, chunkSizePx),
+            endCol: this.worldToChunkCol(bounds.maxX - 1, gridMinX, chunkSizePx),
+            startRow: this.worldToChunkRow(bounds.minY, gridMinY, chunkSizePx),
+            endRow: this.worldToChunkRow(bounds.maxY - 1, gridMinY, chunkSizePx),
         };
     }
     worldToChunkCol(worldX, gridMinX, chunkSizePx) {

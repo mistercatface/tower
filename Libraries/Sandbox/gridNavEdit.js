@@ -40,20 +40,21 @@ export function commitSurfaceMaterialEdit(state, bounds) {
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     return bounds;
 }
-export function setChunkSurfaceProfileEdit(state, chunkCol, chunkRow, profileId) {
+export function setChunkSurfaceProfileEdit(state, chunkBounds, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    state.obstacleGrid.setChunkSurfaceProfile(chunkCol, chunkRow, profileId, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkCol, chunkRow, chunkCol, chunkRow, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
+    state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
+    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
-export function clearChunkSurfaceProfileEdit(state, chunkCol, chunkRow) {
+export function clearChunkSurfaceProfileEdit(state, chunkBounds) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    state.obstacleGrid.clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkCol, chunkRow, chunkCol, chunkRow, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
+    for (let chunkRow = chunkBounds.startRow; chunkRow <= chunkBounds.endRow; chunkRow++)
+        for (let chunkCol = chunkBounds.startCol; chunkCol <= chunkBounds.endCol; chunkCol++) state.obstacleGrid.clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk);
+    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
-export function setChunkSurfaceProfileRangeEdit(state, minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId) {
+export function setChunkSurfaceProfileRangeEdit(state, chunkBounds, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    state.obstacleGrid.setChunkSurfaceProfileRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
+    state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
+    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
 /** One resync for multiple dirty regions (rails + belts, clear + stamp, etc.). */
 export function commitGridNavEditUnion(state, ...boundsParts) {

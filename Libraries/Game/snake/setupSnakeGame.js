@@ -37,10 +37,10 @@ function applySnakeRegionSurfaceProfiles(state, config) {
     const lastCol = topCol + playable.boundsCols - 1;
     const lastRow = topRow + playable.boundsRows - 1;
     const midRow = topRow + Math.floor(playable.boundsRows / 2);
-    const topRange = cellBoundsToChunkRange(topCol, topRow, lastCol, midRow - 1, cellsPerChunk);
-    const bottomRange = cellBoundsToChunkRange(topCol, midRow, lastCol, lastRow, cellsPerChunk);
-    setChunkSurfaceProfileRangeEdit(state, topRange.minChunkCol, topRange.minChunkRow, topRange.maxChunkCol, topRange.maxChunkRow, regions.topHalfProfileId);
-    setChunkSurfaceProfileRangeEdit(state, bottomRange.minChunkCol, bottomRange.minChunkRow, bottomRange.maxChunkCol, bottomRange.maxChunkRow, regions.bottomHalfProfileId);
+    const topCellBounds = { startCol: topCol, startRow: topRow, endCol: lastCol, endRow: midRow - 1 };
+    const bottomCellBounds = { startCol: topCol, startRow: midRow, endCol: lastCol, endRow: lastRow };
+    setChunkSurfaceProfileRangeEdit(state, cellBoundsToChunkRange(topCellBounds, cellsPerChunk), regions.topHalfProfileId);
+    setChunkSurfaceProfileRangeEdit(state, cellBoundsToChunkRange(bottomCellBounds, cellsPerChunk), regions.bottomHalfProfileId);
 }
 export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     applySnakeGameConfig();

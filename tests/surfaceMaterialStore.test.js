@@ -162,7 +162,7 @@ describe("surface material stores", () => {
         grid.rebuildFixed(0, 0, 128, 128);
         assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
         grid.setChunkSurfaceProfile(0, 0, "north");
-        grid.setChunkSurfaceProfileRange(0, 2, 3, 3, "south");
+        grid.setChunkSurfaceProfileRange({ startCol: 0, endCol: 3, startRow: 2, endRow: 3 }, "south");
         assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "north");
         assert.equal(resolveChunkSurfaceProfileId(grid, 1, 2, "base"), "south");
         assert.equal(resolveChunkSurfaceProfileId(grid, 0, 1, "base"), "base");
