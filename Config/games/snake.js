@@ -84,7 +84,7 @@ export const SNAKE_GAME_DEFAULTS = {
         snake: {
             exportType: "snake",
             topology: "chain",
-            populationCount: 128,
+            populationCount: 16,
             bodyPropId: "ball",
             headPropId: "snake_head",
             segmentCount: 3,
@@ -162,7 +162,7 @@ export const SNAKE_GAME_DEFAULTS = {
             exportType: "flee_agent",
             topology: "single",
             useFactionTint: true,
-            populationCount: 256,
+            populationCount: 64,
             spawnSeedOffset: 9173,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
