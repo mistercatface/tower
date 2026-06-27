@@ -3,7 +3,7 @@ import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEng
 import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     _bindSceneDraw(ctx, state, viewport) {
-        this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, state.obstacleGrid);
+        this.bindGroundChunkDraw(ctx, state, viewport);
     }
     drawGround(ctx, state, viewport) {
         this._bindSceneDraw(ctx, state, viewport);

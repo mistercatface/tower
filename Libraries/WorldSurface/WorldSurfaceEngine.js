@@ -23,7 +23,7 @@ export class WorldSurfaceEngine {
         this.cacheKeys = new SurfaceBakeCacheKeys(this.surfaceSpace);
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this.chunkDrawBounds = createAabb();
-        this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
+        this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, zLevel: 0, beforeDraw: null };
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkRange: { startCol: 0, endCol: 0, startRow: 0, endRow: 0 } };
         this._resolvedChunkCanvas = null;
         this._chunkBounds = createAabb();
@@ -170,23 +170,22 @@ export class WorldSurfaceEngine {
         }
         return canvas;
     }
-    bindGroundChunkDraw(ctx, obstacleGrid, viewport, state, playBounds, beforeDraw = null) {
+    bindGroundChunkDraw(ctx, state, viewport, beforeDraw = null) {
         const d = this._chunkDraw;
         d.ctx = ctx;
-        d.obstacleGrid = obstacleGrid;
+        d.obstacleGrid = state.obstacleGrid;
         d.viewport = viewport;
         d.state = state;
-        d.playBounds = playBounds;
         d.beforeDraw = beforeDraw;
     }
     _beginVisibleChunkDraw() {
         const d = this._chunkDraw;
-        const { ctx, obstacleGrid, viewport, zLevel, playBounds, beforeDraw } = d;
+        const { ctx, obstacleGrid, viewport, zLevel, beforeDraw } = d;
         const chunkSizePx = this.surfaceSpace.chunkSizePx(obstacleGrid);
         const viewportBounds = viewport.bounds("chunks");
         let bounds = viewportBounds;
-        if (playBounds) {
-            if (!intersectAabbOptionalInto(this.chunkDrawBounds, viewportBounds, playBounds)) return null;
+        if (obstacleGrid?.cols) {
+            if (!intersectAabbOptionalInto(this.chunkDrawBounds, viewportBounds, obstacleGrid)) return null;
             bounds = this.chunkDrawBounds;
         }
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
