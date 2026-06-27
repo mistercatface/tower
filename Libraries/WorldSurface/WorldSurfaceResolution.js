@@ -1,4 +1,5 @@
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
+import { aabbHeight, aabbWidth } from "../Spatial/bounds.js";
 import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
 const sProjectedChunkCorners = [
     { x: 0, y: 0 },
@@ -19,7 +20,7 @@ export function isDrawableBakedSurface(canvas) {
 }
 export function drawBakedTexture(ctx, canvas, bounds) {
     if (!isDrawableBakedSurface(canvas)) return;
-    ctx.drawImage(canvas, bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+    ctx.drawImage(canvas, bounds.minX, bounds.minY, aabbWidth(bounds), aabbHeight(bounds));
 }
 export function drawProjectedHorizontalChunk(ctx, canvas, corners) {
     if (!isDrawableBakedSurface(canvas)) return;

@@ -1,4 +1,4 @@
-import { cellBoundsToWorldBoundsInto, createAabb, expandPointsAabbInto, minCornerAabbInto } from "../Spatial/bounds.js";
+import { aabbCenterX, aabbCenterY, cellBoundsToWorldBoundsInto, createAabb, expandPointsAabbInto, minCornerAabbInto } from "../Spatial/bounds.js";
 import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = -9999;
 export class SurfaceSpatialMap {
@@ -26,17 +26,7 @@ export class SurfaceSpatialMap {
     groundChunk(obstacleGrid, chunkCol, chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
         const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow, cellsPerChunk);
-        return {
-            chunkCol,
-            chunkRow,
-            chunkSizePx,
-            minX: bounds.minX,
-            minY: bounds.minY,
-            maxX: bounds.maxX,
-            maxY: bounds.maxY,
-            centerX: (bounds.minX + bounds.maxX) / 2,
-            centerY: (bounds.minY + bounds.maxY) / 2,
-        };
+        return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY, centerX: aabbCenterX(bounds), centerY: aabbCenterY(bounds) };
     }
     wallAtlas(p1, p2) {
         const chunkWorldSize = this.settings.chunkWorldSize;
@@ -64,16 +54,6 @@ export class SurfaceSpatialMap {
         const chunkCol = WALL_CHUNK_TEXTURE_SAMPLE_CHUNK;
         const chunkRow = WALL_CHUNK_TEXTURE_SAMPLE_CHUNK;
         const bounds = minCornerAabbInto(this._chunkBounds, 0, 0, chunkSizePx, chunkSizePx);
-        return {
-            chunkCol,
-            chunkRow,
-            chunkSizePx,
-            minX: bounds.minX,
-            minY: bounds.minY,
-            maxX: bounds.maxX,
-            maxY: bounds.maxY,
-            centerX: (bounds.minX + bounds.maxX) / 2,
-            centerY: (bounds.minY + bounds.maxY) / 2,
-        };
+        return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY, centerX: aabbCenterX(bounds), centerY: aabbCenterY(bounds) };
     }
 }

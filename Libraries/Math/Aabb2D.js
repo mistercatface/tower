@@ -18,6 +18,18 @@ export function emptyAabb() {
 export function isEmptyAabb({ minX }) {
     return minX === Infinity;
 }
+export function aabbWidth(aabb) {
+    return aabb.maxX - aabb.minX;
+}
+export function aabbHeight(aabb) {
+    return aabb.maxY - aabb.minY;
+}
+export function aabbCenterX(aabb) {
+    return (aabb.minX + aabb.maxX) / 2;
+}
+export function aabbCenterY(aabb) {
+    return (aabb.minY + aabb.maxY) / 2;
+}
 /** @param {Aabb2D} out */
 export function growAabbFromCenterInto(out, cx, cy, halfW, halfH) {
     out.minX = Math.min(out.minX, cx - halfW);

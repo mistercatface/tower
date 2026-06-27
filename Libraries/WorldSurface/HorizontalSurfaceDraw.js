@@ -3,6 +3,7 @@
  * Elevated-chunk clip helpers live in ChunkDrawPass.js.
  */
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
+import { aabbWidth } from "../Spatial/bounds.js";
 import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
@@ -15,7 +16,7 @@ export function chunkHasBlockedCells(obstacleGrid, bounds) {
 }
 export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings) {
     const surfaceBakeScale = settings.surfaceBakeScale;
-    const bakeSize = bakePixelsForWorldSpan(bounds.maxX - bounds.minX, surfaceBakeScale);
+    const bakeSize = bakePixelsForWorldSpan(aabbWidth(bounds), surfaceBakeScale);
     const cellBakeSize = bakePixelsForWorldSpan(obstacleGrid.cellSize, surfaceBakeScale);
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);
     const ctx = canvas.getContext("2d");
