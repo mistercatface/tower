@@ -1,4 +1,4 @@
-import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
+import { shippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
 import { initResizer } from "./lab-shared.js";
 import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
@@ -84,7 +84,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     const markLabViewDirty = mountLabFrameRefresh(canvas);
     labCanvasResizeHooks = { mark: markLabViewDirty, repaintMapOverview: scheduleMapOverviewRepaint };
     mountLabDrawOptions();
-    initPresetSelect(listShippedSurfaceProfileIds());
+    initPresetSelect(shippedSurfaceProfileIds());
     initProfileEditor({
         onChange: (options = {}) => {
             if (options.reloadProfile) scheduleProfileRefresh(state, drawLabAndWaitForBakes, 0);

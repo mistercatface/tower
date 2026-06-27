@@ -1,4 +1,4 @@
-import { runtimeSurfaceProfiles } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
+import { registerRuntimeSurfaceProfile } from "../../Config/procedural/profiles.js";
 import { bakeGroundChunkCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
@@ -10,7 +10,10 @@ export class TileSurfaceWorker {
             [TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS]: (payload) => this.configureBakeConstants(payload),
             [TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK]: (payload) => this.bakeGroundChunk(payload),
             [TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS]: (payload) => this.bakeWallAtlas(payload),
-            [TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE]: (payload) => this.registerRuntimeProfile(payload),
+            [TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE]: (payload) => {
+                registerRuntimeSurfaceProfile(payload);
+                return [];
+            },
         };
     }
     onMessage(e) {
@@ -48,9 +51,5 @@ export class TileSurfaceWorker {
     }
     bakeWallAtlas(payload) {
         return bakeWallAtlasCanvases(payload, this.bakeSession);
-    }
-    registerRuntimeProfile(payload) {
-        runtimeSurfaceProfiles[payload.profileId] = payload.profile;
-        return [];
     }
 }

@@ -1,4 +1,4 @@
-import { resolveSurfaceProfile, runtimeSurfaceProfiles, shippedSurfaceProfileIds, surfaceProfileKnown } from "../Procedural/SurfaceProfileProvider.js";
+import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfaceProfileIds, surfaceProfileKnown } from "../../Config/procedural/profiles.js";
 import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { EMPTY_BAKE_TIMING_STATS, setTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
@@ -46,7 +46,9 @@ export class TileSurfaceWorkerClient {
         if (shippedSurfaceProfileIds().includes(profileId)) return this._whenWorkersReady(() => {});
         if (!surfaceProfileKnown(profileId)) return Promise.reject(new Error(`Unknown surface procedural profile: ${profileId}`));
         if (this.registeredRuntimeProfileIds.has(profileId)) return this.workerReady;
-        return this.registerRuntimeProfile(profileId, resolveSurfaceProfile(profileId));
+        const profile = resolveSurfaceProfile(profileId);
+        if (!profile.id) profile.id = profileId;
+        return this.registerRuntimeProfile(profile);
     }
     _requestProfileBake(type, payload, tier) {
         const profileId = payload.profileId;
@@ -73,12 +75,12 @@ export class TileSurfaceWorkerClient {
     requestWallAtlasBake(payload) {
         return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS, payload, TILE_BAKE_TIER.STATIC);
     }
-    registerRuntimeProfile(profileId, profile) {
-        runtimeSurfaceProfiles[profileId] = profile;
-        bumpSurfaceProfileRevision(profileId);
+    registerRuntimeProfile(profile) {
+        registerRuntimeSurfaceProfile(profile);
+        bumpSurfaceProfileRevision(profile.id);
         this._ensureStarted();
-        this.registeredRuntimeProfileIds.add(profileId);
-        this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE, { profileId, profile }));
+        this.registeredRuntimeProfileIds.add(profile.id);
+        this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE, profile));
         return this.workerReady;
     }
     syncBakeConstants(settings) {

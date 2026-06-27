@@ -1,4 +1,4 @@
-import { getSurfaceProceduralProfile } from "../../../../Config/procedural/profiles.js";
+import { resolveSurfaceProfile } from "../../../../Config/procedural/profiles.js";
 import { exportPipelineJsModule } from "../../../../Libraries/Pipeline/exportPipeline.js";
 import { deepClone, getByPath, movePipelineRow, pipelineRowId, remapIndexAfterSwap } from "../../../../Libraries/Pipeline/index.js";
 import { SelectControl } from "../../../../Libraries/UI/controls/SelectControl.js";
@@ -33,7 +33,7 @@ function motifsFromProfile(profile) {
 }
 function loadEditorFromProfileId(profileId, { silent = false } = {}) {
     nextMotifId = 1;
-    const profile = deepClone(getSurfaceProceduralProfile(profileId));
+    const profile = deepClone(resolveSurfaceProfile(profileId));
     const motifs = motifsFromProfile(profile);
     editorState = { warp: profile.warp ?? defaultWarp(), palette: { ...defaultPalette(), ...profile.palette }, motifs };
     selectedMotifId = editorState.motifs[0]?.id ?? null;

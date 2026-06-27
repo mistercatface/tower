@@ -1,4 +1,4 @@
-import { resolveSurfaceProfile } from "../Procedural/SurfaceProfileProvider.js";
+import { resolveSurfaceProfile } from "../../Config/procedural/profiles.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";

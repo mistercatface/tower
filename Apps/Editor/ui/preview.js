@@ -127,9 +127,10 @@ export function pushEditorProfile(state) {
     labRenderer = null;
     const profile = buildLabRuntimeProfile();
     if (!profile) throw new Error("Lab runtime profile is not initialized");
-    registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, profile);
+    profile.id = RUNTIME_LAB_PROFILE_ID;
+    registerRuntimeSurfaceProfile(profile);
     state.worldSurfaces.activeSurfaceProfileId = RUNTIME_LAB_PROFILE_ID;
-    return TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
+    return TileWorkerCoordinator.registerRuntimeProfile(profile);
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function drawLabFrame(state) {

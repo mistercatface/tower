@@ -62,7 +62,7 @@ describe("TileBakeScheduler", () => {
 
     it("does not dedupe registration broadcast jobs", () => {
         const { scheduler, posts } = createScheduler(3);
-        const payload = { profileId: "lab", profile: { id: "lab" } };
+        const payload = { id: "lab" };
         const first = scheduler.enqueue("registerRuntimeProfile", payload, TILE_BAKE_TIER.REGISTRATION);
         const second = scheduler.enqueue("registerRuntimeProfile", payload, TILE_BAKE_TIER.REGISTRATION);
         const third = scheduler.enqueue("registerRuntimeProfile", payload, TILE_BAKE_TIER.REGISTRATION);

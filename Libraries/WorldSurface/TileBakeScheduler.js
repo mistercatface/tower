@@ -8,9 +8,12 @@ function compareJobs(a, b) {
     if (a.tier !== b.tier) return a.tier - b.tier;
     return a.distSq - b.distSq;
 }
+function profileIdFromPayload(payload) {
+    return payload?.profileId ?? payload?.id;
+}
 function dedupeKeyFor(type, payload, tier, getProfileRevision) {
     if (tier === TILE_BAKE_TIER.REGISTRATION) return null;
-    const rev = getProfileRevision(payload?.profileId);
+    const rev = getProfileRevision(profileIdFromPayload(payload));
     if (type === TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK) return groundChunkWorkerDedupeKey(payload, rev);
     if (type === TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS) return wallAtlasWorkerDedupeKey(payload, rev);
     return null;
@@ -54,7 +57,7 @@ export class TileBakeScheduler {
         const promise = new Promise((resolve, reject) => {
             const id = this.nextReqId++;
             this.pending.set(id, { resolve, reject, dedupeKey });
-            const job = { id, type, payload, tier, revision: this.getProfileRevision(payload?.profileId), distSq: this._jobDistSq(payload), dedupeKey };
+            const job = { id, type, payload, tier, revision: this.getProfileRevision(profileIdFromPayload(payload)), distSq: this._jobDistSq(payload), dedupeKey };
             this.queue.push(job);
             this._dispatch();
         });
@@ -95,7 +98,7 @@ export class TileBakeScheduler {
         else entry.resolve(bitmaps);
     }
     _dropIfObsolete(job) {
-        const currentRev = this.getProfileRevision(job.payload?.profileId);
+        const currentRev = this.getProfileRevision(profileIdFromPayload(job.payload));
         if (job.revision !== undefined && job.revision < currentRev) {
             this._settle(job.id, [], null);
             return true;

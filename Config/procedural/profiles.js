@@ -1,5 +1,3 @@
-import { resolveActiveSurfaceProfileId } from "../../Core/GameProceduralDesign.js";
-import { resolveSurfaceProfile, runtimeSurfaceProfiles, shippedSurfaceProfileIds } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
 import cyberGrid from "./storage/cyberGrid.js";
 import toxicSludge from "./storage/toxicSludge.js";
 import neonWireframe from "./storage/neonWireframe.js";
@@ -34,16 +32,18 @@ export const surfaceProceduralProfiles = {
     tomatoGarden,
     poolTableFelt,
 };
-/** Tile Lab live editor profile (`__labA__`), not persisted to disk. */
-export function registerRuntimeSurfaceProfile(profileId, profile) {
-    runtimeSurfaceProfiles[profileId] = profile;
+export const runtimeSurfaceProfiles = {};
+export function shippedSurfaceProfileIds() {
+    return Object.keys(surfaceProceduralProfiles);
 }
-export function getSurfaceProceduralProfile(profileId) {
-    return resolveSurfaceProfile(profileId);
+export function surfaceProfileKnown(profileId) {
+    return Boolean(surfaceProceduralProfiles[profileId] ?? runtimeSurfaceProfiles[profileId]);
 }
-export function listShippedSurfaceProfileIds() {
-    return shippedSurfaceProfileIds();
+export function resolveSurfaceProfile(profileId) {
+    const profile = runtimeSurfaceProfiles[profileId] ?? surfaceProceduralProfiles[profileId];
+    if (!profile) throw new Error(`Unknown surface procedural profile: ${profileId}`);
+    return profile;
 }
-export function resolveSurfaceProfileId(args) {
-    return resolveActiveSurfaceProfileId(args);
+export function registerRuntimeSurfaceProfile(profile) {
+    runtimeSurfaceProfiles[profile.id] = profile;
 }
