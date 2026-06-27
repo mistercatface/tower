@@ -8,8 +8,13 @@ export function worldToChunkCol(worldX, gridMinX, chunkSizePx) {
 export function worldToChunkRow(worldY, gridMinY, chunkSizePx) {
     return Math.floor((worldY - gridMinY) / chunkSizePx);
 }
+export function chunkToWorldOriginInto(out, chunkCol, chunkRow, gridMinX, gridMinY, chunkSizePx) {
+    out.x = gridMinX + chunkCol * chunkSizePx;
+    out.y = gridMinY + chunkRow * chunkSizePx;
+    return out;
+}
 export function chunkToWorldOrigin(chunkCol, chunkRow, gridMinX, gridMinY, chunkSizePx) {
-    return { x: gridMinX + chunkCol * chunkSizePx, y: gridMinY + chunkRow * chunkSizePx };
+    return chunkToWorldOriginInto({}, chunkCol, chunkRow, gridMinX, gridMinY, chunkSizePx);
 }
 export function gridBoundsToChunkRange(startCol, endCol, startRow, endRow, cellsPerChunk) {
     return {

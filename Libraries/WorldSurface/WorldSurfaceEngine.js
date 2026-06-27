@@ -2,6 +2,7 @@
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
  */
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
+import { chunkToWorldOriginInto } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
@@ -25,6 +26,7 @@ export class WorldSurfaceEngine {
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkSizePx: 0, minChunkCol: 0, maxChunkCol: 0, minChunkRow: 0, maxChunkRow: 0 };
         this._resolvedChunkCanvas = { canvas: null, payload: null };
+        this._chunkOrigin = { x: 0, y: 0 };
     }
     clear() {
         this.surfaceCache.clear();
@@ -266,11 +268,12 @@ export class WorldSurfaceEngine {
         const ctx = d.ctx;
         const { obstacleGrid, state, chunkSizePx, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow } = frame;
         const resolved = this._resolvedChunkCanvas;
+        const origin = this._chunkOrigin;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
-                const origin = this.surfaceSpace.chunkOrigin(obstacleGrid, chunkCol, chunkRow, chunkSizePx);
+                chunkToWorldOriginInto(origin, chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, 0)) continue;
-                drawBakedTexture(ctx, resolved.canvas, origin.originX, origin.originY, chunkSizePx, chunkSizePx);
+                drawBakedTexture(ctx, resolved.canvas, origin.x, origin.y, chunkSizePx, chunkSizePx);
             }
     }
     drawStaticRoofChunks() {
@@ -302,31 +305,28 @@ export class WorldSurfaceEngine {
         const ctx = d.ctx;
         const { obstacleGrid, chunkSizePx, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow, viewport } = frame;
         const resolved = this._resolvedChunkCanvas;
+        const origin = this._chunkOrigin;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
-                const origin = this.surfaceSpace.chunkOrigin(obstacleGrid, chunkCol, chunkRow, chunkSizePx);
+                chunkToWorldOriginInto(origin, chunkCol, chunkRow, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
                 if (mode === ELEVATED_CHUNK_ROOF) {
-                    if (
-                        !chunkHasBlockedCells(obstacleGrid, origin.originX, origin.originY, chunkSizePx) &&
-                        !chunkHasStaticRoofAtLevel(obstacleGrid, origin.originX, origin.originY, chunkSizePx, zLevel)
-                    )
-                        continue;
-                } else if (!chunkHasStaticStructureAtLevel(obstacleGrid, origin.originX, origin.originY, chunkSizePx, zLevel)) continue;
+                    if (!chunkHasBlockedCells(obstacleGrid, origin.x, origin.y, chunkSizePx) && !chunkHasStaticRoofAtLevel(obstacleGrid, origin.x, origin.y, chunkSizePx, zLevel)) continue;
+                } else if (!chunkHasStaticStructureAtLevel(obstacleGrid, origin.x, origin.y, chunkSizePx, zLevel)) continue;
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, zLevel)) continue;
                 ctx.save();
                 if (mode === ELEVATED_CHUNK_ROOF) {
-                    const drawCanvas = this.getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, origin.originX, origin.originY, chunkSizePx, resolved.canvas, resolved.payload);
+                    const drawCanvas = this.getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, origin.x, origin.y, chunkSizePx, resolved.canvas, resolved.payload);
                     if (!drawCanvas || drawCanvas.isPlaceholder) {
                         ctx.restore();
                         continue;
                     }
-                    drawProjectedHorizontalChunkAt(ctx, drawCanvas, origin.originX, origin.originY, chunkSizePx, zLevel, viewport);
+                    drawProjectedHorizontalChunkAt(ctx, drawCanvas, origin.x, origin.y, chunkSizePx, zLevel, viewport);
                 } else {
-                    if (!clipChunkToFlatWallFootprints(ctx, obstacleGrid, origin.originX, origin.originY, chunkSizePx, zLevel)) {
+                    if (!clipChunkToFlatWallFootprints(ctx, obstacleGrid, origin.x, origin.y, chunkSizePx, zLevel)) {
                         ctx.restore();
                         continue;
                     }
-                    drawBakedTexture(ctx, resolved.canvas, origin.originX, origin.originY, chunkSizePx, chunkSizePx);
+                    drawBakedTexture(ctx, resolved.canvas, origin.x, origin.y, chunkSizePx, chunkSizePx);
                 }
                 ctx.restore();
             }
