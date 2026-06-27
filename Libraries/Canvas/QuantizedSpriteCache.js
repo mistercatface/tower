@@ -189,7 +189,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, sta
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
         ctx.translate(anchorX - prop.x, anchorY - prop.y);
         drawVisualAttachmentList(ctx, attachments.before, viewport);
-        draw(ctx, stageProp, viewport, state);
+        draw(ctx, stageProp, viewport);
         drawVisualAttachmentList(ctx, attachments.after, viewport);
         ctx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
