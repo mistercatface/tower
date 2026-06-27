@@ -106,13 +106,8 @@ export class WorldSurfaceEngine {
         const resolvedZ = payload.zLevel ?? zLevel;
         payload.zLevel = resolvedZ;
         const key = this.cacheKeys.groundChunkKey(chunkCol, chunkRow, payload.profileId, resolvedZ);
-        let canvases = this.surfaceCache.get(key);
-        if (canvases) {
-            const canvas = canvases[0];
-            if (canvas?.isPlaceholder) return canvases;
-            if (isDrawableBakedSurface(canvas)) return canvases;
-            this.surfaceCache.delete(key);
-        }
+        const canvases = this.surfaceCache.get(key);
+        if (canvases) return canvases;
         return this._scheduleGroundChunkBake(key, payload, resolvedZ);
     }
     _scheduleGroundChunkBake(key, payload, zLevel = 0) {
@@ -134,11 +129,8 @@ export class WorldSurfaceEngine {
             this.surfaceCache.set(maskKey, maskEntry);
             this.surfaceCache.delete(drawKey);
         }
-        let cached = this.surfaceCache.get(drawKey);
-        if (cached?.[0] && !cached[0].isPlaceholder) {
-            if (isDrawableBakedSurface(cached[0])) return cached[0];
-            this.surfaceCache.delete(drawKey);
-        }
+        const cached = this.surfaceCache.get(drawKey);
+        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
         const masked = composeDestinationIn(roofCanvas, maskEntry[0]);
         if (!isDrawableBakedSurface(masked)) return null;
         this.surfaceCache.set(drawKey, [masked]);
@@ -242,7 +234,7 @@ export class WorldSurfaceEngine {
         const state = this._chunkDraw.state;
         const payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const canvas = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, zLevel)[0];
-        if (canvas?.isPlaceholder || !isDrawableBakedSurface(canvas)) return false;
+        if (canvas?.isPlaceholder) return false;
         const resolved = this._resolvedChunkCanvas;
         resolved.canvas = canvas;
         resolved.payload = payload;
