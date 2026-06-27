@@ -1,25 +1,15 @@
+import { aabbFromTwoPointsInto, createAabb, distanceSqToAabb } from "../../Math/Aabb2D.js";
 import { projectWallShadowQuadScreenInto } from "../../Spatial/iso/shadowProjection.js";
-
+const sEdgeSegmentAabb = createAabb();
 function clampSegmentCoord(a, b, v) {
     const lo = a < b ? a : b;
     const hi = a < b ? b : a;
     return v < lo ? lo : v > hi ? hi : v;
 }
-
 export function edgeSegmentOutsideCircle(edge, centerX, centerY, rangeSq) {
-    const minX = edge.x1 < edge.x2 ? edge.x1 : edge.x2;
-    const maxX = edge.x1 < edge.x2 ? edge.x2 : edge.x1;
-    const minY = edge.y1 < edge.y2 ? edge.y1 : edge.y2;
-    const maxY = edge.y1 < edge.y2 ? edge.y2 : edge.y1;
-    let dx = 0;
-    let dy = 0;
-    if (centerX < minX) dx = minX - centerX;
-    else if (centerX > maxX) dx = centerX - maxX;
-    if (centerY < minY) dy = minY - centerY;
-    else if (centerY > maxY) dy = centerY - maxY;
-    return dx * dx + dy * dy > rangeSq;
+    const segment = aabbFromTwoPointsInto(sEdgeSegmentAabb, edge.x1, edge.y1, edge.x2, edge.y2);
+    return distanceSqToAabb(centerX, centerY, segment.minX, segment.minY, segment.maxX, segment.maxY) > rangeSq;
 }
-
 export function forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, quadScratch, emitQuad) {
     const rSq = range * range;
     for (let i = 0; i < edges.length; i++) {

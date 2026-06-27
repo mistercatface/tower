@@ -138,9 +138,9 @@ export function collectExposedWallEdges(grid, out) {
     for (let row = 0; row < grid.rows; row++) for (let col = 0; col < grid.cols; col++) pushExposedWallEdgesForCell(grid, col, row, out);
 }
 /** Same as collectExposedWallEdges but only visits wall cells overlapping the world AABB. */
-export function collectExposedWallEdgesInAabb(grid, minX, minY, maxX, maxY, out) {
+export function collectExposedWallEdgesInAabb(grid, bounds, out) {
     out.length = 0;
-    forEachObstacleGridCellInAabb(grid, { minX, minY, maxX, maxY }, (col, row) => {
+    forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
         pushExposedWallEdgesForCell(grid, col, row, out);
     });
 }

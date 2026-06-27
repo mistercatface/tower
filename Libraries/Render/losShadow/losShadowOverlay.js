@@ -1,12 +1,14 @@
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
 import { blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase } from "../../Canvas/maskCompositor.js";
 import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
+import { centerReachAabbInto, createAabb } from "../../Spatial/bounds.js";
 import { collectExposedWallEdgesInAabb } from "../../Spatial/grid/gridCellTopology.js";
 import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
 import { forEachLosShadowQuadInRange } from "./losShadowEdges.js";
 import { collectRailWallShadowEdgesInAabb } from "./railWallShadowEdges.js";
 const sEdgeScratch = [];
 const sQuadScratch = new Float32Array(8);
+const sLightQueryBounds = createAabb();
 let sOverlayCanvas = null;
 let sOverlayCtx = null;
 function ensureOverlayBuffer(width, height) {
@@ -31,8 +33,9 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     const range = visionTiles * obstacleGrid.cellSize;
     const screenRange = range * (viewport.zoom ?? 1);
     const screenLight = viewport.worldToScreen(lightX, lightY);
-    collectExposedWallEdgesInAabb(obstacleGrid, lightX - range, lightY - range, lightX + range, lightY + range, sEdgeScratch);
-    collectRailWallShadowEdgesInAabb(obstacleGrid, lightX - range, lightY - range, lightX + range, lightY + range, sEdgeScratch);
+    centerReachAabbInto(sLightQueryBounds, lightX, lightY, range);
+    collectExposedWallEdgesInAabb(obstacleGrid, sLightQueryBounds, sEdgeScratch);
+    collectRailWallShadowEdgesInAabb(obstacleGrid, sLightQueryBounds, sEdgeScratch);
     fillMaskBase(overlayCtx, canvasW, canvasH, `rgba(0,0,0,${overlayAlpha})`);
     cutOutRadialSoftDisc(overlayCtx, screenLight.x, screenLight.y, screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {

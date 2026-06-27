@@ -1,7 +1,5 @@
 import { collectRailWallBoxesInAabb } from "../../World/wallGridBake.js";
-
 const sRailShadowBoxes = [];
-
 function pushRailWallBoxCapShadowEdges(box, out) {
     const wallTopZ = box.wallCapHeight;
     out.push({ x1: box.outerP1x, y1: box.outerP1y, x2: box.outerP2x, y2: box.outerP2y, nx: -box.inwardX, ny: -box.inwardY, wallTopZ });
@@ -15,8 +13,7 @@ function pushRailWallBoxCapShadowEdges(box, out) {
     out.push({ x1: box.outerP1x, y1: box.outerP1y, x2: box.innerP1x, y2: box.innerP1y, nx: -tx, ny: -ty, wallTopZ });
     out.push({ x1: box.innerP2x, y1: box.innerP2y, x2: box.outerP2x, y2: box.outerP2y, nx: tx, ny: ty, wallTopZ });
 }
-
-export function collectRailWallShadowEdgesInAabb(grid, minX, minY, maxX, maxY, out) {
-    collectRailWallBoxesInAabb(grid, { minX, minY, maxX, maxY }, sRailShadowBoxes);
+export function collectRailWallShadowEdgesInAabb(grid, bounds, out) {
+    collectRailWallBoxesInAabb(grid, bounds, sRailShadowBoxes);
     for (let i = 0; i < sRailShadowBoxes.length; i++) pushRailWallBoxCapShadowEdges(sRailShadowBoxes[i], out);
 }
