@@ -259,7 +259,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
  * @param {PropDrawRecipe} draw
  * @param {number} [animFrame]
  */
-export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0, state = null) {
+export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0) {
     const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);

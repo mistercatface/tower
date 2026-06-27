@@ -218,13 +218,13 @@ export class WorldSceneRenderer {
     }
     _drawProp(ctx, prop, viewport, state) {
         if (prop._gunBullet) {
-            drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile, 0, state);
+            drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
             return;
         }
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = propCatalog[renderKey]?.drawRecipe;
         if (!draw) return;
         prepareWallChunkPropTextures(state, prop);
-        drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, state);
+        drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
     }
 }
