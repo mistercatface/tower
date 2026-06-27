@@ -4,7 +4,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { gridNavCacheKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 import { drawProjectedWallFace } from "../Libraries/Render/Structure3D/ProjectedWallDraw.js";
-import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Libraries/Spatial/grid/SurfaceMaterialStore.js";
+import { resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Libraries/Spatial/grid/SurfaceMaterialStore.js";
 
 function createPathOnlyContext() {
     return {
@@ -123,5 +123,26 @@ describe("surface material stores", () => {
         };
         drawProjectedWallFace(createPathOnlyContext(), { x: 0, y: 0 }, { x: 16, y: 0 }, viewport, state, face);
         assert.equal(capturedProfileId, "cell-profile");
+    });
+
+    it("resolves chunk profiles and supports range assignment", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 128, 128);
+        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
+        grid.setChunkSurfaceProfile(0, 0, "north");
+        grid.setChunkSurfaceProfileRange(0, 2, 3, 3, "south");
+        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "north");
+        assert.equal(resolveChunkSurfaceProfileId(grid, 1, 2, "base"), "south");
+        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 1, "base"), "base");
+        grid.clearChunkSurfaceProfile(0, 0);
+        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
+    });
+
+    it("bumps material revision when chunk profiles change", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 64, 64);
+        const revision = grid.surfaceMaterialRevision;
+        grid.setChunkSurfaceProfile(0, 0, "north");
+        assert.notEqual(grid.surfaceMaterialRevision, revision);
     });
 });

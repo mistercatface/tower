@@ -339,6 +339,18 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.clearEdgeMirrored(col, row, side, this.cols, this.rows);
         bumpSurfaceMaterialRevision(this);
     }
+    setChunkSurfaceProfile(chunkCol, chunkRow, profileId) {
+        this.surfaceMaterials.setChunk(chunkCol, chunkRow, profileId);
+        bumpSurfaceMaterialRevision(this);
+    }
+    clearChunkSurfaceProfile(chunkCol, chunkRow) {
+        this.surfaceMaterials.clearChunk(chunkCol, chunkRow);
+        bumpSurfaceMaterialRevision(this);
+    }
+    setChunkSurfaceProfileRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId) {
+        this.surfaceMaterials.setChunkRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId);
+        bumpSurfaceMaterialRevision(this);
+    }
     getCellEdge(col, row, side) {
         return this.edgeStore.get(col, row, side, this.cols);
     }

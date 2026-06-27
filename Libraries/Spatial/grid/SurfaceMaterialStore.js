@@ -1,21 +1,27 @@
 import { cellEdgeSlotOffset } from "./cellEdgeSlots.js";
 import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
+function chunkProfileKey(chunkCol, chunkRow) {
+    return `${chunkCol},${chunkRow}`;
+}
 export class SurfaceMaterialStore {
     constructor() {
         this.cellProfileIds = new Map();
         this.edgeProfileIds = new Map();
+        this.chunkProfileIds = new Map();
     }
     reset() {
         this.cellProfileIds.clear();
         this.edgeProfileIds.clear();
+        this.chunkProfileIds.clear();
     }
     snapshot() {
-        return { cellProfileIds: new Map(this.cellProfileIds), edgeProfileIds: new Map(this.edgeProfileIds) };
+        return { cellProfileIds: new Map(this.cellProfileIds), edgeProfileIds: new Map(this.edgeProfileIds), chunkProfileIds: new Map(this.chunkProfileIds) };
     }
     remap(snapshot, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
         this.cellProfileIds.clear();
         this.edgeProfileIds.clear();
+        this.chunkProfileIds.clear();
         for (const [idx, profileId] of snapshot.cellProfileIds) {
             const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
@@ -35,6 +41,19 @@ export class SurfaceMaterialStore {
             const newIdx = nc + nr * newCols;
             this.edgeProfileIds.set(cellEdgeSlotOffset(newIdx, side), profileId);
         }
+        for (const [key, profileId] of snapshot.chunkProfileIds) this.chunkProfileIds.set(key, profileId);
+    }
+    getChunk(chunkCol, chunkRow) {
+        return this.chunkProfileIds.get(chunkProfileKey(chunkCol, chunkRow)) ?? null;
+    }
+    setChunk(chunkCol, chunkRow, profileId) {
+        this.chunkProfileIds.set(chunkProfileKey(chunkCol, chunkRow), profileId);
+    }
+    clearChunk(chunkCol, chunkRow) {
+        this.chunkProfileIds.delete(chunkProfileKey(chunkCol, chunkRow));
+    }
+    setChunkRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId) {
+        for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++) for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) this.setChunk(chunkCol, chunkRow, profileId);
     }
     getCellAtIdx(idx) {
         return this.cellProfileIds.get(idx) ?? null;
@@ -86,4 +105,7 @@ export function resolveEdgeSurfaceProfileId(grid, col, row, side, baseProfileId)
 export function resolveWallSurfaceProfileId(grid, face, baseProfileId) {
     if (face.isEdgeRail) return resolveEdgeSurfaceProfileId(grid, face.gridCol, face.gridRow, face.gridSide, baseProfileId);
     return resolveCellSurfaceProfileId(grid, face.gridIdx, baseProfileId);
+}
+export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
+    return grid.surfaceMaterials.getChunk(chunkCol, chunkRow) ?? baseProfileId;
 }
