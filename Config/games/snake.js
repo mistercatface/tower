@@ -181,6 +181,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 bulletSpeed: 160,
                 spawnDist: 4.5,
                 aimRotationRadPerSec: 4.71238898038469,
+                combatMovement: { strafeTiles: 3, repickTicks: 45, idealRangeFraction: 0.65, rangeBandCells: 2, speedFraction: 0.5, accelFraction: 0.6, orbitBias: 60 },
             },
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
             relationships: { snake: { type: "proximity", near: "threat", far: "prey", range: 48 }, squid: "threat", flee_agent: { type: "faction", same: "ally", different: "prey" } },
@@ -208,7 +209,6 @@ export const SNAKE_GAME_DEFAULTS = {
                 rules: [
                     { mode: "flee", rule: "severeOrLethalThreat", guards: ["minHunger"], want: true, reason: "escape" },
                     { mode: "seek_food", rule: "severeNonLethalThreat", guards: ["minHunger", "bandDesperate"], want: true, reason: "race" },
-                    { mode: "shoot_enemy", rule: "always", want: true, reason: "attack" },
                     { mode: "seek_enemy", rule: "always", want: true, reason: "attack" },
                 ],
             },

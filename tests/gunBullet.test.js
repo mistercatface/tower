@@ -45,7 +45,7 @@ describe("flee agent bullets and combat", () => {
         assert.equal(fleeInstance.intent.getMode(), "shoot_enemy");
         assert.equal(fleeInstance.combatAction.phase, "reacting");
         assert.equal(snakeGame.activeGunBulletIds.length, 0, "Should not spawn bullet immediately");
-        assert.equal(fleePack.head._groundRollDrive?.kind, "brake", "Should brake and decelerate while reacting");
+        assert.notEqual(fleePack.head._groundRollDrive?.kind, "brake", "Should not hard-brake while engaging");
         fleeInstance.autosim.tick(150);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "Should spawn one bullet after reacting");
         assert.equal(fleeInstance.combatAction.phase, "fire_delay");

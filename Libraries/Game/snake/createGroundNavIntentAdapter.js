@@ -7,6 +7,7 @@ import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
 import { buildAgentDecisionContextInto } from "../../AI/agents/buildAgentDecisionContext.js";
 import { buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/gameDecisionContext.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
+import { pickCombatStrafeCell } from "../../AI/steering/pickCombatStrafeCell.js";
 import { buildFlowTargetStepsInto, createFlowTargetStepSlots } from "../../Navigation/flowTargetSteps.js";
 import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.js";
 import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
@@ -87,7 +88,7 @@ function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fle
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policyOut;
 }
-function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, getContext, seekOptionsScratch }) {
+function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, refreshCombatStrafeDestination, getContext, seekOptionsScratch }) {
     return {
         clearDestination() {
             const ctx = getContext();
@@ -123,6 +124,10 @@ function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, b
         setFleeDestination(avoidCell = null) {
             const ctx = getContext();
             return setFleeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell, locomotion });
+        },
+        setCombatStrafeDestination(avoidCell = null) {
+            const ctx = getContext();
+            return refreshCombatStrafeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell, locomotion });
         },
     };
 }
@@ -239,6 +244,35 @@ function setFleeDestination(intent, args, instance) {
     }
     return null;
 }
+function setCombatStrafeDestination(args, instance) {
+    const { agent, state, world, avoidCell, locomotion, navWalkable } = args;
+    const combat = world.decisionContext.combatState;
+    const enemy = combat?.visibleEnemy ?? combat?.enemy;
+    if (!enemy || combat.tooClose || !combat.hasLineOfSight) return null;
+    const weapon = instance.resolvedWeapon;
+    if (!weapon) return null;
+    const movement = weapon.combatMovement ?? {};
+    const cell = pickCombatStrafeCell(
+        agent,
+        enemy,
+        state.obstacleGrid,
+        navWalkable,
+        {
+            strafeTiles: movement.strafeTiles ?? 3,
+            idealRangeFraction: movement.idealRangeFraction ?? 0.65,
+            rangeBandCells: movement.rangeBandCells ?? 2,
+            orbitBias: movement.orbitBias ?? 0,
+            fleeRange: weapon.fleeRange,
+            maxRange: weapon.maxRange,
+        },
+        avoidCell,
+    );
+    if (cell) {
+        locomotion.setFlee(agent, state, cell);
+        return cell;
+    }
+    return null;
+}
 export function resolvePackSteeringOptions(ctx, instance) {
     const cohesion = instance.profile.factionCohesion ?? {};
     const packBlend = cohesion.fleePackBlend ?? 0;
@@ -303,6 +337,7 @@ export function buildGroundNavIntentAdapterOptions({ state, instance, brain, syn
         buildDecisionContext: (input) => buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, agentCtx, resolveSegmentCount),
         resolveCommittedTarget: (id, world) => resolveCommittedTarget(intent.committedSlots, id, world),
         setFleeDestination: (args) => setFleeDestination(intent, { ...args, navWalkable, config: shared, brain, resolveExploreCell }, instance),
+        setCombatStrafeDestination: (args) => setCombatStrafeDestination({ ...args, navWalkable }, instance),
         sprintConfig: profile.sprint,
         fleeHeldOn: intent.fleeHeldOn,
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
@@ -336,6 +371,7 @@ export function createGroundNavIntentAdapter({
     afterPerceive = null,
     resolveCommittedTarget,
     setFleeDestination,
+    setCombatStrafeDestination = null,
     sprintConfig,
     fleeHeldOn = "flee",
     clearMemoryOnIntentClear = false,
@@ -393,6 +429,7 @@ export function createGroundNavIntentAdapter({
         brain,
         seekArrivalRadius,
         setFleeDestination,
+        refreshCombatStrafeDestination: setCombatStrafeDestination ?? (() => null),
         getContext: () => intentContext,
         seekOptionsScratch,
     });

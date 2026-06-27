@@ -61,6 +61,11 @@ export class AgentInstance {
         this.relationshipRules = bakeRelationshipRules(profile, config);
         this.resolvedWeapon = resolveRangedWeapon(this, profile, this.visionRange.range);
         this.aimTurnRadPerSec = this.resolvedWeapon?.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
+        const combatMovement = this.resolvedWeapon?.combatMovement;
+        if (combatMovement) {
+            this.combatStrafeMaxSpeed = this.walkMaxSpeed * (combatMovement.speedFraction ?? 0.5);
+            this.combatStrafeAccel = this.walkAccel * (combatMovement.accelFraction ?? 0.6);
+        }
         this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? createRangedCombatActionState() : null;
         const session = state.sandbox.snakeGame;
         this.session = session;
@@ -265,8 +270,16 @@ export class AgentInstance {
     applySprintMovementIntent() {
         this.sprinting = this.intent.sprintWanted && this.metabolism.hunger > 0;
         const groundNav = this.head.strategy.groundNav;
-        groundNav.maxSpeed = this.sprinting ? this.sprintMaxSpeed : this.walkMaxSpeed;
-        groundNav.accel = this.sprinting ? this.sprintAccel : this.walkAccel;
+        if (this.sprinting) {
+            groundNav.maxSpeed = this.sprintMaxSpeed;
+            groundNav.accel = this.sprintAccel;
+        } else if (this.combatStrafeMaxSpeed != null && this.intent.getMode() === "shoot_enemy") {
+            groundNav.maxSpeed = this.combatStrafeMaxSpeed;
+            groundNav.accel = this.combatStrafeAccel;
+        } else {
+            groundNav.maxSpeed = this.walkMaxSpeed;
+            groundNav.accel = this.walkAccel;
+        }
     }
     hungerDrainMultiplier() {
         return this.sprinting ? this.sprintHungerDrainMultiplier : 1;

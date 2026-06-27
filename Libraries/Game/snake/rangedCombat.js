@@ -1,4 +1,3 @@
-import { decelerateRoll, getKineticRollConfig } from "../../Sandbox/kineticRollActuator.js";
 import { spawnGunBulletProjectile } from "./gunAgent/gunBulletSystem.js";
 import { angleDelta, rotateAngleTowards } from "../../Math/Angle.js";
 import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
@@ -130,11 +129,9 @@ function beginReaction(ctx, action, agent, target, weapon, dtMs) {
     const maxStep = turnRadPerSec * (dtMs / 1000);
     action.aimAngle = rotateAngleTowards(initialAngle, targetAngle, maxStep);
     agent.facing = action.aimAngle;
-    decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
 }
 function tickReaction(ctx, instance, action, weapon, dtMs) {
     const agent = ctx.agent;
-    decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
@@ -155,7 +152,6 @@ function tickReaction(ctx, instance, action, weapon, dtMs) {
 }
 function tickFireDelay(ctx, instance, action, weapon, dtMs) {
     const agent = ctx.agent;
-    decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
@@ -176,21 +172,52 @@ function tickFireDelay(ctx, instance, action, weapon, dtMs) {
 }
 function tickReloading(ctx, action, weapon, dtMs) {
     const agent = ctx.agent;
-    if (agent && ctx.state) decelerateRoll(agent, getKineticRollConfig(agent), ctx.state);
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = aimRotationRadPerSec(weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0) resetRangedCombatAction(action);
 }
+function strafeRepickTicks(weapon) {
+    return weapon.combatMovement?.repickTicks ?? 45;
+}
+function shouldRefreshCombatStrafe(ctx, strafeState, weapon) {
+    if (!ctx.dest) return true;
+    if (ctx.ticks >= strafeState.repickAt) return true;
+    if (ctx.locomotion.hasArrivedAtDest(ctx.agent, ctx.grid)) return true;
+    if (ctx.locomotion.hasReachedDest(ctx.agent, ctx.grid)) return true;
+    return false;
+}
+function maintainCombatStrafe(ctx, strafeState, weapon) {
+    const combat = ctx.world.decisionContext.combatState;
+    if (!combat?.hasLineOfSight || combat.tooClose || !ctx.target || ctx.target.isDead) {
+        strafeState.lastCell = null;
+        strafeState.repickAt = 0;
+        ctx.effects.clearDestination();
+        return;
+    }
+    if (!shouldRefreshCombatStrafe(ctx, strafeState, weapon)) {
+        ctx.effects.holdDestination("shoot_strafe");
+        return;
+    }
+    const cell = ctx.effects.setCombatStrafeDestination(strafeState.lastCell);
+    if (cell) {
+        strafeState.lastCell = cell;
+        strafeState.repickAt = ctx.ticks + strafeRepickTicks(weapon);
+        ctx.effects.setLastTransition("shoot_strafe");
+        return;
+    }
+    ctx.effects.holdDestination("shoot_strafe_hold");
+}
 export function createRangedShootIntentState(instance, resolveWeapon) {
+    const strafeState = { lastCell: null, repickAt: 0 };
     return {
         enter(ctx) {
-            ctx.effects.clearDestination();
             const weapon = resolveWeapon(instance);
             if (!weapon) return;
             const action = instance.combatAction;
             const combat = ctx.world.decisionContext.combatState;
+            maintainCombatStrafe(ctx, strafeState, weapon);
             if (action.phase === "idle" && combat?.canShoot && ctx.target) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
             else if (action.phase === "reacting") tickReaction(ctx, instance, action, weapon, 0);
         },
@@ -202,30 +229,32 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
             const combat = ctx.world.decisionContext.combatState;
             if (action.phase === "reloading") {
                 tickReloading(ctx, action, weapon, dtMs);
-                ctx.effects.holdDestination("shoot_reloading");
+                maintainCombatStrafe(ctx, strafeState, weapon);
                 if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
                 return;
             }
             if (action.phase === "fire_delay") {
                 tickFireDelay(ctx, instance, action, weapon, dtMs);
-                ctx.effects.holdDestination("shoot_fire_delay");
+                maintainCombatStrafe(ctx, strafeState, weapon);
                 return;
             }
             if (action.phase === "reacting") {
                 tickReaction(ctx, instance, action, weapon, dtMs);
-                ctx.effects.holdDestination("shoot_reacting");
+                maintainCombatStrafe(ctx, strafeState, weapon);
                 return;
             }
             if (!ctx.target || ctx.target.isDead) {
+                strafeState.lastCell = null;
+                strafeState.repickAt = 0;
                 ctx.effects.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
                 return;
             }
             if (combat?.canShoot) {
                 beginReaction(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
-                ctx.effects.holdDestination("shoot_start");
+                maintainCombatStrafe(ctx, strafeState, weapon);
                 return;
             }
-            ctx.effects.holdDestination("shoot_wait");
+            maintainCombatStrafe(ctx, strafeState, weapon);
         },
     };
 }

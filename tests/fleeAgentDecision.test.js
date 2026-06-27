@@ -14,6 +14,7 @@ import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, r
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
 import { createRangedCombatActionState, resolveRangedWeapon } from "../Libraries/Game/snake/rangedCombat.js";
+import { pickCombatStrafeCell } from "../Libraries/AI/steering/pickCombatStrafeCell.js";
 
 const CELL = 16;
 function sprintCtx(overrides = {}) {
@@ -342,5 +343,67 @@ describe("flee agent decision model", () => {
         const currentDist = Math.hypot(state.obstacleGrid.worldCol(charliePack.head.x) - state.obstacleGrid.worldCol(deltaPack.head.x), state.obstacleGrid.worldRow(charliePack.head.y) - state.obstacleGrid.worldRow(deltaPack.head.y));
         const destDist = Math.hypot(dest.col - state.obstacleGrid.worldCol(deltaPack.head.x), dest.row - state.obstacleGrid.worldRow(deltaPack.head.y));
         assert.ok(destDist > currentDist, "back-off destination should increase distance from the enemy");
+    });
+
+    it("pickCombatStrafeCell prefers lateral cells inside weapon range with line of sight", async () => {
+        resetKineticConstraintIds(103);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig();
+        const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const charlie = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        const deltaPack = spawnGameAgentChain(state, { col: 15, row: 10 }, "flee_agent", { faction: "delta" });
+        const weapon = charlie.resolvedWeapon;
+        const movement = weapon.combatMovement ?? {};
+        const cell = pickCombatStrafeCell(
+            charliePack.head,
+            deltaPack.head,
+            state.obstacleGrid,
+            snakeGame.navWalkable,
+            {
+                strafeTiles: movement.strafeTiles ?? 3,
+                idealRangeFraction: movement.idealRangeFraction ?? 0.65,
+                rangeBandCells: movement.rangeBandCells ?? 2,
+                fleeRange: weapon.fleeRange,
+                maxRange: weapon.maxRange,
+            },
+            null,
+            () => 0.5,
+        );
+        assert.ok(cell);
+        assert.notEqual(cell.row, 10, "lateral strafe should offset across the enemy bearing");
+        assert.notEqual(cell.col, 15, "strafe should not charge directly into the enemy cell");
+    });
+
+    it("strafes laterally while shooting at range in integration", async () => {
+        resetKineticConstraintIds(102);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig();
+
+        const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const charlie = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", charlie);
+        charlie.start();
+        setAgentHunger(charlie.metabolism, 0.9);
+        charliePack.head.facing = 0;
+
+        const deltaPack = spawnGameAgentChain(state, { col: 15, row: 10 }, "flee_agent", { faction: "delta" });
+        registerAgentInstance(snakeGame, "flee_agent", new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId }));
+
+        primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
+        primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
+
+        charlie.autosim.tick(16);
+        assert.equal(charlie.intent.getMode(), "shoot_enemy");
+        const dest = charlie.intent.getDestination();
+        assert.ok(dest, "shooting flee agent should maintain a combat strafe destination");
+        assert.notEqual(dest.row, 10, "strafe destination should offset laterally from a same-row enemy");
+        assert.notEqual(dest.col, 15, "strafe destination should not charge straight into the enemy");
+
+        snakeGame.activeGunBulletIds = [];
+        charlie.autosim.tick(150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1, "strafing agent should still fire after reaction");
+        assert.equal(charlie.combatAction.phase, "fire_delay");
     });
 });
