@@ -71,10 +71,11 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
-    const override = prop.strategy?.quantizeSteps;
+    const override = prop.strategy?.quantizeSteps ?? prop.strategy?.physics?.quantizeSteps;
     const derivedFacing = deriveFacingStepsFromFootprint(prop, defaults.facing);
     const facing = override?.facing ?? derivedFacing;
-    return { facing };
+    const view = override?.view ?? defaults.view ?? 30;
+    return { facing, view };
 }
 export function getBaseSpriteCacheKey(prop, deps) {
     const { quantizeAngleIndex, buildRollOrientKey } = deps;
