@@ -7,10 +7,6 @@ export function groundChunkCachePrefix(chunkCol, chunkRow, profileId, profileRev
 export function groundChunkWorkerDedupeKey(payload, profileRevision) {
     return `${groundChunkCachePrefix(payload.chunkCol, payload.chunkRow, payload.profileId, profileRevision, payload.zLevel ?? 0)}:${payload.seed ?? 0}`;
 }
-export function horizontalPatchWorkerDedupeKey(payload, profileRevision) {
-    const zTag = horizontalZCacheTag(payload.zLevel);
-    return `patch:${profileRevision}:${payload.profileId}:${zTag}:${payload.originX.toFixed(1)},${payload.originY.toFixed(1)}:${payload.worldWidth.toFixed(1)}x${payload.worldHeight.toFixed(1)}:${payload.seed ?? 0}`;
-}
 export function staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel) {
     return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
 }

@@ -8,7 +8,6 @@ import {
     isPuzzleTemplateSpawnAsset,
     isSingleWorldPropSpawnAsset,
 } from "../../Sandbox/sandboxCapabilities.js";
-import { appendSurfaceProfileField } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 import { appendShapeFamilySpawnFields } from "./sandboxShapeFamilyUi.js";
@@ -66,9 +65,6 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
                 controller.setSpawnCorridorWidth(width);
             },
         });
-        appendSurfaceProfileField(body, "Floor profile", controller.getSpawnCorridorSurfaceProfileId(), (profileId) => {
-            controller.setSpawnCorridorSurfaceProfileId(profileId);
-        });
         appendEditorHint(
             body,
             fromNodeId != null
@@ -96,9 +92,6 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
                     controller.setSpawnRoomNodeRows(rows);
                 },
             },
-        });
-        appendSurfaceProfileField(body, "Floor profile", controller.getSpawnRoomNodeSurfaceProfileId(), (profileId) => {
-            controller.setSpawnRoomNodeSurfaceProfileId(profileId);
         });
         appendEditorHint(body, "Hover the map to preview the footprint. Blocked cells turn red; click only places when every cell is clear.");
         appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });

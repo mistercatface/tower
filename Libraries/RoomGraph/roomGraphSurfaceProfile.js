@@ -37,27 +37,3 @@ export function resolveRoomGraphFloorProfileIdAtCell(state, col, row) {
 export function resolveWallSurfaceProfileIdAtCell(state, col, row) {
     return resolveRoomGraphFloorProfileIdAtCell(state, col, row) ?? state.worldSurfaces?.surfaceProfileOverride ?? surfaceProfileDefaults.defaultId;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("./roomGraphStore.js").RoomNode} node */
-export function roomNodeWorldAabb(grid, node) {
-    const half = grid.cellHalfSize;
-    const w0 = grid.gridToWorld(node.col, node.row);
-    const w1 = grid.gridToWorld(node.col + node.width - 1, node.row + node.height - 1);
-    return { minX: w0.x - half, minY: w0.y - half, maxX: w1.x + half, maxY: w1.y + half };
-}
-/** @param {object} state @param {import("./roomGraphStore.js").RoomNode} node */
-export function invalidateRoomNodeFloorSurface(state, node) {
-    if (!node) return;
-    state.worldSurfaces?.surfaceCache?.deleteByPrefix(`roomFloor:${node.id}:`);
-}
-/** @param {object} state @param {number} linkId */
-export function invalidateRoomLinkFloorSurface(state, linkId) {
-    state.worldSurfaces?.surfaceCache?.deleteByPrefix(`corridorFloorDraw:${linkId}:`);
-    state.worldSurfaces?.surfaceCache?.deleteByPrefix(`corridorFloorMask:${linkId}:`);
-}
-/** @param {object} state */
-export function invalidateAllCorridorFloorSurfaces(state) {
-    const cache = state.worldSurfaces?.surfaceCache;
-    if (!cache) return;
-    cache.deleteByPrefix("corridorFloorDraw:");
-    cache.deleteByPrefix("corridorFloorMask:");
-}

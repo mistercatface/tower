@@ -1,5 +1,5 @@
 import { runtimeSurfaceProfiles } from "../../Libraries/Procedural/SurfaceProfileProvider.js";
-import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
+import { bakeGroundChunkCanvases, bakeWallAtlasCanvases, BakeSession } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
 import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
 import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/TileWorkerMessages.js";
@@ -9,7 +9,6 @@ export class TileSurfaceWorker {
         this.handlers = {
             [TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS]: (payload) => this.configureBakeConstants(payload),
             [TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK]: (payload) => this.bakeGroundChunk(payload),
-            [TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH]: (payload) => this.bakeHorizontalPatch(payload),
             [TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS]: (payload) => this.bakeWallAtlas(payload),
             [TILE_WORKER_MESSAGE.REGISTER_RUNTIME_PROFILE]: (payload) => this.registerRuntimeProfile(payload),
         };
@@ -46,9 +45,6 @@ export class TileSurfaceWorker {
     }
     bakeGroundChunk(payload) {
         return bakeGroundChunkCanvases(payload, this.bakeSession);
-    }
-    bakeHorizontalPatch(payload) {
-        return bakeHorizontalPatchCanvases(payload, this.bakeSession);
     }
     bakeWallAtlas(payload) {
         return bakeWallAtlasCanvases(payload, this.bakeSession);

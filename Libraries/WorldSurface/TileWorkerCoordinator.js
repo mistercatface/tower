@@ -27,9 +27,6 @@ export const TileWorkerCoordinator = {
     requestWallAtlasBake(payload) {
         return requireClient().requestWallAtlasBake(payload);
     },
-    requestHorizontalPatchBake(payload) {
-        return requireClient().requestHorizontalPatchBake(payload);
-    },
     registerRuntimeProfile(profileId, profile) {
         return requireClient().registerRuntimeProfile(profileId, profile);
     },

@@ -14,7 +14,6 @@ import {
     roomWallGapKeysWorld,
 } from "./roomGraphClosedRooms.js";
 import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js";
-import { invalidateAllCorridorFloorSurfaces } from "./roomGraphSurfaceProfile.js";
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType, isLockedRoomCorridorType } from "./roomGraphCorridorTypes.js";
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
@@ -194,7 +193,6 @@ export function syncRoomGraphBake(state) {
     setBakedRails(state, []);
     setBakedFloorBelts(state, []);
     setBakedCorridorFloorCells(state, []);
-    invalidateAllCorridorFloorSurfaces(state);
     let layout = buildAuthoredBakeLayout(state);
     if (!layout.rooms.length) {
         clearLockedRoomBakes(state);

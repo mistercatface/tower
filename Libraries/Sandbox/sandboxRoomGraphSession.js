@@ -3,7 +3,6 @@ import {
     clearRoomLinksForNode,
     formatRoomNodeLabel,
     getRoomLink,
-    getRoomNode,
     listRoomLinks,
     listRoomLinkCorridorSceneEntries,
     listRoomNodeCorridorEntries,
@@ -17,7 +16,6 @@ import {
     updateRoomLink,
     updateRoomNode,
 } from "../RoomGraph/index.js";
-import { invalidateRoomLinkFloorSurface, invalidateRoomNodeFloorSurface } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { listPlacedForcefields, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
 import { listPlacedSceneItems, matchesSceneItem, pickSceneItem } from "./sandboxScenePlaceables.js";
 import { selectionRoomLinkId, selectionRoomNodeId, resolveSelectedRoomNode } from "./sandboxSelectionInspectors.js";
@@ -113,7 +111,6 @@ export function createSandboxRoomGraphSession(
             const profileOnly =
                 patch.surfaceProfileId !== undefined && !needsReroll && patch.corridorType == null && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null && patch.seed == null;
             if (!needsReroll && !profileOnly) syncRoomGraphBake(state);
-            if (profileOnly) invalidateRoomLinkFloorSurface(state, linkId);
             notifyUi();
             return true;
         },
@@ -124,8 +121,7 @@ export function createSandboxRoomGraphSession(
             if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
             if (!updateRoomNode(state, nodeId, patch)) return false;
             const profileOnly = patch.surfaceProfileId !== undefined && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null;
-            if (profileOnly) invalidateRoomNodeFloorSurface(state, getRoomNode(state, nodeId));
-            else syncRoomGraphBake(state);
+            if (!profileOnly) syncRoomGraphBake(state);
             notifyUi();
             return true;
         },

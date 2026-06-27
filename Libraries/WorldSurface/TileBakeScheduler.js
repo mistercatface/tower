@@ -1,5 +1,5 @@
 import { MinHeap } from "../DataStructures/MinHeap.js";
-import { groundChunkWorkerDedupeKey, horizontalPatchWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
+import { groundChunkWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { wallAtlasWorkerDedupeKey } from "./WallSurfaceCache.js";
 import { TileBakeMetricsAccumulator, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
@@ -13,13 +13,12 @@ function dedupeKeyFor(type, payload, tier, getProfileRevision) {
     if (tier === TILE_BAKE_TIER.REGISTRATION) return null;
     const rev = getProfileRevision(payload?.profileId);
     if (type === TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK) return groundChunkWorkerDedupeKey(payload, rev);
-    if (type === TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH) return horizontalPatchWorkerDedupeKey(payload, rev);
     if (type === TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS) return wallAtlasWorkerDedupeKey(payload, rev);
     return null;
 }
 /**
  * Priority queue + promise lifecycle for tile surface worker bakes.
- * Job tiers drain registration → static → animation; within a tier jobs sort by distance to focus.
+ * Job tiers drain registration → static; within a tier jobs sort by distance to focus.
  */
 export class TileBakeScheduler {
     constructor(pool, options = {}) {

@@ -17,9 +17,6 @@ import { createEmptyBakePhases, createTileBakeMetrics, isTileBakeMetricsEnabled 
  * @property {number} seed
  * @property {object} paintOptions
  * @property {string | object} profileOrId
- * @property {object} [resolvePayload]
- * @property {string} [profileKey]
- * @property {object} [baseProfile]
  */
 class TileMemoryPool {
     constructor() {
@@ -190,67 +187,4 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
     const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
     const canvas = bakeRequestToCanvas({ width: bakeSize, height: bakeSize, startWorldX: chunkWorldX, startWorldY: chunkWorldY, seed, paintOptions, profileOrId: profileId }, bakeSession);
     return [canvas];
-}
-/** Bake a world-aligned horizontal patch. */
-export function bakeHorizontalPatchCanvases(payload, bakeSession = globalBakeSession) {
-    const metricsOn = isTileBakeMetricsEnabled();
-    if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
-    const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
-    const baseProfile = resolveSurfaceProfile(profileId);
-    const { originX, originY, worldWidth, worldHeight, seed } = payload;
-    const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
-    const widthPx = bakePixelsForWorldSpan(worldWidth, surfaceBakeScale);
-    const heightPx = bakePixelsForWorldSpan(worldHeight, surfaceBakeScale);
-    const zLevel = payload.zLevel ?? 0;
-    const numPixels = widthPx * heightPx;
-    const pooled = bakeSession.memoryPool.getSamples(numPixels);
-    const samples = { width: widthPx, height: heightPx, evalX: pooled.evalX, evalY: pooled.evalY, lookupX: pooled.lookupX, lookupY: pooled.lookupY, wallU: pooled.wallU, wallV: pooled.wallV };
-    const invBakeScale = 1 / surfaceBakeScale;
-    let writePixel = writeFloorPixel;
-    let mapCtx = { invBakeScale, startWorldX: originX, startWorldY: originY };
-    let bake = { useWallBase: false };
-    if (zLevel > 0) {
-        writePixel = writeRoofPixel;
-        mapCtx = { invBakeScale, startWorldX: originX, startWorldY: originY, spanU: widthPx > 1 ? widthPx - 1 : 1 };
-        bake = { useWallBase: true, wallCell: true };
-    }
-    let idx = 0;
-    let phaseStart = metricsOn ? performance.now() : 0;
-    for (let y = 0; y < heightPx; y++)
-        for (let x = 0; x < widthPx; x++) {
-            writePixel(samples, idx, x, y, mapCtx);
-            idx++;
-        }
-    if (!metricsOn) {
-        const frameBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
-        composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, frameBuffer);
-        const canvas = createOffscreenCanvas(widthPx, heightPx);
-        const ctx = canvas.getContext("2d");
-        const imgData = ctx.createImageData(widthPx, heightPx);
-        copyRgbTripletsToRgba(imgData.data, frameBuffer, numPixels);
-        ctx.putImageData(imgData, 0, 0);
-        const canvases = [canvas];
-        bakeSession.memoryPool.releaseRgbBuffer(frameBuffer, numPixels);
-        bakeSession.memoryPool.release(pooled, numPixels);
-        bakeSession.lastMetrics = null;
-        return canvases;
-    }
-    const phases = createEmptyBakePhases();
-    phases.sampleFillMs = performance.now() - phaseStart;
-    const frameBuffer = bakeSession.memoryPool.getRgbBuffer(numPixels);
-    phaseStart = performance.now();
-    composeSurfaceImage(samples, baseProfile, seed, bakeSession, bake, frameBuffer);
-    phases.composeStaticMs += performance.now() - phaseStart;
-    phaseStart = performance.now();
-    const canvas = createOffscreenCanvas(widthPx, heightPx);
-    const ctx = canvas.getContext("2d");
-    const imgData = ctx.createImageData(widthPx, heightPx);
-    copyRgbTripletsToRgba(imgData.data, frameBuffer, numPixels);
-    ctx.putImageData(imgData, 0, 0);
-    phases.rgbaCopyMs += performance.now() - phaseStart;
-    const canvases = [canvas];
-    bakeSession.memoryPool.releaseRgbBuffer(frameBuffer, numPixels);
-    bakeSession.memoryPool.release(pooled, numPixels);
-    bakeSession.lastMetrics = createTileBakeMetrics("bakeHorizontalPatch", numPixels, phases, bakeSession.noiseEvaluator.profile);
-    return canvases;
 }

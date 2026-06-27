@@ -3,7 +3,6 @@ import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
-import { drawRoomGraphFloorPatches } from "../../Libraries/RoomGraph/roomGraphFloorDraw.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = gameWorldSurfaceSettings) {
         super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel, profileId) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel, profileId) });
@@ -32,7 +31,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     drawGround(ctx, state, viewport) {
         this._bindSceneDraw(ctx, state, viewport);
         this.drawGroundPlaneChunks();
-        drawRoomGraphFloorPatches(ctx, this, state, viewport);
     }
     drawRoofs(ctx, state, viewport) {
         this._bindSceneDraw(ctx, state, viewport);

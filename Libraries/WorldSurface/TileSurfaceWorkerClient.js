@@ -73,12 +73,6 @@ export class TileSurfaceWorkerClient {
     requestWallAtlasBake(payload) {
         return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS, payload, TILE_BAKE_TIER.STATIC);
     }
-    requestHorizontalPatchBake(payload) {
-        const profileId = payload.profileId;
-        return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH, payload, TILE_BAKE_TIER.STATIC);
-        });
-    }
     registerRuntimeProfile(profileId, profile) {
         runtimeSurfaceProfiles[profileId] = profile;
         bumpSurfaceProfileRevision(profileId);
