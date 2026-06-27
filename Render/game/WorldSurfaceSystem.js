@@ -1,10 +1,9 @@
-import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.js";
 import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     _bindSceneDraw(ctx, state, viewport) {
-        this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, playBoundsFromObstacleGrid(state.obstacleGrid));
+        this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, state.obstacleGrid);
     }
     drawGround(ctx, state, viewport) {
         this._bindSceneDraw(ctx, state, viewport);
