@@ -8,8 +8,7 @@ import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { surfaceProfileDefaults } from "../../Procedural/SurfaceProfileProvider.js";
-import { resolveRoomGraphFloorProfileIdAtCell } from "../../RoomGraph/roomGraphSurfaceProfile.js";
+import { resolveWallSurfaceProfileIdAtCell } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
@@ -65,7 +64,7 @@ function resolveWallProfileId(state, wallCx, wallCy, cacheObj) {
         const grid = state.obstacleGrid;
         const col = cacheObj ? cacheObj.gridCol : grid.worldToGridCol(wallCx);
         const row = cacheObj ? cacheObj.gridRow : grid.worldToGridRow(wallCy);
-        profileId = resolveRoomGraphFloorProfileIdAtCell(state, col, row) ?? override ?? surfaceProfileDefaults.defaultId;
+        profileId = resolveWallSurfaceProfileIdAtCell(state, col, row);
         if (cacheObj && !override) cacheObj._cachedProfileId = profileId;
     }
     return profileId;

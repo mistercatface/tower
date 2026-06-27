@@ -34,6 +34,9 @@ export function resolveRoomGraphFloorProfileIdAtCell(state, col, row) {
     }
     return null;
 }
+export function resolveWallSurfaceProfileIdAtCell(state, col, row) {
+    return resolveRoomGraphFloorProfileIdAtCell(state, col, row) ?? state.worldSurfaces?.surfaceProfileOverride ?? surfaceProfileDefaults.defaultId;
+}
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("./roomGraphStore.js").RoomNode} node */
 export function roomNodeWorldAabb(grid, node) {
     const half = grid.cellHalfSize;

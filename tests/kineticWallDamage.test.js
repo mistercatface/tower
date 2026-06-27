@@ -133,9 +133,8 @@ describe("kinetic wall damage", () => {
         assert.ok(queued);
         assert.equal(queued.contactX, 3 * 16 + 8);
         assert.equal(queued.normalX, 1);
-        assert.equal(queued.sourceVx, 560);
-        assert.equal(queued.sourceId, 101);
-        assert.equal(queued.sourceKind, "crate");
+        assert.equal(queued.sourceSpeed, 560);
+        assert.equal(queued.sourceMass, 1);
         
         flushPendingWallDamage(state);
         

@@ -84,7 +84,7 @@ export const SNAKE_GAME_DEFAULTS = {
         snake: {
             exportType: "snake",
             topology: "chain",
-            populationCount: 48,
+            populationCount: 128,
             bodyPropId: "ball",
             headPropId: "snake_head",
             segmentCount: 3,
