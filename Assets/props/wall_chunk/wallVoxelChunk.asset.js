@@ -18,15 +18,11 @@ export default {
         fracture: true,
         fractureMode: "glass",
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 6, randomRange: 17 },
-        getCustomSpriteCacheKey(prop, state) {
+        getCustomSpriteCacheKey(prop) {
             if (!prop.wallChunkProfileId) return "";
             const profileId = prop.wallChunkProfileId;
             const rev = getSurfaceProfileRevision(profileId);
-            let readyBucket = "pending";
-            if (state?.worldSurfaces) {
-                const textures = state.worldSurfaces.ensureWallChunkProfileTextures(state, profileId, prop.wallChunkHeightPx);
-                if (textures.ready) readyBucket = "ready";
-            }
+            const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
             return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
         },
     },

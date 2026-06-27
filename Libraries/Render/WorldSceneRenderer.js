@@ -65,6 +65,12 @@ function bindWallFaceScratch(scratch, drawable) {
     scratch.cacheObj = drawable;
     scratch.atlasFaceId = undefined;
 }
+function prepareWallChunkPropTextures(state, prop) {
+    if (!prop.wallChunkProfileId || !state?.worldSurfaces) return;
+    const textures = state.worldSurfaces.ensureWallChunkProfileTextures(state, prop.wallChunkProfileId, prop.wallChunkHeightPx);
+    prop._wallChunkTextures = textures;
+    prop._wallChunkTextureReady = !!textures.ready;
+}
 function parallelInsertionSort(drawables, depths, start, end) {
     for (let i = start + 1; i <= end; i++) {
         const keyDrawable = drawables[i];
@@ -218,6 +224,7 @@ export class WorldSceneRenderer {
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = propCatalog[renderKey]?.drawRecipe;
         if (!draw) return;
+        prepareWallChunkPropTextures(state, prop);
         drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, state);
     }
 }
