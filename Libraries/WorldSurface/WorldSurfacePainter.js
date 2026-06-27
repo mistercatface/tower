@@ -3,7 +3,7 @@ import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
-import { createWallFaceAxes, fillWallFaceRows, writeFloorPixel, writeRoofPixel, writeWallCellPixel } from "./SurfaceCoordinateMapper.js";
+import { createWallFaceAxes } from "./WallFaceColumns.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { getTileWorkerBakeConstants } from "./TileWorkerBakeConstants.js";
 import { createEmptyBakePhases, createTileBakeMetrics, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
@@ -63,6 +63,66 @@ export const globalBakeSession = new BakeSession();
 function resolvePaintProfile(profileOrId) {
     if (profileOrId != null && typeof profileOrId === "object") return profileOrId;
     return resolveSurfaceProfile(profileOrId ?? surfaceProfileDefaults.defaultId);
+}
+function writeFloorPixel(samples, idx, x, y, mapCtx) {
+    const invBakeScale = mapCtx.invBakeScale;
+    samples.evalX[idx] = mapCtx.startWorldX + x * invBakeScale;
+    samples.evalY[idx] = mapCtx.startWorldY + y * invBakeScale;
+    samples.wallU[idx] = 0;
+    samples.wallV[idx] = 0;
+}
+function fillWallFaceRows(samples, width, height, mapCtx) {
+    const invBakeScale = mapCtx.invBakeScale;
+    const H = mapCtx.wallHeight;
+    const W = mapCtx.wallWidth;
+    const heightPx = mapCtx.height;
+    const dirX = mapCtx.dirX;
+    const dirY = mapCtx.dirY;
+    const foldX = mapCtx.foldX;
+    const foldY = mapCtx.foldY;
+    const invEdgeLen = mapCtx.invEdgeLen;
+    const p1x = mapCtx.p1x;
+    const p1y = mapCtx.p1y;
+    let idx = 0;
+    for (let y = 0; y < height; y++) {
+        const v = (heightPx - 1 - y) * invBakeScale;
+        let evalXBase;
+        let evalYBase;
+        let wallV;
+        if (v < W) {
+            const foldOffset = H + v;
+            evalXBase = p1x + foldX * foldOffset;
+            evalYBase = p1y + foldY * foldOffset;
+            wallV = 1;
+        } else {
+            const z = H + W - v;
+            const foldOffset = z;
+            evalXBase = p1x + foldX * foldOffset;
+            evalYBase = p1y + foldY * foldOffset;
+            wallV = z / H;
+        }
+        for (let x = 0; x < width; x++, idx++) {
+            const dist = x * invBakeScale;
+            samples.evalX[idx] = evalXBase + dist * dirX;
+            samples.evalY[idx] = evalYBase + dist * dirY;
+            samples.wallU[idx] = dist * invEdgeLen;
+            samples.wallV[idx] = wallV;
+        }
+    }
+}
+function writeWallCellPixel(samples, idx, x, y, mapCtx) {
+    const invBakeScale = mapCtx.invBakeScale;
+    samples.evalX[idx] = mapCtx.startWorldX + x * invBakeScale;
+    samples.evalY[idx] = mapCtx.startWorldY + (mapCtx.cellSize - y * invBakeScale) + mapCtx.zOffset;
+    samples.wallU[idx] = x / mapCtx.spanU;
+    samples.wallV[idx] = (mapCtx.height - 1 - y) * mapCtx.invWallCellVSpan;
+}
+function writeRoofPixel(samples, idx, x, y, mapCtx) {
+    const invBakeScale = mapCtx.invBakeScale;
+    samples.evalX[idx] = mapCtx.startWorldX + x * invBakeScale;
+    samples.evalY[idx] = mapCtx.startWorldY + y * invBakeScale;
+    samples.wallU[idx] = x / mapCtx.spanU;
+    samples.wallV[idx] = 1;
 }
 /** @param {BakeRequest} req */
 export function paintBakeRequest(req, bakeSession = globalBakeSession) {

@@ -1,4 +1,12 @@
-import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
+export function createWallFaceAxes(p1, p2) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const edgeLen = Math.hypot(dx, dy);
+    if (edgeLen <= 0) return { edgeLen: 0, dirX: 0, dirY: 0, foldX: 0, foldY: 0 };
+    const dirX = dx / edgeLen;
+    const dirY = dy / edgeLen;
+    return { edgeLen, dirX, dirY, foldX: -dirY, foldY: dirX };
+}
 /** World-aligned slices along a wall base edge (stable when the camera moves). */
 export function wallFaceColumns(p1, p2, cellSize) {
     const { edgeLen, dirX: edgeDirX, dirY: edgeDirY } = createWallFaceAxes(p1, p2);
