@@ -1,3 +1,4 @@
+import { SURFACE_PROFILE_ID } from "../procedural/profileIds.js";
 /** Minimum pre-impact speed for kinetic wall chips and snake splits. */
 export const SNAKE_KINETIC_MIN_STRIKE_SPEED = 28;
 const SNAKE_INTENT = {
@@ -58,6 +59,7 @@ export const SNAKE_GAME_DEFAULTS = {
     startRadius: 2,
     cavern: { mapSeedOffset: 11, wallHeightLevel: 1, regionPaddingCells: 4, fillChance: 0.48, iterations: 4, openBoundaryRows: 3 },
     rail: { wallHeightLevel: 1, edgeThickness: 4, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
+    surfaceRegions: { topHalfProfileId: SURFACE_PROFILE_ID.tomatoGarden, bottomHalfProfileId: SURFACE_PROFILE_ID.poolTableFelt },
     showFocusedAgentDebug: false,
     focusedAgentDebug: { agentSlots: {}, pathPreview: { cellCount: 3 }, targetRing: {} },
     aiBudget: { thinkPerFrame: 32, focusedThinkEveryFrame: true, onScreenThinkInterval: 1, offScreenThinkInterval: 4, dormantThinkInterval: 30 },

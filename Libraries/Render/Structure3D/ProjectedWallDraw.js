@@ -8,7 +8,7 @@ import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { resolveChunkBaseProfileId, resolveWallSurfaceProfileId } from "../../Spatial/grid/SurfaceMaterialStore.js";
+import { resolveWallSurfaceProfileId } from "../../Spatial/grid/SurfaceMaterialStore.js";
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
@@ -62,8 +62,7 @@ function resolveWallFaceAtlas(p1, p2, state, face) {
     const settings = worldSurfaces.settings;
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
-    const chunkBase = resolveChunkBaseProfileId(state.obstacleGrid, face.gridCol, face.gridRow, settings.cellsPerChunk, worldSurfaces.activeSurfaceProfileId);
-    const profileId = resolveWallSurfaceProfileId(state.obstacleGrid, face, chunkBase);
+    const profileId = resolveWallSurfaceProfileId(state.obstacleGrid, face, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk);
     const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
     if (!baked) return null;
     const canvas = baked.canvases[0];

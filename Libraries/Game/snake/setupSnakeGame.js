@@ -7,7 +7,6 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig 
 import { createSnakeAgentSession, spawnSpeciesBatch, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "./species/index.js";
 import { spawnSnakeCavernScene, resolveSnakePlayableBounds } from "./snakeScene.js";
-import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
 import { mountSnakeHud } from "./snakeHud.js";
 import { appendFocusedAgentPathPreviewCommands } from "./focusedAgentPathOverlays.js";
 import { appendFocusedAgentTargetOverlayCommands } from "./focusedAgentTargetOverlays.js";
@@ -26,9 +25,10 @@ import { ensureLabPathDebugCache } from "../../Render/map/labMapCaches.js";
 import { isShowLabPathDebug, markLabViewDirty, setLabPathDebugEnabled } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
-function applySnakeRegionSurfaceProfiles(state) {
+function applySnakeRegionSurfaceProfiles(state, config) {
     const grid = state.obstacleGrid;
     const playable = resolveSnakePlayableBounds(state);
+    const regions = config.surfaceRegions;
     const cellSize = grid.cellSize;
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     const topCol = grid.worldCol(playable.boundsCol * cellSize);
@@ -37,8 +37,8 @@ function applySnakeRegionSurfaceProfiles(state) {
     const lastRow = topRow + playable.boundsRows - 1;
     const midRow = topRow + Math.floor(playable.boundsRows / 2);
     const chunkOf = (cell) => Math.floor(cell / cellsPerChunk);
-    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(topRow), chunkOf(lastCol), chunkOf(midRow - 1), SURFACE_PROFILE_ID.tomatoGarden);
-    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(midRow), chunkOf(lastCol), chunkOf(lastRow), SURFACE_PROFILE_ID.poolTableFelt);
+    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(topRow), chunkOf(lastCol), chunkOf(midRow - 1), regions.topHalfProfileId);
+    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(midRow), chunkOf(lastCol), chunkOf(lastRow), regions.bottomHalfProfileId);
 }
 export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     applySnakeGameConfig();
@@ -51,7 +51,7 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     await commitGridNavEdit(state, null, { fullNavSync: true });
     scene.navWalkable.rebake();
-    applySnakeRegionSurfaceProfiles(state);
+    applySnakeRegionSurfaceProfiles(state, config);
     let spawnExclude = new Set();
     const spawnPlan = [];
     // Add snakes

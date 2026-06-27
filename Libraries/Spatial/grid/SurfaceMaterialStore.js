@@ -1,6 +1,9 @@
 import { cellEdgeSlotOffset } from "./cellEdgeSlots.js";
 import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
+// Surface material ownership resolves from the narrowest owner outward:
+// cell/edge override, then chunk profile, then the active/default profile.
+export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
 function chunkProfileKey(chunkCol, chunkRow) {
     return `${chunkCol},${chunkRow}`;
 }
@@ -106,19 +109,35 @@ export class SurfaceMaterialStore {
         return this.edgeProfileIds.has(base) || this.edgeProfileIds.has(base + 1) || this.edgeProfileIds.has(base + 2) || this.edgeProfileIds.has(base + 3);
     }
 }
-export function resolveCellSurfaceProfileId(grid, idx, baseProfileId) {
-    return grid.surfaceMaterials.getCellAtIdx(idx) ?? baseProfileId;
-}
-export function resolveEdgeSurfaceProfileId(grid, col, row, side, baseProfileId) {
-    return grid.surfaceMaterials.getEdge(col, row, side, grid.cols) ?? baseProfileId;
-}
-export function resolveWallSurfaceProfileId(grid, face, baseProfileId) {
-    if (face.isEdgeRail) return resolveEdgeSurfaceProfileId(grid, face.gridCol, face.gridRow, face.gridSide, baseProfileId);
-    return resolveCellSurfaceProfileId(grid, face.gridIdx, baseProfileId);
-}
-export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
-    return grid.surfaceMaterials.getChunk(chunkCol, chunkRow) ?? baseProfileId;
-}
 export function resolveChunkBaseProfileId(grid, col, row, cellsPerChunk, baseProfileId) {
     return resolveChunkSurfaceProfileId(grid, Math.floor(col / cellsPerChunk), Math.floor(row / cellsPerChunk), baseProfileId);
+}
+export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
+    if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunk(a, b) ?? baseProfileId;
+    if (ownerKind === SURFACE_MATERIAL_OWNER.Cell) {
+        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, a % grid.cols, (a / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
+        return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
+    }
+    if (ownerKind === SURFACE_MATERIAL_OWNER.Edge) {
+        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, a, b, cellsPerChunk, baseProfileId) : baseProfileId;
+        return grid.surfaceMaterials.getEdge(a, b, c, grid.cols) ?? chunkBase;
+    }
+    if (ownerKind === SURFACE_MATERIAL_OWNER.WallFace) {
+        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, face.gridCol, face.gridRow, cellsPerChunk, baseProfileId) : baseProfileId;
+        if (face.isEdgeRail) return grid.surfaceMaterials.getEdge(face.gridCol, face.gridRow, face.gridSide, grid.cols) ?? chunkBase;
+        return grid.surfaceMaterials.getCellAtIdx(face.gridIdx) ?? chunkBase;
+    }
+    throw new Error(`unknown surface material owner kind: ${ownerKind}`);
+}
+export function resolveCellSurfaceProfileId(grid, idx, baseProfileId, cellsPerChunk = 0) {
+    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, baseProfileId, cellsPerChunk, idx);
+}
+export function resolveEdgeSurfaceProfileId(grid, col, row, side, baseProfileId, cellsPerChunk = 0) {
+    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Edge, baseProfileId, cellsPerChunk, col, row, side);
+}
+export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerChunk = 0) {
+    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, baseProfileId, cellsPerChunk, 0, 0, 0, face);
+}
+export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
+    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkCol, chunkRow);
 }
