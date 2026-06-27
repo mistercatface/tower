@@ -5,7 +5,6 @@ import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = gameWorldSurfaceSettings) {
         super(settings);
-        this.worldSurfaceSeed = 0;
     }
     clearBakeCache() {
         super.clear();

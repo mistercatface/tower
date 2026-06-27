@@ -24,9 +24,10 @@ export class WorldSurfaceEngine {
         this.chunkDrawBounds = createAabb();
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, minChunkCol: 0, maxChunkCol: 0, minChunkRow: 0, maxChunkRow: 0 };
-        this._resolvedChunkCanvas = { canvas: null, profileId: null };
+        this._resolvedChunkCanvas = null;
         this._chunkBounds = createAabb();
         this.activeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
+        this.worldSurfaceSeed = (Math.random() * 0x100000000) >>> 0;
     }
     clear() {
         this.surfaceCache.clear();
@@ -46,7 +47,7 @@ export class WorldSurfaceEngine {
             centerX = aabbCenterX(bounds);
             centerY = aabbCenterY(bounds);
         }
-        return { chunkCol, chunkRow, minX, minY, seed: this.worldSurfaceSeed ?? 0, profileId: resolvedProfileId, centerX, centerY, zLevel: zLevel ?? 0 };
+        return { chunkCol, chunkRow, minX, minY, seed: this.worldSurfaceSeed, profileId: resolvedProfileId, centerX, centerY, zLevel: zLevel ?? 0 };
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
         if (!bounds || !state?.obstacleGrid) return;
@@ -105,9 +106,9 @@ export class WorldSurfaceEngine {
         const payload = this.buildGroundChunkPayload(state, chunkCol, chunkRow, zLevel, resolvedProfileId, boundsSample);
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
     }
-    getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, bounds, roofCanvas, profileId) {
+    getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, bounds, roofCanvas) {
         if (roofCanvas.isPlaceholder) return roofCanvas;
-        const drawKey = this.cacheKeys.staticRoofDrawKey(chunkCol, chunkRow, profileId, zLevel);
+        const drawKey = this.cacheKeys.staticRoofDrawKey(chunkCol, chunkRow, this.activeSurfaceProfileId, zLevel);
         const maskKey = staticRoofMaskCacheKey(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
@@ -130,17 +131,16 @@ export class WorldSurfaceEngine {
     /**
      * @param {{ x: number, y: number }} p1
      * @param {{ x: number, y: number }} p2
-     * @param {object} state
      * @param {{
-     *   profileId: string,
+     *   profileId?: string,
      *   wallHeight?: number | null,
      *   cacheObj?: object | null,
      *   atlasFaceId?: string,
      * }} options
      */
-    getOrEnsureWallAtlas(p1, p2, state, options) {
-        const { profileId, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
-        const seed = state.worldSurfaces.worldSurfaceSeed ?? 0;
+    getOrEnsureWallAtlas(p1, p2, options) {
+        const { profileId = this.activeSurfaceProfileId, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
+        const seed = this.worldSurfaceSeed;
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
         const atlas = this.cacheKeys.wallAtlasKey(p1, p2, seed, profileId, wallHeightKey);
         if (cacheObj) {
@@ -175,11 +175,11 @@ export class WorldSurfaceEngine {
      * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} worldCorners
      * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} outSrc4
      */
-    fillHorizontalCapDrawSampleInto(worldCorners, zLevel, state, profileId, outSrc4) {
+    fillHorizontalCapDrawSampleInto(worldCorners, zLevel, state, outSrc4) {
         const surfaceBakeScale = this.settings.surfaceBakeScale;
         const obstacleGrid = state.obstacleGrid;
         const sample = this.surfaceSpace.horizontalSample(worldCorners, obstacleGrid);
-        const canvas = this.getGroundChunkCanvas(sample.chunkCol, sample.chunkRow, state, zLevel, profileId)[0];
+        const canvas = this.getGroundChunkCanvas(sample.chunkCol, sample.chunkRow, state, zLevel)[0];
         for (let i = 0; i < 4; i++) {
             outSrc4[i].x = (worldCorners[i].x - sample.minX) * surfaceBakeScale;
             outSrc4[i].y = (worldCorners[i].y - sample.minY) * surfaceBakeScale;
@@ -223,9 +223,7 @@ export class WorldSurfaceEngine {
         const state = this._chunkDraw.state;
         const canvas = this.getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel)[0];
         if (canvas?.isPlaceholder) return false;
-        const resolved = this._resolvedChunkCanvas;
-        resolved.canvas = canvas;
-        resolved.profileId = this.activeSurfaceProfileId;
+        this._resolvedChunkCanvas = canvas;
         return true;
     }
     drawGroundPlaneChunks() {
@@ -235,13 +233,12 @@ export class WorldSurfaceEngine {
         if (!frame) return;
         const ctx = d.ctx;
         const { obstacleGrid, state, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow } = frame;
-        const resolved = this._resolvedChunkCanvas;
         const chunkBounds = this._chunkBounds;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
                 this.surfaceSpace.chunkBoundsInto(chunkBounds, obstacleGrid, chunkCol, chunkRow);
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, 0)) continue;
-                ctx.drawImage(resolved.canvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
+                ctx.drawImage(this._resolvedChunkCanvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
             }
     }
     drawStaticRoofChunks() {
@@ -272,7 +269,6 @@ export class WorldSurfaceEngine {
         if (!frame) return;
         const ctx = d.ctx;
         const { obstacleGrid, minChunkCol, maxChunkCol, minChunkRow, maxChunkRow, viewport } = frame;
-        const resolved = this._resolvedChunkCanvas;
         const chunkBounds = this._chunkBounds;
         for (let chunkRow = minChunkRow; chunkRow <= maxChunkRow; chunkRow++)
             for (let chunkCol = minChunkCol; chunkCol <= maxChunkCol; chunkCol++) {
@@ -283,7 +279,7 @@ export class WorldSurfaceEngine {
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, zLevel)) continue;
                 ctx.save();
                 if (mode === ELEVATED_CHUNK_ROOF) {
-                    const drawCanvas = this.getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, chunkBounds, resolved.canvas, resolved.profileId);
+                    const drawCanvas = this.getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, chunkBounds, this._resolvedChunkCanvas);
                     if (!drawCanvas || drawCanvas.isPlaceholder) {
                         ctx.restore();
                         continue;
@@ -294,14 +290,14 @@ export class WorldSurfaceEngine {
                         ctx.restore();
                         continue;
                     }
-                    ctx.drawImage(resolved.canvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
+                    ctx.drawImage(this._resolvedChunkCanvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
                 }
                 ctx.restore();
             }
     }
     ensureWallChunkProfileTextures(state, profileId, wallHeightPx) {
         const cellSize = this.settings.cellSize;
-        const sideAtlas = this.getOrEnsureWallAtlas({ x: 0, y: 0 }, { x: cellSize, y: 0 }, state, { profileId, wallHeight: wallHeightPx });
+        const sideAtlas = this.getOrEnsureWallAtlas({ x: 0, y: 0 }, { x: cellSize, y: 0 }, { profileId, wallHeight: wallHeightPx });
         const sideCanvas = sideAtlas?.canvases?.[0] ?? null;
         const sample = this.surfaceSpace.wallChunkTextureSample(cellSize);
         const capCanvasEntry = this.getGroundChunkCanvas(sample.chunkCol, sample.chunkRow, state, 1, profileId, sample);

@@ -61,8 +61,7 @@ function resolveWallFaceAtlas(p1, p2, state, face) {
     const settings = worldSurfaces.settings;
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
-    const profileId = worldSurfaces.activeSurfaceProfileId;
-    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, state, { profileId, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
+    const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
     if (!baked) return null;
     const canvas = baked.canvases[0];
     if (!canvas || canvas.isPlaceholder) return "solid";
@@ -192,9 +191,8 @@ export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;
     }
-    const profileId = worldSurfaces.activeSurfaceProfileId;
     railWallCapUvCornersInto(sCapUv, state.obstacleGrid, box);
-    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, state, profileId, sCapSrc);
+    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, state, sCapSrc);
     if (!capCanvas) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;
