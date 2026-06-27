@@ -1,4 +1,5 @@
 import { cellEdgeSlotOffset } from "./cellEdgeSlots.js";
+import { cellToChunkCoord, remapChunkCoord } from "./GridCoords.js";
 import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 // Surface material ownership resolves from the narrowest owner outward:
@@ -6,10 +7,6 @@ import { cellInRect, colRowToIndex } from "./GridUtils.js";
 export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
 function chunkProfileKey(chunkCol, chunkRow) {
     return `${chunkCol},${chunkRow}`;
-}
-function parseChunkProfileKey(key) {
-    const comma = key.indexOf(",");
-    return { chunkCol: Number(key.slice(0, comma)), chunkRow: Number(key.slice(comma + 1)) };
 }
 export class SurfaceMaterialStore {
     constructor() {
@@ -50,9 +47,11 @@ export class SurfaceMaterialStore {
         }
         if (snapshot.chunkProfileIds.size > 0 && (!cellsPerChunk || cellsPerChunk <= 0)) throw new Error("Surface material chunk remap requires cellsPerChunk");
         for (const [key, profileId] of snapshot.chunkProfileIds) {
-            const { chunkCol, chunkRow } = parseChunkProfileKey(key);
-            const newChunkCol = Math.floor((chunkCol * cellsPerChunk + colOffset) / cellsPerChunk);
-            const newChunkRow = Math.floor((chunkRow * cellsPerChunk + rowOffset) / cellsPerChunk);
+            const comma = key.indexOf(",");
+            const chunkCol = Number(key.slice(0, comma));
+            const chunkRow = Number(key.slice(comma + 1));
+            const newChunkCol = remapChunkCoord(chunkCol, colOffset, cellsPerChunk);
+            const newChunkRow = remapChunkCoord(chunkRow, rowOffset, cellsPerChunk);
             this.chunkProfileIds.set(chunkProfileKey(newChunkCol, newChunkRow), profileId);
         }
     }
@@ -110,7 +109,7 @@ export class SurfaceMaterialStore {
     }
 }
 export function resolveChunkBaseProfileId(grid, col, row, cellsPerChunk, baseProfileId) {
-    return resolveChunkSurfaceProfileId(grid, Math.floor(col / cellsPerChunk), Math.floor(row / cellsPerChunk), baseProfileId);
+    return resolveChunkSurfaceProfileId(grid, cellToChunkCoord(col, cellsPerChunk), cellToChunkCoord(row, cellsPerChunk), baseProfileId);
 }
 export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
     if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunk(a, b) ?? baseProfileId;

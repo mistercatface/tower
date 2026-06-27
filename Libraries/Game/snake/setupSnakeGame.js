@@ -22,6 +22,7 @@ import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnPopulationScene } from "./spawnPopulationInScene.js";
 import { CUSTOM_SYSTEMS } from "./customSystems.js";
 import { ensureLabPathDebugCache } from "../../Render/map/labMapCaches.js";
+import { cellBoundsToChunkRange } from "../../Spatial/grid/GridCoords.js";
 import { isShowLabPathDebug, markLabViewDirty, setLabPathDebugEnabled } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
@@ -36,9 +37,10 @@ function applySnakeRegionSurfaceProfiles(state, config) {
     const lastCol = topCol + playable.boundsCols - 1;
     const lastRow = topRow + playable.boundsRows - 1;
     const midRow = topRow + Math.floor(playable.boundsRows / 2);
-    const chunkOf = (cell) => Math.floor(cell / cellsPerChunk);
-    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(topRow), chunkOf(lastCol), chunkOf(midRow - 1), regions.topHalfProfileId);
-    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(midRow), chunkOf(lastCol), chunkOf(lastRow), regions.bottomHalfProfileId);
+    const topRange = cellBoundsToChunkRange(topCol, topRow, lastCol, midRow - 1, cellsPerChunk);
+    const bottomRange = cellBoundsToChunkRange(topCol, midRow, lastCol, lastRow, cellsPerChunk);
+    setChunkSurfaceProfileRangeEdit(state, topRange.minChunkCol, topRange.minChunkRow, topRange.maxChunkCol, topRange.maxChunkRow, regions.topHalfProfileId);
+    setChunkSurfaceProfileRangeEdit(state, bottomRange.minChunkCol, bottomRange.minChunkRow, bottomRange.maxChunkCol, bottomRange.maxChunkRow, regions.bottomHalfProfileId);
 }
 export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     applySnakeGameConfig();

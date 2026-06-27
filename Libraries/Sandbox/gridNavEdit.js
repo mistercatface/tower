@@ -2,6 +2,7 @@ import { cellBoundsAt, isEmptyCellBounds, unionCellBounds } from "../DataStructu
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
+import { chunkRangeToCellBounds } from "../Spatial/grid/GridCoords.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 /** @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null | undefined} bounds */
 function mergeNavEditBounds(bounds) {
@@ -32,14 +33,6 @@ export function commitGridNavEdit(state, bounds, { invalidateSurfaces = true, fu
     const damageBounds = fullNavSync ? null : merged;
     return nav.commitEdit(damageBounds, { fullNavSync });
 }
-function chunkRangeCellBounds(grid, cellsPerChunk, minChunkCol, minChunkRow, maxChunkCol, maxChunkRow) {
-    const startCol = Math.max(0, minChunkCol * cellsPerChunk);
-    const startRow = Math.max(0, minChunkRow * cellsPerChunk);
-    const endCol = Math.min(grid.cols - 1, (maxChunkCol + 1) * cellsPerChunk - 1);
-    const endRow = Math.min(grid.rows - 1, (maxChunkRow + 1) * cellsPerChunk - 1);
-    if (startCol > endCol || startRow > endRow) return null;
-    return { startCol, endCol, startRow, endRow };
-}
 export function commitSurfaceMaterialEdit(state, bounds) {
     if (!bounds || isEmptyCellBounds(bounds) || bounds.startCol > bounds.endCol || bounds.startRow > bounds.endRow) return null;
     if (state.worldSurfaces) state.worldSurfaces.invalidateGridBounds(bounds, state);
@@ -50,17 +43,17 @@ export function commitSurfaceMaterialEdit(state, bounds) {
 export function setChunkSurfaceProfileEdit(state, chunkCol, chunkRow, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     state.obstacleGrid.setChunkSurfaceProfile(chunkCol, chunkRow, profileId, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeCellBounds(state.obstacleGrid, cellsPerChunk, chunkCol, chunkRow, chunkCol, chunkRow));
+    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkCol, chunkRow, chunkCol, chunkRow, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
 export function clearChunkSurfaceProfileEdit(state, chunkCol, chunkRow) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     state.obstacleGrid.clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeCellBounds(state.obstacleGrid, cellsPerChunk, chunkCol, chunkRow, chunkCol, chunkRow));
+    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkCol, chunkRow, chunkCol, chunkRow, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
 export function setChunkSurfaceProfileRangeEdit(state, minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     state.obstacleGrid.setChunkSurfaceProfileRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeCellBounds(state.obstacleGrid, cellsPerChunk, minChunkCol, minChunkRow, maxChunkCol, maxChunkRow));
+    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
 /** One resync for multiple dirty regions (rails + belts, clear + stamp, etc.). */
 export function commitGridNavEditUnion(state, ...boundsParts) {

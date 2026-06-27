@@ -1,4 +1,4 @@
-import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
+import { cellToChunkCoord, forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { edgeNeighbor, cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
@@ -12,6 +12,8 @@ function allocRailWallBox() {
     return {
         gridCol: 0,
         gridRow: 0,
+        chunkCol: 0,
+        chunkRow: 0,
         gridIdx: 0,
         gridSide: 0,
         minX: 0,
@@ -178,6 +180,8 @@ export function writeRailWallBoxInto(box, grid, col, row, edge) {
     railWallSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
     box.gridCol = col;
     box.gridRow = row;
+    box.chunkCol = cellToChunkCoord(col, gridSettings.minCellsPerChunk);
+    box.chunkRow = cellToChunkCoord(row, gridSettings.minCellsPerChunk);
     box.gridIdx = idx;
     box.gridSide = edge;
     box.minX = fp.minX;
@@ -263,14 +267,13 @@ function collinearRailWallBoxesAdjacent(a, b) {
     if (a.gridSide !== b.gridSide) return false;
     if (a.wallCapHeight !== b.wallCapHeight || a.wallBaseZ !== b.wallBaseZ || a.edgeThickness !== b.edgeThickness) return false;
     if (a.inwardX !== b.inwardX || a.inwardY !== b.inwardY) return false;
-    const cellsPerChunk = gridSettings.minCellsPerChunk;
     if (a.gridSide === 0 || a.gridSide === 2) {
         if (a.gridRow !== b.gridRow) return false;
-        if (Math.floor(a.gridCol / cellsPerChunk) !== Math.floor(b.gridCol / cellsPerChunk)) return false;
+        if (a.chunkCol !== b.chunkCol) return false;
         return b.gridCol === a.gridCol + 1;
     }
     if (a.gridCol !== b.gridCol) return false;
-    if (Math.floor(a.gridRow / cellsPerChunk) !== Math.floor(b.gridRow / cellsPerChunk)) return false;
+    if (a.chunkRow !== b.chunkRow) return false;
     return b.gridRow === a.gridRow + 1;
 }
 function mergeCollinearRailWallBoxesInPlace(boxes) {

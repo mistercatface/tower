@@ -20,6 +20,28 @@ export function gridToWorldAtOrigin(col, row, minX, minY, cellSize) {
     const cellHalfSize = cellSize * 0.5;
     return { x: gridCenterXAtOrigin(col, minX, cellHalfSize), y: gridCenterYAtOrigin(row, minY, cellHalfSize) };
 }
+export function cellToChunkCoord(cell, cellsPerChunk) {
+    return Math.floor(cell / cellsPerChunk);
+}
+export function remapChunkCoord(chunkCoord, cellOffset, cellsPerChunk) {
+    return cellToChunkCoord(chunkCoord * cellsPerChunk + cellOffset, cellsPerChunk);
+}
+export function cellBoundsToChunkRange(startCol, startRow, endCol, endRow, cellsPerChunk) {
+    return {
+        minChunkCol: cellToChunkCoord(startCol, cellsPerChunk),
+        minChunkRow: cellToChunkCoord(startRow, cellsPerChunk),
+        maxChunkCol: cellToChunkCoord(endCol, cellsPerChunk),
+        maxChunkRow: cellToChunkCoord(endRow, cellsPerChunk),
+    };
+}
+export function chunkRangeToCellBounds(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, cellsPerChunk, gridCols, gridRows) {
+    const startCol = Math.max(0, minChunkCol * cellsPerChunk);
+    const startRow = Math.max(0, minChunkRow * cellsPerChunk);
+    const endCol = Math.min(gridCols - 1, (maxChunkCol + 1) * cellsPerChunk - 1);
+    const endRow = Math.min(gridRows - 1, (maxChunkRow + 1) * cellsPerChunk - 1);
+    if (startCol > endCol || startRow > endRow) return null;
+    return { startCol, endCol, startRow, endRow };
+}
 /** Grid centered on a world point with pixel offsets (FlowFieldGrid). */
 export function createCenteredGridFrame(cellSize, width, height, centerX = 0, centerY = 0) {
     const cols = Math.ceil(width / cellSize);
