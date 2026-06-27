@@ -109,6 +109,7 @@ export function drawBox(
     viewport,
     { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
+    if (prop.wallChunkProfileId) stroke = null;
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const box = extrudeBox(projection, halfSize, facing);
@@ -132,7 +133,7 @@ export function drawBox(
     ctx.beginPath();
     traceClosedPolygon(ctx, box.baseCorners);
     ctx.fill();
-    ctx.stroke();
+    if (stroke) ctx.stroke();
     for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
     for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
     const topHx = typeof box.topHalfSize === "number" ? box.topHalfSize : (box.topHalfSize.x ?? box.topHalfSize.hx);
@@ -147,7 +148,7 @@ export function drawBox(
     ctx.beginPath();
     traceClosedPolygon(ctx, box.topCorners);
     ctx.fill();
-    ctx.stroke();
+    if (stroke) ctx.stroke();
     if (topCross) {
         ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
         ctx.lineWidth = topCross.lineWidth ?? 0.8;
@@ -163,6 +164,7 @@ export function drawExtrudedConvexPolygon(
     viewport,
     { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing, state = null },
 ) {
+    if (prop.wallChunkProfileId) stroke = null;
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const body = extrudeConvexFootprint(projection, localVerts, facing);
@@ -193,7 +195,7 @@ export function drawExtrudedConvexPolygon(
     ctx.beginPath();
     traceClosedPolygon(ctx, body.baseCorners);
     ctx.fill();
-    ctx.stroke();
+    if (stroke) ctx.stroke();
     if (textures) {
         const drawTexturedSideFace = (face) => {
             ctx.save();
@@ -262,7 +264,7 @@ export function drawExtrudedConvexPolygon(
         ctx.beginPath();
         traceClosedPolygon(ctx, body.topCorners);
         ctx.fill();
-        ctx.stroke();
+        if (stroke) ctx.stroke();
     }
     if (topCross && body.topCorners.length === 4) {
         ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
