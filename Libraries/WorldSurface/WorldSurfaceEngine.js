@@ -333,4 +333,24 @@ export class WorldSurfaceEngine {
                 ctx.restore();
             }
     }
+    ensureWallChunkProfileTextures(state, profileId, wallHeightPx) {
+        const cellSize = this.settings.cellSize;
+        const sideAtlas = this.getOrEnsureWallAtlas({ x: 0, y: 0 }, { x: cellSize, y: 0 }, state, { profileId, wallHeight: wallHeightPx });
+        const sideCanvas = sideAtlas?.canvases?.[0] ?? null;
+        const cellsPerChunk = this.settings.cellsPerChunk;
+        const chunkSizePx = cellSize * cellsPerChunk;
+        const chunkCol = -9999;
+        const chunkRow = -9999;
+        const minX = -chunkCol * chunkSizePx;
+        const minY = -chunkRow * chunkSizePx;
+        const centerX = minX + chunkCol * chunkSizePx + chunkSizePx / 2;
+        const centerY = minY + chunkRow * chunkSizePx + chunkSizePx / 2;
+        const payload = { chunkCol, chunkRow, minX, minY, seed: state.worldSurfaces.worldSurfaceSeed ?? 0, profileId, centerX, centerY, zLevel: 0 };
+        const capCanvasEntry = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, 0);
+        const capCanvas = capCanvasEntry?.[0] ?? null;
+        const sideReady = sideCanvas && !sideCanvas.isPlaceholder;
+        const capReady = capCanvas && !capCanvas.isPlaceholder;
+        const ready = sideReady && capReady;
+        return { sideCanvas, capCanvas, ready };
+    }
 }

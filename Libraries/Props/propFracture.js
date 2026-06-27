@@ -139,6 +139,11 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
         shard.vy = motion.vy;
         shard.angularVelocity = motion.w;
         shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+        if (sourceProp.wallChunkProfileId !== undefined) {
+            shard.wallChunkProfileId = sourceProp.wallChunkProfileId;
+            shard.wallChunkHeightPx = sourceProp.wallChunkHeightPx;
+            shard.wallChunkKind = sourceProp.wallChunkKind;
+        }
         if (configureShard) configureShard(shard, geom, i);
         spawned.push(shard);
     }
@@ -184,7 +189,6 @@ function geometryFromChunkComponent(comp, atOrigin) {
 export function splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
     return splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => geometryFromChunkComponent(comp, false));
 }
-
 function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
     if (components.length <= 1) return null;

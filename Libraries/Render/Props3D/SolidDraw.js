@@ -13,6 +13,7 @@ import {
     scaleAtHeight,
 } from "../../Spatial/iso/IsometricProjection.js";
 import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
+import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth }) {
@@ -160,7 +161,7 @@ export function drawExtrudedConvexPolygon(
     ctx,
     prop,
     viewport,
-    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
+    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing, state = null },
 ) {
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
@@ -175,6 +176,13 @@ export function drawExtrudedConvexPolygon(
         if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
         else backFaces.push(face);
     }
+    // Check if textured wall chunk prop
+    let textures = null;
+    if (prop.wallChunkProfileId && state?.worldSurfaces) {
+        const wallHeightPx = prop.wallChunkHeightPx ?? height;
+        const resolvedTextures = state.worldSurfaces.ensureWallChunkProfileTextures(state, prop.wallChunkProfileId, wallHeightPx);
+        if (resolvedTextures.ready) textures = resolvedTextures;
+    }
     const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
     baseGrad.addColorStop(0.0, baseColors.light);
     baseGrad.addColorStop(0.5, baseColors.mid);
@@ -186,19 +194,76 @@ export function drawExtrudedConvexPolygon(
     traceClosedPolygon(ctx, body.baseCorners);
     ctx.fill();
     ctx.stroke();
-    for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
-    for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
-    const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-    topGrad.addColorStop(0.0, topColors.light);
-    topGrad.addColorStop(0.5, topColors.mid);
-    topGrad.addColorStop(1.0, topColors.dark);
-    ctx.fillStyle = topGrad;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    traceClosedPolygon(ctx, body.topCorners);
-    ctx.fill();
-    ctx.stroke();
+    if (textures) {
+        const drawTexturedSideFace = (face) => {
+            ctx.save();
+            ctx.beginPath();
+            traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
+            ctx.clip();
+            const scale = state.worldSurfaces.settings.surfaceBakeScale;
+            drawImageQuad(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, (prop.wallChunkHeightPx ?? height) * scale, face.baseA, face.baseB, face.topB, face.topA);
+            ctx.restore();
+            if (stroke) {
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = lineWidth;
+                ctx.beginPath();
+                traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
+                ctx.stroke();
+            }
+        };
+        for (const face of backFaces) drawTexturedSideFace(face);
+        for (const face of frontFaces) drawTexturedSideFace(face);
+    } else {
+        for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
+        for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
+    }
+    if (textures) {
+        ctx.save();
+        ctx.beginPath();
+        traceClosedPolygon(ctx, body.topCorners);
+        ctx.clip();
+        const scale = state.worldSurfaces.settings.surfaceBakeScale;
+        const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
+        const chunkSizePx = state.worldSurfaces.settings.cellSize * cellsPerChunk;
+        const offset = chunkSizePx / 2;
+        const cos = Math.cos(facing);
+        const sin = Math.sin(facing);
+        const count = localVerts.length;
+        const srcCorners = [];
+        for (let i = 0; i < count; i++) {
+            const lx = localVerts[i].x;
+            const ly = localVerts[i].y;
+            const topLx = scaleAtHeight(lx, projection.alpha, 1);
+            const topLy = scaleAtHeight(ly, projection.alpha, 1);
+            const rx = topLx * cos - topLy * sin;
+            const ry = topLx * sin + topLy * cos;
+            srcCorners.push({ x: (rx + offset) * scale, y: (ry + offset) * scale });
+        }
+        if (body.topCorners.length === 4) {
+            drawImageTriangle(ctx, textures.capCanvas, srcCorners[0], srcCorners[1], srcCorners[3], body.topCorners[0], body.topCorners[1], body.topCorners[3]);
+            drawImageTriangle(ctx, textures.capCanvas, srcCorners[1], srcCorners[2], srcCorners[3], body.topCorners[1], body.topCorners[2], body.topCorners[3]);
+        }
+        ctx.restore();
+        if (stroke) {
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            traceClosedPolygon(ctx, body.topCorners);
+            ctx.stroke();
+        }
+    } else {
+        const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
+        topGrad.addColorStop(0.0, topColors.light);
+        topGrad.addColorStop(0.5, topColors.mid);
+        topGrad.addColorStop(1.0, topColors.dark);
+        ctx.fillStyle = topGrad;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        traceClosedPolygon(ctx, body.topCorners);
+        ctx.fill();
+        ctx.stroke();
+    }
     if (topCross && body.topCorners.length === 4) {
         ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
         ctx.lineWidth = topCross.lineWidth ?? 0.8;
@@ -248,7 +313,6 @@ export function drawExtrudedCompoundPolygon(
             baseCorners[i] = { x: cx + lx * cos - ly * sin, y: cy + lx * sin + ly * cos };
             topCorners[i] = { x: topX + topLx * cos - topLy * sin, y: topY + topLx * sin + topLy * cos };
         }
-
         const faces = [];
         for (let i = 0; i < count; i++) {
             const next = (i + 1) % count;
@@ -258,7 +322,6 @@ export function drawExtrudedCompoundPolygon(
             const ly = -(pB.x - pA.x);
             const worldNx = lx * cos - ly * sin;
             const worldNy = lx * sin + ly * cos;
-
             const face = {
                 baseA: baseCorners[i],
                 baseB: baseCorners[next],
@@ -270,10 +333,8 @@ export function drawExtrudedCompoundPolygon(
             face.visible = isOutwardFaceTowardViewer(face.midX, face.midY, worldNx, worldNy, viewport.x, viewport.y);
             faces.push(face);
         }
-
         const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
         const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
-
         // 1. Draw base
         const baseGrad = ctx.createLinearGradient(baseCorners[0].x, baseCorners[0].y, baseCorners[6].x, baseCorners[6].y);
         baseGrad.addColorStop(0.0, baseColors.light);
@@ -286,7 +347,6 @@ export function drawExtrudedCompoundPolygon(
         traceClosedPolygon(ctx, baseCorners);
         ctx.fill();
         ctx.stroke();
-
         // 2. Draw sides sorted back-to-front
         const sortedFaces = faces.slice().sort((a, b) => a.midY - b.midY);
         for (const face of sortedFaces) {
@@ -294,7 +354,6 @@ export function drawExtrudedCompoundPolygon(
             const drawPlanks = face.visible;
             drawBoxSideFace(ctx, face, cx, cy, colors, { stroke, lineWidth, plankTs, drawPlanks });
         }
-
         // 3. Draw top
         const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
         topGrad.addColorStop(0.0, topColors.light);
@@ -309,7 +368,6 @@ export function drawExtrudedCompoundPolygon(
         ctx.stroke();
         return;
     }
-
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };

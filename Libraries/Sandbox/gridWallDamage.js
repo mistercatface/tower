@@ -8,6 +8,8 @@ import { applyPropBoxFootprint } from "../Props/propStrategy.js";
 import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/propFracture.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
+import { resolveRoomGraphFloorProfileIdAtCell } from "../RoomGraph/roomGraphSurfaceProfile.js";
+import { surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
 /** @typedef {{ kind: "voxel", col: number, row: number } | { kind: "rail", col: number, row: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.col},${target.row}` : `r:${target.col},${target.row}:${target.side}`;
@@ -101,6 +103,8 @@ export function applyPendingWallDamage(state, wallDamage) {
             if (!info) continue;
             const cx = grid.gridCenterX(target.col);
             const cy = grid.gridCenterY(target.row);
+            const profileId = resolveRoomGraphFloorProfileIdAtCell(state, target.col, target.row) ?? state.worldSurfaces?.surfaceProfileOverride ?? surfaceProfileDefaults.defaultId;
+            const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "voxel",
                 col: target.col,
@@ -110,7 +114,10 @@ export function applyPendingWallDamage(state, wallDamage) {
                 angle: 0,
                 width: grid.cellSize,
                 height: grid.cellSize,
-                wallHeight: info.heightLevel * grid.cellSize,
+                wallHeight: wallHeightPx,
+                wallChunkProfileId: profileId,
+                wallChunkHeightPx: wallHeightPx,
+                wallChunkKind: "voxel",
                 strength: item.strength,
                 contactX: item.contactX ?? cx,
                 contactY: item.contactY ?? cy,
@@ -132,6 +139,8 @@ export function applyPendingWallDamage(state, wallDamage) {
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5;
             const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            const profileId = resolveRoomGraphFloorProfileIdAtCell(state, target.col, target.row) ?? state.worldSurfaces?.surfaceProfileOverride ?? surfaceProfileDefaults.defaultId;
+            const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "rail",
                 col: target.col,
@@ -142,7 +151,10 @@ export function applyPendingWallDamage(state, wallDamage) {
                 angle: angle,
                 width: grid.cellSize,
                 height: info.thicknessLevel ?? 1,
-                wallHeight: info.heightLevel * grid.cellSize,
+                wallHeight: wallHeightPx,
+                wallChunkProfileId: profileId,
+                wallChunkHeightPx: wallHeightPx,
+                wallChunkKind: "rail",
                 strength: item.strength,
                 contactX: item.contactX ?? cx,
                 contactY: item.contactY ?? cy,
@@ -177,6 +189,9 @@ export function applyPendingWallDamage(state, wallDamage) {
         const prop = acquireWorldProp(desc.x, desc.y, propType, desc.angle);
         applyPropBoxFootprint(prop, desc.width / 2, desc.height / 2);
         prop.height = desc.wallHeight;
+        prop.wallChunkProfileId = desc.wallChunkProfileId;
+        prop.wallChunkHeightPx = desc.wallChunkHeightPx;
+        prop.wallChunkKind = desc.wallChunkKind;
         // Push prop opposite to collision normal scaled by mass ratio
         const sourceMass = desc.sourceMass ?? 1;
         const propMass = prop.mass ?? 1;

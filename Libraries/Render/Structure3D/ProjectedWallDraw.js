@@ -9,6 +9,7 @@ import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { surfaceProfileDefaults } from "../../Procedural/SurfaceProfileProvider.js";
+import { resolveRoomGraphFloorProfileIdAtCell } from "../../RoomGraph/roomGraphSurfaceProfile.js";
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
@@ -61,7 +62,10 @@ function resolveWallProfileId(state, wallCx, wallCy, cacheObj) {
     let profileId = cacheObj && cacheObj._cachedProfileId ? cacheObj._cachedProfileId : null;
     const override = state.worldSurfaces?.surfaceProfileOverride;
     if (!profileId || override) {
-        profileId = override ?? surfaceProfileDefaults.defaultId;
+        const grid = state.obstacleGrid;
+        const col = cacheObj ? cacheObj.gridCol : grid.worldToGridCol(wallCx);
+        const row = cacheObj ? cacheObj.gridRow : grid.worldToGridRow(wallCy);
+        profileId = resolveRoomGraphFloorProfileIdAtCell(state, col, row) ?? override ?? surfaceProfileDefaults.defaultId;
         if (cacheObj && !override) cacheObj._cachedProfileId = profileId;
     }
     return profileId;

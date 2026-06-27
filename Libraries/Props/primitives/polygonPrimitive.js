@@ -4,7 +4,7 @@ import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import propCatalog from "../../../Assets/props/index.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
-    return (ctx, prop, viewport) => {
+    return (ctx, prop, viewport, state = null) => {
         const shape = prop.shape;
         if (shape?.type !== "Polygon") return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
@@ -31,6 +31,7 @@ export function createPolygonPrimitive(visuals) {
             lineWidth: resolvedLineWidth,
             plankTs,
             topCross,
+            state,
         };
         const parts = getEntityCollisionParts(prop);
         if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });

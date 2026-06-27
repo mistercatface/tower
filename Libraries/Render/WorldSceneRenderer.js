@@ -199,7 +199,7 @@ export class WorldSceneRenderer {
         parallelSort(visibleObjects, this.visibleDrawableDepths);
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy) this._drawProp(ctx, obj, viewport);
+            if (obj.strategy) this._drawProp(ctx, obj, viewport, state);
             else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, viewport);
             else if (obj.p1) {
                 bindWallFaceScratch(face, obj);
@@ -210,14 +210,14 @@ export class WorldSceneRenderer {
             }
         }
     }
-    _drawProp(ctx, prop, viewport) {
+    _drawProp(ctx, prop, viewport, state) {
         if (prop._gunBullet) {
-            drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
+            drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile, 0, state);
             return;
         }
         const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
         const draw = propCatalog[renderKey]?.drawRecipe;
         if (!draw) return;
-        drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
+        drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, state);
     }
 }

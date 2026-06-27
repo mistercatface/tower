@@ -150,13 +150,13 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
  * @param {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} draw
  * @param {number} [animFrame]
  */
-function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
+function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, state = null) {
     const px = viewport.x;
     const py = viewport.y;
     const zoom = viewport.zoom ?? 1;
     const dx = prop.x - px;
     const dy = prop.y - py;
-    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
+    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop, state) ?? prop.getCustomSpriteCacheKey?.(prop, state) ?? "";
     const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
     const pixelSize = resolvePropPixelSizeForProp(prop);
     let key = BigInt(internSpriteKeyPart(renderKey));
@@ -188,7 +188,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
         ctx.translate(anchorX - prop.x, anchorY - prop.y);
         drawVisualAttachmentList(ctx, attachments.before, viewport);
-        draw(ctx, stageProp, viewport);
+        draw(ctx, stageProp, viewport, state);
         drawVisualAttachmentList(ctx, attachments.after, viewport);
         ctx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
@@ -258,8 +258,8 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
  * @param {PropDrawRecipe} draw
  * @param {number} [animFrame]
  */
-export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0) {
-    const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
+export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0, state = null) {
+    const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame, state);
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }
