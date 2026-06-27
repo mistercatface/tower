@@ -22,7 +22,8 @@ import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerce
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnPopulationScene } from "./spawnPopulationInScene.js";
 import { CUSTOM_SYSTEMS } from "./customSystems.js";
-import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
+import { ensureLabPathDebugCache } from "../../Render/map/labMapCaches.js";
+import { isShowLabPathDebug, markLabViewDirty, setLabPathDebugEnabled } from "../../../Apps/Editor/ui/preview.js";
 import { GAME_MODE_ZOOM_DEFAULT, GAME_MODE_ZOOM_MAX, TILELAB_ZOOM_MIN } from "../../Viewport/tileLabViewportLimits.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_LABELS, WORLD_RENDER_MODE_RADIAL } from "../../../Render/WorldRenderMode.js";
 function applySnakeRegionSurfaceProfiles(state) {
@@ -125,6 +126,15 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
             },
             set(enabled) {
                 state.worldBloomEnabled = enabled;
+            },
+        },
+        hpaDebugToggleControl: {
+            get() {
+                return isShowLabPathDebug();
+            },
+            set(enabled) {
+                setLabPathDebugEnabled(enabled);
+                if (enabled) void ensureLabPathDebugCache(state);
             },
         },
         zoomControl: {

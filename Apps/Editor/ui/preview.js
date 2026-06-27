@@ -46,6 +46,10 @@ export function setLabVignetteEnabled(enabled) {
     showLabVignette = enabled;
     markLabViewDirty();
 }
+export function setLabPathDebugEnabled(enabled) {
+    showLabPathDebug = enabled;
+    markLabViewDirty();
+}
 export function markLabViewDirty() {
     labViewDirty = true;
 }

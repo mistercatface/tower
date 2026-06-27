@@ -14,6 +14,7 @@ export function mountSnakeHud({
     renderModeControl = null,
     shadowSliderControl = null,
     blurToggleControl = null,
+    hpaDebugToggleControl = null,
     zoomControl = null,
     playbackHandlers = null,
     gameState = null,
@@ -27,6 +28,7 @@ export function mountSnakeHud({
     if (blurToggleControl) toggles.push(hudToggleButton("Blur", "data-snake-blur-toggle"));
     if (onCycleCamera) toggles.push(hudToggleButton("Switch Camera", "data-snake-camera-toggle"));
     toggles.push(hudToggleButton("Overlay", "data-snake-overlay-toggle"));
+    if (hpaDebugToggleControl) toggles.push(hudToggleButton("HPA Debug", "data-snake-hpa-debug-toggle"));
     const shadowPanel = shadowSliderControl
         ? '<div class="snake-hud-panel snake-hud-slider-panel"><span class="snake-hud-label">Shadows</span><div class="snake-hud-slider-row"><input type="range" class="snake-hud-slider" data-snake-shadow-slider min="0" max="100" step="1" value="0" aria-label="Shadow darkness"><span class="snake-hud-slider-value" data-snake-shadow-value>Off</span></div></div>'
         : "";
@@ -47,6 +49,7 @@ export function mountSnakeHud({
     const shadowValueEl = shadowSliderControl ? root.querySelector("[data-snake-shadow-value]") : null;
     const cameraToggleEl = onCycleCamera ? root.querySelector("[data-snake-camera-toggle]") : null;
     const overlayToggleEl = root.querySelector("[data-snake-overlay-toggle]");
+    const hpaDebugToggleEl = hpaDebugToggleControl ? root.querySelector("[data-snake-hpa-debug-toggle]") : null;
     if (cameraToggleEl && onCycleCamera) cameraToggleEl.addEventListener("click", onCycleCamera);
     function notifyVisualChange() {
         onVisualSettingChange?.();
@@ -131,6 +134,20 @@ export function mountSnakeHud({
         notifyVisualChange();
     });
     syncOverlayToggle();
+    function syncHpaDebugToggle() {
+        if (!hpaDebugToggleEl || !hpaDebugToggleControl) return;
+        const enabled = hpaDebugToggleControl.get() === true;
+        hpaDebugToggleEl.classList.toggle("is-on", enabled);
+        hpaDebugToggleEl.setAttribute("aria-pressed", enabled ? "true" : "false");
+    }
+    if (hpaDebugToggleEl && hpaDebugToggleControl) {
+        hpaDebugToggleEl.addEventListener("click", () => {
+            hpaDebugToggleControl.set(!hpaDebugToggleControl.get());
+            syncHpaDebugToggle();
+            notifyVisualChange();
+        });
+        syncHpaDebugToggle();
+    }
     let lastName = undefined;
     return {
         update() {
