@@ -65,8 +65,7 @@ export class WorldSurfaceEngine {
         const maxX = obstacleGrid.minX + (bounds.endCol + 1) * cellSize;
         const maxY = obstacleGrid.minY + (bounds.endRow + 1) * cellSize;
         const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-        const roofZLevels = obstacleGrid.collectStaticStructureZLevels?.() ?? this.settings.roofZLevels ?? [];
-        const zLevels = roofZLevels.filter((z) => z > 0);
+        const zLevels = obstacleGrid.collectStaticStructureZLevels();
         const profileId = this.resolveSurfaceProfileId();
         const rev = getSurfaceProfileRevision(profileId);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
