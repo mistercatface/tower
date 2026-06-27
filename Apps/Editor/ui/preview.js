@@ -110,8 +110,9 @@ function getLabRenderer(canvas, ctx, state) {
     labRenderer.applyWorldRenderMode(state?.worldRenderMode ?? WORLD_RENDER_MODE_DEFAULT);
     return labRenderer;
 }
-function maybeClearProfileBakeCaches(state, profileId) {
-    const key = `${profileId}:${getSurfaceProfileRevision(profileId)}:${state.worldSurfaces.worldSurfaceSeed ?? 0}`;
+function maybeClearProfileBakeCaches(state) {
+    const profileId = state.worldSurfaces.activeSurfaceProfileId;
+    const key = `${profileId}:${getSurfaceProfileRevision(profileId)}:${state.worldSurfaces.worldSurfaceSeed}`;
     if (lastProfileBakeKey === key) return;
     lastProfileBakeKey = key;
     invalidateWallSurfaceDraw(state);
@@ -137,9 +138,7 @@ export function drawLabFrame(state) {
     const viewport = state.viewport;
     const showVignette = showLabVignette;
     const showPathDebug = showLabPathDebug;
-    const prevActiveSurfaceProfileId = state.worldSurfaces.activeSurfaceProfileId;
-    state.worldSurfaces.activeSurfaceProfileId = RUNTIME_LAB_PROFILE_ID;
-    maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
+    maybeClearProfileBakeCaches(state);
     getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -148,7 +147,6 @@ export function drawLabFrame(state) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
     if (showPathDebug) drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
-    state.worldSurfaces.activeSurfaceProfileId = prevActiveSurfaceProfileId;
     labViewDirty = false;
     if (showVignette) {
         ctx.save();

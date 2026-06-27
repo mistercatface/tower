@@ -3,15 +3,6 @@ import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
-    constructor(settings = gameWorldSurfaceSettings) {
-        super(settings);
-    }
-    clearBakeCache() {
-        super.clear();
-    }
-    clear() {
-        this.clearBakeCache();
-    }
     _bindSceneDraw(ctx, state, viewport) {
         this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, playBoundsFromObstacleGrid(state.obstacleGrid));
     }

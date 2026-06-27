@@ -1,4 +1,4 @@
-import { resolveSurfaceProfile, surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
+import { resolveSurfaceProfile } from "../Procedural/SurfaceProfileProvider.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
@@ -62,7 +62,7 @@ export class BakeSession {
 export const globalBakeSession = new BakeSession();
 function resolvePaintProfile(profileOrId) {
     if (profileOrId != null && typeof profileOrId === "object") return profileOrId;
-    return resolveSurfaceProfile(profileOrId ?? surfaceProfileDefaults.defaultId);
+    return resolveSurfaceProfile(profileOrId);
 }
 function writeFloorPixel(samples, idx, x, y, mapCtx) {
     const invBakeScale = mapCtx.invBakeScale;
@@ -228,14 +228,12 @@ function wallPaintOptions(optionsPayload) {
 }
 /** @param {object} payload */
 export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) {
-    const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
-    const { width, height, seed } = payload;
+    const { width, height, seed, profileId } = payload;
     return [bakeRequestToCanvas({ width, height, startWorldX: 0, startWorldY: 0, seed, paintOptions: wallPaintOptions(payload), profileOrId: profileId }, bakeSession)];
 }
 /** Bake a static ground-chunk canvas. */
 export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession) {
-    const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
-    const { minX, minY, seed } = payload;
+    const { minX, minY, seed, profileId } = payload;
     const { cellSize, cellsPerChunk, surfaceBakeScale } = getTileWorkerBakeConstants();
     const bakeSize = bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale);
     const zLevel = payload.zLevel ?? 0;

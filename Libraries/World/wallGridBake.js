@@ -209,7 +209,6 @@ export function resolveRailWallBox(grid, col, row, edge) {
 }
 function clearWallGridDrawableDrawMemos(drawable) {
     delete drawable._wallAtlasStashes;
-    delete drawable._cachedProfileId;
     delete drawable._faceSubdiv;
     delete drawable._faceSubdivKey;
 }

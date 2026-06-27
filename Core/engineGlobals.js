@@ -41,5 +41,5 @@ export function installEditorDefaults(state) {
     worldSurfaces.settings = settings;
     worldSurfaces.activeSurfaceProfileId = activeSurfaceProfileId;
     void TileWorkerCoordinator.syncBakeConstants(settings);
-    if (bakeSettingsChanged) worldSurfaces.clear();
+    if (bakeSettingsChanged) worldSurfaces.clearBakeCache();
 }
