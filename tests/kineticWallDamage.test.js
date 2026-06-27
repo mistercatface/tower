@@ -58,7 +58,7 @@ describe("kinetic wall damage", () => {
                 return true;
             },
         };
-        resolveKineticWallDamage(state, entity, {}, wallResolver);
+        resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
         assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:6,6").strength, 1);
         flushPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, 6, 6));
@@ -127,7 +127,7 @@ describe("kinetic wall damage", () => {
             },
         };
         
-        resolveKineticWallDamage(state, entity, {}, wallResolver);
+        resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
         
         const queued = state.sandbox.gridWallDamage.pendingBreaks.get("v:3,3");
         assert.ok(queued);
@@ -169,7 +169,7 @@ describe("kinetic wall damage", () => {
             },
         };
         
-        resolveKineticWallDamage(state, entity, {}, wallResolver);
+        resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
         
         const queued = state.sandbox.gridWallDamage.pendingBreaks.get("r:4,4:1");
         assert.ok(queued);
@@ -205,7 +205,8 @@ describe("kinetic wall damage", () => {
         
         const spatialFrame = {
             frameId: 42,
-            getWallCandidates: () => candidates
+            getWallCandidates: () => candidates,
+            evictKineticProp() {}
         };
         
         resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);

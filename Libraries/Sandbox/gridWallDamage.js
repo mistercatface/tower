@@ -3,6 +3,7 @@ import { isRailWallEdge } from "../Spatial/grid/CellEdge.js";
 import { cellIsStaticWall, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { createDeferredGridWallCommit } from "./deferredGridWallCommit.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { acquireWorldProp } from "../Props/worldPropPool.js";
 import { applyPropBoxFootprint } from "../Props/propStrategy.js";
 import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/propFracture.js";
@@ -208,9 +209,8 @@ export function applyPendingWallDamage(state, wallDamage) {
         const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
         if (fracture)
             if (prop.strategy?.fractureMode === "glass") {
-                const safeFrame = spatialFrame && typeof spatialFrame.evictKineticProp === "function" ? spatialFrame : { evictKineticProp() {}, ...spatialFrame };
-                removeWorldPropFromState(state, prop, safeFrame);
-                const shards = spawnGlassShatterShards(state, prop, fracture, safeFrame);
+                removeWorldPropFromState(state, prop, spatialFrame ?? kineticSpatial);
+                const shards = spawnGlassShatterShards(state, prop, fracture, spatialFrame);
                 for (let i = 0; i < shards.length; i++) shards[i].height = prop.height;
             } else {
                 const shards = spawnChunkFractureShards(state, prop, fracture, spatialFrame);
