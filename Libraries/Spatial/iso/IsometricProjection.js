@@ -25,10 +25,7 @@ export function projectWorldPointAtHeight(worldX, worldY, height, viewport) {
 }
 export function projectWorldPointToScreenInto(out, viewport, worldX, worldY, height) {
     projectWorldPointInto(out, worldX, worldY, height, viewport);
-    const screen = viewport.worldToScreen(out.x, out.y);
-    out.x = screen.x;
-    out.y = screen.y;
-    return out;
+    return viewport.worldToScreenInto(out, out.x, out.y);
 }
 export function projectWorldRectCorners(originX, originY, sizePx, height, viewport) {
     const out = [
