@@ -31,11 +31,8 @@ export class WorldSurfaceEngine {
     clear() {
         this.surfaceCache.clear();
     }
-    resolveSurfaceProfileId() {
-        return this.activeSurfaceProfileId;
-    }
     buildGroundChunkPayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null, boundsSample = null) {
-        const resolvedProfileId = profileId ?? this.resolveSurfaceProfileId();
+        const resolvedProfileId = profileId ?? this.activeSurfaceProfileId;
         let minX, minY, centerX, centerY;
         if (boundsSample) {
             minX = boundsSample.minX;
@@ -56,7 +53,7 @@ export class WorldSurfaceEngine {
         const obstacleGrid = state.obstacleGrid;
         const range = this.surfaceSpace.cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk);
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
-        const profileId = this.resolveSurfaceProfileId();
+        const profileId = this.activeSurfaceProfileId;
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
                 for (const zLevel of zLevels) {
@@ -101,7 +98,7 @@ export class WorldSurfaceEngine {
         return placeholder;
     }
     getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel = 0, profileId = null, boundsSample = null) {
-        const resolvedProfileId = profileId ?? this.resolveSurfaceProfileId();
+        const resolvedProfileId = profileId ?? this.activeSurfaceProfileId;
         const key = this.cacheKeys.groundChunkKey(chunkCol, chunkRow, resolvedProfileId, zLevel);
         const canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
@@ -224,12 +221,11 @@ export class WorldSurfaceEngine {
     }
     _fillDrawableGroundChunkCanvas(chunkCol, chunkRow, zLevel) {
         const state = this._chunkDraw.state;
-        const profileId = this.resolveSurfaceProfileId();
-        const canvas = this.getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel, profileId)[0];
+        const canvas = this.getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel)[0];
         if (canvas?.isPlaceholder) return false;
         const resolved = this._resolvedChunkCanvas;
         resolved.canvas = canvas;
-        resolved.profileId = profileId;
+        resolved.profileId = this.activeSurfaceProfileId;
         return true;
     }
     drawGroundPlaneChunks() {

@@ -98,7 +98,7 @@ export function applyPendingWallDamage(state, wallDamage) {
             if (!info) continue;
             const cx = grid.gridCenterX(target.col);
             const cy = grid.gridCenterY(target.row);
-            const profileId = state.worldSurfaces.resolveSurfaceProfileId();
+            const profileId = state.worldSurfaces.activeSurfaceProfileId;
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "voxel",
@@ -129,7 +129,7 @@ export function applyPendingWallDamage(state, wallDamage) {
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5;
             const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-            const profileId = state.worldSurfaces.resolveSurfaceProfileId();
+            const profileId = state.worldSurfaces.activeSurfaceProfileId;
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "rail",
