@@ -68,6 +68,11 @@ export class Viewport {
     screenToWorld(screenX, screenY) {
         return { x: (screenX - this.cx) * this.invZoom + this.x, y: (screenY - this.cy) * this.invZoom + this.y };
     }
+    worldToScreenInto(out, worldX, worldY) {
+        out.x = (worldX - this.x) * this.zoom + this.cx;
+        out.y = (worldY - this.y) * this.zoom + this.cy;
+        return out;
+    }
     worldToScreen(worldX, worldY) {
         return { x: (worldX - this.x) * this.zoom + this.cx, y: (worldY - this.y) * this.zoom + this.cy };
     }

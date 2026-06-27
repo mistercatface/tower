@@ -33,6 +33,11 @@ export function makeTestViewport(x, y, halfW = 200, halfH = 200, zoom = 1, camer
         bounds(tier) {
             return bounds;
         },
+        worldToScreenInto(out, worldX, worldY) {
+            out.x = (worldX - x) * zoom + cx;
+            out.y = (worldY - y) * zoom + cy;
+            return out;
+        },
         worldToScreen(worldX, worldY) {
             return { x: (worldX - x) * zoom + cx, y: (worldY - y) * zoom + cy };
         },
