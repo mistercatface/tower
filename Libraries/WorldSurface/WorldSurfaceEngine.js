@@ -345,8 +345,8 @@ export class WorldSurfaceEngine {
         const minY = -chunkRow * chunkSizePx;
         const centerX = minX + chunkCol * chunkSizePx + chunkSizePx / 2;
         const centerY = minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-        const payload = { chunkCol, chunkRow, minX, minY, seed: state.worldSurfaces.worldSurfaceSeed ?? 0, profileId, centerX, centerY, zLevel: 0 };
-        const capCanvasEntry = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, 0);
+        const payload = { chunkCol, chunkRow, minX, minY, seed: state.worldSurfaces.worldSurfaceSeed ?? 0, profileId, centerX, centerY, zLevel: 1 };
+        const capCanvasEntry = this.getGroundChunkCanvas(chunkCol, chunkRow, state, payload, 1);
         const capCanvas = capCanvasEntry?.[0] ?? null;
         const sideReady = sideCanvas && !sideCanvas.isPlaceholder;
         const capReady = capCanvas && !capCanvas.isPlaceholder;
