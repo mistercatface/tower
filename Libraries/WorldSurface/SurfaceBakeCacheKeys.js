@@ -6,8 +6,9 @@ export class SurfaceProfileRevisionBook {
     }
 }
 export class SurfaceBakeCacheKeys {
-    constructor(settings, revisions = new SurfaceProfileRevisionBook()) {
+    constructor(settings, surfaceSpace, revisions = new SurfaceProfileRevisionBook()) {
         this.settings = settings;
+        this.surfaceSpace = surfaceSpace;
         this.revisions = revisions;
     }
     profileRevision(profileId) {
@@ -23,19 +24,9 @@ export class SurfaceBakeCacheKeys {
         return staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, this.profileRevision(profileId), zLevel);
     }
     wallAtlas(p1, p2, surfaceSeed, profileId, atlasHeight) {
-        const chunkWorldSize = this.settings.chunkWorldSize;
-        const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-        const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const wx2 = wx1 + dx;
-        const wy2 = wy1 + dy;
-        const kx1 = wx1.toFixed(1);
-        const ky1 = wy1.toFixed(1);
-        const kx2 = wx2.toFixed(1);
-        const ky2 = wy2.toFixed(1);
+        const atlas = this.surfaceSpace.wallAtlas(p1, p2);
         const rev = this.profileRevision(profileId);
-        const key = `wall:${rev}:${profileId}:${surfaceSeed}:${atlasHeight}:${kx1},${ky1}-${kx2},${ky2}`;
-        return { key, wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 }, rev };
+        const key = `wall:${rev}:${profileId}:${surfaceSeed}:${atlasHeight}:${atlas.keyX1},${atlas.keyY1}-${atlas.keyX2},${atlas.keyY2}`;
+        return { key, wrappedP1: atlas.wrappedP1, wrappedP2: atlas.wrappedP2, rev };
     }
 }
