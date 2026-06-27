@@ -19,11 +19,9 @@ export function isDrawableBakedSurface(canvas) {
     return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
 }
 export function drawBakedTexture(ctx, canvas, bounds) {
-    if (!isDrawableBakedSurface(canvas)) return;
     ctx.drawImage(canvas, bounds.minX, bounds.minY, aabbWidth(bounds), aabbHeight(bounds));
 }
 export function drawProjectedHorizontalChunk(ctx, canvas, corners) {
-    if (!isDrawableBakedSurface(canvas)) return;
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3]);
 }
 export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, viewport) {
