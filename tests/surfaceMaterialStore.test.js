@@ -68,7 +68,7 @@ describe("surface material stores", () => {
             obstacleGrid: grid,
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
-                settings: { floorShadow: "#000" },
+                settings: { floorShadow: "#000", cellsPerChunk: 8 },
                 getOrEnsureWallAtlas(_p1, _p2, options) {
                     capturedProfileId = options.profileId;
                     return null;
@@ -102,7 +102,7 @@ describe("surface material stores", () => {
             obstacleGrid: grid,
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
-                settings: { floorShadow: "#000" },
+                settings: { floorShadow: "#000", cellsPerChunk: 8 },
                 getOrEnsureWallAtlas(_p1, _p2, options) {
                     capturedProfileId = options.profileId;
                     return null;
@@ -123,6 +123,38 @@ describe("surface material stores", () => {
         };
         drawProjectedWallFace(createPathOnlyContext(), { x: 0, y: 0 }, { x: 16, y: 0 }, viewport, state, face);
         assert.equal(capturedProfileId, "cell-profile");
+    });
+
+    it("falls back to the chunk profile for walls with no cell override", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 256, 256);
+        grid.setChunkSurfaceProfile(1, 1, "chunk-profile");
+        let capturedProfileId = null;
+        const state = {
+            obstacleGrid: grid,
+            worldSurfaces: {
+                activeSurfaceProfileId: "base",
+                settings: { floorShadow: "#000", cellsPerChunk: 8 },
+                getOrEnsureWallAtlas(_p1, _p2, options) {
+                    capturedProfileId = options.profileId;
+                    return null;
+                },
+            },
+        };
+        const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
+        const face = {
+            gridCol: 9,
+            gridRow: 9,
+            gridSide: 1,
+            gridIdx: colRowToIndex(9, 9, grid.cols),
+            isEdgeRail: false,
+            wallHeight: 16,
+            wallBaseZ: 0,
+            wallCapHeight: 16,
+            cacheObj: null,
+        };
+        drawProjectedWallFace(createPathOnlyContext(), { x: 0, y: 0 }, { x: 16, y: 0 }, viewport, state, face);
+        assert.equal(capturedProfileId, "chunk-profile");
     });
 
     it("resolves chunk profiles and supports range assignment", () => {

@@ -109,3 +109,6 @@ export function resolveWallSurfaceProfileId(grid, face, baseProfileId) {
 export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
     return grid.surfaceMaterials.getChunk(chunkCol, chunkRow) ?? baseProfileId;
 }
+export function resolveChunkBaseProfileId(grid, col, row, cellsPerChunk, baseProfileId) {
+    return resolveChunkSurfaceProfileId(grid, Math.floor(col / cellsPerChunk), Math.floor(row / cellsPerChunk), baseProfileId);
+}
