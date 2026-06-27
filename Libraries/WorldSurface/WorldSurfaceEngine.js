@@ -18,6 +18,8 @@ import { drawBakedTexture, drawProjectedHorizontalChunkAt, isDrawableBakedSurfac
 import { bakeFrameRange } from "./AnimationFrameBake.js";
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
+// Reserved off-map chunk used for reusable wall-chunk cap texture bakes.
+const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = -9999;
 /**
  * @typedef {Object} WorldSurfaceEngineHooks
  * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number, profileId?: string | null) => object} buildChunkPayload
@@ -339,8 +341,8 @@ export class WorldSurfaceEngine {
         const sideCanvas = sideAtlas?.canvases?.[0] ?? null;
         const cellsPerChunk = this.settings.cellsPerChunk;
         const chunkSizePx = cellSize * cellsPerChunk;
-        const chunkCol = -9999;
-        const chunkRow = -9999;
+        const chunkCol = WALL_CHUNK_TEXTURE_SAMPLE_CHUNK;
+        const chunkRow = WALL_CHUNK_TEXTURE_SAMPLE_CHUNK;
         const minX = -chunkCol * chunkSizePx;
         const minY = -chunkRow * chunkSizePx;
         const centerX = minX + chunkCol * chunkSizePx + chunkSizePx / 2;
@@ -351,6 +353,6 @@ export class WorldSurfaceEngine {
         const sideReady = sideCanvas && !sideCanvas.isPlaceholder;
         const capReady = capCanvas && !capCanvas.isPlaceholder;
         const ready = sideReady && capReady;
-        return { sideCanvas, capCanvas, ready };
+        return { sideCanvas, capCanvas, ready, scale: this.settings.surfaceBakeScale, chunkSizePx };
     }
 }
