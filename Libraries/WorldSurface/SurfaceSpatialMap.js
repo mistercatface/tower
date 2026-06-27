@@ -1,5 +1,4 @@
 import { aabbCenterX, aabbCenterY, cellBoundsToWorldBoundsInto, createAabb, expandPointsAabbInto, minCornerAabbInto } from "../Spatial/bounds.js";
-import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = -9999;
 export class SurfaceSpatialMap {
     constructor(settings) {
@@ -9,7 +8,7 @@ export class SurfaceSpatialMap {
         this._chunkBounds = createAabb();
     }
     chunkSizePx(obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
-        return getChunkSizePx(obstacleGrid.cellSize, cellsPerChunk);
+        return obstacleGrid.cellSize * cellsPerChunk;
     }
     chunkBoundsInto(out, obstacleGrid, chunkCol, chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
         const sizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
@@ -18,10 +17,24 @@ export class SurfaceSpatialMap {
     cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
         const worldBounds = cellBoundsToWorldBoundsInto(this._cellBoundsAabb, bounds, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
-        return worldBoundsToChunkRange(worldBounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+        return this.boundsToChunkRange(worldBounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
     viewportChunkRange(bounds, obstacleGrid, chunkSizePx) {
-        return worldBoundsToChunkRange(bounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+        return this.boundsToChunkRange(bounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+    }
+    boundsToChunkRange(bounds, gridMinX, gridMinY, chunkSizePx) {
+        return {
+            minChunkCol: this.worldToChunkCol(bounds.minX, gridMinX, chunkSizePx),
+            maxChunkCol: this.worldToChunkCol(bounds.maxX - 1, gridMinX, chunkSizePx),
+            minChunkRow: this.worldToChunkRow(bounds.minY, gridMinY, chunkSizePx),
+            maxChunkRow: this.worldToChunkRow(bounds.maxY - 1, gridMinY, chunkSizePx),
+        };
+    }
+    worldToChunkCol(worldX, gridMinX, chunkSizePx) {
+        return Math.floor((worldX - gridMinX) / chunkSizePx);
+    }
+    worldToChunkRow(worldY, gridMinY, chunkSizePx) {
+        return Math.floor((worldY - gridMinY) / chunkSizePx);
     }
     wallAtlas(p1, p2) {
         const chunkWorldSize = this.settings.chunkWorldSize;
@@ -39,8 +52,8 @@ export class SurfaceSpatialMap {
     horizontalSample(worldCorners, obstacleGrid) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid);
         const pointsBounds = expandPointsAabbInto(this._pointsAabb, worldCorners);
-        const chunkCol = worldToChunkCol(pointsBounds.minX, obstacleGrid.minX, chunkSizePx);
-        const chunkRow = worldToChunkRow(pointsBounds.minY, obstacleGrid.minY, chunkSizePx);
+        const chunkCol = this.worldToChunkCol(pointsBounds.minX, obstacleGrid.minX, chunkSizePx);
+        const chunkRow = this.worldToChunkRow(pointsBounds.minY, obstacleGrid.minY, chunkSizePx);
         const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow);
         return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
     }
