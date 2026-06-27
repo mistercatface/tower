@@ -12,8 +12,8 @@ export class Projectile extends Entity {
         this.vy = 0;
         this.angularVelocity = 0;
         this.radius = 0.75;
-        this.mass = 0.5;
-        this.strategy = { isKinetic: true, rolls: false, mass: 0.5, friction: 0, propPixelSize: 1.5 };
+        this.mass = 0.125;
+        this.strategy = { isKinetic: true, rolls: false, mass: 0.125, friction: 0, propPixelSize: 1.5 };
         this._gunBullet = true;
         this._armed = true;
         this._lifetimeMs = 0;

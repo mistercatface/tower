@@ -6,7 +6,7 @@ export default {
     sandbox: { tags: ["shapes"], spawnLabel: "Wall Voxel Chunk" },
     physics: {
         isKinetic: true,
-        density: 0.04,
+        density: 0.01,
         localFootprint: [
             { x: -8, y: -8 },
             { x: 8, y: -8 },
