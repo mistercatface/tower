@@ -6,17 +6,12 @@ export function createCorridorLinkWireTool(state, session) {
         pickAnchor(world) {
             const grid = state.obstacleGrid;
             const col = grid.worldCol(world.x);
-    const row = grid.worldRow(world.y);
+            const row = grid.worldRow(world.y);
             return pickRoomNodeAt(state, col, row)?.id ?? null;
         },
         commitLink(fromNodeId, toNodeId) {
             const width = session.getSpawnCorridorWidth();
-            return session.addRoomLinkBetweenNodes(fromNodeId, toNodeId, {
-                corridorType: session.getSpawnCorridorType(),
-                corridorWidthMin: width,
-                corridorWidthMax: width,
-                surfaceProfileId: session.getSpawnCorridorSurfaceProfileId(),
-            });
+            return session.addRoomLinkBetweenNodes(fromNodeId, toNodeId, { corridorType: session.getSpawnCorridorType(), corridorWidthMin: width, corridorWidthMax: width });
         },
         onAfterCommit: () => {
             session.clearSelection();

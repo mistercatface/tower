@@ -9,8 +9,11 @@ import { applyPropBoxFootprint } from "../Props/propStrategy.js";
 import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/propFracture.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
-import { resolveWallSurfaceProfileIdAtCell } from "../RoomGraph/roomGraphSurfaceProfile.js";
+import { surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
 /** @typedef {{ kind: "voxel", col: number, row: number } | { kind: "rail", col: number, row: number, side: number }} WallDamageTarget */
+function resolveWallChunkProfileId(state) {
+    return state.worldSurfaces?.surfaceProfileOverride ?? surfaceProfileDefaults.defaultId;
+}
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.col},${target.row}` : `r:${target.col},${target.row}:${target.side}`;
 }
@@ -99,7 +102,7 @@ export function applyPendingWallDamage(state, wallDamage) {
             if (!info) continue;
             const cx = grid.gridCenterX(target.col);
             const cy = grid.gridCenterY(target.row);
-            const profileId = resolveWallSurfaceProfileIdAtCell(state, target.col, target.row);
+            const profileId = resolveWallChunkProfileId(state);
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "voxel",
@@ -130,7 +133,7 @@ export function applyPendingWallDamage(state, wallDamage) {
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5;
             const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-            const profileId = resolveWallSurfaceProfileIdAtCell(state, target.col, target.row);
+            const profileId = resolveWallChunkProfileId(state);
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "rail",

@@ -8,7 +8,7 @@ import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { resolveWallSurfaceProfileIdAtCell } from "../../RoomGraph/roomGraphSurfaceProfile.js";
+import { surfaceProfileDefaults } from "../../Procedural/SurfaceProfileProvider.js";
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sBandPoint0 = { x: 0, y: 0 };
@@ -56,18 +56,11 @@ function computeFaceCornerElevated(out, u, v, faceBottom, faceTop) {
     out.x = bx + (tx - bx) * v;
     out.y = by + (ty - by) * v;
 }
-function resolveWallProfileId(state, wallCx, wallCy, cacheObj) {
+function resolveWallProfileId(state, cacheObj) {
     if (cacheObj?.surfaceProfileId) return cacheObj.surfaceProfileId;
-    let profileId = cacheObj && cacheObj._cachedProfileId ? cacheObj._cachedProfileId : null;
     const override = state.worldSurfaces?.surfaceProfileOverride;
-    if (!profileId || override) {
-        const grid = state.obstacleGrid;
-        const col = cacheObj ? cacheObj.gridCol : grid.worldToGridCol(wallCx);
-        const row = cacheObj ? cacheObj.gridRow : grid.worldToGridRow(wallCy);
-        profileId = resolveWallSurfaceProfileIdAtCell(state, col, row);
-        if (cacheObj && !override) cacheObj._cachedProfileId = profileId;
-    }
-    return profileId;
+    if (override) return override;
+    return surfaceProfileDefaults.defaultId;
 }
 function resolveWallFaceAtlas(p1, p2, state, face) {
     const worldSurfaces = state.worldSurfaces;
@@ -75,7 +68,7 @@ function resolveWallFaceAtlas(p1, p2, state, face) {
     const settings = worldSurfaces.settings;
     const wallCx = (p1.x + p2.x) * 0.5;
     const wallCy = (p1.y + p2.y) * 0.5;
-    const profileId = resolveWallProfileId(state, wallCx, wallCy, cacheObj);
+    const profileId = resolveWallProfileId(state, cacheObj);
     const baked = worldSurfaces.getOrEnsureWallAtlas(p1, p2, state, { profileId, wallHeight: wallCapHeight, cacheObj, atlasFaceId: atlasFaceId ?? "side" });
     if (!baked) return null;
     const canvas = baked.canvases[0];
@@ -206,7 +199,7 @@ export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
         fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
         return;
     }
-    const profileId = resolveWallProfileId(state, box.cx, box.cy, face.cacheObj);
+    const profileId = resolveWallProfileId(state, face.cacheObj);
     railWallCapUvCornersInto(sCapUv, state.obstacleGrid, box);
     const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, state, profileId, sCapSrc);
     if (!capCanvas) {

@@ -212,7 +212,7 @@ const PLACEABLE = {
             const col = grid.worldCol(worldX);
             const row = grid.worldRow(worldY);
             expandGridForRoomNodeFootprint(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows);
-            const node = stampRoomNodeAt(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows, undefined, ctx.spawnRoomNodeSurfaceProfileId);
+            const node = stampRoomNodeAt(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows);
             if (!node) return false;
             ctx.placement.touchRoomNodePlacement(node.id);
             ctx.pickSelection({ kind: "roomNode", id: node.id });

@@ -108,9 +108,7 @@ export function createSandboxRoomGraphSession(
                 if (patch.corridorCount != null) placement.touchRoomLinkCorridors(link);
             }
             const needsReroll = patch.corridorCount != null || patch.corridorWidthMin != null || patch.corridorWidthMax != null;
-            const profileOnly =
-                patch.surfaceProfileId !== undefined && !needsReroll && patch.corridorType == null && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null && patch.seed == null;
-            if (!needsReroll && !profileOnly) syncRoomGraphBake(state);
+            if (!needsReroll) syncRoomGraphBake(state);
             notifyUi();
             return true;
         },
@@ -120,8 +118,7 @@ export function createSandboxRoomGraphSession(
             if (patch.railWallHeightLevel != null) patch = { ...patch, railWallHeightLevel: clampAuthoredRailWallHeight(patch.railWallHeightLevel) };
             if (patch.railWallThicknessLevel != null) patch = { ...patch, railWallThicknessLevel: clampAuthoredRailWallThickness(patch.railWallThicknessLevel) };
             if (!updateRoomNode(state, nodeId, patch)) return false;
-            const profileOnly = patch.surfaceProfileId !== undefined && patch.railWallHeightLevel == null && patch.railWallThicknessLevel == null;
-            if (!profileOnly) syncRoomGraphBake(state);
+            syncRoomGraphBake(state);
             notifyUi();
             return true;
         },

@@ -48,11 +48,10 @@ export function resolveRoomNodePlacePreview(state, anchorCol, anchorRow, width, 
         }
     return { kind: "cellRect", anchorCol, anchorRow, width, height, cells, valid, tint: "node" };
 }
-/** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height @param {string} [kind] @param {string | null} [surfaceProfileId] */
-export function stampRoomNodeAt(state, anchorCol, anchorRow, width, height, kind, surfaceProfileId) {
+/** @param {object} state @param {number} anchorCol @param {number} anchorRow @param {number} width @param {number} height @param {string} [kind] */
+export function stampRoomNodeAt(state, anchorCol, anchorRow, width, height, kind) {
     if (!canStampRoomNodeAt(state, anchorCol, anchorRow, width, height)) return null;
     const spec = { col: anchorCol, row: anchorRow, width, height };
     if (kind) spec.kind = kind;
-    if (surfaceProfileId) spec.surfaceProfileId = surfaceProfileId;
     return addRoomNode(state, spec);
 }

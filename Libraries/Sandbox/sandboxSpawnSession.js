@@ -1,7 +1,6 @@
 import { sampleAssetBaseTintHex } from "../Color/visualOverride.js";
 import { SANDBOX_DEFAULT_FACTION } from "./sandboxFaction.js";
 import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
-import { normalizeAuthoredSurfaceProfileId } from "../RoomGraph/roomGraphSurfaceProfile.js";
 import { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS } from "../RoomGraph/index.js";
 import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS } from "../RoomGraph/puzzleTemplateBeltCrate.js";
 import { DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT, DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH } from "./sandboxCapabilities.js";
@@ -16,8 +15,6 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
     let spawnPuzzleAreaRows = BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS;
     let spawnCorridorType = CORRIDOR_TYPE_EMPTY;
     let spawnCorridorWidth = 1;
-    let spawnRoomNodeSurfaceProfileId = null;
-    let spawnCorridorSurfaceProfileId = null;
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
     let spawnCrossLength = 32;
@@ -42,7 +39,6 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         spawnRoomNodeRows,
         spawnPuzzleAreaCols,
         spawnPuzzleAreaRows,
-        spawnRoomNodeSurfaceProfileId,
         spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
         spawnCrossLength,
         spawnCrossThickness,
@@ -90,16 +86,6 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         getSpawnCorridorWidth: () => spawnCorridorWidth,
         setSpawnCorridorWidth: (width) => {
             spawnCorridorWidth = Math.max(1, Math.min(8, Math.round(width)));
-            notifyUi();
-        },
-        getSpawnRoomNodeSurfaceProfileId: () => spawnRoomNodeSurfaceProfileId,
-        setSpawnRoomNodeSurfaceProfileId: (profileId) => {
-            spawnRoomNodeSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
-            notifyUi();
-        },
-        getSpawnCorridorSurfaceProfileId: () => spawnCorridorSurfaceProfileId,
-        setSpawnCorridorSurfaceProfileId: (profileId) => {
-            spawnCorridorSurfaceProfileId = normalizeAuthoredSurfaceProfileId(profileId);
             notifyUi();
         },
         getSpawnBoxWidth: () => spawnBoxWidth,
