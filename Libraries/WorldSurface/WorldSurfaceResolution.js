@@ -27,6 +27,6 @@ export function drawProjectedHorizontalChunk(ctx, canvas, corners) {
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3]);
 }
 export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, viewport) {
-    projectWorldAabbCornersInto(sProjectedChunkCorners, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, zLevel, viewport);
+    projectWorldAabbCornersInto(sProjectedChunkCorners, bounds, zLevel, viewport);
     drawProjectedHorizontalChunk(ctx, canvas, sProjectedChunkCorners);
 }

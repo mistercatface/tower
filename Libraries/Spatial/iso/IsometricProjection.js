@@ -27,7 +27,8 @@ export function projectWorldPointToScreenInto(out, viewport, worldX, worldY, hei
     projectWorldPointInto(out, worldX, worldY, height, viewport);
     return viewport.worldToScreenInto(out, out.x, out.y);
 }
-export function projectWorldAabbCornersInto(out4, minX, minY, maxX, maxY, height, viewport) {
+export function projectWorldAabbCornersInto(out4, bounds, height, viewport) {
+    const { minX, minY, maxX, maxY } = bounds;
     projectWorldPointInto(out4[0], minX, minY, height, viewport);
     projectWorldPointInto(out4[1], maxX, minY, height, viewport);
     projectWorldPointInto(out4[2], maxX, maxY, height, viewport);
