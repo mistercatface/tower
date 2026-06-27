@@ -30,7 +30,8 @@ export class WorldSurfaceEngine {
     clear() {
         this.surfaceCache.clear();
     }
-    resolveSurfaceProfileId() {
+    resolveSurfaceProfileId(source = null) {
+        if (source?.surfaceProfileId) return source.surfaceProfileId;
         if (this.surfaceProfileOverride) return this.surfaceProfileOverride;
         return surfaceProfileDefaults.defaultId;
     }
