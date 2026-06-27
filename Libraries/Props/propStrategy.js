@@ -71,7 +71,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
-    const override = prop.strategy?.quantizeSteps ?? prop.strategy?.physics?.quantizeSteps;
+    const override = prop.strategy?.quantizeSteps;
     const derivedFacing = deriveFacingStepsFromFootprint(prop, defaults.facing);
     const facing = override?.facing ?? derivedFacing;
     const view = override?.view ?? defaults.view ?? 30;

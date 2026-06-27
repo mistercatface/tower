@@ -142,7 +142,6 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
         if (sourceProp.wallChunkProfileId !== undefined) {
             shard.wallChunkProfileId = sourceProp.wallChunkProfileId;
             shard.wallChunkHeightPx = sourceProp.wallChunkHeightPx;
-            shard.wallChunkKind = sourceProp.wallChunkKind;
         }
         if (configureShard) configureShard(shard, geom, i);
         spawned.push(shard);

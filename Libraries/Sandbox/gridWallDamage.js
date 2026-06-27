@@ -118,7 +118,6 @@ export function applyPendingWallDamage(state, wallDamage) {
                 wallHeight: wallHeightPx,
                 wallChunkProfileId: profileId,
                 wallChunkHeightPx: wallHeightPx,
-                wallChunkKind: "voxel",
                 strength: item.strength,
                 contactX: item.contactX ?? cx,
                 contactY: item.contactY ?? cy,
@@ -155,7 +154,6 @@ export function applyPendingWallDamage(state, wallDamage) {
                 wallHeight: wallHeightPx,
                 wallChunkProfileId: profileId,
                 wallChunkHeightPx: wallHeightPx,
-                wallChunkKind: "rail",
                 strength: item.strength,
                 contactX: item.contactX ?? cx,
                 contactY: item.contactY ?? cy,
@@ -192,7 +190,6 @@ export function applyPendingWallDamage(state, wallDamage) {
         prop.height = desc.wallHeight;
         prop.wallChunkProfileId = desc.wallChunkProfileId;
         prop.wallChunkHeightPx = desc.wallChunkHeightPx;
-        prop.wallChunkKind = desc.wallChunkKind;
         // Push prop opposite to collision normal scaled by mass ratio
         const sourceMass = desc.sourceMass ?? 1;
         const propMass = prop.mass ?? 1;
