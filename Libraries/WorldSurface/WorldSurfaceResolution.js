@@ -17,15 +17,15 @@ export function isDrawableBakedSurface(canvas) {
     const h = canvas.height;
     return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
 }
-export function drawBakedTexture(ctx, canvas, destX, destY, destWorldW, destWorldH) {
+export function drawBakedTexture(ctx, canvas, bounds) {
     if (!isDrawableBakedSurface(canvas)) return;
-    ctx.drawImage(canvas, destX, destY, destWorldW, destWorldH);
+    ctx.drawImage(canvas, bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
 }
 export function drawProjectedHorizontalChunk(ctx, canvas, corners) {
     if (!isDrawableBakedSurface(canvas)) return;
     drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, corners[0], corners[1], corners[2], corners[3]);
 }
-export function drawProjectedHorizontalChunkAt(ctx, canvas, originX, originY, sizePx, zLevel, viewport) {
-    projectWorldAabbCornersInto(sProjectedChunkCorners, originX, originY, originX + sizePx, originY + sizePx, zLevel, viewport);
+export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, viewport) {
+    projectWorldAabbCornersInto(sProjectedChunkCorners, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, zLevel, viewport);
     drawProjectedHorizontalChunk(ctx, canvas, sProjectedChunkCorners);
 }

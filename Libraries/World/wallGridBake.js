@@ -1,4 +1,4 @@
-import { forEachObstacleGridCellInAabb, chunkWorldAabbScratch } from "../Spatial/grid/GridCoords.js";
+import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { edgeNeighbor, cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
@@ -377,19 +377,19 @@ export function defaultWallCapPx(settings) {
 export function resolveWallCapHeightPx(capHeight, settings) {
     return capHeight ?? defaultWallCapPx(settings);
 }
-export function chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
+export function chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) {
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), (col, row, idx) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row, idx) => {
         if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) found = true;
     });
     return found;
 }
-export function chunkHasStaticStructureAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
-    return chunkHasStaticRoofAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) || chunkHasStaticEdgeRailsAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel);
+export function chunkHasStaticStructureAtLevel(obstacleGrid, bounds, zLevel) {
+    return chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) || chunkHasStaticEdgeRailsAtLevel(obstacleGrid, bounds, zLevel);
 }
-export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, chunkOriginX, chunkOriginY, chunkSizePx, zLevel) {
+export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, bounds, zLevel) {
     let found = false;
-    forEachEmittingRailWallAtZLevel(obstacleGrid, chunkWorldAabbScratch(chunkOriginX, chunkOriginY, chunkSizePx), zLevel, () => {
+    forEachEmittingRailWallAtZLevel(obstacleGrid, bounds, zLevel, () => {
         found = true;
     });
     return found;
