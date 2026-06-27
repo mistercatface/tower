@@ -1,4 +1,4 @@
-import { findClosestWorldVertexInto, findExtremeVertexInto, rotateXY } from "../../Math/Poly2D.js";
+import { findClosestWorldVertexInto, findExtremeVertexInto, rotateXY, rotateXYInto, transformPoint2DInto } from "../../Math/Poly2D.js";
 import { dotXY } from "../../Math/Vec2.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
 const contactA = { x: 0, y: 0 };
@@ -16,10 +16,6 @@ export const SAT_BEST_RESULT = new Float32Array(25);
 const PROJ_A = new Float32Array(2);
 const PROJ_B = new Float32Array(2);
 const posScratch = { x: 0, y: 0 };
-function worldVertexInto(out, vertex, px, py, cos, sin) {
-    out.x = px + vertex.x * cos - vertex.y * sin;
-    out.y = py + vertex.x * sin + vertex.y * cos;
-}
 function findEdgeMostAligned(normals, cos, sin, axisX, axisY, wantMax) {
     let bestDot = wantMax ? -Infinity : Infinity;
     let bestIndex = 0;
@@ -76,8 +72,7 @@ function nearestIncidentVertexIndex(vertices, pxVal, pyVal, cos, sin, px, py) {
 }
 function worldEdgeNormalInto(out, normals, edgeIndex, cos, sin) {
     const n = normals[edgeIndex];
-    out.x = n.x * cos - n.y * sin;
-    out.y = n.x * sin + n.y * cos;
+    return rotateXYInto(out, n.x, n.y, cos, sin);
 }
 function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, nx, ny, refPolyIsA, refEdgeIndex) {
     const refShape = refPolyIsA ? shapeA : shapeB;
@@ -98,8 +93,10 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const refEdgeNext = (refEdgeIndex + 1) % refCount;
     const sideEdgeA = (refEdgeIndex + refCount - 1) % refCount;
     const sideEdgeB = refEdgeNext;
-    worldVertexInto(contactA, refShape.vertices[refEdgeIndex], refX, refY, refCos, refSin);
-    worldVertexInto(contactB, refShape.vertices[refEdgeNext], refX, refY, refCos, refSin);
+    const vIndex = refShape.vertices[refEdgeIndex];
+    transformPoint2DInto(contactA, refX, refY, vIndex.x, vIndex.y, refCos, refSin);
+    const vNext = refShape.vertices[refEdgeNext];
+    transformPoint2DInto(contactB, refX, refY, vNext.x, vNext.y, refCos, refSin);
     worldEdgeNormalInto(closestVertex, refShape.normals, sideEdgeA, refCos, refSin);
     const sideANx = -closestVertex.x;
     const sideANy = -closestVertex.y;
@@ -111,10 +108,12 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const incidentEdge = findEdgeMostAligned(incShape.normals, incCos, incSin, refFaceNx, refFaceNy, true);
     const incCount = incShape.vertices.length;
     const incEdgeNext = (incidentEdge + 1) % incCount;
-    worldVertexInto(closestVertex, incShape.vertices[incidentEdge], incX, incY, incCos, incSin);
+    const vInc = incShape.vertices[incidentEdge];
+    transformPoint2DInto(closestVertex, incX, incY, vInc.x, vInc.y, incCos, incSin);
     const incX0 = closestVertex.x;
     const incY0 = closestVertex.y;
-    worldVertexInto(closestVertex, incShape.vertices[incEdgeNext], incX, incY, incCos, incSin);
+    const vIncNext = incShape.vertices[incEdgeNext];
+    transformPoint2DInto(closestVertex, incX, incY, vIncNext.x, vIncNext.y, incCos, incSin);
     let clipCount = clipSegmentToHalfPlane(incX0, incY0, closestVertex.x, closestVertex.y, sideANx, sideANy, sideAOffset, clipX, clipY, 0);
     if (clipCount === 0) return null;
     if (clipCount === 1) {

@@ -1,4 +1,5 @@
 import { pointInPolygon, polygonSignedArea2D, polygonCentroid2D } from "../Math/Poly2D.js";
+import { closestPointOnLineSegment } from "../Math/Segment2D.js";
 export const GLASS_FRACTURE_IMPACT_THRESHOLD = 6;
 export const GLASS_MIN_SHARD_AREA = 12;
 export const GLASS_MAX_SHARDS_PER_SHATTER = 18;
@@ -20,22 +21,12 @@ function closestPointOnPolygonBoundary(x, y, points) {
     let bestDistSq = Infinity;
     for (let i = 0; i < points.length; i++) {
         const j = (i + 1) % points.length;
-        const ax = points[i].x;
-        const ay = points[i].y;
-        const bx = points[j].x;
-        const by = points[j].y;
-        const dx = bx - ax;
-        const dy = by - ay;
-        const lenSq = dx * dx + dy * dy;
-        let t = lenSq === 0 ? 0 : ((x - ax) * dx + (y - ay) * dy) / lenSq;
-        t = Math.max(0, Math.min(1, t));
-        const px = ax + dx * t;
-        const py = ay + dy * t;
-        const distSq = (x - px) * (x - px) + (y - py) * (y - py);
+        const closest = closestPointOnLineSegment(x, y, points[i].x, points[i].y, points[j].x, points[j].y);
+        const distSq = (x - closest.x) * (x - closest.x) + (y - closest.y) * (y - closest.y);
         if (distSq < bestDistSq) {
             bestDistSq = distSq;
-            bestX = px;
-            bestY = py;
+            bestX = closest.x;
+            bestY = closest.y;
         }
     }
     return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
