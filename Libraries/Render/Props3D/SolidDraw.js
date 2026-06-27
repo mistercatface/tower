@@ -178,22 +178,21 @@ export function drawExtrudedConvexPolygon(
     }
     const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
     if (textures) {
-        const drawTexturedSideFace = (face) => {
-            ctx.save();
-            ctx.beginPath();
-            traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
-            ctx.clip();
-            const scale = textures.scale;
-            drawImageQuad(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, (prop.wallChunkHeightPx ?? height) * scale, face.baseA, face.baseB, face.topB, face.topA);
-            ctx.restore();
-        };
-        for (const face of backFaces) drawTexturedSideFace(face);
-        for (const face of frontFaces) drawTexturedSideFace(face);
+        const textureScale = textures.scale;
+        const sideSrcHeight = (prop.wallChunkHeightPx ?? height) * textureScale;
+        for (const faces of [backFaces, frontFaces])
+            for (const face of faces) {
+                ctx.save();
+                ctx.beginPath();
+                traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
+                ctx.clip();
+                drawImageQuad(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, sideSrcHeight, face.baseA, face.baseB, face.topB, face.topA);
+                ctx.restore();
+            }
         ctx.save();
         ctx.beginPath();
         traceClosedPolygon(ctx, body.topCorners);
         ctx.clip();
-        const scale = textures.scale;
         const chunkSizePx = textures.chunkSizePx;
         const offset = chunkSizePx / 2;
         const cos = Math.cos(facing);
@@ -207,7 +206,7 @@ export function drawExtrudedConvexPolygon(
             const topLy = scaleAtHeight(ly, projection.alpha, 1);
             const rx = topLx * cos - topLy * sin;
             const ry = topLx * sin + topLy * cos;
-            srcCorners.push({ x: (rx + offset) * scale, y: (ry + offset) * scale });
+            srcCorners.push({ x: (rx + offset) * textureScale, y: (ry + offset) * textureScale });
         }
         if (body.topCorners.length >= 3)
             for (let i = 1; i < body.topCorners.length - 1; i++)
