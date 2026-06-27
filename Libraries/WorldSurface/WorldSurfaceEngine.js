@@ -54,7 +54,6 @@ export class WorldSurfaceEngine {
                 const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
                 const rev = getSurfaceProfileRevision(profileId);
                 for (const zLevel of zLevels) {
-                    this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
                     this.surfaceCache.delete(staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel));
                     this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
                 }
