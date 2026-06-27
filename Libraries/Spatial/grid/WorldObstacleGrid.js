@@ -28,6 +28,7 @@ export class WorldObstacleGrid {
         this.edgeStore = new CellEdgeStore();
         this.floorStore = new FloorCellStore();
         this.surfaceMaterials = new SurfaceMaterialStore();
+        this.surfaceMaterialCellsPerChunk = 0;
         this.wallGridRevision = 0;
         this.surfaceMaterialRevision = 0;
         this._structureZLevelsRevision = -1;
@@ -274,7 +275,7 @@ export class WorldObstacleGrid {
         }
         this.edgeStore.remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
-        this.surfaceMaterials.remap(oldSurfaceMaterials, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
+        this.surfaceMaterials.remap(oldSurfaceMaterials, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows, this.surfaceMaterialCellsPerChunk);
         this.grid = newGrid;
         bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
@@ -339,15 +340,18 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.clearEdgeMirrored(col, row, side, this.cols, this.rows);
         bumpSurfaceMaterialRevision(this);
     }
-    setChunkSurfaceProfile(chunkCol, chunkRow, profileId) {
+    setChunkSurfaceProfile(chunkCol, chunkRow, profileId, cellsPerChunk = 0) {
+        if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
         this.surfaceMaterials.setChunk(chunkCol, chunkRow, profileId);
         bumpSurfaceMaterialRevision(this);
     }
-    clearChunkSurfaceProfile(chunkCol, chunkRow) {
+    clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk = 0) {
+        if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
         this.surfaceMaterials.clearChunk(chunkCol, chunkRow);
         bumpSurfaceMaterialRevision(this);
     }
-    setChunkSurfaceProfileRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId) {
+    setChunkSurfaceProfileRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId, cellsPerChunk = 0) {
+        if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
         this.surfaceMaterials.setChunkRange(minChunkCol, minChunkRow, maxChunkCol, maxChunkRow, profileId);
         bumpSurfaceMaterialRevision(this);
     }

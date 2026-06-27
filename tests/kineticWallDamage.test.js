@@ -23,7 +23,7 @@ async function createWallDamageTestState() {
     const state = {
         obstacleGrid: grid,
         sandbox: {},
-        worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} },
+        worldSurfaces: { settings: gameWorldSurfaceSettings, activeSurfaceProfileId: "base", invalidateGridBounds: () => {} },
         nav: navigation,
         worldProps: [],
         entityRegistry: new EntityRegistry(),
@@ -110,6 +110,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
+        state.obstacleGrid.setChunkSurfaceProfile(0, 0, "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         
         const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
         const entity = { id: 101, type: "crate", vx: 560, vy: 0 };
@@ -144,6 +145,7 @@ describe("kinetic wall damage", () => {
         const shards = state.worldProps.filter(p => p.type === "wall_voxel_chunk");
         assert.ok(shards.length > 0);
         assert.ok(shards.every(s => s.height === 32));
+        assert.ok(shards.every(s => s.wallChunkProfileId === "chunk-profile"));
         
         terminateWorkerNavigation(state.nav);
     });
@@ -151,6 +153,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 2, thicknessLevel: 4 }]);
+        state.obstacleGrid.setEdgeSurfaceProfile(4, 4, 1, "edge-profile");
         
         const segment = { gridCol: 4, gridRow: 4, gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
         const entity = { id: 102, type: "ball", vx: 0, vy: -560 };
@@ -182,6 +185,7 @@ describe("kinetic wall damage", () => {
         const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);
         assert.ok(shards.every(s => s.height === 32));
+        assert.ok(shards.every(s => s.wallChunkProfileId === "edge-profile"));
         
         terminateWorkerNavigation(state.nav);
     });

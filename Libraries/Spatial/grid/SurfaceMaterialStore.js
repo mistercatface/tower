@@ -4,6 +4,10 @@ import { cellInRect, colRowToIndex } from "./GridUtils.js";
 function chunkProfileKey(chunkCol, chunkRow) {
     return `${chunkCol},${chunkRow}`;
 }
+function parseChunkProfileKey(key) {
+    const comma = key.indexOf(",");
+    return { chunkCol: Number(key.slice(0, comma)), chunkRow: Number(key.slice(comma + 1)) };
+}
 export class SurfaceMaterialStore {
     constructor() {
         this.cellProfileIds = new Map();
@@ -18,7 +22,7 @@ export class SurfaceMaterialStore {
     snapshot() {
         return { cellProfileIds: new Map(this.cellProfileIds), edgeProfileIds: new Map(this.edgeProfileIds), chunkProfileIds: new Map(this.chunkProfileIds) };
     }
-    remap(snapshot, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
+    remap(snapshot, oldCols, oldRows, colOffset, rowOffset, newCols, newRows, cellsPerChunk) {
         this.cellProfileIds.clear();
         this.edgeProfileIds.clear();
         this.chunkProfileIds.clear();
@@ -41,7 +45,13 @@ export class SurfaceMaterialStore {
             const newIdx = nc + nr * newCols;
             this.edgeProfileIds.set(cellEdgeSlotOffset(newIdx, side), profileId);
         }
-        for (const [key, profileId] of snapshot.chunkProfileIds) this.chunkProfileIds.set(key, profileId);
+        if (snapshot.chunkProfileIds.size > 0 && (!cellsPerChunk || cellsPerChunk <= 0)) throw new Error("Surface material chunk remap requires cellsPerChunk");
+        for (const [key, profileId] of snapshot.chunkProfileIds) {
+            const { chunkCol, chunkRow } = parseChunkProfileKey(key);
+            const newChunkCol = Math.floor((chunkCol * cellsPerChunk + colOffset) / cellsPerChunk);
+            const newChunkRow = Math.floor((chunkRow * cellsPerChunk + rowOffset) / cellsPerChunk);
+            this.chunkProfileIds.set(chunkProfileKey(newChunkCol, newChunkRow), profileId);
+        }
     }
     getChunk(chunkCol, chunkRow) {
         return this.chunkProfileIds.get(chunkProfileKey(chunkCol, chunkRow)) ?? null;

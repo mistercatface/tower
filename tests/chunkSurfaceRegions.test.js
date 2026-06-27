@@ -4,6 +4,7 @@ import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { resolveChunkSurfaceProfileId } from "../Libraries/Spatial/grid/SurfaceMaterialStore.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
+import { setChunkSurfaceProfileRangeEdit } from "../Libraries/Sandbox/gridNavEdit.js";
 
 describe("chunk surface regions", () => {
     it("uses different ground and roof cache keys for different chunk profiles", () => {
@@ -57,5 +58,26 @@ describe("chunk surface regions", () => {
         assert.equal(captured[0].profileIdOverride, "east");
         assert.equal(captured[0].zLevel, 1);
         engine.getGroundChunkCanvas = originalGetGround;
+    });
+
+    it("invalidates affected cell bounds when chunk profiles change through the edit helper", () => {
+        const settings = createGameWorldSurfaceSettings();
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 256, 256);
+        let invalidated = null;
+        const state = {
+            obstacleGrid: grid,
+            worldSurfaces: {
+                settings,
+                invalidateGridBounds(bounds, stateArg) {
+                    invalidated = { bounds, stateArg };
+                },
+            },
+        };
+        const bounds = setChunkSurfaceProfileRangeEdit(state, 1, 0, 1, 1, "east");
+        assert.deepEqual(bounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
+        assert.deepEqual(invalidated.bounds, bounds);
+        assert.equal(invalidated.stateArg, state);
+        assert.equal(resolveChunkSurfaceProfileId(grid, 1, 1, "base"), "east");
     });
 });

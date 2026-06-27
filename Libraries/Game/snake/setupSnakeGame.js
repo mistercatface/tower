@@ -13,7 +13,7 @@ import { appendFocusedAgentPathPreviewCommands } from "./focusedAgentPathOverlay
 import { appendFocusedAgentTargetOverlayCommands } from "./focusedAgentTargetOverlays.js";
 import { appendFocusedAgentVisibleEntityOverlayCommands } from "./focusedAgentVisibleEntityOverlays.js";
 import { patchNavWalkableCellIndex } from "../../Procedural/Mazes/walkableCells.js";
-import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
+import { commitGridNavEdit, setChunkSurfaceProfileRangeEdit } from "../../Sandbox/gridNavEdit.js";
 import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticContactSideEffects.js";
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "./snakeCombat.js";
@@ -36,8 +36,8 @@ function applySnakeRegionSurfaceProfiles(state) {
     const lastRow = topRow + playable.boundsRows - 1;
     const midRow = topRow + Math.floor(playable.boundsRows / 2);
     const chunkOf = (cell) => Math.floor(cell / cellsPerChunk);
-    grid.setChunkSurfaceProfileRange(chunkOf(topCol), chunkOf(topRow), chunkOf(lastCol), chunkOf(midRow - 1), SURFACE_PROFILE_ID.tomatoGarden);
-    grid.setChunkSurfaceProfileRange(chunkOf(topCol), chunkOf(midRow), chunkOf(lastCol), chunkOf(lastRow), SURFACE_PROFILE_ID.poolTableFelt);
+    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(topRow), chunkOf(lastCol), chunkOf(midRow - 1), SURFACE_PROFILE_ID.tomatoGarden);
+    setChunkSurfaceProfileRangeEdit(state, chunkOf(topCol), chunkOf(midRow), chunkOf(lastCol), chunkOf(lastRow), SURFACE_PROFILE_ID.poolTableFelt);
 }
 export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     applySnakeGameConfig();

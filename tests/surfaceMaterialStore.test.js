@@ -170,6 +170,15 @@ describe("surface material stores", () => {
         assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
     });
 
+    it("remaps chunk profiles when grid bounds expand", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 128, 128);
+        grid.setChunkSurfaceProfile(0, 0, "chunk-profile", 8);
+        grid.expandToCoverAabb({ minX: -192, minY: -192, maxX: 64, maxY: 64 });
+        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
+        assert.equal(resolveChunkSurfaceProfileId(grid, 1, 1, "base"), "chunk-profile");
+    });
+
     it("bumps material revision when chunk profiles change", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
