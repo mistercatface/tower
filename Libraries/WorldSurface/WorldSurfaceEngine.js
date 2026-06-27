@@ -4,11 +4,12 @@
 import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { getChunkSizePx, worldBoundsToChunkRange, worldToChunkCol, worldToChunkRow } from "../Spatial/grid/ChunkGrid.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
-import { groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
+import { createGroundChunkBakePayload, groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
 import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
 import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
@@ -19,15 +20,10 @@ const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 // Reserved off-map chunk used for reusable wall-chunk cap texture bakes.
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = -9999;
-/**
- * @typedef {Object} WorldSurfaceEngineHooks
- * @property {(state: object, chunkCol: number, chunkRow: number, zLevel?: number, profileId?: string | null) => object} buildChunkPayload
- */
 export class WorldSurfaceEngine {
-    constructor(settings, hooks = {}) {
+    constructor(settings) {
         this.settings = settings;
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
-        this._buildChunkPayload = hooks.buildChunkPayload ?? null;
         this.chunkDrawBounds = createAabb();
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkSizePx: 0, minChunkCol: 0, maxChunkCol: 0, minChunkRow: 0, maxChunkRow: 0 };
@@ -36,8 +32,32 @@ export class WorldSurfaceEngine {
     clear() {
         this.surfaceCache.clear();
     }
-    invalidateGridBounds(bounds, obstacleGrid, resolveProfileAt, cellsPerChunk = this.settings.cellsPerChunk, roofZLevels = null) {
-        if (!bounds || !obstacleGrid) return;
+    resolveSurfaceProfileId() {
+        if (this.surfaceProfileOverride) return this.surfaceProfileOverride;
+        return surfaceProfileDefaults.defaultId;
+    }
+    buildGroundChunkPayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null) {
+        const obstacleGrid = state.obstacleGrid;
+        const cellsPerChunk = this.settings.cellsPerChunk;
+        const chunkSizePx = obstacleGrid.cellSize * cellsPerChunk;
+        const centerX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
+        const centerY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
+        const resolvedProfileId = profileId ?? this.resolveSurfaceProfileId();
+        return createGroundChunkBakePayload({
+            chunkCol,
+            chunkRow,
+            minX: obstacleGrid.minX,
+            minY: obstacleGrid.minY,
+            seed: this.worldSurfaceSeed ?? 0,
+            profileId: resolvedProfileId,
+            centerX,
+            centerY,
+            zLevel,
+        });
+    }
+    invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
+        if (!bounds || !state?.obstacleGrid) return;
+        const obstacleGrid = state.obstacleGrid;
         const cellSize = obstacleGrid.cellSize;
         const chunkSizePx = cellSize * cellsPerChunk;
         const minX = obstacleGrid.minX + bounds.startCol * cellSize;
@@ -45,18 +65,16 @@ export class WorldSurfaceEngine {
         const maxX = obstacleGrid.minX + (bounds.endCol + 1) * cellSize;
         const maxY = obstacleGrid.minY + (bounds.endRow + 1) * cellSize;
         const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-        const zLevels = (roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0);
+        const roofZLevels = obstacleGrid.collectStaticStructureZLevels?.() ?? this.settings.roofZLevels ?? [];
+        const zLevels = roofZLevels.filter((z) => z > 0);
+        const profileId = this.resolveSurfaceProfileId();
+        const rev = getSurfaceProfileRevision(profileId);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
-            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
-                const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
-                const chunkCenterY = obstacleGrid.minY + chunkRow * chunkSizePx + chunkSizePx / 2;
-                const profileId = resolveProfileAt(chunkCenterX, chunkCenterY);
-                const rev = getSurfaceProfileRevision(profileId);
+            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
                 for (const zLevel of zLevels) {
                     this.surfaceCache.delete(staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel));
                     this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
                 }
-            }
     }
     ensureWallAtlas(key, p1, p2, columns, surfaceSeed, wallHeight, profileId) {
         let cached = this.surfaceCache.get(key);
@@ -86,8 +104,7 @@ export class WorldSurfaceEngine {
         );
     }
     _resolveChunkPayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null) {
-        if (!this._buildChunkPayload) throw new Error("WorldSurfaceEngine requires buildChunkPayload hook");
-        return this._buildChunkPayload(state, chunkCol, chunkRow, zLevel, profileId);
+        return this.buildGroundChunkPayload(state, chunkCol, chunkRow, zLevel, profileId);
     }
     hasPendingSurfaceBakes() {
         return this.surfaceCache.hasPlaceholders();

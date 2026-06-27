@@ -2,14 +2,11 @@ import { playBoundsFromObstacleGrid } from "../../Libraries/Spatial/playBounds.j
 import { defaultWallCapPx } from "../../Libraries/World/wallGridBake.js";
 import { WorldSurfaceEngine } from "../../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { gameWorldSurfaceSettings } from "../WorldSurfaceBootstrap.js";
-import { buildGroundChunkBakePayload, resolveSurfaceProfileAtCoords } from "./surfaceProfileResolver.js";
 export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = gameWorldSurfaceSettings) {
-        super(settings, { buildChunkPayload: (state, chunkCol, chunkRow, zLevel, profileId) => buildGroundChunkBakePayload(state, chunkCol, chunkRow, zLevel, profileId) });
+        super(settings);
         this.worldSurfaceSeed = 0;
         this.surfaceProfileOverride = null;
-        this._profileResolveState = null;
-        this._boundResolveProfile = this._resolveProfileAt.bind(this);
     }
     clearBakeCache() {
         super.clear();
@@ -17,13 +14,6 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     clear() {
         this.clearBakeCache();
         this.surfaceProfileOverride = null;
-    }
-    _resolveProfileAt(x, y) {
-        return resolveSurfaceProfileAtCoords(this._profileResolveState, x, y);
-    }
-    invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        this._profileResolveState = state;
-        super.invalidateGridBounds(bounds, state.obstacleGrid, this._boundResolveProfile, cellsPerChunk, state.obstacleGrid.collectStaticStructureZLevels());
     }
     _bindSceneDraw(ctx, state, viewport) {
         this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, playBoundsFromObstacleGrid(state.obstacleGrid));
