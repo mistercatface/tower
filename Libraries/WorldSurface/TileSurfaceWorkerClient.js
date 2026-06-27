@@ -84,7 +84,13 @@ export class TileSurfaceWorkerClient {
         return this.workerReady;
     }
     syncBakeConstants(settings) {
-        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: settings.surfaceBakeScale, metricsEnabled: settings.metricsEnabled };
+        const constants = {
+            cellSize: settings.cellSize,
+            cellsPerChunk: settings.cellsPerChunk,
+            surfaceBakeScale: settings.surfaceBakeScale,
+            surfaceTilePeriodPx: settings.surfaceTilePeriodPx,
+            metricsEnabled: settings.metricsEnabled,
+        };
         this._ensureStarted();
         this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, constants));
         return this.workerReady;

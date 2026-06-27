@@ -7,7 +7,7 @@ export function worldSpanPx(cells, cellSize = gridSettings.cellSize) {
 /** @typedef {typeof WORLD_SURFACE_DEFAULTS} WorldSurfaceDefaults */
 /** Baseline world-surface render/bake tuning (cell counts where applicable). Px derived in `WorldSurfaceBootstrap`. */
 export const WORLD_SURFACE_DEFAULTS = {
-    chunkWorldSpanCells: 64,
+    surfaceTilePeriodCells: 32,
     viewPaddingPx: 128,
     viewQueryPadPx: 48,
     maxCachedSurfaces: 10000,

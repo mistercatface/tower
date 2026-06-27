@@ -33,20 +33,25 @@ export class WorldSurfaceEngine {
         this.surfaceCache.clear();
     }
     buildGroundChunkPayload(state, chunkCol, chunkRow, profileId, zLevel = 0, boundsSample = null) {
-        let minX, minY, centerX, centerY;
+        let minX, minY, centerX, centerY, tileChunkCol, tileChunkRow;
         if (boundsSample) {
             minX = boundsSample.minX;
             minY = boundsSample.minY;
             centerX = boundsSample.centerX;
             centerY = boundsSample.centerY;
+            tileChunkCol = boundsSample.chunkCol;
+            tileChunkRow = boundsSample.chunkRow;
         } else {
             const bounds = this.surfaceSpace.chunkBoundsInto(this._chunkBounds, state.obstacleGrid, chunkCol, chunkRow);
-            minX = bounds.minX;
-            minY = bounds.minY;
             centerX = aabbCenterX(bounds);
             centerY = aabbCenterY(bounds);
+            const tileBounds = this.surfaceSpace.tileChunkBoundsInto(this._chunkBounds, state.obstacleGrid, chunkCol, chunkRow);
+            minX = tileBounds.minX;
+            minY = tileBounds.minY;
+            tileChunkCol = this.surfaceSpace.wrapChunkCol(chunkCol);
+            tileChunkRow = this.surfaceSpace.wrapChunkRow(chunkRow);
         }
-        return { chunkCol, chunkRow, minX, minY, seed: this.worldSurfaceSeed, profileId, centerX, centerY, zLevel: zLevel ?? 0 };
+        return { chunkCol, chunkRow, tileChunkCol, tileChunkRow, minX, minY, seed: this.worldSurfaceSeed, profileId, centerX, centerY, zLevel: zLevel ?? 0 };
     }
     invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
         if (!bounds || !state?.obstacleGrid) return;

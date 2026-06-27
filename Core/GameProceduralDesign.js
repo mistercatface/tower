@@ -40,10 +40,6 @@ export function resolveActiveSurfaceProfileId({ layer = 0, strategy } = {}) {
     if (game.defaultSurfaceProfileId) return game.defaultSurfaceProfileId;
     throw new Error("proceduralDesign.surfaceProfileId or defaultSurfaceProfileId required");
 }
-/**
- * @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition
- * @returns {Pick<import("../Libraries/WorldSurface/WorldSurfaceSettings.js").WorldSurfaceSettings, "animationBakeMaxFrames">}
- */
 export function resolveProceduralBakeSettings(definition) {
     const raw = definition?.proceduralDesign;
     if (!raw || raw.animationBakeMaxFrames === undefined) return {};

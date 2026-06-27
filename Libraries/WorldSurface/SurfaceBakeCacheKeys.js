@@ -8,11 +8,13 @@ export function groundChunkCacheKey(chunkCol, chunkRow, profileId, profileRevisi
 export function staticRoofMaskCacheKey(chunkCol, chunkRow, zLevel) {
     return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}`;
 }
-export function staticRoofDrawCacheKey(chunkCol, chunkRow, profileId, profileRevision, zLevel) {
-    return `staticRoofDraw:${groundChunkCacheKey(chunkCol, chunkRow, profileId, profileRevision, zLevel)}`;
+export function staticRoofDrawCacheKey(chunkCol, chunkRow, sourceChunkCol, sourceChunkRow, profileId, profileRevision, zLevel) {
+    return `staticRoofDraw:${profileRevision}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkCol},${chunkRow}:source:${sourceChunkCol},${sourceChunkRow}`;
 }
 export function groundChunkWorkerDedupeKey(payload, profileRevision) {
-    return `${groundChunkCacheKey(payload.chunkCol, payload.chunkRow, payload.profileId, profileRevision, payload.zLevel ?? 0)}:${payload.seed ?? 0}`;
+    const chunkCol = payload.tileChunkCol ?? payload.chunkCol;
+    const chunkRow = payload.tileChunkRow ?? payload.chunkRow;
+    return `${groundChunkCacheKey(chunkCol, chunkRow, payload.profileId, profileRevision, payload.zLevel ?? 0)}:${payload.seed ?? 0}`;
 }
 export function wallAtlasWorkerDedupeKey(payload, profileRevision) {
     const p1 = payload.p1;
@@ -23,11 +25,16 @@ export class SurfaceBakeCacheKeys {
     constructor(surfaceSpace) {
         this.surfaceSpace = surfaceSpace;
     }
+    wrappedChunk(chunkCol, chunkRow) {
+        return { chunkCol: this.surfaceSpace.wrapChunkCol(chunkCol), chunkRow: this.surfaceSpace.wrapChunkRow(chunkRow) };
+    }
     groundChunkKey(chunkCol, chunkRow, profileId, zLevel = 0) {
-        return groundChunkCacheKey(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
+        const wrapped = this.wrappedChunk(chunkCol, chunkRow);
+        return groundChunkCacheKey(wrapped.chunkCol, wrapped.chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
     }
     staticRoofDrawKey(chunkCol, chunkRow, profileId, zLevel) {
-        return staticRoofDrawCacheKey(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
+        const wrapped = this.wrappedChunk(chunkCol, chunkRow);
+        return staticRoofDrawCacheKey(chunkCol, chunkRow, wrapped.chunkCol, wrapped.chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
     }
     wallAtlasKey(p1, p2, surfaceSeed, profileId, atlasHeight) {
         const atlas = this.surfaceSpace.wallAtlas(p1, p2);

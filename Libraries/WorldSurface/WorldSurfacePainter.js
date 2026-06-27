@@ -5,8 +5,15 @@ import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { createWallFaceAxes } from "./WallFaceColumns.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
-import { getTileWorkerBakeConstants } from "./TileWorkerBakeConstants.js";
 import { createEmptyBakePhases, createTileBakeMetrics, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
+let tileWorkerBakeConstants = null;
+export function installTileWorkerBakeConstants(constants) {
+    tileWorkerBakeConstants = constants;
+}
+export function getTileWorkerBakeConstants() {
+    if (!tileWorkerBakeConstants) throw new Error("Tile worker bake constants not installed");
+    return tileWorkerBakeConstants;
+}
 /**
  * @typedef {Object} BakeRequest
  * @property {CanvasRenderingContext2D} ctx

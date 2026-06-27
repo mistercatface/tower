@@ -1,19 +1,25 @@
 import { gridSettings, WORLD_SURFACE_DEFAULTS, worldSpanPx } from "../Config/world.js";
-import { createWorldSurfaceSettings } from "../Libraries/WorldSurface/WorldSurfaceSettings.js";
 const surfaceDefaults = WORLD_SURFACE_DEFAULTS;
 function resolveWallSurface(overrides, cellSize) {
     const wallHeightCells = overrides.wallHeightCells ?? surfaceDefaults.wallHeightCells;
     const capPx = wallHeightCells * cellSize;
     return { wallHeightCells, roofZLevels: [capPx] };
 }
+function resolveSurfaceTilePeriodCells(overrides) {
+    const surfaceTilePeriodCells = overrides.surfaceTilePeriodCells ?? surfaceDefaults.surfaceTilePeriodCells;
+    const cellsPerChunk = gridSettings.minCellsPerChunk;
+    if (surfaceTilePeriodCells % cellsPerChunk !== 0) throw new Error(`surfaceTilePeriodCells must be divisible by cellsPerChunk (${cellsPerChunk})`);
+    return surfaceTilePeriodCells;
+}
 export function createGameWorldSurfaceSettings(overrides = {}) {
     const cellSize = overrides.cellSize ?? gridSettings.cellSize;
     const surfaceBakeScale = overrides.surfaceBakeScale ?? surfaceDefaults.surfaceBakeScale;
     const wallSurface = resolveWallSurface(overrides, cellSize);
-    const chunkWorldSpanCells = overrides.chunkWorldSpanCells ?? surfaceDefaults.chunkWorldSpanCells;
-    return createWorldSurfaceSettings({
+    const surfaceTilePeriodCells = resolveSurfaceTilePeriodCells(overrides);
+    return {
         cellsPerChunk: gridSettings.minCellsPerChunk,
-        chunkWorldSize: worldSpanPx(chunkWorldSpanCells, cellSize),
+        surfaceTilePeriodCells,
+        surfaceTilePeriodPx: worldSpanPx(surfaceTilePeriodCells, cellSize),
         viewPaddingPx: surfaceDefaults.viewPaddingPx,
         viewQueryPadPx: surfaceDefaults.viewQueryPadPx,
         maxCachedSurfaces: surfaceDefaults.maxCachedSurfaces,
@@ -27,7 +33,7 @@ export function createGameWorldSurfaceSettings(overrides = {}) {
         roofZLevels: wallSurface.roofZLevels,
         cellSize,
         floorShadow: overrides.floorShadow ?? surfaceDefaults.floorShadow,
-    });
+    };
 }
 export let gameWorldSurfaceSettings = createGameWorldSurfaceSettings();
 export function replaceGameWorldSurfaceSettings(overrides = {}) {

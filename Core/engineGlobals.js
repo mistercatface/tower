@@ -33,7 +33,7 @@ export function installEditorDefaults(state) {
     const worldSurfaces = state.worldSurfaces;
     const settings = gameWorldSurfaceSettings;
     const prev = worldSurfaces.settings;
-    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cellSize", "cellsPerChunk"];
+    const keysToCheck = ["animationBakeMaxFrames", "surfaceBakeScale", "wallHeightCells", "cellSize", "cellsPerChunk", "surfaceTilePeriodCells", "surfaceTilePeriodPx"];
     const bakeSettingsChanged =
         keysToCheck.some((key) => prev[key] !== settings[key]) ||
         prevCameraHeight !== state.viewport.cameraHeight ||

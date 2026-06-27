@@ -1,5 +1,8 @@
 import { aabbCenterX, aabbCenterY, cellBoundsToWorldBoundsInto, createAabb, expandPointsAabbInto, minCornerAabbInto } from "../Spatial/bounds.js";
-const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = -9999;
+const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = 0;
+function positiveModulo(value, period) {
+    return ((value % period) + period) % period;
+}
 export class SurfaceSpatialMap {
     constructor(settings) {
         this.settings = settings;
@@ -13,6 +16,18 @@ export class SurfaceSpatialMap {
     chunkBoundsInto(out, obstacleGrid, chunkCol, chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
         const sizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
         return minCornerAabbInto(out, obstacleGrid.minX + chunkCol * sizePx, obstacleGrid.minY + chunkRow * sizePx, sizePx, sizePx);
+    }
+    surfaceTileChunks(cellsPerChunk = this.settings.cellsPerChunk) {
+        return this.settings.surfaceTilePeriodCells / cellsPerChunk;
+    }
+    wrapChunkCol(chunkCol, cellsPerChunk = this.settings.cellsPerChunk) {
+        return positiveModulo(chunkCol, this.surfaceTileChunks(cellsPerChunk));
+    }
+    wrapChunkRow(chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
+        return positiveModulo(chunkRow, this.surfaceTileChunks(cellsPerChunk));
+    }
+    tileChunkBoundsInto(out, obstacleGrid, chunkCol, chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
+        return this.chunkBoundsInto(out, obstacleGrid, this.wrapChunkCol(chunkCol, cellsPerChunk), this.wrapChunkRow(chunkRow, cellsPerChunk), cellsPerChunk);
     }
     cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
@@ -37,9 +52,9 @@ export class SurfaceSpatialMap {
         return Math.floor((worldY - gridMinY) / chunkSizePx);
     }
     wallAtlas(p1, p2) {
-        const chunkWorldSize = this.settings.chunkWorldSize;
-        const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
-        const wy1 = ((p1.y % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
+        const surfaceTilePeriodPx = this.settings.surfaceTilePeriodPx;
+        const wx1 = positiveModulo(p1.x, surfaceTilePeriodPx);
+        const wy1 = positiveModulo(p1.y, surfaceTilePeriodPx);
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
         const wx2 = wx1 + dx;
