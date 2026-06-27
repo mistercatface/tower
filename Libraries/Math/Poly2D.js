@@ -156,21 +156,61 @@ export function polygonSignedArea2D(vertices) {
     }
     return area * 0.5;
 }
+const CENTROID_SCRATCH = { cx: 0, cy: 0, signedArea: 0 };
+/**
+ * Zero-allocation polygon centroid and signed area calculation.
+ * Supports flat coordinate arrays [x0, y0, x1, y1...] and object arrays [{x, y}, ...].
+ *
+ * @param {({x: number, y: number}[]|number[])} vertices
+ * @param {{cx: number, cy: number, signedArea: number}} [out]
+ * @returns {{cx: number, cy: number, signedArea: number}}
+ */
+export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
+    let cx = 0;
+    let cy = 0;
+    let signedArea = 0;
+    if (typeof vertices[0] === "number") {
+        const count = vertices.length / 2;
+        for (let i = 0; i < count; i++) {
+            const x1 = vertices[i * 2];
+            const y1 = vertices[i * 2 + 1];
+            const nextIdx = ((i + 1) % count) * 2;
+            const x2 = vertices[nextIdx];
+            const y2 = vertices[nextIdx + 1];
+            const cross = x1 * y2 - x2 * y1;
+            signedArea += cross;
+            cx += (x1 + x2) * cross;
+            cy += (y1 + y2) * cross;
+        }
+    } else {
+        const count = vertices.length;
+        for (let i = 0; i < count; i++) {
+            const j = (i + 1) % count;
+            const cross = vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
+            signedArea += cross;
+            cx += (vertices[i].x + vertices[j].x) * cross;
+            cy += (vertices[i].y + vertices[j].y) * cross;
+        }
+    }
+    signedArea *= 0.5;
+    if (Math.abs(signedArea) > 1e-10) {
+        const invArea6 = 1 / (6 * signedArea);
+        cx *= invArea6;
+        cy *= invArea6;
+    } else {
+        cx = 0;
+        cy = 0;
+    }
+    out.cx = cx;
+    out.cy = cy;
+    out.signedArea = signedArea;
+    return out;
+}
 export function polygonSecondMomentAboutCentroid2D(vertices) {
     const count = vertices.length;
     if (count < 3) return 0;
-    const signedArea = polygonSignedArea2D(vertices);
+    const { cx, cy, signedArea } = polygonCentroid2D(vertices, CENTROID_SCRATCH);
     if (Math.abs(signedArea) < 1e-10) return 0;
-    let cx = 0;
-    let cy = 0;
-    for (let i = 0; i < count; i++) {
-        const j = (i + 1) % count;
-        const cross = vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
-        cx += (vertices[i].x + vertices[j].x) * cross;
-        cy += (vertices[i].y + vertices[j].y) * cross;
-    }
-    cx /= 6 * signedArea;
-    cy /= 6 * signedArea;
     let inertia = 0;
     for (let i = 0; i < count; i++) {
         const j = (i + 1) % count;

@@ -168,7 +168,7 @@ export class WorldSurfaceEngine {
             outSrc4[i].x = (worldCorners[i].x - sample.minX) * surfaceBakeScale;
             outSrc4[i].y = (worldCorners[i].y - sample.minY) * surfaceBakeScale;
         }
-        return canvas;
+        return isDrawableBakedSurface(canvas) ? canvas : null;
     }
     bindGroundChunkDraw(ctx, state, viewport, beforeDraw = null) {
         const d = this._chunkDraw;

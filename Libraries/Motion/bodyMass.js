@@ -1,25 +1,9 @@
 import { collisionSettings } from "../Collision/collisionDefaults.js";
-import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Math/Poly2D.js";
+import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D } from "../Math/Poly2D.js";
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
     if (!verts || verts.length < 3) return 0;
     return Math.abs(polygonSignedArea2D(verts));
-}
-function polygonCentroid2D(vertices) {
-    let cx = 0;
-    let cy = 0;
-    let signedArea = 0;
-    const count = vertices.length;
-    for (let i = 0; i < count; i++) {
-        const j = (i + 1) % count;
-        const cross = vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
-        signedArea += cross;
-        cx += (vertices[i].x + vertices[j].x) * cross;
-        cy += (vertices[i].y + vertices[j].y) * cross;
-    }
-    signedArea *= 0.5;
-    const inv = 1 / (6 * signedArea);
-    return { cx: cx * inv, cy: cy * inv };
 }
 function polygonShapeInertiaFactor(shape) {
     const verts = shape.vertices;

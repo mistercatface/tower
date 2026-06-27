@@ -1,3 +1,4 @@
+import { polygonCentroid2D } from "../Math/Poly2D.js";
 export const POXEL_TARGET_EDGE = 4;
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const MAX_FRAC_VERTS = 2048;
@@ -7,40 +8,13 @@ const FRAC_TRIS = new Uint16Array(MAX_FRAC_TRIS * 3);
 function hashV(x, y) {
     return Math.round(x * 10000) + "," + Math.round(y * 10000);
 }
-function calculateCentroid(vertices) {
-    let cx = 0;
-    let cy = 0;
-    let signedArea = 0;
-    const count = vertices.length / 2;
-    for (let i = 0; i < count; i++) {
-        const x1 = vertices[i * 2];
-        const y1 = vertices[i * 2 + 1];
-        const nextIdx = ((i + 1) % count) * 2;
-        const x2 = vertices[nextIdx];
-        const y2 = vertices[nextIdx + 1];
-        const cross = x1 * y2 - x2 * y1;
-        signedArea += cross;
-        cx += (x1 + x2) * cross;
-        cy += (y1 + y2) * cross;
-    }
-    signedArea *= 0.5;
-    if (Math.abs(signedArea) > 0.0001) {
-        const invArea6 = 1 / (6 * signedArea);
-        cx *= invArea6;
-        cy *= invArea6;
-    }
-    SHARED_CENTROID.cx = cx;
-    SHARED_CENTROID.cy = cy;
-    SHARED_CENTROID.signedArea = signedArea;
-    return SHARED_CENTROID;
-}
 function calculateCentroidOfParts(parts) {
     let totalCX = 0;
     let totalCY = 0;
     let totalArea = 0;
     for (let i = 0; i < parts.length; i++) {
         const verts = parts[i].vertices || parts[i];
-        const { cx, cy, signedArea } = calculateCentroid(verts);
+        const { cx, cy, signedArea } = polygonCentroid2D(verts, SHARED_CENTROID);
         const absArea = Math.abs(signedArea);
         totalCX += cx * absArea;
         totalCY += cy * absArea;
@@ -430,7 +404,7 @@ export function localBoxOutline(halfX, halfY) {
     return new Float32Array([-halfX, -halfY, halfX, -halfY, halfX, halfY, -halfX, halfY]);
 }
 export function bakePoxelOutline(flatVerts, targetEdgeLen = POXEL_TARGET_EDGE) {
-    const { cx, cy, signedArea } = calculateCentroid(flatVerts);
+    const { cx, cy, signedArea } = polygonCentroid2D(flatVerts, SHARED_CENTROID);
     const count = flatVerts.length / 2;
     const centeredVerts = new Float32Array(count * 2);
     for (let i = 0; i < count; i++) {
@@ -459,7 +433,7 @@ export function buildGeometryFromPoxelParts(localParts) {
     const bpCount = boundaryPoints.length / 2;
     const centeredVerts = new Float32Array(bpCount * 2);
     centeredVerts.set(boundaryPoints);
-    const { signedArea } = calculateCentroid(centeredVerts);
+    const { signedArea } = polygonCentroid2D(centeredVerts, SHARED_CENTROID);
     return finalizeFootprintGeometry(centeredVerts, shiftedParts, signedArea, { cx, cy });
 }
 export function buildGeometryFromPartsAtOrigin(localParts) {
@@ -467,7 +441,7 @@ export function buildGeometryFromPartsAtOrigin(localParts) {
     const boundaryPoints = getOuterBoundary(parts);
     const footprintVertices = new Float32Array(boundaryPoints.length);
     footprintVertices.set(boundaryPoints);
-    const { signedArea } = calculateCentroid(footprintVertices);
+    const { signedArea } = polygonCentroid2D(footprintVertices, SHARED_CENTROID);
     return finalizeFootprintGeometry(footprintVertices, parts, signedArea, { cx: 0, cy: 0 });
 }
 export function splitPoxels(poxels, localHitX, localHitY, impactForce = 5) {

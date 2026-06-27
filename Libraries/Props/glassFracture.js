@@ -1,42 +1,12 @@
-import { pointInPolygon } from "../Math/Poly2D.js";
+import { pointInPolygon, polygonSignedArea2D, polygonCentroid2D } from "../Math/Poly2D.js";
 export const GLASS_FRACTURE_IMPACT_THRESHOLD = 6;
 export const GLASS_MIN_SHARD_AREA = 12;
 export const GLASS_MAX_SHARDS_PER_SHATTER = 18;
 export const GLASS_MAX_SLIVER_ASPECT = 10;
 export const GLASS_MIN_WEDGE_ANGLE = Math.PI / 12;
 export const GLASS_FRACTURE_COOLDOWN_STEPS = 8;
-function polygonSignedArea(points) {
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-        const j = (i + 1) % points.length;
-        area += points[i].x * points[j].y - points[j].x * points[i].y;
-    }
-    return area * 0.5;
-}
-function polygonCentroid(points) {
-    let cx = 0;
-    let cy = 0;
-    let signedArea = 0;
-    for (let i = 0; i < points.length; i++) {
-        const j = (i + 1) % points.length;
-        const cross = points[i].x * points[j].y - points[j].x * points[i].y;
-        signedArea += cross;
-        cx += (points[i].x + points[j].x) * cross;
-        cy += (points[i].y + points[j].y) * cross;
-    }
-    signedArea *= 0.5;
-    if (Math.abs(signedArea) > 1e-6) {
-        const inv = 1 / (6 * signedArea);
-        cx *= inv;
-        cy *= inv;
-    } else {
-        cx = 0;
-        cy = 0;
-    }
-    return { cx, cy, signedArea };
-}
 function polygonSpan(points) {
-    return Math.sqrt(Math.abs(polygonSignedArea(points)));
+    return Math.sqrt(Math.abs(polygonSignedArea2D(points)));
 }
 function flatVertsToPoints(flatVerts) {
     const count = flatVerts.length / 2;
@@ -74,7 +44,7 @@ function minDistToPolygonBoundary(x, y, points) {
     return closestPointOnPolygonBoundary(x, y, points).dist;
 }
 export function minShardAreaForPolygon(points) {
-    const area = Math.abs(polygonSignedArea(points));
+    const area = Math.abs(polygonSignedArea2D(points));
     return Math.max(GLASS_MIN_SHARD_AREA, area / GLASS_MAX_SHARDS_PER_SHATTER);
 }
 function minThinEdgeForPolygon(points) {
@@ -94,10 +64,10 @@ export function measureGlassShard(flatVerts) {
     }
     const thick = Math.max(maxX - minX, maxY - minY);
     const thin = Math.min(maxX - minX, maxY - minY);
-    return { area: Math.abs(polygonSignedArea(points)), thin, thick, aspect: thick / Math.max(1e-6, thin) };
+    return { area: Math.abs(polygonSignedArea2D(points)), thin, thick, aspect: thick / Math.max(1e-6, thin) };
 }
 function resolveShatterApex(points, hitX, hitY) {
-    const { cx, cy } = polygonCentroid(points);
+    const { cx, cy } = polygonCentroid2D(points);
     const span = polygonSpan(points);
     let ax = hitX;
     let ay = hitY;
@@ -168,7 +138,7 @@ function boundingRadiusFromFootprint(footprintVertices) {
     return Math.sqrt(maxRadiusSq);
 }
 function acceptGlassShard(poly, parentPoints) {
-    const area = Math.abs(polygonSignedArea(poly));
+    const area = Math.abs(polygonSignedArea2D(poly));
     if (area < GLASS_MIN_SHARD_AREA) return false;
     let minX = Infinity;
     let maxX = -Infinity;
@@ -235,7 +205,7 @@ function buildGlassShards(points, apexX, apexY, shardCount, random) {
     return shards;
 }
 function shardCountForPolygon(points, impactForce, apexX, apexY) {
-    const area = Math.abs(polygonSignedArea(points));
+    const area = Math.abs(polygonSignedArea2D(points));
     const span = polygonSpan(points);
     const minArea = minShardAreaForPolygon(points);
     const areaCap = Math.max(2, Math.floor(area / minArea));
@@ -249,7 +219,7 @@ function shardCountForPolygon(points, impactForce, apexX, apexY) {
     return count;
 }
 export function buildShardGeometry(points) {
-    const { cx, cy, signedArea } = polygonCentroid(points);
+    const { cx, cy, signedArea } = polygonCentroid2D(points);
     const count = points.length;
     const centered = new Float32Array(count * 2);
     for (let i = 0; i < count; i++) {
@@ -261,7 +231,7 @@ export function buildShardGeometry(points) {
 export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, random = Math.random) {
     const points = flatVertsToPoints(flatVerts);
     if (points.length < 3) return [];
-    const parentArea = Math.abs(polygonSignedArea(points));
+    const parentArea = Math.abs(polygonSignedArea2D(points));
     const { x: apexX, y: apexY } = resolveShatterApex(points, hitX, hitY);
     let shardCount = shardCountForPolygon(points, impactForce, apexX, apexY);
     let shards = buildGlassShards(points, apexX, apexY, shardCount, random);
