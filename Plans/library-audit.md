@@ -89,7 +89,7 @@ Current first consumer: snake forage. Generic pieces now live outside `Libraries
 | `Libraries/Render/SurfaceTexturing` | ✅ | Sphere/cell/decal texture patches |
 | `Libraries/Render` | ✅ | Scene assembly, prop draw entry (with drawProjectile), vector mode, map caches |
 | `Libraries/Canvas` | ✅ | Quantized sprite cache, baked cache, affine texture, offscreen canvas |
-| `Libraries/Spatial/iso` | ✅ | Radial elevation projection, camera, shadow math (`shadowProjection.js` still unwired) |
+| `Libraries/Spatial/elevation` | ✅ | Radial elevation projection (`RadialElevationProjection.js`), shadow math (`shadowProjection.js` still unwired) |
 | `Libraries/Viewport` | ✅ | Pan/zoom and world/screen transforms |
 | `Libraries/WorldSurface` | ✅ | Chunk surface atlas baking and draw coordination |
 | `Libraries/World` | ✅ | Wall/grid bake helpers consumed by render/surface systems |

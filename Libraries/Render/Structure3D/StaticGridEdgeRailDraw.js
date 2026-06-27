@@ -2,7 +2,7 @@
  * Edge rail draw — thin axis-aligned box via projectWorldPointInto.
  */
 import { collectRailWallBoxesInAabb } from "../../World/wallGridBake.js";
-import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
+import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { drawProjectedWallFace, drawProjectedRailWallCap } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
 const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: [] };

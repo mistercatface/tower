@@ -11,7 +11,7 @@ import {
     createSideGradient,
     projectVertical,
     scaleAtHeight,
-} from "../../Spatial/iso/IsometricProjection.js";
+} from "../../Spatial/elevation/RadialElevationProjection.js";
 import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";

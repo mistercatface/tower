@@ -5,8 +5,8 @@ import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange } from "../Librar
 import { composeLosShadowMask, drawLosShadowOverlay } from "../Libraries/Render/losShadow/losShadowOverlay.js";
 import { collectRailWallShadowEdgesInAabb } from "../Libraries/Render/losShadow/railWallShadowEdges.js";
 import { collectExposedWallEdges, collectExposedWallEdgesInAabb } from "../Libraries/Spatial/grid/gridCellTopology.js";
-import { projectWorldPointToScreenInto } from "../Libraries/Spatial/iso/IsometricProjection.js";
-import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/iso/shadowProjection.js";
+import { projectWorldPointToScreenInto } from "../Libraries/Spatial/elevation/RadialElevationProjection.js";
+import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/elevation/shadowProjection.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";

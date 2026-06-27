@@ -1,5 +1,5 @@
 import { drawImageQuad } from "../Canvas/AffineTexture.js";
-import { projectWorldAabbCornersInto } from "../Spatial/iso/IsometricProjection.js";
+import { projectWorldAabbCornersInto } from "../Spatial/elevation/RadialElevationProjection.js";
 const sProjectedChunkCorners = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },

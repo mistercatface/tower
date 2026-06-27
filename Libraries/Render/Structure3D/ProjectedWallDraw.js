@@ -1,9 +1,9 @@
 /**
- * Projects wall faces in isometric space and samples baked atlases from WorldSurfaceEngine.
+ * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
  */
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
-import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
+import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceQuad, traceClosedPolygon } from "../../Canvas/CanvasPath.js";

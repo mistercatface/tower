@@ -2,7 +2,7 @@ import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas } from "./offscreenCanvas.js";
 /**
  * LRU cache of offscreen canvas sprites (bake once, blit many).
- * Used by kinematics bodies and iso props; animation frame buckets plug into caller keys.
+ * Used by kinematics bodies and radial-elevation props; animation frame buckets plug into caller keys.
  *
  * @param {{ maxItems?: number }} [options]
  */

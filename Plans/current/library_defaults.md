@@ -39,7 +39,7 @@ Libraries/*                  → export let collisionSettings / physicsSettings 
 
 | Item | Was | Now |
 |------|-----|-----|
-| Iso perspective | `Libraries/Spatial/iso/perspectiveDefaults.js` (`LIBRARY_DEFAULT_CAMERA_HEIGHT`, …) | `Core/GamePerspective.js` — `DEFAULT_CAMERA_HEIGHT`, `DEFAULT_PERSPECTIVE_STRENGTH`, `resolvePerspectiveConfig`. **Deleted** `perspectiveDefaults.js`. Viewport gets perspective **only** from `applyPerspectiveConfig` at boot. |
+| Elevation projection | `Core/GamePerspective.js` — `DEFAULT_CAMERA_HEIGHT`, `DEFAULT_PERSPECTIVE_STRENGTH`, `resolvePerspectiveConfig`. Viewport gets perspective **only** from `applyPerspectiveConfig` at boot. |
 | LOS shadow camera fallback | `LIBRARY_DEFAULT_CAMERA_HEIGHT` | `viewport.cameraHeight` |
 
 ---

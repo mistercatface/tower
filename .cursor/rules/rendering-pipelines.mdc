@@ -39,7 +39,7 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
     - **`primitive`** (`sphere`, `box`, …) in `Libraries/Props/primitives/` when a shared shape fits.
     - **`draw: createFooDraw()`** in `Libraries/Render/` when custom (see `button_floor.asset.js`, `createConveyorDraw`).
 3. Register in **`Assets/props/index.js`**. `PropCatalog.js` builds recipes/definitions on import (`render3DKey` = asset `id`).
-4. Recipe signature: **`(ctx, prop, px, py) => void`** — iso projection uses `px`/`py`; never iterate the world calling `drawBox`/`ctx.fill` directly from sandbox code.
+4. Recipe signature: **`(ctx, prop, viewport) => void`** — radial elevation projection reads `viewport`; never iterate the world calling `drawBox`/`ctx.fill` directly from sandbox code.
 
 ### Dynamic state
 
@@ -62,11 +62,11 @@ PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAn
 1. **Recipe** colocated with the domain (`gridStampDrawCache.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
 2. **`GRID_STAMP_RENDER_KEY`** entry in `QuantizedSpriteCache.js` (only if new topology family).
 3. **Minimal prop proxy** at world anchor with **`getCustomSpriteCacheKey()`** for dynamic buckets.
-4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw, animFrame?, zoom?)`. Attachment child recipes use `worldPropRecipes` from `PropCatalog.js` inside the cache bake.
+4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, viewport, renderKey, draw, animFrame?)`. Attachment child recipes use `worldPropRecipes` from `PropCatalog.js` inside the cache bake.
 
 ```javascript
 // ✅
-drawCachedPropSprite(ctx, proxy, px, py, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
+drawCachedPropSprite(ctx, proxy, viewport, GRID_STAMP_RENDER_KEY.ForcefieldEdge, forcefieldEdgeDraw);
 
 // ❌ — new pipeline
 forEachGridEdge(grid, (col, row, side, edge) => { ctx.beginPath(); ctx.stroke(...); });
@@ -94,12 +94,12 @@ forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
             return `k${kind}`;
         },
     };
-    drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw);
+    drawCachedPropSprite(ctx, proxy, viewport, renderKey, draw);
 });
 
 // ✅ — sync on revision, draw from cache
-drawFloorOccupancyBelts(ctx, state, viewport, px, py);
-drawFloorOccupancyPowerSources(ctx, state, viewport, px, py);
+drawFloorOccupancyBelts(ctx, state, viewport);
+drawFloorOccupancyPowerSources(ctx, state, viewport);
 ```
 
 ---
@@ -124,7 +124,7 @@ Do not route belts, forcefields, buttons, or editor feedback through this path.
 
 ```text
 append*OverlayCommands(out, …)  →  buildSandboxOverlayCommands  →  collectOverlayCommands
-  →  drawOverlayCommands(ctx, commands, px, py, zoom)
+  →  drawOverlayCommands(ctx, commands, viewport)
 ```
 
 ### Add new overlay feedback

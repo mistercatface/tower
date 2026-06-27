@@ -41,7 +41,7 @@ function projectSphereCellInto(out, cell, prop, viewport) {
     return out;
 }
 /**
- * Map an image onto a rolled spherical patch in world iso space.
+ * Map an image onto a rolled spherical patch in radial elevation space.
  * Uses the same quad + affine texture path as inspect cylindrical labels.
  *
  * Prefer `capAngle` for circular decals (pool numbers).

@@ -1,4 +1,4 @@
-import { projectWorldPointToScreenInto } from "./IsometricProjection.js";
+import { projectWorldPointToScreenInto } from "./RadialElevationProjection.js";
 const sScreen = { x: 0, y: 0 };
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
 export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {

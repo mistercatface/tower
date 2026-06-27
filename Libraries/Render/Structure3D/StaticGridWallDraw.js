@@ -2,7 +2,7 @@
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
 import { collectVoxelWallFacesInAabb } from "../../World/wallGridBake.js";
-import { isOutwardFaceTowardViewer } from "../../Spatial/iso/IsometricProjection.js";
+import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
 const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: [] };
 export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
     return (

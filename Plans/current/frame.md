@@ -20,7 +20,7 @@ Pass viewport. Read viewport. Nothing else.
 | Zoom | `viewport.zoom ?? 1` |
 | Tier cull / screen map | `viewport` methods |
 | Iso frustum height | `viewport.cameraHeight` |
-| Iso extrusion strength | `viewport.perspectiveStrength` |
+| Elevation extrusion strength | `viewport.perspectiveStrength` |
 | Scene (entities, grid, surfaces) | `state` — **not** viewport |
 
 **No second struct.** No unpacking `viewport` into locals at every draw entry. No threading the same three scalars alongside viewport.
@@ -49,9 +49,9 @@ On **`Libraries/Viewport/Viewport.js`**:
 
 | Field | Set when | Used by |
 |-------|----------|---------|
-| `cameraHeight` | boot / config change (`installEditorDefaults`) | iso alpha, wall band clip |
+| `cameraHeight` | boot / config change (`installEditorDefaults`) | elevation alpha, wall band clip |
 | `_perspectiveStrengthBase` | boot / config change (private; session config strength) | input to `_recompute` only |
-| `perspectiveStrength` | **`_recompute()` only** | iso alpha (zoom-scaled) |
+| `perspectiveStrength` | **`_recompute()` only** | elevation alpha (zoom-scaled) |
 
 Delete: `structurePerspectiveStrength`, `_structurePerspectiveConfigGen`, `resolveStructurePerspectiveStrength`, `perspectiveConfigGeneration` cache.
 
@@ -163,7 +163,7 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 
 ### Step 2 — Projection + walls (delete camera copies)
 
-- [x] `IsometricProjection`, `propMesh`, `ProjectedWallDraw`, ground/animated surface: take **`viewport`**, not `ElevationCamera`
+- [x] `RadialElevationProjection`, `propMesh`, `ProjectedWallDraw`, ground/animated surface: take **`viewport`**, not `ElevationCamera`
 - [x] Delete `elevationCameraFrom*`, `wallPassCamera`, `sStructureRoofCamera`
 - [x] Unify prop + wall strength → always `viewport.perspectiveStrength`
 
@@ -197,11 +197,11 @@ Delete: `wallPassCamera`, `_bindWallDrawable` copying into a mega-context, `wall
 
 | File | Change |
 |------|--------|
-| `Libraries/Viewport/Viewport.js` | iso fields + `_recompute` strength |
+| `Libraries/Viewport/Viewport.js` | elevation projection fields + `_recompute` strength |
 | `Core/engineGlobals.js` | boot → `state.viewport` |
 | `Core/GamePerspective.js` | boot config only; delete resolver |
 | `Libraries/Spatial/iso/ElevationCamera.js` | **delete** |
-| `Libraries/Spatial/iso/IsometricProjection.js` | `viewport` param |
+| `Libraries/Spatial/elevation/RadialElevationProjection.js` | `viewport` param |
 | `Libraries/Render/Props3D/propMesh.js` | `viewport` param |
 | `Libraries/Canvas/QuantizedSpriteCache.js` | `viewport` on draw + bake |
 | `Libraries/Render/WorldSceneRenderer.js` | viewport-only entry; no local px/py/zoom |
@@ -232,7 +232,7 @@ rg elevationCameraFrom Libraries Render
 rg wallPassCamera
 rg bindDrawSession
 rg resolveStructurePerspectiveStrength
-rg 'activePerspective' Libraries/Render Libraries/Spatial/iso Render
+rg 'activePerspective' Libraries/Render Libraries/Spatial/elevation Render
 rg 'const px = viewport\.x' Libraries/Render Render
 rg 'drawCachedPropSprite\([^)]*,\s*[^,]+,\s*[^v]'
 ```

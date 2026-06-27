@@ -64,12 +64,12 @@ There was no single draw-frame handle. Every subsystem invented its own slice of
 | **Resolvers**                | `resolveStructurePerspectiveStrength`, `resolvePerspectiveForViewport`, `activePerspective` hot-path reads — boot config re-resolved through getter theater         |
 
 
-Iso projection, wall faces, prop mesh extrusion, overlay glyphs, and grid stamp draw each had **slightly different parameter lists** for the same three numbers. Pan/zoom changed `viewport` but callers had to remember to re-unpack and pass `px, py, zoom` downstream. Adding `cameraHeight` or zoom-scaled perspective meant touching **dozens of signatures**, not one struct.
+Elevation projection, wall faces, prop mesh extrusion, overlay glyphs, and grid stamp draw each had **slightly different parameter lists** for the same three numbers. Pan/zoom changed `viewport` but callers had to remember to re-unpack and pass `px, py, zoom` downstream. Adding `cameraHeight` or zoom-scaled perspective meant touching **dozens of signatures**, not one struct.
 
 ### Why that was stupid
 
 1. **Duplicate dialect** — `viewport`, `ElevationCamera`, `wallPassCamera`, and bare `px/py/zoom` were four names for one frame. Bugs showed up as “wall strength wrong after zoom” because wall draw read `wallCtx.camera` while props read resolver cache while belts read locals from five lines earlier.
-2. **Signature explosion** — any new draw concern (tier cull, perspective strength, iso alpha) required editing every method in the chain. Refactors stalled because half the tree still took scalars and half took `viewport`.
+2. **Signature explosion** — any new draw concern (tier cull, perspective strength, elevation alpha) required editing every method in the chain.
 3. **Passthrough sync bags** — `syncWorldSceneDrawInput` copied handles the draw methods already had via `state`. Extra indirection, no logic, drift when a field moved on `state` but not the bag.
 4. **Unpack-at-entry antipattern** — `const px = viewport.x` at the top of every draw method looked tidy but meant **N unpack sites** that could disagree after a pan. The cache boundary should unpack once; callers should pass the handle.
 5. **Side-channel binds** — `Viewport.bindDrawSession()` tried to sneak `px/py` to recipes without threading params. Hidden global state, untestable, broke when draw order changed.
@@ -86,7 +86,7 @@ Pass viewport. Read viewport. Nothing else.
 
 | Change                          | Effect                                                                                                                    |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `**Viewport` owns iso fields**  | `cameraHeight`, `_perspectiveStrengthBase`, zoom-scaled `perspectiveStrength` computed in `_recompute()` only             |
+| `**Viewport` owns elevation projection fields**  | `cameraHeight`, `_perspectiveStrengthBase`, zoom-scaled `perspectiveStrength` computed in `_recompute()` only             |
 | **Delete `ElevationCamera.js`** | Projection takes `viewport`; no `elevationCameraFrom*` factories                                                          |
 | **Cache boundary unpacks once** | `drawCachedPropSprite(ctx, prop, viewport, …)` — `px/py/zoom` only inside `QuantizedSpriteCache`                          |
 | **Draw stack signature**        | `draw*(ctx, state, viewport)` — deleted `worldSceneDrawInput` / `syncWorldSceneDrawInput`                                 |

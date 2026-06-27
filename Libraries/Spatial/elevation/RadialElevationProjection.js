@@ -1,3 +1,6 @@
+// Viewer-relative radial elevation projection (worldRenderMode: "radial").
+// Elevated points lean away from live viewport.x/y — not fixed 2:1 isometric.
+// Fixed isometric is a separate future mode; do not confuse with this module.
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
 import { angleDelta } from "../../Math/Angle.js";

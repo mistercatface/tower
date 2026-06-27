@@ -241,7 +241,7 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 | Physics     | `Libraries/Motion`, `Libraries/Spatial/collision`, `Systems/World`                        |
 | Pathfinding | `Libraries/Pathfinding`, `Libraries/Navigation`, `Libraries/Workers`                      |
 | AI          | `Libraries/AI/agentIntent`, `AI/brain`, `AI/memory`, `AI/utility`, `AI/eqs`, `Agent`      |
-| Rendering   | `Libraries/Render`, `Canvas`, `WorldSurface`, `Spatial/iso`, `Render`                     |
+| Rendering   | `Libraries/Render`, `Canvas`, `WorldSurface`, `Spatial/elevation`, `Render`                     |
 | Procedural  | `Libraries/CA`, `RoomGraph`, `Procedural/Mazes`, `Procedural/Motifs`, `Config/procedural` |
 | Sandbox     | `Libraries/Sandbox`, `SandboxEditor`, `Editor`, `UI`, `Pipeline`                          | [sandbox-editor.md](./sandbox-editor.md) |
 | Snake game  | `Libraries/Game/snake`, `Config/games/snake.js`, snake-specific props                     | [games/snake.md](./games/snake.md)       |

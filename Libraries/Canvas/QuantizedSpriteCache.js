@@ -46,7 +46,7 @@ function internedPropPhysicsKey(prop) {
 }
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
- * Iso props use this; domain key/bake helpers live below.
+ * Radial-elevation props use this; domain key/bake helpers live below.
  *
  * @param {{ maxItems?: number }} [options]
  */
@@ -132,7 +132,7 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     }
     ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
 }
-// ─── Iso prop preset ─────────────────────────────────────────────────────────
+// ─── Radial elevation prop preset ────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_STAGE_PADDING = 40;
 function drawVisualAttachmentList(ctx, attachments, viewport) {
@@ -250,7 +250,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
 }
 /** @typedef {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} PropDrawRecipe */
 /**
- * Mandatory draw path for iso/grid stamps and world props (except 3D building walls).
+ * Mandatory draw path for grid stamps and world props (except 3D building walls).
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} prop

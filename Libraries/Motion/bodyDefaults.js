@@ -1,6 +1,6 @@
 /** Default collision/render radius when a body omits `radius`. */
 export const LIBRARY_DEFAULT_BODY_RADIUS = 8;
-/** Default offscreen bake diameter for iso prop sprites. */
+/** Default offscreen bake diameter for radial-elevation prop sprites. */
 export const LIBRARY_DEFAULT_BAKE_PIXEL_SIZE = 32;
 /**
  * @param {{ _baseRadius?: number, radius?: number } | null | undefined} body

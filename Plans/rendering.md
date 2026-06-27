@@ -6,8 +6,6 @@ Progress tracker for the pseudo-3D rendering stack: a **Canvas 2D-only** rendere
 
 **Overall engine maturity:** ~**60%** of a complete multi-perspective pseudo-3D canvas renderer. The _core_ — radial elevation projection, the four bake/blit pipelines, depth sorting, wall atlas, mesh props, viewport culling — is genuinely production-grade, and we have integrated a stencil-based real-time line-of-sight shadow overlay. The gap to "done" is **projected drop shadows, two more overhead perspective modes, dirty-rect perf, render tests**, and the entire **first-person branch**.
 
-> **Naming note:** `Libraries/Spatial/iso/IsometricProjection.js` is misnamed — the math is **viewer-relative radial extrusion**, not fixed 30°/2:1 isometric. Read "iso" as "elevation" throughout this doc.
-
 ---
 
 ## Where this sits vs pro 2.5D engines
@@ -104,7 +102,7 @@ A different lens from the feature tiers below: which **CS graphics building bloc
 
 ### Projection & transforms
 
-- [x] **Camera-relative radial elevation projection** — `IsometricProjection.js` (viewer-relative extrusion, _not_ fixed iso).
+- [x] **Camera-relative radial elevation projection** — `RadialElevationProjection.js` (viewer-relative extrusion, _not_ fixed iso).
 - [x] **2D affine viewport transform** — pan/zoom (`Viewport`).
 - [ ] **True perspective matrix / homogeneous w-divide** — _intentionally absent_; the radial map approximates depth without a matrix pipeline.
 
@@ -167,7 +165,7 @@ A different lens from the feature tiers below: which **CS graphics building bloc
 
 | Item                              | Status | %   | Notes / modules                                           |
 | --------------------------------- | ------ | --- | --------------------------------------------------------- |
-| Radial elevation alpha            | ✅     | 90  | `resolveElevationAlpha`, `IsometricProjection.js`         |
+| Radial elevation alpha            | ✅     | 90  | `resolveElevationAlpha`, `RadialElevationProjection.js`         |
 | Viewer-relative extrusion         | ✅     | 90  | points lean away from `(viewerX, viewerY)`                |
 | Vertical projection + box extrude | ✅     | 85  | `projectVertical`, `extrudeBox`, `extrudeConvexFootprint` |
 | Radial silhouettes (cylinders)    | ✅     | 85  | `getRadialSilhouette`, `traceVisibleArc`                  |
@@ -381,7 +379,7 @@ This is the headline roadmap for _your_ vision. All **overhead** modes share Tie
 | Render-mode + bloom + vignette toggles | ✅     | 75  | editor toolbar                                              |
 | Mock canvas test harness               | ✅     | 70  | `tests/mockCanvas2d.js`                                     |
 | Vector / cache-key unit tests          | 🟡     | 50  | `vectorProp.test.js`, `propScale.test.js` (specs, not draw) |
-| Projection / viewport transform tests  | ⬜     | 0   | no `IsometricProjection`/`Viewport` coverage                |
+| Projection / viewport transform tests  | ⬜     | 0   | no `RadialElevationProjection`/`Viewport` coverage                |
 | Pipeline order / depth-sort tests      | ⬜     | 0   |                                                             |
 | Visual regression / golden-image tests | ⬜     | 0   |                                                             |
 
@@ -453,9 +451,9 @@ This is the headline roadmap for _your_ vision. All **overhead** modes share Tie
 ## Key file map
 
 ```
-Libraries/Spatial/iso/              — projection & camera (read "iso" as "elevation")
-  IsometricProjection.js            — radial elevation alpha, extrude, silhouettes
-  ElevationCamera.js
+Libraries/Spatial/elevation/          — radial elevation projection
+  RadialElevationProjection.js        — viewer-relative extrusion, extrude, silhouettes
+  shadowProjection.js                 — shadow quads through same projection (UNWIRED — Tier 10)
 Core/GamePerspective.js             — per-game cameraHeight / strength
 Libraries/Viewport/Viewport.js      — pan / zoom / world↔screen
 Render/Render.js                    — the one render loop (renderSimulationScene)
@@ -471,7 +469,6 @@ Libraries/Render/losShadow/         — real-time LOS shadow overlay system
   losShadowOverlay.js               — stencil shadow mask and quad projection
   railWallShadowEdges.js            — wall edge collector for shadow casting
 Libraries/World/                    — wall/grid bake helpers for render + surfaces
-Libraries/Spatial/iso/shadowProjection.js — shadow math (UNWIRED — Tier 10)
 Libraries/Render/vectorProp.js      — vector silhouette mode
 Apps/Editor/engine.js, ui/preview.js — RAF loop + frame draw entry
 tests/vectorProp.test.js, drawShapeParity.test.js, mockCanvas2d.js

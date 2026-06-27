@@ -55,7 +55,7 @@ Full checklist and algorithm IDs (V-CA, R-DFS, G-corridor, …) → [Mazes.md](.
 | ------------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------- |
 | `Libraries/Procedural/Motifs`, `Fields`, `Noise` | Surface texture synthesis                                     | Geometry in `CA`, `RoomGraph`, `Procedural/Mazes` |
 | `Libraries/Procedural/Mazes`                     | Layout/geometry helpers (rails, belts, split layouts)         | Texture motifs under `Procedural/Motifs`          |
-| `Spatial/iso/IsometricProjection.js`             | Camera-relative radial elevation                              | True fixed isometric mode (future rendering)      |
+| `Spatial/elevation/RadialElevationProjection.js` | Viewer-relative radial elevation projection (`worldRenderMode: "radial"`) | True fixed isometric mode (future Tier 11)        |
 | `prop.strategy`                                  | Prop capability config (physics, render, sandbox)             | AI strategy / GOAP (not implemented)              |
 | `target` in `snakeFood` or ground nav            | Movement target / food prop                                   | AI strategic objective                            |
 | `Libraries/FSM/transition.js`                    | Prop lifecycle transition helper                              | Agent intent FSM → `AI/agentIntent/`              |

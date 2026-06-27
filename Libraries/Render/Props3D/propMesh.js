@@ -1,5 +1,5 @@
 import { traceClosedPolygonCount } from "../../Canvas/CanvasPath.js";
-import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
+import { projectWorldPointInto } from "../../Spatial/elevation/RadialElevationProjection.js";
 const sProjectedVerts = [
     { x: 0, y: 0 },
     { x: 0, y: 0 },
