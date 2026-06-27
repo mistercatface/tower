@@ -14,7 +14,6 @@ export class TileLabEditorState {
         this.railMazeConfig = { ...createDefaultMapGenBoundsConfig(), wallHeightLevel: 1, edgeThickness: 1, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25, northReserveRows: 3 };
         this.eraseConfig = createDefaultMapGenBoundsConfig();
         this.sidebarPanel = "sandbox";
-        this.showAnimationPreview = false;
         this.showMapOverview = true;
         this.showSelectionRings = true;
         this.showPropTileCells = false;

@@ -1,17 +1,9 @@
 import { paintMapOverviewFrame } from "./mapOverview.js";
-import { setAnimationPreviewActive } from "./LabAnimationPreview.js";
 /** @param {string} panelId @param {boolean} visible */
 function setEditorPanelVisible(panelId, visible) {
     const panel = document.getElementById(panelId);
     panel.classList.toggle("is-visible", visible);
     panel.hidden = !visible;
-}
-/** @param {boolean} visible */
-function setAnimationPreviewVisible(visible) {
-    const stage = document.getElementById("animationStage");
-    stage.classList.toggle("is-visible", visible);
-    stage.hidden = !visible;
-    setAnimationPreviewActive(visible);
 }
 /** @param {boolean} visible */
 function setMapOverviewVisible(visible) {
@@ -25,13 +17,11 @@ export function applyLabViewChrome(state) {
     setEditorPanelVisible("sandboxPanel", panel === "sandbox");
     setEditorPanelVisible("surfaceEditorPanel", panel === "profile");
     setEditorPanelVisible("jsonPanel", panel === "json");
-    setAnimationPreviewVisible(state.editor.showAnimationPreview);
     setMapOverviewVisible(state.editor.showMapOverview);
     const editor = document.querySelector(".col-editor");
     editor.dataset.activePanels = panel;
     const activeInput = document.querySelector(`input[name="editorSidebarPanel"][value="${panel}"]`);
     if (activeInput) /** @type {HTMLInputElement} */ (activeInput).checked = true;
-    document.getElementById("showAnimationPreviewInput").checked = state.editor.showAnimationPreview;
     document.getElementById("showMapOverviewInput").checked = state.editor.showMapOverview;
     document.getElementById("showSelectionRingsInput").checked = state.editor.showSelectionRings;
     document.getElementById("showPropTileCellsInput").checked = state.editor.showPropTileCells;
@@ -45,11 +35,6 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
             state.editor.sidebarPanel = /** @type {HTMLInputElement} */ (e.target).value;
             applyLabViewChrome(state);
         });
-    document.getElementById("showAnimationPreviewInput").addEventListener("change", (e) => {
-        state.editor.showAnimationPreview = /** @type {HTMLInputElement} */ (e.target).checked;
-        applyLabViewChrome(state);
-        onLayoutChange?.();
-    });
     document.getElementById("showMapOverviewInput").addEventListener("change", (e) => {
         state.editor.showMapOverview = /** @type {HTMLInputElement} */ (e.target).checked;
         applyLabViewChrome(state);

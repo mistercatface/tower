@@ -1,18 +1,10 @@
 import { resolveSurfaceProfile, runtimeSurfaceProfiles, shippedSurfaceProfileIds, surfaceProfileKnown } from "../Procedural/SurfaceProfileProvider.js";
 import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { bumpSurfaceProfileRevision, getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
-import { clampBakeFrameRange, isFirstFrameRange } from "./AnimationFrameBake.js";
-import { getAnimationFrames } from "./ProfileBakeResolver.js";
 import { EMPTY_BAKE_TIMING_STATS, setTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
 import { TILE_BAKE_TIER, TileBakeScheduler } from "./TileBakeScheduler.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0, bakeTiming: { ...EMPTY_BAKE_TIMING_STATS } };
-function withBakeFrameRange(payload, profile) {
-    const sourceTotal = getAnimationFrames(profile?.animation);
-    const bakeTotal = payload.animationBakeFrames ?? sourceTotal;
-    const range = clampBakeFrameRange({ frameStart: payload.frameStart, frameCount: payload.frameCount }, bakeTotal);
-    return { ...payload, ...range, animationSourceFrames: payload.animationSourceFrames ?? sourceTotal };
-}
 /**
  * Main-thread tile surface bake client — pool, scheduler, profile sync, and request API.
  */
@@ -59,9 +51,7 @@ export class TileSurfaceWorkerClient {
     _requestProfileBake(type, payload, tier) {
         const profileId = payload.profileId;
         return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            const profile = resolveSurfaceProfile(profileId);
-            const normalized = withBakeFrameRange(payload, profile);
-            return this._sendRequest(type, normalized, tier);
+            return this._sendRequest(type, payload, tier);
         });
     }
     updateFocus(x, y) {
@@ -86,10 +76,7 @@ export class TileSurfaceWorkerClient {
     requestHorizontalPatchBake(payload) {
         const profileId = payload.profileId;
         return this._ensureRuntimeProfileOnWorkers(profileId).then(() => {
-            const profile = resolveSurfaceProfile(profileId);
-            const normalized = withBakeFrameRange(payload, profile);
-            const tier = (normalized.frameCount ?? 1) > 1 && !isFirstFrameRange(normalized) ? TILE_BAKE_TIER.ANIMATION : TILE_BAKE_TIER.STATIC;
-            return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH, normalized, tier);
+            return this._sendRequest(TILE_WORKER_MESSAGE.BAKE_HORIZONTAL_PATCH, payload, TILE_BAKE_TIER.STATIC);
         });
     }
     registerRuntimeProfile(profileId, profile) {

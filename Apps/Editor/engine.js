@@ -22,7 +22,6 @@ import { mountGameShell, resizeGameShell } from "./ui/mountGameShell.js";
 import { getGameLauncher } from "../../Libraries/Game/gameLaunchers.js";
 import { drawLabFrame, shouldRenderLabFrame } from "./ui/preview.js";
 import { flushMapOverviewRepaint } from "./ui/mapOverview.js";
-import { tickAnimationPreview } from "./ui/LabAnimationPreview.js";
 /** @param {import("./state.js").TileLabGameState} state */
 function loadGameModeStylesheet() {
     if (document.getElementById("game-mode-css")) return;
@@ -117,10 +116,7 @@ export function createEditorApp(options = {}) {
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
-        if (!gameMode) {
-            tickAnimationPreview(timestamp);
-            flushMapOverviewRepaint(state);
-        }
+        if (!gameMode) flushMapOverviewRepaint(state);
         requestAnimationFrame(loop);
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);

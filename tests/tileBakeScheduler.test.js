@@ -27,8 +27,6 @@ function chunkPayload(overrides = {}) {
         chunkRow: 2,
         seed: 42,
         zLevel: 0,
-        frameStart: 0,
-        frameCount: 1,
         centerX: 0,
         centerY: 0,
         ...overrides,
@@ -89,31 +87,6 @@ describe("TileBakeScheduler", () => {
         assert.deepEqual(bitmaps, []);
         assert.equal(posts.length, 1);
         assert.equal(scheduler.stats().inFlightDedupeCount, 0);
-    });
-
-    it("limits concurrent animation-tier dispatches", () => {
-        const { scheduler, posts } = createScheduler(4);
-        for (let i = 0; i < 5; i++) {
-            scheduler.enqueue(
-                "bakeHorizontalPatch",
-                {
-                    profileId: "anim",
-                    originX: i,
-                    originY: 0,
-                    worldWidth: 16,
-                    worldHeight: 16,
-                    seed: 0,
-                    frameStart: i + 1,
-                    frameCount: 1,
-                    centerX: i,
-                    centerY: 0,
-                },
-                TILE_BAKE_TIER.ANIMATION,
-            );
-        }
-        assert.equal(posts.length, 2);
-        assert.equal(scheduler.stats().queueSize, 3);
-        assert.equal(scheduler.stats().busyWorkers, 2);
     });
 
     it("dispatches nearer focus jobs first after camera moves", async () => {

@@ -15,7 +15,6 @@ import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawBakedTexture, drawProjectedHorizontalChunkAt, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
-import { bakeFrameRange } from "./AnimationFrameBake.js";
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 // Reserved off-map chunk used for reusable wall-chunk cap texture bakes.
@@ -80,7 +79,6 @@ export class WorldSurfaceEngine {
                 p2,
                 seed: surfaceSeed,
                 profileId: bakeProfileId,
-                ...bakeFrameRange.first(),
                 centerX: wallCenterX,
                 centerY: wallCenterY,
                 wallHeight: hVal,
@@ -113,6 +111,9 @@ export class WorldSurfaceEngine {
             if (isDrawableBakedSurface(canvas)) return canvases;
             this.surfaceCache.delete(key);
         }
+        return this._scheduleGroundChunkBake(key, payload, resolvedZ);
+    }
+    _scheduleGroundChunkBake(key, payload, zLevel = 0) {
         const workerPayload = {
             chunkCol: payload.chunkCol,
             chunkRow: payload.chunkRow,
@@ -123,8 +124,6 @@ export class WorldSurfaceEngine {
             centerX: payload.centerX,
             centerY: payload.centerY,
             zLevel: payload.zLevel ?? zLevel,
-            frameStart: 0,
-            frameCount: 1,
         };
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(workerPayload));
     }

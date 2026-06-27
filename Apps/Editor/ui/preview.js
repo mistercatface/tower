@@ -1,10 +1,8 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
-import { invalidateProfileScratch } from "../../../Libraries/WorldSurface/ProfileBakeResolver.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
 import { invalidateWallSurfaceDraw } from "../../../Libraries/Sandbox/wallDrawInvalidation.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { drawAnimatedSurfaceZones } from "../../../Libraries/WorldSurface/animatedSurfaceDraw.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
@@ -15,9 +13,7 @@ import { drawLosShadowOverlay } from "../../../Libraries/Render/losShadow/losSha
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {
-    drawGroundOverlays(state, viewport, ctx) {
-        drawAnimatedSurfaceZones(ctx, state.sandbox.animatedSurfaceZones, state, viewport);
-    },
+    drawGroundOverlays(state, viewport, ctx) {},
     simulationEffectPasses: [
         floorPropEffectPass,
         {
@@ -124,7 +120,6 @@ function maybeClearProfileBakeCaches(state, profileId) {
 }
 /** @param {import("../state.js").TileLabGameState} state @returns {Promise<void>} */
 export function pushEditorProfile(state) {
-    invalidateProfileScratch(RUNTIME_LAB_PROFILE_ID);
     invalidateWallSurfaceDraw(state);
     state.worldSurfaces.clearBakeCache();
     lastProfileBakeKey = "";

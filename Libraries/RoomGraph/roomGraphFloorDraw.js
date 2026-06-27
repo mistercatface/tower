@@ -1,7 +1,6 @@
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 import { bakePixelsForWorldSpan, drawBakedTexture } from "../WorldSurface/WorldSurfaceResolution.js";
-import { bakeFrameRange } from "../WorldSurface/AnimationFrameBake.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
 import { TileWorkerCoordinator } from "../WorldSurface/TileWorkerCoordinator.js";
 import { indexToColRow } from "../Spatial/grid/GridUtils.js";
@@ -11,7 +10,7 @@ import { roomNodeWorldAabb } from "./roomGraphSurfaceProfile.js";
 function scheduleHorizontalPatch(engine, key, payload) {
     const placeholder = engine.surfaceCache.getOrStart(key);
     const generation = engine.surfaceCache.getCurrentGeneration(key);
-    TileWorkerCoordinator.requestHorizontalPatchBake({ ...payload, ...bakeFrameRange.first() }).then((bitmaps) => {
+    TileWorkerCoordinator.requestHorizontalPatchBake(payload).then((bitmaps) => {
         engine.surfaceCache.commitBake(key, generation, bitmaps);
     });
     return placeholder;

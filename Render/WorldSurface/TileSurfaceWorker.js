@@ -3,7 +3,6 @@ import { bakeGroundChunkCanvases, bakeHorizontalPatchCanvases, bakeWallAtlasCanv
 import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
 import { installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/TileWorkerBakeConstants.js";
 import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/TileWorkerMessages.js";
-import { invalidateProfileScratch } from "../../Libraries/WorldSurface/ProfileBakeResolver.js";
 export class TileSurfaceWorker {
     constructor() {
         this.bakeSession = new BakeSession();
@@ -56,7 +55,6 @@ export class TileSurfaceWorker {
     }
     registerRuntimeProfile(payload) {
         runtimeSurfaceProfiles[payload.profileId] = payload.profile;
-        invalidateProfileScratch(payload.profileId);
         return [];
     }
 }

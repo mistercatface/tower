@@ -3,7 +3,7 @@ import { groundChunkWorkerDedupeKey, horizontalPatchWorkerDedupeKey } from "./ba
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
 import { wallAtlasWorkerDedupeKey } from "./WallSurfaceCache.js";
 import { TileBakeMetricsAccumulator, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
-export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0, ANIMATION: 1 };
+export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0 };
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
 function compareJobs(a, b) {
     if (a.tier !== b.tier) return a.tier - b.tier;
@@ -104,10 +104,8 @@ export class TileBakeScheduler {
         }
         return false;
     }
-    _popNextJob(activeAnimations, maxAnimations) {
+    _popNextJob() {
         while (this.queue.size > 0) {
-            const candidate = this.queue.data[0];
-            if (candidate.tier === TILE_BAKE_TIER.ANIMATION && activeAnimations >= maxAnimations) break;
             const popped = this.queue.pop();
             if (!this.pending.has(popped.id)) continue;
             if (this._dropIfObsolete(popped)) continue;
@@ -119,15 +117,9 @@ export class TileBakeScheduler {
         if (this.queue.size === 0) return;
         this.pool.ensureStarted();
         this._resortQueueIfNeeded();
-        let activeAnimations = 0;
-        this.pool.forEachSlot((_wi, slot) => {
-            if (slot.busy && slot.meta?.tier === TILE_BAKE_TIER.ANIMATION) activeAnimations++;
-        });
-        const maxAnimations = Math.max(1, this.pool.size - 2);
         this.pool.forEachIdle((wi) => {
-            const job = this._popNextJob(activeAnimations, maxAnimations);
+            const job = this._popNextJob();
             if (!job) return;
-            if (job.tier === TILE_BAKE_TIER.ANIMATION) activeAnimations++;
             this.pool.markBusy(wi, { jobId: job.id, tier: job.tier });
             this.pool.postJob(wi, { id: job.id, type: job.type, payload: job.payload });
         });

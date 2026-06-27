@@ -34,7 +34,7 @@ describe("TileSurfaceWorkerClient", () => {
     });
     it("uses shared tile worker message types for bake requests", async () => {
         const { client, pool, scheduler, posts } = createTestClient();
-        const payload = { profileId: "x", chunkCol: 0, chunkRow: 0, seed: 0, frameStart: 0, frameCount: 1 };
+        const payload = { profileId: "x", chunkCol: 0, chunkRow: 0, seed: 0 };
         const promise = client._sendRequest(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, 0);
         await new Promise((resolve) => queueMicrotask(resolve));
         assert.equal(posts[0].type, TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK);

@@ -2,7 +2,6 @@ import { listShippedSurfaceProfileIds } from "../../../Config/procedural/profile
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
 import { initResizer } from "./lab-shared.js";
 import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
-import { initAnimationPreview, mountAnimationPreviewCanvas, setAnimationPreviewActive, syncAnimationPreviewCanvasSize } from "./LabAnimationPreview.js";
 import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flushMapOverviewRepaint, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
@@ -26,7 +25,7 @@ function computeMapColumnSlotMax(state) {
     const column = document.querySelector(".map-viewport-column");
     const gap = parseFloat(getComputedStyle(column).gap) || 10;
     const controlsH = (document.getElementById("labZoomControl")?.offsetHeight ?? 0) + (document.getElementById("labSpeedControl")?.offsetHeight ?? 0) + gap * 2;
-    const squareSlots = 1 + (state.editor.showMapOverview ? 1 : 0) + (state.editor.showAnimationPreview ? 1 : 0);
+    const squareSlots = 1 + (state.editor.showMapOverview ? 1 : 0);
     const rect = container.getBoundingClientRect();
     const availableH = rect.height - controlsH - gap * squareSlots;
     return Math.max(EDITOR_CANVAS_DEFAULTS.main.minSize, Math.floor(Math.min(rect.width - 8, availableH / squareSlots)));
@@ -34,7 +33,6 @@ function computeMapColumnSlotMax(state) {
 function fitMapColumnCanvases(state) {
     const stackSize = computeMapColumnSlotMax(state);
     syncMapOverviewCanvasSize(stackSize);
-    syncAnimationPreviewCanvasSize(state, stackSize);
     if (mapCanvasResize) mapCanvasResize.setSize(stackSize);
 }
 function scheduleProfileRefresh(state, drawAfterProfilePush, debounceMs) {
@@ -139,11 +137,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     );
     syncWorldRenderModeUi(state);
     fitLabStageToView(state);
-    const animCanvas = document.getElementById("animationPreviewCanvas");
     const { main } = EDITOR_CANVAS_DEFAULTS;
-    mountAnimationPreviewCanvas(animCanvas, { host: document.getElementById("animationPreviewHost"), maxSize: () => computeMapColumnSlotMax(state) });
-    initAnimationPreview(animCanvas, buildProfileFromEditor);
-    setAnimationPreviewActive(state.editor.showAnimationPreview);
     mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
         host: document.getElementById("mapStage"),
         initialSize: main.initialSize,

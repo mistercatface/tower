@@ -14,7 +14,6 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
         ${WORLD_RENDER_CONTROLS_HTML}
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
-        <label class="check-inline"><input id="showAnimationPreviewInput" type="checkbox"> Animation Preview</label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox"> Selection rings</label>
         <label class="check-inline"><input id="showPropTileCellsInput" type="checkbox"> Prop tile cells</label>
@@ -74,11 +73,6 @@ export const TILELAB_UI_HTML = `
                         <details class="editor-block" open>
                             <summary>Selected</summary>
                             <div id="motifParamsPanel"></div>
-                        </details>
-                        <details class="editor-block" open>
-                            <summary>Animation</summary>
-                            <div id="animationParamsPanel"></div>
-                        </details>
                         <details class="editor-block" open>
                             <summary>Global</summary>
                             <div id="globalParamsPanel"></div>
@@ -101,11 +95,6 @@ export const TILELAB_UI_HTML = `
         <section class="col col-map">
             <div class="map-container">
                 <div class="map-viewport-column">
-                    <div class="animation-stage" id="animationStage" hidden>
-                        <div id="animationPreviewHost">
-                            <canvas id="animationPreviewCanvas"></canvas>
-                        </div>
-                    </div>
                     <div class="map-overview-stage" id="mapOverviewStage">
                         <div id="mapOverviewHost">
                             <canvas id="mapOverviewCanvas"></canvas>
