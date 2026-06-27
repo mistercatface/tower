@@ -202,7 +202,7 @@ export function drawExtrudedConvexPolygon(
             ctx.beginPath();
             traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
             ctx.clip();
-            const scale = state.worldSurfaces.settings.surfaceBakeScale;
+            const scale = textures.scale;
             drawImageQuad(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, (prop.wallChunkHeightPx ?? height) * scale, face.baseA, face.baseB, face.topB, face.topA);
             ctx.restore();
             if (stroke) {
@@ -224,9 +224,8 @@ export function drawExtrudedConvexPolygon(
         ctx.beginPath();
         traceClosedPolygon(ctx, body.topCorners);
         ctx.clip();
-        const scale = state.worldSurfaces.settings.surfaceBakeScale;
-        const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-        const chunkSizePx = state.worldSurfaces.settings.cellSize * cellsPerChunk;
+        const scale = textures.scale;
+        const chunkSizePx = textures.chunkSizePx;
         const offset = chunkSizePx / 2;
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
