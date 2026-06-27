@@ -1,7 +1,7 @@
 /**
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
  */
-import { createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
+import { aabbCenterX, aabbCenterY, createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
@@ -35,17 +35,17 @@ export class WorldSurfaceEngine {
         return surfaceProfileDefaults.defaultId;
     }
     buildGroundChunkPayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null) {
-        const chunk = this.surfaceSpace.groundChunk(state.obstacleGrid, chunkCol, chunkRow);
+        const bounds = this.surfaceSpace.chunkBoundsInto(this._chunkBounds, state.obstacleGrid, chunkCol, chunkRow);
         const resolvedProfileId = profileId ?? this.resolveSurfaceProfileId();
         return {
             chunkCol,
             chunkRow,
-            minX: chunk.minX,
-            minY: chunk.minY,
+            minX: bounds.minX,
+            minY: bounds.minY,
             seed: this.worldSurfaceSeed ?? 0,
             profileId: resolvedProfileId,
-            centerX: chunk.centerX,
-            centerY: chunk.centerY,
+            centerX: aabbCenterX(bounds),
+            centerY: aabbCenterY(bounds),
             zLevel: zLevel ?? 0,
         };
     }
@@ -105,6 +105,7 @@ export class WorldSurfaceEngine {
     getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
+        payload.zLevel = resolvedZ;
         const key = this.cacheKeys.groundChunkKey(chunkCol, chunkRow, payload.profileId, resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) {
@@ -116,18 +117,8 @@ export class WorldSurfaceEngine {
         return this._scheduleGroundChunkBake(key, payload, resolvedZ);
     }
     _scheduleGroundChunkBake(key, payload, zLevel = 0) {
-        const workerPayload = {
-            chunkCol: payload.chunkCol,
-            chunkRow: payload.chunkRow,
-            minX: payload.minX,
-            minY: payload.minY,
-            seed: payload.seed,
-            profileId: payload.profileId,
-            centerX: payload.centerX,
-            centerY: payload.centerY,
-            zLevel: payload.zLevel ?? zLevel,
-        };
-        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(workerPayload));
+        payload.zLevel = payload.zLevel ?? zLevel;
+        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
     }
     getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, bounds, roofCanvas, payload) {
         if (roofCanvas.isPlaceholder) return roofCanvas;

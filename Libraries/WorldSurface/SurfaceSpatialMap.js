@@ -23,11 +23,6 @@ export class SurfaceSpatialMap {
     viewportChunkRange(bounds, obstacleGrid, chunkSizePx) {
         return worldBoundsToChunkRange(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
-    groundChunk(obstacleGrid, chunkCol, chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
-        const chunkSizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
-        const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow, cellsPerChunk);
-        return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY, centerX: aabbCenterX(bounds), centerY: aabbCenterY(bounds) };
-    }
     wallAtlas(p1, p2) {
         const chunkWorldSize = this.settings.chunkWorldSize;
         const wx1 = ((p1.x % chunkWorldSize) + chunkWorldSize) % chunkWorldSize;
