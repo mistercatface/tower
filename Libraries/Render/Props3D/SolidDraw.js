@@ -14,6 +14,7 @@ import {
 } from "../../Spatial/iso/IsometricProjection.js";
 import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
+import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth }) {
@@ -246,6 +247,45 @@ export function drawExtrudedConvexPolygon(
             ctx.stroke();
         }
     }
+}
+export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing) {
+    const textures = prop._wallChunkTextures;
+    if (!textures?.ready) return;
+    const capCanvas = textures.capCanvas;
+    const textureScale = textures.scale;
+    const offset = textures.chunkSizePx / 2;
+    const angle = facing ?? 0;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const px = prop.x;
+    const py = prop.y;
+    const count = localVerts.length;
+    if (count < 3) return;
+    const worldCorners = [];
+    const srcCorners = [];
+    for (let i = 0; i < count; i++) {
+        const lx = localVerts[i].x;
+        const ly = localVerts[i].y;
+        worldCorners.push({ x: px + lx * cos - ly * sin, y: py + lx * sin + ly * cos });
+        const rx = lx * cos - ly * sin;
+        const ry = lx * sin + ly * cos;
+        srcCorners.push({ x: (rx + offset) * textureScale, y: (ry + offset) * textureScale });
+    }
+    ctx.save();
+    ctx.beginPath();
+    traceClosedPolygon(ctx, worldCorners);
+    ctx.clip();
+    for (let i = 1; i < count - 1; i++) drawImageTriangle(ctx, capCanvas, srcCorners[0], srcCorners[i], srcCorners[i + 1], worldCorners[0], worldCorners[i], worldCorners[i + 1]);
+    ctx.restore();
+}
+export function drawFlatWallChunkProp(ctx, prop) {
+    if (!prop.wallChunkProfileId || !prop._wallChunkTextures?.ready) return false;
+    const parts = getEntityCollisionParts(prop);
+    if (parts.length !== 1) return false;
+    const verts = parts[0].vertices;
+    if (!verts || verts.length < 3) return false;
+    drawFlatWallChunkCap(ctx, prop, verts);
+    return true;
 }
 export function drawExtrudedCompoundPolygon(
     ctx,

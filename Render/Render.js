@@ -37,7 +37,7 @@ export class Renderer {
     drawWorldSceneStructure(state, viewport) {
         if (this._worldRenderMode === WORLD_RENDER_MODE_FLAT2D) {
             state.worldSurfaces.drawFlatWallRails(this.ctx, state, viewport);
-            this.render3D.draw3DBuildings(this.ctx, state, viewport, { skipWalls: true });
+            this.render3D.draw3DBuildings(this.ctx, state, viewport, { skipWalls: true, flatWallChunks: true });
             return;
         }
         this.render3D.draw3DBuildings(this.ctx, state, viewport);

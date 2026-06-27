@@ -3,6 +3,7 @@ import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from ".
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
+import { drawFlatWallChunkProp } from "./Props3D/SolidDraw.js";
 import propCatalog from "../../Assets/props/index.js";
 function drawProjectile(ctx, prop, viewport) {
     const length = 1.0;
@@ -203,9 +204,10 @@ export class WorldSceneRenderer {
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
         this._appendVisibleForcefieldEdges(state, viewport);
         parallelSort(visibleObjects, this.visibleDrawableDepths);
+        const flatWallChunks = options.flatWallChunks === true;
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy) this._drawProp(ctx, obj, viewport, state);
+            if (obj.strategy) this._drawProp(ctx, obj, viewport, state, { flatWallChunks });
             else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, viewport);
             else if (obj.p1) {
                 bindWallFaceScratch(face, obj);
@@ -216,7 +218,7 @@ export class WorldSceneRenderer {
             }
         }
     }
-    _drawProp(ctx, prop, viewport, state) {
+    _drawProp(ctx, prop, viewport, state, options = {}) {
         if (prop._gunBullet) {
             drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
             return;
@@ -225,6 +227,7 @@ export class WorldSceneRenderer {
         const draw = propCatalog[renderKey]?.drawRecipe;
         if (!draw) return;
         prepareWallChunkPropTextures(state, prop);
+        if (options.flatWallChunks && drawFlatWallChunkProp(ctx, prop)) return;
         drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
     }
 }
