@@ -7,7 +7,7 @@ import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
-import { surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
+import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { staticRoofMaskCacheKey, SurfaceBakeCacheKeys } from "./SurfaceBakeCacheKeys.js";
 import { SurfaceSpatialMap } from "./SurfaceSpatialMap.js";
 import { createWallFaceAxes, wallFaceColumns } from "./WallFaceColumns.js";
@@ -26,13 +26,13 @@ export class WorldSurfaceEngine {
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, minChunkCol: 0, maxChunkCol: 0, minChunkRow: 0, maxChunkRow: 0 };
         this._resolvedChunkCanvas = { canvas: null, profileId: null };
         this._chunkBounds = createAabb();
+        this.activeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
     }
     clear() {
         this.surfaceCache.clear();
     }
     resolveSurfaceProfileId() {
-        if (this.surfaceProfileOverride) return this.surfaceProfileOverride;
-        return surfaceProfileDefaults.defaultId;
+        return this.activeSurfaceProfileId;
     }
     buildGroundChunkPayload(state, chunkCol, chunkRow, zLevel = 0, profileId = null, boundsSample = null) {
         const resolvedProfileId = profileId ?? this.resolveSurfaceProfileId();

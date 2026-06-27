@@ -6,14 +6,12 @@ export class WorldSurfaceSystem extends WorldSurfaceEngine {
     constructor(settings = gameWorldSurfaceSettings) {
         super(settings);
         this.worldSurfaceSeed = 0;
-        this.surfaceProfileOverride = null;
     }
     clearBakeCache() {
         super.clear();
     }
     clear() {
         this.clearBakeCache();
-        this.surfaceProfileOverride = null;
     }
     _bindSceneDraw(ctx, state, viewport) {
         this.bindGroundChunkDraw(ctx, state.obstacleGrid, viewport, state, playBoundsFromObstacleGrid(state.obstacleGrid));

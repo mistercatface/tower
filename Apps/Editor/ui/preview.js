@@ -127,7 +127,7 @@ export function pushEditorProfile(state) {
     const profile = buildLabRuntimeProfile();
     if (!profile) throw new Error("Lab runtime profile is not initialized");
     registerRuntimeSurfaceProfile(RUNTIME_LAB_PROFILE_ID, profile);
-    state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
+    state.worldSurfaces.activeSurfaceProfileId = RUNTIME_LAB_PROFILE_ID;
     return TileWorkerCoordinator.registerRuntimeProfile(RUNTIME_LAB_PROFILE_ID, profile);
 }
 /** @param {import("../state.js").TileLabGameState} state */
@@ -137,8 +137,8 @@ export function drawLabFrame(state) {
     const viewport = state.viewport;
     const showVignette = showLabVignette;
     const showPathDebug = showLabPathDebug;
-    const prevProfileOverride = state.worldSurfaces.surfaceProfileOverride;
-    state.worldSurfaces.surfaceProfileOverride = RUNTIME_LAB_PROFILE_ID;
+    const prevActiveSurfaceProfileId = state.worldSurfaces.activeSurfaceProfileId;
+    state.worldSurfaces.activeSurfaceProfileId = RUNTIME_LAB_PROFILE_ID;
     maybeClearProfileBakeCaches(state, RUNTIME_LAB_PROFILE_ID);
     getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();
@@ -148,7 +148,7 @@ export function drawLabFrame(state) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
     if (showPathDebug) drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
-    state.worldSurfaces.surfaceProfileOverride = prevProfileOverride;
+    state.worldSurfaces.activeSurfaceProfileId = prevActiveSurfaceProfileId;
     labViewDirty = false;
     if (showVignette) {
         ctx.save();

@@ -6,7 +6,6 @@ import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Coll
 import { physicsSettings, LIBRARY_PHYSICS_DEFAULTS } from "../Libraries/Motion/physicsDefaults.js";
 import { setPropPixelSize, resolvePropPixelSize } from "./GamePropPixelSize.js";
 import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../Libraries/Props/propRenderDefaults.js";
-import { surfaceProfileDefaults } from "../Libraries/Procedural/SurfaceProfileProvider.js";
 import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
@@ -20,7 +19,7 @@ export function installEditorDefaults(state) {
         workersConfigured = true;
     }
     activeProceduralDesign.current = resolveProceduralDesignConfig(profile);
-    surfaceProfileDefaults.defaultId = activeProceduralDesign.current?.defaultSurfaceProfileId ?? EDITOR_DEFAULT_SURFACE_PROFILE_ID;
+    const activeSurfaceProfileId = activeProceduralDesign.current?.defaultSurfaceProfileId ?? EDITOR_DEFAULT_SURFACE_PROFILE_ID;
     const perspective = resolvePerspectiveConfig(profile);
     const prevCameraHeight = state.viewport.cameraHeight;
     state.viewport.applyPerspectiveConfig(perspective);
@@ -40,6 +39,7 @@ export function installEditorDefaults(state) {
         prevCameraHeight !== state.viewport.cameraHeight ||
         JSON.stringify(prev.roofZLevels ?? []) !== JSON.stringify(settings.roofZLevels ?? []);
     worldSurfaces.settings = settings;
+    worldSurfaces.activeSurfaceProfileId = activeSurfaceProfileId;
     void TileWorkerCoordinator.syncBakeConstants(settings);
     if (bakeSettingsChanged) worldSurfaces.clear();
 }
