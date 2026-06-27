@@ -18,6 +18,13 @@ describe("surface tile cutoff", () => {
         const keys = new SurfaceBakeCacheKeys(surfaceSpace);
         assert.equal(surfaceSpace.surfaceTileChunks(), 4);
         assert.equal(keys.groundChunkKey(0, 0, "test"), keys.groundChunkKey(4, 4, "test"));
+        assert.equal(keys.groundChunkKey(0, 0, "test", 1), keys.groundChunkKey(4, 4, "test", 1));
+    });
+
+    it("keeps roof mask and composite keys per real chunk (real geometry, not wrapped)", () => {
+        const surfaceSpace = createSurfaceSpace();
+        const keys = new SurfaceBakeCacheKeys(surfaceSpace);
+        assert.notEqual(keys.staticRoofMaskKey(0, 0, 1), keys.staticRoofMaskKey(4, 4, 1));
         assert.notEqual(keys.staticRoofDrawKey(0, 0, "test", 1), keys.staticRoofDrawKey(4, 4, "test", 1));
     });
 

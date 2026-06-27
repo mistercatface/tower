@@ -1,7 +1,8 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
 import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
-import { invalidateWallSurfaceDraw } from "../../../Libraries/Sandbox/wallDrawInvalidation.js";
+import { invalidateStaticGridEdgeRailDrawCache } from "../../../Libraries/Render/Structure3D/StaticGridEdgeRailDraw.js";
+import { invalidateStaticGridWallDrawCache } from "../../../Libraries/Render/Structure3D/StaticGridWallDraw.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
 import { getGameState } from "../../../GameState/GameState.js";
@@ -110,18 +111,22 @@ function getLabRenderer(canvas, ctx, state) {
     labRenderer.applyWorldRenderMode(state?.worldRenderMode ?? WORLD_RENDER_MODE_DEFAULT);
     return labRenderer;
 }
+function invalidateWallDrawCaches() {
+    invalidateStaticGridWallDrawCache();
+    invalidateStaticGridEdgeRailDrawCache();
+}
 function maybeClearProfileBakeCaches(state) {
     const profileId = state.worldSurfaces.activeSurfaceProfileId;
     const key = `${profileId}:${getSurfaceProfileRevision(profileId)}:${state.worldSurfaces.worldSurfaceSeed}`;
     if (lastProfileBakeKey === key) return;
     lastProfileBakeKey = key;
-    invalidateWallSurfaceDraw(state);
+    invalidateWallDrawCaches();
     state.worldSurfaces.clearBakeCache();
     labRenderer = null;
 }
 /** @param {import("../state.js").TileLabGameState} state @returns {Promise<void>} */
 export function pushEditorProfile(state) {
-    invalidateWallSurfaceDraw(state);
+    invalidateWallDrawCaches();
     state.worldSurfaces.clearBakeCache();
     lastProfileBakeKey = "";
     labRenderer = null;

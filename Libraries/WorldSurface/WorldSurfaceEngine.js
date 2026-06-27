@@ -8,7 +8,7 @@ import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSur
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { staticRoofMaskCacheKey, SurfaceBakeCacheKeys } from "./SurfaceBakeCacheKeys.js";
+import { SurfaceBakeCacheKeys } from "./SurfaceBakeCacheKeys.js";
 import { SurfaceSpatialMap } from "./SurfaceSpatialMap.js";
 import { createWallFaceAxes, wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
@@ -32,6 +32,19 @@ export class WorldSurfaceEngine {
     clearBakeCache() {
         this.surfaceCache.clear();
     }
+    invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
+        if (!bounds || !state?.obstacleGrid) return;
+        const obstacleGrid = state.obstacleGrid;
+        const range = this.surfaceSpace.cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk);
+        const zLevels = obstacleGrid.collectStaticStructureZLevels();
+        const profileId = this.activeSurfaceProfileId;
+        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
+            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
+                for (const zLevel of zLevels) {
+                    this.surfaceCache.delete(this.cacheKeys.staticRoofMaskKey(chunkCol, chunkRow, zLevel));
+                    this.surfaceCache.delete(this.cacheKeys.staticRoofDrawKey(chunkCol, chunkRow, profileId, zLevel));
+                }
+    }
     buildGroundChunkPayload(state, chunkCol, chunkRow, profileId, zLevel = 0, boundsSample = null) {
         let minX, minY, centerX, centerY, tileChunkCol, tileChunkRow;
         if (boundsSample) {
@@ -52,19 +65,6 @@ export class WorldSurfaceEngine {
             tileChunkRow = this.surfaceSpace.wrapChunkRow(chunkRow);
         }
         return { chunkCol, chunkRow, tileChunkCol, tileChunkRow, minX, minY, seed: this.worldSurfaceSeed, profileId, centerX, centerY, zLevel: zLevel ?? 0 };
-    }
-    invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        if (!bounds || !state?.obstacleGrid) return;
-        const obstacleGrid = state.obstacleGrid;
-        const range = this.surfaceSpace.cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk);
-        const zLevels = obstacleGrid.collectStaticStructureZLevels();
-        const profileId = this.activeSurfaceProfileId;
-        for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
-            for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
-                for (const zLevel of zLevels) {
-                    this.surfaceCache.delete(staticRoofMaskCacheKey(chunkCol, chunkRow, zLevel));
-                    this.surfaceCache.delete(this.cacheKeys.staticRoofDrawKey(chunkCol, chunkRow, profileId, zLevel));
-                }
     }
     ensureWallAtlas(key, p1, p2, columns, wallHeight, profileId) {
         let cached = this.surfaceCache.get(key);
@@ -108,28 +108,6 @@ export class WorldSurfaceEngine {
         if (canvases) return canvases;
         const payload = this.buildGroundChunkPayload(state, chunkCol, chunkRow, profileId, zLevel, boundsSample);
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
-    }
-    getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, bounds, roofCanvas) {
-        if (roofCanvas.isPlaceholder) return roofCanvas;
-        const drawKey = this.cacheKeys.staticRoofDrawKey(chunkCol, chunkRow, this.activeSurfaceProfileId, zLevel);
-        const maskKey = staticRoofMaskCacheKey(chunkCol, chunkRow, zLevel);
-        let maskEntry = this.surfaceCache.get(maskKey);
-        if (!maskEntry) {
-            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, this.settings);
-            if (!maskCanvas) {
-                this.surfaceCache.delete(drawKey);
-                return null;
-            }
-            maskEntry = [maskCanvas];
-            this.surfaceCache.set(maskKey, maskEntry);
-            this.surfaceCache.delete(drawKey);
-        }
-        const cached = this.surfaceCache.get(drawKey);
-        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
-        const masked = composeDestinationIn(roofCanvas, maskEntry[0]);
-        if (!isDrawableBakedSurface(masked)) return null;
-        this.surfaceCache.set(drawKey, [masked]);
-        return masked;
     }
     /**
      * @param {{ x: number, y: number }} p1
@@ -243,6 +221,28 @@ export class WorldSurfaceEngine {
                 if (!this._fillDrawableGroundChunkCanvas(chunkCol, chunkRow, 0)) continue;
                 ctx.drawImage(this._resolvedChunkCanvas, chunkBounds.minX, chunkBounds.minY, aabbWidth(chunkBounds), aabbHeight(chunkBounds));
             }
+    }
+    getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, bounds, roofCanvas) {
+        if (roofCanvas.isPlaceholder) return roofCanvas;
+        const drawKey = this.cacheKeys.staticRoofDrawKey(chunkCol, chunkRow, this.activeSurfaceProfileId, zLevel);
+        const maskKey = this.cacheKeys.staticRoofMaskKey(chunkCol, chunkRow, zLevel);
+        let maskEntry = this.surfaceCache.get(maskKey);
+        if (!maskEntry) {
+            const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, this.settings);
+            if (!maskCanvas) {
+                this.surfaceCache.delete(drawKey);
+                return null;
+            }
+            maskEntry = [maskCanvas];
+            this.surfaceCache.set(maskKey, maskEntry);
+            this.surfaceCache.delete(drawKey);
+        }
+        const cached = this.surfaceCache.get(drawKey);
+        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
+        const masked = composeDestinationIn(roofCanvas, maskEntry[0]);
+        if (!isDrawableBakedSurface(masked)) return null;
+        this.surfaceCache.set(drawKey, [masked]);
+        return masked;
     }
     drawStaticRoofChunksForLevels(levels) {
         const d = this._chunkDraw;
