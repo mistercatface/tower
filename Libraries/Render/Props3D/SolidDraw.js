@@ -180,11 +180,7 @@ export function drawExtrudedConvexPolygon(
     }
     // Check if textured wall chunk prop
     let textures = null;
-    if (prop.wallChunkProfileId && state?.worldSurfaces) {
-        const wallHeightPx = prop.wallChunkHeightPx ?? height;
-        const resolvedTextures = state.worldSurfaces.ensureWallChunkProfileTextures(state, prop.wallChunkProfileId, wallHeightPx);
-        if (resolvedTextures.ready) textures = resolvedTextures;
-    }
+    if (prop.wallChunkProfileId && prop._wallChunkTextures?.ready) textures = prop._wallChunkTextures;
     const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
     baseGrad.addColorStop(0.0, baseColors.light);
     baseGrad.addColorStop(0.5, baseColors.mid);
