@@ -46,7 +46,7 @@ export class WorldSurfaceEngine {
         const maxX = obstacleGrid.minX + (bounds.endCol + 1) * cellSize;
         const maxY = obstacleGrid.minY + (bounds.endRow + 1) * cellSize;
         const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
-        const zLevels = [0, ...(roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0)];
+        const zLevels = (roofZLevels ?? this.settings.roofZLevels ?? []).filter((z) => z > 0);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++) {
                 const chunkCenterX = obstacleGrid.minX + chunkCol * chunkSizePx + chunkSizePx / 2;
@@ -55,7 +55,6 @@ export class WorldSurfaceEngine {
                 const rev = getSurfaceProfileRevision(profileId);
                 for (const zLevel of zLevels) {
                     this.surfaceCache.delete(groundChunkCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
-                    if (zLevel <= 0) continue;
                     this.surfaceCache.delete(staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel));
                     this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
                 }
