@@ -9,16 +9,16 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 
 ## Decision tree
 
-| What are you drawing? | Pipeline | Entry point |
-|----------------------|----------|-------------|
-| Placed **WorldProp** (ball, crate, button, flipper, …) | **World prop cache** | `Assets/props/*.asset.js` → `drawCachedPropSprite` (recipe from `worldPropRecipes`) |
-| **Grid/floor stamp** (belt, forcefield, passage power, portal edge, …) | **Grid stamp cache** | `PropDrawRecipe` + `GRID_STAMP_RENDER_KEY` + `drawCachedPropSprite` |
-| **Voxel fill** or **rail wall edge** (building geometry) | **Wall atlas** | `WorldSceneRenderer.draw3DBuildings` only |
-| **Editor/sandbox feedback** (selection, path, wire, place preview, drag aim) | **Overlay commands** | `append*OverlayCommands` → `collectOverlayCommands` → `drawOverlayCommands` |
-| Minimap / map overview / path-debug bake | **labMapCaches** | Not main canvas — do not copy this pattern for gameplay |
-| Full-screen vignette / letterbox | **Screen HUD** | OK in `preview.js` with `setTransform(1,0,0,1,0,0)` only |
+| What are you drawing?                                                        | Pipeline             | Entry point                                                                         |
+| ---------------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------- |
+| Placed **WorldProp** (ball, crate, button, flipper, …)                       | **World prop cache** | `Assets/props/*.asset.js` → `drawCachedPropSprite` (recipe from `worldPropRecipes`) |
+| **Grid/floor stamp** (belt, forcefield, passage power, portal edge, …)       | **Grid stamp cache** | `PropDrawRecipe` + `GRID_STAMP_RENDER_KEY` + `drawCachedPropSprite`                 |
+| **Voxel fill** or **rail wall edge** (building geometry)                     | **Wall atlas**       | `WorldSceneRenderer.draw3DBuildings` only                                           |
+| **Editor/sandbox feedback** (selection, path, wire, place preview, drag aim) | **Overlay commands** | `append*OverlayCommands` → `collectOverlayCommands` → `drawOverlayCommands`         |
+| Minimap / map overview / path-debug bake                                     | **labMapCaches**     | Not main canvas — do not copy this pattern for gameplay                             |
+| Full-screen vignette / letterbox                                             | **Screen HUD**       | OK in `preview.js` with `setTransform(1,0,0,1,0,0)` only                            |
 
-**Not a new pipeline:** animated ground zones (`drawAnimatedSurfaceZones`), entity `render()` hooks, debris pass — extend existing hooks; don't fork canvas drawing for one feature.
+**Not a new pipeline:** entity `render()` hooks, debris pass — extend existing hooks; don't fork canvas drawing for one feature.
 
 ---
 
@@ -36,8 +36,8 @@ There are **four in-world pipelines** plus two **exempt off-pipeline** areas. Ne
 
 1. **`Assets/props/<name>/<name>.asset.js`** — `physics`, optional `sandbox`, visuals.
 2. **Draw recipe** — pick one:
-   - **`primitive`** (`sphere`, `box`, …) in `Libraries/Props/primitives/` when a shared shape fits.
-   - **`draw: createFooDraw()`** in `Libraries/Render/` when custom (see `button_floor.asset.js`, `createConveyorDraw`).
+    - **`primitive`** (`sphere`, `box`, …) in `Libraries/Props/primitives/` when a shared shape fits.
+    - **`draw: createFooDraw()`** in `Libraries/Render/` when custom (see `button_floor.asset.js`, `createConveyorDraw`).
 3. Register in **`Assets/props/index.js`**. `PropCatalog.js` builds recipes/definitions on import (`render3DKey` = asset `id`).
 4. Recipe signature: **`(ctx, prop, px, py) => void`** — iso projection uses `px`/`py`; never iterate the world calling `drawBox`/`ctx.fill` directly from sandbox code.
 
@@ -87,7 +87,13 @@ Shared module: **`Libraries/Sandbox/gridStampDrawCache.js`** — floor belts, pa
 ```javascript
 // ❌ — per-frame proxy + closure in viewport loop
 forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
-    const proxy = { x, y, getCustomSpriteCacheKey() { return `k${kind}`; } };
+    const proxy = {
+        x,
+        y,
+        getCustomSpriteCacheKey() {
+            return `k${kind}`;
+        },
+    };
     drawCachedPropSprite(ctx, proxy, px, py, renderKey, draw);
 });
 
@@ -129,10 +135,10 @@ append*OverlayCommands(out, …)  →  buildSandboxOverlayCommands  →  collect
 
 ### Cached glyph vs live draw
 
-| Shape | Use |
-|-------|-----|
-| **Static-ish glyph** (ring, arrowhead, cell highlight, endpoint dot, repeated marker) | Cached factory: `overlayCachedSelectionRing`, `overlayGridCellHighlight`, … — attaches **`cache: { renderKey, customKey, worldSpan }`**. Add **`OVERLAY_RENDER_KEY`** + bucket helper in `overlayCacheKeys.js` if new family. Bake body in **`overlayGlyphBake.js`**. |
-| **Live / unique geometry** (marquee rect, in-progress wire, polylines, drag-launch band, variable AABB) | Immediate factory **without** `cache`: `overlaySegment`, `overlayPolyline`, `overlayAabb`, `overlayAimSegment`. Use **`appendOverlayWireLink(..., { live: true })`** for previews. |
+| Shape                                                                                                   | Use                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Static-ish glyph** (ring, arrowhead, cell highlight, endpoint dot, repeated marker)                   | Cached factory: `overlayCachedSelectionRing`, `overlayGridCellHighlight`, … — attaches **`cache: { renderKey, customKey, worldSpan }`**. Add **`OVERLAY_RENDER_KEY`** + bucket helper in `overlayCacheKeys.js` if new family. Bake body in **`overlayGlyphBake.js`**. |
+| **Live / unique geometry** (marquee rect, in-progress wire, polylines, drag-launch band, variable AABB) | Immediate factory **without** `cache`: `overlaySegment`, `overlayPolyline`, `overlayAabb`, `overlayAimSegment`. Use **`appendOverlayWireLink(..., { live: true })`** for previews.                                                                                    |
 
 ```javascript
 // ✅ cached selection ring

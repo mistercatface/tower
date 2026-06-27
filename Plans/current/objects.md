@@ -133,26 +133,25 @@ One array per tick, cleared by reallocation. Module-level buffer with `length = 
 
 ## Tier 3 — Lower but worth knowing
 
-| Spot                             | Issue                                                                                                                                                      |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `animatedSurfaceDraw.js`         | `elevationCameraFromViewport()` allocates; should be `Into` like structure pass — [`frame.md`](frame.md) Phase 4 / [`gamechangers.md`](gamechangers.md) G6 |     | `PropRenderer` / bake miss                 | `{ ...prop }`, full sphere mesh + `[...faces].sort` on LRU miss — fine steady-state, painful on zoom/pan miss storms |
-| `Render.buildSimulationPipeline` | Spread + map when entity layers change — rare, fine                                                                                                        |
-| `WorldSceneRenderer`             | Two `visibleDrawables.sort()` per frame — CPU not GC; unify after [`frame.md`](frame.md) — [`gamechangers.md`](gamechangers.md) G7                         |     | `texturedCells` / `drawSphereTexturePatch` | `borrowProjectedSphereCell` grows `{ d0..d3 }` objects once — **good** scratch pattern                               |
+| Spot                             | Issue                                                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `Render.buildSimulationPipeline` | Spread + map when entity layers change — rare, fine                                                                                |
+| `WorldSceneRenderer`             | Two `visibleDrawables.sort()` per frame — CPU not GC; unify after [`frame.md`](frame.md) — [`gamechangers.md`](gamechangers.md) G7 |     | `texturedCells` / `drawSphereTexturePatch` | `borrowProjectedSphereCell` grows `{ d0..d3 }` objects once — **good** scratch pattern |
 
 ---
 
 ## Where scratch **is** the right tool (not smells)
 
-| Area                                                                          | Verdict                                                                                           |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `ProjectedWallDraw` — `sCorner0..3`, `sFaceBottom`, `projectWallFaceBandInto` | Correct: hot loop, fixed scratch, out-params                                                      |
-| `AffineTexture` — `sPoint0..3` for UV corners                                 | Correct after quad refactor                                                                       |
-| `losShadowOverlay` — `sQuadScratch` Float32Array, `sEdgeScratch`              | Correct                                                                                           |
-| `kineticBodySlab` — `SLAB_SCRATCH_A/B` for broadphase overlap                 | Correct adjunct to real slab                                                                      |
-| `EntityRegistry` — `_candidateScratch`, `_kindSetScratch`                     | Correct for query filtering                                                                       |
-| `StaticGridWallDraw` / face pool in `wallGridBake`                            | Correct: pool faces, reuse list                                                                   |
-| `ProfileBakeResolver` / tile worker pools                                     | Real pooling, not lipstick                                                                        |
-| `flowFieldBfs.js` — `bfsDistances`/`bfsQueue` scratch buffers passed in        | Correct — reusable allocation off-thread; see [`fsmroadmap.md`](fsmroadmap.md) |
+| Area                                                                          | Verdict                                                                        |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `ProjectedWallDraw` — `sCorner0..3`, `sFaceBottom`, `projectWallFaceBandInto` | Correct: hot loop, fixed scratch, out-params                                   |
+| `AffineTexture` — `sPoint0..3` for UV corners                                 | Correct after quad refactor                                                    |
+| `losShadowOverlay` — `sQuadScratch` Float32Array, `sEdgeScratch`              | Correct                                                                        |
+| `kineticBodySlab` — `SLAB_SCRATCH_A/B` for broadphase overlap                 | Correct adjunct to real slab                                                   |
+| `EntityRegistry` — `_candidateScratch`, `_kindSetScratch`                     | Correct for query filtering                                                    |
+| `StaticGridWallDraw` / face pool in `wallGridBake`                            | Correct: pool faces, reuse list                                                |
+| `ProfileBakeResolver` / tile worker pools                                     | Real pooling, not lipstick                                                     |
+| `flowFieldBfs.js` — `bfsDistances`/`bfsQueue` scratch buffers passed in       | Correct — reusable allocation off-thread; see [`fsmroadmap.md`](fsmroadmap.md) |
 
 ---
 

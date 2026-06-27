@@ -124,7 +124,7 @@ Generation-stamped bucket arrays or fixed bucket ring keyed by `(col, row, pad)`
 
 ## G6 — ElevationCamera `Into` everywhere
 
-**Where:** `ElevationCamera.js` · `animatedSurfaceDraw.js` · `losShadowOverlay.js`
+**Where:** `ElevationCamera.js` · `losShadowOverlay.js`
 
 ### Fix
 
@@ -150,12 +150,11 @@ Shared `_rankByDistSq(items, pass.px, pass.py)`; optional single collect + one s
 
 ## Explicitly not game-changers
 
-| Idea                                  | Why                                        |
-| ------------------------------------- | ------------------------------------------ |
-| Merge `CellBounds` + `Aabb2D`         | Different domains; bridges exist           |
-| Overlay command list pooling          | Editor pipeline; separate from world draw  |
-| `animatedSurfaceZone` registry delete | Dead scaffold — cleanup, not normalization |
-| First-person / fixed iso render modes | New engine branch (`Plans/rendering.md`)   |
+| Idea                                  | Why                                       |
+| ------------------------------------- | ----------------------------------------- |
+| Merge `CellBounds` + `Aabb2D`         | Different domains; bridges exist          |
+| Overlay command list pooling          | Editor pipeline; separate from world draw |
+| First-person / fixed iso render modes | New engine branch (`Plans/rendering.md`)  |
 
 ---
 

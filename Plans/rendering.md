@@ -299,15 +299,13 @@ A different lens from the feature tiers below: which **CS graphics building bloc
 
 ## Tier 9 — Animation
 
-| Item                               | Status | %   | Notes / modules                  |
-| ---------------------------------- | ------ | --- | -------------------------------- |
-| `animFrame` cache bucket           | ✅     | 80  | `getOrBakePropSprite` key pack   |
-| Conveyor belt cycle                | ✅     | 80  | 8-frame, `gameTime/60 % 8`       |
-| Animated surface zones (flipbooks) | ✅     | 75  | `animatedSurfaceDraw.js`         |
-| Worker flipbook bake (frame cap)   | ✅     | 70  | `animatedSurfaceFlipbook.js`     |
-| Lab animation preview canvas       | ✅     | 70  | `LabAnimationPreview.js`         |
-| Skeletal / tween prop animation    | ⬜     | 0   | only frame-swap + physics pose   |
-| Render interpolation (sub-frame)   | ⬜     | 0   | draws at sim `gameTime` directly |
+| Item                             | Status | %   | Notes / modules                  |
+| -------------------------------- | ------ | --- | -------------------------------- |
+| `animFrame` cache bucket         | ✅     | 80  | `getOrBakePropSprite` key pack   |
+| Conveyor belt cycle              | ✅     | 80  | 8-frame, `gameTime/60 % 8`       |
+| Lab animation preview canvas     | ✅     | 70  | `LabAnimationPreview.js`         |
+| Skeletal / tween prop animation  | ⬜     | 0   | only frame-swap + physics pose   |
+| Render interpolation (sub-frame) | ⬜     | 0   | draws at sim `gameTime` directly |
 
 **Branch progress: 62%**
 

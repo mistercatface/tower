@@ -113,9 +113,8 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Merge `CellBounds` and `Aabb2D` into one type               | Different domains (grid edit vs world space). Bridge already exists.                                                               |
 | Overlay command pooling                                     | Real win in editor, but **different pipeline**. Do if editor perf matters.                                                         |
-| Delete `animatedSurfaceZone` registry                       | Dead scaffold — cleanup, not normalization.                                                                                        |
 | First-person / fixed iso modes                              | New renderer branch (`Plans/rendering.md`), not consolidating overhead path.                                                       |
-| Per-agent flow windows for utility reach                    | Phase 2 locomotion; phase 1 = sync BFS ([`fsmroadmap.md`](fsmroadmap.md))                                                         |
+| Per-agent flow windows for utility reach                    | Phase 2 locomotion; phase 1 = sync BFS ([`fsmroadmap.md`](fsmroadmap.md))                                                          |
 | Generic AI slot pipeline / `Libraries/AI/decision/` package | Two consumers — **Part 1** dedupes into concrete `Libraries/AI/*` files, not a framework folder ([`fsmroadmap.md`](fsmroadmap.md)) |
 
 ---
