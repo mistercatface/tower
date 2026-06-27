@@ -163,7 +163,6 @@ export function drawExtrudedConvexPolygon(
     viewport,
     { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
-    if (prop.wallChunkProfileId) stroke = null;
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const body = extrudeConvexFootprint(projection, localVerts, facing);
@@ -177,9 +176,7 @@ export function drawExtrudedConvexPolygon(
         if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
         else backFaces.push(face);
     }
-    // Check if textured wall chunk prop
-    let textures = null;
-    if (prop.wallChunkProfileId && prop._wallChunkTextures?.ready) textures = prop._wallChunkTextures;
+    const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
     if (textures) {
         const drawTexturedSideFace = (face) => {
             ctx.save();
@@ -189,13 +186,6 @@ export function drawExtrudedConvexPolygon(
             const scale = textures.scale;
             drawImageQuad(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, (prop.wallChunkHeightPx ?? height) * scale, face.baseA, face.baseB, face.topB, face.topA);
             ctx.restore();
-            if (stroke) {
-                ctx.strokeStyle = stroke;
-                ctx.lineWidth = lineWidth;
-                ctx.beginPath();
-                traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
-                ctx.stroke();
-            }
         };
         for (const face of backFaces) drawTexturedSideFace(face);
         for (const face of frontFaces) drawTexturedSideFace(face);
@@ -223,13 +213,6 @@ export function drawExtrudedConvexPolygon(
             for (let i = 1; i < body.topCorners.length - 1; i++)
                 drawImageTriangle(ctx, textures.capCanvas, srcCorners[0], srcCorners[i], srcCorners[i + 1], body.topCorners[0], body.topCorners[i], body.topCorners[i + 1]);
         ctx.restore();
-        if (stroke) {
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = lineWidth;
-            ctx.beginPath();
-            traceClosedPolygon(ctx, body.topCorners);
-            ctx.stroke();
-        }
     } else {
         const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
         baseGrad.addColorStop(0.0, baseColors.light);
