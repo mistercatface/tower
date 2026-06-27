@@ -232,19 +232,14 @@ export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) 
     const { width, height, seed } = payload;
     return [bakeRequestToCanvas({ width, height, startWorldX: 0, startWorldY: 0, seed, paintOptions: wallPaintOptions(payload), profileOrId: profileId }, bakeSession)];
 }
-function chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, surfaceBakeScale) {
-    const startCol = chunkCol * cellsPerChunk;
-    const startRow = chunkRow * cellsPerChunk;
-    return { x: minX + startCol * cellSize, y: minY + startRow * cellSize, bakeSize: bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale) };
-}
 /** Bake a static ground-chunk canvas. */
 export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession) {
     const profileId = payload.profileId ?? surfaceProfileDefaults.defaultId;
-    const { chunkCol, chunkRow, minX, minY, seed } = payload;
+    const { minX, minY, seed } = payload;
     const { cellSize, cellsPerChunk, surfaceBakeScale } = getTileWorkerBakeConstants();
-    const { x: chunkWorldX, y: chunkWorldY, bakeSize } = chunkWorldOrigin(chunkCol, chunkRow, minX, minY, cellsPerChunk, cellSize, surfaceBakeScale);
+    const bakeSize = bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale);
     const zLevel = payload.zLevel ?? 0;
     const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
-    const canvas = bakeRequestToCanvas({ width: bakeSize, height: bakeSize, startWorldX: chunkWorldX, startWorldY: chunkWorldY, seed, paintOptions, profileOrId: profileId }, bakeSession);
+    const canvas = bakeRequestToCanvas({ width: bakeSize, height: bakeSize, startWorldX: minX, startWorldY: minY, seed, paintOptions, profileOrId: profileId }, bakeSession);
     return [canvas];
 }
