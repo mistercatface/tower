@@ -1,6 +1,5 @@
 import { boundsToCellRect } from "../../DataStructures/CellKey.js";
 import { createAabb, minCornerAabbInto } from "../../Math/Aabb2D.js";
-
 export function worldColAtOrigin(x, minX, cellSize) {
     return Math.floor((x - minX) / cellSize);
 }
@@ -13,7 +12,6 @@ export function gridCenterXAtOrigin(col, minX, cellHalfSize) {
 export function gridCenterYAtOrigin(row, minY, cellHalfSize) {
     return minY + row * (cellHalfSize * 2) + cellHalfSize;
 }
-
 /** Grid anchored at a world-space min corner (ObstacleGrid). */
 export function worldToGridAtOrigin(x, y, minX, minY, cellSize) {
     return { col: worldColAtOrigin(x, minX, cellSize), row: worldRowAtOrigin(y, minY, cellSize) };
@@ -37,10 +35,7 @@ export function centeredGridFrameKey(frame) {
     return `${frame.cols}:${frame.rows}:${frame.cellSize}:${frame.centerX}:${frame.centerY}`;
 }
 export function worldToGridCentered(x, y, centerX, centerY, offsetX, offsetY, cellSize) {
-    return {
-        col: Math.floor((x - centerX + offsetX) / cellSize),
-        row: Math.floor((y - centerY + offsetY) / cellSize),
-    };
+    return { col: Math.floor((x - centerX + offsetX) / cellSize), row: Math.floor((y - centerY + offsetY) / cellSize) };
 }
 export function worldColInCenteredFrame(frame, x) {
     return Math.floor((x - frame.centerX + frame.offsetX) / frame.cellSize);
@@ -58,10 +53,7 @@ export function worldToGridInCenteredFrame(frame, x, y) {
     return { col: worldColInCenteredFrame(frame, x), row: worldRowInCenteredFrame(frame, y) };
 }
 export function gridToWorldCentered(col, row, centerX, centerY, offsetX, offsetY, cellSize) {
-    return {
-        x: col * cellSize + centerX - offsetX + cellSize / 2,
-        y: row * cellSize + centerY - offsetY + cellSize / 2,
-    };
+    return { x: col * cellSize + centerX - offsetX + cellSize / 2, y: row * cellSize + centerY - offsetY + cellSize / 2 };
 }
 export function gridToWorldInCenteredFrame(frame, col, row) {
     return { x: gridCenterXInCenteredFrame(frame, col), y: gridCenterYInCenteredFrame(frame, row) };
@@ -131,17 +123,4 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
         const rowOffset = row * cols;
         for (let col = colMin; col <= colMax; col++) fn(col, row, rowOffset + col);
     }
-}
-/** @param {import("../../Math/Aabb2D.js").Aabb2D} out @param {number} originX @param {number} originY @param {number} sizePx @returns {import("../../Math/Aabb2D.js").Aabb2D} */
-export function chunkWorldAabbInto(out, originX, originY, sizePx) {
-    out.minX = originX;
-    out.minY = originY;
-    out.maxX = originX + sizePx;
-    out.maxY = originY + sizePx;
-    return out;
-}
-const CHUNK_AABB_SCRATCH = createAabb();
-/** Sequential chunk AABB scratch — do not retain the returned reference. */
-export function chunkWorldAabbScratch(originX, originY, sizePx) {
-    return chunkWorldAabbInto(CHUNK_AABB_SCRATCH, originX, originY, sizePx);
 }

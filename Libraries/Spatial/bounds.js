@@ -8,8 +8,6 @@ export {
     centeredGridFrameKey,
     createCenteredGridFrame,
     forEachObstacleGridCellInAabb,
-    chunkWorldAabbInto,
-    chunkWorldAabbScratch,
     getCellBoundsCentered,
     getCellBoundsCenteredInto,
     getCellBoundsInCenteredFrameInto,
