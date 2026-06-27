@@ -1,5 +1,5 @@
 import { NEUTRAL_BOX_COLORS } from "../shared/neutralCoats.js";
-import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
+import { getWallChunkSpriteCacheKey } from "../../../Libraries/Props/propStrategy.js";
 export default {
     id: "wall_voxel_chunk",
     primitive: "polygon",
@@ -18,13 +18,7 @@ export default {
         fracture: true,
         fractureMode: "glass",
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 6, randomRange: 17 },
-        getCustomSpriteCacheKey(prop) {
-            if (!prop.wallChunkProfileId) return "";
-            const profileId = prop.wallChunkProfileId;
-            const rev = getSurfaceProfileRevision(profileId);
-            const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
-            return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
-        },
+        getCustomSpriteCacheKey: getWallChunkSpriteCacheKey,
     },
     visuals: { colors: NEUTRAL_BOX_COLORS, world: { height: 12 } },
 };

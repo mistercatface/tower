@@ -5,6 +5,7 @@ import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
+import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
@@ -76,6 +77,13 @@ export function resolvePropQuantizeSteps(prop) {
     const facing = override?.facing ?? derivedFacing;
     const view = override?.view ?? defaults.view ?? 30;
     return { facing, view };
+}
+export function getWallChunkSpriteCacheKey(prop) {
+    if (!prop.wallChunkProfileId) return "";
+    const profileId = prop.wallChunkProfileId;
+    const rev = getSurfaceProfileRevision(profileId);
+    const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
+    return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
 }
 export function getBaseSpriteCacheKey(prop, deps) {
     const { quantizeAngleIndex, buildRollOrientKey } = deps;

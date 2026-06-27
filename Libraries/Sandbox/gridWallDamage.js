@@ -166,9 +166,7 @@ export function applyPendingWallDamage(state, wallDamage) {
         wallDamage.commit.clearWalls({ voxels, rails });
         commitBounds = wallDamage.commit.flush();
     }
-    // Now promote the broken walls to WorldProps and apply fracture!
     const spatialFrame = wallDamage.spatialFrame ?? null;
-    // Clean up stored spatialFrame to prevent memory retention
     wallDamage.spatialFrame = null;
     for (const desc of descriptors) {
         const propType = desc.kind === "voxel" ? "wall_voxel_chunk" : "wall_rail_chunk";
@@ -188,7 +186,6 @@ export function applyPendingWallDamage(state, wallDamage) {
         addWorldPropToState(state, prop);
         wakeKineticBody(prop);
         if (spatialFrame?.admitKineticProp && spatialFrame.populatedMembershipGen >= 0) spatialFrame.admitKineticProp(prop, state);
-        // Apply impact fracture
         const impactForce = desc.sourceSpeed * 0.5 + 10;
         const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
         if (fracture)
