@@ -1,7 +1,6 @@
 import { MinHeap } from "../DataStructures/MinHeap.js";
-import { groundChunkWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
+import { groundChunkWorkerDedupeKey, wallAtlasWorkerDedupeKey } from "./bake/SurfaceBakeHelpers.js";
 import { TILE_WORKER_MESSAGE } from "./TileWorkerMessages.js";
-import { wallAtlasWorkerDedupeKey } from "./WallSurfaceCache.js";
 import { TileBakeMetricsAccumulator, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";
 export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0 };
 const FOCUS_RESORT_DIST_SQ = 16 * 16;

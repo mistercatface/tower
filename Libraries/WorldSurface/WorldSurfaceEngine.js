@@ -9,9 +9,8 @@ import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSur
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { surfaceProfileDefaults } from "../Procedural/SurfaceProfileProvider.js";
-import { createGroundChunkBakePayload, groundChunkCachePrefix, staticRoofDrawCachePrefix, staticRoofMaskCachePrefix } from "./bake/SurfaceBakeHelpers.js";
-import { getSurfaceProfileRevision } from "./SurfaceProfileRevision.js";
-import { buildWallAtlasCacheKey } from "./WallSurfaceCache.js";
+import { createGroundChunkBakePayload } from "./bake/SurfaceBakeHelpers.js";
+import { SurfaceBakeCacheKeys } from "./SurfaceBakeCacheKeys.js";
 import { createWallFaceAxes } from "./SurfaceCoordinateMapper.js";
 import { wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
@@ -23,6 +22,7 @@ const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = -9999;
 export class WorldSurfaceEngine {
     constructor(settings) {
         this.settings = settings;
+        this.cacheKeys = new SurfaceBakeCacheKeys(settings);
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this.chunkDrawBounds = createAabb();
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, playBounds: null, zLevel: 0, beforeDraw: null };
@@ -67,12 +67,11 @@ export class WorldSurfaceEngine {
         const range = worldBoundsToChunkRange(minX, minY, maxX, maxY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
         const profileId = this.resolveSurfaceProfileId();
-        const rev = getSurfaceProfileRevision(profileId);
         for (let chunkRow = range.minChunkRow; chunkRow <= range.maxChunkRow; chunkRow++)
             for (let chunkCol = range.minChunkCol; chunkCol <= range.maxChunkCol; chunkCol++)
                 for (const zLevel of zLevels) {
-                    this.surfaceCache.delete(staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel));
-                    this.surfaceCache.delete(staticRoofDrawCachePrefix(chunkCol, chunkRow, profileId, rev, zLevel));
+                    this.surfaceCache.delete(this.cacheKeys.staticRoofMask(chunkCol, chunkRow, zLevel));
+                    this.surfaceCache.delete(this.cacheKeys.staticRoofDraw(chunkCol, chunkRow, profileId, zLevel));
                 }
     }
     ensureWallAtlas(key, p1, p2, columns, surfaceSeed, wallHeight, profileId) {
@@ -119,7 +118,7 @@ export class WorldSurfaceEngine {
     getGroundChunkCanvas(chunkCol, chunkRow, state, payload = null, zLevel = 0) {
         if (!payload) payload = this._resolveChunkPayload(state, chunkCol, chunkRow, zLevel);
         const resolvedZ = payload.zLevel ?? zLevel;
-        const key = groundChunkCachePrefix(chunkCol, chunkRow, payload.profileId, getSurfaceProfileRevision(payload.profileId), resolvedZ);
+        const key = this.cacheKeys.groundChunk(chunkCol, chunkRow, payload.profileId, resolvedZ);
         let canvases = this.surfaceCache.get(key);
         if (canvases) {
             const canvas = canvases[0];
@@ -145,9 +144,8 @@ export class WorldSurfaceEngine {
     }
     getStaticRoofDrawCanvas(chunkCol, chunkRow, zLevel, obstacleGrid, originX, originY, sizePx, roofCanvas, payload) {
         if (roofCanvas.isPlaceholder) return roofCanvas;
-        const rev = getSurfaceProfileRevision(payload.profileId);
-        const drawKey = staticRoofDrawCachePrefix(chunkCol, chunkRow, payload.profileId, rev, zLevel);
-        const maskKey = staticRoofMaskCachePrefix(chunkCol, chunkRow, zLevel);
+        const drawKey = this.cacheKeys.staticRoofDraw(chunkCol, chunkRow, payload.profileId, zLevel);
+        const maskKey = this.cacheKeys.staticRoofMask(chunkCol, chunkRow, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
         if (!maskEntry) {
             const maskCanvas = buildStaticRoofMaskCanvas(obstacleGrid, originX, originY, sizePx, zLevel, this.settings);
@@ -183,14 +181,14 @@ export class WorldSurfaceEngine {
     getOrEnsureWallAtlas(p1, p2, state, options) {
         const { profileId, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
         const seed = state.worldSurfaces.worldSurfaceSeed ?? 0;
-        const rev = getSurfaceProfileRevision(profileId);
+        const rev = this.cacheKeys.profileRevision(profileId);
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
         if (cacheObj) {
             const stash = cacheObj._wallAtlasStashes?.[atlasFaceId];
             if (stash && stash.profileId === profileId && stash.rev === rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && this.surfaceCache.get(stash.key) === stash.canvases)
                 return stash;
         }
-        const { key, wrappedP1, wrappedP2 } = buildWallAtlasCacheKey(p1, p2, seed, profileId, wallHeightKey, this.settings);
+        const { key, wrappedP1, wrappedP2 } = this.cacheKeys.wallAtlas(p1, p2, seed, profileId, wallHeightKey);
         let canvases = this.surfaceCache.get(key);
         if (!canvases) {
             const columns = wallFaceColumns(wrappedP1, wrappedP2, this.settings.cellSize);
