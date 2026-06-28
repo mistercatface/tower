@@ -12,14 +12,6 @@ export function gridCenterXAtOrigin(col, minX, cellHalfSize) {
 export function gridCenterYAtOrigin(row, minY, cellHalfSize) {
     return minY + row * (cellHalfSize * 2) + cellHalfSize;
 }
-/** Grid anchored at a world-space min corner (ObstacleGrid). */
-export function worldToGridAtOrigin(x, y, minX, minY, cellSize) {
-    return { col: worldColAtOrigin(x, minX, cellSize), row: worldRowAtOrigin(y, minY, cellSize) };
-}
-export function gridToWorldAtOrigin(col, row, minX, minY, cellSize) {
-    const cellHalfSize = cellSize * 0.5;
-    return { x: gridCenterXAtOrigin(col, minX, cellHalfSize), y: gridCenterYAtOrigin(row, minY, cellHalfSize) };
-}
 export function cellToChunkCoord(cell, cellsPerChunk) {
     return Math.floor(cell / cellsPerChunk);
 }
@@ -122,16 +114,11 @@ export function worldBoundsFromCellOriginInto(out, col, row, cols, rows, cellSiz
 export function worldBoundsFromCellOrigin(col, row, cols, rows, cellSize) {
     return worldBoundsFromCellOriginInto(createAabb(), col, row, cols, rows, cellSize);
 }
-/** Snap a world point to the min corner of its obstacle-grid cell. */
-export function snapWorldToCellOrigin(worldX, worldY, minX, minY, cellSize) {
-    const col = Math.floor((worldX - minX) / cellSize);
-    const row = Math.floor((worldY - minY) / cellSize);
-    return { col, row, x: minX + col * cellSize, y: minY + row * cellSize };
-}
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */
 export function snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY) {
     const col = obstacleGrid.worldCol(worldX);
     const row = obstacleGrid.worldRow(worldY);
+    console.log(col, row);
     return { col, row, x: obstacleGrid.gridCenterX(col), y: obstacleGrid.gridCenterY(row) };
 }
 /**
