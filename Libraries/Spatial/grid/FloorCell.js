@@ -27,20 +27,32 @@ export function floorBeltElbowTurn(kind) {
     if (kind === FLOOR_CELL_KIND.BeltElbowRight || kind === FLOOR_CELL_KIND.BeltElbowRightRails) return "right";
     return null;
 }
+const SIDES_CACHE = new Array(8 * 4);
+for (let kind = 0; kind < 8; kind++)
+    for (let facingIndex = 0; facingIndex < 4; facingIndex++) {
+        const f = facingIndex;
+        const turn = floorBeltElbowTurn(kind);
+        let entrySide, exitSide;
+        if (!turn) {
+            exitSide = (f + 1) % 4;
+            entrySide = (f + 3) % 4;
+        } else if (turn === "left") {
+            entrySide = (2 + f) % 4;
+            exitSide = (1 + f) % 4;
+        } else {
+            entrySide = (0 + f) % 4;
+            exitSide = (1 + f) % 4;
+        }
+        SIDES_CACHE[kind * 4 + facingIndex] = { entrySide, exitSide };
+    }
 /**
  * Entry/exit cell edges (0=N,1=E,2=S,3=W) from belt geometry + cardinal facing.
  * Straight: flow along facing. Elbows: W→N (left) / W→S (right) at facing 0, rotated by facing index.
  */
 export function floorBeltEntryExitSides(kind, facingIndex) {
-    const f = facingIndex % CARDINAL_FACING_STEPS;
-    const turn = floorBeltElbowTurn(kind);
-    if (!turn) {
-        const exitSide = (f + 1) % CARDINAL_FACING_STEPS;
-        const entrySide = (f + 3) % CARDINAL_FACING_STEPS;
-        return { entrySide, exitSide };
-    }
-    if (turn === "left") return { entrySide: (2 + f) % CARDINAL_FACING_STEPS, exitSide: (1 + f) % CARDINAL_FACING_STEPS };
-    return { entrySide: (0 + f) % CARDINAL_FACING_STEPS, exitSide: (1 + f) % CARDINAL_FACING_STEPS };
+    const f = facingIndex % 4;
+    const k = kind >= 0 && kind < 8 ? kind : 0;
+    return SIDES_CACHE[k * 4 + f];
 }
 /** Lateral rail edges — the two sides that are neither entry nor exit. */
 export function floorBeltRailEdgeSides(kind, facingIndex) {
