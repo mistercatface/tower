@@ -2,7 +2,7 @@
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
  */
-import { drawImageQuadScalars, drawImageTriangleScalars } from "../../Canvas/AffineTexture.js";
+import { drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars } from "../../Canvas/AffineTexture.js";
 import { resolveElevationAlpha, projectWorldPointInto, projectWorldQuadInto } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx, RAIL_BOX } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb, flatQuadOverlapAabb } from "../../Math/Aabb2D.js";
@@ -133,6 +133,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
 function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, worldBounds) {
     const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
+    const baseTransform = ctx.getTransform();
     const alphaSpan = alphaBandMax - alphaBase;
     const rowStep = bandHeight / subdivY;
     const cameraHeight = viewport.cameraHeight;
@@ -154,7 +155,7 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
             computeFaceCornerElevatedInto(sSubdivQuad, 4, u1, v1, faceBottom, faceTop);
             computeFaceCornerElevatedInto(sSubdivQuad, 6, u0, v1, faceBottom, faceTop);
             if (!flatQuadOverlapAabb(sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], worldBounds)) continue;
-            drawImageQuadScalars(
+            drawImageQuadWithBaseTransformScalars(
                 ctx,
                 canvas,
                 u0 * canvas.width,
@@ -169,6 +170,12 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
                 sSubdivQuad[5],
                 sSubdivQuad[6],
                 sSubdivQuad[7],
+                baseTransform.a,
+                baseTransform.b,
+                baseTransform.c,
+                baseTransform.d,
+                baseTransform.e,
+                baseTransform.f,
             );
         }
     }
@@ -246,8 +253,51 @@ function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, dest8, 4);
     ctx.clip();
-    drawImageTriangleScalars(ctx, canvas, src8[0], src8[1], src8[2], src8[3], src8[6], src8[7], dest8[0], dest8[1], dest8[2], dest8[3], dest8[6], dest8[7]);
-    drawImageTriangleScalars(ctx, canvas, src8[2], src8[3], src8[4], src8[5], src8[6], src8[7], dest8[2], dest8[3], dest8[4], dest8[5], dest8[6], dest8[7]);
+    const baseTransform = ctx.getTransform();
+    drawImageTriangleWithBaseTransformScalars(
+        ctx,
+        canvas,
+        src8[0],
+        src8[1],
+        src8[2],
+        src8[3],
+        src8[6],
+        src8[7],
+        dest8[0],
+        dest8[1],
+        dest8[2],
+        dest8[3],
+        dest8[6],
+        dest8[7],
+        baseTransform.a,
+        baseTransform.b,
+        baseTransform.c,
+        baseTransform.d,
+        baseTransform.e,
+        baseTransform.f,
+    );
+    drawImageTriangleWithBaseTransformScalars(
+        ctx,
+        canvas,
+        src8[2],
+        src8[3],
+        src8[4],
+        src8[5],
+        src8[6],
+        src8[7],
+        dest8[2],
+        dest8[3],
+        dest8[4],
+        dest8[5],
+        dest8[6],
+        dest8[7],
+        baseTransform.a,
+        baseTransform.b,
+        baseTransform.c,
+        baseTransform.d,
+        baseTransform.e,
+        baseTransform.f,
+    );
     ctx.restore();
 }
 export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, face) {

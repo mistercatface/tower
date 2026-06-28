@@ -11,7 +11,7 @@ import {
     scaleAtHeight,
 } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { traceClosedFlatPolygon, traceFlatQuad, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
-import { drawImageQuadFromFlatRings, drawImageTriangleFlat } from "../../Canvas/AffineTexture.js";
+import { drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform } from "../../Canvas/AffineTexture.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
@@ -201,7 +201,25 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, project
             ctx.beginPath();
             traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
             ctx.clip();
-            drawImageQuadFromFlatRings(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, sideSrcHeight, sBaseRing, sTopRing, i, count);
+            const baseTransform = ctx.getTransform();
+            drawImageQuadFromFlatRingsWithBaseTransform(
+                ctx,
+                textures.sideCanvas,
+                0,
+                0,
+                textures.sideCanvas.width,
+                sideSrcHeight,
+                sBaseRing,
+                sTopRing,
+                i,
+                count,
+                baseTransform.a,
+                baseTransform.b,
+                baseTransform.c,
+                baseTransform.d,
+                baseTransform.e,
+                baseTransform.f,
+            );
             ctx.restore();
         }
     }
@@ -223,7 +241,23 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, project
         sCapSrcRing[i * 2] = (rx + offset) * textureScale;
         sCapSrcRing[i * 2 + 1] = (ry + offset) * textureScale;
     }
-    for (let i = 1; i < count - 1; i++) drawImageTriangleFlat(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1);
+    const baseTransform = ctx.getTransform();
+    for (let i = 1; i < count - 1; i++)
+        drawImageTriangleFlatWithBaseTransform(
+            ctx,
+            textures.capCanvas,
+            sCapSrcRing,
+            sTopRing,
+            0,
+            i,
+            i + 1,
+            baseTransform.a,
+            baseTransform.b,
+            baseTransform.c,
+            baseTransform.d,
+            baseTransform.e,
+            baseTransform.f,
+        );
     ctx.restore();
 }
 function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
@@ -393,7 +427,23 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, sTopRing, count);
     ctx.clip();
-    for (let i = 1; i < count - 1; i++) drawImageTriangleFlat(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1);
+    const baseTransform = ctx.getTransform();
+    for (let i = 1; i < count - 1; i++)
+        drawImageTriangleFlatWithBaseTransform(
+            ctx,
+            textures.capCanvas,
+            sCapSrcRing,
+            sTopRing,
+            0,
+            i,
+            i + 1,
+            baseTransform.a,
+            baseTransform.b,
+            baseTransform.c,
+            baseTransform.d,
+            baseTransform.e,
+            baseTransform.f,
+        );
     ctx.restore();
 }
 export function drawFlatWallChunkProp(ctx, prop) {

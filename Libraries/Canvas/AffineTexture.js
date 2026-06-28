@@ -1,6 +1,6 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 const WALL_TEXTURE_SEAM_BLEED_PX = WORLD_SURFACE_DEFAULTS.wallTextureBleedPx;
-export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y) {
+export function drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y, baseA, baseB, baseC, baseD, baseE, baseF) {
     let ts0_x = s0x;
     let ts0_y = s0y;
     let ts1_x = s1x;
@@ -58,10 +58,35 @@ export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y,
     const srcW = srcMaxX - srcMinX;
     const srcH = srcMaxY - srcMinY;
     if (srcW <= 0 || srcH <= 0) return;
-    const currentTransform = ctx.getTransform();
+    ctx.setTransform(baseA, baseB, baseC, baseD, baseE, baseF);
     ctx.transform(m11, m12, m21, m22, offsetX, offsetY);
     ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
-    ctx.setTransform(currentTransform);
+    ctx.setTransform(baseA, baseB, baseC, baseD, baseE, baseF);
+}
+export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y) {
+    const currentTransform = ctx.getTransform();
+    drawImageTriangleWithBaseTransformScalars(
+        ctx,
+        img,
+        s0x,
+        s0y,
+        s1x,
+        s1y,
+        s2x,
+        s2y,
+        d0x,
+        d0y,
+        d1x,
+        d1y,
+        d2x,
+        d2y,
+        currentTransform.a,
+        currentTransform.b,
+        currentTransform.c,
+        currentTransform.d,
+        currentTransform.e,
+        currentTransform.f,
+    );
 }
 export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
     drawImageTriangleScalars(
@@ -81,19 +106,110 @@ export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
         dstFlat[i2 * 2 + 1],
     );
 }
+export function drawImageTriangleFlatWithBaseTransform(ctx, img, srcFlat, dstFlat, i0, i1, i2, baseA, baseB, baseC, baseD, baseE, baseF) {
+    drawImageTriangleWithBaseTransformScalars(
+        ctx,
+        img,
+        srcFlat[i0 * 2],
+        srcFlat[i0 * 2 + 1],
+        srcFlat[i1 * 2],
+        srcFlat[i1 * 2 + 1],
+        srcFlat[i2 * 2],
+        srcFlat[i2 * 2 + 1],
+        dstFlat[i0 * 2],
+        dstFlat[i0 * 2 + 1],
+        dstFlat[i1 * 2],
+        dstFlat[i1 * 2 + 1],
+        dstFlat[i2 * 2],
+        dstFlat[i2 * 2 + 1],
+        baseA,
+        baseB,
+        baseC,
+        baseD,
+        baseE,
+        baseF,
+    );
+}
 export function drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y) {
+    const currentTransform = ctx.getTransform();
+    drawImageQuadWithBaseTransformScalars(
+        ctx,
+        img,
+        sx0,
+        sy0,
+        sx1,
+        sy1,
+        d0x,
+        d0y,
+        d1x,
+        d1y,
+        d2x,
+        d2y,
+        d3x,
+        d3y,
+        currentTransform.a,
+        currentTransform.b,
+        currentTransform.c,
+        currentTransform.d,
+        currentTransform.e,
+        currentTransform.f,
+    );
+}
+export function drawImageQuadWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, baseA, baseB, baseC, baseD, baseE, baseF) {
     const diag02 = (d2x - d0x) ** 2 + (d2y - d0y) ** 2;
     const diag13 = (d3x - d1x) ** 2 + (d3y - d1y) ** 2;
     if (diag13 < diag02) {
-        drawImageTriangleScalars(ctx, img, sx0, sy0, sx1, sy0, sx0, sy1, d0x, d0y, d1x, d1y, d3x, d3y);
-        drawImageTriangleScalars(ctx, img, sx1, sy0, sx1, sy1, sx0, sy1, d1x, d1y, d2x, d2y, d3x, d3y);
+        drawImageTriangleWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy0, sx0, sy1, d0x, d0y, d1x, d1y, d3x, d3y, baseA, baseB, baseC, baseD, baseE, baseF);
+        drawImageTriangleWithBaseTransformScalars(ctx, img, sx1, sy0, sx1, sy1, sx0, sy1, d1x, d1y, d2x, d2y, d3x, d3y, baseA, baseB, baseC, baseD, baseE, baseF);
         return;
     }
-    drawImageTriangleScalars(ctx, img, sx0, sy0, sx1, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y);
-    drawImageTriangleScalars(ctx, img, sx0, sy0, sx1, sy1, sx0, sy1, d0x, d0y, d2x, d2y, d3x, d3y);
+    drawImageTriangleWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, baseA, baseB, baseC, baseD, baseE, baseF);
+    drawImageTriangleWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy1, sx0, sy1, d0x, d0y, d2x, d2y, d3x, d3y, baseA, baseB, baseC, baseD, baseE, baseF);
 }
 export function drawImageQuadFromFlatRings(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count) {
+    const currentTransform = ctx.getTransform();
+    drawImageQuadFromFlatRingsWithBaseTransform(
+        ctx,
+        img,
+        sx0,
+        sy0,
+        sx1,
+        sy1,
+        baseRing,
+        topRing,
+        edgeIndex,
+        count,
+        currentTransform.a,
+        currentTransform.b,
+        currentTransform.c,
+        currentTransform.d,
+        currentTransform.e,
+        currentTransform.f,
+    );
+}
+export function drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count, baseA, baseB, baseC, baseD, baseE, baseF) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
-    drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, baseRing[ai], baseRing[ai + 1], baseRing[bi], baseRing[bi + 1], topRing[bi], topRing[bi + 1], topRing[ai], topRing[ai + 1]);
+    drawImageQuadWithBaseTransformScalars(
+        ctx,
+        img,
+        sx0,
+        sy0,
+        sx1,
+        sy1,
+        baseRing[ai],
+        baseRing[ai + 1],
+        baseRing[bi],
+        baseRing[bi + 1],
+        topRing[bi],
+        topRing[bi + 1],
+        topRing[ai],
+        topRing[ai + 1],
+        baseA,
+        baseB,
+        baseC,
+        baseD,
+        baseE,
+        baseF,
+    );
 }
