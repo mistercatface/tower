@@ -5,48 +5,34 @@ import { computeCompoundLocalBounds, convexFootprintHalfExtents } from "../../Ma
 export function createBroadphaseBounds() {
     return { kind: "circle", cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
 }
-function projectCircle(axisX, axisY, circle) {
-    const c = circle.cx * axisX + circle.cy * axisY;
-    return { min: c - circle.r, max: c + circle.r };
-}
-function projectObb(axisX, axisY, obb) {
-    const ux = obb.cos;
-    const uy = obb.sin;
-    const vx = -obb.sin;
-    const vy = obb.cos;
-    const c = obb.cx * axisX + obb.cy * axisY;
-    const radius = obb.hx * Math.abs(ux * axisX + uy * axisY) + obb.hy * Math.abs(vx * axisX + vy * axisY);
-    return { min: c - radius, max: c + radius };
-}
-function intervalsSeparated(a, b) {
-    return a.min > b.max || b.min > a.max;
+function intervalsSeparatedObbObb(ax, ay, a, b) {
+    const ca = a.cx * ax + a.cy * ay;
+    const ra = a.hx * Math.abs(a.cos * ax + a.sin * ay) + a.hy * Math.abs(-a.sin * ax + a.cos * ay);
+    const cb = b.cx * ax + b.cy * ay;
+    const rb = b.hx * Math.abs(b.cos * ax + b.sin * ay) + b.hy * Math.abs(-b.sin * ax + b.cos * ay);
+    return Math.abs(ca - cb) > ra + rb;
 }
 function obbObbOverlap(a, b) {
-    const axes = [
-        [a.cos, a.sin],
-        [-a.sin, a.cos],
-        [b.cos, b.sin],
-        [-b.sin, b.cos],
-    ];
-    for (let i = 0; i < axes.length; i++) {
-        const ax = axes[i][0];
-        const ay = axes[i][1];
-        if (intervalsSeparated(projectObb(ax, ay, a), projectObb(ax, ay, b))) return false;
-    }
+    if (intervalsSeparatedObbObb(a.cos, a.sin, a, b)) return false;
+    if (intervalsSeparatedObbObb(-a.sin, a.cos, a, b)) return false;
+    if (intervalsSeparatedObbObb(b.cos, b.sin, a, b)) return false;
+    if (intervalsSeparatedObbObb(-b.sin, b.cos, a, b)) return false;
     return true;
 }
+function intervalsSeparatedCircleObb(ax, ay, circle, obb) {
+    const cc = circle.cx * ax + circle.cy * ay;
+    const rc = circle.r;
+    const cb = obb.cx * ax + obb.cy * ay;
+    const rb = obb.hx * Math.abs(obb.cos * ax + obb.sin * ay) + obb.hy * Math.abs(-obb.sin * ax + obb.cos * ay);
+    return Math.abs(cc - cb) > rc + rb;
+}
 function circleObbOverlap(circle, obb) {
-    const axes = [
-        [obb.cos, obb.sin],
-        [-obb.sin, obb.cos],
-    ];
-    const { nx, ny, len } = normalizeXY(circle.cx - obb.cx, circle.cy - obb.cy);
-    if (len > 1e-6) axes.push([nx, ny]);
-    for (let i = 0; i < axes.length; i++) {
-        const ax = axes[i][0];
-        const ay = axes[i][1];
-        if (intervalsSeparated(projectCircle(ax, ay, circle), projectObb(ax, ay, obb))) return false;
-    }
+    if (intervalsSeparatedCircleObb(obb.cos, obb.sin, circle, obb)) return false;
+    if (intervalsSeparatedCircleObb(-obb.sin, obb.cos, circle, obb)) return false;
+    const dx = circle.cx - obb.cx;
+    const dy = circle.cy - obb.cy;
+    const { nx, ny, len } = normalizeXY(dx, dy);
+    if (len > 1e-6) if (intervalsSeparatedCircleObb(nx, ny, circle, obb)) return false;
     return true;
 }
 const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
