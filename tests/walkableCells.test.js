@@ -85,9 +85,9 @@ describe("walkableCells", () => {
         collectNavWalkableCells(state);
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(picked);
-        assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
-        state.obstacleGrid.grid[colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols)] = 1;
-        await state.nav.commitEdit({ startCol: picked.col, endCol: picked.col, startRow: picked.row, endRow: picked.row });
+        const idx = colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols);
+        state.obstacleGrid.grid[idx] = 1;
+        await state.nav.commitEdit(idx);
         assert.ok(!isNavWalkableCellAt(state, picked.col, picked.row));
         terminateWorkerNavigation(state.nav);
     });

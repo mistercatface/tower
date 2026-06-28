@@ -22,6 +22,14 @@ export function padCellBoundsToGrid(bounds, cols, rows, padding = 0) {
         endRow: Math.min(rows - 1, bounds.endRow + padding),
     };
 }
+export function padCellIdxToGrid(idx, cols, rows, padding = 0) {
+    return {
+        startCol: Math.max(0, (idx % cols) - padding),
+        endCol: Math.min(cols - 1, (idx % cols) + padding),
+        startRow: Math.max(0, ((idx / cols) | 0) - padding),
+        endRow: Math.min(rows - 1, ((idx / cols) | 0) + padding),
+    };
+}
 /** @param {CellBounds} bounds @param {number} col @param {number} row @returns {CellBounds} */
 export function growCellBounds(bounds, col, row) {
     if (col < bounds.startCol) bounds.startCol = col;

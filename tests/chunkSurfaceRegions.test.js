@@ -69,14 +69,14 @@ describe("chunk surface regions", () => {
             obstacleGrid: grid,
             worldSurfaces: {
                 settings,
-                invalidateGridBounds(bounds, stateArg) {
-                    invalidated = { bounds, stateArg };
+                invalidateGridBounds(idx, stateArg) {
+                    invalidated = { idx, stateArg };
                 },
             },
         };
         const bounds = setChunkSurfaceProfileRangeEdit(state, { startCol: 1, endCol: 1, startRow: 0, endRow: 1 }, "east");
         assert.deepEqual(bounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
-        assert.deepEqual(invalidated.bounds, bounds);
+        assert.equal(invalidated.idx, null);
         assert.equal(invalidated.stateArg, state);
         assert.equal(resolveChunkSurfaceProfileId(grid, 1, 1, "base"), "east");
     });

@@ -10,11 +10,11 @@ describe("HpaAbstractGraph Suite", () => {
         const edgeTargets = new Int16Array([1]);
         const graph = new HpaAbstractGraph(nodeIdx, cols, edgeOffsets, edgeTargets, null, 3, 1, ["A", "B", "C"]);
 
-        const startCandidates = graph.collectTempConnectCandidates(11, 11, true, 64);
+        const startCandidates = graph.collectTempConnectCandidates(11 + 11 * cols, true, 64);
         assert.ok(startCandidates.includes(0), "Should include the anchor node");
         assert.ok(startCandidates.includes(1), "Should include neighbors of anchor node for start candidate");
 
-        const targetCandidates = graph.collectTempConnectCandidates(19, 19, false, 64);
+        const targetCandidates = graph.collectTempConnectCandidates(19 + 19 * cols, false, 64);
         assert.ok(targetCandidates.includes(1), "Should include the anchor node");
         assert.ok(targetCandidates.includes(0), "Should include nodes with edges to the anchor node for target candidate");
     });

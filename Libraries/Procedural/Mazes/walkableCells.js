@@ -3,7 +3,7 @@ import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { floodConnectedNavWalkableCells, isNavWalkableCell } from "../../Spatial/grid/navWalkableCell.js";
 import { forEachGlobalCellInMapGenBounds, isGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { expandNavTopologyBakeBounds } from "../../Pathfinding/navTopologySab.js";
-import { clampCellBoundsToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { clampCellBoundsToGrid, forEachDenseCellInRect, padCellIdxToGrid } from "../../DataStructures/CellRect.js";
 import { createNavWalkableCandidateMask, createNavWalkableReachedMask, isNavWalkableAt, readNavWalkableFlag, writeNavWalkableFlags } from "./navWalkableIndex.js";
 /** @typedef {import("./navWalkableIndex.js").NavWalkableIndex} NavWalkableIndex */
 function cellIndex(col, row, cols) {
@@ -88,10 +88,11 @@ function writeNavWalkableFlagsInRect(flags, cols, cells, patchBounds) {
         flags[colRowToIndex(col, row, cols)] = 1;
     }
 }
-function patchNavWalkableCellIndexRegion(state, cache, damageBounds) {
+function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const grid = state.obstacleGrid;
     const navTopology = state.nav.topology;
-    const patchBounds = expandNavTopologyBakeBounds(clampCellBoundsToGrid(damageBounds, grid.cols, grid.rows), grid.cols, grid.rows, 2);
+    const cols = grid.cols;
+    const patchBounds = padCellIdxToGrid(idx, cols, grid.rows, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
@@ -187,18 +188,11 @@ export function isNavWalkableCellAt(state, col, row, boundsConfig = state.editor
  * @param {object} state
  * @param {import("../../DataStructures/CellRect.js").CellBounds | null} [damageBounds]
  */
-export function patchNavWalkableCellIndex(state, damageBounds = null) {
+export function patchNavWalkableCellIndex(state, idx = null) {
     const cache = state.sandbox._navWalkableCellsCache;
     if (!cache?.boundsConfig) return null;
-    let finalBounds = damageBounds;
-    if (typeof damageBounds === "number") {
-        const cols = state.obstacleGrid.cols;
-        const col = damageBounds % cols;
-        const row = (damageBounds / cols) | 0;
-        finalBounds = { startCol: col, endCol: col, startRow: row, endRow: row };
-    }
-    if (!finalBounds || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
-    return patchNavWalkableCellIndexRegion(state, cache, finalBounds);
+    if (idx === null || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
+    return patchNavWalkableCellIndexRegion(state, cache, idx);
 }
 export function pickWalkableCell(openCells, { cols, excludeIndices = null, rng = Math.random } = {}) {
     const candidates = excludeIndices ? openCells.filter((cell) => !excludeIndices.has(cellIndex(cell.col, cell.row, cols))) : openCells;

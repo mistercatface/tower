@@ -47,7 +47,7 @@ function orderedAttachmentPairs(parentGroups, childGroups, rng) {
             const cg = childGroups[j];
             const dc = pg.anchor.c - cg.anchor.c;
             const dr = pg.anchor.r - cg.anchor.r;
-            pairs.push({ pg, cg, dist: dc * dc + dr * dr });
+            pairs.push({ pg, cg, dist: dc * dc + dr * dr + rng() * 0.25 });
         }
     }
     pairs.sort((a, b) => a.dist - b.dist);
@@ -108,6 +108,7 @@ export function solveCorridorBundle(params) {
                 footprint: FULL_FOOTPRINT,
                 roomBlocked,
             });
+            console.log("TRYING PAIR:", pg.anchor, "->", cg.anchor, "SUCCESS:", !!path);
             if (!path) continue;
             pickedParent.push(pg);
             pickedChild.push(cg);

@@ -103,39 +103,27 @@ export function growNavTopologyVertexSab(arena, vertCount) {
 export function expandNavTopologyBakeBounds(bounds, cols, rows, padding = 1) {
     return padCellBoundsToGrid(bounds, cols, rows, padding);
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {NavTopologySabArena} arena @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds */
-export function packNavTopologyFromGrid(grid, arena, damageBounds = null) {
-    const { cols } = grid;
-    if (!damageBounds) {
+export function packNavTopologyFromGrid(grid, arena, idx = null) {
+    if (idx === null) {
         arena.gridFill.set(grid.grid);
         arena.floorKind.set(grid.floorStore.kind);
         arena.floorFacing.set(grid.floorStore.facing);
         arena.edgeSlots.set(grid.edgeStore.slots);
         return;
     }
-    const bounds = clampCellBoundsToGrid(damageBounds, cols, grid.rows);
-    for (let row = bounds.startRow; row <= bounds.endRow; row++) {
-        const rowStart = row * cols + bounds.startCol;
-        const span = bounds.endCol - bounds.startCol + 1;
-        arena.gridFill.set(grid.grid.subarray(rowStart, rowStart + span), rowStart);
-        arena.floorKind.set(grid.floorStore.kind.subarray(rowStart, rowStart + span), rowStart);
-        arena.floorFacing.set(grid.floorStore.facing.subarray(rowStart, rowStart + span), rowStart);
-    }
-    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (col, row, idx) => {
-        const slotBase = cellEdgeSlotBase(idx);
-        arena.edgeSlots.set(grid.edgeStore.slots.subarray(slotBase, slotBase + CELL_EDGE_SIDES), slotBase);
-    });
+    arena.gridFill[idx] = grid.grid[idx];
+    arena.floorKind[idx] = grid.floorStore.kind[idx];
+    arena.floorFacing[idx] = grid.floorStore.facing[idx];
+    const slotBase = cellEdgeSlotBase(idx);
+    arena.edgeSlots.set(grid.edgeStore.slots.subarray(slotBase, slotBase + CELL_EDGE_SIDES), slotBase);
 }
-/** @param {Uint8Array} gridFill @param {Uint8Array} blocked @param {number} cols @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds */
-export function recomputeBlockedFromGridFill(gridFill, blocked, cols, damageBounds = null) {
-    if (!damageBounds) {
-        for (let idx = 0; idx < gridFill.length; idx++) blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
+/** @param {Uint8Array} gridFill @param {Uint8Array} blocked @param {number} cols @param {number | null} idx */
+export function recomputeBlockedFromGridFill(gridFill, blocked, cols, idx = null) {
+    if (idx === null) {
+        for (let i = 0; i < gridFill.length; i++) blocked[i] = gridFill[i] !== 0 ? 1 : 0;
         return;
     }
-    const bounds = clampCellBoundsToGrid(damageBounds, cols, gridFill.length / cols);
-    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (col, row, idx) => {
-        blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
-    });
+    blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
 }
 export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, bounds) {
     forEachDenseCellInBounds(bounds, cols, (col, row, idx) => {
@@ -192,21 +180,7 @@ export function navIsBlocked(frame, topology, col, row) {
     return topology.blocked[colRowToIndex(col, row, cols)] !== 0;
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
-export function navCanStep(frame, topology, fromCol, fromRow, toCol, toRow) {
-    const { cols, rows } = frame;
-    if (!cellInRect(fromCol, fromRow, cols, rows) || !cellInRect(toCol, toRow, cols, rows)) return false;
-    const fromIdx = colRowToIndex(fromCol, fromRow, cols);
-    if (topology.blocked[fromIdx]) return false;
-    const dc = toCol - fromCol;
-    const dr = toRow - fromRow;
-    if (dc < -1 || dc > 1 || dr < -1 || dr > 1) return false;
-    const dirIdx = OCTILE_DIR_TO_IDX[dc + 1 + (dr + 1) * 3];
-    if (dirIdx === -1) return false;
-    const toIdx = colRowToIndex(toCol, toRow, cols);
-    return topology.octileNeighbors[octileNeighborOffset(fromIdx, dirIdx)] === toIdx;
-}
-/** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
-export function navCanStepIdx(frame, topology, fromIdx, toIdx) {
+export function navCanStep(frame, topology, fromIdx, toIdx) {
     if (fromIdx < 0 || toIdx < 0) return false;
     const { cols, rows } = frame;
     const cellCount = cols * rows;
@@ -217,5 +191,6 @@ export function navCanStepIdx(frame, topology, fromIdx, toIdx) {
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function createNavLocalView(frame, topology) {
-    return { canStep: (fromCol, fromRow, toCol, toRow) => navCanStep(frame, topology, fromCol, fromRow, toCol, toRow), canStepIdx: (fromIdx, toIdx) => navCanStepIdx(frame, topology, fromIdx, toIdx) };
+    const canStep = (fromIdx, toIdx) => navCanStep(frame, topology, fromIdx, toIdx);
+    return { canStep, canStepIdx: canStep };
 }

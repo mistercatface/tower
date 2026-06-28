@@ -1,7 +1,7 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
 import { colRowToIndex, forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 import { findNearestOpenCellIdx } from "./hpaPathRequest.js";
-import { cellBoundsForGrid, forEachDenseCellInBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid } from "../DataStructures/CellRect.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, repositionNodeCentroid, repositionRegionCentroids, mergeSmallRegions, floodFillRegion } from "./VoronoiRegions.js";
 export const REGION_CELL_UNASSIGNED = -1;
@@ -99,8 +99,8 @@ export class HpaRegionGraph {
         state.nodeIdCounter = this.nodeIdCounter;
     }
 }
-export function expandRegionDamageBounds(bounds, frame, padding = 12) {
-    return padCellBoundsToGrid(bounds, frame.cols, frame.rows, padding);
+export function expandRegionDamageBounds(idx, frame, padding = 12) {
+    return padCellIdxToGrid(idx, frame.cols, frame.rows, padding);
 }
 function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     if (!nodeA || !nodeB || nodeA.id === nodeB.id) return false;

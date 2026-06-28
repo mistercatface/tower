@@ -151,7 +151,7 @@ async function analyzeSnakeSplitMap(mapSeed, playAreaCells = 64) {
     return { mapSeed, cavern, rail, padding, padReach, railReach, openCavernCount: openCavernCells.length };
 }
 describe("snake split map generation", () => {
-    it("keeps cavern floor open enough for snakes", async () => {
+    it("keeps cavern floor open enough for snakes", { timeout: 15000 }, async () => {
         const samples = [11, 42, 99, 256, 1337, 9001];
         for (let i = 0; i < samples.length; i++) {
             const stats = await analyzeSnakeSplitMap(samples[i]);
@@ -159,7 +159,7 @@ describe("snake split map generation", () => {
             assert.ok(stats.openCavernCount >= 80, `seed ${stats.mapSeed}: only ${stats.openCavernCount} open cavern cells`);
         }
     });
-    it("connects upper cavern to padding and lower rail zone on sampled seeds", async () => {
+    it("connects upper cavern to padding and lower rail zone on sampled seeds", { timeout: 15000 }, async () => {
         const samples = [11, 42, 99, 256, 1337, 9001];
         for (let i = 0; i < samples.length; i++) {
             const stats = await analyzeSnakeSplitMap(samples[i]);

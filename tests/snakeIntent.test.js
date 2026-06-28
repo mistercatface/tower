@@ -87,7 +87,7 @@ describe("explore steering", () => {
             { col: 11, row: 10 },
             { col: 20, row: 10 },
         ];
-        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells.75 });
+        const cell = pickExploreDestination(grid, 10, 10, { minTiles: 8, openCells, rng: () => 0.75 });
         assert.ok(cell);
         assert.ok(cellChebyshevDistance(10, 10, cell.col, cell.row) >= 8);
     });

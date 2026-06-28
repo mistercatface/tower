@@ -2,7 +2,7 @@ import { gridFrameFromGrid } from "../Pathfinding/GridNavSnapshot.js";
 import { createNavSimView } from "../Pathfinding/navSimView.js";
 import { bakeNavTopologyIntoArena } from "../Pathfinding/bakeNavTopology.js";
 import { createNavTopologySabArena, navTopologyFromArena, packNavTopologyFromGrid } from "../Pathfinding/navTopologySab.js";
-import { navCanStep, navCanStepIdx } from "../Pathfinding/navTopologySab.js";
+import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
 import { isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
@@ -70,31 +70,14 @@ export class NavTopology {
         return this.navCardinalOpen;
     }
     /** Octile CSR step — movement, HPA, flow. */
-    canStep(fromCol, fromRow, toCol, toRow) {
+    canStep(fromIdx, toIdx) {
         const frame = this.frame;
         const topology = this.topology;
         if (!frame || !topology) return false;
-        return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
-    }
-    canStepIdx(fromIdx, toIdx) {
-        const frame = this.frame;
-        const topology = this.topology;
-        if (!frame || !topology) return false;
-        return navCanStepIdx(frame, topology, fromIdx, toIdx);
-    }
-    /** Same step test as {@link createNavGraphViewFromTopology} `.canStep` — no graph view allocation. */
-    graphCanStep(fromCol, fromRow, toCol, toRow) {
-        return navTopologyGraphCanStep(this, fromCol, fromRow, toCol, toRow);
+        return navCanStep(frame, topology, fromIdx, toIdx);
     }
     /** Cardinal / vertex step — belt mouths, map-gen heuristics. */
-    canStepCardinal(fromCol, fromRow, toCol, toRow) {
-        const cardinalOpen = this.navCardinalOpen;
-        const vertexPassability = this.vertexPassability;
-        if (!cardinalOpen || !vertexPassability) return false;
-        const cols = this.grid.cols;
-        return !boundaryBlocksStepFrom(this.grid, cardinalOpen, vertexPassability, fromCol + fromRow * cols, toCol + toRow * cols);
-    }
-    canStepCardinalIdx(fromIdx, toIdx) {
+    canStepCardinal(fromIdx, toIdx) {
         const cardinalOpen = this.navCardinalOpen;
         const vertexPassability = this.vertexPassability;
         if (!cardinalOpen || !vertexPassability) return false;
@@ -103,11 +86,11 @@ export class NavTopology {
     /**
      * In-process bake using the same functions as the worker (authoring / map-gen).
      *
-     * @param {CellBounds | null} [damageBounds]
+     * @param {number | null} [idx]
      */
-    bakeInProcess(damageBounds = null) {
+    bakeInProcess(idx = null) {
         const arena = ensureLocalBakeArena(this.grid);
-        packNavTopologyFromGrid(this.grid, arena, damageBounds);
+        packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
         const simView = createNavSimView(
             frame,
@@ -121,25 +104,25 @@ export class NavTopology {
         );
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
-        bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, damageBounds);
+        bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
         this._frame = frame;
         this._topology = topology;
         this._source = "local";
         if (!this._worker) this.grid._navTopologyRef = this;
         return this;
     }
-    /** @param {WorldObstacleGrid} grid @param {CellBounds | null} [damageBounds] */
-    static bakeLocal(grid, damageBounds = null) {
-        return new NavTopology(grid).bakeInProcess(damageBounds);
+    /** @param {WorldObstacleGrid} grid @param {number | null} [idx] */
+    static bakeLocal(grid, idx = null) {
+        return new NavTopology(grid).bakeInProcess(idx);
     }
     /** @param {WorldObstacleGrid} grid @param {HpaPathWorker} worker */
     static bindWorker(grid, worker) {
         return new NavTopology(grid, { worker });
     }
-    /** @param {WorldObstacleGrid} grid @param {CellBounds | null} [bounds] */
-    static packSnapshot(grid, bounds = null) {
+    /** @param {WorldObstacleGrid} grid @param {number | null} [idx] */
+    static packSnapshot(grid, idx = null) {
         const arena = ensureLocalBakeArena(grid);
-        packNavTopologyFromGrid(grid, arena, bounds);
+        packNavTopologyFromGrid(grid, arena, idx);
         return {
             gridFill: arena.gridFill,
             floorKind: arena.floorKind,
@@ -170,15 +153,14 @@ export function invalidateGridLocalNavBake(grid) {
     if (grid._navTopologyRef?.invalidateLocalBake) grid._navTopologyRef.invalidateLocalBake();
 }
 /** @param {NavTopology} navTopology */
-export function navTopologyGraphCanStep(navTopology, fromCol, fromRow, toCol, toRow) {
+export function navTopologyGraphCanStep(navTopology, fromIdx, toIdx) {
     const cardinalOpen = navTopology.navCardinalOpen;
     const vertexPassability = navTopology.vertexPassability;
     if (cardinalOpen && vertexPassability) {
-        const cols = navTopology.grid.cols;
-        return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromCol + fromRow * cols, toCol + toRow * cols);
+        return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
     }
     const frame = navTopology.frame;
     const topology = navTopology.topology;
-    if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
+    if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);
     return false;
 }

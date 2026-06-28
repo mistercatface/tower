@@ -1,4 +1,4 @@
-import { cellBoundsForGrid, clampCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { cellBoundsForGrid, padCellIdxToGrid } from "../DataStructures/CellRect.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { createNavSimView } from "./navSimView.js";
 import { buildOctileNeighborsFromTopologyBounds, buildOctilePredecessorsFromForwardGrid, navTopologyFromArena, expandNavTopologyBakeBounds, recomputeBlockedFromGridFill } from "./navTopologySab.js";
@@ -12,14 +12,13 @@ import { NavTopology } from "../Navigation/NavTopology.js";
  * @param {import("./navTopologySab.js").NavTopology & { octilePredecessors?: Int32Array }} topology
  * @param {Uint8Array} cardinalOpen
  * @param {Uint8Array} vertexPassability
- * @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds
+ * @param {number | null} idx
  */
-export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertexPassability, damageBounds = null) {
+export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertexPassability, idx = null) {
     const frame = simView.frame;
     const { cols, rows } = frame;
-    const copyBounds = damageBounds ? clampCellBoundsToGrid(damageBounds, cols, rows) : null;
-    const bakeBounds = copyBounds ? expandNavTopologyBakeBounds(copyBounds, cols, rows) : null;
-    recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, copyBounds);
+    const bakeBounds = idx !== null ? padCellIdxToGrid(idx, cols, rows, 1) : null;
+    recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, idx);
     recomputeVertexPassabilityInto(simView, vertexPassability, bakeBounds);
     recomputeNavCardinalOpenInto(simView, cardinalOpen, vertexPassability, bakeBounds);
     buildOctileNeighborsFromTopologyBounds(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, bakeBounds ?? cellBoundsForGrid(cols, rows));

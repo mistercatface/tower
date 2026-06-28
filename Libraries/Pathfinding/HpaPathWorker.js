@@ -147,15 +147,15 @@ export class HpaPathWorker {
         return this._graphPatchChain;
     }
     async syncObstacleNavGraph(grid, idx, graphEpoch, fullGraph) {
-        const damageBounds = fullGraph ? null : { startCol: idx % grid.cols, endCol: idx % grid.cols, startRow: (idx / grid.cols) | 0, endRow: (idx / grid.cols) | 0 };
-        await this.scheduleNavTopologySyncAwait(grid, damageBounds);
+        const boundsOrIdx = fullGraph ? null : idx;
+        await this.scheduleNavTopologySyncAwait(grid, boundsOrIdx);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
         if (fullGraph) {
             await this._postGraphPatch("buildRegionGraphFull", { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk }, graphEpoch);
             return;
         }
-        const box = expandRegionDamageBounds(damageBounds, this._gridFrame, this._damagePadding);
+        const box = expandRegionDamageBounds(boundsOrIdx, this._gridFrame, this._damagePadding);
         await this._postGraphPatch("patchRegionGraph", { gridFrameKey: this._gridFrame.key, bounds: box }, graphEpoch);
     }
     async awaitGraphReady() {
@@ -183,8 +183,8 @@ export class HpaPathWorker {
         const blocked = topology?.blocked ?? grid.grid;
         const navCaches = { navCardinalOpen: this._navArena.cardinalOpen, vertexPassability: this._navArena.vertexPassability };
         const regionCanStep = topology
-            ? (fromCol, fromRow, toCol, toRow) => navCanStep(this._gridFrame, topology, fromCol, fromRow, toCol, toRow) || navCanStep(this._gridFrame, topology, toCol, toRow, fromCol, fromRow)
-            : (fromCol, fromRow, toCol, toRow) => grid.canStep(fromCol, fromRow, toCol, toRow, navCaches) || grid.canStep(toCol, toRow, fromCol, fromRow, navCaches);
+            ? (fromIdx, toIdx) => navCanStep(this._gridFrame, topology, fromIdx, toIdx) || navCanStep(this._gridFrame, topology, toIdx, fromIdx)
+            : (fromIdx, toIdx) => grid.canStep(fromIdx, toIdx, navCaches) || grid.canStep(toIdx, fromIdx, navCaches);
         return {
             cols: grid.cols,
             rows: grid.rows,

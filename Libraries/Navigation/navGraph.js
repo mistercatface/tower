@@ -1,7 +1,7 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
-import { navCanStepIdx } from "../Pathfinding/navTopologySab.js";
+import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {number} CellIdx */
 export function createNavGraphView(grid, baked = null, navTopology = null) {
@@ -48,7 +48,7 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
         },
         canStepIdx(fromIdx, toIdx) {
             if (this.cardinalOpen && this.vertexPassability) return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromIdx, toIdx);
-            if (frame && topology) return navCanStepIdx(frame, topology, fromIdx, toIdx);
+            if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);
             return false;
         },
     };

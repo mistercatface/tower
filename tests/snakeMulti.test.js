@@ -56,7 +56,7 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const tintHex = getSnakeGameConfig().agentProfiles.snake.teams[0].color;
-        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3.25 });
+        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.25 });
         assert.equal(pack.tintHex, tintHex);
         const memberIds = getChainMemberIds(state, pack.chain.head.id);
         assert.equal(memberIds.length, 3);
@@ -71,8 +71,8 @@ describe("snake multi-spawn", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
         const teams = getSnakeGameConfig().agentProfiles.snake.teams;
-        const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, teamIndex: 0.1 });
-        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, teamIndex: 1, excludeIndices: first.occupiedIndices.9 });
+        const first = spawnSnakeChain(state, { col: 8, row: 8 }, { segmentCount: 3, teamIndex: 0, rng: () => 0.1 });
+        const second = spawnSnakeChain(state, { col: 20, row: 20 }, { segmentCount: 3, teamIndex: 1, excludeIndices: first.occupiedIndices, rng: () => 0.9 });
         assert.equal(first.tintHex, teams[0].color);
         assert.equal(second.tintHex, teams[1].color);
     });
@@ -81,7 +81,7 @@ describe("snake multi-spawn", () => {
         applySnakeGameConfig();
         resetKineticConstraintIds(1);
         const state = createSnakeSceneTestState();
-        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3.5 });
+        const pack = spawnSnakeChain(state, { col: 10, row: 10 }, { segmentCount: 3, rng: () => 0.5 });
         wireSnakeGameForHead(state, pack.chain.head.id, pack.chain.spawnGroupId);
         const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: getSnakeGameConfig().agentProfiles.snake.metabolism.growthCost });
         const autosim = createWiredSnakeAutosim(state, { headId: pack.chain.head.id, eatRadius: 20 });

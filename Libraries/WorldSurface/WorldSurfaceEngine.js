@@ -33,10 +33,17 @@ export class WorldSurfaceEngine {
     clearBakeCache() {
         this.surfaceCache.clear();
     }
-    invalidateGridBounds(bounds, state, cellsPerChunk = this.settings.cellsPerChunk) {
-        if (!bounds || !state?.obstacleGrid) return;
-        const obstacleGrid = state.obstacleGrid;
-        const range = this.surfaceSpace.cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk);
+    invalidateGridBounds(idx, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
+        const cols = obstacleGrid.cols;
+        const range =
+            idx === null || idx === undefined
+                ? { startCol: 0, endCol: ((cols - 1) / cellsPerChunk) | 0, startRow: 0, endRow: ((obstacleGrid.rows - 1) / cellsPerChunk) | 0 }
+                : {
+                      startCol: ((idx % cols) / cellsPerChunk) | 0,
+                      endCol: ((idx % cols) / cellsPerChunk) | 0,
+                      startRow: (((idx / cols) | 0) / cellsPerChunk) | 0,
+                      endRow: (((idx / cols) | 0) / cellsPerChunk) | 0,
+                  };
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
         for (let chunkRow = range.startRow; chunkRow <= range.endRow; chunkRow++)
             for (let chunkCol = range.startCol; chunkCol <= range.endCol; chunkCol++) {

@@ -131,14 +131,15 @@ describe("wall delete nav patch (4a)", () => {
         const row = 4;
         const nextCol = 4;
         const idx = colRowToIndex(col, row, grid.cols);
+        const nextIdx = colRowToIndex(nextCol, row, grid.cols);
         stampRailWallsQuiet(state, [{ col, row, side: 1, heightLevel: 1, thicknessLevel: 1 }]);
         await state.nav.commitEdit(idx);
-        assert.equal(grid.canStep(col, row, nextCol, row, state.nav.topology), false);
+        assert.equal(grid.canStep(idx, nextIdx, state.nav.topology), false);
         state.resetNotifyCount();
         clearRailWallsQuiet(state, [{ idx, side: 1 }]);
         await state.nav.commitEdit(idx);
         assert.equal(state.notifyCount, 1);
-        assert.equal(grid.canStep(col, row, nextCol, row, state.nav.topology), true);
+        assert.equal(grid.canStep(idx, nextIdx, state.nav.topology), true);
         terminateWorkerNavigation(state.nav);
     });
     it("mixed voxel+rail batch delete updates nav context once", async () => {
@@ -151,11 +152,12 @@ describe("wall delete nav patch (4a)", () => {
         stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 1, heightLevel: 1, thicknessLevel: 1 }]);
         const idxBlocked = colRowToIndex(blocked.col, blocked.row, grid.cols);
         const idxRail = colRowToIndex(5, 5, grid.cols);
+        const idxNext = colRowToIndex(6, 5, grid.cols);
         await state.nav.commitEdit(idxBlocked);
         grid.gridTopologyEpoch++;
         await state.nav.commitEdit(idxRail);
         assert.ok(!isNavWalkableCellAt(state, blocked.col, blocked.row));
-        assert.equal(grid.canStep(5, 5, 6, 5, state.nav.topology), false);
+        assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), false);
         state.resetNotifyCount();
         const bounds = clearGridWallsBatch(state, {
             voxels: [idxBlocked],
@@ -164,7 +166,7 @@ describe("wall delete nav patch (4a)", () => {
         await state.nav.awaitWorkerNavReady();
         assert.equal(state.notifyCount, 2); // since we commit each cleared wall index (voxel index and rail index)
         assert.ok(isNavWalkableCellAt(state, blocked.col, blocked.row));
-        assert.equal(grid.canStep(5, 5, 6, 5, state.nav.topology), true);
+        assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), true);
         assert.ok(bounds);
         terminateWorkerNavigation(state.nav);
     });

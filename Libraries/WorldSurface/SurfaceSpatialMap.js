@@ -30,9 +30,14 @@ export class SurfaceSpatialMap {
     tileChunkBoundsInto(out, obstacleGrid, chunkCol, chunkRow, cellsPerChunk = this.settings.cellsPerChunk) {
         return this.chunkBoundsInto(out, obstacleGrid, this.wrapChunkCol(chunkCol, cellsPerChunk), this.wrapChunkRow(chunkRow, cellsPerChunk), cellsPerChunk);
     }
-    cellBoundsToChunkRange(bounds, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
+    cellBoundsToChunkRange(boundsOrIdx, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
+        if (typeof boundsOrIdx === "number") {
+            const chunkCol = ((boundsOrIdx % obstacleGrid.cols) / cellsPerChunk) | 0;
+            const chunkRow = (((boundsOrIdx / obstacleGrid.cols) | 0) / cellsPerChunk) | 0;
+            return { startCol: chunkCol, endCol: chunkCol, startRow: chunkRow, endRow: chunkRow };
+        }
         const chunkSizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
-        const worldBounds = cellBoundsToWorldBoundsInto(this._cellBoundsAabb, bounds, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
+        const worldBounds = cellBoundsToWorldBoundsInto(this._cellBoundsAabb, boundsOrIdx, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cellSize);
         return this.boundsToChunkRange(worldBounds, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
     viewportChunkRange(bounds, obstacleGrid, chunkSizePx) {

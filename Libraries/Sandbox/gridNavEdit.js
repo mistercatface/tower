@@ -1,4 +1,3 @@
-import { cellBoundsAt, cellBoundsAtIdx, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
@@ -14,12 +13,10 @@ import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
  */
 export function commitGridNavEdit(state, idx, { invalidateSurfaces = true, fullNavSync = false } = {}) {
     const grid = state.obstacleGrid;
-    const bounds = idx != null ? cellBoundsAtIdx(idx, grid.cols) : null;
-    const merged = fullNavSync ? null : bounds;
-    if (!fullNavSync && (!merged || isEmptyCellBounds(merged))) return Promise.resolve();
+    if (!fullNavSync && idx === null) return Promise.resolve();
     if (invalidateSurfaces && state.worldSurfaces)
-        if (fullNavSync || !merged) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, state);
-        else state.worldSurfaces.invalidateGridBounds(merged, state);
+        if (fullNavSync || idx === null) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, grid);
+        else state.worldSurfaces.invalidateGridBounds(idx, grid);
     if (state.sandbox) markGridZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     const nav = resolveNavRuntime(state);
@@ -31,28 +28,30 @@ export function commitGridNavEditUnion(state, ...indices) {
     for (let i = 0; i < parts.length; i++) commitGridNavEdit(state, parts[i]);
     return Promise.resolve();
 }
-export function commitSurfaceMaterialEdit(state, bounds) {
-    if (!bounds || isEmptyCellBounds(bounds) || bounds.startCol > bounds.endCol || bounds.startRow > bounds.endRow) return null;
-    if (state.worldSurfaces) state.worldSurfaces.invalidateGridBounds(bounds, state);
+export function commitSurfaceMaterialEdit(state, idx) {
+    if (state.worldSurfaces) state.worldSurfaces.invalidateGridBounds(idx, state.obstacleGrid);
     if (state.sandbox) markGridZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
-    return bounds;
+    return idx;
 }
 export function setChunkSurfaceProfileEdit(state, chunkBounds, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
+    commitSurfaceMaterialEdit(state, null);
+    return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
 }
 export function clearChunkSurfaceProfileEdit(state, chunkBounds) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     for (let chunkRow = chunkBounds.startRow; chunkRow <= chunkBounds.endRow; chunkRow++)
         for (let chunkCol = chunkBounds.startCol; chunkCol <= chunkBounds.endCol; chunkCol++) state.obstacleGrid.clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
+    commitSurfaceMaterialEdit(state, null);
+    return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
 }
 export function setChunkSurfaceProfileRangeEdit(state, chunkBounds, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
-    return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
+    commitSurfaceMaterialEdit(state, null);
+    return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
 }
 /** Stamp or replace one floor cell and resync nav topology. */
 export function applyFloorCellEdit(state, col, row, kind, facingRadians) {

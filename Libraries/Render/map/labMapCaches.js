@@ -55,14 +55,14 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
                     const rIdx = idx + 1;
                     if (debugView.grid[rIdx] === 0) {
                         const rightRegion = cellToRegion[rIdx];
-                        if (rightRegion >= 0 && rightRegion !== region && debugView.regionCanStep(col, row, col + 1, row)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
+                        if (rightRegion >= 0 && rightRegion !== region && debugView.regionCanStep(idx, rIdx)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
                 if (row + 1 < debugView.rows) {
                     const bIdx = idx + debugView.cols;
                     if (debugView.grid[bIdx] === 0) {
                         const bottomRegion = cellToRegion[bIdx];
-                        if (bottomRegion >= 0 && bottomRegion !== region && debugView.regionCanStep(col, row, col, row + 1)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
+                        if (bottomRegion >= 0 && bottomRegion !== region && debugView.regionCanStep(idx, bIdx)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
                 }
             }

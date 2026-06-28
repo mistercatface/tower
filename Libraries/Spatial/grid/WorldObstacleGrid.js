@@ -465,28 +465,16 @@ export class WorldObstacleGrid {
     isBlockedWorld(x, y) {
         return this.isBlocked(this.worldCol(x), this.worldRow(y));
     }
-    canStep(currCol, currRow, nextCol, nextRow, navTopology = null) {
+    canStep(fromIdx, toIdx, navTopology = null) {
         if (!navTopology) return false;
-        if (typeof navTopology.canStep === "function") return navTopology.canStep(currCol, currRow, nextCol, nextRow);
-        const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
-        const vertexPassability = navTopology.vertexPassability;
-        if (cardinalOpen && vertexPassability) {
-            const cols = this.cols;
-            return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, currCol + currRow * cols, nextCol + nextRow * cols);
-        }
-        return false;
-    }
-    canStepIdx(fromIdx, toIdx, navTopology = null) {
-        if (!navTopology) return false;
-        if (typeof navTopology.canStepIdx === "function") return navTopology.canStepIdx(fromIdx, toIdx);
+        if (typeof navTopology.canStep === "function") return navTopology.canStep(fromIdx, toIdx);
         const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
         const vertexPassability = navTopology.vertexPassability;
         if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, fromIdx, toIdx);
-        if (typeof navTopology.canStep === "function") {
-            const cols = this.cols;
-            return navTopology.canStep(fromIdx % cols, (fromIdx / cols) | 0, toIdx % cols, (toIdx / cols) | 0);
-        }
         return false;
+    }
+    canStepIdx(fromIdx, toIdx, navTopology = null) {
+        return this.canStep(fromIdx, toIdx, navTopology);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

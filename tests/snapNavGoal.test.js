@@ -28,6 +28,6 @@ describe("snapNavGoal", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(64, 64, 128, 128);
         assert.equal(grid.isBlocked(0, 0), false);
-        assert.equal(grid.canStep(0, 0, 1, 0), false);
+        assert.equal(grid.canStep(0, 1), false);
     });
 });

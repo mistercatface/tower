@@ -8,10 +8,12 @@ const CARDINALS = [
 export function isNavWalkableCell(grid, navTopology, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
+    const idx = col + row * grid.cols;
     for (let i = 0; i < CARDINALS.length; i++) {
         const nc = col + CARDINALS[i][0];
         const nr = row + CARDINALS[i][1];
-        if (grid.canStep(col, row, nc, nr, navTopology) || grid.canStep(nc, nr, col, row, navTopology)) return true;
+        const nIdx = nc + nr * grid.cols;
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) return true;
     }
     return false;
 }
@@ -37,13 +39,14 @@ export function floodConnectedNavWalkableCells(grid, navTopology, candidates, ca
     }
     while (queue.length) {
         const { col, row } = queue.pop();
+        const idx = col + row * cols;
         for (let i = 0; i < CARDINALS.length; i++) {
             const nc = col + CARDINALS[i][0];
             const nr = row + CARDINALS[i][1];
             if (!cellInRect(nc, nr, cols, rows)) continue;
             const nIdx = colRowToIndex(nc, nr, cols);
             if (!candidateMask[nIdx] || reachedMask[nIdx]) continue;
-            if (!grid.canStep(col, row, nc, nr, navTopology) && !grid.canStep(nc, nr, col, row, navTopology)) continue;
+            if (!grid.canStep(idx, nIdx, navTopology) && !grid.canStep(nIdx, idx, navTopology)) continue;
             reachedMask[nIdx] = 1;
             queue.push({ col: nc, row: nr });
         }

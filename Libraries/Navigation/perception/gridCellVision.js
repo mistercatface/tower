@@ -66,7 +66,7 @@ export function hasGridCellLineOfSight(navTopology, col0, row0, col1, row1) {
                 ny = y + sy;
             }
             if (!cellInRect(nx, ny, grid.cols, grid.rows)) return false;
-            if (!navCanStep(frame, topology, x, y, nx, ny)) return false;
+            if (!navCanStep(frame, topology, x + y * grid.cols, nx + ny * grid.cols)) return false;
             x = nx;
             y = ny;
         }
