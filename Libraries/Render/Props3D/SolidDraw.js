@@ -198,11 +198,11 @@ export function drawExtrudedConvexPolygon(
         const offset = chunkSizePx / 2;
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
-        const count = localVerts.length;
+        const count = localVerts.length / 2;
         const srcCorners = [];
         for (let i = 0; i < count; i++) {
-            const lx = localVerts[i].x;
-            const ly = localVerts[i].y;
+            const lx = localVerts[i * 2];
+            const ly = localVerts[i * 2 + 1];
             const topLx = scaleAtHeight(lx, projection.alpha, 1);
             const topLy = scaleAtHeight(ly, projection.alpha, 1);
             const rx = topLx * cos - topLy * sin;
@@ -298,20 +298,32 @@ export function drawExtrudedCompoundPolygon(
         const thickness = prop.crossThickness ?? 8;
         const halfL = length / 2;
         const halfT = thickness / 2;
-        const localVerts = [
-            { x: -halfT, y: -halfL },
-            { x: halfT, y: -halfL },
-            { x: halfT, y: -halfT },
-            { x: halfL, y: -halfT },
-            { x: halfL, y: halfT },
-            { x: halfT, y: halfT },
-            { x: halfT, y: halfL },
-            { x: -halfT, y: halfL },
-            { x: -halfT, y: halfT },
-            { x: -halfL, y: halfT },
-            { x: -halfL, y: -halfT },
-            { x: -halfT, y: -halfT },
-        ];
+        const localVerts = new Float32Array([
+            -halfT,
+            -halfL,
+            halfT,
+            -halfL,
+            halfT,
+            -halfT,
+            halfL,
+            -halfT,
+            halfL,
+            halfT,
+            halfT,
+            halfT,
+            halfT,
+            halfL,
+            -halfT,
+            halfL,
+            -halfT,
+            halfT,
+            -halfL,
+            halfT,
+            -halfL,
+            -halfT,
+            -halfT,
+            -halfT,
+        ]);
         const projection = projectVertical(prop.x, prop.y, height, viewport);
         const { cx, cy, topX, topY, alpha } = projection;
         const cos = Math.cos(facing);
@@ -320,8 +332,8 @@ export function drawExtrudedCompoundPolygon(
         const baseCorners = new Array(count);
         const topCorners = new Array(count);
         for (let i = 0; i < count; i++) {
-            const lx = localVerts[i].x;
-            const ly = localVerts[i].y;
+            const lx = localVerts[i * 2];
+            const ly = localVerts[i * 2 + 1];
             const topLx = scaleAtHeight(lx, alpha, 1);
             const topLy = scaleAtHeight(ly, alpha, 1);
             baseCorners[i] = { x: cx + lx * cos - ly * sin, y: cy + lx * sin + ly * cos };
@@ -330,10 +342,12 @@ export function drawExtrudedCompoundPolygon(
         const faces = [];
         for (let i = 0; i < count; i++) {
             const next = (i + 1) % count;
-            const pA = localVerts[i];
-            const pB = localVerts[next];
-            const lx = pB.y - pA.y;
-            const ly = -(pB.x - pA.x);
+            const pAx = localVerts[i * 2];
+            const pAy = localVerts[i * 2 + 1];
+            const pBx = localVerts[next * 2];
+            const pBy = localVerts[next * 2 + 1];
+            const lx = pBy - pAy;
+            const ly = -(pBx - pAx);
             const worldNx = lx * cos - ly * sin;
             const worldNy = lx * sin + ly * cos;
             const face = {
