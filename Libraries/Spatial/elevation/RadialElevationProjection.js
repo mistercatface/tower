@@ -5,7 +5,6 @@
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
 import { angleDelta } from "../../Math/Angle.js";
 import { radiusAtT, scaleAtHeight } from "../../Math/Interpolate.js";
-import { rectCorners } from "../../Math/Poly2D.js";
 export { radiusAtT, scaleAtHeight };
 export function resolveElevationAlpha(height, viewport) {
     const { cameraHeight, perspectiveStrength } = viewport;
@@ -80,54 +79,22 @@ export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
         topRight: rimPoint(topX, topY, resolvedTop, perpB),
     };
 }
-export function extrudeBox(projection, halfSize, angle = 0) {
+export function extrudeLocalVertsInto(baseOut, topOut, localVerts, projection, facing = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
-    const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
-    const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
-    const topHx = scaleAtHeight(hx, alpha, 1);
-    const topHy = scaleAtHeight(hy, alpha, 1);
-    const baseCornersFlat = rectCorners(cx, cy, { x: hx, y: hy }, angle);
-    const topCornersFlat = rectCorners(topX, topY, { x: topHx, y: topHy }, angle);
-    const baseCorners = [
-        leaseBaseCorner(baseCornersFlat[0], baseCornersFlat[1]),
-        leaseBaseCorner(baseCornersFlat[2], baseCornersFlat[3]),
-        leaseBaseCorner(baseCornersFlat[4], baseCornersFlat[5]),
-        leaseBaseCorner(baseCornersFlat[6], baseCornersFlat[7]),
-    ];
-    const topCorners = [
-        leaseTopCorner(topCornersFlat[0], topCornersFlat[1]),
-        leaseTopCorner(topCornersFlat[2], topCornersFlat[3]),
-        leaseTopCorner(topCornersFlat[4], topCornersFlat[5]),
-        leaseTopCorner(topCornersFlat[6], topCornersFlat[7]),
-    ];
-    const faces = new Array(4);
-    for (let i = 0; i < 4; i++) {
-        const next = (i + 1) % 4;
-        faces[i] = leaseFace(baseCorners[i], baseCorners[next], topCorners[i], topCorners[next]);
-    }
-    return { halfSize: { x: hx, y: hy }, topHalfSize: { x: topHx, y: topHy }, baseCorners, topCorners, faces };
-}
-export function extrudeConvexFootprint(projection, localVerts, angle = 0) {
-    const { cx, cy, topX, topY, alpha } = projection;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
     const count = localVerts.length / 2;
-    const baseCorners = new Array(count);
-    const topCorners = new Array(count);
     for (let i = 0; i < count; i++) {
         const lx = localVerts[i * 2];
         const ly = localVerts[i * 2 + 1];
         const topLx = scaleAtHeight(lx, alpha, 1);
         const topLy = scaleAtHeight(ly, alpha, 1);
-        baseCorners[i] = leaseBaseCorner(cx + lx * cos - ly * sin, cy + lx * sin + ly * cos);
-        topCorners[i] = leaseTopCorner(topX + topLx * cos - topLy * sin, topY + topLx * sin + topLy * cos);
+        baseOut[i * 2] = cx + lx * cos - ly * sin;
+        baseOut[i * 2 + 1] = cy + lx * sin + ly * cos;
+        topOut[i * 2] = topX + topLx * cos - topLy * sin;
+        topOut[i * 2 + 1] = topY + topLx * sin + topLy * cos;
     }
-    const faces = new Array(count);
-    for (let i = 0; i < count; i++) {
-        const next = (i + 1) % count;
-        faces[i] = leaseFace(baseCorners[i], baseCorners[next], topCorners[i], topCorners[next]);
-    }
-    return { baseCorners, topCorners, faces };
+    return count;
 }
 export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewerX, viewerY) {
     const viewX = midX - viewerX;
@@ -155,61 +122,15 @@ export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngl
     ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
 }
 export function createSideGradient(ctx, left, right, viewAngle, colors) {
+    return createSideGradientAt(ctx, left.x, left.y, right.x, right.y, viewAngle, colors);
+}
+export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngle, colors) {
     const t = getSideHighlightT(viewAngle);
-    const grad = ctx.createLinearGradient(left.x, left.y, right.x, right.y);
+    const grad = ctx.createLinearGradient(leftX, leftY, rightX, rightY);
     grad.addColorStop(0.0, colors.shadow);
     grad.addColorStop(Math.max(0.0, t - 0.25), colors.mid);
     grad.addColorStop(t, colors.highlight);
     grad.addColorStop(Math.min(1.0, t + 0.25), colors.mid);
     grad.addColorStop(1.0, colors.shadow);
     return grad;
-}
-const sBaseCornersPool = [];
-const sTopCornersPool = [];
-const sFacesPool = [];
-let sBaseCornersUsed = 0;
-let sTopCornersUsed = 0;
-let sFacesUsed = 0;
-export function resetExtrusionPool() {
-    sBaseCornersUsed = 0;
-    sTopCornersUsed = 0;
-    sFacesUsed = 0;
-}
-export function leaseBaseCorner(x, y) {
-    let pt;
-    if (sBaseCornersUsed < sBaseCornersPool.length) pt = sBaseCornersPool[sBaseCornersUsed];
-    else {
-        pt = { x: 0, y: 0 };
-        sBaseCornersPool.push(pt);
-    }
-    sBaseCornersUsed++;
-    pt.x = x;
-    pt.y = y;
-    return pt;
-}
-export function leaseTopCorner(x, y) {
-    let pt;
-    if (sTopCornersUsed < sTopCornersPool.length) pt = sTopCornersPool[sTopCornersUsed];
-    else {
-        pt = { x: 0, y: 0 };
-        sTopCornersPool.push(pt);
-    }
-    sTopCornersUsed++;
-    pt.x = x;
-    pt.y = y;
-    return pt;
-}
-export function leaseFace(baseA, baseB, topA, topB) {
-    let face;
-    if (sFacesUsed < sFacesPool.length) face = sFacesPool[sFacesUsed];
-    else {
-        face = { baseA: null, baseB: null, topA: null, topB: null };
-        sFacesPool.push(face);
-    }
-    sFacesUsed++;
-    face.baseA = baseA;
-    face.baseB = baseB;
-    face.topA = topA;
-    face.topB = topB;
-    return face;
 }

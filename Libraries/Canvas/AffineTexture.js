@@ -4,6 +4,8 @@ const sPoint0 = { x: 0, y: 0 };
 const sPoint1 = { x: 0, y: 0 };
 const sPoint2 = { x: 0, y: 0 };
 const sPoint3 = { x: 0, y: 0 };
+const sDst1 = { x: 0, y: 0 };
+const sDst2 = { x: 0, y: 0 };
 export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
     let ts0_x = s0.x,
         ts0_y = s0.y;
@@ -66,6 +68,34 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
     ctx.transform(m11, m12, m21, m22, offsetX, offsetY);
     ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
     ctx.setTransform(currentTransform);
+}
+export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
+    sPoint0.x = srcFlat[i0 * 2];
+    sPoint0.y = srcFlat[i0 * 2 + 1];
+    sPoint1.x = srcFlat[i1 * 2];
+    sPoint1.y = srcFlat[i1 * 2 + 1];
+    sPoint2.x = srcFlat[i2 * 2];
+    sPoint2.y = srcFlat[i2 * 2 + 1];
+    sPoint3.x = dstFlat[i0 * 2];
+    sPoint3.y = dstFlat[i0 * 2 + 1];
+    sDst1.x = dstFlat[i1 * 2];
+    sDst1.y = dstFlat[i1 * 2 + 1];
+    sDst2.x = dstFlat[i2 * 2];
+    sDst2.y = dstFlat[i2 * 2 + 1];
+    drawImageTriangle(ctx, img, sPoint0, sPoint1, sPoint2, sPoint3, sDst1, sDst2);
+}
+export function drawImageQuadFromFlatRings(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count) {
+    const ai = edgeIndex * 2;
+    const bi = ((edgeIndex + 1) % count) * 2;
+    sPoint0.x = baseRing[ai];
+    sPoint0.y = baseRing[ai + 1];
+    sPoint1.x = baseRing[bi];
+    sPoint1.y = baseRing[bi + 1];
+    sPoint2.x = topRing[bi];
+    sPoint2.y = topRing[bi + 1];
+    sPoint3.x = topRing[ai];
+    sPoint3.y = topRing[ai + 1];
+    drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, sPoint0, sPoint1, sPoint2, sPoint3);
 }
 export function drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, d0, d1, d2, d3) {
     const diag02 = (d2.x - d0.x) ** 2 + (d2.y - d0.y) ** 2;

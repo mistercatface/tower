@@ -53,10 +53,15 @@ export function propFootprintHalfExtents(prop) {
 function propShapeFootprintKey(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") {
-        const count = shape.vertices.length / 2;
-        const parts = [];
-        for (let i = 0; i < count; i++) parts.push(`${Math.round(shape.vertices[i * 2])},${Math.round(shape.vertices[i * 2 + 1])}`);
-        let key = parts.join("_");
+        let hash = 2166136261;
+        const verts = shape.vertices;
+        const count = verts.length;
+        for (let i = 0; i < count; i++) {
+            const q = Math.round(verts[i]);
+            hash ^= q;
+            hash = Math.imul(hash, 16777619);
+        }
+        let key = `p${hash >>> 0}`;
         if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;
         return key;
     }

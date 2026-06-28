@@ -51,6 +51,19 @@ export function traceQuad(ctx, p0, p1, p2, p3) {
     ctx.lineTo(p3.x, p3.y);
     ctx.closePath();
 }
+export function traceClosedFlatPolygon(ctx, flatVerts, count) {
+    if (count < 3) return;
+    ctx.moveTo(flatVerts[0], flatVerts[1]);
+    for (let i = 1; i < count; i++) ctx.lineTo(flatVerts[i * 2], flatVerts[i * 2 + 1]);
+    ctx.closePath();
+}
+export function traceFlatQuad(ctx, tAx, tAy, tBx, tBy, bBx, bBy, bAx, bAy) {
+    ctx.moveTo(tAx, tAy);
+    ctx.lineTo(tBx, tBy);
+    ctx.lineTo(bBx, bBy);
+    ctx.lineTo(bAx, bAy);
+    ctx.closePath();
+}
 /** Flat [x0,y0, x1,y1, ...] quad with consistent winding; does not close the path. */
 export function traceWoundFlatQuad(ctx, flatVerts, vertCount) {
     const cross = (flatVerts[2] - flatVerts[0]) * (flatVerts[5] - flatVerts[3]) - (flatVerts[3] - flatVerts[1]) * (flatVerts[4] - flatVerts[2]);

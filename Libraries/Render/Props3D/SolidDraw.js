@@ -1,6 +1,5 @@
 import {
-    extrudeBox,
-    extrudeConvexFootprint,
+    extrudeLocalVertsInto,
     pointOnFrustum,
     radiusAtT,
     getHeightSlice,
@@ -9,19 +8,72 @@ import {
     isFaceTowardViewer,
     isOutwardFaceTowardViewer,
     createSideGradient,
+    createSideGradientAt,
     projectVertical,
     scaleAtHeight,
-    resetExtrusionPool,
-    leaseBaseCorner,
-    leaseTopCorner,
-    leaseFace,
 } from "../../Spatial/elevation/RadialElevationProjection.js";
-const sPinwheelLocalVerts = new Float32Array(24);
-import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
-import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
+import { traceClosedFlatPolygon, traceFlatQuad, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
+import { drawImageQuadFromFlatRings, drawImageTriangleFlat } from "../../Canvas/AffineTexture.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
+const sPinwheelLocalVerts = new Float32Array(24);
+const sBoxFootprint = new Float32Array(8);
+let sBaseRing = new Float32Array(0);
+let sTopRing = new Float32Array(0);
+let sCapSrcRing = new Float32Array(0);
+let sFaceVisible = new Uint8Array(0);
+let sFaceMidY = new Float32Array(0);
+const sFaceOrder = [];
+function ensurePrismScratch(vertexCount) {
+    const ringLen = vertexCount * 2;
+    if (sBaseRing.length < ringLen) {
+        sBaseRing = new Float32Array(ringLen);
+        sTopRing = new Float32Array(ringLen);
+        sCapSrcRing = new Float32Array(ringLen);
+        sFaceVisible = new Uint8Array(vertexCount);
+        sFaceMidY = new Float32Array(vertexCount);
+    }
+    while (sFaceOrder.length < vertexCount) sFaceOrder.push(0);
+}
+function fillBoxFootprintInto(out, hx, hy) {
+    out[0] = -hx;
+    out[1] = -hy;
+    out[2] = hx;
+    out[3] = -hy;
+    out[4] = hx;
+    out[5] = hy;
+    out[6] = -hx;
+    out[7] = hy;
+}
+function fillPinwheelOutlineInto(out, length, thickness) {
+    const halfL = length / 2;
+    const halfT = thickness / 2;
+    out[0] = -halfT;
+    out[1] = -halfL;
+    out[2] = halfT;
+    out[3] = -halfL;
+    out[4] = halfT;
+    out[5] = -halfT;
+    out[6] = halfL;
+    out[7] = -halfT;
+    out[8] = halfL;
+    out[9] = halfT;
+    out[10] = halfT;
+    out[11] = halfT;
+    out[12] = halfT;
+    out[13] = halfL;
+    out[14] = -halfT;
+    out[15] = halfL;
+    out[16] = -halfT;
+    out[17] = halfT;
+    out[18] = -halfL;
+    out[19] = halfT;
+    out[20] = -halfL;
+    out[21] = -halfT;
+    out[22] = -halfT;
+    out[23] = -halfT;
+}
 export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth }) {
     ctx.fillStyle = fill;
     ctx.strokeStyle = stroke;
@@ -86,25 +138,185 @@ export function drawRadialBand(ctx, prop, viewport, options) {
     const slice2 = getHeightSlice(projection, radiusAtT(baseRadius, resolvedTop, t1), t1);
     return { projection, orientAngle: facing, slice1, slice2 };
 }
-function faceViewAngle(face, originX, originY) {
-    const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
-    const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-    return Math.atan2(edgeMidY - originY, edgeMidX - originX);
-}
-function drawBoxSideFace(ctx, face, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks }) {
-    const shadeAngle = faceViewAngle(face, originX, originY);
-    drawCullFace(ctx, face, shadeAngle, { fill: createSideGradient(ctx, face.baseA, face.baseB, shadeAngle, colors), stroke, lineWidth });
+function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks }) {
+    const ai = edgeIndex * 2;
+    const bi = ((edgeIndex + 1) % count) * 2;
+    const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
+    const edgeMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
+    const shadeAngle = Math.atan2(edgeMidY - originY, edgeMidX - originX);
+    ctx.fillStyle = createSideGradientAt(ctx, sBaseRing[ai], sBaseRing[ai + 1], sBaseRing[bi], sBaseRing[bi + 1], shadeAngle, colors);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
+    ctx.fill();
+    ctx.stroke();
     if (drawPlanks && plankTs) {
         ctx.strokeStyle = plankTs.stroke ?? "rgba(0,0,0,0.55)";
         ctx.lineWidth = plankTs.lineWidth ?? 0.8;
         for (const t of plankTs.values) {
-            const xA = face.topA.x + (face.baseA.x - face.topA.x) * t;
-            const yA = face.topA.y + (face.baseA.y - face.topA.y) * t;
-            const xB = face.topB.x + (face.baseB.x - face.topB.x) * t;
-            const yB = face.topB.y + (face.baseB.y - face.topB.y) * t;
+            const xA = sTopRing[ai] + (sBaseRing[ai] - sTopRing[ai]) * t;
+            const yA = sTopRing[ai + 1] + (sBaseRing[ai + 1] - sTopRing[ai + 1]) * t;
+            const xB = sTopRing[bi] + (sBaseRing[bi] - sTopRing[bi]) * t;
+            const yB = sTopRing[bi + 1] + (sBaseRing[bi + 1] - sTopRing[bi + 1]) * t;
             ctx.beginPath();
             ctx.moveTo(xA, yA);
             ctx.lineTo(xB, yB);
+            ctx.stroke();
+        }
+    }
+}
+function classifyPrismFaces(count, viewport, cx, cy, faceOrder, localVerts, facing) {
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    for (let i = 0; i < count; i++) {
+        const ai = i * 2;
+        const bi = ((i + 1) % count) * 2;
+        const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
+        const edgeMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
+        sFaceMidY[i] = (sBaseRing[ai + 1] + sBaseRing[bi + 1] + sTopRing[ai + 1] + sTopRing[bi + 1]) * 0.25;
+        if (faceOrder === "midY") {
+            const pAx = localVerts[ai];
+            const pAy = localVerts[ai + 1];
+            const pBx = localVerts[bi];
+            const pBy = localVerts[bi + 1];
+            const lx = pBy - pAy;
+            const ly = -(pBx - pAx);
+            const worldNx = lx * cos - ly * sin;
+            const worldNy = lx * sin + ly * cos;
+            const midX = (sBaseRing[ai] + sBaseRing[bi] + sTopRing[ai] + sTopRing[bi]) * 0.25;
+            const midY = sFaceMidY[i];
+            sFaceVisible[i] = isOutwardFaceTowardViewer(midX, midY, worldNx, worldNy, viewport.x, viewport.y) ? 1 : 0;
+        } else sFaceVisible[i] = isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY) ? 1 : 0;
+        sFaceOrder[i] = i;
+    }
+    if (faceOrder === "midY") sFaceOrder.subarray(0, count).sort((a, b) => sFaceMidY[a] - sFaceMidY[b]);
+}
+function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, projection, textures) {
+    const textureScale = textures.scale;
+    const sideSrcHeight = (prop.wallChunkHeightPx ?? height) * textureScale;
+    for (let pass = 0; pass < 2; pass++) {
+        const wantFront = pass === 1;
+        for (let i = 0; i < count; i++) {
+            if ((sFaceVisible[i] === 1) !== wantFront) continue;
+            const ai = i * 2;
+            const bi = ((i + 1) % count) * 2;
+            ctx.save();
+            ctx.beginPath();
+            traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
+            ctx.clip();
+            drawImageQuadFromFlatRings(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, sideSrcHeight, sBaseRing, sTopRing, i, count);
+            ctx.restore();
+        }
+    }
+    ctx.save();
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, sTopRing, count);
+    ctx.clip();
+    const chunkSizePx = textures.chunkSizePx;
+    const offset = chunkSizePx / 2;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    for (let i = 0; i < count; i++) {
+        const lx = localVerts[i * 2];
+        const ly = localVerts[i * 2 + 1];
+        const topLx = scaleAtHeight(lx, projection.alpha, 1);
+        const topLy = scaleAtHeight(ly, projection.alpha, 1);
+        const rx = topLx * cos - topLy * sin;
+        const ry = topLx * sin + topLy * cos;
+        sCapSrcRing[i * 2] = (rx + offset) * textureScale;
+        sCapSrcRing[i * 2 + 1] = (ry + offset) * textureScale;
+    }
+    for (let i = 1; i < count - 1; i++) drawImageTriangleFlat(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1);
+    ctx.restore();
+}
+function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
+    const {
+        height = DEFAULT_PROP_HEIGHT,
+        facing = prop.facing,
+        faceColors,
+        backFaceColors = null,
+        bottomColors = null,
+        topColors,
+        stroke,
+        lineWidth = 1.0,
+        plankTs,
+        topCross,
+        textures = null,
+        faceOrder = "convexCull",
+        prismPass = "all",
+        topHalfSize = null,
+        baseGradCornerB = 1,
+    } = opts;
+    const count = localVerts.length / 2;
+    if (count < 3) return;
+    ensurePrismScratch(count);
+    const projection = projectVertical(prop.x, prop.y, height, viewport);
+    const { cx, cy, topX, topY } = projection;
+    extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, projection, facing);
+    classifyPrismFaces(count, viewport, cx, cy, faceOrder, localVerts, facing);
+    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
+    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
+    const drawBase = prismPass === "all" || prismPass === "base";
+    const drawSides = prismPass === "all" || prismPass === "sides";
+    const drawTop = prismPass === "all" || prismPass === "top";
+    if (textures) {
+        if (drawSides || drawTop) drawTexturedPrism(ctx, prop, localVerts, count, height, facing, projection, textures);
+        return;
+    }
+    if (drawBase) {
+        const gradB = Math.min(baseGradCornerB, count - 1);
+        const baseGrad = ctx.createLinearGradient(sBaseRing[0], sBaseRing[1], sBaseRing[gradB * 2], sBaseRing[gradB * 2 + 1]);
+        baseGrad.addColorStop(0.0, baseColors.light);
+        baseGrad.addColorStop(0.5, baseColors.mid);
+        baseGrad.addColorStop(1.0, baseColors.dark);
+        ctx.fillStyle = baseGrad;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        traceClosedFlatPolygon(ctx, sBaseRing, count);
+        ctx.fill();
+        if (stroke) ctx.stroke();
+    }
+    if (drawSides)
+        if (faceOrder === "midY")
+            for (let o = 0; o < count; o++) {
+                const i = sFaceOrder[o];
+                const colors = sFaceVisible[i] ? faceColors : backColors;
+                drawSideFaceFlat(ctx, i, count, cx, cy, colors, { stroke, lineWidth, plankTs, drawPlanks: sFaceVisible[i] === 1 });
+            }
+        else
+            for (let pass = 0; pass < 2; pass++) {
+                const wantFront = pass === 1;
+                for (let i = 0; i < count; i++) {
+                    if ((sFaceVisible[i] === 1) !== wantFront) continue;
+                    const colors = wantFront ? faceColors : backColors;
+                    drawSideFaceFlat(ctx, i, count, cx, cy, colors, { stroke, lineWidth, plankTs, drawPlanks: wantFront });
+                }
+            }
+    if (drawTop) {
+        let topGrad;
+        if (topHalfSize) {
+            const topHx = topHalfSize.x ?? topHalfSize.hx;
+            const topHy = topHalfSize.y ?? topHalfSize.hy;
+            topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
+        } else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
+        topGrad.addColorStop(0.0, topColors.light);
+        topGrad.addColorStop(0.5, topColors.mid);
+        topGrad.addColorStop(1.0, topColors.dark);
+        ctx.fillStyle = topGrad;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        traceClosedFlatPolygon(ctx, sTopRing, count);
+        ctx.fill();
+        if (stroke) ctx.stroke();
+        if (topCross && count === 4) {
+            ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
+            ctx.lineWidth = topCross.lineWidth ?? 0.8;
+            ctx.beginPath();
+            traceSegment(ctx, sTopRing[0], (sTopRing[1] + sTopRing[5]) / 2, sTopRing[2], (sTopRing[3] + sTopRing[7]) / 2);
+            traceSegment(ctx, (sTopRing[0] + sTopRing[2]) / 2, sTopRing[1], (sTopRing[4] + sTopRing[6]) / 2, sTopRing[5]);
             ctx.stroke();
         }
     }
@@ -115,54 +327,27 @@ export function drawBox(
     viewport,
     { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
-    resetExtrusionPool();
+    const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
+    const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
+    fillBoxFootprintInto(sBoxFootprint, hx, hy);
     const projection = projectVertical(prop.x, prop.y, height, viewport);
-    const { cx, cy, topX, topY } = projection;
-    const box = extrudeBox(projection, halfSize, facing);
-    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
-    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
-    const backFaces = [];
-    const frontFaces = [];
-    for (const face of box.faces) {
-        const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
-        const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
-        else backFaces.push(face);
-    }
-    const baseGrad = ctx.createLinearGradient(box.baseCorners[0].x, box.baseCorners[0].y, box.baseCorners[2].x, box.baseCorners[2].y);
-    baseGrad.addColorStop(0.0, baseColors.light);
-    baseGrad.addColorStop(0.5, baseColors.mid);
-    baseGrad.addColorStop(1.0, baseColors.dark);
-    ctx.fillStyle = baseGrad;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    traceClosedPolygon(ctx, box.baseCorners);
-    ctx.fill();
-    if (stroke) ctx.stroke();
-    for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
-    for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
-    const topHx = typeof box.topHalfSize === "number" ? box.topHalfSize : (box.topHalfSize.x ?? box.topHalfSize.hx);
-    const topHy = typeof box.topHalfSize === "number" ? box.topHalfSize : (box.topHalfSize.y ?? box.topHalfSize.hy);
-    const topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
-    topGrad.addColorStop(0.0, topColors.light);
-    topGrad.addColorStop(0.5, topColors.mid);
-    topGrad.addColorStop(1.0, topColors.dark);
-    ctx.fillStyle = topGrad;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    traceClosedPolygon(ctx, box.topCorners);
-    ctx.fill();
-    if (stroke) ctx.stroke();
-    if (topCross) {
-        ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
-        ctx.lineWidth = topCross.lineWidth ?? 0.8;
-        ctx.beginPath();
-        traceSegment(ctx, box.topCorners[0].x, (box.topCorners[0].y + box.topCorners[2].y) / 2, box.topCorners[1].x, (box.topCorners[1].y + box.topCorners[3].y) / 2);
-        traceSegment(ctx, (box.topCorners[0].x + box.topCorners[1].x) / 2, box.topCorners[0].y, (box.topCorners[2].x + box.topCorners[3].x) / 2, box.topCorners[2].y);
-        ctx.stroke();
-    }
+    const topHx = scaleAtHeight(hx, projection.alpha, 1);
+    const topHy = scaleAtHeight(hy, projection.alpha, 1);
+    drawExtrudedPrism(ctx, prop, viewport, sBoxFootprint, {
+        height,
+        facing,
+        faceColors,
+        backFaceColors,
+        bottomColors,
+        topColors,
+        stroke,
+        lineWidth,
+        plankTs,
+        topCross,
+        faceOrder: "convexCull",
+        baseGradCornerB: 2,
+        topHalfSize: { x: topHx, y: topHy },
+    });
 }
 export function drawExtrudedConvexPolygon(
     ctx,
@@ -170,120 +355,49 @@ export function drawExtrudedConvexPolygon(
     viewport,
     { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
-    resetExtrusionPool();
-    const projection = projectVertical(prop.x, prop.y, height, viewport);
-    const { cx, cy, topX, topY } = projection;
-    const body = extrudeConvexFootprint(projection, localVerts, facing);
-    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
-    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
-    const backFaces = [];
-    const frontFaces = [];
-    for (const face of body.faces) {
-        const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
-        const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-        if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
-        else backFaces.push(face);
-    }
     const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
-    if (textures) {
-        const textureScale = textures.scale;
-        const sideSrcHeight = (prop.wallChunkHeightPx ?? height) * textureScale;
-        for (const faces of [backFaces, frontFaces])
-            for (const face of faces) {
-                ctx.save();
-                ctx.beginPath();
-                traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
-                ctx.clip();
-                drawImageQuad(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, sideSrcHeight, face.baseA, face.baseB, face.topB, face.topA);
-                ctx.restore();
-            }
-        ctx.save();
-        ctx.beginPath();
-        traceClosedPolygon(ctx, body.topCorners);
-        ctx.clip();
-        const chunkSizePx = textures.chunkSizePx;
-        const offset = chunkSizePx / 2;
-        const cos = Math.cos(facing);
-        const sin = Math.sin(facing);
-        const count = localVerts.length / 2;
-        const srcCorners = [];
-        for (let i = 0; i < count; i++) {
-            const lx = localVerts[i * 2];
-            const ly = localVerts[i * 2 + 1];
-            const topLx = scaleAtHeight(lx, projection.alpha, 1);
-            const topLy = scaleAtHeight(ly, projection.alpha, 1);
-            const rx = topLx * cos - topLy * sin;
-            const ry = topLx * sin + topLy * cos;
-            srcCorners.push({ x: (rx + offset) * textureScale, y: (ry + offset) * textureScale });
-        }
-        if (body.topCorners.length >= 3)
-            for (let i = 1; i < body.topCorners.length - 1; i++)
-                drawImageTriangle(ctx, textures.capCanvas, srcCorners[0], srcCorners[i], srcCorners[i + 1], body.topCorners[0], body.topCorners[i], body.topCorners[i + 1]);
-        ctx.restore();
-    } else {
-        const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
-        baseGrad.addColorStop(0.0, baseColors.light);
-        baseGrad.addColorStop(0.5, baseColors.mid);
-        baseGrad.addColorStop(1.0, baseColors.dark);
-        ctx.fillStyle = baseGrad;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, body.baseCorners);
-        ctx.fill();
-        if (stroke) ctx.stroke();
-        for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
-        for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
-        const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-        topGrad.addColorStop(0.0, topColors.light);
-        topGrad.addColorStop(0.5, topColors.mid);
-        topGrad.addColorStop(1.0, topColors.dark);
-        ctx.fillStyle = topGrad;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, body.topCorners);
-        ctx.fill();
-        if (stroke) ctx.stroke();
-        if (topCross && body.topCorners.length === 4) {
-            ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
-            ctx.lineWidth = topCross.lineWidth ?? 0.8;
-            ctx.beginPath();
-            traceSegment(ctx, body.topCorners[0].x, (body.topCorners[0].y + body.topCorners[2].y) / 2, body.topCorners[1].x, (body.topCorners[1].y + body.topCorners[3].y) / 2);
-            traceSegment(ctx, (body.topCorners[0].x + body.topCorners[1].x) / 2, body.topCorners[0].y, (body.topCorners[2].x + body.topCorners[3].x) / 2, body.topCorners[2].y);
-            ctx.stroke();
-        }
-    }
+    drawExtrudedPrism(ctx, prop, viewport, localVerts, {
+        height,
+        facing,
+        faceColors,
+        backFaceColors,
+        bottomColors,
+        topColors,
+        stroke,
+        lineWidth,
+        plankTs,
+        topCross,
+        textures,
+        faceOrder: "convexCull",
+    });
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing) {
-    resetExtrusionPool();
     const textures = prop._wallChunkTextures;
     if (!textures?.ready) return;
-    const capCanvas = textures.capCanvas;
-    const textureScale = textures.scale;
-    const offset = textures.chunkSizePx / 2;
-    const angle = facing ?? 0;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const px = prop.x;
-    const py = prop.y;
     const count = localVerts.length / 2;
     if (count < 3) return;
-    const worldCorners = new Array(count);
-    const srcCorners = [];
+    ensurePrismScratch(count);
+    const cos = Math.cos(facing ?? 0);
+    const sin = Math.sin(facing ?? 0);
+    const px = prop.x;
+    const py = prop.y;
+    const textureScale = textures.scale;
+    const offset = textures.chunkSizePx / 2;
     for (let i = 0; i < count; i++) {
         const lx = localVerts[i * 2];
         const ly = localVerts[i * 2 + 1];
-        worldCorners[i] = leaseTopCorner(px + lx * cos - ly * sin, py + lx * sin + ly * cos);
+        sTopRing[i * 2] = px + lx * cos - ly * sin;
+        sTopRing[i * 2 + 1] = py + lx * sin + ly * cos;
         const rx = lx * cos - ly * sin;
         const ry = lx * sin + ly * cos;
-        srcCorners.push(leaseBaseCorner((rx + offset) * textureScale, (ry + offset) * textureScale));
+        sCapSrcRing[i * 2] = (rx + offset) * textureScale;
+        sCapSrcRing[i * 2 + 1] = (ry + offset) * textureScale;
     }
     ctx.save();
     ctx.beginPath();
-    traceClosedPolygon(ctx, worldCorners);
+    traceClosedFlatPolygon(ctx, sTopRing, count);
     ctx.clip();
-    for (let i = 1; i < count - 1; i++) drawImageTriangle(ctx, capCanvas, srcCorners[0], srcCorners[i], srcCorners[i + 1], worldCorners[0], worldCorners[i], worldCorners[i + 1]);
+    for (let i = 1; i < count - 1; i++) drawImageTriangleFlat(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1);
     ctx.restore();
 }
 export function drawFlatWallChunkProp(ctx, prop) {
@@ -302,156 +416,27 @@ export function drawExtrudedCompoundPolygon(
     { partsVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
     if (prop.type === "cross_pinwheel") {
-        resetExtrusionPool();
         const length = prop.crossLength ?? 32;
         const thickness = prop.crossThickness ?? 8;
-        const halfL = length / 2;
-        const halfT = thickness / 2;
-        const localVerts = sPinwheelLocalVerts;
-        localVerts[0] = -halfT;
-        localVerts[1] = -halfL;
-        localVerts[2] = halfT;
-        localVerts[3] = -halfL;
-        localVerts[4] = halfT;
-        localVerts[5] = -halfT;
-        localVerts[6] = halfL;
-        localVerts[7] = -halfT;
-        localVerts[8] = halfL;
-        localVerts[9] = halfT;
-        localVerts[10] = halfT;
-        localVerts[11] = halfT;
-        localVerts[12] = halfT;
-        localVerts[13] = halfL;
-        localVerts[14] = -halfT;
-        localVerts[15] = halfL;
-        localVerts[16] = -halfT;
-        localVerts[17] = halfT;
-        localVerts[18] = -halfL;
-        localVerts[19] = halfT;
-        localVerts[20] = -halfL;
-        localVerts[21] = -halfT;
-        localVerts[22] = -halfT;
-        localVerts[23] = -halfT;
-        const projection = projectVertical(prop.x, prop.y, height, viewport);
-        const { cx, cy, topX, topY, alpha } = projection;
-        const cos = Math.cos(facing);
-        const sin = Math.sin(facing);
-        const count = 12;
-        const baseCorners = new Array(count);
-        const topCorners = new Array(count);
-        for (let i = 0; i < count; i++) {
-            const lx = localVerts[i * 2];
-            const ly = localVerts[i * 2 + 1];
-            const topLx = scaleAtHeight(lx, alpha, 1);
-            const topLy = scaleAtHeight(ly, alpha, 1);
-            baseCorners[i] = leaseBaseCorner(cx + lx * cos - ly * sin, cy + lx * sin + ly * cos);
-            topCorners[i] = leaseTopCorner(topX + topLx * cos - topLy * sin, topY + topLx * sin + topLy * cos);
-        }
-        const faces = [];
-        for (let i = 0; i < count; i++) {
-            const next = (i + 1) % count;
-            const pAx = localVerts[i * 2];
-            const pAy = localVerts[i * 2 + 1];
-            const pBx = localVerts[next * 2];
-            const pBy = localVerts[next * 2 + 1];
-            const lx = pBy - pAy;
-            const ly = -(pBx - pAx);
-            const worldNx = lx * cos - ly * sin;
-            const worldNy = lx * sin + ly * cos;
-            const face = leaseFace(baseCorners[i], baseCorners[next], topCorners[i], topCorners[next]);
-            face.midX = (face.baseA.x + face.baseB.x + face.topA.x + face.topB.x) / 4;
-            face.midY = (face.baseA.y + face.baseB.y + face.topA.y + face.topB.y) / 4;
-            face.visible = isOutwardFaceTowardViewer(face.midX, face.midY, worldNx, worldNy, viewport.x, viewport.y);
-            faces.push(face);
-        }
-        const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
-        const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
-        // 1. Draw base
-        const baseGrad = ctx.createLinearGradient(baseCorners[0].x, baseCorners[0].y, baseCorners[6].x, baseCorners[6].y);
-        baseGrad.addColorStop(0.0, baseColors.light);
-        baseGrad.addColorStop(0.5, baseColors.mid);
-        baseGrad.addColorStop(1.0, baseColors.dark);
-        ctx.fillStyle = baseGrad;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, baseCorners);
-        ctx.fill();
-        ctx.stroke();
-        // 2. Draw sides sorted back-to-front
-        const sortedFaces = faces.slice().sort((a, b) => a.midY - b.midY);
-        for (const face of sortedFaces) {
-            const colors = face.visible ? faceColors : backColors;
-            const drawPlanks = face.visible;
-            drawBoxSideFace(ctx, face, cx, cy, colors, { stroke, lineWidth, plankTs, drawPlanks });
-        }
-        // 3. Draw top
-        const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-        topGrad.addColorStop(0.0, topColors.light);
-        topGrad.addColorStop(0.5, topColors.mid);
-        topGrad.addColorStop(1.0, topColors.dark);
-        ctx.fillStyle = topGrad;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, topCorners);
-        ctx.fill();
-        ctx.stroke();
+        fillPinwheelOutlineInto(sPinwheelLocalVerts, length, thickness);
+        drawExtrudedPrism(ctx, prop, viewport, sPinwheelLocalVerts, {
+            height,
+            facing,
+            faceColors,
+            backFaceColors,
+            bottomColors,
+            topColors,
+            stroke,
+            lineWidth,
+            plankTs,
+            topCross,
+            faceOrder: "midY",
+            baseGradCornerB: 6,
+        });
         return;
     }
-    resetExtrusionPool();
-    const projection = projectVertical(prop.x, prop.y, height, viewport);
-    const { cx, cy, topX, topY } = projection;
-    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
-    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
-    const bodies = partsVerts.map((localVerts) => extrudeConvexFootprint(projection, localVerts, facing));
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        const baseGrad = ctx.createLinearGradient(body.baseCorners[0].x, body.baseCorners[0].y, body.baseCorners[1].x, body.baseCorners[1].y);
-        baseGrad.addColorStop(0.0, baseColors.light);
-        baseGrad.addColorStop(0.5, baseColors.mid);
-        baseGrad.addColorStop(1.0, baseColors.dark);
-        ctx.fillStyle = baseGrad;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, body.baseCorners);
-        ctx.fill();
-        ctx.stroke();
-    }
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        const backFaces = [];
-        const frontFaces = [];
-        for (const face of body.faces) {
-            const edgeMidX = (face.baseA.x + face.baseB.x) / 2;
-            const edgeMidY = (face.baseA.y + face.baseB.y) / 2;
-            if (isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) frontFaces.push(face);
-            else backFaces.push(face);
-        }
-        for (const face of backFaces) drawBoxSideFace(ctx, face, cx, cy, backColors, { stroke, lineWidth, plankTs, drawPlanks: false });
-        for (const face of frontFaces) drawBoxSideFace(ctx, face, cx, cy, faceColors, { stroke, lineWidth, plankTs, drawPlanks: true });
-    }
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        const topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-        topGrad.addColorStop(0.0, topColors.light);
-        topGrad.addColorStop(0.5, topColors.mid);
-        topGrad.addColorStop(1.0, topColors.dark);
-        ctx.fillStyle = topGrad;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.beginPath();
-        traceClosedPolygon(ctx, body.topCorners);
-        ctx.fill();
-        ctx.stroke();
-        if (topCross && body.topCorners.length === 4) {
-            ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
-            ctx.lineWidth = topCross.lineWidth ?? 0.8;
-            ctx.beginPath();
-            traceSegment(ctx, body.topCorners[0].x, (body.topCorners[0].y + body.topCorners[2].y) / 2, body.topCorners[1].x, (body.topCorners[1].y + body.topCorners[3].y) / 2);
-            traceSegment(ctx, (body.topCorners[0].x + body.topCorners[1].x) / 2, body.topCorners[0].y, (body.topCorners[2].x + body.topCorners[3].x) / 2, body.topCorners[2].y);
-            ctx.stroke();
-        }
-    }
+    const prismOpts = { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "convexCull" };
+    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "base" });
+    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "sides" });
+    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "top" });
 }

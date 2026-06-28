@@ -129,7 +129,7 @@ describe("collectRailWallShadowEdgesInAabb", () => {
         const edges = new EdgeList();
         collectRailWallShadowEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, edges);
         assert.equal(edges.length, 4);
-        assert.equal(edges.edges[0].wallTopZ, grid.cellSize);
+        assert.equal(edges.data[6], grid.cellSize);
     });
     it("defers to rail cap edges when a voxel cell shares the same side", () => {
         const grid = makeTestObstacleGrid(16, 16);
@@ -202,39 +202,23 @@ describe("losShadow render gate", () => {
         );
     });
 });
-describe("EdgeList (reusable edge pooling)", () => {
-    it("pools and reuses objects to prevent per-frame garbage collection", () => {
+describe("EdgeList (reusable edge buffer)", () => {
+    it("reuses the same typed array buffer across clears", () => {
         const pool = new EdgeList();
         assert.equal(pool.length, 0);
-        
-        // Collect first time
         pool.add(1, 2, 3, 4, 1, 0, 10);
         pool.add(5, 6, 7, 8, 0, 1, 12);
         assert.equal(pool.length, 2);
-        assert.equal(pool.edges[0].x1, 1);
-        assert.equal(pool.edges[1].wallTopZ, 12);
-        
-        const firstEdge0 = pool.edges[0];
-        const firstEdge1 = pool.edges[1];
-        
-        // Reset pool
+        assert.equal(pool.data[0], 1);
+        assert.equal(pool.data[13], 12);
+        const firstBuffer = pool.data;
         pool.clear();
         assert.equal(pool.length, 0);
-        
-        // Collect second time (should reuse same objects in-place)
         pool.add(10, 20, 30, 40, -1, 0, 20);
         pool.add(50, 60, 70, 80, 0, -1, 24);
         assert.equal(pool.length, 2);
-        
-        // Assert that the array has not grown beyond size 2
-        assert.equal(pool.edges.length, 2);
-        
-        // Assert object identity matches the first allocation (pooling worked!)
-        assert.equal(pool.edges[0], firstEdge0);
-        assert.equal(pool.edges[1], firstEdge1);
-        
-        // Assert values are updated correctly
-        assert.equal(pool.edges[0].x1, 10);
-        assert.equal(pool.edges[1].wallTopZ, 24);
+        assert.equal(pool.data, firstBuffer);
+        assert.equal(pool.data[0], 10);
+        assert.equal(pool.data[13], 24);
     });
 });
