@@ -8,7 +8,36 @@ const sP2 = { x: 0, y: 0 };
 function allocVoxelWallFace() {
     return { gridCol: 0, gridRow: 0, gridIdx: 0, gridSide: 0, p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 }, wallBaseZ: 0, wallHeight: 0, wallCapHeight: 0, cx: 0, cy: 0, outX: 0, outY: 0 };
 }
-function allocRailWallBox() {
+export const RAIL_BOX = {
+    gridCol: 0,
+    gridRow: 1,
+    chunkCol: 2,
+    chunkRow: 3,
+    gridIdx: 4,
+    gridSide: 5,
+    minX: 6,
+    minY: 7,
+    maxX: 8,
+    maxY: 9,
+    innerP1x: 10,
+    innerP1y: 11,
+    innerP2x: 12,
+    innerP2y: 13,
+    outerP1x: 14,
+    outerP1y: 15,
+    outerP2x: 16,
+    outerP2y: 17,
+    inwardX: 18,
+    inwardY: 19,
+    wallBaseZ: 20,
+    wallHeight: 21,
+    wallCapHeight: 22,
+    edgeThickness: 23,
+    cx: 24,
+    cy: 25,
+};
+export const RAIL_BOX_STRIDE = 26;
+function allocRailWallBoxView() {
     return {
         gridCol: 0,
         gridRow: 0,
@@ -37,6 +66,72 @@ function allocRailWallBox() {
         cx: 0,
         cy: 0,
     };
+}
+function fillRailWallBoxViewFromData(view, data, index) {
+    const base = index * RAIL_BOX_STRIDE;
+    view.gridCol = data[base + RAIL_BOX.gridCol];
+    view.gridRow = data[base + RAIL_BOX.gridRow];
+    view.chunkCol = data[base + RAIL_BOX.chunkCol];
+    view.chunkRow = data[base + RAIL_BOX.chunkRow];
+    view.gridIdx = data[base + RAIL_BOX.gridIdx];
+    view.gridSide = data[base + RAIL_BOX.gridSide];
+    view.minX = data[base + RAIL_BOX.minX];
+    view.minY = data[base + RAIL_BOX.minY];
+    view.maxX = data[base + RAIL_BOX.maxX];
+    view.maxY = data[base + RAIL_BOX.maxY];
+    view.innerP1x = data[base + RAIL_BOX.innerP1x];
+    view.innerP1y = data[base + RAIL_BOX.innerP1y];
+    view.innerP2x = data[base + RAIL_BOX.innerP2x];
+    view.innerP2y = data[base + RAIL_BOX.innerP2y];
+    view.outerP1x = data[base + RAIL_BOX.outerP1x];
+    view.outerP1y = data[base + RAIL_BOX.outerP1y];
+    view.outerP2x = data[base + RAIL_BOX.outerP2x];
+    view.outerP2y = data[base + RAIL_BOX.outerP2y];
+    view.inwardX = data[base + RAIL_BOX.inwardX];
+    view.inwardY = data[base + RAIL_BOX.inwardY];
+    view.wallBaseZ = data[base + RAIL_BOX.wallBaseZ];
+    view.wallHeight = data[base + RAIL_BOX.wallHeight];
+    view.wallCapHeight = data[base + RAIL_BOX.wallCapHeight];
+    view.edgeThickness = data[base + RAIL_BOX.edgeThickness];
+    view.cx = data[base + RAIL_BOX.cx];
+    view.cy = data[base + RAIL_BOX.cy];
+}
+export class RailWallBoxList {
+    constructor(initialCapacity = 64) {
+        this.data = new Float32Array(initialCapacity * RAIL_BOX_STRIDE);
+        this.length = 0;
+        this.views = [];
+        this.order = [];
+        this.scratch = new Float32Array(initialCapacity * RAIL_BOX_STRIDE);
+        this.generation = 0;
+    }
+    clear() {
+        this.length = 0;
+        this.generation++;
+    }
+    ensureCapacity(count) {
+        const required = count * RAIL_BOX_STRIDE;
+        if (this.data.length >= required) return;
+        const nextLength = Math.max(this.data.length * 2, required);
+        const nextData = new Float32Array(nextLength);
+        nextData.set(this.data);
+        this.data = nextData;
+        this.scratch = new Float32Array(nextLength);
+    }
+    viewAt(index) {
+        let view = this.views[index];
+        if (!view) {
+            view = allocRailWallBoxView();
+            this.views[index] = view;
+        }
+        if (view._railBoxGeneration !== this.generation || view._railBoxIndex !== index) {
+            fillRailWallBoxViewFromData(view, this.data, index);
+            clearWallGridDrawableDrawMemos(view);
+            view._railBoxGeneration = this.generation;
+            view._railBoxIndex = index;
+        }
+        return view;
+    }
 }
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
@@ -165,7 +260,7 @@ function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
         p2.y = b.minY;
     }
 }
-export function writeRailWallBoxInto(box, grid, col, row, edge) {
+function writeRailWallBoxRecordInto(data, recordIndex, grid, col, row, edge) {
     if (!railWallEdgeShouldEmit(grid, col, row, edge)) return false;
     const cols = grid.cols;
     const idx = col + row * cols;
@@ -174,138 +269,150 @@ export function writeRailWallBoxInto(box, grid, col, row, edge) {
     const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, col, row, edge);
     if (edgeHeight <= 0) return false;
     if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return false;
-    clearWallGridDrawableDrawMemos(box);
     const fp = railWallFootprintAabb(grid, col, row, edge);
     const inward = railWallInwardNormal(edge);
     railWallSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
-    box.gridCol = col;
-    box.gridRow = row;
-    box.chunkCol = cellToChunkCoord(col, gridSettings.minCellsPerChunk);
-    box.chunkRow = cellToChunkCoord(row, gridSettings.minCellsPerChunk);
-    box.gridIdx = idx;
-    box.gridSide = edge;
-    box.minX = fp.minX;
-    box.minY = fp.minY;
-    box.maxX = fp.maxX;
-    box.maxY = fp.maxY;
-    box.innerP1x = sP1.x;
-    box.innerP1y = sP1.y;
-    box.innerP2x = sP2.x;
-    box.innerP2y = sP2.y;
+    const base = recordIndex * RAIL_BOX_STRIDE;
+    data[base + RAIL_BOX.gridCol] = col;
+    data[base + RAIL_BOX.gridRow] = row;
+    data[base + RAIL_BOX.chunkCol] = cellToChunkCoord(col, gridSettings.minCellsPerChunk);
+    data[base + RAIL_BOX.chunkRow] = cellToChunkCoord(row, gridSettings.minCellsPerChunk);
+    data[base + RAIL_BOX.gridIdx] = idx;
+    data[base + RAIL_BOX.gridSide] = edge;
+    data[base + RAIL_BOX.minX] = fp.minX;
+    data[base + RAIL_BOX.minY] = fp.minY;
+    data[base + RAIL_BOX.maxX] = fp.maxX;
+    data[base + RAIL_BOX.maxY] = fp.maxY;
+    data[base + RAIL_BOX.innerP1x] = sP1.x;
+    data[base + RAIL_BOX.innerP1y] = sP1.y;
+    data[base + RAIL_BOX.innerP2x] = sP2.x;
+    data[base + RAIL_BOX.innerP2y] = sP2.y;
     railWallSideEndpoints(grid, col, row, edge, 1, sP1, sP2);
-    box.outerP1x = sP1.x;
-    box.outerP1y = sP1.y;
-    box.outerP2x = sP2.x;
-    box.outerP2y = sP2.y;
-    box.inwardX = inward.x;
-    box.inwardY = inward.y;
-    box.wallBaseZ = voxelWallFaceBaseZ(neighborCap, edgeHeight);
-    box.wallHeight = edgeHeight - box.wallBaseZ;
-    box.wallCapHeight = edgeHeight;
-    box.edgeThickness = railWallThicknessPx(railEdge);
-    box.cx = (fp.minX + fp.maxX) * 0.5;
-    box.cy = (fp.minY + fp.maxY) * 0.5;
+    data[base + RAIL_BOX.outerP1x] = sP1.x;
+    data[base + RAIL_BOX.outerP1y] = sP1.y;
+    data[base + RAIL_BOX.outerP2x] = sP2.x;
+    data[base + RAIL_BOX.outerP2y] = sP2.y;
+    data[base + RAIL_BOX.inwardX] = inward.x;
+    data[base + RAIL_BOX.inwardY] = inward.y;
+    data[base + RAIL_BOX.wallBaseZ] = voxelWallFaceBaseZ(neighborCap, edgeHeight);
+    data[base + RAIL_BOX.wallHeight] = edgeHeight - data[base + RAIL_BOX.wallBaseZ];
+    data[base + RAIL_BOX.wallCapHeight] = edgeHeight;
+    data[base + RAIL_BOX.edgeThickness] = railWallThicknessPx(railEdge);
+    data[base + RAIL_BOX.cx] = (fp.minX + fp.maxX) * 0.5;
+    data[base + RAIL_BOX.cy] = (fp.minY + fp.maxY) * 0.5;
     return true;
-}
-export function resolveRailWallBox(grid, col, row, edge) {
-    const box = allocRailWallBox();
-    return writeRailWallBoxInto(box, grid, col, row, edge) ? box : null;
 }
 function clearWallGridDrawableDrawMemos(drawable) {
     delete drawable._wallAtlasStashes;
     delete drawable._faceSubdiv;
     delete drawable._faceSubdivKey;
 }
-function extendCollinearRailWallBox(cur, next) {
-    cur.minX = Math.min(cur.minX, next.minX);
-    cur.minY = Math.min(cur.minY, next.minY);
-    cur.maxX = Math.max(cur.maxX, next.maxX);
-    cur.maxY = Math.max(cur.maxY, next.maxY);
-    const edge = cur.gridSide;
+function extendCollinearRailWallBoxRecord(data, curIndex, nextIndex) {
+    const cur = curIndex * RAIL_BOX_STRIDE;
+    const next = nextIndex * RAIL_BOX_STRIDE;
+    data[cur + RAIL_BOX.minX] = Math.min(data[cur + RAIL_BOX.minX], data[next + RAIL_BOX.minX]);
+    data[cur + RAIL_BOX.minY] = Math.min(data[cur + RAIL_BOX.minY], data[next + RAIL_BOX.minY]);
+    data[cur + RAIL_BOX.maxX] = Math.max(data[cur + RAIL_BOX.maxX], data[next + RAIL_BOX.maxX]);
+    data[cur + RAIL_BOX.maxY] = Math.max(data[cur + RAIL_BOX.maxY], data[next + RAIL_BOX.maxY]);
+    const edge = data[cur + RAIL_BOX.gridSide];
     if (edge === 0) {
-        cur.innerP1x = cur.minX;
-        cur.innerP1y = cur.maxY;
-        cur.innerP2x = cur.maxX;
-        cur.innerP2y = cur.maxY;
-        cur.outerP1x = cur.minX;
-        cur.outerP1y = cur.minY;
-        cur.outerP2x = cur.maxX;
-        cur.outerP2y = cur.minY;
+        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.minY];
     } else if (edge === 2) {
-        cur.innerP1x = cur.maxX;
-        cur.innerP1y = cur.minY;
-        cur.innerP2x = cur.minX;
-        cur.innerP2y = cur.minY;
-        cur.outerP1x = cur.maxX;
-        cur.outerP1y = cur.maxY;
-        cur.outerP2x = cur.minX;
-        cur.outerP2y = cur.maxY;
+        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.maxY];
     } else if (edge === 1) {
-        cur.innerP1x = cur.minX;
-        cur.innerP1y = cur.minY;
-        cur.innerP2x = cur.minX;
-        cur.innerP2y = cur.maxY;
-        cur.outerP1x = cur.maxX;
-        cur.outerP1y = cur.minY;
-        cur.outerP2x = cur.maxX;
-        cur.outerP2y = cur.maxY;
+        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.maxY];
     } else {
-        cur.innerP1x = cur.maxX;
-        cur.innerP1y = cur.maxY;
-        cur.innerP2x = cur.maxX;
-        cur.innerP2y = cur.minY;
-        cur.outerP1x = cur.minX;
-        cur.outerP1y = cur.maxY;
-        cur.outerP2x = cur.minX;
-        cur.outerP2y = cur.minY;
+        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.maxX];
+        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.minX];
+        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.minY];
     }
-    cur.cx = (cur.minX + cur.maxX) * 0.5;
-    cur.cy = (cur.minY + cur.maxY) * 0.5;
-    clearWallGridDrawableDrawMemos(cur);
+    data[cur + RAIL_BOX.cx] = (data[cur + RAIL_BOX.minX] + data[cur + RAIL_BOX.maxX]) * 0.5;
+    data[cur + RAIL_BOX.cy] = (data[cur + RAIL_BOX.minY] + data[cur + RAIL_BOX.maxY]) * 0.5;
 }
-function collinearRailWallBoxesAdjacent(a, b) {
-    if (a.gridSide !== b.gridSide) return false;
-    if (a.wallCapHeight !== b.wallCapHeight || a.wallBaseZ !== b.wallBaseZ || a.edgeThickness !== b.edgeThickness) return false;
-    if (a.inwardX !== b.inwardX || a.inwardY !== b.inwardY) return false;
-    if (a.gridSide === 0 || a.gridSide === 2) {
-        if (a.gridRow !== b.gridRow) return false;
-        if (a.chunkCol !== b.chunkCol) return false;
-        return b.gridCol === a.gridCol + 1;
+function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex) {
+    const a = aIndex * RAIL_BOX_STRIDE;
+    const b = bIndex * RAIL_BOX_STRIDE;
+    if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return false;
+    if (
+        data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight] ||
+        data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ] ||
+        data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]
+    )
+        return false;
+    if (data[a + RAIL_BOX.inwardX] !== data[b + RAIL_BOX.inwardX] || data[a + RAIL_BOX.inwardY] !== data[b + RAIL_BOX.inwardY]) return false;
+    if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
+        if (data[a + RAIL_BOX.gridRow] !== data[b + RAIL_BOX.gridRow]) return false;
+        if (data[a + RAIL_BOX.chunkCol] !== data[b + RAIL_BOX.chunkCol]) return false;
+        return data[b + RAIL_BOX.gridCol] === data[a + RAIL_BOX.gridCol] + 1;
     }
-    if (a.gridCol !== b.gridCol) return false;
-    if (a.chunkRow !== b.chunkRow) return false;
-    return b.gridRow === a.gridRow + 1;
+    if (data[a + RAIL_BOX.gridCol] !== data[b + RAIL_BOX.gridCol]) return false;
+    if (data[a + RAIL_BOX.chunkRow] !== data[b + RAIL_BOX.chunkRow]) return false;
+    return data[b + RAIL_BOX.gridRow] === data[a + RAIL_BOX.gridRow] + 1;
 }
-function mergeCollinearRailWallBoxesInPlace(boxes) {
-    const n = boxes.length;
+function compareRailWallBoxRecords(data, aIndex, bIndex) {
+    const a = aIndex * RAIL_BOX_STRIDE;
+    const b = bIndex * RAIL_BOX_STRIDE;
+    if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return data[a + RAIL_BOX.gridSide] - data[b + RAIL_BOX.gridSide];
+    if (data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight]) return data[a + RAIL_BOX.wallCapHeight] - data[b + RAIL_BOX.wallCapHeight];
+    if (data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ]) return data[a + RAIL_BOX.wallBaseZ] - data[b + RAIL_BOX.wallBaseZ];
+    if (data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]) return data[a + RAIL_BOX.edgeThickness] - data[b + RAIL_BOX.edgeThickness];
+    if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
+        if (data[a + RAIL_BOX.gridRow] !== data[b + RAIL_BOX.gridRow]) return data[a + RAIL_BOX.gridRow] - data[b + RAIL_BOX.gridRow];
+        return data[a + RAIL_BOX.gridCol] - data[b + RAIL_BOX.gridCol];
+    }
+    if (data[a + RAIL_BOX.gridCol] !== data[b + RAIL_BOX.gridCol]) return data[a + RAIL_BOX.gridCol] - data[b + RAIL_BOX.gridCol];
+    return data[a + RAIL_BOX.gridRow] - data[b + RAIL_BOX.gridRow];
+}
+function copyRailWallBoxRecord(data, dstIndex, src, srcIndex) {
+    const dst = dstIndex * RAIL_BOX_STRIDE;
+    const start = srcIndex * RAIL_BOX_STRIDE;
+    for (let i = 0; i < RAIL_BOX_STRIDE; i++) data[dst + i] = src[start + i];
+}
+function mergeCollinearRailWallBoxRecordsInPlace(list) {
+    const n = list.length;
     if (n <= 1) return n;
-    boxes.sort((a, b) => {
-        if (a.gridSide !== b.gridSide) return a.gridSide - b.gridSide;
-        if (a.wallCapHeight !== b.wallCapHeight) return a.wallCapHeight - b.wallCapHeight;
-        if (a.wallBaseZ !== b.wallBaseZ) return a.wallBaseZ - b.wallBaseZ;
-        if (a.edgeThickness !== b.edgeThickness) return a.edgeThickness - b.edgeThickness;
-        if (a.gridSide === 0 || a.gridSide === 2) {
-            if (a.gridRow !== b.gridRow) return a.gridRow - b.gridRow;
-            return a.gridCol - b.gridCol;
-        }
-        if (a.gridCol !== b.gridCol) return a.gridCol - b.gridCol;
-        return a.gridRow - b.gridRow;
-    });
+    const { data, order, scratch } = list;
+    for (let i = 0; i < n; i++) order[i] = i;
+    order.length = n;
+    order.sort((a, b) => compareRailWallBoxRecords(data, a, b));
+    for (let i = 0; i < n; i++) copyRailWallBoxRecord(scratch, i, data, order[i]);
+    data.set(scratch.subarray(0, n * RAIL_BOX_STRIDE));
     let write = 1;
-    let cur = boxes[0];
-    for (let i = 1; i < n; i++) {
-        const next = boxes[i];
-        if (collinearRailWallBoxesAdjacent(cur, next)) extendCollinearRailWallBox(cur, next);
+    let cur = 0;
+    for (let i = 1; i < n; i++)
+        if (collinearRailWallBoxRecordsAdjacent(data, cur, i)) extendCollinearRailWallBoxRecord(data, cur, i);
         else {
-            cur = next;
-            boxes[write++] = cur;
+            cur = write;
+            if (cur !== i) copyRailWallBoxRecord(data, cur, data, i);
+            write++;
         }
-    }
     return write;
-}
-export function mergeCollinearRailWallBoxes(boxes) {
-    boxes.length = mergeCollinearRailWallBoxesInPlace(boxes);
-    return boxes;
 }
 export function writeVoxelWallFaceInto(face, grid, col, row, edge) {
     const cols = grid.cols;
@@ -362,16 +469,15 @@ export function collectVoxelWallFacesInAabb(grid, bounds, out) {
     out.length = write;
 }
 export function collectRailWallBoxesInAabb(grid, bounds, out) {
-    let write = 0;
+    out.clear();
     forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
         if (!grid.edgeStore.hasAnyAtIdx(idx)) return;
         for (let edge = 0; edge < 4; edge++) {
-            const box = out[write] ?? (out[write] = allocRailWallBox());
-            if (writeRailWallBoxInto(box, grid, col, row, edge)) write++;
+            out.ensureCapacity(out.length + 1);
+            if (writeRailWallBoxRecordInto(out.data, out.length, grid, col, row, edge)) out.length++;
         }
     });
-    out.length = write;
-    out.length = mergeCollinearRailWallBoxesInPlace(out);
+    out.length = mergeCollinearRailWallBoxRecordsInPlace(out);
 }
 export function defaultWallCapPx(settings) {
     return settings.wallHeightCells * settings.cellSize;

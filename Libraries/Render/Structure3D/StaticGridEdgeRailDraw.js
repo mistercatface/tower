@@ -1,11 +1,11 @@
 /**
  * Edge rail draw — thin axis-aligned box via projectWorldPointInto.
  */
-import { collectRailWallBoxesInAabb } from "../../World/wallGridBake.js";
+import { collectRailWallBoxesInAabb, RailWallBoxList } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { drawProjectedWallFace, drawProjectedRailWallCap } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
-const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: [] };
+const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new RailWallBoxList() };
 const sRailP1 = { x: 0, y: 0 };
 const sRailP2 = { x: 0, y: 0 };
 function bindRailEdge(p1, p2, x1, y1, x2, y2) {
@@ -44,7 +44,7 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, out) 
     }
     const boxes = sBoxCache.boxes;
     for (let i = 0; i < boxes.length; i++) {
-        const box = boxes[i];
+        const box = boxes.viewAt(i);
         if (!railWallBoxTowardViewer(box, viewerX, viewerY)) continue;
         const viewX = box.cx - viewerX;
         const viewY = box.cy - viewerY;
@@ -88,5 +88,5 @@ export function drawProjectedGridEdgeRail(ctx, box, viewport, state, face, skipW
 }
 export function invalidateStaticGridEdgeRailDrawCache() {
     sBoxCache.wallGridRevision = -1;
-    sBoxCache.boxes.length = 0;
+    sBoxCache.boxes.clear();
 }
