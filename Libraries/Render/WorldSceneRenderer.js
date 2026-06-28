@@ -3,6 +3,7 @@ import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from ".
 import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
 import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
+import { RAIL_BOX } from "../World/wallGridBake.js";
 import { drawFlatWallChunkProp } from "./Props3D/SolidDraw.js";
 import propCatalog from "../../Assets/props/index.js";
 function drawProjectile(ctx, prop, viewport) {
@@ -60,16 +61,31 @@ const FLOOR_QUERY_OPTIONS = { hitTest: "aabb", filterId: "floor", match: matchFl
 const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
 function bindWallFaceScratch(scratch, drawable) {
-    scratch.wallHeight = drawable.wallHeight;
-    scratch.wallBaseZ = drawable.wallBaseZ;
-    scratch.wallCapHeight = drawable.wallCapHeight;
-    scratch.cacheObj = drawable;
-    scratch.atlasFaceId = undefined;
-    scratch.gridCol = drawable.gridCol;
-    scratch.gridRow = drawable.gridRow;
-    scratch.gridSide = drawable.gridSide;
-    scratch.gridIdx = drawable.gridIdx;
-    scratch.isEdgeRail = drawable.innerP1x !== undefined;
+    if (drawable.isEdgeRail) {
+        const d = drawable.data;
+        const b = drawable.baseIndex;
+        scratch.wallHeight = d[b + RAIL_BOX.wallHeight];
+        scratch.wallBaseZ = d[b + RAIL_BOX.wallBaseZ];
+        scratch.wallCapHeight = d[b + RAIL_BOX.wallCapHeight];
+        scratch.cacheObj = drawable;
+        scratch.atlasFaceId = undefined;
+        scratch.gridCol = d[b + RAIL_BOX.gridCol];
+        scratch.gridRow = d[b + RAIL_BOX.gridRow];
+        scratch.gridSide = d[b + RAIL_BOX.gridSide];
+        scratch.gridIdx = d[b + RAIL_BOX.gridIdx];
+        scratch.isEdgeRail = true;
+    } else {
+        scratch.wallHeight = drawable.wallHeight;
+        scratch.wallBaseZ = drawable.wallBaseZ;
+        scratch.wallCapHeight = drawable.wallCapHeight;
+        scratch.cacheObj = drawable;
+        scratch.atlasFaceId = undefined;
+        scratch.gridCol = drawable.gridCol;
+        scratch.gridRow = drawable.gridRow;
+        scratch.gridSide = drawable.gridSide;
+        scratch.gridIdx = drawable.gridIdx;
+        scratch.isEdgeRail = false;
+    }
 }
 function prepareWallChunkPropTextures(state, prop) {
     if (!prop.wallChunkProfileId || !state?.worldSurfaces) return;
@@ -217,7 +233,7 @@ export class WorldSceneRenderer {
             else if (obj.p1) {
                 bindWallFaceScratch(face, obj);
                 drawProjectedWallFace(ctx, obj.p1, obj.p2, viewport, state, face);
-            } else if (obj.innerP1x !== undefined) {
+            } else if (obj.isEdgeRail) {
                 bindWallFaceScratch(face, obj);
                 drawProjectedGridEdgeRail(ctx, obj, viewport, state, face, skipWallCaps);
             }

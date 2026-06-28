@@ -186,51 +186,6 @@ export function railWallFootprintAabb(grid, col, row, edge) {
     if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
     return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
 }
-export function railWallCapUvCornersInto(out4, grid, box) {
-    const b = grid.getCellBounds(box.gridCol, box.gridRow);
-    if (box.gridSide === 0) {
-        out4[0].x = b.minX;
-        out4[0].y = b.minY;
-        out4[1].x = b.maxX;
-        out4[1].y = b.minY;
-        out4[2].x = b.maxX;
-        out4[2].y = b.maxY;
-        out4[3].x = b.minX;
-        out4[3].y = b.maxY;
-        return out4;
-    }
-    if (box.gridSide === 1) {
-        out4[0].x = b.maxX;
-        out4[0].y = b.minY;
-        out4[1].x = b.maxX;
-        out4[1].y = b.maxY;
-        out4[2].x = b.minX;
-        out4[2].y = b.maxY;
-        out4[3].x = b.minX;
-        out4[3].y = b.minY;
-        return out4;
-    }
-    if (box.gridSide === 2) {
-        out4[0].x = b.maxX;
-        out4[0].y = b.maxY;
-        out4[1].x = b.minX;
-        out4[1].y = b.maxY;
-        out4[2].x = b.minX;
-        out4[2].y = b.minY;
-        out4[3].x = b.maxX;
-        out4[3].y = b.minY;
-        return out4;
-    }
-    out4[0].x = b.minX;
-    out4[0].y = b.maxY;
-    out4[1].x = b.minX;
-    out4[1].y = b.minY;
-    out4[2].x = b.maxX;
-    out4[2].y = b.minY;
-    out4[3].x = b.maxX;
-    out4[3].y = b.maxY;
-    return out4;
-}
 export function flatRailWallCapUvCornersInto(out8, grid, box) {
     const b = grid.getCellBounds(box.gridCol, box.gridRow);
     return fillFlatUvFromBounds(out8, b, box.gridSide);
@@ -244,29 +199,44 @@ export function flatRailWallCapUvCornersIntoFlat(out8, grid, data, base) {
 }
 function fillFlatUvFromBounds(out8, b, side) {
     if (side === 0) {
-        out8[0] = b.minX; out8[1] = b.minY;
-        out8[2] = b.maxX; out8[3] = b.minY;
-        out8[4] = b.maxX; out8[5] = b.maxY;
-        out8[6] = b.minX; out8[7] = b.maxY;
+        out8[0] = b.minX;
+        out8[1] = b.minY;
+        out8[2] = b.maxX;
+        out8[3] = b.minY;
+        out8[4] = b.maxX;
+        out8[5] = b.maxY;
+        out8[6] = b.minX;
+        out8[7] = b.maxY;
     } else if (side === 1) {
-        out8[0] = b.maxX; out8[1] = b.minY;
-        out8[2] = b.maxX; out8[3] = b.maxY;
-        out8[4] = b.minX; out8[5] = b.maxY;
-        out8[6] = b.minX; out8[7] = b.minY;
+        out8[0] = b.maxX;
+        out8[1] = b.minY;
+        out8[2] = b.maxX;
+        out8[3] = b.maxY;
+        out8[4] = b.minX;
+        out8[5] = b.maxY;
+        out8[6] = b.minX;
+        out8[7] = b.minY;
     } else if (side === 2) {
-        out8[0] = b.maxX; out8[1] = b.maxY;
-        out8[2] = b.minX; out8[3] = b.maxY;
-        out8[4] = b.minX; out8[5] = b.minY;
-        out8[6] = b.maxX; out8[7] = b.minY;
+        out8[0] = b.maxX;
+        out8[1] = b.maxY;
+        out8[2] = b.minX;
+        out8[3] = b.maxY;
+        out8[4] = b.minX;
+        out8[5] = b.minY;
+        out8[6] = b.maxX;
+        out8[7] = b.minY;
     } else {
-        out8[0] = b.minX; out8[1] = b.maxY;
-        out8[2] = b.minX; out8[3] = b.minY;
-        out8[4] = b.maxX; out8[5] = b.minY;
-        out8[6] = b.maxX; out8[7] = b.maxY;
+        out8[0] = b.minX;
+        out8[1] = b.maxY;
+        out8[2] = b.minX;
+        out8[3] = b.minY;
+        out8[4] = b.maxX;
+        out8[5] = b.minY;
+        out8[6] = b.maxX;
+        out8[7] = b.maxY;
     }
     return out8;
 }
-
 function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
     const halfT = railWallFootprintHalfThickness(grid, col, row, edge);
     const b = grid.getCellBounds(col, row);

@@ -4,11 +4,9 @@ import {
     pointOnFrustumInto,
     radiusAtT,
     getHeightSlice,
-    getRadialSilhouette,
     traceVisibleArc,
     isFaceTowardViewer,
     isOutwardFaceTowardViewer,
-    createSideGradient,
     createSideGradientAt,
     projectVertical,
     scaleAtHeight,
@@ -89,19 +87,25 @@ function isFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
 function drawRadialSilhouetteBody(ctx, projection, baseRadius, resolvedTop, colors) {
-    const sil = getRadialSilhouette(projection, baseRadius, resolvedTop);
     const { cx, cy, topX, topY, viewAngle } = projection;
-    const { perpA, perpB, baseLeft, baseRight, topRight } = sil;
+    const perpA = viewAngle + Math.PI / 2;
+    const perpB = viewAngle - Math.PI / 2;
+    const baseLeftX = cx + Math.cos(perpA) * baseRadius;
+    const baseLeftY = cy + Math.sin(perpA) * baseRadius;
+    const baseRightX = cx + Math.cos(perpB) * baseRadius;
+    const baseRightY = cy + Math.sin(perpB) * baseRadius;
     ctx.beginPath();
-    ctx.moveTo(baseLeft.x, baseLeft.y);
-    traceVisibleArc(ctx, cx, cy, sil.baseRadius, perpA, perpB, viewAngle);
+    ctx.moveTo(baseLeftX, baseLeftY);
+    traceVisibleArc(ctx, cx, cy, baseRadius, perpA, perpB, viewAngle);
     if (resolvedTop === 0) ctx.lineTo(topX, topY);
     else {
-        ctx.lineTo(topRight.x, topRight.y);
-        traceVisibleArc(ctx, topX, topY, sil.topRadius, perpB, perpA, viewAngle);
+        const topRightX = topX + Math.cos(perpB) * resolvedTop;
+        const topRightY = topY + Math.sin(perpB) * resolvedTop;
+        ctx.lineTo(topRightX, topRightY);
+        traceVisibleArc(ctx, topX, topY, resolvedTop, perpB, perpA, viewAngle);
     }
     ctx.closePath();
-    ctx.fillStyle = createSideGradient(ctx, baseLeft, baseRight, viewAngle + Math.PI, colors);
+    ctx.fillStyle = createSideGradientAt(ctx, baseLeftX, baseLeftY, baseRightX, baseRightY, viewAngle + Math.PI, colors);
     ctx.fill();
 }
 export function drawExtrudedRadial(ctx, prop, viewport, options) {

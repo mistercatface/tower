@@ -62,14 +62,6 @@ export class SurfaceSpatialMap {
         const wy2 = wy1 + dy;
         return { wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 }, keyX1: wx1.toFixed(1), keyY1: wy1.toFixed(1), keyX2: wx2.toFixed(1), keyY2: wy2.toFixed(1) };
     }
-    horizontalSample(worldCorners, obstacleGrid) {
-        const chunkSizePx = this.chunkSizePx(obstacleGrid);
-        const pointsBounds = expandPointsAabbInto(this._pointsAabb, worldCorners);
-        const chunkCol = this.worldToChunkCol(pointsBounds.minX, obstacleGrid.minX, chunkSizePx);
-        const chunkRow = this.worldToChunkRow(pointsBounds.minY, obstacleGrid.minY, chunkSizePx);
-        const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow);
-        return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
-    }
     flatHorizontalSample(worldCorners8, obstacleGrid) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid);
         let minX = Infinity;
@@ -89,7 +81,6 @@ export class SurfaceSpatialMap {
         const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow);
         return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
     }
-
     wallChunkTextureSample(cellSize) {
         const chunkSizePx = cellSize * this.settings.cellsPerChunk;
         const chunkCol = WALL_CHUNK_TEXTURE_SAMPLE_CHUNK;

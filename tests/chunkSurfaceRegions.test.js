@@ -46,14 +46,14 @@ describe("chunk surface regions", () => {
         assert.equal(captured.length, 1);
         assert.equal(captured[0].profileIdOverride, "east");
         captured.length = 0;
-        const corners = [
-            { x: 72, y: 0 },
-            { x: 88, y: 0 },
-            { x: 88, y: 16 },
-            { x: 72, y: 16 },
-        ];
-        const outSrc4 = corners.map((p) => ({ x: 0, y: 0 }));
-        engine.fillHorizontalCapDrawSampleInto(corners, 1, state, outSrc4);
+        const corners8 = new Float32Array([
+            72, 0,
+            88, 0,
+            88, 16,
+            72, 16
+        ]);
+        const outSrc8 = new Float32Array(8);
+        engine.fillHorizontalCapDrawSampleIntoFlat(corners8, 1, state, outSrc8);
         assert.equal(captured.length, 1);
         assert.equal(captured[0].profileIdOverride, "east");
         assert.equal(captured[0].zLevel, 1);

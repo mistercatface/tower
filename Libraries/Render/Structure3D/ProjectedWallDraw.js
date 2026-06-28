@@ -4,53 +4,34 @@
  */
 import { drawImageQuadScalars, drawImageTriangleScalars } from "../../Canvas/AffineTexture.js";
 import { resolveElevationAlpha, projectWorldPointInto, projectWorldQuadInto } from "../../Spatial/elevation/RadialElevationProjection.js";
-import { railWallCapUvCornersInto, flatRailWallCapUvCornersInto, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../../World/wallGridBake.js";
+import { flatRailWallCapUvCornersInto, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx, RAIL_BOX } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb, flatQuadOverlapAabb } from "../../Math/Aabb2D.js";
-import { traceQuad, traceClosedPolygon, traceClosedFlatPolygon, traceFlatQuad } from "../../Canvas/CanvasPath.js";
+import { traceClosedFlatPolygon, traceFlatQuad } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { resolveWallSurfaceProfileId } from "../../Spatial/grid/SurfaceMaterialStore.js";
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-const sBandPoint0 = { x: 0, y: 0 };
-const sBandPoint1 = { x: 0, y: 0 };
 const sSubdivQuad = new Float32Array(8);
 const sFlatCapCorners = new Float32Array(8);
 const sFlatCapUv = new Float32Array(8);
 const sFlatCapSrc = new Float32Array(8);
-const sCapCorners = [
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-];
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
-
-function getRailMemo(grid, key) {
-    if (!grid._railMemoCache || grid._railMemoRevision !== grid.wallGridRevision) {
-        grid._railMemoCache = new Map();
-        grid._railMemoRevision = grid.wallGridRevision;
+const sTempP1 = { x: 0, y: 0 };
+const sTempP2 = { x: 0, y: 0 };
+function getWallDrawMemo(grid, key) {
+    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== grid.wallGridRevision) {
+        grid._wallDrawMemoCache = new Map();
+        grid._wallDrawMemoRevision = grid.wallGridRevision;
     }
-    return grid._railMemoCache.get(key);
+    return grid._wallDrawMemoCache.get(key);
 }
-
-function setRailMemo(grid, key, value) {
-    if (!grid._railMemoCache || grid._railMemoRevision !== grid.wallGridRevision) {
-        grid._railMemoCache = new Map();
-        grid._railMemoRevision = grid.wallGridRevision;
+function setWallDrawMemo(grid, key, value) {
+    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== grid.wallGridRevision) {
+        grid._wallDrawMemoCache = new Map();
+        grid._wallDrawMemoRevision = grid.wallGridRevision;
     }
-    grid._railMemoCache.set(key, value);
+    grid._wallDrawMemoCache.set(key, value);
 }
-
-function getRailSubdivMemo(grid, drawable, faceId) {
-    const key = `subdiv|${drawable.gridCol},${drawable.gridRow},${drawable.gridSide}|${faceId}`;
-    return getRailMemo(grid, key);
-}
-
-function setRailSubdivMemo(grid, drawable, faceId, subdivKey, subdiv) {
-    const key = `subdiv|${drawable.gridCol},${drawable.gridRow},${drawable.gridSide}|${faceId}`;
-    setRailMemo(grid, key, { subdivKey, subdiv });
-}
-
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceFlatQuad(ctx, faceBottom.proj1X, faceBottom.proj1Y, faceTop.proj1X, faceTop.proj1Y, faceTop.proj2X, faceTop.proj2Y, faceBottom.proj2X, faceBottom.proj2Y);
 }
@@ -58,14 +39,23 @@ export function traceProjectedFaceBand(ctx, faceBottom, faceTop) {
     ctx.beginPath();
     appendProjectedFaceBand(ctx, faceBottom, faceTop);
 }
-export function projectWallFaceBandInto(p1, p2, z, viewport, out) {
-    projectWorldPointInto(sBandPoint0, p1.x, p1.y, z, viewport);
-    projectWorldPointInto(sBandPoint1, p2.x, p2.y, z, viewport);
-    out.proj1X = sBandPoint0.x;
-    out.proj1Y = sBandPoint0.y;
-    out.proj2X = sBandPoint1.x;
-    out.proj2Y = sBandPoint1.y;
+export function projectWallFaceBandIntoScalars(x1, y1, x2, y2, z, viewport, out) {
+    const alpha = resolveElevationAlpha(z, viewport);
+    if (alpha <= 0) {
+        out.proj1X = x1;
+        out.proj1Y = y1;
+        out.proj2X = x2;
+        out.proj2Y = y2;
+    } else {
+        out.proj1X = x1 + (x1 - viewport.x) * alpha;
+        out.proj1Y = y1 + (y1 - viewport.y) * alpha;
+        out.proj2X = x2 + (x2 - viewport.x) * alpha;
+        out.proj2Y = y2 + (y2 - viewport.y) * alpha;
+    }
     return out;
+}
+export function projectWallFaceBandInto(p1, p2, z, viewport, out) {
+    return projectWallFaceBandIntoScalars(p1.x, p1.y, p2.x, p2.y, z, viewport, out);
 }
 function computeFaceCornerElevatedInto(out8, offset, u, v, faceBottom, faceTop) {
     const bot1X = faceBottom.proj1X;
@@ -83,62 +73,61 @@ function computeFaceCornerElevatedInto(out8, offset, u, v, faceBottom, faceTop) 
     out8[offset] = bx + (tx - bx) * v;
     out8[offset + 1] = by + (ty - by) * v;
 }
-function resolveWallFaceAtlas(p1, p2, state, face) {
+function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     const worldSurfaces = state.worldSurfaces;
     const { wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId } = face;
     const settings = worldSurfaces.settings;
-    const wallCx = (p1.x + p2.x) * 0.5;
-    const wallCy = (p1.y + p2.y) * 0.5;
     const profileId = resolveWallSurfaceProfileId(state.obstacleGrid, face, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk);
-
     const seed = worldSurfaces.worldSurfaceSeed;
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
-    const canUseSideCache = cacheObj && cacheObj.isEdgeRail && worldSurfaces.cacheKeys && worldSurfaces.worldSurfaceSeed !== undefined;
-
+    const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.worldSurfaceSeed !== undefined;
     let stash = null;
     let memoKey = null;
     if (canUseSideCache) {
-        memoKey = `atlas|${cacheObj.gridCol},${cacheObj.gridRow},${cacheObj.gridSide}|${atlasFaceId ?? "side"}`;
-        stash = getRailMemo(state.obstacleGrid, memoKey);
+        memoKey = `atlas|${face.gridCol},${face.gridRow},${face.gridSide}|${atlasFaceId ?? "side"}`;
+        stash = getWallDrawMemo(state.obstacleGrid, memoKey);
     }
-
     let cacheHit = false;
     if (canUseSideCache && stash) {
-        const atlasKey = worldSurfaces.cacheKeys.wallAtlasKey(p1, p2, seed, profileId, wallHeightKey);
-        if (
-            stash.profileId === profileId &&
-            stash.rev === atlasKey.rev &&
-            stash.seed === seed &&
-            stash.wallHeightKey === wallHeightKey &&
-            worldSurfaces.surfaceCache.get(stash.key) === stash.canvases
-        ) {
+        sTempP1.x = x1;
+        sTempP1.y = y1;
+        sTempP2.x = x2;
+        sTempP2.y = y2;
+        const atlasKey = worldSurfaces.cacheKeys.wallAtlasKey(sTempP1, sTempP2, seed, profileId, wallHeightKey);
+        if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases)
             cacheHit = true;
-        }
     }
-
     if (cacheHit) {
         // cache hit!
     } else {
-        stash = worldSurfaces.getOrEnsureWallAtlas(p1, p2, { profileId, wallHeight: wallCapHeight, cacheObj: (cacheObj && !cacheObj.isEdgeRail) ? cacheObj : null, atlasFaceId: atlasFaceId ?? "side" });
-        if (canUseSideCache && stash) {
-            setRailMemo(state.obstacleGrid, memoKey, stash);
-        }
+        sTempP1.x = x1;
+        sTempP1.y = y1;
+        sTempP2.x = x2;
+        sTempP2.y = y2;
+        stash = worldSurfaces.getOrEnsureWallAtlas(sTempP1, sTempP2, {
+            profileId,
+            wallHeight: wallCapHeight,
+            cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null,
+            atlasFaceId: atlasFaceId ?? "side",
+        });
+        if (canUseSideCache && stash) setWallDrawMemo(state.obstacleGrid, memoKey, stash);
     }
-
     if (!stash) return null;
     const canvas = stash.canvases[0];
     if (!canvas || canvas.isPlaceholder) return "solid";
-
     const atlas = sWallFaceAtlas;
     atlas.canvas = canvas;
     atlas.settings = settings;
     atlas.capHeight = wallCapHeight;
     atlas.bandHeight = wallHeight;
     atlas.wallBaseZ = wallBaseZ;
-    atlas.edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-    atlas.wallCx = wallCx;
-    atlas.wallCy = wallCy;
+    atlas.edgeLen = Math.hypot(x2 - x1, y2 - y1);
+    atlas.wallCx = (x1 + x2) * 0.5;
+    atlas.wallCy = (y1 + y2) * 0.5;
     return atlas;
+}
+function resolveWallFaceAtlas(p1, p2, state, face) {
+    return resolveWallFaceAtlasScalars(p1.x, p1.y, p2.x, p2.y, state, face);
 }
 function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, viewport) {
     const cellSize = settings.cellSize;
@@ -181,34 +170,39 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
             computeFaceCornerElevatedInto(sSubdivQuad, 4, u1, v1, faceBottom, faceTop);
             computeFaceCornerElevatedInto(sSubdivQuad, 6, u0, v1, faceBottom, faceTop);
             if (!flatQuadOverlapAabb(sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], worldBounds)) continue;
-            drawImageQuadScalars(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7]);
+            drawImageQuadScalars(
+                ctx,
+                canvas,
+                u0 * canvas.width,
+                sy0,
+                u1 * canvas.width,
+                sy1,
+                sSubdivQuad[0],
+                sSubdivQuad[1],
+                sSubdivQuad[2],
+                sSubdivQuad[3],
+                sSubdivQuad[4],
+                sSubdivQuad[5],
+                sSubdivQuad[6],
+                sSubdivQuad[7],
+            );
         }
     }
 }
 function resolveWallFaceSubdiv(face, atlas, viewport, grid) {
-    const cacheObj = face.cacheObj;
-    const faceId = face.atlasFaceId ?? "side";
-    const subdivKey = `${faceId}|${atlas.edgeLen}|${viewport.x}|${viewport.y}|${atlas.wallBaseZ}|${atlas.bandHeight}`;
-    if (cacheObj && cacheObj.isEdgeRail) {
-        const memo = getRailSubdivMemo(grid, cacheObj, faceId);
-        if (memo && memo.subdivKey === subdivKey) return memo.subdiv;
-    } else if (cacheObj && cacheObj._faceSubdivKey === subdivKey) {
-        return cacheObj._faceSubdiv;
-    }
+    const { gridCol, gridRow, gridSide, atlasFaceId } = face;
+    const faceId = atlasFaceId ?? "side";
+    const subdivKey = `${viewport.cameraHeight.toFixed(0)}|${viewport.perspectiveStrength.toFixed(2)}`;
+    const memoKey = `subdiv|${gridCol},${gridRow},${gridSide}|${faceId}`;
+    const cached = getWallDrawMemo(grid, memoKey);
+    if (cached && cached.subdivKey === subdivKey) return cached.subdiv;
     const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, viewport);
-    if (cacheObj) {
-        if (cacheObj.isEdgeRail) {
-            setRailSubdivMemo(grid, cacheObj, faceId, subdivKey, subdiv);
-        } else {
-            cacheObj._faceSubdivKey = subdivKey;
-            cacheObj._faceSubdiv = subdiv;
-        }
-    }
+    setWallDrawMemo(grid, memoKey, { subdivKey, subdiv });
     return subdiv;
 }
-function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face) {
+function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewport, state, face) {
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    const atlas = resolveWallFaceAtlas(p1, p2, state, face);
+    const atlas = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face);
     if (atlas === null) return;
     if (atlas === "solid") {
         ctx.fillStyle = fillStyle;
@@ -223,39 +217,51 @@ function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face
     }
     blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.bounds("chunks"));
 }
-export function projectRailWallTopCornersInto(out4, box, viewport) {
-    const z = box.wallCapHeight;
-    projectWorldPointInto(out4[0], box.outerP1x, box.outerP1y, z, viewport);
-    projectWorldPointInto(out4[1], box.outerP2x, box.outerP2y, z, viewport);
-    projectWorldPointInto(out4[2], box.innerP2x, box.innerP2y, z, viewport);
-    projectWorldPointInto(out4[3], box.innerP1x, box.innerP1y, z, viewport);
-    return out4;
+function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face) {
+    return drawFaceTextureScalars(ctx, p1.x, p1.y, p2.x, p2.y, faceBottom, faceTop, viewport, state, face);
+}
+export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
+    const { wallHeight, wallBaseZ } = face;
+    const fillStyle = gameWorldSurfaceSettings.floorShadow;
+    const topZ = wallBaseZ + wallHeight;
+    const faceBottom = projectWallFaceBandIntoScalars(x1, y1, x2, y2, wallBaseZ, viewport, sFaceBottom);
+    const faceTop = projectWallFaceBandIntoScalars(x1, y1, x2, y2, topZ, viewport, sharedScratchFace);
+    traceProjectedFaceBand(ctx, faceBottom, faceTop);
+    if (state.worldSurfaces) {
+        ctx.save();
+        ctx.clip();
+        drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewport, state, face);
+        ctx.restore();
+    } else {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+    }
+}
+export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
+    return drawProjectedWallFaceScalars(ctx, p1.x, p1.y, p2.x, p2.y, viewport, state, face);
 }
 export function projectRailWallTopCornersIntoFlat(out8, data, base, viewport) {
     const z = data[base + RAIL_BOX.wallCapHeight];
-    projectWorldQuadInto(out8, data[base + RAIL_BOX.outerP1x], data[base + RAIL_BOX.outerP1y], data[base + RAIL_BOX.outerP2x], data[base + RAIL_BOX.outerP2y], data[base + RAIL_BOX.innerP2x], data[base + RAIL_BOX.innerP2y], data[base + RAIL_BOX.innerP1x], data[base + RAIL_BOX.innerP1y], z, viewport);
+    projectWorldQuadInto(
+        out8,
+        data[base + RAIL_BOX.outerP1x],
+        data[base + RAIL_BOX.outerP1y],
+        data[base + RAIL_BOX.outerP2x],
+        data[base + RAIL_BOX.outerP2y],
+        data[base + RAIL_BOX.innerP2x],
+        data[base + RAIL_BOX.innerP2y],
+        data[base + RAIL_BOX.innerP1x],
+        data[base + RAIL_BOX.innerP1y],
+        z,
+        viewport,
+    );
     return out8;
-}
-function fillProjectedCapPolygon(ctx, corners, fillStyle) {
-    ctx.beginPath();
-    traceClosedPolygon(ctx, corners);
-    ctx.fillStyle = fillStyle;
-    ctx.fill();
 }
 function fillProjectedCapPolygonFlat(ctx, corners8, fillStyle) {
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, corners8, 4);
     ctx.fillStyle = fillStyle;
     ctx.fill();
-}
-function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
-    ctx.save();
-    ctx.beginPath();
-    traceClosedPolygon(ctx, dest4);
-    ctx.clip();
-    drawImageTriangleScalars(ctx, canvas, src4[0].x, src4[0].y, src4[1].x, src4[1].y, src4[3].x, src4[3].y, dest4[0].x, dest4[0].y, dest4[1].x, dest4[1].y, dest4[3].x, dest4[3].y);
-    drawImageTriangleScalars(ctx, canvas, src4[1].x, src4[1].y, src4[2].x, src4[2].y, src4[3].x, src4[3].y, dest4[1].x, dest4[1].y, dest4[2].x, dest4[2].y, dest4[3].x, dest4[3].y);
-    ctx.restore();
 }
 function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
     ctx.save();
@@ -265,22 +271,6 @@ function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
     drawImageTriangleScalars(ctx, canvas, src8[0], src8[1], src8[2], src8[3], src8[6], src8[7], dest8[0], dest8[1], dest8[2], dest8[3], dest8[6], dest8[7]);
     drawImageTriangleScalars(ctx, canvas, src8[2], src8[3], src8[4], src8[5], src8[6], src8[7], dest8[2], dest8[3], dest8[4], dest8[5], dest8[6], dest8[7]);
     ctx.restore();
-}
-export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {
-    const worldSurfaces = state.worldSurfaces;
-    const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    projectRailWallTopCornersInto(sCapCorners, box, viewport);
-    if (!worldSurfaces) {
-        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        return;
-    }
-    railWallCapUvCornersInto(sCapUv, state.obstacleGrid, box);
-    const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleInto(sCapUv, box.wallCapHeight, state, sCapSrc);
-    if (!capCanvas) {
-        fillProjectedCapPolygon(ctx, sCapCorners, fillStyle);
-        return;
-    }
-    blitHorizontalCapSample(ctx, sCapCorners, sCapSrc, capCanvas);
 }
 export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, face) {
     const worldSurfaces = state.worldSurfaces;
@@ -298,21 +288,4 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, f
         return;
     }
     blitHorizontalCapSampleFlat(ctx, sFlatCapCorners, sFlatCapSrc, capCanvas);
-}
-export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
-    const { wallHeight, wallBaseZ } = face;
-    const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    const topZ = wallBaseZ + wallHeight;
-    const faceBottom = projectWallFaceBandInto(p1, p2, wallBaseZ, viewport, sFaceBottom);
-    const faceTop = projectWallFaceBandInto(p1, p2, topZ, viewport, sharedScratchFace);
-    traceProjectedFaceBand(ctx, faceBottom, faceTop);
-    if (state.worldSurfaces) {
-        ctx.save();
-        ctx.clip();
-        drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face);
-        ctx.restore();
-    } else {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-    }
 }

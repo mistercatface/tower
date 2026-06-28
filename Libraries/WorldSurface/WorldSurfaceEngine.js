@@ -153,23 +153,6 @@ export class WorldSurfaceEngine {
         }
         return resolved;
     }
-    /**
-     * Chunk UV for a horizontal cap quad — writes bake-space src corners into outSrc4, returns canvas or null.
-     * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} worldCorners
-     * @param {[{ x: number, y: number }, { x: number, y: number }, { x: number, y: number }, { x: number, y: number }]} outSrc4
-     */
-    fillHorizontalCapDrawSampleInto(worldCorners, zLevel, state, outSrc4) {
-        const surfaceBakeScale = this.settings.surfaceBakeScale;
-        const obstacleGrid = state.obstacleGrid;
-        const sample = this.surfaceSpace.horizontalSample(worldCorners, obstacleGrid);
-        const profileId = resolveChunkSurfaceProfileId(obstacleGrid, sample.chunkCol, sample.chunkRow, this.activeSurfaceProfileId);
-        const canvas = this.getGroundChunkCanvas(sample.chunkCol, sample.chunkRow, state, zLevel, null, profileId)[0];
-        for (let i = 0; i < 4; i++) {
-            outSrc4[i].x = (worldCorners[i].x - sample.minX) * surfaceBakeScale;
-            outSrc4[i].y = (worldCorners[i].y - sample.minY) * surfaceBakeScale;
-        }
-        return isDrawableBakedSurface(canvas) ? canvas : null;
-    }
     fillHorizontalCapDrawSampleIntoFlat(worldCorners8, zLevel, state, outSrc8) {
         const surfaceBakeScale = this.settings.surfaceBakeScale;
         const obstacleGrid = state.obstacleGrid;
@@ -182,7 +165,6 @@ export class WorldSurfaceEngine {
         }
         return isDrawableBakedSurface(canvas) ? canvas : null;
     }
-
     bindGroundChunkDraw(ctx, state, viewport, beforeDraw = null) {
         const d = this._chunkDraw;
         d.ctx = ctx;
