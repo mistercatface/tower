@@ -93,6 +93,7 @@ export function solveCorridorBundle(params) {
                 childHoleGroups: pickedChild.map((g) => g.slots),
                 paths: paths.slice(),
                 corridorWidths: corridorWidths.slice(),
+                layout,
             };
         const corridorWidth = corridorWidths[lane];
         const parentGroups = availableAttachments(roomA, corridorWidth, pickedParent);

@@ -3,38 +3,19 @@ import { corridorSearchLayout } from "../Pathfinding/Corridor/corridorWalkGrid.j
 import { buildCorridorBeltsFromPaths } from "./roomGraphCorridorBelts.js";
 import { applyCorridorHoleGroupsToRooms } from "./roomGraphClosedRooms.js";
 import { buildCorridorRailWallsFromPaths, DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
-/** @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle @param {import("./roomGraphClosedRooms.js").ClosedRoom} roomA @param {import("./roomGraphClosedRooms.js").ClosedRoom} roomB */
 export function applyCorridorBundleToRooms(bundle, roomA, roomB) {
     applyCorridorHoleGroupsToRooms(roomA, roomB, bundle.parentHoleGroups, bundle.childHoleGroups);
 }
-/**
- * @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle
- * @param {import("./roomGraphClosedRooms.js").GraphNode[]} rooms
- * @param {import("./roomGraphClosedRooms.js").ClosedRoom[]} closedRooms
- * @param {number} originCol
- * @param {number} originRow
- */
 export function stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow, railWallHeightLevel, railWallThicknessLevel) {
-    const stampBounds = corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6);
+    const stampBounds = bundle.layout
+        ? { originCol: bundle.layout.originCol, originRow: bundle.layout.originRow, cols: bundle.layout.strideCols, rows: bundle.layout.cellCount / bundle.layout.strideCols }
+        : corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6);
     return buildCorridorRailWallsFromPaths(bundle.paths, bundle.corridorWidths, rooms, closedRooms, stampBounds, originCol, originRow, railWallHeightLevel, railWallThicknessLevel);
 }
-/**
- * @param {import("../Pathfinding/Corridor/corridorBundle.js").CorridorBundle} bundle
- * @param {import("./roomGraphClosedRooms.js").GraphNode[]} rooms
- * @param {import("./roomGraphCorridorTypes.js").CorridorType} corridorType
- */
 export function stampCorridorBundleBelts(bundle, rooms) {
-    const layout = corridorSearchLayout(corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6));
+    const layout = bundle.layout ?? corridorSearchLayout(corridorSearchBounds(rooms, DEFAULT_CORRIDOR_EGRESS_CELLS + 6));
     return buildCorridorBeltsFromPaths(bundle.paths, bundle.corridorWidths, rooms, bundle.parentAnchors, bundle.childAnchors, layout);
 }
-/**
- * @param {import("./roomGraphClosedRooms.js").GraphNode} roomA
- * @param {import("./roomGraphClosedRooms.js").GraphNode} roomB
- * @param {import("./roomGraphClosedRooms.js").GraphNode[]} allRooms
- * @param {number[]} corridorWidths
- * @param {() => number} rng
- * @param {{ existingPaths?: import("./roomGraphClosedRooms.js").Cell[][], existingPathWidths?: number[] }} options
- */
 export function solveAuthoredLinkCorridorBundle(roomA, roomB, allRooms, corridorWidths, rng, options) {
     return solveCorridorBundle({
         roomA,
