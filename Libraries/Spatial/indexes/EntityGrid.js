@@ -1,4 +1,3 @@
-import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
 import { entityBroadphaseExtent, kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
@@ -108,17 +107,26 @@ export class EntityGrid {
         const minRow = Math.max(0, Math.floor((bounds.minY - this.minY) / this.cellSize));
         const maxRow = Math.min(this.rows - 1, Math.floor((bounds.maxY - this.minY) / this.cellSize));
         if (minCol > maxCol || minRow > maxRow) return;
-        forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (_c, _r, cellIdx) => {
-            let curr = this.cellHead[cellIdx];
-            while (curr !== -1) {
-                const other = this.entities[curr];
-                if (other && other !== exclude && other._spatialGen !== queryGen) {
-                    other._spatialGen = queryGen;
-                    fn(other);
+        const cellHead = this.cellHead;
+        const entityNext = this.entityNext;
+        const entities = this.entities;
+        const cols = this.cols;
+        for (let row = minRow; row <= maxRow; row++) {
+            const rowOffset = row * cols;
+            for (let col = minCol; col <= maxCol; col++) {
+                const cellIdx = rowOffset + col;
+                let curr = cellHead[cellIdx];
+                if (curr === -1) continue;
+                while (curr !== -1) {
+                    const other = entities[curr];
+                    if (other && other !== exclude && other._spatialGen !== queryGen) {
+                        other._spatialGen = queryGen;
+                        fn(other);
+                    }
+                    curr = entityNext[curr];
                 }
-                curr = this.entityNext[curr];
             }
-        });
+        }
     }
     /**
      * Entities whose grid cell falls inside a world AABB. Because bodies are indexed at
