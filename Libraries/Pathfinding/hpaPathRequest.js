@@ -90,8 +90,8 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startIdx, ta
     const tr = (targetIdx / cols) | 0;
     const cellDist = Math.hypot(sc - tc, sr - tr);
     if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startIdx, targetIdx };
-    const { nodeIds, nodeCol, nodeRow } = graphMeta;
-    return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
+    const { nodeIds, nodeIdx } = graphMeta;
+    return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
 }
 function findNearestOpenCellCore(cols, rows, col, row, isOpen) {
     if (isOpen(col, row)) return { col, row };

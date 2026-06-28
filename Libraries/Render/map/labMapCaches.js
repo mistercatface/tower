@@ -68,15 +68,18 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
             }
         ctx.stroke();
     }
-    const { nodeCol, nodeRow, nodeCount } = debugView;
+    const { nodeIdx, nodeCount, cols } = debugView;
     for (let i = 0; i < nodeCount; i++) {
-        const world = debugView.gridToWorld(nodeCol[i], nodeRow[i]);
+        const idx = nodeIdx[i];
+        const world = debugView.gridToWorld(idx % cols, (idx / cols) | 0);
         ctx.fillStyle = "#00e5ff";
         fillCircle(ctx, world.x, world.y, 4);
     }
     for (const edge of debugView.edges) {
-        const a = debugView.gridToWorld(nodeCol[edge.sourceIdx], nodeRow[edge.sourceIdx]);
-        const b = debugView.gridToWorld(nodeCol[edge.targetIdx], nodeRow[edge.targetIdx]);
+        const idxA = nodeIdx[edge.sourceIdx];
+        const idxB = nodeIdx[edge.targetIdx];
+        const a = debugView.gridToWorld(idxA % cols, (idxA / cols) | 0);
+        const b = debugView.gridToWorld(idxB % cols, (idxB / cols) | 0);
         ctx.strokeStyle = "#ff9800";
         ctx.lineWidth = 2.5;
         strokeSegment(ctx, a.x, a.y, b.x, b.y);

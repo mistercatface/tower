@@ -7,8 +7,7 @@ describe("HPA Path Stitching Suite", () => {
         const cols = 50;
         const prep = {
             nodeCount: 2,
-            nodeCol: [10, 20],
-            nodeRow: [10, 20],
+            nodeIdx: new Int32Array([10 + 10 * cols, 20 + 20 * cols]),
             startIdx: 5 + 5 * cols,
             targetIdx: 25 + 25 * cols,
         };
@@ -69,8 +68,7 @@ describe("HPA Path Stitching Suite", () => {
         const cols = 50;
         const prep = {
             nodeCount: 1,
-            nodeCol: [10],
-            nodeRow: [10],
+            nodeIdx: new Int32Array([10 + 10 * cols]),
             startIdx: 1 + 1 * cols,
             targetIdx: 20 + 20 * cols,
         };

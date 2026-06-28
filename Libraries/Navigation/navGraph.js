@@ -1,7 +1,7 @@
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides, floorBeltEntryNeighborCell, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
-import { navCanStep } from "../Pathfinding/navTopologySab.js";
+import { navCanStep, navCanStepIdx } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {{ col: number, row: number }} NavGraphCell */
 /** @typedef {{ col: number, row: number, side: number }} NavGraphEdgeRef */
@@ -64,8 +64,18 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
         },
         /** Baked octile step when topology is ready; otherwise cardinal-only authoring check. */
         canStep(fromCol, fromRow, toCol, toRow) {
-            if (this.cardinalOpen && this.vertexPassability) return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromCol, fromRow, toCol, toRow);
+            if (this.cardinalOpen && this.vertexPassability) {
+                const cols = grid.cols;
+                return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromCol + fromRow * cols, toCol + toRow * cols);
+            }
             if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
+            return false;
+        },
+        canStepIdx(fromIdx, toIdx) {
+            if (this.cardinalOpen && this.vertexPassability) {
+                return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromIdx, toIdx);
+            }
+            if (frame && topology) return navCanStepIdx(frame, topology, fromIdx, toIdx);
             return false;
         },
         /** Belt traversal must enter through entry side and leave through exit side. */

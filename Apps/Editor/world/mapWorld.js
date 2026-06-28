@@ -13,7 +13,7 @@ import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Li
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
-import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../../../Libraries/Spatial/grid/GridUtils.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/grid/gridNavEpoch.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
@@ -306,8 +306,8 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
             if (hCells[lr * hCols + lc] !== 1) continue;
             const col = baseCol + lc;
             const row = baseRow + lr;
-            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, col, row, 0, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
-            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, col, row - 1, 2, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
+            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, colRowToIndex(col, row, grid.cols), 0, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
+            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, colRowToIndex(col, row - 1, grid.cols), 2, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
         }
     // 5. Stamp Vertical Edges
     for (let lr = 0; lr < vRows; lr++)
@@ -315,8 +315,8 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
             if (vCells[lr * vCols + lc] !== 1) continue;
             const col = baseCol + lc;
             const row = baseRow + lr;
-            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col, row, 3, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
-            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, col - 1, row, 1, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
+            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, colRowToIndex(col, row, grid.cols), 3, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
+            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, colRowToIndex(col - 1, row, grid.cols), 1, { kind: "railWall", capHeightLevel: level, thicknessLevel: thickness });
         }
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     let damageBounds = { startCol, endCol, startRow, endRow };

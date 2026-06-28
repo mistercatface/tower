@@ -68,7 +68,7 @@ export function stampRailWallsQuiet(state, railWalls) {
         clearPrimaryBoundaryAt(state, col, row, side);
         const heightLevel = clampStampWallHeightLevel(wall.heightLevel ?? 1, settings);
         const thicknessLevel = wall.thicknessLevel ?? 1;
-        setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
         stamped.push({ col, row, side, heightLevel, thicknessLevel });
         growCellBounds(bounds, col, row);
     }
@@ -164,7 +164,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
         const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
         const { col, row } = toLocal(globalCol, globalRow);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
+        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "railWall", capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
         growCellBounds(bounds, col, row);
     }
     if (isEmptyCellBounds(bounds)) return null;
@@ -184,7 +184,7 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
         const { col, row } = toLocal(globalCol, globalRow);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         clearPrimaryBoundaryAt(state, col, row, side);
-        if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: false })) continue;
+        if (!setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: false })) continue;
         growCellBounds(bounds, col, row);
     }
     if (isEmptyCellBounds(bounds)) return null;
@@ -226,7 +226,7 @@ export function stampRailWallAt(state, col, row, side, heightLevel, thicknessLev
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     clearPrimaryBoundaryAt(state, col, row, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
-    setBoundary(grid, col, row, side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, { bumpRevision: true });
+    setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, { bumpRevision: true });
     commitGridNavEdit(state, cellBoundsAt(col, row));
     return true;
 }
@@ -239,13 +239,13 @@ export function stampForcefieldAt(state, col, row, side, { mode = PASSAGE_MODE.S
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     clearPrimaryBoundaryAt(state, col, row, side);
-    if (!setBoundary(grid, col, row, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, { bumpRevision: true })) return false;
+    if (!setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, { bumpRevision: true })) return false;
     syncPassagePowerNetwork(state);
     return true;
 }
 export function setForcefieldProfileAt(state, col, row, side, mode, allowedSide) {
     const grid = state.obstacleGrid;
-    if (!setPassageProfile(grid, col, row, side, mode, allowedSide)) return false;
+    if (!setPassageProfile(grid, colRowToIndex(col, row, grid.cols), side, mode, allowedSide)) return false;
     syncPassagePowerNetwork(state);
     return true;
 }

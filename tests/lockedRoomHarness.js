@@ -31,7 +31,7 @@ export async function createRoomBakeTestState(cols = 64, rows = 64) {
 export function assertLockedExitSealed(grid, navTopology, egress, sealed, label = "exit") {
     const exterior = lockedRoomCorridorExteriorCell(egress);
     const holeCell = lockedRoomHoleCell(egress);
-    const powered = isPassagePowered(grid, egress.forcefield.col, egress.forcefield.row, egress.forcefield.side);
+    const powered = isPassagePowered(grid, colRowToIndex(egress.forcefield.col, egress.forcefield.row, grid.cols), egress.forcefield.side);
     const graph = createNavGraphViewFromTopology(navTopology);
     const corridorToHole = !graph.canStep(exterior.col, exterior.row, holeCell.col, holeCell.row);
     const holeToCorridor = !graph.canStep(holeCell.col, holeCell.row, exterior.col, exterior.row);

@@ -206,6 +206,16 @@ export function navCanStep(frame, topology, fromCol, fromRow, toCol, toRow) {
     return topology.octileNeighbors[octileNeighborOffset(fromIdx, dirIdx)] === toIdx;
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
+export function navCanStepIdx(frame, topology, fromIdx, toIdx) {
+    if (fromIdx < 0 || toIdx < 0) return false;
+    const { cols, rows } = frame;
+    const cellCount = cols * rows;
+    if (fromIdx >= cellCount || toIdx >= cellCount) return false;
+    if (topology.blocked[fromIdx]) return false;
+    for (let dirIdx = 0; dirIdx < 8; dirIdx++) if (topology.octileNeighbors[octileNeighborOffset(fromIdx, dirIdx)] === toIdx) return true;
+    return false;
+}
+/** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function createNavLocalView(frame, topology) {
-    return { canStep: (fromCol, fromRow, toCol, toRow) => navCanStep(frame, topology, fromCol, fromRow, toCol, toRow) };
+    return { canStep: (fromCol, fromRow, toCol, toRow) => navCanStep(frame, topology, fromCol, fromRow, toCol, toRow), canStepIdx: (fromIdx, toIdx) => navCanStepIdx(frame, topology, fromIdx, toIdx) };
 }

@@ -78,7 +78,7 @@ describe("grid cell line of sight", () => {
     });
     it("blocks sight through a rail wall on the shared edge graph", async () => {
         const ctx = await createVisionGrid();
-        setBoundary(ctx.grid, 6, 8, 1, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 }, { bumpRevision: true });
+        setBoundary(ctx.grid, colRowToIndex(6, 8, ctx.grid.cols), 1, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 }, { bumpRevision: true });
         await syncNavBounds(ctx, 5, 7, 7, 9);
         assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 10, 8), false);
         assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 4, 8), true);

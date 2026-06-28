@@ -22,7 +22,6 @@ describe("AStar Engine Search Suite", () => {
         const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
-        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
         const startIdx = 0 + 2 * cols;
         const targetIdx = 4 + 2 * cols;
@@ -49,7 +48,6 @@ describe("AStar Engine Search Suite", () => {
         const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
-        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
         const startIdx = 0 + 0 * cols;
         const targetIdx = 2 + 2 * cols;
@@ -74,7 +72,6 @@ describe("AStar Engine Search Suite", () => {
         const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
-        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
         const startIdx = 0 + 0 * cols;
         const targetIdx = 2 + 2 * cols;
@@ -99,7 +96,6 @@ describe("AStar Engine Search Suite", () => {
         const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
-        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
         const startIdx = 0 + 0 * cols;
         const targetIdx = 2 + 2 * cols;
@@ -114,13 +110,13 @@ describe("AStar Engine Search Suite", () => {
 
     it("FlatAbstractGraphSearch solves simple flat CSR graph", () => {
         const searchState = new SearchState(3);
-        const nodeCol = new Int16Array([0, 2, 4]);
-        const nodeRow = new Int16Array([0, 0, 0]);
+        const cols = 10;
+        const nodeIdx = new Int32Array([0, 2, 4]);
         const edgeOffsets = new Int32Array([0, 2, 3, 3]);
         const edgeTargets = new Int32Array([1, 2, 2]);
         const edgeCosts = new Float32Array([10, 100, 5]);
 
-        const graph = new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
+        const graph = new FlatGraphView({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
         const search = new FlatAbstractGraphSearch({ graph, searchState });
         const outPath = new Int32Array(10);
         const len = search.run(0, 2, outPath);
@@ -130,12 +126,12 @@ describe("AStar Engine Search Suite", () => {
 
     it("FlatAbstractGraphSearch prefers cheaper multi-hop route over direct edge", () => {
         const searchState = new SearchState(3);
-        const nodeCol = new Int16Array([0, 1, 2]);
-        const nodeRow = new Int16Array([0, 0, 0]);
+        const cols = 10;
+        const nodeIdx = new Int32Array([0, 1, 2]);
         const edgeOffsets = new Int32Array([0, 2, 3, 4]);
         const edgeTargets = new Int32Array([1, 2, 2]);
         const edgeCosts = new Float32Array([1, 10, 1]);
-        const graph = new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
+        const graph = new FlatGraphView({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
         const search = new FlatAbstractGraphSearch({ graph, searchState });
         const outPath = new Int32Array(10);
         const len = search.run(0, 2, outPath);

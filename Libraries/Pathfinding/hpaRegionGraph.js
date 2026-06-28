@@ -1,5 +1,5 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
-import { colRowToIndex, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
+import { colRowToIndex, forEachCardinalNeighbor, forEachCardinalNeighborIdx } from "../Spatial/grid/GridUtils.js";
 import { findNearestOpenCellBlocked } from "./hpaPathRequest.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
@@ -110,12 +110,10 @@ function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     const targetCells = new Set(nodeB.cells);
     for (let i = 0; i < nodeA.cells.length; i++) {
         const idx = nodeA.cells[i];
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
         let linked = false;
-        forEachCardinalNeighbor(col, row, cols, rows, (nc, nr, nIdx) => {
+        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
             if (linked || !targetCells.has(nIdx)) return;
-            if (navGraph.canStep(col, row, nc, nr)) linked = true;
+            if (navGraph.canStepIdx(idx, nIdx)) linked = true;
         });
         if (linked) return true;
     }
@@ -138,11 +136,9 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
     const nodeCells = node.cells;
     for (let i = 0; i < nodeCells.length; i++) {
         const idx = nodeCells[i];
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        forEachCardinalNeighbor(col, row, cols, rows, (nc, nr, nIdx) => {
+        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
             if (blocked[nIdx]) return;
-            if (!navGraph.canStep(col, row, nc, nr) && !navGraph.canStep(nc, nr, col, row)) return;
+            if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) return;
             const other = graph.nodeForCell(nIdx);
             if (other && other.id !== node.id) neighborIds.add(other.id);
         });
@@ -220,15 +216,15 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
         if (col + 1 < cols) {
             const right = graph.nodeForCell(idx + 1);
             if (right && right.id !== node.id) {
-                if (navGraph.canStep(col, row, col + 1, row)) graph.connectEdge(node, right);
-                if (navGraph.canStep(col + 1, row, col, row)) graph.connectEdge(right, node);
+                if (navGraph.canStepIdx(idx, idx + 1)) graph.connectEdge(node, right);
+                if (navGraph.canStepIdx(idx + 1, idx)) graph.connectEdge(right, node);
             }
         }
         if (row + 1 < rows) {
             const down = graph.nodeForCell(idx + cols);
             if (down && down.id !== node.id) {
-                if (navGraph.canStep(col, row, col, row + 1)) graph.connectEdge(node, down);
-                if (navGraph.canStep(col, row + 1, col, row)) graph.connectEdge(down, node);
+                if (navGraph.canStepIdx(idx, idx + cols)) graph.connectEdge(node, down);
+                if (navGraph.canStepIdx(idx + cols, idx)) graph.connectEdge(down, node);
             }
         }
     });
@@ -242,11 +238,9 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;
     bfsIndices([startIdx], (idx, enqueue) => {
-        const c = idx % cols;
-        const r = (idx / cols) | 0;
-        forEachCardinalNeighbor(c, r, cols, rows, (nc, nr, nIdx) => {
+        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
             if (blocked[nIdx] || reachable[nIdx]) return;
-            if (!navGraph.canStep(c, r, nc, nr)) return;
+            if (!navGraph.canStepIdx(idx, nIdx)) return;
             reachable[nIdx] = 1;
             enqueue(nIdx);
         });
@@ -339,13 +333,11 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
         .sort();
     const nodeCount = nodeIds.length;
     const idToIdx = new Map();
-    const nodeCol = new Int16Array(nodeCount);
-    const nodeRow = new Int16Array(nodeCount);
+    const nodeIdx = new Int32Array(nodeCount);
     for (let i = 0; i < nodeCount; i++) {
         idToIdx.set(nodeIds[i], i);
         const node = graph.getNode(nodeIds[i]);
-        nodeCol[i] = node.col;
-        nodeRow[i] = node.row;
+        nodeIdx[i] = node.col + node.row * frame.cols;
         for (let c = 0; c < node.cells.length; c++) cellToRegion[node.cells[c]] = i;
     }
     const edgeSources = [];
@@ -363,8 +355,7 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     }
     return {
         nodeCount,
-        nodeCol,
-        nodeRow,
+        nodeIdx,
         cellToRegion,
         edgeSources: Int16Array.from(edgeSources),
         edgeTargets: Int16Array.from(edgeTargets),
@@ -374,15 +365,18 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
         idToIdx,
     };
 }
-/** @param {Int16Array} cellToRegion @param {Int16Array} nodeCol @param {Int16Array} nodeRow @param {number} nodeCount @param {import("./GridNavSnapshot.js").GridFrame} frame */
-export function unpackRegionGraphToNodes(cellToRegion, nodeCol, nodeRow, nodeCount, frame) {
+/** @param {Int16Array} cellToRegion @param {Int32Array} nodeIdx @param {number} nodeCount @param {import("./GridNavSnapshot.js").GridFrame} frame */
+export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame) {
     const { cols, rows, minX, minY, cellSize } = frame;
     const size = cols * rows;
     const cellToNode = new Array(size).fill(null);
     const nodesMap = {};
     for (let i = 0; i < nodeCount; i++) {
         const id = `node_${i}`;
-        const node = new RegionNode(id, nodeCol[i], nodeRow[i], nodeCol[i], nodeRow[i], minX, minY, cellSize);
+        const idx = nodeIdx[i];
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        const node = new RegionNode(id, col, row, col, row, minX, minY, cellSize);
         node.cells = [];
         nodesMap[id] = node;
     }

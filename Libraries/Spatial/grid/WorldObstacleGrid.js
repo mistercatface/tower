@@ -313,16 +313,16 @@ export class WorldObstacleGrid {
         return gridBounds;
     }
     writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, col, row, side, { kind: "railWall", capHeightLevel, thicknessLevel });
+        setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel });
     }
     stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, col, row, side, { kind: "railWall", capHeightLevel, thicknessLevel }, { bumpRevision: true });
+        setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel }, { bumpRevision: true });
     }
     clearCellEdge(col, row, side) {
-        clearBoundaryPrimary(this, col, row, side, { bumpRevision: true });
+        clearBoundaryPrimary(this, colRowToIndex(col, row, this.cols), side, { bumpRevision: true });
     }
     clearCellEdges(col, row) {
-        clearAllBoundariesAtCell(this, col, row, { bumpRevision: false });
+        clearAllBoundariesAtCell(this, colRowToIndex(col, row, this.cols), { bumpRevision: false });
     }
     setCellSurfaceProfileAtIdx(idx, profileId) {
         this.surfaceMaterials.setCellAtIdx(idx, profileId);
@@ -362,7 +362,7 @@ export class WorldObstacleGrid {
         return this.edgeStore.has(col, row, side, this.cols);
     }
     edgeBlocksStep(col, row, side) {
-        return boundaryBlocksStep(this, col, row, side);
+        return boundaryBlocksStep(this, colRowToIndex(col, row, this.cols), side);
     }
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {
         syncBeltCellToEdges(this, col, row, kind, facingIndex);
@@ -419,9 +419,7 @@ export class WorldObstacleGrid {
         for (let idx = 0; idx < size; idx++) {
             const kind = this.floorStore.kind[idx];
             if (!isFloorBeltRailsKind(kind)) continue;
-            const col = idx % this.cols;
-            const row = (idx / this.cols) | 0;
-            this.clearFloorBeltRailEdges(col, row, kind, this.floorStore.facing[idx]);
+            this.clearFloorBeltRailEdges(idx % this.cols, (idx / this.cols) | 0, kind, this.floorStore.facing[idx]);
         }
         this.floorStore.reset(size);
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
@@ -468,8 +466,20 @@ export class WorldObstacleGrid {
         if (typeof navTopology.canStep === "function") return navTopology.canStep(currCol, currRow, nextCol, nextRow);
         const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
         const vertexPassability = navTopology.vertexPassability;
-        if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, currCol, currRow, nextCol, nextRow);
+        if (cardinalOpen && vertexPassability) {
+            const cols = this.cols;
+            return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, currCol + currRow * cols, nextCol + nextRow * cols);
+        }
         return false;
+    }
+    canStepIdx(fromIdx, toIdx, navTopology = null) {
+        if (!navTopology) return false;
+        if (typeof navTopology.canStepIdx === "function") return navTopology.canStepIdx(fromIdx, toIdx);
+        const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
+        const vertexPassability = navTopology.vertexPassability;
+        if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, fromIdx, toIdx);
+        const cols = this.cols;
+        return this.canStep(fromIdx % cols, (fromIdx / cols) | 0, toIdx % cols, (toIdx / cols) | 0, navTopology);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

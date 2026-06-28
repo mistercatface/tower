@@ -2,7 +2,7 @@ import { gridFrameFromGrid } from "../Pathfinding/GridNavSnapshot.js";
 import { createNavSimView } from "../Pathfinding/navSimView.js";
 import { bakeNavTopologyIntoArena } from "../Pathfinding/bakeNavTopology.js";
 import { createNavTopologySabArena, navTopologyFromArena, packNavTopologyFromGrid } from "../Pathfinding/navTopologySab.js";
-import { navCanStep } from "../Pathfinding/navTopologySab.js";
+import { navCanStep, navCanStepIdx } from "../Pathfinding/navTopologySab.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
 import { isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
@@ -76,6 +76,12 @@ export class NavTopology {
         if (!frame || !topology) return false;
         return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
     }
+    canStepIdx(fromIdx, toIdx) {
+        const frame = this.frame;
+        const topology = this.topology;
+        if (!frame || !topology) return false;
+        return navCanStepIdx(frame, topology, fromIdx, toIdx);
+    }
     /** Same step test as {@link createNavGraphViewFromTopology} `.canStep` — no graph view allocation. */
     graphCanStep(fromCol, fromRow, toCol, toRow) {
         return navTopologyGraphCanStep(this, fromCol, fromRow, toCol, toRow);
@@ -85,7 +91,14 @@ export class NavTopology {
         const cardinalOpen = this.navCardinalOpen;
         const vertexPassability = this.vertexPassability;
         if (!cardinalOpen || !vertexPassability) return false;
-        return !boundaryBlocksStepFrom(this.grid, cardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow);
+        const cols = this.grid.cols;
+        return !boundaryBlocksStepFrom(this.grid, cardinalOpen, vertexPassability, fromCol + fromRow * cols, toCol + toRow * cols);
+    }
+    canStepCardinalIdx(fromIdx, toIdx) {
+        const cardinalOpen = this.navCardinalOpen;
+        const vertexPassability = this.vertexPassability;
+        if (!cardinalOpen || !vertexPassability) return false;
+        return !boundaryBlocksStepFrom(this.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
     }
     /**
      * In-process bake using the same functions as the worker (authoring / map-gen).
@@ -160,7 +173,10 @@ export function invalidateGridLocalNavBake(grid) {
 export function navTopologyGraphCanStep(navTopology, fromCol, fromRow, toCol, toRow) {
     const cardinalOpen = navTopology.navCardinalOpen;
     const vertexPassability = navTopology.vertexPassability;
-    if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromCol, fromRow, toCol, toRow);
+    if (cardinalOpen && vertexPassability) {
+        const cols = navTopology.grid.cols;
+        return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromCol + fromRow * cols, toCol + toRow * cols);
+    }
     const frame = navTopology.frame;
     const topology = navTopology.topology;
     if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);

@@ -1,7 +1,7 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
 import { CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "./cellEdgeSlots.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
-import { edgeNeighbor, edgeMirrorSide, neighborFillLevel } from "./gridCellTopology.js";
+import { neighborFillLevel } from "./gridCellTopology.js";
 import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
 const EMPTY = -1;
 export class CellEdgeStore {
@@ -48,13 +48,19 @@ export class CellEdgeStore {
         }
         this.slots = newSlots;
     }
-    get(col, row, side, cols) {
-        const ref = this.slots[cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)];
+    getIdx(idx, side) {
+        const ref = this.slots[cellEdgeSlotOffset(idx, side)];
         if (ref === EMPTY) return null;
         return this.pool[ref];
     }
+    hasIdx(idx, side) {
+        return this.slots[cellEdgeSlotOffset(idx, side)] !== EMPTY;
+    }
+    get(col, row, side, cols) {
+        return this.getIdx(colRowToIndex(col, row, cols), side);
+    }
     has(col, row, side, cols) {
-        return this.slots[cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)] !== EMPTY;
+        return this.hasIdx(colRowToIndex(col, row, cols), side);
     }
     _alloc(edge) {
         if (this.free.length) {
@@ -89,33 +95,37 @@ export class CellEdgeStore {
     _free(ref) {
         this.free.push(ref);
     }
-    _setSlot(col, row, side, cols, ref) {
-        this.slots[cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)] = ref;
+    _setSlot(idx, side, ref) {
+        this.slots[cellEdgeSlotOffset(idx, side)] = ref;
     }
-    writeMirrored(col, row, side, cols, rows, edge) {
-        if (!cellInRect(col, row, cols, rows)) return;
+    writeMirrored(idx, side, cols, rows, edge) {
+        if (idx < 0 || idx >= cols * rows) return;
         if (!edge) {
-            this.clearMirrored(col, row, side, cols, rows);
+            this.clearMirrored(idx, side, cols, rows);
             return;
         }
-        this.clearMirrored(col, row, side, cols, rows);
+        this.clearMirrored(idx, side, cols, rows);
         const ref = this._alloc(edge);
-        this._setSlot(col, row, side, cols, ref);
-        const { nc, nr } = edgeNeighbor(col, row, side);
-        const nSide = edgeMirrorSide(side);
-        if (cellInRect(nc, nr, cols, rows)) this._setSlot(nc, nr, nSide, cols, ref);
+        this._setSlot(idx, side, ref);
+        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        if (nIdx !== -1) {
+            const nSide = (side + 2) % 4;
+            this._setSlot(nIdx, nSide, ref);
+        }
         if (isForcefieldEdge(edge)) this.passageEdgeCount++;
     }
-    clearMirrored(col, row, side, cols, rows) {
-        if (!cellInRect(col, row, cols, rows)) return;
-        const slot = cellEdgeSlotOffset(colRowToIndex(col, row, cols), side);
+    clearMirrored(idx, side, cols, rows) {
+        if (idx < 0 || idx >= cols * rows) return;
+        const slot = cellEdgeSlotOffset(idx, side);
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
         if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
         this.slots[slot] = EMPTY;
-        const { nc, nr } = edgeNeighbor(col, row, side);
-        const nSide = edgeMirrorSide(side);
-        if (cellInRect(nc, nr, cols, rows)) this.slots[cellEdgeSlotOffset(colRowToIndex(nc, nr, cols), nSide)] = EMPTY;
+        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        if (nIdx !== -1) {
+            const nSide = (side + 2) % 4;
+            this.slots[cellEdgeSlotOffset(nIdx, nSide)] = EMPTY;
+        }
         this._free(ref);
     }
     forEachInAabb(grid, aabb, fn) {
@@ -151,4 +161,13 @@ export class CellEdgeStore {
 }
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
+}
+function edgeNeighborIdx(idx, side, cols, rows) {
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    if (side === 0) return row > 0 ? idx - cols : -1;
+    if (side === 1) return col < cols - 1 ? idx + 1 : -1;
+    if (side === 2) return row < rows - 1 ? idx + cols : -1;
+    if (side === 3) return col > 0 ? idx - 1 : -1;
+    return -1;
 }

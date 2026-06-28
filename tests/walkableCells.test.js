@@ -126,7 +126,7 @@ describe("walkableCells", () => {
             { col: 3, row: 3 },
         ];
         const excludeIndices = new Set([colRowToIndex(2, 2, 8)]);
-        const picked = pickWalkableCell(cells, { cols: 8, excludeIndices.99 });
+        const picked = pickWalkableCell(cells, { cols: 8, excludeIndices, rng: () => 0.9 });
         assert.equal(picked.col, 3);
         assert.equal(picked.row, 3);
     });

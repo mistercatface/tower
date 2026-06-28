@@ -115,8 +115,9 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
             const targetIdx = worker.pathIdx(slot, pathLen - 1);
             abstractPath.push({ x: grid.gridCenterXByIdx(targetIdx), y: grid.gridCenterYByIdx(targetIdx), id: "target" });
         } else {
-            const col = worker.graphNodeCol(idx);
-            const row = worker.graphNodeRow(idx);
+            const nodeIdx = worker.graphNodeIdx(idx);
+            const col = nodeIdx % grid.cols;
+            const row = (nodeIdx / grid.cols) | 0;
             abstractPath.push({ x: grid.gridCenterX(col), y: grid.gridCenterY(row), id: nodeIds[idx] });
         }
     }

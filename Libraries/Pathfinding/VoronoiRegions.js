@@ -1,5 +1,5 @@
 import { bfsColRowQueue, bfsIndices } from "../DataStructures/gridBfs.js";
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS, makeAdjacencyKey, forEachCardinalNeighbor } from "../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS, makeAdjacencyKey, forEachCardinalNeighbor, forEachCardinalNeighborIdx } from "../Spatial/grid/GridUtils.js";
 export class RegionNode {
     constructor(id, col, row, sectorCol, sectorRow, minX, minY, cellSize) {
         this.id = id;
@@ -53,24 +53,17 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
     cellCount++;
     bfsIndices([startIdx], (currIdx, enqueue) => {
         if (cellCount >= maxCellsPerChunk) return;
-        const c = currIdx % cols;
-        const r = (currIdx / cols) | 0;
-        for (const { dc, dr } of CARDINAL_OFFSETS) {
-            const nc = c + dc;
-            const nr = r + dr;
-            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                if (navGraph && (!navGraph.canStep(c, r, nc, nr) || !navGraph.canStep(nc, nr, c, r))) continue;
-                const nIdx = nr * cols + nc;
-                if (grid[nIdx] === 0 && cellToNode[nIdx] === null && (!unassigned || unassigned.has(nIdx))) {
-                    if (unassigned) unassigned.delete(nIdx);
-                    cellToNode[nIdx] = node;
-                    nodeCells.push(nIdx);
-                    enqueue(nIdx);
-                    cellCount++;
-                    if (cellCount >= maxCellsPerChunk) return;
-                }
+        forEachCardinalNeighborIdx(currIdx, cols, rows, (nIdx) => {
+            if (navGraph && (!navGraph.canStepIdx(currIdx, nIdx) || !navGraph.canStepIdx(nIdx, currIdx))) return;
+            if (grid[nIdx] === 0 && cellToNode[nIdx] === null && (!unassigned || unassigned.has(nIdx))) {
+                if (unassigned) unassigned.delete(nIdx);
+                cellToNode[nIdx] = node;
+                nodeCells.push(nIdx);
+                enqueue(nIdx);
+                cellCount++;
+                if (cellCount >= maxCellsPerChunk) return;
             }
-        }
+        });
     });
 }
 export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk, navGraph = null) {
@@ -86,12 +79,10 @@ export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk,
             let neighborNode = null;
             for (let i = 0; i < nodeCells.length; i++) {
                 const cellIdx = nodeCells[i];
-                const col = cellIdx % cols;
-                const row = (cellIdx / cols) | 0;
-                forEachCardinalNeighbor(col, row, cols, rows, (nc, nr, nIdx) => {
+                forEachCardinalNeighborIdx(cellIdx, cols, rows, (nIdx) => {
                     if (neighborNode) return;
                     const nNode = cellToNode[nIdx];
-                    if (nNode && nNode.id !== id) if (!navGraph || (navGraph.canStep(col, row, nc, nr) && navGraph.canStep(nc, nr, col, row))) neighborNode = nNode;
+                    if (nNode && nNode.id !== id) if (!navGraph || (navGraph.canStepIdx(cellIdx, nIdx) && navGraph.canStepIdx(nIdx, cellIdx))) neighborNode = nNode;
                 });
                 if (neighborNode) break;
             }
@@ -169,11 +160,12 @@ export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, 
             if (!nodeA) continue;
             if (c + 1 <= endCol) {
                 const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r) || navGraph.canStep(c + 1, r, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
             if (r + 1 <= endRow) {
                 const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1) || navGraph.canStep(c, r + 1, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
+                    adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
         }
     return adjacencies;
@@ -211,11 +203,12 @@ export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) 
             if (!nodeA) continue;
             if (c + 1 < cols) {
                 const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c + 1, r) || navGraph.canStep(c + 1, r, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
             if (r + 1 < rows) {
                 const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStep(c, r, c, r + 1) || navGraph.canStep(c, r + 1, c, r))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
+                    adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
             }
         }
     return adjacencies;

@@ -1,5 +1,6 @@
 import { cellBoundsAt, unionCellBounds } from "../../DataStructures/CellRect.js";
 import { setBoundary, reconcileBeltBoundaries, clearBeltBoundariesForCell } from "./boundaryOccupancy.js";
+import { colRowToIndex } from "./GridUtils.js";
 /** @typedef {import("./boundaryOccupancy.js").BoundaryPrimarySpec} NavEdgeSpec */
 /**
  * Sync derived beltRail edges for one floor cell — sole belt→edge authoring path.
@@ -7,11 +8,11 @@ import { setBoundary, reconcileBeltBoundaries, clearBeltBoundariesForCell } from
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  */
 export function syncBeltCellToEdges(grid, col, row, kind, facingIndex) {
-    return reconcileBeltBoundaries(grid, col, row, kind, facingIndex);
+    return reconcileBeltBoundaries(grid, colRowToIndex(col, row, grid.cols), kind, facingIndex);
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function clearBeltCellEdges(grid, col, row, kind, facingIndex) {
-    clearBeltBoundariesForCell(grid, col, row, kind, facingIndex);
+    clearBeltBoundariesForCell(grid, colRowToIndex(col, row, grid.cols), kind, facingIndex);
 }
 /**
  * Write one nav edge (railWall, passage). Returns merged dirty bounds when changed.
@@ -23,7 +24,7 @@ export function clearBeltCellEdges(grid, col, row, kind, facingIndex) {
  */
 export function setNavEdge(grid, col, row, side, spec, { bumpRevision = true } = {}) {
     const bounds = cellBoundsAt(col, row);
-    if (!setBoundary(grid, col, row, side, spec, { bumpRevision })) return { changed: false, bounds: null };
+    if (!setBoundary(grid, colRowToIndex(col, row, grid.cols), side, spec, { bumpRevision })) return { changed: false, bounds: null };
     return { changed: true, bounds };
 }
 /**

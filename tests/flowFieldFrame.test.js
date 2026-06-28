@@ -66,7 +66,8 @@ describe("flow field centered grid frame", () => {
     it("checks reachability through a neighbor layout instead of hardcoded stride", () => {
         const neighborGrid = new Int32Array(OCTILE_NEIGHBOR_GRID_LAYOUT.bufferByteLength(2) / 4).fill(-1);
         neighborGrid[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(0, 1)] = 1;
-        const grid = new FlatGridView(2, 1, { neighbors: neighborGrid, neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT });
+        const grid = new FlatGridView(2, 1, { neighborLayout: OCTILE_NEIGHBOR_GRID_LAYOUT });
+        grid.neighbors = neighborGrid;
 
         assert.equal(gridReachabilityBfs(grid, 0, 1, () => false), true);
     });

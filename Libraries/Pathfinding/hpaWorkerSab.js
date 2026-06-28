@@ -26,8 +26,7 @@ export function createHpaWorkerSabPools({ maxSlots, maxPathLen, maxAbstractLen, 
         sabPathMetaPool: new SharedArrayBuffer(maxSlots * HPA_PATH_META_STRIDE_BYTES),
         sabPathIdxPool: new SharedArrayBuffer(maxSlots * maxPathLen * 4),
         sabAbstractIdxPool: new SharedArrayBuffer(maxSlots * maxAbstractLen * 2),
-        sabPersistGraphNodeCol: new SharedArrayBuffer(maxGraphNodes * 2),
-        sabPersistGraphNodeRow: new SharedArrayBuffer(maxGraphNodes * 2),
+        sabPersistGraphNodeIdx: new SharedArrayBuffer(maxGraphNodes * 4),
         sabPersistGraphEdgeOffsets: new SharedArrayBuffer((maxGraphNodes + 1) * 4),
         sabPersistGraphEdgeTargets: new SharedArrayBuffer(maxGraphEdges * 2),
         sabPersistGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2),
@@ -48,6 +47,7 @@ export class PersistedHpaGraphWriter {
         this.edgeWrite = 0;
         /** @type {string[]} */
         this.nodeIds = [];
+        this.cols = 0;
     }
     get maxGraphNodes() {
         return this.buffers.maxGraphNodes;
@@ -55,11 +55,8 @@ export class PersistedHpaGraphWriter {
     get maxGraphEdges() {
         return this.buffers.maxGraphEdges;
     }
-    nodeColView(length = this.maxGraphNodes) {
-        return new Int16Array(this.buffers.sabPersistGraphNodeCol, 0, length);
-    }
-    nodeRowView(length = this.maxGraphNodes) {
-        return new Int16Array(this.buffers.sabPersistGraphNodeRow, 0, length);
+    nodeIdxView(length = this.maxGraphNodes) {
+        return new Int32Array(this.buffers.sabPersistGraphNodeIdx, 0, length);
     }
     edgeOffsetsView(length = this.maxGraphNodes) {
         return new Int32Array(this.buffers.sabPersistGraphEdgeOffsets, 0, length + 1);
@@ -78,8 +75,8 @@ export class PersistedHpaGraphWriter {
     }
     writePackedRegionGraph(packed, frame) {
         this.assertCapacity(packed, frame);
-        this.nodeColView().set(packed.nodeCol);
-        this.nodeRowView().set(packed.nodeRow);
+        this.cols = frame.cols;
+        this.nodeIdxView().set(packed.nodeIdx);
         this.edgeSourcesView().set(packed.edgeSources);
         this.edgeTargetsView().set(packed.edgeTargets);
         this.edgeCostsView().set(packed.edgeCosts);
@@ -114,8 +111,8 @@ export class PersistedHpaGraphWriter {
     }
     flatGraphView() {
         return new FlatGraphView({
-            nodeCol: this.nodeColView(this.nodeCount),
-            nodeRow: this.nodeRowView(this.nodeCount),
+            nodeIdx: this.nodeIdxView(this.nodeCount),
+            cols: this.cols,
             edgeOffsets: this.edgeOffsetsView(this.nodeCount),
             edgeTargets: this.edgeTargetsView(this.edgeWrite),
             edgeCosts: this.edgeCostsView(this.edgeWrite),

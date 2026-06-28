@@ -1,20 +1,7 @@
 import { FlatGraphView } from "./AStar.js";
 export class HpaAbstractGraph extends FlatGraphView {
-    constructor(nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
-        super({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
-    }
-    nearestNodeIdx(col, row) {
-        // Obsolete, left for compatibility but no longer used in hot loops
-        let best = -1;
-        let bestD = Infinity;
-        for (let i = 0; i < this.nodeCount; i++) {
-            const d = Math.hypot(col - this.nodeCol[i], row - this.nodeRow[i]);
-            if (d < bestD) {
-                bestD = d;
-                best = i;
-            }
-        }
-        return best;
+    constructor(nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
+        super({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
     }
     collectTempConnectCandidates(gridCol, gridRow, isStart, maxCellsPerChunk, anchorRegionIdx) {
         const searchRadius = Math.ceil(Math.sqrt(maxCellsPerChunk)) * 2;
@@ -44,7 +31,10 @@ export class HpaAbstractGraph extends FlatGraphView {
             return out;
         }
         for (let i = 0; i < this.nodeCount; i++) {
-            const d = Math.hypot(gridCol - this.nodeCol[i], gridRow - this.nodeRow[i]);
+            const idx = this.nodeIdx[i];
+            const nc = idx % this.cols;
+            const nr = (idx / this.cols) | 0;
+            const d = Math.hypot(gridCol - nc, gridRow - nr);
             if (d <= searchRadius) add(i);
         }
         return out;
@@ -59,20 +49,16 @@ export class HpaAbstractGraph extends FlatGraphView {
         const startTemp = this.nodeCount;
         const targetTemp = this.nodeCount + 1;
         const extCount = this.nodeCount + 2;
-        const extNodeCol = new Int16Array(extCount);
-        const extNodeRow = new Int16Array(extCount);
-        extNodeCol.set(this.nodeCol);
-        extNodeRow.set(this.nodeRow);
-        extNodeCol[startTemp] = sc;
-        extNodeRow[startTemp] = sr;
-        extNodeCol[targetTemp] = tc;
-        extNodeRow[targetTemp] = tr;
+        const extNodeIdx = new Int32Array(extCount);
+        extNodeIdx.set(this.nodeIdx);
+        extNodeIdx[startTemp] = startIdx;
+        extNodeIdx[targetTemp] = targetIdx;
         const targetConnectCost = new Int32Array(this.nodeCount);
         let currentOffset = 0;
         for (let i = 0; i < targetCandidates.length; i++) {
             const cIdx = targetCandidates[i];
             const legKey = (cIdx << 16) | targetTemp;
-            const cNodeIdx = extNodeCol[cIdx] + extNodeRow[cIdx] * cols;
+            const cNodeIdx = extNodeIdx[cIdx];
             const cost = resolveLegCost(cNodeIdx, targetIdx, legKey, currentOffset);
             if (cost > 0) {
                 targetConnectCost[cIdx] = cost;
@@ -85,7 +71,7 @@ export class HpaAbstractGraph extends FlatGraphView {
         for (let i = 0; i < startCandidates.length; i++) {
             const cIdx = startCandidates[i];
             const legKey = (startTemp << 16) | cIdx;
-            const cNodeIdx = extNodeCol[cIdx] + extNodeRow[cIdx] * cols;
+            const cNodeIdx = extNodeIdx[cIdx];
             const cost = resolveLegCost(startIdx, cNodeIdx, legKey, currentOffset);
             if (cost > 0) {
                 startEdgesTarget[startEdgesCount] = cIdx;
@@ -127,7 +113,7 @@ export class HpaAbstractGraph extends FlatGraphView {
             extEdgeCosts[startWrite] = startEdgesCost[i];
             startWrite++;
         }
-        const extendedGraph = new HpaAbstractGraph(extNodeCol, extNodeRow, extEdgeOffsets, extEdgeTargets, extEdgeCosts, extCount, totalEdges, this.nodeIds);
+        const extendedGraph = new HpaAbstractGraph(extNodeIdx, cols, extEdgeOffsets, extEdgeTargets, extEdgeCosts, extCount, totalEdges, this.nodeIds);
         return { extendedGraph, startTemp, targetTemp };
     }
 }

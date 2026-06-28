@@ -180,8 +180,9 @@ export function applyPassagePowerGridState(state) {
     for (const ref of graph.edgeByKey.values()) {
         const { col, row, side, key } = ref;
         const powered = poweredKeys.has(key);
-        if (isPassagePowered(grid, col, row, side) === powered) continue;
-        setPassagePowered(grid, col, row, side, powered);
+        const idx = colRowToIndex(col, row, grid.cols);
+        if (isPassagePowered(grid, idx, side) === powered) continue;
+        setPassagePowered(grid, idx, side, powered);
         growCellBounds(bounds, col, row);
         const { nc, nr } = edgeNeighbor(col, row, side);
         if (cellInRect(nc, nr, grid.cols, grid.rows)) growCellBounds(bounds, nc, nr);

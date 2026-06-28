@@ -3,14 +3,11 @@ import { isForcefieldEdge, isPassageLaserEdge, passageEdgeBlocksStep } from "./C
  * @typedef {object} PassageStepContext
  * @property {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @property {object} edge
- * @property {number} ownerCol
- * @property {number} ownerRow
+ * @property {number} ownerIdx
  * @property {number} ownerSide
  * @property {number} crossedSide
- * @property {number} fromCol
- * @property {number} fromRow
- * @property {number} toCol
- * @property {number} toRow
+ * @property {number} fromIdx
+ * @property {number} toIdx
  * @property {boolean} directional
  */
 /** @typedef {(ctx: PassageStepContext) => boolean} PassageStepHandler */

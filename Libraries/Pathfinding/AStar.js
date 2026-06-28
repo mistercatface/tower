@@ -1,5 +1,5 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS, octileDistance } from "../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS, manhattanDistanceIdx, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 import { FlatGridView } from "./FlatGridView.js";
 const STALE_F_EPSILON = 1e-4;
 function manhattanDistance(c0, r0, c1, r1) {
@@ -27,27 +27,20 @@ export class FlatGridSearch {
     constructor(searchState, stepPenaltyLookup = null) {
         this.searchState = searchState;
         this.stepPenaltyLookup = stepPenaltyLookup;
-        this.grid = null;
+        this._grid = null;
+        this.cols = 0;
         this.neighbors = null;
-        this.gridIdx = null;
         this.cellCount = 0;
-        this._lastSize = 0;
         this._cardinalOffsets = null;
         this._octileOffsets = null;
         this._lastCols = 0;
     }
-    rebuildCoordinateTables(cols, rows) {
-        const size = cols * rows;
-        this.cellCount = size;
-        if (this._lastSize !== size) {
-            this._lastSize = size;
-            this.gridIdx = new Int16Array(size * 2);
-            for (let i = 0; i < size; i++) {
-                const base = i * 2;
-                this.gridIdx[base] = i % cols;
-                this.gridIdx[base + 1] = (i / cols) | 0;
-            }
-        }
+    get grid() {
+        return this._grid;
+    }
+    set grid(g) {
+        this._grid = g;
+        if (g) this.cols = g.cols;
     }
     getOffsets(policyOffsets, cols) {
         if (this._lastCols !== cols) {
@@ -58,20 +51,10 @@ export class FlatGridSearch {
         return policyOffsets === CARDINAL_OFFSETS ? this._cardinalOffsets : this._octileOffsets;
     }
     manhattanDistance(idx0, idx1) {
-        const base0 = idx0 * 2;
-        const base1 = idx1 * 2;
-        const dx = Math.abs(this.gridIdx[base0] - this.gridIdx[base1]);
-        const dy = Math.abs(this.gridIdx[base0 + 1] - this.gridIdx[base1 + 1]);
-        return dx + dy;
+        return manhattanDistanceIdx(idx0, idx1, this.cols);
     }
     octileDistance(idx0, idx1) {
-        const base0 = idx0 * 2;
-        const base1 = idx1 * 2;
-        const dx = Math.abs(this.gridIdx[base0] - this.gridIdx[base1]);
-        const dy = Math.abs(this.gridIdx[base0 + 1] - this.gridIdx[base1 + 1]);
-        const min = Math.min(dx, dy);
-        const max = Math.max(dx, dy);
-        return min * 1.41421356 + (max - min);
+        return octileDistanceIdx(idx0, idx1, this.cols);
     }
     cardinal(startIdx, targetIdx, maxPathLen, outPath) {
         return this.runGrid(startIdx, targetIdx, maxPathLen, 4, (i0, i1) => this.manhattanDistance(i0, i1), "astar", "astar", false, outPath);
@@ -160,9 +143,9 @@ export class FlatGridSearch {
 const CARDINAL_COSTS = new Float32Array([1, 1, 1, 1]);
 const OCTILE_COSTS = new Float32Array([1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2]);
 export class FlatGraphView {
-    constructor({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite = edgeTargets?.length ?? 0, nodeIds = null }) {
-        this.nodeCol = nodeCol;
-        this.nodeRow = nodeRow;
+    constructor({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite = edgeTargets?.length ?? 0, nodeIds = null }) {
+        this.nodeIdx = nodeIdx;
+        this.cols = cols;
         this.edgeOffsets = edgeOffsets;
         this.edgeTargets = edgeTargets;
         this.edgeCosts = edgeCosts;
@@ -172,8 +155,8 @@ export class FlatGraphView {
     }
 }
 export class FlatAbstractGraphSearch {
-    constructor({ graph = null, nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds, searchState }) {
-        this.graph = graph ?? new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
+    constructor({ graph = null, nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds, searchState }) {
+        this.graph = graph ?? new FlatGraphView({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
         this.searchState = searchState;
     }
     run(startIdx, targetIdx, outPath) {
@@ -182,18 +165,17 @@ export class FlatAbstractGraphSearch {
             outPath[0] = startIdx;
             return 1;
         }
-        const targetCol = graph.nodeCol[targetIdx];
-        const targetRow = graph.nodeRow[targetIdx];
+        const targetNodeIdx = graph.nodeIdx[targetIdx];
         globalOpenSet.reset();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        globalOpenSet.push(startIdx, octileDistance(graph.nodeCol[startIdx], graph.nodeRow[startIdx], targetCol, targetRow));
+        globalOpenSet.push(startIdx, octileDistanceIdx(graph.nodeIdx[startIdx], targetNodeIdx, graph.cols));
         while (globalOpenSet.size > 0) {
             const currentIdx = globalOpenSet.pop();
             const currentG = gScore[currentIdx];
-            const bestF = currentG + octileDistance(graph.nodeCol[currentIdx], graph.nodeRow[currentIdx], targetCol, targetRow);
+            const bestF = currentG + octileDistanceIdx(graph.nodeIdx[currentIdx], targetNodeIdx, graph.cols);
             if (globalOpenSet.lastPopPriority > bestF + STALE_F_EPSILON) continue;
             if (currentIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currentIdx, outPath);
             const edgeStart = graph.edgeOffsets[currentIdx];
@@ -205,7 +187,7 @@ export class FlatAbstractGraphSearch {
                 visited[neighborIdx] = runId;
                 cameFrom[neighborIdx] = currentIdx;
                 gScore[neighborIdx] = tentativeG;
-                globalOpenSet.push(neighborIdx, tentativeG + octileDistance(graph.nodeCol[neighborIdx], graph.nodeRow[neighborIdx], targetCol, targetRow));
+                globalOpenSet.push(neighborIdx, tentativeG + octileDistanceIdx(graph.nodeIdx[neighborIdx], targetNodeIdx, graph.cols));
             }
         }
         return 0;

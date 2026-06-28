@@ -101,7 +101,7 @@ function uniqueEgressHoles(holes) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} side */
 function stampLockedRoomForcefieldQuiet(grid, col, row, side) {
-    setBoundary(grid, col, row, side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: side, powered: false });
+    setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: side, powered: false });
 }
 /** @param {object} state @param {{ roomNodeById: Map<number, import("./roomGraphStore.js").RoomNode> }} layout @param {LockedLinkBakeInput[]} lockedLinkBakes */
 export function syncLockedRoomBakes(state, layout, lockedLinkBakes) {
@@ -132,7 +132,7 @@ export function syncLockedRoomBakes(state, layout, lockedLinkBakes) {
         if (!egresses.length) continue;
         const center = roomNodeCenterCell(node);
         const x = grid.gridCenterX(center.col);
-    const y = grid.gridCenterY(center.row);
+        const y = grid.gridCenterY(center.row);
         const button = new WorldProp(x, y, "button_floor", 0);
         button.inputMode = "massHold";
         button.invert = true;

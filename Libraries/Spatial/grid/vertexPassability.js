@@ -32,8 +32,10 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
                 const toRow = vy + spec.toRow;
                 const ownerCol = vx + spec.ownerCol;
                 const ownerRow = vy + spec.ownerRow;
-                if (!cellInRect(fromCol, fromRow, cols, rows) || !cellInRect(toCol, toRow, cols, rows)) continue;
-                if (!boundaryDirectedCrossingBlocked(grid, fromCol, fromRow, toCol, toRow, ownerCol, ownerRow, spec.ownerSide)) mask |= spec.bit;
+                const fromIdx = colRowToIndex(fromCol, fromRow, cols);
+                const toIdx = colRowToIndex(toCol, toRow, cols);
+                const ownerIdx = colRowToIndex(ownerCol, ownerRow, cols);
+                if (!boundaryDirectedCrossingBlocked(grid, fromIdx, toIdx, ownerIdx, spec.ownerSide)) mask |= spec.bit;
             }
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
@@ -67,7 +69,7 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
                 const nc = col + dc;
                 const nr = row + dr;
                 if (!cellInRect(nc, nr, cols, rows)) continue;
-                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, col, row, nc, nr)) mask |= bit;
+                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, colRowToIndex(nc, nr, cols))) mask |= bit;
             }
             cardinalOpen[idx] = mask;
         }
@@ -93,7 +95,9 @@ function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
         cardinalLegOpen(cardinalOpen, cols, shoulderVCol, shoulderVRow, dc, 0)
     );
 }
-export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, col, row, dc, dr) {
+export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, fromIdx, dc, dr) {
+    const col = fromIdx % cols;
+    const row = (fromIdx / cols) | 0;
     if (!diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr)) return false;
     const cvx = dc > 0 ? col + dc : col;
     const cvy = dr > 0 ? row + dr : row;

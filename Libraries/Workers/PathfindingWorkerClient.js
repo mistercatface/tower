@@ -9,7 +9,7 @@ export class PathfindingWorkerClient {
         this.slotCount = slotCount;
         this.name = name;
         this.onMessage = onMessage;
-        this.onError = onError || ((err) => console.error(`${name} error:`, err.message));
+        this.onError = onError || ((err) => console.error(`${name} error:`, err.message, err.error?.stack || err.stack || err));
         this.host = createSabSlotWorkerHost(workerUrl, slotCount);
         this.bindWorkerHandlers();
     }

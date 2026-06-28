@@ -77,8 +77,7 @@ export class HpaPathWorker {
             sabPathMetaPool: this.sabPathMetaPool,
             sabPathIdxPool: this.sabPathIdxPool,
             sabAbstractIdxPool: this.sabAbstractIdxPool,
-            sabPersistGraphNodeCol: this.sabPersistGraphNodeCol,
-            sabPersistGraphNodeRow: this.sabPersistGraphNodeRow,
+            sabPersistGraphNodeIdx: this.sabPersistGraphNodeIdx,
             sabPersistGraphEdgeOffsets: this.sabPersistGraphEdgeOffsets,
             sabPersistGraphEdgeTargets: this.sabPersistGraphEdgeTargets,
             sabPersistGraphEdgeCosts: this.sabPersistGraphEdgeCosts,
@@ -173,8 +172,7 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         if (!this.isRegionGraphReady(grid)) return null;
         const nodeCount = this.graphNodeCount;
-        const nodeCol = new Int16Array(this.sabPersistGraphNodeCol, 0, nodeCount);
-        const nodeRow = new Int16Array(this.sabPersistGraphNodeRow, 0, nodeCount);
+        const nodeIdx = new Int32Array(this.sabPersistGraphNodeIdx, 0, nodeCount);
         const edgeOffsets = new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
         const edgeWrite = nodeCount > 0 ? edgeOffsets[nodeCount] : 0;
         const edgeTargets = new Int16Array(this.sabPersistGraphEdgeTargets, 0, edgeWrite);
@@ -197,8 +195,7 @@ export class HpaPathWorker {
             regionCanStep,
             cellToRegion,
             nodeCount,
-            nodeCol,
-            nodeRow,
+            nodeIdx,
             nodeIds: this.graphNodeIds,
             edges,
             gridToWorld(col, row) {
@@ -233,11 +230,8 @@ export class HpaPathWorker {
     abstractPathIdx(slot, i) {
         return this._abstractIdx(slot)[i];
     }
-    graphNodeCol(idx) {
-        return new Int16Array(this.sabPersistGraphNodeCol, 0, this.graphNodeCount)[idx];
-    }
-    graphNodeRow(idx) {
-        return new Int16Array(this.sabPersistGraphNodeRow, 0, this.graphNodeCount)[idx];
+    graphNodeIdx(idx) {
+        return new Int32Array(this.sabPersistGraphNodeIdx, 0, this.graphNodeCount)[idx];
     }
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);

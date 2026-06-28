@@ -132,3 +132,23 @@ export function octileDistance(col, row, targetCol, targetRow) {
     if (dx < dy) return dx * Math.SQRT2 + (dy - dx);
     return dy * Math.SQRT2 + (dx - dy);
 }
+export function manhattanDistanceIdx(idxA, idxB, cols) {
+    const dx = Math.abs((idxA % cols) - (idxB % cols));
+    const dy = Math.abs(((idxA / cols) | 0) - ((idxB / cols) | 0));
+    return dx + dy;
+}
+export function octileDistanceIdx(idxA, idxB, cols) {
+    const dx = Math.abs((idxA % cols) - (idxB % cols));
+    const dy = Math.abs(((idxA / cols) | 0) - ((idxB / cols) | 0));
+    const min = Math.min(dx, dy);
+    const max = Math.max(dx, dy);
+    return min * 1.41421356 + (max - min);
+}
+export function forEachCardinalNeighborIdx(idx, cols, rows, fn) {
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    if (row > 0) fn(idx - cols); // North
+    if (col < cols - 1) fn(idx + 1); // East
+    if (row < rows - 1) fn(idx + cols); // South
+    if (col > 0) fn(idx - 1); // West
+}

@@ -39,8 +39,7 @@ describe("HpaRegionGraph", () => {
         const writer = new PersistedHpaGraphWriter(buffers);
         const packed = {
             nodeCount: 3,
-            nodeCol: new Int16Array([0, 1, 2]),
-            nodeRow: new Int16Array([0, 0, 0]),
+            nodeIdx: new Int32Array([0, 1, 2]),
             cellToRegion: new Int16Array([0, 1, 2, -1, -1, -1]),
             edgeSources: new Int16Array([0, 0, 1]),
             edgeTargets: new Int16Array([1, 2, 2]),
@@ -52,8 +51,7 @@ describe("HpaRegionGraph", () => {
         const meta = writer.writePackedRegionGraph(packed, frame);
 
         assert.deepEqual(meta, { nodeCount: 3, edgeWrite: 3, nodeIds: packed.nodeIds });
-        assert.deepEqual(Array.from(writer.nodeColView(3)), [0, 1, 2]);
-        assert.deepEqual(Array.from(writer.nodeRowView(3)), [0, 0, 0]);
+        assert.deepEqual(Array.from(writer.nodeIdxView(3)), [0, 1, 2]);
         assert.deepEqual(Array.from(writer.edgeSourcesView(3)), [0, 0, 1]);
         assert.deepEqual(Array.from(writer.edgeTargetsView(3)), [1, 2, 2]);
         assert.deepEqual(Array.from(writer.edgeCostsView(3)), [5, 9, 7]);
@@ -69,7 +67,7 @@ describe("HpaRegionGraph", () => {
     it("packs flat graph from HpaRegionGraph wrapper", () => {
         const blocked = new Uint8Array(frame.cols * frame.rows);
         blocked[1] = 1;
-        const navGraph = { canStep: () => true };
+        const navGraph = { canStep: () => true, canStepIdx: () => true };
         const built = buildFullRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
 
         assert.ok(built.graph instanceof HpaRegionGraph);

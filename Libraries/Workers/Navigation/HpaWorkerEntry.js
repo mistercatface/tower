@@ -23,8 +23,7 @@ export class HpaBufferManager {
         this.sabPathMetaPool = null;
         this.sabPathIdxPool = null;
         this.sabAbstractIdxPool = null;
-        this.sabPersistGraphNodeCol = null;
-        this.sabPersistGraphNodeRow = null;
+        this.sabPersistGraphNodeIdx = null;
         this.sabPersistGraphEdgeOffsets = null;
         this.sabPersistGraphEdgeTargets = null;
         this.sabPersistGraphEdgeCosts = null;
@@ -42,8 +41,7 @@ export class HpaBufferManager {
         this.sabPathMetaPool = data.sabPathMetaPool;
         this.sabPathIdxPool = data.sabPathIdxPool;
         this.sabAbstractIdxPool = data.sabAbstractIdxPool;
-        this.sabPersistGraphNodeCol = data.sabPersistGraphNodeCol;
-        this.sabPersistGraphNodeRow = data.sabPersistGraphNodeRow;
+        this.sabPersistGraphNodeIdx = data.sabPersistGraphNodeIdx;
         this.sabPersistGraphEdgeOffsets = data.sabPersistGraphEdgeOffsets;
         this.sabPersistGraphEdgeTargets = data.sabPersistGraphEdgeTargets;
         this.sabPersistGraphEdgeCosts = data.sabPersistGraphEdgeCosts;
@@ -178,7 +176,7 @@ export class HpaRegionGraphManager {
     }
     abstractGraph() {
         const graph = this.persistedGraph.flatGraphView();
-        return new HpaAbstractGraph(graph.nodeCol, graph.nodeRow, graph.edgeOffsets, graph.edgeTargets, graph.edgeCosts, graph.nodeCount, graph.edgeWrite, graph.nodeIds);
+        return new HpaAbstractGraph(graph.nodeIdx, graph.cols, graph.edgeOffsets, graph.edgeTargets, graph.edgeCosts, graph.nodeCount, graph.edgeWrite, graph.nodeIds);
     }
     buildRegionGraphFull(gridFrame, topology, navView, data) {
         const frame = gridFrame;
@@ -228,7 +226,7 @@ export class HpaReplanPlanner {
         const cols = context.frame.cols;
         const rows = context.frame.rows;
         this.gridSearch.neighbors = context.topology.octileNeighbors;
-        this.gridSearch.rebuildCoordinateTables(cols, rows);
+        this.gridSearch.cols = cols;
         this.gridSearch.stepPenaltyLookup = context.penaltyLookup;
         const prep = prepareHpaReplanPrep(cols, context.cellToRegion, context.graph, startIdx, targetIdx);
         if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, startIdx, targetIdx, cols);
@@ -277,8 +275,8 @@ export class HpaReplanPlanner {
     }
     resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-        const startIdx = baseGraph.nodeCol[aIdx] + baseGraph.nodeRow[aIdx] * cols;
-        const targetIdx = baseGraph.nodeCol[bIdx] + baseGraph.nodeRow[bIdx] * cols;
+        const startIdx = baseGraph.nodeIdx[aIdx];
+        const targetIdx = baseGraph.nodeIdx[bIdx];
         const len = gridSearch.local(startIdx, targetIdx, prep.regionConnectMaxLen, this.localPathScratch);
         return len;
     }

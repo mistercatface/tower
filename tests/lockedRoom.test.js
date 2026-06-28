@@ -72,7 +72,7 @@ describe("passage power inverted hold suppress", () => {
         const node = { col: 8, row: 8, width: 8, height: 8, id: 0 };
         const hole = { c: 8, r: 12, side: 3 };
         const layout = resolveLockedRoomEgressLayout(node, hole);
-        setBoundary(grid, layout.forcefield.col, layout.forcefield.row, layout.forcefield.side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: layout.forcefield.side, powered: false });
+        setBoundary(grid, colRowToIndex(layout.forcefield.col, layout.forcefield.row, grid.cols), layout.forcefield.side, { kind: "passage", mode: PASSAGE_MODE.Solid, allowedSide: layout.forcefield.side, powered: false });
         grid.floorStore.setPassagePowerSourceAtIdx(colRowToIndex(layout.power.col, layout.power.row, grid.cols), true);
         grid.edgeStore.recomputePassageEdgeCount();
         await state.nav.syncTopology({ startCol: 7, endCol: 9, startRow: 11, endRow: 13 }, grid);

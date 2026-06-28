@@ -16,10 +16,13 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
         passageEdgeCount,
         slots: edgeSlots,
         pool: edgePool,
-        get(col, row, side, c) {
-            const ref = edgeSlots[cellEdgeSlotOffset(colRowToIndex(col, row, c), side)];
+        getIdx(idx, side) {
+            const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
             if (ref < 0) return null;
             return edgeStore.pool[ref];
+        },
+        get(col, row, side, c) {
+            return edgeStore.getIdx(colRowToIndex(col, row, c), side);
         },
     };
     const simView = {
