@@ -9,10 +9,8 @@ describe("HPA Path Stitching Suite", () => {
             nodeCount: 2,
             nodeCol: [10, 20],
             nodeRow: [10, 20],
-            startCol: 5,
-            startRow: 5,
-            targetCol: 25,
-            targetRow: 25,
+            startIdx: 5 + 5 * cols,
+            targetIdx: 25 + 25 * cols,
         };
 
         const tempLegsBuffer = new Int32Array(100);
@@ -73,10 +71,8 @@ describe("HPA Path Stitching Suite", () => {
             nodeCount: 1,
             nodeCol: [10],
             nodeRow: [10],
-            startCol: 1,
-            startRow: 1,
-            targetCol: 20,
-            targetRow: 20,
+            startIdx: 1 + 1 * cols,
+            targetIdx: 20 + 20 * cols,
         };
 
         const tempLegsBuffer = new Int32Array(100);

@@ -55,10 +55,13 @@ export class HpaPathStitcher {
     }
     endpointCells(aIdx, bIdx) {
         const { nodeCol, nodeRow, nodeCount } = this.prep;
-        const startCol = this.prep.startCol;
-        const startRow = this.prep.startRow;
-        const targetCol = this.prep.targetCol;
-        const targetRow = this.prep.targetRow;
+        const cols = this.cols;
+        const startIdx = this.prep.startIdx;
+        const targetIdx = this.prep.targetIdx;
+        const startCol = startIdx % cols;
+        const startRow = (startIdx / cols) | 0;
+        const targetCol = targetIdx % cols;
+        const targetRow = (targetIdx / cols) | 0;
         const startTemp = nodeCount;
         const targetTemp = nodeCount + 1;
         const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];

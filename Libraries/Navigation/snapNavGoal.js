@@ -1,12 +1,20 @@
-import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { floorBeltEntryEdgeWorldPoint, isFloorBeltCell } from "../Spatial/grid/FloorCell.js";
 import { createNavGraphView, snapNavGraphGoalCell } from "./navGraph.js";
-/**
- * Snap a grid path goal for directed topology (belt entry mouth).
- * Non-belt targets pass through; belt targets upstream unless the agent is already at the entry cell.
- *
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- */
+import { isFloorBeltKind, floorBeltEntryEdgeWorldPoint, isFloorBeltCell } from "../Spatial/grid/FloorCell.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
+    const cols = grid.cols;
+    const fromCol = fromIdx % cols;
+    const fromRow = (fromIdx / cols) | 0;
+    const targetCol = targetIdx % cols;
+    const targetRow = (targetIdx / cols) | 0;
+    const graph = createNavGraphView(grid);
+    if (!isFloorBeltKind(grid.floorStore.kind[targetIdx])) return targetIdx;
+    const neighbor = graph.beltEntryNeighbor(targetCol, targetRow);
+    if (!neighbor || neighbor.col < 0 || neighbor.col >= cols || neighbor.row < 0 || neighbor.row >= grid.rows) return targetIdx;
+    if (grid.isBlocked(neighbor.col, neighbor.row)) return targetIdx;
+    if (fromCol === neighbor.col && fromRow === neighbor.row) return targetIdx;
+    return neighbor.col + neighbor.row * cols;
+}
 export function snapNavGoalCell(grid, fromCol, fromRow, targetCol, targetRow) {
     return snapNavGraphGoalCell(createNavGraphView(grid), fromCol, fromRow, targetCol, targetRow);
 }

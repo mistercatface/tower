@@ -217,7 +217,6 @@ export class HpaReplanContext {
         this.graph = graph;
         this.penaltyLookup = penaltyLookup;
         this.cellToRegion = cellToRegion;
-        this.grid = new FlatGridView(frame.cols, frame.rows, { blocked: topology.blocked, canStep: (c0, r0, c1, r1) => navView.canStep(c0, r0, c1, r1) });
     }
 }
 export class HpaReplanPlanner {
@@ -227,20 +226,23 @@ export class HpaReplanPlanner {
         this.tempLegsBuffer = new Int32Array(32768);
         this.tempLegsOffsets = new Map();
         this.tempLegsLengths = new Map();
+        this.gridSearch = new FlatGridSearch(this.searchState);
     }
     run(slot, context, data) {
-        const sc = data.query.start.col;
-        const sr = data.query.start.row;
-        const tc = data.query.target.col;
-        const tr = data.query.target.row;
-        const gridSearch = new FlatGridSearch({ grid: context.grid, searchState: this.searchState, stepPenaltyLookup: context.penaltyLookup });
-        const prep = prepareHpaReplanPrep(context.frame.cols, context.cellToRegion, context.graph, sc, sr, tc, tr);
-        if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, sc, sr, tc, tr, context.frame.cols);
-        return this.writeHpaResult(slot, gridSearch, context.graph, prep, sc, sr, tc, tr, context.frame.cols);
+        const startIdx = data.startIdx;
+        const targetIdx = data.targetIdx;
+        const cols = context.frame.cols;
+        const rows = context.frame.rows;
+        this.gridSearch.neighbors = context.topology.octileNeighbors;
+        this.gridSearch.rebuildCoordinateTables(cols, rows);
+        this.gridSearch.stepPenaltyLookup = context.penaltyLookup;
+        const prep = prepareHpaReplanPrep(cols, context.cellToRegion, context.graph, startIdx, targetIdx);
+        if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, startIdx, targetIdx, cols);
+        return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols);
     }
-    writeLocalResult(slot, gridSearch, sc, sr, tc, tr, cols) {
+    writeLocalResult(slot, gridSearch, startIdx, targetIdx, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-        const len = gridSearch.local(sc, sr, tc, tr, HPA_LOCAL_MAX_LEN, this.localPathScratch);
+        const len = gridSearch.local(startIdx, targetIdx, HPA_LOCAL_MAX_LEN, this.localPathScratch);
         if (len === 0) {
             this.buffers.writeCellPath(slot, null);
             this.buffers.writeAbstractPath(slot, null);
@@ -255,13 +257,13 @@ export class HpaReplanPlanner {
         this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
-    writeHpaResult(slot, gridSearch, baseGraph, prep, sc, sr, tc, tr, cols) {
+    writeHpaResult(slot, gridSearch, baseGraph, prep, startIdx, targetIdx, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
         if (!this.abstractPathScratch) this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
         this.tempLegsOffsets.clear();
         this.tempLegsLengths.clear();
-        const { extendedGraph, startTemp, targetTemp } = baseGraph.buildExtended(sc, sr, tc, tr, prep, this.buffers.maxCellsPerChunk, (lsc, lsr, ltc, ltr, legKey, offset) => {
-            const len = gridSearch.local(lsc, lsr, ltc, ltr, prep.regionConnectMaxLen, this.tempLegsBuffer.subarray(offset));
+        const { extendedGraph, startTemp, targetTemp } = baseGraph.buildExtended(startIdx, targetIdx, cols, prep, this.buffers.maxCellsPerChunk, (lStartIdx, lTargetIdx, legKey, offset) => {
+            const len = gridSearch.local(lStartIdx, lTargetIdx, prep.regionConnectMaxLen, this.tempLegsBuffer.subarray(offset));
             if (len === 0) return 0;
             this.tempLegsOffsets.set(legKey, offset);
             this.tempLegsLengths.set(legKey, len);
@@ -287,11 +289,9 @@ export class HpaReplanPlanner {
     }
     resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-        const sc = baseGraph.nodeCol[aIdx];
-        const sr = baseGraph.nodeRow[aIdx];
-        const tc = baseGraph.nodeCol[bIdx];
-        const tr = baseGraph.nodeRow[bIdx];
-        const len = gridSearch.local(sc, sr, tc, tr, prep.regionConnectMaxLen, this.localPathScratch);
+        const startIdx = baseGraph.nodeCol[aIdx] + baseGraph.nodeRow[aIdx] * cols;
+        const targetIdx = baseGraph.nodeCol[bIdx] + baseGraph.nodeRow[bIdx] * cols;
+        const len = gridSearch.local(startIdx, targetIdx, prep.regionConnectMaxLen, this.localPathScratch);
         return len;
     }
 }

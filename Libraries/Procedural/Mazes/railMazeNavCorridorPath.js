@@ -48,7 +48,9 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             return grid.canStep(from.col, from.row, to.col, to.row, navTopology);
         },
     });
-    const gridSearch = new FlatGridSearch({ grid: gridView, searchState });
+    const gridSearch = new FlatGridSearch(searchState);
+    gridSearch.grid = gridView;
+    gridSearch.gridIdx = gridView.gridIdx;
     return {
         globalLayout,
         patchLayout,
@@ -67,10 +69,12 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             if (reservedGlobalIndices.has(globalCellIdx(query.start.col, query.start.row, grid.cols)) || reservedGlobalIndices.has(globalCellIdx(query.target.col, query.target.row, grid.cols)))
                 return null;
             if (pathScratch.length < maxPathLen) pathScratch = new Int32Array(maxPathLen);
-            const len = gridSearch.cardinal(start.col, start.row, goal.col, goal.row, maxPathLen, pathScratch);
+            const cols = patchCols;
+            const startIdx = start.col + start.row * cols;
+            const goalIdx = goal.col + goal.row * cols;
+            const len = gridSearch.cardinal(startIdx, goalIdx, maxPathLen, pathScratch);
             if (len === 0) return null;
             const path = new Array(len);
-            const cols = gridSearch.grid.cols;
             for (let i = 0; i < len; i++) {
                 const idx = pathScratch[i];
                 const col = idx % cols;

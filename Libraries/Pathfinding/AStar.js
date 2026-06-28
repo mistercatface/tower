@@ -24,76 +24,141 @@ function reconstructIndexPathInto(cameFrom, targetIdx, outPath) {
 }
 const globalOpenSet = new IdxMinHeap();
 export class FlatGridSearch {
-    constructor({ grid, navGraph, cols, rows, searchState, stepPenaltyLookup = null }) {
-        this.grid = grid || new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => (navGraph ? navGraph.canStep(c0, r0, c1, r1) : true) });
+    constructor(searchState, stepPenaltyLookup = null) {
         this.searchState = searchState;
         this.stepPenaltyLookup = stepPenaltyLookup;
+        this.grid = null;
+        this.neighbors = null;
+        this.gridIdx = null;
+        this.cellCount = 0;
+        this._lastSize = 0;
+        this._cardinalOffsets = null;
+        this._octileOffsets = null;
+        this._lastCols = 0;
     }
-    cardinal(sc, sr, tc, tr, maxPathLen, outPath) {
-        return this.runGrid(sc, sr, tc, tr, maxPathLen, { offsets: CARDINAL_OFFSETS, heuristic: manhattanDistance, priority: "astar", stale: "astar", stepPenalty: false }, outPath);
+    rebuildCoordinateTables(cols, rows) {
+        const size = cols * rows;
+        this.cellCount = size;
+        if (this._lastSize !== size) {
+            this._lastSize = size;
+            this.gridIdx = new Int16Array(size * 2);
+            for (let i = 0; i < size; i++) {
+                const base = i * 2;
+                this.gridIdx[base] = i % cols;
+                this.gridIdx[base + 1] = (i / cols) | 0;
+            }
+        }
     }
-    local(sc, sr, tc, tr, maxPathLen, outPath) {
-        return this.runGrid(sc, sr, tc, tr, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "astar", stale: "astar", stepPenalty: true }, outPath);
+    getOffsets(policyOffsets, cols) {
+        if (this._lastCols !== cols) {
+            this._lastCols = cols;
+            this._cardinalOffsets = CARDINAL_OFFSETS.map((o) => ({ cost: o.cost, didx: o.dc + o.dr * cols }));
+            this._octileOffsets = OCTILE_OFFSETS.map((o) => ({ cost: o.cost, didx: o.dc + o.dr * cols }));
+        }
+        return policyOffsets === CARDINAL_OFFSETS ? this._cardinalOffsets : this._octileOffsets;
     }
-    dijkstra(sc, sr, tc, tr, maxPathLen, outPath) {
-        return this.runGrid(sc, sr, tc, tr, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "dijkstra", stale: "dijkstra", stepPenalty: true }, outPath);
+    manhattanDistance(idx0, idx1) {
+        const base0 = idx0 * 2;
+        const base1 = idx1 * 2;
+        const dx = Math.abs(this.gridIdx[base0] - this.gridIdx[base1]);
+        const dy = Math.abs(this.gridIdx[base0 + 1] - this.gridIdx[base1 + 1]);
+        return dx + dy;
     }
-    greedy(sc, sr, tc, tr, maxPathLen, outPath) {
-        return this.runGrid(sc, sr, tc, tr, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "greedy", stale: null, stepPenalty: true }, outPath);
+    octileDistance(idx0, idx1) {
+        const base0 = idx0 * 2;
+        const base1 = idx1 * 2;
+        const dx = Math.abs(this.gridIdx[base0] - this.gridIdx[base1]);
+        const dy = Math.abs(this.gridIdx[base0 + 1] - this.gridIdx[base1 + 1]);
+        const min = Math.min(dx, dy);
+        const max = Math.max(dx, dy);
+        return min * 1.41421356 + (max - min);
     }
-    runGrid(sc, sr, tc, tr, maxPathLen, policy, outPath) {
-        const grid = this.grid;
-        const cols = grid.cols;
-        const startIdx = grid.idx(sc, sr);
-        const targetIdx = grid.idx(tc, tr);
+    cardinal(startIdx, targetIdx, maxPathLen, outPath) {
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, (i0, i1) => this.manhattanDistance(i0, i1), "astar", "astar", false, outPath);
+    }
+    local(startIdx, targetIdx, maxPathLen, outPath) {
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, (i0, i1) => this.octileDistance(i0, i1), "astar", "astar", true, outPath);
+    }
+    dijkstra(startIdx, targetIdx, maxPathLen, outPath) {
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, (i0, i1) => this.octileDistance(i0, i1), "dijkstra", "dijkstra", true, outPath);
+    }
+    greedy(startIdx, targetIdx, maxPathLen, outPath) {
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, (i0, i1) => this.octileDistance(i0, i1), "greedy", null, true, outPath);
+    }
+    runGrid(startIdx, targetIdx, maxPathLen, maxDirs, heuristic, priority, stale, stepPenalty, outPath) {
         if (startIdx === targetIdx) {
             outPath[0] = startIdx;
             return 1;
         }
         globalOpenSet.reset();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
-        const heuristic = policy.heuristic;
+        const heuristicFn = heuristic;
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        globalOpenSet.push(startIdx, this.priorityFor(policy.priority, 0, sc, sr, tc, tr, heuristic));
-        while (globalOpenSet.size > 0) {
-            const currIdx = globalOpenSet.pop();
-            const currCol = currIdx % cols;
-            const currRow = (currIdx / cols) | 0;
-            const currentG = gScore[currIdx];
-            if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currCol, currRow, tc, tr, heuristic, policy.stale)) continue;
-            if (currentG > maxPathLen) continue;
-            if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
-            for (const offset of policy.offsets) {
-                const nc = currCol + offset.dc;
-                const nr = currRow + offset.dr;
-                if (!grid.contains(nc, nr)) continue;
-                if (!grid.canStep(currCol, currRow, nc, nr)) continue;
-                const nIdx = grid.idx(nc, nr);
-                const stepExtra = policy.stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
-                const tentativeG = currentG + (offset.cost ?? 1) + stepExtra;
-                if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
-                visited[nIdx] = runId;
-                gScore[nIdx] = tentativeG;
-                cameFrom[nIdx] = currIdx;
-                globalOpenSet.push(nIdx, this.priorityFor(policy.priority, tentativeG, nc, nr, tc, tr, heuristic));
+        globalOpenSet.push(startIdx, this.priorityFor(priority, 0, startIdx, targetIdx, heuristicFn));
+        const neighbors = this.neighbors;
+        if (neighbors) {
+            const edgeCosts = maxDirs === 4 ? CARDINAL_COSTS : OCTILE_COSTS;
+            while (globalOpenSet.size > 0) {
+                const currIdx = globalOpenSet.pop();
+                const currentG = gScore[currIdx];
+                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn, stale)) continue;
+                if (currentG > maxPathLen) continue;
+                if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
+                const base = currIdx * 8;
+                for (let i = 0; i < maxDirs; i++) {
+                    const nIdx = neighbors[base + i];
+                    if (nIdx === -1) continue;
+                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                    const tentativeG = currentG + edgeCosts[i] + stepExtra;
+                    if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
+                    visited[nIdx] = runId;
+                    gScore[nIdx] = tentativeG;
+                    cameFrom[nIdx] = currIdx;
+                    globalOpenSet.push(nIdx, this.priorityFor(priority, tentativeG, nIdx, targetIdx, heuristicFn));
+                }
+            }
+        } else {
+            const grid = this.grid;
+            const cols = grid.cols;
+            const offsets = this.getOffsets(maxDirs === 4 ? CARDINAL_OFFSETS : OCTILE_OFFSETS, cols);
+            const edgeCosts = maxDirs === 4 ? CARDINAL_COSTS : OCTILE_COSTS;
+            while (globalOpenSet.size > 0) {
+                const currIdx = globalOpenSet.pop();
+                const currentG = gScore[currIdx];
+                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn, stale)) continue;
+                if (currentG > maxPathLen) continue;
+                if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
+                for (let i = 0; i < maxDirs; i++) {
+                    const nIdx = currIdx + offsets[i].didx;
+                    if (!grid.canStep(currIdx, nIdx)) continue;
+                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                    const tentativeG = currentG + edgeCosts[i] + stepExtra;
+                    if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
+                    visited[nIdx] = runId;
+                    gScore[nIdx] = tentativeG;
+                    cameFrom[nIdx] = currIdx;
+                    globalOpenSet.push(nIdx, this.priorityFor(priority, tentativeG, nIdx, targetIdx, heuristicFn));
+                }
             }
         }
         return 0;
     }
-    priorityFor(priority, tentativeG, col, row, targetCol, targetRow, heuristic) {
+    priorityFor(priority, tentativeG, idx, targetIdx, heuristic) {
         if (priority === "dijkstra") return tentativeG;
-        const h = heuristic(col, row, targetCol, targetRow);
+        const h = heuristic(idx, targetIdx);
         if (priority === "greedy") return h;
         return tentativeG + h;
     }
-    isStaleQueueEntry(currF, currentG, col, row, targetCol, targetRow, heuristic, stale) {
+    isStaleQueueEntry(currF, currentG, idx, targetIdx, heuristic, stale) {
         if (stale === "dijkstra") return currF > currentG + STALE_F_EPSILON;
-        if (stale === "astar") return currF > currentG + heuristic(col, row, targetCol, targetRow) + STALE_F_EPSILON;
+        if (stale === "astar") return currF > currentG + heuristic(idx, targetIdx) + STALE_F_EPSILON;
         return false;
     }
 }
+const CARDINAL_COSTS = new Float32Array([1, 1, 1, 1]);
+const OCTILE_COSTS = new Float32Array([1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2]);
 export class FlatGraphView {
     constructor({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite = edgeTargets?.length ?? 0, nodeIds = null }) {
         this.nodeCol = nodeCol;

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { FlatAbstractGraphSearch, FlatGraphView, FlatGridSearch } from "../Libraries/Pathfinding/AStar.js";
 import { SearchState } from "../Libraries/Pathfinding/SearchState.js";
+import { FlatGridView } from "../Libraries/Pathfinding/FlatGridView.js";
 
 describe("AStar Engine Search Suite", () => {
     const cols = 5;
@@ -18,9 +19,14 @@ describe("AStar Engine Search Suite", () => {
             }
         };
 
-        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const search = new FlatGridSearch(searchState);
+        search.grid = gridView;
+        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
-        const len = search.cardinal(0, 2, 4, 2, 20, outPath);
+        const startIdx = 0 + 2 * cols;
+        const targetIdx = 4 + 2 * cols;
+        const len = search.cardinal(startIdx, targetIdx, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {
@@ -40,9 +46,14 @@ describe("AStar Engine Search Suite", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const search = new FlatGridSearch(searchState);
+        search.grid = gridView;
+        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
-        const len = search.local(0, 0, 2, 2, 20, outPath);
+        const startIdx = 0 + 0 * cols;
+        const targetIdx = 2 + 2 * cols;
+        const len = search.local(startIdx, targetIdx, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {
@@ -60,9 +71,14 @@ describe("AStar Engine Search Suite", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const search = new FlatGridSearch(searchState);
+        search.grid = gridView;
+        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
-        const len = search.dijkstra(0, 0, 2, 2, 20, outPath);
+        const startIdx = 0 + 0 * cols;
+        const targetIdx = 2 + 2 * cols;
+        const len = search.dijkstra(startIdx, targetIdx, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {
@@ -80,9 +96,14 @@ describe("AStar Engine Search Suite", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
+        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const search = new FlatGridSearch(searchState);
+        search.grid = gridView;
+        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
-        const len = search.greedy(0, 0, 2, 2, 20, outPath);
+        const startIdx = 0 + 0 * cols;
+        const targetIdx = 2 + 2 * cols;
+        const len = search.greedy(startIdx, targetIdx, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {

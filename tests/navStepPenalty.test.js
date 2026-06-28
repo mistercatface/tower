@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { FlatGridSearch } from "../Libraries/Pathfinding/AStar.js";
 import { SearchState } from "../Libraries/Pathfinding/SearchState.js";
+import { FlatGridView } from "../Libraries/Pathfinding/FlatGridView.js";
 import { createNavStepPenaltyLookup } from "../Libraries/Pathfinding/navStepPenalty.js";
 import { packCellKey } from "../Libraries/DataStructures/CellKey.js";
 
@@ -12,9 +13,14 @@ describe("nav step penalty", () => {
         const navGraph = { canStep: () => true };
         const searchState = new SearchState(cols * rows);
         const penalty = createNavStepPenaltyLookup(cols, [packCellKey(2, 1)], [100]);
-        const search = new FlatGridSearch({ navGraph, cols, rows, searchState, stepPenaltyLookup: penalty });
+        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const search = new FlatGridSearch(searchState, penalty);
+        search.grid = gridView;
+        search.gridIdx = gridView.gridIdx;
         const outPath = new Int32Array(100);
-        const len = search.local(0, 1, 4, 1, 96, outPath);
+        const startIdx = 0 + 1 * cols;
+        const targetIdx = 4 + 1 * cols;
+        const len = search.local(startIdx, targetIdx, 96, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {

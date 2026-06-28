@@ -49,7 +49,11 @@ export class HpaAbstractGraph extends FlatGraphView {
         }
         return out;
     }
-    buildExtended(sc, sr, tc, tr, prep, maxCellsPerChunk, resolveLegCost) {
+    buildExtended(startIdx, targetIdx, cols, prep, maxCellsPerChunk, resolveLegCost) {
+        const sc = startIdx % cols;
+        const sr = (startIdx / cols) | 0;
+        const tc = targetIdx % cols;
+        const tr = (targetIdx / cols) | 0;
         const startCandidates = this.collectTempConnectCandidates(sc, sr, true, maxCellsPerChunk, prep.startRegion);
         const targetCandidates = this.collectTempConnectCandidates(tc, tr, false, maxCellsPerChunk, prep.targetRegion);
         const startTemp = this.nodeCount;
@@ -68,7 +72,8 @@ export class HpaAbstractGraph extends FlatGraphView {
         for (let i = 0; i < targetCandidates.length; i++) {
             const cIdx = targetCandidates[i];
             const legKey = (cIdx << 16) | targetTemp;
-            const cost = resolveLegCost(extNodeCol[cIdx], extNodeRow[cIdx], tc, tr, legKey, currentOffset);
+            const cNodeIdx = extNodeCol[cIdx] + extNodeRow[cIdx] * cols;
+            const cost = resolveLegCost(cNodeIdx, targetIdx, legKey, currentOffset);
             if (cost > 0) {
                 targetConnectCost[cIdx] = cost;
                 currentOffset += cost;
@@ -80,7 +85,8 @@ export class HpaAbstractGraph extends FlatGraphView {
         for (let i = 0; i < startCandidates.length; i++) {
             const cIdx = startCandidates[i];
             const legKey = (startTemp << 16) | cIdx;
-            const cost = resolveLegCost(sc, sr, extNodeCol[cIdx], extNodeRow[cIdx], legKey, currentOffset);
+            const cNodeIdx = extNodeCol[cIdx] + extNodeRow[cIdx] * cols;
+            const cost = resolveLegCost(startIdx, cNodeIdx, legKey, currentOffset);
             if (cost > 0) {
                 startEdgesTarget[startEdgesCount] = cIdx;
                 startEdgesCost[startEdgesCount] = cost;

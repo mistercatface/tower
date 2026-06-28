@@ -36,11 +36,14 @@ describe("HpaAbstractGraph Suite", () => {
         const edgeCosts = new Uint16Array([]);
         const graph = new HpaAbstractGraph(nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, 1, 0, ["A"]);
 
-        const resolveLegCost = (lsc, lsr, ltc, ltr, legKey, offset) => {
+        const resolveLegCost = (lStartIdx, lTargetIdx, legKey, offset) => {
             return 5;
         };
 
-        const { extendedGraph, startTemp, targetTemp } = graph.buildExtended(2, 2, 18, 18, { startRegion: -1, targetRegion: -1 }, 64, resolveLegCost);
+        const cols = 50;
+        const startIdx = 2 + 2 * cols;
+        const targetIdx = 18 + 18 * cols;
+        const { extendedGraph, startTemp, targetTemp } = graph.buildExtended(startIdx, targetIdx, cols, { startRegion: -1, targetRegion: -1 }, 64, resolveLegCost);
 
         assert.equal(extendedGraph.nodeCount, 3);
         assert.equal(extendedGraph.nodeCol[startTemp], 2);
