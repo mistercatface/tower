@@ -58,8 +58,9 @@ export function deriveRangedCombatState(ctx, input, profile) {
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
     const busy = action ? rangedCombatActionIsBusy(action) : false;
-    const canShoot = !!visibleEnemy && los && inWeaponRange && !tooClose && phase === "idle";
-    const shouldBackOffEnemy = !!visibleEnemy && tooClose;
+    const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle";
+    const hasIdAdvantage = seeker && enemy && seeker.id != null && enemy.id != null ? seeker.id > enemy.id : false;
+    const shouldBackOffEnemy = !!visibleEnemy && tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage));
     return {
         enemy,
         enemyId: enemy?.id ?? null,

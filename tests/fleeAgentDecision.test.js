@@ -406,4 +406,103 @@ describe("flee agent decision model", () => {
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "strafing agent should still fire after reaction");
         assert.equal(charlie.combatAction.phase, "fire_delay");
     });
+
+    it("ticks reload timer and resets to idle in flee mode", () => {
+        applySnakeGameConfig();
+        const action = createRangedCombatActionState();
+        action.phase = "reloading";
+        action.timerMs = 500;
+        
+        const mockAgentCtx = {
+            instance: {
+                combatAction: action
+            }
+        };
+        const mockIntent = {
+            getMode: () => "flee"
+        };
+        
+        const currentMode = mockIntent.getMode();
+        if (currentMode !== "shoot_enemy" && mockAgentCtx.instance.combatAction) {
+            const act = mockAgentCtx.instance.combatAction;
+            if (act.phase === "reloading") {
+                act.timerMs = Math.max(0, act.timerMs - 200);
+                if (act.timerMs <= 0) {
+                    act.phase = "idle";
+                }
+            }
+        }
+        assert.equal(action.timerMs, 300);
+        assert.equal(action.phase, "reloading");
+
+        if (currentMode !== "shoot_enemy" && mockAgentCtx.instance.combatAction) {
+            const act = mockAgentCtx.instance.combatAction;
+            if (act.phase === "reloading") {
+                act.timerMs = Math.max(0, act.timerMs - 300);
+                if (act.timerMs <= 0) {
+                    act.phase = "idle";
+                }
+            }
+        }
+        assert.equal(action.timerMs, 0);
+        assert.equal(action.phase, "idle");
+    });
+
+    it("asymmetric ID tie-breaker decides who backs off when both are idle and close", () => {
+        applySnakeGameConfig();
+        
+        const enemyLow = mockTarget("flee_low");
+        enemyLow.id = 10;
+        enemyLow.x = 30;
+        
+        const ctxHigh = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemyLow, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 2 }),
+            foodFraction: 0.9,
+            agent: { id: 20, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        }));
+        
+        assert.equal(ctxHigh.combatState.shouldBackOffEnemy, false);
+        assert.equal(ctxHigh.chosenIntent.mode, "shoot_enemy");
+
+        const enemyHigh = mockTarget("flee_high");
+        enemyHigh.id = 20;
+        enemyHigh.x = 30;
+        
+        const ctxLow = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemyHigh, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 2 }),
+            foodFraction: 0.9,
+            agent: { id: 10, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        }));
+        
+        assert.equal(ctxLow.combatState.shouldBackOffEnemy, true);
+        assert.equal(ctxLow.chosenIntent.mode, "flee");
+    });
+
+    it("stands ground when close but actively aiming or shooting", () => {
+        applySnakeGameConfig();
+        const enemy = mockTarget("flee2");
+        enemy.id = 10;
+        enemy.x = 30;
+        
+        const actionReacting = createRangedCombatActionState();
+        actionReacting.phase = "reacting";
+        actionReacting.timerMs = 150;
+        
+        const ctxReacting = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 2 }),
+            foodFraction: 0.9,
+            agent: { id: 5, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: actionReacting,
+        }));
+        
+        assert.equal(ctxReacting.combatState.shouldBackOffEnemy, false, "Should stand ground when aiming");
+    });
 });

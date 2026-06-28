@@ -3,7 +3,8 @@ import { isBallCombatTopology } from "./agentCombatTraits.js";
 import { clearPropVisualOverride, getPropVisualTint, setPropVisualTint } from "../../Color/visualOverride.js";
 export const DEFAULT_BALL_FACING_TURN_RAD_PER_SEC = Math.PI * 1.5;
 const HEADING_SPEED_MIN = 0.25;
-export function shouldSyncBallAgentFacingToVelocity(combatAction) {
+export function shouldSyncBallAgentFacingToVelocity(combatAction, intent = null) {
+    if (intent?.getMode() === "flee") return true;
     const phase = combatAction?.phase;
     return phase !== "reacting" && phase !== "fire_delay" && phase !== "reloading";
 }
@@ -25,6 +26,6 @@ export function syncBallAgentFacingToTarget(head, target, dtMs, turnRadPerSec = 
 }
 export function syncBallAgentFacingAfterPhysics(instance, dtMs) {
     if (!instance || !isBallCombatTopology(instance.combatTraits)) return;
-    if (!shouldSyncBallAgentFacingToVelocity(instance.combatAction)) return;
+    if (!shouldSyncBallAgentFacingToVelocity(instance.combatAction, instance.intent)) return;
     syncBallAgentFacingToVelocity(instance.head, dtMs, instance.aimTurnRadPerSec);
 }

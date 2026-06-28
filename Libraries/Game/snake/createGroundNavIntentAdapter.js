@@ -498,6 +498,14 @@ export function createGroundNavIntentAdapter({
             intentContext.dtMs = dtMs;
             intent.perceive(agent, state);
             const choice = intent.transition(agent, state);
+            const currentMode = intent.getMode();
+            if (currentMode !== "shoot_enemy" && agentCtx.instance.combatAction) {
+                const action = agentCtx.instance.combatAction;
+                if (action.phase === "reloading") {
+                    action.timerMs = Math.max(0, action.timerMs - dtMs);
+                    if (action.timerMs <= 0) resetInstanceRangedCombatAction(agentCtx.instance);
+                } else if (action.phase === "reacting" || action.phase === "fire_delay") resetInstanceRangedCombatAction(agentCtx.instance);
+            }
             base.sprintWanted = lastDecisionContext.sprintIntent.want === true;
             return choice;
         },
