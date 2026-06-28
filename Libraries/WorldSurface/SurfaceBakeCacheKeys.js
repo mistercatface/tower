@@ -38,10 +38,13 @@ export class SurfaceBakeCacheKeys {
     staticRoofDrawKey(chunkCol, chunkRow, profileId, zLevel) {
         return staticRoofDrawCacheKey(chunkCol, chunkRow, profileId, getSurfaceProfileRevision(profileId), zLevel);
     }
-    wallAtlasKey(p1, p2, surfaceSeed, profileId, atlasHeight) {
-        const atlas = this.surfaceSpace.wallAtlas(p1, p2);
+    wallAtlasKeyScalars(x1, y1, x2, y2, surfaceSeed, profileId, atlasHeight) {
+        const atlas = this.surfaceSpace.wallAtlasScalars(x1, y1, x2, y2);
         const rev = getSurfaceProfileRevision(profileId);
         const key = `wall:${rev}:${profileId}:${surfaceSeed}:${atlasHeight}:${atlas.keyX1},${atlas.keyY1}-${atlas.keyX2},${atlas.keyY2}`;
         return { key, wrappedP1: atlas.wrappedP1, wrappedP2: atlas.wrappedP2, rev };
+    }
+    wallAtlasKey(p1, p2, surfaceSeed, profileId, atlasHeight) {
+        return this.wallAtlasKeyScalars(p1.x, p1.y, p2.x, p2.y, surfaceSeed, profileId, atlasHeight);
     }
 }

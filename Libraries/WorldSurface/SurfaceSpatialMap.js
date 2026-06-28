@@ -52,15 +52,18 @@ export class SurfaceSpatialMap {
     worldToChunkRow(worldY, gridMinY, chunkSizePx) {
         return Math.floor((worldY - gridMinY) / chunkSizePx);
     }
-    wallAtlas(p1, p2) {
+    wallAtlasScalars(x1, y1, x2, y2) {
         const surfaceTilePeriodPx = this.settings.surfaceTilePeriodPx;
-        const wx1 = positiveModulo(p1.x, surfaceTilePeriodPx);
-        const wy1 = positiveModulo(p1.y, surfaceTilePeriodPx);
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
+        const wx1 = positiveModulo(x1, surfaceTilePeriodPx);
+        const wy1 = positiveModulo(y1, surfaceTilePeriodPx);
+        const dx = x2 - x1;
+        const dy = y2 - y1;
         const wx2 = wx1 + dx;
         const wy2 = wy1 + dy;
         return { wrappedP1: { x: wx1, y: wy1 }, wrappedP2: { x: wx2, y: wy2 }, keyX1: wx1.toFixed(1), keyY1: wy1.toFixed(1), keyX2: wx2.toFixed(1), keyY2: wy2.toFixed(1) };
+    }
+    wallAtlas(p1, p2) {
+        return this.wallAtlasScalars(p1.x, p1.y, p2.x, p2.y);
     }
     flatHorizontalSample(worldCorners8, obstacleGrid) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid);

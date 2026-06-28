@@ -111,21 +111,11 @@ export class WorldSurfaceEngine {
         const payload = this.buildGroundChunkPayload(state, chunkCol, chunkRow, profileId, zLevel, boundsSample);
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
     }
-    /**
-     * @param {{ x: number, y: number }} p1
-     * @param {{ x: number, y: number }} p2
-     * @param {{
-     *   profileId?: string,
-     *   wallHeight?: number | null,
-     *   cacheObj?: object | null,
-     *   atlasFaceId?: string,
-     * }} options
-     */
-    getOrEnsureWallAtlas(p1, p2, options) {
+    getOrEnsureWallAtlasScalars(x1, y1, x2, y2, options) {
         const { profileId = this.activeSurfaceProfileId, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
         const seed = this.worldSurfaceSeed;
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
-        const atlas = this.cacheKeys.wallAtlasKey(p1, p2, seed, profileId, wallHeightKey);
+        const atlas = this.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
         if (cacheObj) {
             const stash = cacheObj._wallAtlasStashes?.[atlasFaceId];
             if (
@@ -152,6 +142,9 @@ export class WorldSurfaceEngine {
             cacheObj._wallAtlasStashes[atlasFaceId] = resolved;
         }
         return resolved;
+    }
+    getOrEnsureWallAtlas(p1, p2, options) {
+        return this.getOrEnsureWallAtlasScalars(p1.x, p1.y, p2.x, p2.y, options);
     }
     fillHorizontalCapDrawSampleIntoFlat(worldCorners8, zLevel, state, outSrc8) {
         const surfaceBakeScale = this.settings.surfaceBakeScale;

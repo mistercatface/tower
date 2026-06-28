@@ -16,8 +16,6 @@ const sFlatCapCorners = new Float32Array(8);
 const sFlatCapUv = new Float32Array(8);
 const sFlatCapSrc = new Float32Array(8);
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
-const sTempP1 = { x: 0, y: 0 };
-const sTempP2 = { x: 0, y: 0 };
 function getWallDrawMemo(grid, key) {
     if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== grid.wallGridRevision) {
         grid._wallDrawMemoCache = new Map();
@@ -54,9 +52,6 @@ export function projectWallFaceBandIntoScalars(x1, y1, x2, y2, z, viewport, out)
     }
     return out;
 }
-export function projectWallFaceBandInto(p1, p2, z, viewport, out) {
-    return projectWallFaceBandIntoScalars(p1.x, p1.y, p2.x, p2.y, z, viewport, out);
-}
 function computeFaceCornerElevatedInto(out8, offset, u, v, faceBottom, faceTop) {
     const bot1X = faceBottom.proj1X;
     const bot1Y = faceBottom.proj1Y;
@@ -89,22 +84,14 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     }
     let cacheHit = false;
     if (canUseSideCache && stash) {
-        sTempP1.x = x1;
-        sTempP1.y = y1;
-        sTempP2.x = x2;
-        sTempP2.y = y2;
-        const atlasKey = worldSurfaces.cacheKeys.wallAtlasKey(sTempP1, sTempP2, seed, profileId, wallHeightKey);
+        const atlasKey = worldSurfaces.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
         if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases)
             cacheHit = true;
     }
     if (cacheHit) {
         // cache hit!
     } else {
-        sTempP1.x = x1;
-        sTempP1.y = y1;
-        sTempP2.x = x2;
-        sTempP2.y = y2;
-        stash = worldSurfaces.getOrEnsureWallAtlas(sTempP1, sTempP2, {
+        stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, {
             profileId,
             wallHeight: wallCapHeight,
             cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null,
@@ -125,9 +112,6 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     atlas.wallCx = (x1 + x2) * 0.5;
     atlas.wallCy = (y1 + y2) * 0.5;
     return atlas;
-}
-function resolveWallFaceAtlas(p1, p2, state, face) {
-    return resolveWallFaceAtlasScalars(p1.x, p1.y, p2.x, p2.y, state, face);
 }
 function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, viewport) {
     const cellSize = settings.cellSize;
@@ -216,9 +200,6 @@ function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewpo
         return;
     }
     blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.bounds("chunks"));
-}
-function drawFaceTexture(ctx, p1, p2, faceBottom, faceTop, viewport, state, face) {
-    return drawFaceTextureScalars(ctx, p1.x, p1.y, p2.x, p2.y, faceBottom, faceTop, viewport, state, face);
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
     const { wallHeight, wallBaseZ } = face;
