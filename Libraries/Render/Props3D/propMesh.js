@@ -1,42 +1,9 @@
-import { traceClosedPolygonCount, traceClosedFlatPolygon } from "../../Canvas/CanvasPath.js";
-import { projectWorldPointInto, resolveElevationAlpha } from "../../Spatial/elevation/RadialElevationProjection.js";
-
-const sProjectedVerts = [
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-];
+import { traceClosedFlatPolygon } from "../../Canvas/CanvasPath.js";
+import { resolveElevationAlpha } from "../../Spatial/elevation/RadialElevationProjection.js";
 let sFlatProjectedVerts = new Float32Array(8);
-
-function ensureProjectedVertScratch(count) {
-    while (sProjectedVerts.length < count) sProjectedVerts.push({ x: 0, y: 0 });
-}
-
 function ensureFlatProjectedVertScratch(count) {
-    if (sFlatProjectedVerts.length < count * 2) {
-        sFlatProjectedVerts = new Float32Array(count * 2);
-    }
+    if (sFlatProjectedVerts.length < count * 2) sFlatProjectedVerts = new Float32Array(count * 2);
 }
-
-export function projectPropVertexInto(out, prop, viewport, lx, ly, lz) {
-    const wx = prop.x + lx;
-    const wy = prop.y + ly;
-    if (Math.abs(lz) <= 0.001) {
-        out.x = wx;
-        out.y = wy;
-        out.depth = lz;
-        return out;
-    }
-    projectWorldPointInto(out, wx, wy, lz, viewport);
-    out.depth = lz + Math.hypot(wx - viewport.x, wy - viewport.y) * 0.001;
-    return out;
-}
-
-export function projectPropVertex(prop, viewport, lx, ly, lz) {
-    return projectPropVertexInto({ x: 0, y: 0, depth: 0 }, prop, viewport, lx, ly, lz);
-}
-
 export function projectPropVertexScalarsInto(out8, offset, prop, viewport, lx, ly, lz) {
     const wx = prop.x + lx;
     const wy = prop.y + ly;
@@ -54,7 +21,6 @@ export function projectPropVertexScalarsInto(out8, offset, prop, viewport, lx, l
         out8[offset + 1] = wy + (wy - viewport.y) * alpha;
     }
 }
-
 export function isPropMeshFaceVisible(prop, viewport, verts3d) {
     const v0 = verts3d[0];
     const v1 = verts3d[1];
@@ -76,45 +42,13 @@ export function isPropMeshFaceVisible(prop, viewport, verts3d) {
     const vz = viewport.cameraHeight - cz;
     return nx * vx + ny * vy + nz * vz > 0;
 }
-
 export function drawPropMeshFace(ctx, prop, viewport, verts3d, fill, stroke, lineWidth) {
     const count = verts3d.length;
     ensureFlatProjectedVertScratch(count);
-    
-    let lastAlpha = -1;
-    let lastAlphaZ = NaN;
-    
     for (let i = 0; i < count; i++) {
         const v = verts3d[i];
-        const lx = v.lx;
-        const ly = v.ly;
-        const lz = v.z;
-        const wx = prop.x + lx;
-        const wy = prop.y + ly;
-        const idx = i * 2;
-        
-        if (Math.abs(lz) <= 0.001) {
-            sFlatProjectedVerts[idx] = wx;
-            sFlatProjectedVerts[idx + 1] = wy;
-        } else {
-            let alpha;
-            if (lz === lastAlphaZ) {
-                alpha = lastAlpha;
-            } else {
-                alpha = resolveElevationAlpha(lz, viewport);
-                lastAlpha = alpha;
-                lastAlphaZ = lz;
-            }
-            if (alpha <= 0) {
-                sFlatProjectedVerts[idx] = wx;
-                sFlatProjectedVerts[idx + 1] = wy;
-            } else {
-                sFlatProjectedVerts[idx] = wx + (wx - viewport.x) * alpha;
-                sFlatProjectedVerts[idx + 1] = wy + (wy - viewport.y) * alpha;
-            }
-        }
+        projectPropVertexScalarsInto(sFlatProjectedVerts, i * 2, prop, viewport, v.lx, v.ly, v.z);
     }
-    
     ctx.fillStyle = fill;
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, sFlatProjectedVerts, count);
@@ -126,4 +60,3 @@ export function drawPropMeshFace(ctx, prop, viewport, verts3d, fill, stroke, lin
         ctx.stroke();
     }
 }
-

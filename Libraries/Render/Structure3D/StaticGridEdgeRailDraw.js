@@ -1,8 +1,9 @@
 import { collectRailWallBoxesInAabb, RailWallBoxList, RAIL_BOX, RAIL_BOX_STRIDE } from "../../World/wallGridBake.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
-import { drawProjectedWallFace, drawProjectedWallFaceScalars, drawProjectedRailWallCapFlat } from "./ProjectedWallDraw.js";
+import { drawProjectedWallFaceScalars, drawProjectedRailWallCapFlat } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
-const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new RailWallBoxList(), drawables: [] };
+import { borrowTicket } from "../Structure3D/visibleTickets.js";
+const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new RailWallBoxList() };
 function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     const minX = data[base + RAIL_BOX.minX];
     const maxX = data[base + RAIL_BOX.maxX];
@@ -35,18 +36,7 @@ function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     if (isOutwardFaceTowardViewer((innerP2x + outerP2x) * 0.5, (innerP2y + outerP2y) * 0.5, tx, ty, viewerX, viewerY)) return true;
     return false;
 }
-function getRailWallBoxDrawable(data, baseIndex, index) {
-    let d = sBoxCache.drawables[index];
-    if (!d) {
-        d = { isEdgeRail: true, _distSq: 0, data: null, baseIndex: 0 };
-        sBoxCache.drawables[index] = d;
-    }
-    d.data = data;
-    d.baseIndex = baseIndex;
-    return d;
-}
 export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, out) {
-    out.length = 0;
     const bounds = viewport.bounds("structure");
     const viewerX = viewport.x;
     const viewerY = viewport.y;
@@ -57,7 +47,8 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, out) 
     }
     const boxes = sBoxCache.boxes;
     const data = boxes.data;
-    for (let i = 0; i < boxes.length; i++) {
+    const numBoxes = boxes.length;
+    for (let i = 0; i < numBoxes; i++) {
         const base = i * RAIL_BOX_STRIDE;
         if (!railWallBoxTowardViewerFlat(data, base, viewerX, viewerY)) continue;
         const cx = data[base + RAIL_BOX.cx];
@@ -65,15 +56,16 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, out) 
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
         const distSq = viewX * viewX + viewY * viewY;
-        const drawable = getRailWallBoxDrawable(data, base, i);
-        drawable._distSq = distSq;
-        out.push(drawable);
+        out.push(borrowTicket("rail", base, null, distSq));
     }
     return out;
 }
-export function drawProjectedGridEdgeRail(ctx, drawable, viewport, state, face, skipWallCaps = false) {
-    const data = drawable.data;
-    const base = drawable.baseIndex;
+export function getRailWallBoxData() {
+    return sBoxCache.boxes.data;
+}
+export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, face, skipWallCaps = false) {
+    const data = sBoxCache.boxes.data;
+    const base = baseIndex;
     const viewerX = viewport.x;
     const viewerY = viewport.y;
     const innerP1x = data[base + RAIL_BOX.innerP1x];

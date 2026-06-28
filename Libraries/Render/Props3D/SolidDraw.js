@@ -1,6 +1,5 @@
 import {
     extrudeLocalVertsInto,
-    pointOnFrustum,
     pointOnFrustumInto,
     radiusAtT,
     getHeightSlice,
@@ -73,15 +72,6 @@ function fillPinwheelOutlineInto(out, length, thickness) {
     out[21] = -halfT;
     out[22] = -halfT;
     out[23] = -halfT;
-}
-export function drawCullFace(ctx, face, shadeAngle, { fill, stroke, lineWidth }) {
-    ctx.fillStyle = fill;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    traceQuad(ctx, face.topA, face.topB, face.baseB, face.baseA);
-    ctx.fill();
-    ctx.stroke();
 }
 function isFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);

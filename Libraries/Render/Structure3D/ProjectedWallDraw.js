@@ -4,7 +4,7 @@
  */
 import { drawImageQuadScalars, drawImageTriangleScalars } from "../../Canvas/AffineTexture.js";
 import { resolveElevationAlpha, projectWorldPointInto, projectWorldQuadInto } from "../../Spatial/elevation/RadialElevationProjection.js";
-import { flatRailWallCapUvCornersInto, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx, RAIL_BOX } from "../../World/wallGridBake.js";
+import { flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx, RAIL_BOX } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb, flatQuadOverlapAabb } from "../../Math/Aabb2D.js";
 import { traceClosedFlatPolygon, traceFlatQuad } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
@@ -236,9 +236,6 @@ export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, stat
         ctx.fillStyle = fillStyle;
         ctx.fill();
     }
-}
-export function drawProjectedWallFace(ctx, p1, p2, viewport, state, face) {
-    return drawProjectedWallFaceScalars(ctx, p1.x, p1.y, p2.x, p2.y, viewport, state, face);
 }
 export function projectRailWallTopCornersIntoFlat(out8, data, base, viewport) {
     const z = data[base + RAIL_BOX.wallCapHeight];

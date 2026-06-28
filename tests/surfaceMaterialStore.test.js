@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { gridNavCacheKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
-import { drawProjectedWallFace } from "../Libraries/Render/Structure3D/ProjectedWallDraw.js";
+import { drawProjectedWallFaceScalars } from "../Libraries/Render/Structure3D/ProjectedWallDraw.js";
 import { resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Libraries/Spatial/grid/SurfaceMaterialStore.js";
 
 function createPathOnlyContext() {
@@ -87,7 +87,7 @@ describe("surface material stores", () => {
             wallCapHeight: 16,
             cacheObj: null,
         };
-        drawProjectedWallFace(createPathOnlyContext(), { x: 0, y: 0 }, { x: 16, y: 0 }, viewport, state, face);
+        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
         assert.equal(capturedProfileId, "edge-profile");
     });
 
@@ -121,7 +121,7 @@ describe("surface material stores", () => {
             wallCapHeight: 16,
             cacheObj: null,
         };
-        drawProjectedWallFace(createPathOnlyContext(), { x: 0, y: 0 }, { x: 16, y: 0 }, viewport, state, face);
+        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
         assert.equal(capturedProfileId, "cell-profile");
     });
 
@@ -153,7 +153,7 @@ describe("surface material stores", () => {
             wallCapHeight: 16,
             cacheObj: null,
         };
-        drawProjectedWallFace(createPathOnlyContext(), { x: 0, y: 0 }, { x: 16, y: 0 }, viewport, state, face);
+        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
         assert.equal(capturedProfileId, "chunk-profile");
     });
 

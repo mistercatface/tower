@@ -3,7 +3,6 @@ import { fillCircle } from "../Canvas/CanvasPath.js";
 import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
 import { floorOccupancyStampDrawCacheKey, passageEdgeDrawCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { getCanvasLineScale } from "../Render/common/viewportUtils.js";
-import { projectPropVertex } from "../Render/Props3D/propMesh.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 import { isForcefieldEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/grid/CellEdge.js";
 import { gridEdgeSideFacing, gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";

@@ -29,13 +29,10 @@ export function projectWorldPointToScreenInto(out, viewport, worldX, worldY, hei
     projectWorldPointInto(out, worldX, worldY, height, viewport);
     return viewport.worldToScreenInto(out, out.x, out.y);
 }
-export function projectWorldAabbCornersInto(out4, bounds, height, viewport) {
+export function projectWorldAabbCornersIntoFlat(out8, bounds, height, viewport) {
     const { minX, minY, maxX, maxY } = bounds;
-    projectWorldPointInto(out4[0], minX, minY, height, viewport);
-    projectWorldPointInto(out4[1], maxX, minY, height, viewport);
-    projectWorldPointInto(out4[2], maxX, maxY, height, viewport);
-    projectWorldPointInto(out4[3], minX, maxY, height, viewport);
-    return out4;
+    projectWorldQuadInto(out8, minX, minY, maxX, minY, maxX, maxY, minX, maxY, height, viewport);
+    return out8;
 }
 export function projectVertical(objX, objY, height, viewport) {
     const dx = objX - viewport.x;
@@ -45,39 +42,6 @@ export function projectVertical(objX, objY, height, viewport) {
     const top = projectWorldPointAtHeight(objX, objY, height, viewport);
     const viewAngle = Math.atan2(dy, dx);
     return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: top.x, topY: top.y, viewAngle, height };
-}
-export function getHeightSlice(projection, baseSize, t) {
-    const { cx, cy, topX, topY, alpha } = projection;
-    return { centerX: cx + (topX - cx) * t, centerY: cy + (topY - cy) * t, size: scaleAtHeight(baseSize, alpha, t) };
-}
-export function pointOnFrustum(projection, baseRadius, topRadius, t, angle) {
-    const { cx, cy, topX, topY } = projection;
-    const radius = radiusAtT(baseRadius, topRadius, t);
-    const centerX = cx + (topX - cx) * t;
-    const centerY = cy + (topY - cy) * t;
-    return { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
-}
-export function getRadialSilhouette(projection, baseRadius, topRadius = null) {
-    const { cx, cy, topX, topY, alpha, viewAngle } = projection;
-    const resolvedTop = topRadius === null ? baseRadius * (1 + alpha) : topRadius;
-    const perpA = viewAngle + Math.PI / 2;
-    const perpB = viewAngle - Math.PI / 2;
-    const rimPoint = (centerX, centerY, radius, angle) => ({ x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius });
-    if (resolvedTop === 0) {
-        const apex = { x: topX, y: topY };
-        return { viewAngle, perpA, perpB, baseRadius, topRadius: 0, baseLeft: rimPoint(cx, cy, baseRadius, perpA), baseRight: rimPoint(cx, cy, baseRadius, perpB), topLeft: apex, topRight: apex };
-    }
-    return {
-        viewAngle,
-        perpA,
-        perpB,
-        baseRadius,
-        topRadius: resolvedTop,
-        baseLeft: rimPoint(cx, cy, baseRadius, perpA),
-        baseRight: rimPoint(cx, cy, baseRadius, perpB),
-        topLeft: rimPoint(topX, topY, resolvedTop, perpA),
-        topRight: rimPoint(topX, topY, resolvedTop, perpB),
-    };
 }
 export function extrudeLocalVertsInto(baseOut, topOut, localVerts, projection, facing = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
@@ -95,6 +59,10 @@ export function extrudeLocalVertsInto(baseOut, topOut, localVerts, projection, f
         topOut[i * 2 + 1] = topY + topLx * sin + topLy * cos;
     }
     return count;
+}
+export function getHeightSlice(projection, baseSize, t) {
+    const { cx, cy, topX, topY, alpha } = projection;
+    return { centerX: cx + (topX - cx) * t, centerY: cy + (topY - cy) * t, size: scaleAtHeight(baseSize, alpha, t) };
 }
 export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewerX, viewerY) {
     const viewX = midX - viewerX;
@@ -121,9 +89,6 @@ export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngl
     const counterClockwise = delta > 0 ? !useShort : useShort;
     ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
 }
-export function createSideGradient(ctx, left, right, viewAngle, colors) {
-    return createSideGradientAt(ctx, left.x, left.y, right.x, right.y, viewAngle, colors);
-}
 export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngle, colors) {
     const t = getSideHighlightT(viewAngle);
     const grad = ctx.createLinearGradient(leftX, leftY, rightX, rightY);
@@ -137,17 +102,25 @@ export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngl
 export function projectWorldQuadInto(out8, x0, y0, x1, y1, x2, y2, x3, y3, height, viewport) {
     const alpha = resolveElevationAlpha(height, viewport);
     if (alpha <= 0) {
-        out8[0] = x0; out8[1] = y0;
-        out8[2] = x1; out8[3] = y1;
-        out8[4] = x2; out8[5] = y2;
-        out8[6] = x3; out8[7] = y3;
+        out8[0] = x0;
+        out8[1] = y0;
+        out8[2] = x1;
+        out8[3] = y1;
+        out8[4] = x2;
+        out8[5] = y2;
+        out8[6] = x3;
+        out8[7] = y3;
     } else {
         const vx = viewport.x;
         const vy = viewport.y;
-        out8[0] = x0 + (x0 - vx) * alpha; out8[1] = y0 + (y0 - vy) * alpha;
-        out8[2] = x1 + (x1 - vx) * alpha; out8[3] = y1 + (y1 - vy) * alpha;
-        out8[4] = x2 + (x2 - vx) * alpha; out8[5] = y2 + (y2 - vy) * alpha;
-        out8[6] = x3 + (x3 - vx) * alpha; out8[7] = y3 + (y3 - vy) * alpha;
+        out8[0] = x0 + (x0 - vx) * alpha;
+        out8[1] = y0 + (y0 - vy) * alpha;
+        out8[2] = x1 + (x1 - vx) * alpha;
+        out8[3] = y1 + (y1 - vy) * alpha;
+        out8[4] = x2 + (x2 - vx) * alpha;
+        out8[5] = y2 + (y2 - vy) * alpha;
+        out8[6] = x3 + (x3 - vx) * alpha;
+        out8[7] = y3 + (y3 - vy) * alpha;
     }
     return out8;
 }
@@ -159,4 +132,3 @@ export function pointOnFrustumInto(out, offset, projection, baseRadius, topRadiu
     out[offset] = centerX + Math.cos(angle) * radius;
     out[offset + 1] = centerY + Math.sin(angle) * radius;
 }
-

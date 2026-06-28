@@ -5,9 +5,6 @@ import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spat
 import { gridSettings } from "../../Config/world.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
-function allocVoxelWallFace() {
-    return { gridCol: 0, gridRow: 0, gridIdx: 0, gridSide: 0, p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 }, wallBaseZ: 0, wallHeight: 0, wallCapHeight: 0, cx: 0, cy: 0, outX: 0, outY: 0 };
-}
 export const RAIL_BOX = {
     gridCol: 0,
     gridRow: 1,
@@ -37,77 +34,15 @@ export const RAIL_BOX = {
     cy: 25,
 };
 export const RAIL_BOX_STRIDE = 26;
-function allocRailWallBoxView() {
-    return {
-        gridCol: 0,
-        gridRow: 0,
-        chunkCol: 0,
-        chunkRow: 0,
-        gridIdx: 0,
-        gridSide: 0,
-        minX: 0,
-        minY: 0,
-        maxX: 0,
-        maxY: 0,
-        innerP1x: 0,
-        innerP1y: 0,
-        innerP2x: 0,
-        innerP2y: 0,
-        outerP1x: 0,
-        outerP1y: 0,
-        outerP2x: 0,
-        outerP2y: 0,
-        inwardX: 0,
-        inwardY: 0,
-        wallBaseZ: 0,
-        wallHeight: 0,
-        wallCapHeight: 0,
-        edgeThickness: 0,
-        cx: 0,
-        cy: 0,
-    };
-}
-function fillRailWallBoxViewFromData(view, data, index) {
-    const base = index * RAIL_BOX_STRIDE;
-    view.gridCol = data[base + RAIL_BOX.gridCol];
-    view.gridRow = data[base + RAIL_BOX.gridRow];
-    view.chunkCol = data[base + RAIL_BOX.chunkCol];
-    view.chunkRow = data[base + RAIL_BOX.chunkRow];
-    view.gridIdx = data[base + RAIL_BOX.gridIdx];
-    view.gridSide = data[base + RAIL_BOX.gridSide];
-    view.minX = data[base + RAIL_BOX.minX];
-    view.minY = data[base + RAIL_BOX.minY];
-    view.maxX = data[base + RAIL_BOX.maxX];
-    view.maxY = data[base + RAIL_BOX.maxY];
-    view.innerP1x = data[base + RAIL_BOX.innerP1x];
-    view.innerP1y = data[base + RAIL_BOX.innerP1y];
-    view.innerP2x = data[base + RAIL_BOX.innerP2x];
-    view.innerP2y = data[base + RAIL_BOX.innerP2y];
-    view.outerP1x = data[base + RAIL_BOX.outerP1x];
-    view.outerP1y = data[base + RAIL_BOX.outerP1y];
-    view.outerP2x = data[base + RAIL_BOX.outerP2x];
-    view.outerP2y = data[base + RAIL_BOX.outerP2y];
-    view.inwardX = data[base + RAIL_BOX.inwardX];
-    view.inwardY = data[base + RAIL_BOX.inwardY];
-    view.wallBaseZ = data[base + RAIL_BOX.wallBaseZ];
-    view.wallHeight = data[base + RAIL_BOX.wallHeight];
-    view.wallCapHeight = data[base + RAIL_BOX.wallCapHeight];
-    view.edgeThickness = data[base + RAIL_BOX.edgeThickness];
-    view.cx = data[base + RAIL_BOX.cx];
-    view.cy = data[base + RAIL_BOX.cy];
-}
 export class RailWallBoxList {
     constructor(initialCapacity = 64) {
         this.data = new Float32Array(initialCapacity * RAIL_BOX_STRIDE);
         this.length = 0;
-        this.views = [];
         this.order = [];
         this.scratch = new Float32Array(initialCapacity * RAIL_BOX_STRIDE);
-        this.generation = 0;
     }
     clear() {
         this.length = 0;
-        this.generation++;
     }
     ensureCapacity(count) {
         const required = count * RAIL_BOX_STRIDE;
@@ -117,20 +52,6 @@ export class RailWallBoxList {
         nextData.set(this.data);
         this.data = nextData;
         this.scratch = new Float32Array(nextLength);
-    }
-    viewAt(index) {
-        let view = this.views[index];
-        if (!view) {
-            view = allocRailWallBoxView();
-            this.views[index] = view;
-        }
-        if (view._railBoxGeneration !== this.generation || view._railBoxIndex !== index) {
-            fillRailWallBoxViewFromData(view, this.data, index);
-            clearWallGridDrawableDrawMemos(view);
-            view._railBoxGeneration = this.generation;
-            view._railBoxIndex = index;
-        }
-        return view;
     }
 }
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
@@ -185,10 +106,6 @@ export function railWallFootprintAabb(grid, col, row, edge) {
     if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
     if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
     return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
-}
-export function flatRailWallCapUvCornersInto(out8, grid, box) {
-    const b = grid.getCellBounds(box.gridCol, box.gridRow);
-    return fillFlatUvFromBounds(out8, b, box.gridSide);
 }
 export function flatRailWallCapUvCornersIntoFlat(out8, grid, data, base) {
     const col = data[base + RAIL_BOX.gridCol];
@@ -420,7 +337,26 @@ function mergeCollinearRailWallBoxRecordsInPlace(list) {
         }
     return write;
 }
-export function writeVoxelWallFaceInto(face, grid, col, row, edge) {
+export const VOXEL_FACE = { gridCol: 0, gridRow: 1, gridIdx: 2, gridSide: 3, x1: 4, y1: 5, x2: 6, y2: 7, wallBaseZ: 8, wallHeight: 9, wallCapHeight: 10, cx: 11, cy: 12, outX: 13, outY: 14 };
+export const VOXEL_FACE_STRIDE = 15;
+export class VoxelWallFaceList {
+    constructor(initialCapacity = 256) {
+        this.data = new Float32Array(initialCapacity * VOXEL_FACE_STRIDE);
+        this.length = 0;
+    }
+    clear() {
+        this.length = 0;
+    }
+    ensureCapacity(capacity) {
+        if (this.data.length < capacity * VOXEL_FACE_STRIDE) {
+            const newData = new Float32Array(Math.max(this.data.length * 2, capacity * VOXEL_FACE_STRIDE));
+            newData.set(this.data);
+            this.data = newData;
+        }
+    }
+}
+export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, col, row, edge) {
+    const base = baseIndex * VOXEL_FACE_STRIDE;
     const cols = grid.cols;
     const idx = col + row * cols;
     const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
@@ -434,7 +370,6 @@ export function writeVoxelWallFaceInto(face, grid, col, row, edge) {
     if (cellInRect(nc, nr, cols, grid.rows)) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
     if (!voxelWallFaceVisible(neighborCap, faceHeight)) return false;
-    clearWallGridDrawableDrawMemos(face);
     cellEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
     const cellBounds = grid.getCellBounds(col, row);
     const cx = (cellBounds.minX + cellBounds.maxX) / 2;
@@ -442,37 +377,32 @@ export function writeVoxelWallFaceInto(face, grid, col, row, edge) {
     const ecx = (sP1.x + sP2.x) / 2;
     const ecy = (sP1.y + sP2.y) / 2;
     const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);
-    face.gridCol = col;
-    face.gridRow = row;
-    face.gridIdx = idx;
-    face.gridSide = edge;
-    face.p1.x = sP1.x;
-    face.p1.y = sP1.y;
-    face.p2.x = sP2.x;
-    face.p2.y = sP2.y;
-    face.wallBaseZ = wallBaseZ;
-    face.wallHeight = faceHeight - wallBaseZ;
-    face.wallCapHeight = faceHeight;
-    face.cx = ecx;
-    face.cy = ecy;
-    face.outX = ecx - cx;
-    face.outY = ecy - cy;
+    data[base + VOXEL_FACE.gridCol] = col;
+    data[base + VOXEL_FACE.gridRow] = row;
+    data[base + VOXEL_FACE.gridIdx] = idx;
+    data[base + VOXEL_FACE.gridSide] = edge;
+    data[base + VOXEL_FACE.x1] = sP1.x;
+    data[base + VOXEL_FACE.y1] = sP1.y;
+    data[base + VOXEL_FACE.x2] = sP2.x;
+    data[base + VOXEL_FACE.y2] = sP2.y;
+    data[base + VOXEL_FACE.wallBaseZ] = wallBaseZ;
+    data[base + VOXEL_FACE.wallHeight] = faceHeight - wallBaseZ;
+    data[base + VOXEL_FACE.wallCapHeight] = faceHeight;
+    data[base + VOXEL_FACE.cx] = ecx;
+    data[base + VOXEL_FACE.cy] = ecy;
+    data[base + VOXEL_FACE.outX] = ecx - cx;
+    data[base + VOXEL_FACE.outY] = ecy - cy;
     return true;
 }
-export function resolveVoxelWallFace(grid, col, row, edge) {
-    const face = allocVoxelWallFace();
-    return writeVoxelWallFaceInto(face, grid, col, row, edge) ? face : null;
-}
-export function collectVoxelWallFacesInAabb(grid, bounds, out) {
-    let write = 0;
+export function collectVoxelWallFacesInAabbFlat(grid, bounds, list) {
+    list.clear();
     forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
         if (resolveCellWallHeightAtIdx(grid, idx) === 0) return;
         for (let edge = 0; edge < 4; edge++) {
-            const face = out[write] ?? (out[write] = allocVoxelWallFace());
-            if (writeVoxelWallFaceInto(face, grid, col, row, edge)) write++;
+            list.ensureCapacity(list.length + 1);
+            if (writeVoxelWallFaceIntoFlat(list.data, list.length, grid, col, row, edge)) list.length++;
         }
     });
-    out.length = write;
 }
 export function collectRailWallBoxesInAabb(grid, bounds, out) {
     out.clear();

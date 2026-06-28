@@ -1,7 +1,11 @@
 import { rotateXY, transformPoint2DInto } from "../Math/Poly2D.js";
 import { drawBox } from "./Props3D/SolidDraw.js";
-import { projectPropVertex } from "./Props3D/propMesh.js";
+import { projectPropVertexScalarsInto } from "./Props3D/propMesh.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";
+import { traceClosedFlatPolygon } from "../Canvas/CanvasPath.js";
+const sScratchQuad = new Float32Array(8);
+const sScratchChevron = new Float32Array(12);
+const sTemp = new Float32Array(2);
 /** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
     const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride, chevronColors: chevronColorsOverride } = options;
@@ -45,21 +49,17 @@ export function createConveyorDraw(options = {}) {
                 lineWidth: 1.0 * lineScale,
             });
             // 2. Draw the moving belt texture/arrows on the top face (z = 2)
-            function projectLocal(lx, ly, lz) {
+            function projectLocalFlat(out8, offset, lx, ly, lz) {
                 const r = rotateXY(lx, ly, cos, sin);
-                return projectPropVertex(prop, viewport, r.x, r.y, lz);
+                projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
             }
             ctx.save();
             ctx.beginPath();
-            const c0 = projectLocal(-hx, -beltHalfW, 2);
-            ctx.moveTo(c0.x, c0.y);
-            const c1 = projectLocal(hx, -beltHalfW, 2);
-            ctx.lineTo(c1.x, c1.y);
-            const c2 = projectLocal(hx, beltHalfW, 2);
-            ctx.lineTo(c2.x, c2.y);
-            const c3 = projectLocal(-hx, beltHalfW, 2);
-            ctx.lineTo(c3.x, c3.y);
-            ctx.closePath();
+            projectLocalFlat(sScratchQuad, 0, -hx, -beltHalfW, 2);
+            projectLocalFlat(sScratchQuad, 2, hx, -beltHalfW, 2);
+            projectLocalFlat(sScratchQuad, 4, hx, beltHalfW, 2);
+            projectLocalFlat(sScratchQuad, 6, -hx, beltHalfW, 2);
+            traceClosedFlatPolygon(ctx, sScratchQuad, 4);
             ctx.clip();
             const speed = 20; // speed of movement (units/sec)
             const spacing = 8; // distance between treads
@@ -71,11 +71,11 @@ export function createConveyorDraw(options = {}) {
             const numSlats = Math.ceil((hx * 2) / 4) + 2;
             for (let i = -2; i < numSlats; i++) {
                 const cx = -hx + ((timeSec * speed) % 4) + i * 4;
-                const pStart = projectLocal(cx, -beltHalfW, 2);
-                const pEnd = projectLocal(cx, beltHalfW, 2);
+                projectLocalFlat(sScratchQuad, 0, cx, -beltHalfW, 2);
+                projectLocalFlat(sScratchQuad, 2, cx, beltHalfW, 2);
                 ctx.beginPath();
-                ctx.moveTo(pStart.x, pStart.y);
-                ctx.lineTo(pEnd.x, pEnd.y);
+                ctx.moveTo(sScratchQuad[0], sScratchQuad[1]);
+                ctx.lineTo(sScratchQuad[2], sScratchQuad[3]);
                 ctx.stroke();
             }
             // Draw direction chevrons
@@ -85,20 +85,14 @@ export function createConveyorDraw(options = {}) {
             const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
             for (let i = -2; i < numChevrons; i++) {
                 const cx = -hx + offset + i * spacing;
-                const v0 = projectLocal(cx + 1.5, 0, 2); // tip
-                const v1 = projectLocal(cx - 1.2, 3.2, 2); // right wing tip
-                const v2 = projectLocal(cx - 0.4, 3.2, 2); // right inner
-                const v3 = projectLocal(cx + 0.8, 0, 2); // inner tip
-                const v4 = projectLocal(cx - 0.4, -3.2, 2); // left inner
-                const v5 = projectLocal(cx - 1.2, -3.2, 2); // left wing tip
+                projectLocalFlat(sScratchChevron, 0, cx + 1.5, 0, 2); // tip
+                projectLocalFlat(sScratchChevron, 2, cx - 1.2, 3.2, 2); // right wing tip
+                projectLocalFlat(sScratchChevron, 4, cx - 0.4, 3.2, 2); // right inner
+                projectLocalFlat(sScratchChevron, 6, cx + 0.8, 0, 2); // inner tip
+                projectLocalFlat(sScratchChevron, 8, cx - 0.4, -3.2, 2); // left inner
+                projectLocalFlat(sScratchChevron, 10, cx - 1.2, -3.2, 2); // left wing tip
                 ctx.beginPath();
-                ctx.moveTo(v0.x, v0.y);
-                ctx.lineTo(v1.x, v1.y);
-                ctx.lineTo(v2.x, v2.y);
-                ctx.lineTo(v3.x, v3.y);
-                ctx.lineTo(v4.x, v4.y);
-                ctx.lineTo(v5.x, v5.y);
-                ctx.closePath();
+                traceClosedFlatPolygon(ctx, sScratchChevron, 6);
                 ctx.fill();
                 ctx.stroke();
             }
@@ -309,41 +303,41 @@ export function createConveyorDraw(options = {}) {
                 stroke: item.stroke,
                 lineWidth: 1.0 * lineScale,
             });
-        function projectLocal(lx, ly, lz) {
+        function projectLocalFlat(out8, offset, lx, ly, lz) {
             const r = rotateXY(lx, ly, cos, sin);
-            return projectPropVertex(prop, viewport, r.x, r.y, lz);
+            projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
         }
         // 4. Clip and draw moving treads & chevrons on curved belt surface
         ctx.save();
         ctx.beginPath();
         const steps = 8;
         if (isLeft) {
-            const pStart = projectLocal(-6.5, 8, 2);
-            ctx.moveTo(pStart.x, pStart.y);
-            const pCorner = projectLocal(-6.5, -6.5, 2);
-            ctx.lineTo(pCorner.x, pCorner.y);
-            const pExitOuter = projectLocal(8, -6.5, 2);
-            ctx.lineTo(pExitOuter.x, pExitOuter.y);
-            const pExitInner = projectLocal(8, 6.5, 2);
-            ctx.lineTo(pExitInner.x, pExitInner.y);
+            projectLocalFlat(sTemp, 0, -6.5, 8, 2);
+            ctx.moveTo(sTemp[0], sTemp[1]);
+            projectLocalFlat(sTemp, 0, -6.5, -6.5, 2);
+            ctx.lineTo(sTemp[0], sTemp[1]);
+            projectLocalFlat(sTemp, 0, 8, -6.5, 2);
+            ctx.lineTo(sTemp[0], sTemp[1]);
+            projectLocalFlat(sTemp, 0, 8, 6.5, 2);
+            ctx.lineTo(sTemp[0], sTemp[1]);
             for (let i = 0; i <= steps; i++) {
                 const A = 1.5 * Math.PI - (i / steps) * (0.5 * Math.PI);
-                const p = projectLocal(8 + 1.5 * Math.cos(A), 8 + 1.5 * Math.sin(A), 2);
-                ctx.lineTo(p.x, p.y);
+                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), 8 + 1.5 * Math.sin(A), 2);
+                ctx.lineTo(sTemp[0], sTemp[1]);
             }
         } else {
-            const pStart = projectLocal(-6.5, -8, 2);
-            ctx.moveTo(pStart.x, pStart.y);
-            const pCorner = projectLocal(-6.5, 6.5, 2);
-            ctx.lineTo(pCorner.x, pCorner.y);
-            const pExitOuter = projectLocal(8, 6.5, 2);
-            ctx.lineTo(pExitOuter.x, pExitOuter.y);
-            const pExitInner = projectLocal(8, -6.5, 2);
-            ctx.lineTo(pExitInner.x, pExitInner.y);
+            projectLocalFlat(sTemp, 0, -6.5, -8, 2);
+            ctx.moveTo(sTemp[0], sTemp[1]);
+            projectLocalFlat(sTemp, 0, -6.5, 6.5, 2);
+            ctx.lineTo(sTemp[0], sTemp[1]);
+            projectLocalFlat(sTemp, 0, 8, 6.5, 2);
+            ctx.lineTo(sTemp[0], sTemp[1]);
+            projectLocalFlat(sTemp, 0, 8, -6.5, 2);
+            ctx.lineTo(sTemp[0], sTemp[1]);
             for (let i = 0; i <= steps; i++) {
                 const A = 0.5 * Math.PI + (i / steps) * (0.5 * Math.PI);
-                const p = projectLocal(8 + 1.5 * Math.cos(A), -8 + 1.5 * Math.sin(A), 2);
-                ctx.lineTo(p.x, p.y);
+                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), -8 + 1.5 * Math.sin(A), 2);
+                ctx.lineTo(sTemp[0], sTemp[1]);
             }
         }
         ctx.closePath();
@@ -362,11 +356,11 @@ export function createConveyorDraw(options = {}) {
             const s = ((timeSec * speed) % 4) + i * 4;
             if (s < 0 || s > totalArcLength) continue;
             const A = startAngle + dir * (s / 8);
-            const pStart = projectLocal(pivotX + 1.5 * Math.cos(A), pivotY + 1.5 * Math.sin(A), 2);
-            const pEnd = projectLocal(pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), 2);
+            projectLocalFlat(sScratchQuad, 0, pivotX + 1.5 * Math.cos(A), pivotY + 1.5 * Math.sin(A), 2);
+            projectLocalFlat(sScratchQuad, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), 2);
             ctx.beginPath();
-            ctx.moveTo(pStart.x, pStart.y);
-            ctx.lineTo(pEnd.x, pEnd.y);
+            ctx.moveTo(sScratchQuad[0], sScratchQuad[1]);
+            ctx.lineTo(sScratchQuad[2], sScratchQuad[3]);
             ctx.stroke();
         }
         // Draw chevrons curved along path
@@ -383,20 +377,14 @@ export function createConveyorDraw(options = {}) {
             const wingAngle = A - dir * (1.2 / 8);
             const innerAngle = A - dir * (0.4 / 8);
             const innerTipAngle = A + dir * (0.8 / 8);
-            const v0 = projectLocal(pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle), 2);
-            const v1 = projectLocal(pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle), 2);
-            const v2 = projectLocal(pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle), 2);
-            const v3 = projectLocal(pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle), 2);
-            const v4 = projectLocal(pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle), 2);
-            const v5 = projectLocal(pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle), 2);
+            projectLocalFlat(sScratchChevron, 0, pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle), 2);
+            projectLocalFlat(sScratchChevron, 2, pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle), 2);
+            projectLocalFlat(sScratchChevron, 4, pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle), 2);
+            projectLocalFlat(sScratchChevron, 6, pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle), 2);
+            projectLocalFlat(sScratchChevron, 8, pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle), 2);
+            projectLocalFlat(sScratchChevron, 10, pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle), 2);
             ctx.beginPath();
-            ctx.moveTo(v0.x, v0.y);
-            ctx.lineTo(v1.x, v1.y);
-            ctx.lineTo(v2.x, v2.y);
-            ctx.lineTo(v3.x, v3.y);
-            ctx.lineTo(v4.x, v4.y);
-            ctx.lineTo(v5.x, v5.y);
-            ctx.closePath();
+            traceClosedFlatPolygon(ctx, sScratchChevron, 6);
             ctx.fill();
             ctx.stroke();
         }

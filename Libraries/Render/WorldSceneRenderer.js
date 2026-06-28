@@ -1,11 +1,11 @@
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
-import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRail } from "./Structure3D/StaticGridEdgeRailDraw.js";
-import { collectStaticGridWallDrawables } from "./Structure3D/StaticGridWallDraw.js";
-import { drawProjectedWallFace } from "./Structure3D/ProjectedWallDraw.js";
+import { collectStaticGridEdgeRailDrawables, drawProjectedGridEdgeRailFlat, getRailWallBoxData } from "./Structure3D/StaticGridEdgeRailDraw.js";
+import { collectStaticGridWallDrawables, drawProjectedVoxelWallFaceFlat, getVoxelWallFaceData } from "./Structure3D/StaticGridWallDraw.js";
 import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
-import { RAIL_BOX } from "../World/wallGridBake.js";
+import { RAIL_BOX, VOXEL_FACE } from "../World/wallGridBake.js";
 import { drawFlatWallChunkProp } from "./Props3D/SolidDraw.js";
 import propCatalog from "../../Assets/props/index.js";
+import { resetTicketPool, borrowTicket } from "./Structure3D/visibleTickets.js";
 function drawProjectile(ctx, prop, viewport) {
     const length = 1.0;
     const width = 0.6;
@@ -60,30 +60,31 @@ const matchFloor = (p) => p.strategy?.renderMode === "floor";
 const FLOOR_QUERY_OPTIONS = { hitTest: "aabb", filterId: "floor", match: matchFloor };
 const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
-function bindWallFaceScratch(scratch, drawable) {
-    if (drawable.isEdgeRail) {
-        const d = drawable.data;
-        const b = drawable.baseIndex;
+function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
+    scratch.atlasFaceId = undefined;
+    if (kind === "rail") {
+        const d = getRailWallBoxData();
+        const b = baseIndex;
         scratch.wallHeight = d[b + RAIL_BOX.wallHeight];
         scratch.wallBaseZ = d[b + RAIL_BOX.wallBaseZ];
         scratch.wallCapHeight = d[b + RAIL_BOX.wallCapHeight];
-        scratch.cacheObj = drawable;
-        scratch.atlasFaceId = undefined;
+        scratch.cacheObj = null;
         scratch.gridCol = d[b + RAIL_BOX.gridCol];
         scratch.gridRow = d[b + RAIL_BOX.gridRow];
         scratch.gridSide = d[b + RAIL_BOX.gridSide];
         scratch.gridIdx = d[b + RAIL_BOX.gridIdx];
         scratch.isEdgeRail = true;
-    } else {
-        scratch.wallHeight = drawable.wallHeight;
-        scratch.wallBaseZ = drawable.wallBaseZ;
-        scratch.wallCapHeight = drawable.wallCapHeight;
-        scratch.cacheObj = drawable;
-        scratch.atlasFaceId = undefined;
-        scratch.gridCol = drawable.gridCol;
-        scratch.gridRow = drawable.gridRow;
-        scratch.gridSide = drawable.gridSide;
-        scratch.gridIdx = drawable.gridIdx;
+    } else if (kind === "voxel") {
+        const d = getVoxelWallFaceData();
+        const b = baseIndex;
+        scratch.wallHeight = d[b + VOXEL_FACE.wallHeight];
+        scratch.wallBaseZ = d[b + VOXEL_FACE.wallBaseZ];
+        scratch.wallCapHeight = d[b + VOXEL_FACE.wallCapHeight];
+        scratch.cacheObj = null;
+        scratch.gridCol = d[b + VOXEL_FACE.gridCol];
+        scratch.gridRow = d[b + VOXEL_FACE.gridRow];
+        scratch.gridSide = d[b + VOXEL_FACE.gridSide];
+        scratch.gridIdx = d[b + VOXEL_FACE.gridIdx];
         scratch.isEdgeRail = false;
     }
 }
@@ -166,24 +167,27 @@ export class WorldSceneRenderer {
         const visibleObjects = this.visibleDrawables;
         visibleObjects.length = 0;
         this.visibleDrawableDepths.length = 0;
+        resetTicketPool();
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, FLOOR_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
             const distSq = (prop.x - viewport.x) ** 2 + (prop.y - viewport.y) ** 2;
-            this._appendDrawable(prop, distSq);
+            this._appendDrawable(borrowTicket("prop", 0, prop, distSq), distSq);
         }
         parallelSort(visibleObjects, this.visibleDrawableDepths);
-        for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i], viewport);
+        for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i].ref, viewport);
     }
     _appendVisible3dProps(state, viewport) {
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, THREE_D_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) {
             const p = props[i];
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
-            this._appendDrawable(p, distSq);
+            this._appendDrawable(borrowTicket("prop", 0, p, distSq), distSq);
         }
     }
     _appendVisibleStaticGridWalls(state, viewport) {
+        this.staticGridDrawables.length = 0;
+        this.staticGridEdgeRailDrawables.length = 0;
         collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.staticGridDrawables);
         collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.staticGridEdgeRailDrawables);
         for (let i = 0; i < this.staticGridDrawables.length; i++) {
@@ -203,7 +207,7 @@ export class WorldSceneRenderer {
         collectForcefieldEdgeDrawables(grid, state, viewport, drawables);
         for (let i = 0; i < drawables.length; i++) {
             const d = drawables[i];
-            this._appendDrawable(d, d._distSq);
+            this._appendDrawable(borrowTicket("forcefield", 0, d, d._distSq), d._distSq);
         }
     }
     draw3DBuildings(ctx, state, viewport, options = {}) {
@@ -211,13 +215,14 @@ export class WorldSceneRenderer {
         const face = this.wallFaceScratch;
         visibleObjects.length = 0;
         this.visibleDrawableDepths.length = 0;
+        resetTicketPool();
         this._appendVisible3dProps(state, viewport);
         const projectiles = state.projectiles || [];
         for (let i = 0; i < projectiles.length; i++) {
             const proj = projectiles[i];
             if (viewport.circleInBounds(proj.x, proj.y, proj.radius, "props")) {
                 const distSq = (proj.x - viewport.x) ** 2 + (proj.y - viewport.y) ** 2;
-                this._appendDrawable(proj, distSq);
+                this._appendDrawable(borrowTicket("prop", 0, proj, distSq), distSq);
             }
         }
         const skipWalls = options.skipWalls === true;
@@ -228,14 +233,15 @@ export class WorldSceneRenderer {
         const flatWallChunks = options.flatWallChunks === true;
         for (let i = 0; i < visibleObjects.length; i++) {
             const obj = visibleObjects[i];
-            if (obj.strategy) this._drawProp(ctx, obj, viewport, state, { flatWallChunks });
-            else if (obj._forcefield) drawForcefieldEdgeProp(ctx, obj, viewport);
-            else if (obj.p1) {
-                bindWallFaceScratch(face, obj);
-                drawProjectedWallFace(ctx, obj.p1, obj.p2, viewport, state, face);
-            } else if (obj.isEdgeRail) {
-                bindWallFaceScratch(face, obj);
-                drawProjectedGridEdgeRail(ctx, obj, viewport, state, face, skipWallCaps);
+            const kind = obj.kind;
+            if (kind === "prop") this._drawProp(ctx, obj.ref, viewport, state, { flatWallChunks });
+            else if (kind === "forcefield") drawForcefieldEdgeProp(ctx, obj.ref, viewport);
+            else if (kind === "voxel") {
+                bindWallFaceScratchFlat(face, "voxel", obj.baseIndex);
+                drawProjectedVoxelWallFaceFlat(ctx, obj.baseIndex, viewport, state, face);
+            } else if (kind === "rail") {
+                bindWallFaceScratchFlat(face, "rail", obj.baseIndex);
+                drawProjectedGridEdgeRailFlat(ctx, obj.baseIndex, viewport, state, face, skipWallCaps);
             }
         }
     }
