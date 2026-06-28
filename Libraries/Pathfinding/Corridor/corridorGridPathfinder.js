@@ -2,7 +2,6 @@ import { FlatGridSearch } from "../AStar.js";
 import { SearchState } from "../SearchState.js";
 import { FlatGridView } from "../FlatGridView.js";
 import { layoutAbsCellIndex, layoutAbsToLocalCell, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
-
 export class CorridorGridPathfinder {
     constructor(layout) {
         this.layout = layout;
@@ -12,10 +11,7 @@ export class CorridorGridPathfinder {
         this.roomBlocked = new Uint8Array(size);
         this.searchState = new SearchState(size);
         this.reservedIndices = new Set();
-        this.grid = new FlatGridView(this.cols, this.rows, {
-            blocked: this.roomBlocked,
-            canStep: (idx0, idx1) => !this.isBlockedIdx(idx1),
-        });
+        this.grid = new FlatGridView(this.cols, this.rows, { blocked: this.roomBlocked, canStep: (idx0, idx1) => !this.isBlockedIdx(idx1) });
         this.gridSearch = new FlatGridSearch(this.searchState);
         this.gridSearch.grid = this.grid;
         this.gridSearch.gridIdx = this.grid.gridIdx;
@@ -36,14 +32,8 @@ export class CorridorGridPathfinder {
         return this.blockedAtAbs(abs.col, abs.row);
     }
     isBlockedIdx(idx) {
-        if (this.roomBlocked[idx]) return true;
-        if (this.reservedIndices.has(idx)) return true;
-        const cols = this.cols;
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        const absCol = col + this.layout.originCol;
-        const absRow = row + this.layout.originRow;
-        return !layoutContainsAbsCell(this.layout, absCol, absRow);
+        if (idx < 0 || idx >= this.layout.cellCount) return true;
+        return this.roomBlocked[idx] || this.reservedIndices.has(idx);
     }
     setRoomBlocked(roomBlocked) {
         this.roomBlocked = roomBlocked;
@@ -52,25 +42,14 @@ export class CorridorGridPathfinder {
     setReservedIndices(indices) {
         this.reservedIndices = indices;
     }
-    findQuery(query, maxPathLen = 512) {
-        const startIdx = layoutAbsCellIndex(this.layout, query.start.col, query.start.row);
-        const goalIdx = layoutAbsCellIndex(this.layout, query.target.col, query.target.row);
+    findQuery(startIdx, goalIdx, maxPathLen = 512) {
         if (this.isBlockedIdx(startIdx) || this.isBlockedIdx(goalIdx)) return null;
         if (this.pathScratch.length < maxPathLen) this.pathScratch = new Int32Array(maxPathLen);
         const len = this.gridSearch.cardinal(startIdx, goalIdx, maxPathLen, this.pathScratch);
         if (len === 0) return null;
-        const cols = this.cols;
-        const path = new Array(len);
-        for (let i = 0; i < len; i++) {
-            const idx = this.pathScratch[i];
-            const col = idx % cols;
-            const row = (idx / cols) | 0;
-            const abs = layoutLocalToAbsCell(this.layout, col, row);
-            path[i] = { c: abs.col, r: abs.row };
-        }
-        return path;
+        return this.pathScratch.slice(0, len);
     }
-    findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
-        return this.findQuery({ start: { col: startCol, row: startRow }, target: { col: goalCol, row: goalRow } }, maxPathLen);
+    findPath(startIdx, goalIdx, maxPathLen = 512) {
+        return this.findQuery(startIdx, goalIdx, maxPathLen);
     }
 }

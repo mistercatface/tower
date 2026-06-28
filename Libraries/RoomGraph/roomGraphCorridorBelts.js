@@ -20,39 +20,49 @@ export function corridorExteriorCellFromWallHole(hole) {
     const n = gridSideNeighborCell(hole.c, hole.r, hole.side);
     return { c: n.col, r: n.row };
 }
-/** @param {Cell[]} path @param {CellIndexLayout} layout */
+/** @param {Cell[]|number[]} path @param {CellIndexLayout} layout */
 export function collapsePathRevisits(path, layout) {
     const out = [];
     const indexByKey = new Map();
     for (let i = 0; i < path.length; i++) {
         const p = path[i];
-        const key = layoutAbsCellIndex(layout, p.c, p.r);
+        const key = typeof p === "number" ? p : layoutAbsCellIndex(layout, p.c, p.r);
         if (indexByKey.has(key)) out.length = indexByKey.get(key);
         indexByKey.set(key, out.length);
-        out.push({ c: p.c, r: p.r });
+        out.push(p);
     }
     return out;
 }
-/** @param {Cell[]} path @param {number} width @param {GraphNode[]} rooms @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @param {CellIndexLayout} layout @returns {Map<number, BakedFloorBelt>} */
+/** @param {Cell[]|number[]} path @param {number} width @param {GraphNode[]} rooms @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @param {CellIndexLayout} layout @returns {Map<number, BakedFloorBelt>} */
 export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnchor, layout) {
     const collapsed = collapsePathRevisits(path, layout);
     const byCell = new Map();
+    const stride = layout.strideCols;
     for (let i = 0; i < collapsed.length; i++) {
-        if (i > 0 && collapsed[i].c === collapsed[i - 1].c && collapsed[i].r === collapsed[i - 1].r) continue;
-        const prev = i > 0 ? collapsed[i - 1] : null;
-        const next = i < collapsed.length - 1 ? collapsed[i + 1] : null;
-        const cells = collectCorridorPathPointCells(collapsed[i], prev, next, width, false, i, collapsed.length, layout);
+        let p, prev, next;
+        if (typeof collapsed[i] === "number") {
+            const pIdx = collapsed[i];
+            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
+            prev = i > 0 ? { c: (collapsed[i - 1] % stride) + layout.originCol, r: ((collapsed[i - 1] / stride) | 0) + layout.originRow } : null;
+            next = i < collapsed.length - 1 ? { c: (collapsed[i + 1] % stride) + layout.originCol, r: ((collapsed[i + 1] / stride) | 0) + layout.originRow } : null;
+        } else {
+            p = collapsed[i];
+            prev = i > 0 ? collapsed[i - 1] : null;
+            next = i < collapsed.length - 1 ? collapsed[i + 1] : null;
+        }
+        if (prev && p.c === prev.c && p.r === prev.r) continue;
+        const cells = collectCorridorPathPointCells(p, prev, next, width, false, i, collapsed.length, layout);
         let spec;
         if (prev && next) {
-            const entrySide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, prev.c, prev.r);
-            const exitSide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, next.c, next.r);
+            const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
+            const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
             spec = resolveRailedBeltFromSides(entrySide, exitSide);
         } else if (next) {
-            const exitSide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, next.c, next.r);
+            const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
             const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
             spec = resolveRailedBeltFromSides(entrySide, exitSide);
         } else if (prev) {
-            const entrySide = gridSideFromCellToNeighbor(collapsed[i].c, collapsed[i].r, prev.c, prev.r);
+            const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
             const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
             spec = resolveRailedBeltFromSides(entrySide, exitSide);
         } else spec = resolveRailedBeltFromSides(3, 1);

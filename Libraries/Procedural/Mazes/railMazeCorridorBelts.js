@@ -6,7 +6,7 @@ import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutAbsC
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
-import { collectPathMouthExteriorIndices, filterNavBeltEndpointCandidates, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
+import { collectPathMouthExteriorIndices, filterNavBeltEndpointCandidatesIdx, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
 import { createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "./railMazeNavCorridorPath.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 const DEFAULT_CORRIDOR_COUNT = 150;
@@ -137,33 +137,38 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
     }
     return { floorBelts: belts, validation: tryValidateBeltChains(belts, layout, mouthExteriorIndices) };
 }
-function pickRandomFreeCell(freeCells, occupiedGlobalIndices, gridCols, rng) {
-    if (freeCells.length < 2) return null;
-    for (let attempt = 0; attempt < freeCells.length; attempt++) {
-        const cell = freeCells[Math.floor(rng() * freeCells.length)];
-        if (!occupiedGlobalIndices.has(globalCellIdx(cell.col, cell.row, gridCols))) return cell;
+function pickRandomFreeIdx(freeIndices, occupiedGlobalIndices, rng) {
+    if (freeIndices.length < 2) return -1;
+    for (let attempt = 0; attempt < freeIndices.length; attempt++) {
+        const idx = freeIndices[Math.floor(rng() * freeIndices.length)];
+        if (!occupiedGlobalIndices.has(idx)) return idx;
     }
-    return null;
+    return -1;
 }
-function pickRandomEndInLengthBand(start, endpointCells, occupiedGlobalIndices, gridCols, minLen, maxLen, rng) {
+function pickRandomEndInLengthBandIdx(startIdx, endpointIndices, occupiedGlobalIndices, gridCols, minLen, maxLen, rng) {
     const candidates = [];
-    for (let i = 0; i < endpointCells.length; i++) {
-        const cell = endpointCells[i];
-        if (cell.col === start.col && cell.row === start.row) continue;
-        if (occupiedGlobalIndices.has(globalCellIdx(cell.col, cell.row, gridCols))) continue;
-        const dist = manhattanCells(start, cell);
+    const sc = startIdx % gridCols;
+    const sr = (startIdx / gridCols) | 0;
+    for (let i = 0; i < endpointIndices.length; i++) {
+        const idx = endpointIndices[i];
+        if (idx === startIdx) continue;
+        if (occupiedGlobalIndices.has(idx)) continue;
+        const ec = idx % gridCols;
+        const er = (idx / gridCols) | 0;
+        const dist = Math.abs(sc - ec) + Math.abs(sr - er);
         if (dist < minLen || dist > maxLen) continue;
-        candidates.push(cell);
+        candidates.push(idx);
     }
-    if (!candidates.length) return pickRandomFreeCell(endpointCells, occupiedGlobalIndices, gridCols, rng);
+    if (!candidates.length) return pickRandomFreeIdx(endpointIndices, occupiedGlobalIndices, rng);
     return candidates[Math.floor(rng() * candidates.length)];
 }
 function planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, navWalkableIndex, northReserveRows, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng }) {
     const globalLayout = gridCellLayout(grid);
-    const endpointCells = filterNavBeltEndpointCandidates(
+    const cols = grid.cols;
+    const endpointIndices = filterNavBeltEndpointCandidatesIdx(
         grid,
         navTopology,
-        zoneCells.map((cell) => ({ col: cell.col, row: cell.row })),
+        zoneCells.map((cell) => cell.col + cell.row * cols),
     );
     const pathfinder = createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex);
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} */
@@ -175,12 +180,12 @@ function planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, 
     for (let placed = 0; placed < corridorCount; placed++) {
         let placedPath = null;
         for (let attempt = 0; attempt < MAX_PAIR_ATTEMPTS_PER_CORRIDOR; attempt++) {
-            const start = pickRandomFreeCell(endpointCells, occupiedGlobalIndices, grid.cols, rng);
-            if (!start) break;
-            const end = pickRandomEndInLengthBand(start, endpointCells, occupiedGlobalIndices, grid.cols, pathLengthMin, pathLengthMax, rng);
-            if (!end) break;
-            if (start.col === end.col && start.row === end.row) continue;
-            const path = findRailMazeNavCorridorPath(pathfinder, start, end, occupiedGlobalIndices, corridorWidth, pathLengthMax);
+            const startIdx = pickRandomFreeIdx(endpointIndices, occupiedGlobalIndices, rng);
+            if (startIdx === -1) break;
+            const endIdx = pickRandomEndInLengthBandIdx(startIdx, endpointIndices, occupiedGlobalIndices, cols, pathLengthMin, pathLengthMax, rng);
+            if (endIdx === -1) break;
+            if (startIdx === endIdx) continue;
+            const path = findRailMazeNavCorridorPath(pathfinder, startIdx, endIdx, occupiedGlobalIndices, corridorWidth, pathLengthMax);
             if (!path) continue;
             if (!pathLengthInBand(path, pathLengthMin, pathLengthMax)) continue;
             if (!validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlobalIndices)) continue;

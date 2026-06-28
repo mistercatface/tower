@@ -454,6 +454,10 @@ export class WorldObstacleGrid {
     gridToWorld(col, row) {
         return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
     }
+    isBlockedIdx(idx) {
+        if (idx < 0 || idx >= this.grid.length) return true;
+        return this.grid[idx] !== 0;
+    }
     isBlocked(col, row) {
         if (!cellInRect(col, row, this.cols, this.rows)) return true;
         return this.grid[colRowToIndex(col, row, this.cols)] !== 0;

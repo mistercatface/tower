@@ -1,4 +1,4 @@
-import { gridSideNeighborCell } from "../../Spatial/grid/GridUtils.js";
+import { gridSideNeighborCell, layoutAbsCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
 import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellIndices, corridorPathsToOccupiedCellIndices } from "./corridorFootprint.js";
 import { CorridorGridPathfinder } from "./corridorGridPathfinder.js";
 import { buildRoomInteriorBlockedGridForLayout, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";
@@ -50,26 +50,50 @@ function assembleCorridorPath(corridorFrom, egress, midPath) {
  * @param {import("./corridorGridPathfinder.js").CorridorGridPathfinder} pathfinder
  * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout
  * @param {{ maxPathLen?: number, laneWidths?: number[], footprint?: { interiorOnly?: boolean } }} [options]
- * @returns {CorridorCell[] | null}
+ * @returns {number[] | null}
  */
 export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, layout, options = {}) {
     const footprint = options.footprint;
-    const corridorFrom = stepAcrossSide(parentHole, parentHole.side);
-    const corridorTo = stepAcrossSide(childHole, childHole.side);
-    const approachEnd = stepAcrossSide(corridorTo, childHole.side);
-    const egress = walkEgress(corridorFrom, parentHole.side, egressCells, rooms);
-    const egressEnd = egress.end;
+    const stride = layout.strideCols;
+    const stepAcrossSideIdx = (idx, side) => {
+        const c = (idx % stride) + layout.originCol;
+        const r = ((idx / stride) | 0) + layout.originRow;
+        const n = gridSideNeighborCell(c, r, side);
+        return layoutAbsCellIndex(layout, n.col, n.row);
+    };
+    const parentHoleIdx = layoutAbsCellIndex(layout, parentHole.c, parentHole.r);
+    const childHoleIdx = layoutAbsCellIndex(layout, childHole.c, childHole.r);
+    const corridorFromIdx = stepAcrossSideIdx(parentHoleIdx, parentHole.side);
+    const corridorToIdx = stepAcrossSideIdx(childHoleIdx, childHole.side);
+    const approachEndIdx = stepAcrossSideIdx(corridorToIdx, childHole.side);
+    const walkEgressIdx = (fromIdx, parentSide, maxSteps, rooms) => {
+        const cells = [];
+        let pIdx = fromIdx;
+        for (let i = 0; i < maxSteps; i++) {
+            const nextIdx = stepAcrossSideIdx(pIdx, parentSide);
+            const nc = (nextIdx % stride) + layout.originCol;
+            const nr = ((nextIdx / stride) | 0) + layout.originRow;
+            if (cellInsideAnyRoom(rooms, nc, nr)) break;
+            pIdx = nextIdx;
+            cells.push(pIdx);
+        }
+        return { endIdx: pIdx, cells };
+    };
+    const egress = walkEgressIdx(corridorFromIdx, parentHole.side, egressCells, rooms);
+    const egressEndIdx = egress.endIdx;
     /** @type {Set<number>} */
     const reserved = new Set(baseOccupied);
     const laneWidths = options.laneWidths ?? lanePaths.map(() => corridorWidth);
     const laneIndices = corridorPathsToOccupiedCellIndices(lanePaths, laneWidths, layout, footprint);
     for (const idx of laneIndices) reserved.add(idx);
     pathfinder.setReservedIndices(reserved);
-    const midPath = pathfinder.findPath(egressEnd.c, egressEnd.r, approachEnd.c, approachEnd.r, options.maxPathLen ?? 512);
+    const midPath = pathfinder.findPath(egressEndIdx, approachEndIdx, options.maxPathLen ?? 512);
     if (!midPath) return null;
-    /** @type {CorridorCell[]} */
-    let path = assembleCorridorPath(corridorFrom, egress, midPath);
-    const ingressPath = pathfinder.findPath(path[path.length - 1].c, path[path.length - 1].r, corridorTo.c, corridorTo.r, options.maxPathLen ?? 512);
+    const path = [corridorFromIdx];
+    for (let i = 0; i < egress.cells.length; i++) path.push(egress.cells[i]);
+    for (let i = 1; i < midPath.length; i++) path.push(midPath[i]);
+    const lastIdx = path[path.length - 1];
+    const ingressPath = pathfinder.findPath(lastIdx, corridorToIdx, options.maxPathLen ?? 512);
     if (!ingressPath || ingressPath.length < 2) return null;
     for (let i = 1; i < ingressPath.length; i++) path.push(ingressPath[i]);
     if (corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth, layout)) return null;

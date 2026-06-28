@@ -23,32 +23,34 @@ function availableAttachments(node, corridorWidth, picked) {
     const out = [];
     for (let i = 0; i < groups.length; i++) {
         const group = groups[i];
-        let clash = false;
+        let overlap = false;
         for (let j = 0; j < picked.length; j++)
             if (wallHoleGroupsOverlap(group, picked[j])) {
-                clash = true;
+                overlap = true;
                 break;
             }
-        if (!clash) out.push(group);
+        if (!overlap) out.push(group);
     }
     return out;
 }
-/** @param {WallHole} a @param {WallHole} b */
-function attachmentDistance(a, b) {
-    return Math.abs(a.c - b.c) + Math.abs(a.r - b.r);
-}
-/** @param {WallHoleGroup[]} parentGroups @param {WallHoleGroup[]} childGroups @param {() => number} rng */
+/**
+ * @param {WallHoleGroup[]} parentGroups
+ * @param {WallHoleGroup[]} childGroups
+ * @param {() => number} rng
+ */
 function orderedAttachmentPairs(parentGroups, childGroups, rng) {
-    /** @type {{ pg: WallHoleGroup, cg: WallHoleGroup, score: number }[]} */
+    /** @type {{ pg: WallHoleGroup, cg: WallHoleGroup, dist: number }[]} */
     const pairs = [];
-    for (let pi = 0; pi < parentGroups.length; pi++) {
-        const pg = parentGroups[pi];
-        for (let ci = 0; ci < childGroups.length; ci++) {
-            const cg = childGroups[ci];
-            pairs.push({ pg, cg, score: attachmentDistance(pg.anchor, cg.anchor) + rng() * 0.25 });
+    for (let i = 0; i < parentGroups.length; i++) {
+        const pg = parentGroups[i];
+        for (let j = 0; j < childGroups.length; j++) {
+            const cg = childGroups[j];
+            const dc = pg.anchor.c - cg.anchor.c;
+            const dr = pg.anchor.r - cg.anchor.r;
+            pairs.push({ pg, cg, dist: dc * dc + dr * dr });
         }
     }
-    pairs.sort((a, b) => a.score - b.score);
+    pairs.sort((a, b) => a.dist - b.dist);
     return pairs;
 }
 /**
@@ -75,7 +77,7 @@ export function solveCorridorBundle(params) {
     const pickedParent = [];
     /** @type {WallHoleGroup[]} */
     const pickedChild = [];
-    /** @type {CorridorCell[][]} */
+    /** @type {number[][]} */
     const paths = [];
     /** @type {number[]} */
     const pathWidths = [];

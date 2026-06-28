@@ -132,13 +132,28 @@ export function assertManySeparateLinks(fixture, linkCount, seed = 0) {
         placedPathWidths.push(1);
     }
 }
-export function assertPathsAreCardinalConnected(paths) {
+export function assertPathsAreCardinalConnected(paths, layout) {
+    const stride = layout ? layout.strideCols : 0;
     for (let pi = 0; pi < paths.length; pi++) {
         const path = paths[pi];
         for (let i = 1; i < path.length; i++) {
-            const dc = Math.abs(path[i].c - path[i - 1].c);
-            const dr = Math.abs(path[i].r - path[i - 1].r);
-            if (dc + dr !== 1) throw new Error(`path ${pi} step ${i} is not cardinal (${path[i - 1].c},${path[i - 1].r}) -> (${path[i].c},${path[i].r})`);
+            let c0, r0, c1, r1;
+            if (typeof path[i] === "number") {
+                const idx0 = path[i - 1];
+                const idx1 = path[i];
+                c0 = idx0 % stride;
+                r0 = (idx0 / stride) | 0;
+                c1 = idx1 % stride;
+                r1 = (idx1 / stride) | 0;
+            } else {
+                c0 = path[i - 1].c;
+                r0 = path[i - 1].r;
+                c1 = path[i].c;
+                r1 = path[i].r;
+            }
+            const dc = Math.abs(c1 - c0);
+            const dr = Math.abs(r1 - r0);
+            if (dc + dr !== 1) throw new Error(`path ${pi} step ${i} is not cardinal (${c0},${r0}) -> (${c1},${r1})`);
         }
     }
 }
@@ -152,7 +167,7 @@ export function assertPathsDoNotOverlap(paths, widths, layout) {
 }
 export function assertBundleLanes(fixture, bundle) {
     const layout = fixtureLayout(fixture);
-    assertPathsAreCardinalConnected(bundle.paths);
+    assertPathsAreCardinalConnected(bundle.paths, layout);
     assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths, layout);
     for (let li = 0; li < bundle.paths.length; li++) {
         assertLaneMouthBeltsEnterRooms(fixture, bundle, li, `lane ${li}`);

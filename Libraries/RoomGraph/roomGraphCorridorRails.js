@@ -36,8 +36,20 @@ function dedupeRailWallsByEdge(rails) {
 /** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {GraphNode[]} rooms */
 function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
     const layout = createCellIndexLayout(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows);
+    const stride = layout.strideCols;
     for (let i = 0; i < path.length; i++) {
-        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length, layout);
+        let p, prev, next;
+        if (typeof path[i] === "number") {
+            const pIdx = path[i];
+            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
+            prev = i > 0 ? { c: (path[i - 1] % stride) + layout.originCol, r: ((path[i - 1] / stride) | 0) + layout.originRow } : undefined;
+            next = i + 1 < path.length ? { c: (path[i + 1] % stride) + layout.originCol, r: ((path[i + 1] / stride) | 0) + layout.originRow } : undefined;
+        } else {
+            p = path[i];
+            prev = i > 0 ? path[i - 1] : undefined;
+            next = i + 1 < path.length ? path[i + 1] : undefined;
+        }
+        const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
         for (let ci = 0; ci < cells.length; ci++) {
             if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) continue;
             if (!layoutContainsAbsCell(layout, cells[ci].c, cells[ci].r)) continue;

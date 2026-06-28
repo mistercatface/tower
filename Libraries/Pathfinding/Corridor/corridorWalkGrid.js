@@ -49,8 +49,20 @@ export function corridorPathMidCellsClear(rooms, path) {
 }
 /** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms @param {number} corridorWidth @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth, layout) {
+    const stride = layout.strideCols;
     for (let i = 0; i < path.length; i++) {
-        const cells = collectCorridorPathPointCells(path[i], path[i - 1], path[i + 1], corridorWidth, false, i, path.length, layout);
+        let p, prev, next;
+        if (typeof path[i] === "number") {
+            const pIdx = path[i];
+            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
+            prev = i > 0 ? { c: (path[i - 1] % stride) + layout.originCol, r: ((path[i - 1] / stride) | 0) + layout.originRow } : undefined;
+            next = i + 1 < path.length ? { c: (path[i + 1] % stride) + layout.originCol, r: ((path[i + 1] / stride) | 0) + layout.originRow } : undefined;
+        } else {
+            p = path[i];
+            prev = i > 0 ? path[i - 1] : undefined;
+            next = i + 1 < path.length ? path[i + 1] : undefined;
+        }
+        const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
         for (let ci = 0; ci < cells.length; ci++) if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) return true;
     }
     return false;
