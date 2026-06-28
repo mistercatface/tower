@@ -1,6 +1,5 @@
-import { unionCellBounds } from "../DataStructures/CellRect.js";
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
-import { commitGridNavEditUnion } from "../Sandbox/gridNavEdit.js";
+import { commitGridNavEdit } from "../Sandbox/gridNavEdit.js";
 import { clearRailWallsQuiet, stampRailWallsQuiet } from "../Sandbox/gridWallEdit.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import {
@@ -182,7 +181,7 @@ export function syncRoomGraphBake(state) {
     let layout = buildAuthoredBakeLayout(state);
     if (!layout.rooms.length) {
         clearLockedRoomBakes(state);
-        commitGridNavEditUnion(state, dirtyRailBounds, dirtyBeltBounds);
+        commitGridNavEdit(state, null, { fullNavSync: true });
         return;
     }
     expandGridForGraphNodes(state, layout.rooms);
@@ -193,19 +192,17 @@ export function syncRoomGraphBake(state) {
     const { bounds: beltBounds, stamped: stampedBelts } = stampBakedFloorBeltsQuiet(state, bake.belts);
     setBakedRails(state, stampedRails);
     setBakedFloorBelts(state, stampedBelts);
-    dirtyRailBounds = unionCellBounds(dirtyRailBounds, railBounds);
-    const bakedBeltBounds = unionCellBounds(dirtyBeltBounds, beltBounds);
-    commitGridNavEditUnion(state, dirtyRailBounds, bakedBeltBounds);
+    commitGridNavEdit(state, null, { fullNavSync: true });
     syncLockedRoomBakes(state, layout, bake.lockedLinkBakes);
 }
 /** @param {object} state */
 export function unbakeRoomGraph(state) {
     clearLockedRoomBakes(state);
-    const railBounds = clearRailWallsQuiet(state, listBakedRails(state));
-    const beltBounds = clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state));
+    clearRailWallsQuiet(state, listBakedRails(state));
+    clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state));
     setBakedRails(state, []);
     setBakedFloorBelts(state, []);
-    commitGridNavEditUnion(state, railBounds, beltBounds);
+    commitGridNavEdit(state, null, { fullNavSync: true });
 }
 /** @param {object} state @param {number} linkId */
 export function rerollRoomLinkBake(state, linkId) {

@@ -40,7 +40,7 @@ export function collectWalkableCells(state, boundsConfig = state.editor.cavernCo
     const open = [];
     forEachGlobalCellInMapGenBounds(boundsConfig, (globalCol, globalRow) => {
         const col = grid.worldCol(globalCol * cellSize);
-    const row = grid.worldRow(globalRow * cellSize);
+        const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         if (grid.isBlocked(col, row)) return;
         open.push({ col, row });
@@ -125,7 +125,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     const seen = new Uint8Array(grid.cols * grid.rows);
     forEachGlobalCellInMapGenBounds(boundsConfig, (globalCol, globalRow) => {
         const col = grid.worldCol(globalCol * cellSize);
-    const row = grid.worldRow(globalRow * cellSize);
+        const row = grid.worldRow(globalRow * cellSize);
         if (!isNavWalkableCell(grid, navTopology, col, row)) return;
         const idx = colRowToIndex(col, row, grid.cols);
         if (seen[idx]) return;
@@ -190,8 +190,15 @@ export function isNavWalkableCellAt(state, col, row, boundsConfig = state.editor
 export function patchNavWalkableCellIndex(state, damageBounds = null) {
     const cache = state.sandbox._navWalkableCellsCache;
     if (!cache?.boundsConfig) return null;
-    if (!damageBounds || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
-    return patchNavWalkableCellIndexRegion(state, cache, damageBounds);
+    let finalBounds = damageBounds;
+    if (typeof damageBounds === "number") {
+        const cols = state.obstacleGrid.cols;
+        const col = damageBounds % cols;
+        const row = (damageBounds / cols) | 0;
+        finalBounds = { startCol: col, endCol: col, startRow: row, endRow: row };
+    }
+    if (!finalBounds || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
+    return patchNavWalkableCellIndexRegion(state, cache, finalBounds);
 }
 export function pickWalkableCell(openCells, { cols, excludeIndices = null, rng = Math.random } = {}) {
     const candidates = excludeIndices ? openCells.filter((cell) => !excludeIndices.has(cellIndex(cell.col, cell.row, cols))) : openCells;

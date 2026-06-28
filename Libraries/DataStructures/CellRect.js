@@ -9,12 +9,7 @@ export function isEmptyCellBounds(bounds) {
 }
 /** @param {CellBounds} bounds @param {number} cols @param {number} rows @returns {CellBounds} */
 export function clampCellBoundsToGrid(bounds, cols, rows) {
-    return {
-        startCol: Math.max(0, bounds.startCol),
-        endCol: Math.min(cols - 1, bounds.endCol),
-        startRow: Math.max(0, bounds.startRow),
-        endRow: Math.min(rows - 1, bounds.endRow),
-    };
+    return { startCol: Math.max(0, bounds.startCol), endCol: Math.min(cols - 1, bounds.endCol), startRow: Math.max(0, bounds.startRow), endRow: Math.min(rows - 1, bounds.endRow) };
 }
 export function cellBoundsForGrid(cols, rows) {
     return { startCol: 0, endCol: cols - 1, startRow: 0, endRow: rows - 1 };
@@ -35,8 +30,22 @@ export function growCellBounds(bounds, col, row) {
     if (row > bounds.endRow) bounds.endRow = row;
     return bounds;
 }
+export function growCellBoundsIdx(bounds, idx, cols) {
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    if (col < bounds.startCol) bounds.startCol = col;
+    if (col > bounds.endCol) bounds.endCol = col;
+    if (row < bounds.startRow) bounds.startRow = row;
+    if (row > bounds.endRow) bounds.endRow = row;
+    return bounds;
+}
 /** @param {number} col @param {number} row @returns {CellBounds} */
 export function cellBoundsAt(col, row) {
+    return { startCol: col, endCol: col, startRow: row, endRow: row };
+}
+export function cellBoundsAtIdx(idx, cols) {
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
     return { startCol: col, endCol: col, startRow: row, endRow: row };
 }
 /** @param {CellBounds | null} a @param {CellBounds | null} b @returns {CellBounds | null} */

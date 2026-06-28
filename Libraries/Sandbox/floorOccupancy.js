@@ -29,7 +29,7 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
         const beltKind = grid.floorStore.kind[idx];
         const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
         grid.writeFloorCell(col, row, beltKind, stepCardinalFacing(facingRadians, steps));
-        commitGridNavEdit(state, cellBoundsAt(col, row));
+        commitGridNavEdit(state, idx);
         return true;
     }
     throw new Error(`Unknown rotatable grid occupant kind: ${kind}`);

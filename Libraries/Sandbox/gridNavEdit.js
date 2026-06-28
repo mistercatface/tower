@@ -1,37 +1,35 @@
-import { cellBoundsAt, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
+import { cellBoundsAt, cellBoundsAtIdx, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
 import { chunkRangeToCellBounds } from "../Spatial/grid/GridCoords.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
-/** @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null | undefined} bounds */
-function mergeNavEditBounds(bounds) {
-    if (!bounds) return null;
-    const regions = Array.isArray(bounds) ? bounds : [bounds];
-    let merged = null;
-    for (let i = 0; i < regions.length; i++) if (regions[i]) merged = unionCellBounds(merged, regions[i]);
-    return merged;
-}
 /**
  * Schedule one worker nav resync after grid edits (walls, belts, boundaries).
  * Grid writes must bump the relevant epoch channels before calling this.
  *
  * @param {object} state
- * @param {import("../DataStructures/CellRect.js").CellBounds | import("../DataStructures/CellRect.js").CellBounds[] | null} bounds
+ * @param {number} idx
  * @param {{ invalidateSurfaces?: boolean, fullNavSync?: boolean }} [options]
  */
-export function commitGridNavEdit(state, bounds, { invalidateSurfaces = true, fullNavSync = false } = {}) {
-    const merged = fullNavSync ? null : mergeNavEditBounds(bounds);
-    if (!fullNavSync && (!merged || isEmptyCellBounds(merged))) return Promise.resolve();
+export function commitGridNavEdit(state, idx, { invalidateSurfaces = true, fullNavSync = false } = {}) {
     const grid = state.obstacleGrid;
+    const bounds = idx != null ? cellBoundsAtIdx(idx, grid.cols) : null;
+    const merged = fullNavSync ? null : bounds;
+    if (!fullNavSync && (!merged || isEmptyCellBounds(merged))) return Promise.resolve();
     if (invalidateSurfaces && state.worldSurfaces)
         if (fullNavSync || !merged) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, state);
         else state.worldSurfaces.invalidateGridBounds(merged, state);
     if (state.sandbox) markGridZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     const nav = resolveNavRuntime(state);
-    const damageBounds = fullNavSync ? null : merged;
-    return nav.commitEdit(damageBounds, { fullNavSync });
+    return nav.commitEdit(idx, { fullNavSync });
+}
+export function commitGridNavEditUnion(state, ...indices) {
+    const parts = indices.filter((x) => typeof x === "number");
+    if (!parts.length) return Promise.resolve();
+    for (let i = 0; i < parts.length; i++) commitGridNavEdit(state, parts[i]);
+    return Promise.resolve();
 }
 export function commitSurfaceMaterialEdit(state, bounds) {
     if (!bounds || isEmptyCellBounds(bounds) || bounds.startCol > bounds.endCol || bounds.startRow > bounds.endRow) return null;
@@ -56,28 +54,23 @@ export function setChunkSurfaceProfileRangeEdit(state, chunkBounds, profileId) {
     state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
     return commitSurfaceMaterialEdit(state, chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows));
 }
-/** One resync for multiple dirty regions (rails + belts, clear + stamp, etc.). */
-export function commitGridNavEditUnion(state, ...boundsParts) {
-    const parts = boundsParts.filter(Boolean);
-    if (!parts.length) return Promise.resolve();
-    return commitGridNavEdit(state, parts);
-}
 /** Stamp or replace one floor cell and resync nav topology. */
 export function applyFloorCellEdit(state, col, row, kind, facingRadians) {
-    const { changed, bounds } = writeNavFloorCell(state.obstacleGrid, col, row, kind, facingRadians);
+    const { changed } = writeNavFloorCell(state.obstacleGrid, col, row, kind, facingRadians);
     if (!changed) return null;
-    return commitGridNavEdit(state, bounds);
+    const idx = col + row * state.obstacleGrid.cols;
+    return commitGridNavEdit(state, idx);
 }
 /** Clear one floor cell and resync nav topology. */
 export function clearFloorCellNavEdit(state, col, row) {
-    const { changed, bounds } = clearNavFloorCell(state.obstacleGrid, col, row);
+    const { changed } = clearNavFloorCell(state.obstacleGrid, col, row);
     if (!changed) return null;
-    return commitGridNavEdit(state, bounds);
+    const idx = col + row * state.obstacleGrid.cols;
+    return commitGridNavEdit(state, idx);
 }
 /** @param {object} state @param {{ col: number, row: number }[]} cells */
 export function commitGridNavEditCells(state, cells) {
-    let bounds = null;
-    for (let i = 0; i < cells.length; i++) bounds = unionCellBounds(bounds, cellBoundsAt(cells[i].col, cells[i].row));
-    if (!bounds) return Promise.resolve();
-    return commitGridNavEdit(state, bounds);
+    const grid = state.obstacleGrid;
+    for (let i = 0; i < cells.length; i++) commitGridNavEdit(state, cells[i].col + cells[i].row * grid.cols);
+    return Promise.resolve();
 }

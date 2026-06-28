@@ -32,30 +32,29 @@ function createNavEditTestState() {
 }
 
 describe("gridNavEdit", () => {
-    it("applyFloorCellEdit calls commitEdit with the edited cell bounds", async () => {
+    it("applyFloorCellEdit calls commitEdit with the edited cell index", async () => {
         const state = createNavEditTestState();
         await applyFloorCellEdit(state, 2, 2, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
-        assert.deepEqual(state.syncBounds, { startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
+        assert.equal(state.syncBounds, 66);
     });
 
     it("clearFloorCellNavEdit resyncs after belt removal", async () => {
         const state = createNavEditTestState();
         state.obstacleGrid.writeFloorCell(2, 2, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         await clearFloorCellNavEdit(state, 2, 2);
-        assert.deepEqual(state.syncBounds, { startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
+        assert.equal(state.syncBounds, 66);
     });
 
     it("commitGridNavEdit supports full-grid sync", async () => {
         const state = createNavEditTestState();
         await commitGridNavEdit(state, null, { fullNavSync: true });
-        assert.deepEqual(state.syncBounds, null);
+        assert.equal(state.syncBounds, null);
     });
 
-    it("commitGridNavEditUnion merges bounds and syncs once", async () => {
+    it("commitGridNavEditUnion commits each index", async () => {
         const state = createNavEditTestState();
-        await commitGridNavEditUnion(state, { startCol: 1, endCol: 2, startRow: 1, endRow: 2 }, { startCol: 3, endCol: 4, startRow: 3, endRow: 4 });
-        assert.equal(state.syncCount, 1);
-        assert.deepEqual(state.syncBounds, { startCol: 1, endCol: 4, startRow: 1, endRow: 4 });
+        await commitGridNavEditUnion(state, 33, 67);
+        assert.equal(state.syncCount, 2);
     });
 
     it("stampRailWallsBatch syncs nav once per batch", () => {

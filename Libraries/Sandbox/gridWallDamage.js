@@ -1,6 +1,6 @@
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { isRailWallEdge } from "../Spatial/grid/CellEdge.js";
-import { cellIsStaticWall, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
+import { cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCellTopology.js";
 import { createDeferredGridWallCommit } from "./deferredGridWallCommit.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
@@ -100,20 +100,17 @@ export function applyPendingWallDamage(state, wallDamage) {
         const target = item.target;
         if (!resolveWallDamageTarget(grid, targetToSegment(grid, target))) continue;
         const idx = target.idx;
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
         if (target.kind === "voxel") {
             const info = getVoxelWallInfo(grid, idx);
-            if (!info) continue;
-            const cx = grid.gridCenterX(col);
-            const cy = grid.gridCenterY(row);
+            if (info == null) continue;
+            const cx = grid.gridCenterXByIdx(idx);
+            const cy = grid.gridCenterYByIdx(idx);
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
             const profileId = resolveCellSurfaceProfileId(grid, idx, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
-            const wallHeightPx = info.heightLevel * grid.cellSize;
+            const wallHeightPx = grid.grid[idx] * grid.cellSize;
             descriptors.push({
                 kind: "voxel",
-                col: col,
-                row: row,
+                idx: idx,
                 x: cx,
                 y: cy,
                 angle: 0,
@@ -135,17 +132,16 @@ export function applyPendingWallDamage(state, wallDamage) {
             if (!info) continue;
             const p1 = { x: 0, y: 0 };
             const p2 = { x: 0, y: 0 };
-            cellEdgeEndpoints(grid, col, row, target.side, p1, p2, 0);
+            cellEdgeEndpointsIdx(grid, idx, target.side, p1, p2, 0);
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5;
             const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-            const profileId = resolveEdgeSurfaceProfileId(grid, col, row, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
+            const profileId = resolveEdgeSurfaceProfileId(grid, idx, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "rail",
-                col: col,
-                row: row,
+                idx: idx,
                 side: target.side,
                 x: cx,
                 y: cy,
@@ -169,8 +165,8 @@ export function applyPendingWallDamage(state, wallDamage) {
     const voxels = [];
     const rails = [];
     for (const desc of descriptors)
-        if (desc.kind === "voxel") voxels.push({ col: desc.col, row: desc.row });
-        else rails.push({ col: desc.col, row: desc.row, side: desc.side });
+        if (desc.kind === "voxel") voxels.push(desc.idx);
+        else rails.push({ idx: desc.idx, side: desc.side });
     let commitBounds = null;
     if (voxels.length || rails.length) {
         wallDamage.commit.clearWalls({ voxels, rails });

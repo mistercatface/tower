@@ -60,43 +60,32 @@ export class NavRuntime {
      * @param {CellBounds | CellBounds[] | null} bounds
      * @param {{ fullNavSync?: boolean }} [options]
      */
-    commitEdit(bounds, { fullNavSync = false } = {}) {
-        const merged = fullNavSync ? null : mergeNavEditBounds(bounds);
-        if (!fullNavSync && (!merged || isEmptyCellBounds(merged))) return Promise.resolve();
-        return this._scheduleObstacleSync(fullNavSync ? null : merged);
+    commitEdit(idx, { fullNavSync = false } = {}) {
+        return this._scheduleObstacleSync(fullNavSync ? null : idx);
     }
-    /** @param {CellBounds | null} damageBounds */
-    _scheduleObstacleSync(damageBounds) {
+    _scheduleObstacleSync(idx) {
         const topologyChanged = this.grid.gridTopologyEpoch !== this._lastGridTopologyEpoch;
         if (topologyChanged) this._lastGridTopologyEpoch = this.grid.gridTopologyEpoch;
         this.flowFieldGrid.invalidateNavTopology();
-        const run = () => this._syncWorkerNavGraph(this.grid, damageBounds, topologyChanged);
+        const run = () => this._syncWorkerNavGraph(this.grid, idx, topologyChanged);
         this._workerNavGraphSyncChain = this._workerNavGraphSyncChain.then(run, run);
         return this._workerNavGraphSyncChain;
     }
     awaitWorkerNavReady() {
         return this._workerNavGraphSyncChain;
     }
-    async _syncWorkerNavGraph(grid, damageBounds, topologyChanged) {
+    async _syncWorkerNavGraph(grid, idx, topologyChanged) {
         const graphEpoch = this._graphSyncGeneration + 1;
-        const fullGraph = topologyChanged || !damageBounds || isEmptyCellBounds(damageBounds);
-        await this.worker.syncObstacleNavGraph(grid, damageBounds, graphEpoch, fullGraph);
+        const fullGraph = topologyChanged || idx == null;
+        await this.worker.syncObstacleNavGraph(grid, idx, graphEpoch, fullGraph);
         this._graphSyncGeneration = graphEpoch;
-        this._navWalkableSyncHook?.(damageBounds);
+        this._navWalkableSyncHook?.(idx);
     }
     async shutdown() {
         this.worker.shutdown();
         await this._workerNavGraphSyncChain.catch(() => {});
         await this.worker.host.worker.terminate();
     }
-}
-/** @param {CellBounds | CellBounds[] | null | undefined} bounds */
-function mergeNavEditBounds(bounds) {
-    if (!bounds) return null;
-    const regions = Array.isArray(bounds) ? bounds : [bounds];
-    let merged = null;
-    for (let i = 0; i < regions.length; i++) if (regions[i]) merged = unionCellBounds(merged, regions[i]);
-    return merged;
 }
 /** @param {object} state */
 export function resolveNavRuntime(state) {

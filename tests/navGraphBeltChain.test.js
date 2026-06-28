@@ -113,7 +113,7 @@ describe("navGraph belt chain", () => {
         writeNavFloorCell(grid, 3, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
         writeNavFloorCell(grid, 4, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
 
-        await commitGridNavEditUnion(state, { startCol: 2, endCol: 4, startRow: 2, endRow: 2 });
+        await commitGridNavEditUnion(state, 26, 27, 28);
         await navigation.awaitWorkerNavReady();
 
         const graph = createNavGraphView(grid);

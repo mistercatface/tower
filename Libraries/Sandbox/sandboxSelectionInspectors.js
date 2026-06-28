@@ -61,7 +61,9 @@ export function buildVoxelWallInspectorInfo(state, sel) {
     if (!cell) return null;
     const grid = state.obstacleGrid;
     const idx = cell.col + cell.row * grid.cols;
-    return getVoxelWallInfo(grid, idx);
+    const info = getVoxelWallInfo(grid, idx);
+    if (info == null) return null;
+    return { idx, heightLevel: grid.grid[idx] };
 }
 export function buildRailWallInspectorInfo(state, sel) {
     const edge = selectionRailEdge(sel);

@@ -1,4 +1,4 @@
-import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
+import { cellBoundsAt, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { clearPrimaryBoundaryAt } from "./boundaryEdit.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
@@ -43,16 +43,17 @@ export function ensureObstacleGridAtWorld(state, worldX, worldY) {
     return grid.worldToGrid(worldX, worldY);
 }
 export function clearRailWallsQuiet(state, rails) {
+    const grid = state.obstacleGrid;
     const bounds = emptyCellBounds();
     let changed = false;
     for (let i = 0; i < rails.length; i++) {
-        const { col, row, side } = rails[i];
-        if (clearPrimaryBoundaryAt(state, col, row, side) !== "railWall") continue;
+        const { idx, side } = rails[i];
+        if (clearPrimaryBoundaryAt(state, idx, side) !== "railWall") continue;
         changed = true;
-        growCellBounds(bounds, col, row);
+        growCellBoundsIdx(bounds, idx, grid.cols);
     }
     if (!changed) return null;
-    bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return bounds;
 }
 export function stampRailWallsQuiet(state, railWalls) {
@@ -78,37 +79,54 @@ export function stampRailWallsQuiet(state, railWalls) {
 }
 export function stampRailWallsBatch(state, railWalls) {
     const { bounds, stamped } = stampRailWallsQuiet(state, railWalls);
-    if (bounds) commitGridNavEdit(state, bounds);
+    if (bounds) {
+        const grid = state.obstacleGrid;
+        for (let i = 0; i < stamped.length; i++) {
+            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+            commitGridNavEdit(state, stamped[i].col + stamped[i].row * grid.cols);
+        }
+    }
     return stamped;
 }
 export function clearRailWallsBatch(state, rails) {
     const bounds = clearRailWallsQuiet(state, rails);
-    if (bounds) commitGridNavEdit(state, bounds);
+    if (bounds) {
+        const grid = state.obstacleGrid;
+        for (let i = 0; i < rails.length; i++) {
+            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+            commitGridNavEdit(state, rails[i].idx);
+        }
+    }
 }
-export function clearVoxelWallQuiet(state, col, row) {
+export function clearVoxelWallQuiet(state, idx) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
     return true;
 }
-export function clearVoxelWallsQuiet(state, voxels) {
+export function clearVoxelWallsQuiet(state, voxelIndices) {
+    const grid = state.obstacleGrid;
     const bounds = emptyCellBounds();
     let changed = false;
-    for (let i = 0; i < voxels.length; i++) {
-        const { col, row } = voxels[i];
-        if (!clearVoxelWallQuiet(state, col, row)) continue;
+    for (let i = 0; i < voxelIndices.length; i++) {
+        const idx = voxelIndices[i];
+        if (!clearVoxelWallQuiet(state, idx)) continue;
         changed = true;
-        growCellBounds(bounds, col, row);
+        growCellBoundsIdx(bounds, idx, grid.cols);
     }
     if (!changed) return null;
-    bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return bounds;
 }
-export function clearVoxelWallsBatch(state, voxels) {
-    const bounds = clearVoxelWallsQuiet(state, voxels);
-    if (bounds) commitGridNavEdit(state, bounds);
+export function clearVoxelWallsBatch(state, voxelIndices) {
+    const bounds = clearVoxelWallsQuiet(state, voxelIndices);
+    if (bounds) {
+        const grid = state.obstacleGrid;
+        for (let i = 0; i < voxelIndices.length; i++) {
+            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+            commitGridNavEdit(state, voxelIndices[i]);
+        }
+    }
     return bounds;
 }
 /** Clear voxel and rail walls without nav invalidation — pair with commitGridNavEdit or deferred flush. */
@@ -118,7 +136,17 @@ export function clearGridWallsQuiet(state, { voxels = [], rails = [] } = {}) {
 /** Clear voxel and rail walls in one nav invalidation. */
 export function clearGridWallsBatch(state, { voxels = [], rails = [] } = {}) {
     const bounds = clearGridWallsQuiet(state, { voxels, rails });
-    if (bounds) commitGridNavEdit(state, bounds);
+    if (bounds) {
+        const grid = state.obstacleGrid;
+        for (let i = 0; i < voxels.length; i++) {
+            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+            commitGridNavEdit(state, voxels[i]);
+        }
+        for (let i = 0; i < rails.length; i++) {
+            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+            commitGridNavEdit(state, rails[i].idx);
+        }
+    }
     return bounds;
 }
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {
@@ -127,18 +155,12 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) {
         if (!cellIsStaticWallAtIdx(grid, idx)) continue;
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
         grid.grid[idx] = 0;
     }
-    for (let idx = 0; idx < size; idx++) {
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        for (let side = 0; side < 4; side++) clearPrimaryBoundaryAt(state, col, row, side);
-    }
+    for (let idx = 0; idx < size; idx++) for (let side = 0; side < 4; side++) clearPrimaryBoundaryAt(state, idx, side);
     if (notify) {
         bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        commitGridNavEdit(state, { startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, { fullNavSync: true });
+        commitGridNavEdit(state, null, { fullNavSync: true });
     }
 }
 /** Stamp many voxel/rail walls from global grid cells — one cache/nav invalidation at the end. */
@@ -190,67 +212,60 @@ export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) 
     if (isEmptyCellBounds(bounds)) return null;
     return bounds;
 }
-export function stampVoxelWallAt(state, col, row, heightLevel) {
+export function stampVoxelWallAt(state, idx, heightLevel) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    const idx = colRowToIndex(col, row, grid.cols);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     grid.grid[idx] = level;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, cellBoundsAt(col, row));
+    commitGridNavEdit(state, idx);
     return true;
 }
-export function clearVoxelWallAt(state, col, row) {
+export function clearVoxelWallAt(state, idx) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, cellBoundsAt(col, row));
+    commitGridNavEdit(state, idx);
     return true;
 }
-export function setVoxelWallHeightAt(state, col, row, heightLevel) {
+export function setVoxelWallHeightAt(state, idx, heightLevel) {
     const grid = state.obstacleGrid;
-    const idx = colRowToIndex(col, row, grid.cols);
     if (!cellIsStaticWall(grid, idx)) return false;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     if (grid.grid[idx] === level) return true;
     grid.grid[idx] = level;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, cellBoundsAt(col, row));
+    commitGridNavEdit(state, idx);
     return true;
 }
-export function stampRailWallAt(state, col, row, side, heightLevel, thicknessLevel) {
+export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    clearPrimaryBoundaryAt(state, col, row, side);
+    clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
-    setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, { bumpRevision: true });
-    commitGridNavEdit(state, cellBoundsAt(col, row));
+    setBoundary(grid, idx, side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, { bumpRevision: true });
+    commitGridNavEdit(state, idx);
     return true;
 }
-export function clearRailWallAt(state, col, row, side) {
-    if (clearPrimaryBoundaryAt(state, col, row, side, { bumpRevision: true }) !== "railWall") return false;
-    commitGridNavEdit(state, cellBoundsAt(col, row));
+export function clearRailWallAt(state, idx, side) {
+    if (clearPrimaryBoundaryAt(state, idx, side, { bumpRevision: true }) !== "railWall") return false;
+    commitGridNavEdit(state, idx);
     return true;
 }
-export function stampForcefieldAt(state, col, row, side, { mode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
+export function stampForcefieldAt(state, idx, side, { mode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    clearPrimaryBoundaryAt(state, col, row, side);
-    if (!setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, { bumpRevision: true })) return false;
+    clearPrimaryBoundaryAt(state, idx, side);
+    if (!setBoundary(grid, idx, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, { bumpRevision: true })) return false;
     syncPassagePowerNetwork(state);
     return true;
 }
-export function setForcefieldProfileAt(state, col, row, side, mode, allowedSide) {
+export function setForcefieldProfileAt(state, idx, side, mode, allowedSide) {
     const grid = state.obstacleGrid;
-    if (!setPassageProfile(grid, colRowToIndex(col, row, grid.cols), side, mode, allowedSide)) return false;
+    if (!setPassageProfile(grid, idx, side, mode, allowedSide)) return false;
     syncPassagePowerNetwork(state);
     return true;
 }
-export function clearForcefieldAt(state, col, row, side) {
-    if (clearPrimaryBoundaryAt(state, col, row, side, { bumpRevision: true }) !== "passage") return false;
+export function clearForcefieldAt(state, idx, side) {
+    if (clearPrimaryBoundaryAt(state, idx, side, { bumpRevision: true }) !== "passage") return false;
     syncPassagePowerNetwork(state);
     return true;
 }

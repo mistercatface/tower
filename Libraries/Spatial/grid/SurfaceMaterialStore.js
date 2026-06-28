@@ -132,7 +132,9 @@ export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPer
 export function resolveCellSurfaceProfileId(grid, idx, baseProfileId, cellsPerChunk = 0) {
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, baseProfileId, cellsPerChunk, idx);
 }
-export function resolveEdgeSurfaceProfileId(grid, col, row, side, baseProfileId, cellsPerChunk = 0) {
+export function resolveEdgeSurfaceProfileId(grid, idx, side, baseProfileId, cellsPerChunk = 0) {
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Edge, baseProfileId, cellsPerChunk, col, row, side);
 }
 export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerChunk = 0) {

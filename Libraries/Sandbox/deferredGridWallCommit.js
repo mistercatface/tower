@@ -1,45 +1,52 @@
-import { unionCellBounds } from "../DataStructures/CellRect.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
-import { clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet } from "./gridWallEdit.js";
+import { clearVoxelWallQuiet } from "./gridWallEdit.js";
+import { clearPrimaryBoundaryAt } from "./boundaryEdit.js";
+import { bumpGridNavEpoch, GRID_NAV_EPOCH } from "../Spatial/grid/gridNavEpoch.js";
 /** Accumulate quiet wall clears and commit once via the same path as editor delete. */
 /** @typedef {ReturnType<typeof createDeferredGridWallCommit>} DeferredGridWallCommit */
 export function createDeferredGridWallCommit(state) {
-    /** @type {import("../DataStructures/CellRect.js").CellBounds | null} */
-    let pending = null;
+    const pending = new Set();
     return {
-        get pendingBounds() {
-            return pending;
+        get hasPending() {
+            return pending.size > 0;
         },
-        clearVoxel(col, row) {
-            const bounds = clearVoxelWallsQuiet(state, [{ col, row }]);
-            if (!bounds) return false;
-            pending = unionCellBounds(pending, bounds);
+        clearVoxel(idx) {
+            if (!clearVoxelWallQuiet(state, idx)) return false;
+            pending.add(idx);
             return true;
         },
-        clearVoxels(voxels) {
-            const bounds = clearVoxelWallsQuiet(state, voxels);
-            if (!bounds) return false;
-            pending = unionCellBounds(pending, bounds);
-            return true;
+        clearVoxels(voxelIndices) {
+            let changed = false;
+            for (let i = 0; i < voxelIndices.length; i++)
+                if (clearVoxelWallQuiet(state, voxelIndices[i])) {
+                    pending.add(voxelIndices[i]);
+                    changed = true;
+                }
+            return changed;
         },
         clearRails(rails) {
-            const bounds = clearRailWallsQuiet(state, rails);
-            if (!bounds) return false;
-            pending = unionCellBounds(pending, bounds);
-            return true;
+            let changed = false;
+            for (let i = 0; i < rails.length; i++) {
+                const { idx, side } = rails[i];
+                if (clearPrimaryBoundaryAt(state, idx, side) === "railWall") {
+                    pending.add(idx);
+                    changed = true;
+                }
+            }
+            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+            return changed;
         },
         clearWalls({ voxels = [], rails = [] } = {}) {
-            const bounds = clearGridWallsQuiet(state, { voxels, rails });
-            if (!bounds) return false;
-            pending = unionCellBounds(pending, bounds);
-            return true;
+            let changed = false;
+            if (this.clearVoxels(voxels)) changed = true;
+            if (this.clearRails(rails)) changed = true;
+            return changed;
         },
         flush() {
-            if (!pending) return null;
-            const bounds = pending;
-            pending = null;
-            commitGridNavEdit(state, bounds);
-            return bounds;
+            if (!pending.size) return false;
+            for (const idx of pending) commitGridNavEdit(state, idx);
+            pending.clear();
+            return true;
         },
     };
 }

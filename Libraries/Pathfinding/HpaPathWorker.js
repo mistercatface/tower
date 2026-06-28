@@ -146,9 +146,9 @@ export class HpaPathWorker {
         this._graphPatchChain = this._graphPatchChain.then(run, run);
         return this._graphPatchChain;
     }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} damageBounds @param {number} graphEpoch @param {boolean} fullGraph */
-    async syncObstacleNavGraph(grid, damageBounds, graphEpoch, fullGraph) {
-        await this.scheduleNavTopologySyncAwait(grid, fullGraph ? null : damageBounds);
+    async syncObstacleNavGraph(grid, idx, graphEpoch, fullGraph) {
+        const damageBounds = fullGraph ? null : { startCol: idx % grid.cols, endCol: idx % grid.cols, startRow: (idx / grid.cols) | 0, endRow: (idx / grid.cols) | 0 };
+        await this.scheduleNavTopologySyncAwait(grid, damageBounds);
         const size = grid.cols * grid.rows;
         this._ensureGraphCellBuffers(size);
         if (fullGraph) {
@@ -300,11 +300,12 @@ export class HpaPathWorker {
         return this.sabOctilePredecessors;
     }
     async scheduleNavTopologySyncAwait(grid = this.navGraph, damageBounds = null) {
-        while (!this._shutDown && !isNavTopologyReady(this, grid)) {
+        while (!this._shutDown && (damageBounds != null || !isNavTopologyReady(this, grid))) {
             this.scheduleNavTopologySync(grid, damageBounds);
             if (this._shutDown) return;
             if (this._navSyncPromise) await this._navSyncPromise;
             else break;
+            if (damageBounds != null) break;
         }
     }
     _navTopologySyncMessage(grid, cacheKey, rebindArena, damageBounds) {
@@ -334,7 +335,7 @@ export class HpaPathWorker {
         };
     }
     scheduleNavTopologySync(grid = this.navGraph, damageBounds = null) {
-        if (this._shutDown || isNavTopologyReady(this, grid)) return;
+        if (this._shutDown || (damageBounds == null && isNavTopologyReady(this, grid))) return;
         if (this._navSyncPromise) {
             this._deferFullNavSync = true;
             this._deferNavBounds = damageBounds;

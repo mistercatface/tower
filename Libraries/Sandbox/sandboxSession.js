@@ -218,13 +218,13 @@ export function createSandboxSession(state) {
             if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
             const kind = grid.floorStore.kind[idx];
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-            const bounds = unionCellBounds(cellBoundsAt(col, row), cellBoundsAt(targetCol, targetRow));
             grid.clearFloorCell(col, row);
             if (!grid.writeFloorCell(targetCol, targetRow, kind, facingRadians)) {
                 grid.writeFloorCell(col, row, kind, facingRadians);
                 return false;
             }
-            commitGridNavEdit(state, bounds);
+            commitGridNavEdit(state, idx);
+            commitGridNavEdit(state, targetCol + targetRow * grid.cols);
             pickSelection({ kind: "floor", col: targetCol, row: targetRow });
             return true;
         },
@@ -347,11 +347,12 @@ export function createSandboxSession(state) {
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
-            if (cellIsStaticWall(state.obstacleGrid, col + row * state.obstacleGrid.cols)) {
+            const idx = col + row * state.obstacleGrid.cols;
+            if (cellIsStaticWall(state.obstacleGrid, idx)) {
                 pickSelection({ kind: "voxel", col, row });
                 return true;
             }
-            if (!stampVoxelWallAt(state, col, row, wallHeightLevel)) return false;
+            if (!stampVoxelWallAt(state, idx, wallHeightLevel)) return false;
             placement.touchVoxelPlacement(col, row);
             pickSelection({ kind: "voxel", col, row });
             return true;
@@ -363,16 +364,16 @@ export function createSandboxSession(state) {
         setSelectedVoxelWallHeight(heightLevel) {
             const voxelCell = selectionVoxelCell(sel());
             if (!voxelCell) return false;
-            const { col, row } = voxelCell;
-            if (!setVoxelWallHeightAt(state, col, row, heightLevel)) return false;
+            const idx = voxelCell.col + voxelCell.row * state.obstacleGrid.cols;
+            if (!setVoxelWallHeightAt(state, idx, heightLevel)) return false;
             notifyUi();
             return true;
         },
         setSelectedRailWallProps(heightLevel, thicknessLevel) {
             const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
-            const { col, row, side } = railEdge;
-            if (!stampRailWallAt(state, col, row, side, heightLevel, thicknessLevel)) return false;
+            const idx = railEdge.col + railEdge.row * state.obstacleGrid.cols;
+            if (!stampRailWallAt(state, idx, railEdge.side, heightLevel, thicknessLevel)) return false;
             notifyUi();
             return true;
         },
@@ -380,33 +381,33 @@ export function createSandboxSession(state) {
             const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const grid = state.obstacleGrid;
-            const { col, row, side } = railEdge;
-            const info = getRailWallInfo(grid, col + row * grid.cols, side);
+            const idx = railEdge.col + railEdge.row * grid.cols;
+            const info = getRailWallInfo(grid, idx, railEdge.side);
             if (!info || info.side === newSide) return true;
-            if (railWallEdgeAt(grid, col + row * grid.cols, newSide)) return false;
-            if (!clearRailWallAt(state, col, row, side)) return false;
-            if (!stampRailWallAt(state, col, row, newSide, info.heightLevel, info.thicknessLevel)) return false;
-            pickSelection({ kind: "rail", col, row, side: newSide });
+            if (railWallEdgeAt(grid, idx, newSide)) return false;
+            if (!clearRailWallAt(state, idx, railEdge.side)) return false;
+            if (!stampRailWallAt(state, idx, newSide, info.heightLevel, info.thicknessLevel)) return false;
+            pickSelection({ kind: "rail", col: railEdge.col, row: railEdge.row, side: newSide });
             return true;
         },
         deleteSelectedWall() {
             const voxelCell = selectionVoxelCell(sel());
             if (voxelCell) {
-                const { col, row } = voxelCell;
-                if (!clearVoxelWallAt(state, col, row)) return false;
-                placement.forgetVoxelPlacement(col, row);
+                const idx = voxelCell.col + voxelCell.row * state.obstacleGrid.cols;
+                if (!clearVoxelWallAt(state, idx)) return false;
+                placement.forgetVoxelPlacement(voxelCell.col, voxelCell.row);
                 clearSelection();
                 return true;
             }
             const railEdge = selectionRailEdge(sel());
             if (railEdge) {
-                const { col, row, side } = railEdge;
                 const grid = state.obstacleGrid;
-                if (forcefieldEdgeAt(grid, col + row * grid.cols, side)) {
-                    if (!clearForcefieldAt(state, col, row, side)) return false;
-                    placement.forgetEdgePlacement("forcefield", col, row, side);
-                } else if (!clearRailWallAt(state, col, row, side)) return false;
-                else placement.forgetEdgePlacement("rail", col, row, side);
+                const idx = railEdge.col + railEdge.row * grid.cols;
+                if (forcefieldEdgeAt(grid, idx, railEdge.side)) {
+                    if (!clearForcefieldAt(state, idx, railEdge.side)) return false;
+                    placement.forgetEdgePlacement("forcefield", railEdge.col, railEdge.row, railEdge.side);
+                } else if (!clearRailWallAt(state, idx, railEdge.side)) return false;
+                else placement.forgetEdgePlacement("rail", railEdge.col, railEdge.row, railEdge.side);
                 clearSelection();
                 return true;
             }
@@ -417,13 +418,14 @@ export function createSandboxSession(state) {
             if (wallStampMode === "rail" || wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
+                const idx = hit.col + hit.row * grid.cols;
                 if (wallStampMode === "forcefield") {
-                    if (!forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
-                    if (!clearForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
+                    if (!forcefieldEdgeAt(grid, idx, hit.side)) return false;
+                    if (!clearForcefieldAt(state, idx, hit.side)) return false;
                     placement.forgetEdgePlacement("forcefield", hit.col, hit.row, hit.side);
                 } else {
-                    if (!railWallEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
-                    if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
+                    if (!railWallEdgeAt(grid, idx, hit.side)) return false;
+                    if (!clearRailWallAt(state, idx, hit.side)) return false;
                     placement.forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
                 }
                 selection.dropDeletedWallSelection(hit.col, hit.row, hit.side);
@@ -432,7 +434,8 @@ export function createSandboxSession(state) {
             }
             const col = grid.worldCol(worldX);
             const row = grid.worldRow(worldY);
-            if (!clearVoxelWallAt(state, col, row)) return false;
+            const idx = col + row * grid.cols;
+            if (!clearVoxelWallAt(state, idx)) return false;
             placement.forgetVoxelPlacement(col, row);
             selection.dropDeletedWallSelection(col, row);
             notifyUi();

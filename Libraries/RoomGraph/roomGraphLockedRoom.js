@@ -58,7 +58,8 @@ export function clearLockedRoomBakes(state) {
         const bake = bakes[i];
         for (let ei = 0; ei < bake.egresses.length; ei++) {
             const { col, row, side } = bake.egresses[ei].forcefield;
-            if (clearPrimaryBoundaryAt(state, col, row, side) === "passage") growCellBounds(bounds, col, row);
+            const idx = colRowToIndex(col, row, state.obstacleGrid.cols);
+            if (clearPrimaryBoundaryAt(state, idx, side) === "passage") growCellBounds(bounds, col, row);
         }
         for (let ei = 0; ei < bake.egresses.length; ei++) {
             const { col, row } = bake.egresses[ei].power;

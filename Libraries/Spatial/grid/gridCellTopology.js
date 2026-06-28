@@ -21,6 +21,11 @@ export function edgeNeighbor(col, row, side) {
 export function edgeMirrorSide(side) {
     return (side + 2) % 4;
 }
+export function cellEdgeEndpointsIdx(grid, idx, side, p1, p2, inset = 0) {
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
+    return cellEdgeEndpoints(grid, col, row, side, p1, p2, inset);
+}
 export function cellEdgeEndpoints(grid, col, row, side, p1, p2, inset = 0) {
     const bounds = grid.getCellBounds(col, row);
     const minX = bounds.minX;

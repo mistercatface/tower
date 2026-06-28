@@ -31,12 +31,12 @@ describe("surface material stores", () => {
         grid.rebuildFixed(0, 0, 64, 64);
         const idx = colRowToIndex(1, 1, grid.cols);
         assert.equal(resolveCellSurfaceProfileId(grid, idx, "base"), "base");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, 1, 1, 2, "base"), "base");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(1, 1, grid.cols), 2, "base"), "base");
         grid.setCellSurfaceProfileAtIdx(idx, "cell-profile");
         grid.setEdgeSurfaceProfile(1, 1, 2, "edge-profile");
         assert.equal(resolveCellSurfaceProfileId(grid, idx, "base"), "cell-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, 1, 1, 2, "base"), "edge-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, 1, 2, 0, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(1, 1, grid.cols), 2, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(1, 2, grid.cols), 0, "base"), "edge-profile");
     });
 
     it("material revisions do not change nav topology keys", () => {
@@ -56,7 +56,7 @@ describe("surface material stores", () => {
         grid.setEdgeSurfaceProfile(1, 1, 2, "edge-profile");
         grid.expandToCoverAabb({ minX: -32, minY: -16, maxX: 16, maxY: 16 });
         assert.equal(resolveCellSurfaceProfileId(grid, colRowToIndex(1, 0, grid.cols), "base"), "cell-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, 2, 1, 2, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(2, 1, grid.cols), 2, "base"), "edge-profile");
     });
 
     it("uses resolved edge profile ids for rail wall atlas selection", () => {
@@ -69,7 +69,7 @@ describe("surface material stores", () => {
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
                 settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                getOrEnsureWallAtlas(_p1, _p2, options) {
+                getOrEnsureWallAtlasScalars(_p1, _p2, _p3, _p4, options) {
                     capturedProfileId = options.profileId;
                     return null;
                 },
@@ -103,7 +103,7 @@ describe("surface material stores", () => {
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
                 settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                getOrEnsureWallAtlas(_p1, _p2, options) {
+                getOrEnsureWallAtlasScalars(_p1, _p2, _p3, _p4, options) {
                     capturedProfileId = options.profileId;
                     return null;
                 },
@@ -135,7 +135,7 @@ describe("surface material stores", () => {
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
                 settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                getOrEnsureWallAtlas(_p1, _p2, options) {
+                getOrEnsureWallAtlasScalars(_p1, _p2, _p3, _p4, options) {
                     capturedProfileId = options.profileId;
                     return null;
                 },
