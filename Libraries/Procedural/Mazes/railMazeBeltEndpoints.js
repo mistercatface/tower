@@ -5,7 +5,8 @@ function oppositeSide(side) {
     return (side + 2) % 4;
 }
 function navStepOpen(grid, navTopology, fromCol, fromRow, toCol, toRow) {
-    return createNavGraphViewFromTopology(navTopology).canStep(fromCol, fromRow, toCol, toRow);
+    const cols = grid.cols;
+    return createNavGraphViewFromTopology(navTopology).canStepIdx(fromCol + fromRow * cols, toCol + toRow * cols);
 }
 /** True when at least one cardinal side has an open, bidirectional step to a walkable neighbor. */
 export function hasOpenBeltMouthSide(grid, navTopology, col, row) {

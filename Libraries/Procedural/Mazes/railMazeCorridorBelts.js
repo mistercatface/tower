@@ -2,7 +2,7 @@ import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLa
 import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBelts.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutAbsCellIndex, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
@@ -21,21 +21,27 @@ function manhattanCells(a, b) {
 function pathLengthInBand(path, minLen, maxLen) {
     return path.length >= minLen && path.length <= maxLen;
 }
-function navWalkableNeighbors(grid, navTopology, col, row) {
-    const cardinals = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-    ];
+function navWalkableNeighborsIdx(grid, navTopology, idx) {
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const c = idx % cols;
+    const r = (idx / cols) | 0;
     const out = [];
-    for (let i = 0; i < cardinals.length; i++) {
-        const nc = col + cardinals[i][0];
-        const nr = row + cardinals[i][1];
-        if (!cellInRect(nc, nr, grid.cols, grid.rows)) continue;
-        if (grid.isBlocked(nc, nr)) continue;
-        if (!grid.canStep(col, row, nc, nr, navTopology) && !grid.canStep(nc, nr, col, row, navTopology)) continue;
-        out.push({ col: nc, row: nr });
+    if (c > 0) {
+        const nIdx = idx - 1;
+        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+    }
+    if (c + 1 < cols) {
+        const nIdx = idx + 1;
+        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+    }
+    if (r > 0) {
+        const nIdx = idx - cols;
+        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+    }
+    if (r + 1 < rows) {
+        const nIdx = idx + cols;
+        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
     }
     return out;
 }
@@ -47,7 +53,7 @@ export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, nort
     forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
         if (globalRow < beltStartGlobalRow) return;
         const col = grid.worldCol(globalCol * cellSize);
-    const row = grid.worldRow(globalRow * cellSize);
+        const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         if (!isNavWalkableAt(navWalkableIndex, col, row)) return;
         cells.push({ col, row, globalCol, globalRow });
@@ -64,20 +70,20 @@ function collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows)
     forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
         if (globalRow > reserveEndGlobalRow) return;
         const col = grid.worldCol(globalCol * cellSize);
-    const row = grid.worldRow(globalRow * cellSize);
+        const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
         protectedIndices.add(globalCellIdx(col, row, grid.cols));
     });
     return protectedIndices;
 }
-function degreeInZone(cells, neighborAt, gridCols) {
+function degreeInZone(cells, neighborAtIdx, gridCols) {
     const memberSet = new Set();
-    for (let i = 0; i < cells.length; i++) memberSet.add(globalCellIdx(cells[i].col, cells[i].row, gridCols));
+    for (let i = 0; i < cells.length; i++) memberSet.add(colRowToIndex(cells[i].col, cells[i].row, gridCols));
     const degreeByIndex = new Map();
     for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i];
-        const neighbors = neighborAt(cell.col, cell.row).filter((n) => memberSet.has(globalCellIdx(n.col, n.row, gridCols)));
-        degreeByIndex.set(globalCellIdx(cell.col, cell.row, gridCols), neighbors.length);
+        const idx = colRowToIndex(cells[i].col, cells[i].row, gridCols);
+        const neighbors = neighborAtIdx(idx).filter((nIdx) => memberSet.has(nIdx));
+        degreeByIndex.set(idx, neighbors.length);
     }
     return degreeByIndex;
 }
@@ -218,8 +224,8 @@ export function planRailMazeCorridorBelts({
         pathLengthMax,
         rng: random,
     });
-    const neighborAt = (col, row) => navWalkableNeighbors(grid, navTopology, col, row);
-    const degreeByIndex = degreeInZone(zoneCells, neighborAt, grid.cols);
+    const neighborAtIdx = (idx) => navWalkableNeighborsIdx(grid, navTopology, idx);
+    const degreeByIndex = degreeInZone(zoneCells, neighborAtIdx, grid.cols);
     let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, globalLayout, { openBeltChance, rng: random });
     const protectedIndices = collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows);
     if (protectedIndices.size) floorBelts = floorBelts.filter((belt) => !protectedIndices.has(globalCellIdx(belt.col, belt.row, grid.cols)));

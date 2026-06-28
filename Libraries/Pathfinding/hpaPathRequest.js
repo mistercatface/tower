@@ -67,17 +67,19 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startIdx, ta
 }
 export function findNearestOpenCellIdx(blocked, cols, rows, idx) {
     if (blocked[idx] === 0) return idx;
-    const col = idx % cols;
-    const row = (idx / cols) | 0;
+    const c0 = idx % cols;
+    const cellCount = cols * rows;
     for (let r = 1; r <= 5; r++)
-        for (let dr = -r; dr <= r; dr++)
+        for (let dr = -r; dr <= r; dr++) {
+            const nRowIdx = idx + dr * cols;
+            if (nRowIdx < 0 || nRowIdx >= cellCount) continue;
             for (let dc = -r; dc <= r; dc++) {
-                const nc = col + dc;
-                const nr = row + dr;
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-                    const nIdx = nr * cols + nc;
+                const nc = c0 + dc;
+                if (nc >= 0 && nc < cols) {
+                    const nIdx = nRowIdx + dc;
                     if (blocked[nIdx] === 0) return nIdx;
                 }
             }
+        }
     return idx;
 }

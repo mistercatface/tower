@@ -19,7 +19,7 @@ describe("AStar Engine Search Suite", () => {
             }
         };
 
-        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const gridView = new FlatGridView(cols, rows, { canStep: (idx0, idx1) => !isWall(idx1 % cols, (idx1 / cols) | 0) });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
         const outPath = new Int32Array(100);
@@ -45,7 +45,7 @@ describe("AStar Engine Search Suite", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const gridView = new FlatGridView(cols, rows, { canStep: () => true });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
         const outPath = new Int32Array(100);
@@ -69,7 +69,7 @@ describe("AStar Engine Search Suite", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const gridView = new FlatGridView(cols, rows, { canStep: () => true });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
         const outPath = new Int32Array(100);
@@ -93,7 +93,7 @@ describe("AStar Engine Search Suite", () => {
         const searchState = new SearchState(size);
         const navGraph = { canStep: () => true };
 
-        const gridView = new FlatGridView(cols, rows, { blocked: navGraph?.grid || null, canStep: (c0, r0, c1, r1) => navGraph.canStep(c0, r0, c1, r1) });
+        const gridView = new FlatGridView(cols, rows, { canStep: () => true });
         const search = new FlatGridSearch(searchState);
         search.grid = gridView;
         const outPath = new Int32Array(100);

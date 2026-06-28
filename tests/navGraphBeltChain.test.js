@@ -6,7 +6,7 @@ import { floorBeltFacingFromIndex, FLOOR_CELL_KIND } from "../Libraries/Spatial/
 import { writeNavFloorCell } from "../Libraries/Spatial/grid/navGridMutations.js";
 import { commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { canStepPath, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGraphGoalCell } from "../Libraries/Navigation/navGraph.js";
+import { canStepPathIdx, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGraphGoalCellIdx } from "../Libraries/Navigation/navGraph.js";
 import { snapNavGoalCell } from "../Libraries/Navigation/snapNavGoal.js";
 import { isBeltRailEdge } from "../Libraries/Spatial/grid/CellEdge.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -37,15 +37,16 @@ describe("navGraph belt chain", () => {
         assert.ok(isBeltRailEdge(grid.edgeStore.get(2, 2, 2, grid.cols)));
 
         const graph = createNavGraphViewWithLocalBake(grid);
-        const cells = [
-            { col: 2, row: 2, kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 },
-            { col: 3, row: 2, kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 },
-            { col: 4, row: 2, kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 },
+        const cols = grid.cols;
+        const cellIndices = [
+            colRowToIndex(2, 2, cols),
+            colRowToIndex(3, 2, cols),
+            colRowToIndex(4, 2, cols),
         ];
-        assert.equal(validateBeltChain(graph, cells).ok, true);
-        assert.equal(graph.canStep(2, 2, 3, 2), true);
-        assert.equal(graph.canStep(3, 2, 2, 2), false);
-        assert.equal(graph.canStep(2, 2, 2, 3), false);
+        assert.equal(validateBeltChain(graph, cellIndices).ok, true);
+        assert.equal(graph.canStepIdx(colRowToIndex(2, 2, cols), colRowToIndex(3, 2, cols)), true);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 2, cols), colRowToIndex(2, 2, cols)), false);
+        assert.equal(graph.canStepIdx(colRowToIndex(2, 2, cols), colRowToIndex(2, 3, cols)), false);
     });
 
     it("snapNavGoal routes through belt entry via navGraph", () => {
@@ -53,10 +54,11 @@ describe("navGraph belt chain", () => {
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
         writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         const graph = createNavGraphView(grid);
-        const snapped = snapNavGraphGoalCell(graph, 0, 3, 3, 3);
-        assert.deepEqual(snapped, snapNavGoalCell(grid, 0, 3, 3, 3));
-        assert.equal(snapped.col, 2);
-        assert.equal(snapped.row, 3);
+        const cols = grid.cols;
+        const snappedIdx = snapNavGraphGoalCellIdx(graph, colRowToIndex(0, 3, cols), colRowToIndex(3, 3, cols));
+        const snappedCell = snapNavGoalCell(grid, 0, 3, 3, 3);
+        assert.equal(snappedIdx, colRowToIndex(snappedCell.col, snappedCell.row, cols));
+        assert.equal(snappedIdx, colRowToIndex(2, 3, cols));
     });
 
     it("open belts allow side entry but only exit with belt flow", () => {
@@ -64,13 +66,14 @@ describe("navGraph belt chain", () => {
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
         writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
         const graph = createNavGraphViewWithLocalBake(grid);
+        const cols = grid.cols;
 
-        assert.equal(graph.canStep(3, 2, 3, 3), true);
-        assert.equal(graph.canStep(2, 3, 3, 3), true);
-        assert.equal(graph.canStep(3, 3, 3, 4), true);
-        assert.equal(graph.canStep(3, 4, 3, 3), false);
-        assert.equal(graph.canStep(3, 3, 3, 2), false);
-        assert.equal(graph.canStep(3, 3, 4, 3), false);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 2, cols), colRowToIndex(3, 3, cols)), true);
+        assert.equal(graph.canStepIdx(colRowToIndex(2, 3, cols), colRowToIndex(3, 3, cols)), true);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 3, cols), colRowToIndex(3, 4, cols)), true);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 4, cols), colRowToIndex(3, 3, cols)), false);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 3, cols), colRowToIndex(3, 2, cols)), false);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 3, cols), colRowToIndex(4, 3, cols)), false);
     });
 
     it("HPA region graph inherits belt direction as directed edges", () => {
@@ -114,27 +117,28 @@ describe("navGraph belt chain", () => {
         await navigation.awaitWorkerNavReady();
 
         const graph = createNavGraphView(grid);
-        const cells = [
-            { col: 2, row: 2, kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 },
-            { col: 3, row: 2, kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 },
-            { col: 4, row: 2, kind: FLOOR_CELL_KIND.BeltRails, facingIndex: 0 },
+        const cols = grid.cols;
+        const cellIndices = [
+            colRowToIndex(2, 2, cols),
+            colRowToIndex(3, 2, cols),
+            colRowToIndex(4, 2, cols),
         ];
-        assert.equal(validateBeltChain(graph, cells).ok, true);
-        assert.equal(graph.canStep(2, 2, 3, 2), true);
-        assert.equal(graph.canStep(3, 2, 4, 2), true);
-        assert.equal(graph.canStep(3, 2, 2, 2), false);
-        assert.equal(graph.canStep(4, 2, 3, 2), false);
+        assert.equal(validateBeltChain(graph, cellIndices).ok, true);
+        assert.equal(graph.canStepIdx(colRowToIndex(2, 2, cols), colRowToIndex(3, 2, cols)), true);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 2, cols), colRowToIndex(4, 2, cols)), true);
+        assert.equal(graph.canStepIdx(colRowToIndex(3, 2, cols), colRowToIndex(2, 2, cols)), false);
+        assert.equal(graph.canStepIdx(colRowToIndex(4, 2, cols), colRowToIndex(3, 2, cols)), false);
 
-        const chainEntry = graph.beltEntryNeighbor(2, 2);
-        assert.ok(chainEntry);
-        const goalEntry = graph.beltEntryNeighbor(4, 2);
-        assert.ok(goalEntry);
-        const snappedFromOutside = snapNavGoalCell(grid, chainEntry.col, chainEntry.row, 4, 2);
-        assert.equal(snappedFromOutside.col, goalEntry.col);
-        assert.equal(snappedFromOutside.row, goalEntry.row);
-        const snappedAtEntry = snapNavGoalCell(grid, goalEntry.col, goalEntry.row, 4, 2);
+        const chainEntryIdx = graph.beltEntryNeighborIdx(colRowToIndex(2, 2, cols));
+        assert.ok(chainEntryIdx >= 0);
+        const goalEntryIdx = graph.beltEntryNeighborIdx(colRowToIndex(4, 2, cols));
+        assert.ok(goalEntryIdx >= 0);
+        const snappedFromOutside = snapNavGoalCell(grid, chainEntryIdx % cols, (chainEntryIdx / cols) | 0, 4, 2);
+        assert.equal(snappedFromOutside.col, goalEntryIdx % cols);
+        assert.equal(snappedFromOutside.row, (goalEntryIdx / cols) | 0);
+        const snappedAtEntry = snapNavGoalCell(grid, goalEntryIdx % cols, (goalEntryIdx / cols) | 0, 4, 2);
         assert.deepEqual(snappedAtEntry, { col: 4, row: 2 });
-        assert.ok(canStepPath(graph, [chainEntry, { col: 2, row: 2 }, { col: 3, row: 2 }, { col: 4, row: 2 }]));
+        assert.ok(canStepPathIdx(graph, [chainEntryIdx, colRowToIndex(2, 2, cols), colRowToIndex(3, 2, cols), colRowToIndex(4, 2, cols)]));
 
         await terminateWorkerNavigation(navigation);
     });

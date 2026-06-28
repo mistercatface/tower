@@ -1,5 +1,6 @@
 import { flowCellBlocked } from "./flowFieldWindow.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
+import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 /**
  * BFS flow-field integrated backward from the goal on reverse nav adjacency (octile predecessors).
  *
@@ -22,10 +23,10 @@ export function computeFlowField(
     vectorMap,
     { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut },
 ) {
-    const isBlocked = (flowIdx) => flowCellBlocked(flowToNavIdx, navBlocked, flowIdx);
     bfsDistances.fill(-1);
-    localVectorMap.fill(255);
+    localVectorMap.fill(0);
     const startIdx = tx + ty * gridWidth;
+    const isBlocked = (idx) => flowCellBlocked(idx, flowToNavIdx, navBlocked);
     if (startIdx >= 0 && startIdx < gridSize && !isBlocked(startIdx)) {
         localVectorMap[startIdx] = 4;
         let head = 0;
@@ -36,24 +37,17 @@ export function computeFlowField(
             const idx = bfsQueue[head++];
             const currentDist = bfsDistances[idx];
             if (currentDist >= range) continue;
-            const cx = idx % gridWidth;
-            const cy = (idx / gridWidth) | 0;
             for (let i = 0; i < neighborLayout.directionCount; i++) {
                 const nIdx = neighborGrid[neighborLayout.cellOffset(idx, i)];
                 if (nIdx !== -1 && bfsDistances[nIdx] === -1 && !isBlocked(nIdx)) {
-                    const nx = nIdx % gridWidth;
-                    const ny = (nIdx / gridWidth) | 0;
-                    const dx = cx - nx;
-                    const dy = cy - ny;
+                    const offset = OCTILE_OFFSETS[i];
                     bfsDistances[nIdx] = currentDist + 1;
                     bfsQueue[tail++] = nIdx;
-                    localVectorMap[nIdx] = dx + 1 + (dy + 1) * 3;
+                    localVectorMap[nIdx] = -offset.dc + 1 + (-offset.dr + 1) * 3;
                 }
             }
         }
     }
     vectorMap.set(localVectorMap);
-    if (distancesOut) {
-        distancesOut.set(bfsDistances);
-    }
+    if (distancesOut) distancesOut.set(bfsDistances);
 }

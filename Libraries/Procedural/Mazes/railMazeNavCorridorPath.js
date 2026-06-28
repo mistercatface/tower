@@ -10,6 +10,7 @@ import {
     layoutAbsCellIndex,
     layoutAbsToLocalCell,
     layoutContainsAbsCell,
+    layoutIndexToGlobalIndex,
     layoutLocalCellIndex,
     layoutLocalToAbsCell,
 } from "../../Spatial/grid/GridUtils.js";
@@ -40,12 +41,12 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
     let reservedGlobalIndices = new Set();
     const gridView = new FlatGridView(patchCols, patchRows, {
         blocked: null,
-        canStep(c0, r0, c1, r1) {
-            if (!walkable[layoutLocalCellIndex(patchLayout, c1, r1)]) return false;
-            const from = layoutLocalToAbsCell(patchLayout, c0, r0);
-            const to = layoutLocalToAbsCell(patchLayout, c1, r1);
-            if (reservedGlobalIndices.has(globalCellIdx(to.col, to.row, grid.cols))) return false;
-            return grid.canStep(from.col, from.row, to.col, to.row, navTopology);
+        canStep(idx0, idx1) {
+            if (!walkable[idx1]) return false;
+            const toIdx = layoutIndexToGlobalIndex(idx1, patchLayout, grid.cols);
+            if (reservedGlobalIndices.has(toIdx)) return false;
+            const fromIdx = layoutIndexToGlobalIndex(idx0, patchLayout, grid.cols);
+            return grid.canStepIdx(fromIdx, toIdx, navTopology);
         },
     });
     const gridSearch = new FlatGridSearch(searchState);

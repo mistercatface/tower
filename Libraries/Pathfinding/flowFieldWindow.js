@@ -113,15 +113,19 @@ export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {
     const half = flowFrame.cellSize / 2;
     const wxBase = flowFrame.centerX - flowFrame.offsetX + half;
     const wyBase = flowFrame.centerY - flowFrame.offsetY + half;
-    for (let idx = 0; idx < flowSize; idx++) {
-        const col = idx % flowFrame.cols;
-        const row = (idx / flowFrame.cols) | 0;
-        const worldX = col * flowFrame.cellSize + wxBase;
+    const cols = flowFrame.cols;
+    const rows = (flowSize / cols) | 0;
+    let idx = 0;
+    for (let row = 0; row < rows; row++) {
         const worldY = row * flowFrame.cellSize + wyBase;
-        const navCol = snapshotWorldCol(navFrame, worldX);
-        const navRow = snapshotWorldRow(navFrame, worldY);
-        if (navCol >= 0 && navCol < navCols && navRow >= 0 && navRow < navRows) flowToNavIdx[idx] = navRow * navCols + navCol;
-        else flowToNavIdx[idx] = -1;
+        for (let col = 0; col < cols; col++) {
+            const worldX = col * flowFrame.cellSize + wxBase;
+            const navCol = snapshotWorldCol(navFrame, worldX);
+            const navRow = snapshotWorldRow(navFrame, worldY);
+            if (navCol >= 0 && navCol < navCols && navRow >= 0 && navRow < navRows) flowToNavIdx[idx] = navRow * navCols + navCol;
+            else flowToNavIdx[idx] = -1;
+            idx++;
+        }
     }
     return { navCols, navRows };
 }

@@ -4,13 +4,10 @@ function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid, navT
     const wx = grid.gridCenterXByIdx(idx);
     const wy = grid.gridCenterYByIdx(idx);
     if (Math.hypot(wx - bodyX, wy - bodyY) > arrivalPx) return false;
-    const fromCol = grid.worldCol(bodyX);
-    const fromRow = grid.worldRow(bodyY);
-    const toCol = grid.worldCol(wx);
-    const toRow = grid.worldRow(wy);
-    if (fromCol === toCol && fromRow === toRow) return true;
-    if (Math.abs(fromCol - toCol) > 1 || Math.abs(fromRow - toRow) > 1) return false;
-    return grid.canStep(fromCol, fromRow, toCol, toRow, navTopology);
+    const cols = grid.cols;
+    const fromIdx = grid.worldCol(bodyX) + grid.worldRow(bodyY) * cols;
+    if (fromIdx === idx) return true;
+    return grid.canStepIdx(fromIdx, idx, navTopology);
 }
 /**
  * @param {number} x
@@ -22,15 +19,10 @@ function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid, navT
  */
 export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTopology) {
     if (pathLen <= 0) return 0;
-    const hereCol = grid.worldCol(x);
-    const hereRow = grid.worldRow(y);
+    const cols = grid.cols;
+    const hereIdx = grid.worldCol(x) + grid.worldRow(y) * cols;
     let idx = 0;
-    for (let i = 0; i < pathLen; i++) {
-        const cellIdx = worker.pathIdx(slot, i);
-        const col = cellIdx % grid.cols;
-        const row = (cellIdx / grid.cols) | 0;
-        if (col === hereCol && row === hereRow) idx = i + 1;
-    }
+    for (let i = 0; i < pathLen; i++) if (worker.pathIdx(slot, i) === hereIdx) idx = i + 1;
     if (idx >= pathLen) idx = pathLen - 1;
     const waypointArrival = PATH_WAYPOINT_ARRIVAL_PX;
     while (idx < pathLen - 1) {
@@ -38,16 +30,12 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
         const wx = grid.gridCenterXByIdx(cellIdx);
         const wy = grid.gridCenterYByIdx(cellIdx);
         if (Math.hypot(wx - x, wy - y) > waypointArrival) break;
-        const fromCol = grid.worldCol(x);
-        const fromRow = grid.worldRow(y);
-        const toCol = grid.worldCol(wx);
-        const toRow = grid.worldRow(wy);
-        if (fromCol === toCol && fromRow === toRow) {
+        const fromIdx = grid.worldCol(x) + grid.worldRow(y) * cols;
+        if (fromIdx === cellIdx) {
             idx++;
             continue;
         }
-        if (Math.abs(fromCol - toCol) > 1 || Math.abs(fromRow - toRow) > 1) break;
-        if (!grid.canStep(fromCol, fromRow, toCol, toRow, navTopology)) break;
+        if (!grid.canStepIdx(fromIdx, cellIdx, navTopology)) break;
         idx++;
     }
     return idx;
@@ -90,25 +78,16 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
 export function buildSabAbstractPathOverlay(worker, slot, pathLen) {
     if (pathLen <= 0) return null;
     const abstractLen = worker.abstractPathLen(slot);
-    if (abstractLen <= 0) {
-        return {
-            pathPlanner: "local",
-            abstractPath: [worker.pathIdx(slot, 0), worker.pathIdx(slot, pathLen - 1)],
-        };
-    }
+    if (abstractLen <= 0) return { pathPlanner: "local", abstractPath: [worker.pathIdx(slot, 0), worker.pathIdx(slot, pathLen - 1)] };
     const nodeCount = worker.graphNodeCount;
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
     const abstractPath = [];
     for (let i = 0; i < abstractLen; i++) {
         const idx = worker.abstractPathIdx(slot, i);
-        if (idx === startTemp) {
-            abstractPath.push(worker.pathIdx(slot, 0));
-        } else if (idx === targetTemp) {
-            abstractPath.push(worker.pathIdx(slot, pathLen - 1));
-        } else {
-            abstractPath.push(worker.graphNodeIdx(idx));
-        }
+        if (idx === startTemp) abstractPath.push(worker.pathIdx(slot, 0));
+        else if (idx === targetTemp) abstractPath.push(worker.pathIdx(slot, pathLen - 1));
+        else abstractPath.push(worker.graphNodeIdx(idx));
     }
     return { pathPlanner: "hpa", abstractPath };
 }

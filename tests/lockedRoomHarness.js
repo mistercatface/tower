@@ -33,8 +33,11 @@ export function assertLockedExitSealed(grid, navTopology, egress, sealed, label 
     const holeCell = lockedRoomHoleCell(egress);
     const powered = isPassagePowered(grid, colRowToIndex(egress.forcefield.col, egress.forcefield.row, grid.cols), egress.forcefield.side);
     const graph = createNavGraphViewFromTopology(navTopology);
-    const corridorToHole = !graph.canStep(exterior.col, exterior.row, holeCell.col, holeCell.row);
-    const holeToCorridor = !graph.canStep(holeCell.col, holeCell.row, exterior.col, exterior.row);
+    const cols = grid.cols;
+    const exteriorIdx = colRowToIndex(exterior.col, exterior.row, cols);
+    const holeIdx = colRowToIndex(holeCell.col, holeCell.row, cols);
+    const corridorToHole = !graph.canStepIdx(exteriorIdx, holeIdx);
+    const holeToCorridor = !graph.canStepIdx(holeIdx, exteriorIdx);
     if (sealed) {
         if (egress.forcefield.col !== egress.hole.c || egress.forcefield.row !== egress.hole.r || egress.forcefield.side !== egress.hole.side)
             throw new Error(`${label}: forcefield is not on the corridor hole edge`);

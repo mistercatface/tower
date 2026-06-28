@@ -62,24 +62,50 @@ function floodFillWalkable(state, startCol, startRow) {
     const grid = state.obstacleGrid;
     const graph = createNavGraphViewFromTopology(state.nav.topology);
     const visited = new Set();
-    const queue = [{ col: startCol, row: startRow }];
-    const cardinals = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-    ];
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const startIdx = colRowToIndex(startCol, startRow, cols);
+    if (grid.grid[startIdx] !== 0) return visited;
+    
+    const queue = [startIdx];
+    visited.add(startIdx);
+    
     while (queue.length) {
-        const { col, row } = queue.pop();
-        const key = colRowToIndex(col, row, grid.cols);
-        if (visited.has(key)) continue;
-        if (!cellInRect(col, row, grid.cols, grid.rows) || grid.isBlocked(col, row)) continue;
-        visited.add(key);
-        for (let i = 0; i < cardinals.length; i++) {
-            const nc = col + cardinals[i][0];
-            const nr = row + cardinals[i][1];
-            if (!graph.canStep(col, row, nc, nr)) continue;
-            queue.push({ col: nc, row: nr });
+        const idx = queue.pop();
+        const c = idx % cols;
+        const r = (idx / cols) | 0;
+        
+        // West
+        if (c > 0) {
+            const nIdx = idx - 1;
+            if (!visited.has(nIdx) && grid.grid[nIdx] === 0 && graph.canStepIdx(idx, nIdx)) {
+                visited.add(nIdx);
+                queue.push(nIdx);
+            }
+        }
+        // East
+        if (c + 1 < cols) {
+            const nIdx = idx + 1;
+            if (!visited.has(nIdx) && grid.grid[nIdx] === 0 && graph.canStepIdx(idx, nIdx)) {
+                visited.add(nIdx);
+                queue.push(nIdx);
+            }
+        }
+        // North
+        if (r > 0) {
+            const nIdx = idx - cols;
+            if (!visited.has(nIdx) && grid.grid[nIdx] === 0 && graph.canStepIdx(idx, nIdx)) {
+                visited.add(nIdx);
+                queue.push(nIdx);
+            }
+        }
+        // South
+        if (r + 1 < rows) {
+            const nIdx = idx + cols;
+            if (!visited.has(nIdx) && grid.grid[nIdx] === 0 && graph.canStepIdx(idx, nIdx)) {
+                visited.add(nIdx);
+                queue.push(nIdx);
+            }
         }
     }
     return visited;
