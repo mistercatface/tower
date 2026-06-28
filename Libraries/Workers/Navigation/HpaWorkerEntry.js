@@ -1,6 +1,5 @@
 import { FlatAbstractGraphSearch, FlatGridSearch } from "../../Pathfinding/AStar.js";
 import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js";
-import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
 import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
@@ -197,9 +196,7 @@ export class HpaRegionGraphManager {
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, data) {
-        if (!this.regionGraphState) {
-            return this.buildRegionGraphFull(gridFrame, topology, navView, data);
-        }
+        if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, data);
         rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView);
         return this.writeRegionGraphToSab(gridFrame);
     }

@@ -21,21 +21,6 @@ export class HpaRegionGraph {
     exportState() {
         return { nodesMap: this.nodesMap, cellToNode: this.cellToNode, nodeIdCounter: this.nodeIdCounter };
     }
-    createRegionAtCell(startIdx) {
-        const id = `node_${startIdx}`;
-        const node = new RegionNode(id, startIdx);
-        this.nodesMap[id] = node;
-        return node;
-    }
-    getNode(idOrIdx) {
-        if (typeof idOrIdx === "number") return this.nodesMap[`node_${idOrIdx}`] ?? null;
-        return this.nodesMap[idOrIdx] ?? null;
-    }
-    nodeForCell(idx) {
-        const nodeIdx = this.cellToNode[idx];
-        if (nodeIdx === undefined || nodeIdx === -1) return null;
-        return this.nodesMap[`node_${nodeIdx}`] ?? null;
-    }
     assignCell(node, idx) {
         if (!node) return;
         this.cellToNode[idx] = node.idx;
@@ -70,9 +55,25 @@ export class HpaRegionGraph {
     removeInboundEdges(targetId) {
         for (const node of this.nodes()) node.edges = node.edges.filter((edge) => edge.targetId !== targetId);
     }
-    removeRegion(nodeOrId) {
-        const node = typeof nodeOrId === "string" ? this.getNode(nodeOrId) : nodeOrId;
-        if (!node) return;
+    createRegionAtCell(startIdx) {
+        const id = startIdx;
+        const node = new RegionNode(id, startIdx);
+        this.nodesMap[id] = node;
+        return node;
+    }
+    getNode(idOrIdx) {
+        return this.nodesMap[idOrIdx] ?? null;
+    }
+    nodeForCell(idx) {
+        const nodeIdx = this.cellToNode[idx];
+        if (nodeIdx === undefined || nodeIdx === -1) return null;
+        return this.nodesMap[nodeIdx] ?? null;
+    }
+    removeRegion(node) {
+        if (!node) {
+            console.log("what the FUCK");
+            return;
+        }
         for (let i = 0; i < node.cells.length; i++) this.cellToNode[node.cells[i]] = -1;
         delete this.nodesMap[node.id];
         this.removeInboundEdges(node.id);
@@ -298,16 +299,16 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     const size = frame.cols * frame.rows;
     const cellToRegion = new Int16Array(size);
     cellToRegion.fill(REGION_CELL_UNASSIGNED);
-    const nodeIds = graph
-        .nodeIds()
-        .filter((id) => !id.startsWith("__hpa_"))
-        .sort();
-    const nodeCount = nodeIds.length;
-    const idToIdx = new Map();
+    const idToIdx = new Int32Array(size);
+    idToIdx.fill(-1);
+    const nodes = Object.values(graph.nodesMap);
+    const nodeCount = nodes.length;
     const nodeIdx = new Int32Array(nodeCount);
+    const nodeIds = new Int32Array(nodeCount);
     for (let i = 0; i < nodeCount; i++) {
-        idToIdx.set(nodeIds[i], i);
-        const node = graph.getNode(nodeIds[i]);
+        const node = nodes[i];
+        nodeIds[i] = node.id;
+        idToIdx[node.id] = i;
         nodeIdx[i] = node.idx;
         for (let c = 0; c < node.cells.length; c++) cellToRegion[node.cells[c]] = i;
     }
@@ -315,10 +316,10 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     const edgeTargets = [];
     const edgeCosts = [];
     for (let i = 0; i < nodeCount; i++) {
-        const edges = graph.getNode(nodeIds[i]).edges;
+        const edges = nodes[i].edges;
         for (let e = 0; e < edges.length; e++) {
-            const targetIdx = idToIdx.get(edges[e].targetId);
-            if (targetIdx === undefined) continue;
+            const targetIdx = idToIdx[edges[e].targetId];
+            if (targetIdx === -1) continue;
             edgeSources.push(i);
             edgeTargets.push(targetIdx);
             edgeCosts.push(edges[e].cost);
@@ -342,7 +343,7 @@ export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame
     const cellToNode = new Int32Array(size).fill(-1);
     const nodesMap = {};
     for (let i = 0; i < nodeCount; i++) {
-        const id = `node_${nodeIdx[i]}`;
+        const id = nodeIdx[i];
         const idx = nodeIdx[i];
         const node = new RegionNode(id, idx);
         node.cells = [];
@@ -351,7 +352,7 @@ export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame
     for (let idx = 0; idx < size; idx++) {
         const regionIdx = cellToRegion[idx];
         if (regionIdx < 0) continue;
-        const node = nodesMap[`node_${nodeIdx[regionIdx]}`];
+        const node = nodesMap[nodeIdx[regionIdx]];
         cellToNode[idx] = node.idx;
         node.cells.push(idx);
     }

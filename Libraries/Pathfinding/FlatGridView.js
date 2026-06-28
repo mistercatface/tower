@@ -14,10 +14,6 @@ export class FlatGridView {
     contains(col, row) {
         return col >= 0 && col < this.cols && row >= 0 && row < this.rows;
     }
-    cell(idx) {
-        const cols = this.cols;
-        return { col: idx % cols, row: (idx / cols) | 0 };
-    }
     canStep(idx0, idx1) {
         if (idx0 < 0 || idx0 >= this.cellCount || idx1 < 0 || idx1 >= this.cellCount) return false;
         const cols = this.cols;
