@@ -30,8 +30,8 @@ export class FlatGridSearch {
         this.cols = 0;
         this.neighbors = null;
         this.cellCount = 0;
-        this._cardinalOffsets = null;
-        this._octileOffsets = null;
+        this._cardinalDidx = null;
+        this._octileDidx = null;
         this._lastCols = 0;
     }
     get grid() {
@@ -44,10 +44,12 @@ export class FlatGridSearch {
     getOffsets(policyOffsets, cols) {
         if (this._lastCols !== cols) {
             this._lastCols = cols;
-            this._cardinalOffsets = CARDINAL_OFFSETS.map((o) => ({ cost: o.cost, didx: o.dc + o.dr * cols }));
-            this._octileOffsets = OCTILE_OFFSETS.map((o) => ({ cost: o.cost, didx: o.dc + o.dr * cols }));
+            this._cardinalDidx = new Int32Array(4);
+            for (let i = 0; i < 4; i++) this._cardinalDidx[i] = CARDINAL_OFFSETS[i].dc + CARDINAL_OFFSETS[i].dr * cols;
+            this._octileDidx = new Int32Array(8);
+            for (let i = 0; i < 8; i++) this._octileDidx[i] = OCTILE_OFFSETS[i].dc + OCTILE_OFFSETS[i].dr * cols;
         }
-        return policyOffsets === CARDINAL_OFFSETS ? this._cardinalOffsets : this._octileOffsets;
+        return policyOffsets === CARDINAL_OFFSETS ? this._cardinalDidx : this._octileDidx;
     }
     manhattanDistance(idx0, idx1) {
         return manhattanDistanceIdx(idx0, idx1, this.cols);
@@ -113,7 +115,7 @@ export class FlatGridSearch {
                 if (currentG > maxPathLen) continue;
                 if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
                 for (let i = 0; i < maxDirs; i++) {
-                    const nIdx = currIdx + offsets[i].didx;
+                    const nIdx = currIdx + offsets[i];
                     if (!grid.canStep(currIdx, nIdx)) continue;
                     const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
                     const tentativeG = currentG + edgeCosts[i] + stepExtra;

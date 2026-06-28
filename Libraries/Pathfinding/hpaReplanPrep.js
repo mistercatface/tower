@@ -7,10 +7,8 @@ export class HpaAbstractGraph extends FlatGraphView {
     collectTempConnectCandidates(centerIdx, isStart, maxCellsPerChunk, anchorRegionIdx) {
         const searchRadius = Math.ceil(Math.sqrt(maxCellsPerChunk)) * 2;
         const out = [];
-        const seen = new Set();
         const add = (idx) => {
-            if (idx < 0 || idx >= this.nodeCount || seen.has(idx)) return;
-            seen.add(idx);
+            if (idx < 0 || idx >= this.nodeCount || out.includes(idx)) return;
             out.push(idx);
         };
         if (anchorRegionIdx >= 0) {

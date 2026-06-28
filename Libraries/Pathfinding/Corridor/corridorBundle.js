@@ -71,7 +71,7 @@ function orderedAttachmentPairs(parentGroups, childGroups, rng) {
  */
 export function solveCorridorBundle(params) {
     const { roomA, roomB, allRooms, corridorWidths, egressCells, existingPaths = [], existingPathWidths = [], rng, options = {} } = params;
-    const { pathfinder, layout } = createCorridorLaneRouter(allRooms, 12);
+    const { pathfinder, layout, roomBlocked } = createCorridorLaneRouter(allRooms, 12);
     const foreignOccupied = corridorPathsToOccupiedCellIndices(existingPaths, existingPathWidths, layout, FULL_FOOTPRINT);
     /** @type {WallHoleGroup[]} */
     const pickedParent = [];
@@ -106,6 +106,7 @@ export function solveCorridorBundle(params) {
                 maxPathLen: options.maxPathLen,
                 laneWidths: pathWidths,
                 footprint: FULL_FOOTPRINT,
+                roomBlocked,
             });
             if (!path) continue;
             pickedParent.push(pg);

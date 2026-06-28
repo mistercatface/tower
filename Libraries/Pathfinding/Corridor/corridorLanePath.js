@@ -1,7 +1,7 @@
 import { gridSideNeighborCell, layoutAbsCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
 import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellIndices, corridorPathsToOccupiedCellIndices } from "./corridorFootprint.js";
 import { CorridorGridPathfinder } from "./corridorGridPathfinder.js";
-import { buildRoomInteriorBlockedGridForLayout, cellInsideAnyRoom, corridorPathFootprintInsideAnyRoom, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";
+import { buildRoomInteriorBlockedGridForLayout, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {{ c: number, r: number }} CorridorCell */
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
@@ -10,8 +10,9 @@ export function createCorridorLaneRouter(rooms, pad = 12) {
     const bounds = corridorSearchBounds(rooms, pad);
     const layout = corridorSearchLayout(bounds);
     const pathfinder = new CorridorGridPathfinder(layout);
-    pathfinder.setRoomBlocked(buildRoomInteriorBlockedGridForLayout(layout, rooms));
-    return { pathfinder, layout };
+    const roomBlocked = buildRoomInteriorBlockedGridForLayout(layout, rooms);
+    pathfinder.setRoomBlocked(roomBlocked);
+    return { pathfinder, layout, roomBlocked };
 }
 /** @param {CorridorCell} cell @param {number} side */
 function stepAcrossSide(cell, side) {
@@ -55,31 +56,31 @@ function assembleCorridorPath(corridorFrom, egress, midPath) {
 export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells, corridorWidth, lanePaths, baseOccupied, pathfinder, layout, options = {}) {
     const footprint = options.footprint;
     const stride = layout.strideCols;
+    const roomBlocked = options.roomBlocked ?? buildRoomInteriorBlockedGridForLayout(layout, rooms);
     const stepAcrossSideIdx = (idx, side) => {
-        const c = (idx % stride) + layout.originCol;
-        const r = ((idx / stride) | 0) + layout.originRow;
-        const n = gridSideNeighborCell(c, r, side);
-        return layoutAbsCellIndex(layout, n.col, n.row);
+        if (side === 0) return idx - stride;
+        if (side === 1) return idx + 1;
+        if (side === 2) return idx + stride;
+        if (side === 3) return idx - 1;
+        return idx;
     };
     const parentHoleIdx = layoutAbsCellIndex(layout, parentHole.c, parentHole.r);
     const childHoleIdx = layoutAbsCellIndex(layout, childHole.c, childHole.r);
     const corridorFromIdx = stepAcrossSideIdx(parentHoleIdx, parentHole.side);
     const corridorToIdx = stepAcrossSideIdx(childHoleIdx, childHole.side);
     const approachEndIdx = stepAcrossSideIdx(corridorToIdx, childHole.side);
-    const walkEgressIdx = (fromIdx, parentSide, maxSteps, rooms) => {
+    const walkEgressIdx = (fromIdx, parentSide, maxSteps) => {
         const cells = [];
         let pIdx = fromIdx;
         for (let i = 0; i < maxSteps; i++) {
             const nextIdx = stepAcrossSideIdx(pIdx, parentSide);
-            const nc = (nextIdx % stride) + layout.originCol;
-            const nr = ((nextIdx / stride) | 0) + layout.originRow;
-            if (cellInsideAnyRoom(rooms, nc, nr)) break;
+            if (roomBlocked[nextIdx]) break;
             pIdx = nextIdx;
             cells.push(pIdx);
         }
         return { endIdx: pIdx, cells };
     };
-    const egress = walkEgressIdx(corridorFromIdx, parentHole.side, egressCells, rooms);
+    const egress = walkEgressIdx(corridorFromIdx, parentHole.side, egressCells);
     const egressEndIdx = egress.endIdx;
     /** @type {Set<number>} */
     const reserved = new Set(baseOccupied);
@@ -96,7 +97,8 @@ export function buildCorridorLanePath(parentHole, childHole, rooms, egressCells,
     const ingressPath = pathfinder.findPath(lastIdx, corridorToIdx, options.maxPathLen ?? 512);
     if (!ingressPath || ingressPath.length < 2) return null;
     for (let i = 1; i < ingressPath.length; i++) path.push(ingressPath[i]);
-    if (corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth, layout)) return null;
+    const footprintIndices = corridorPathOccupiedCellIndices(path, corridorWidth, layout, { interiorOnly: false });
+    for (const idx of footprintIndices) if (roomBlocked[idx]) return null;
     if (lanePaths.length) if (corridorPathIntersectsPaths(path, corridorWidth, lanePaths, laneWidths, layout, footprint)) return null;
     if (corridorPathHitsOccupied(path, baseOccupied, corridorWidth, layout, footprint)) return null;
     return path;
