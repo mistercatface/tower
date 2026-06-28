@@ -2,7 +2,7 @@
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
  */
-import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
+import { drawImageQuadScalars, drawImageTriangleScalars } from "../../Canvas/AffineTexture.js";
 import { resolveElevationAlpha, projectWorldPointInto } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { railWallCapUvCornersInto } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb } from "../../Math/Aabb2D.js";
@@ -119,7 +119,7 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
             computeFaceCornerElevated(sCorner2, u1, v1, faceBottom, faceTop);
             computeFaceCornerElevated(sCorner3, u0, v1, faceBottom, faceTop);
             if (!pointsAabbOverlapAabb(sCorner0, sCorner1, sCorner2, sCorner3, worldBounds)) continue;
-            drawImageQuad(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, sCorner0, sCorner1, sCorner2, sCorner3);
+            drawImageQuadScalars(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, sCorner0.x, sCorner0.y, sCorner1.x, sCorner1.y, sCorner2.x, sCorner2.y, sCorner3.x, sCorner3.y);
         }
     }
 }
@@ -181,8 +181,8 @@ function blitHorizontalCapSample(ctx, dest4, src4, canvas) {
     ctx.beginPath();
     traceClosedPolygon(ctx, dest4);
     ctx.clip();
-    drawImageTriangle(ctx, canvas, src4[0], src4[1], src4[3], dest4[0], dest4[1], dest4[3]);
-    drawImageTriangle(ctx, canvas, src4[1], src4[2], src4[3], dest4[1], dest4[2], dest4[3]);
+    drawImageTriangleScalars(ctx, canvas, src4[0].x, src4[0].y, src4[1].x, src4[1].y, src4[3].x, src4[3].y, dest4[0].x, dest4[0].y, dest4[1].x, dest4[1].y, dest4[3].x, dest4[3].y);
+    drawImageTriangleScalars(ctx, canvas, src4[1].x, src4[1].y, src4[2].x, src4[2].y, src4[3].x, src4[3].y, dest4[1].x, dest4[1].y, dest4[2].x, dest4[2].y, dest4[3].x, dest4[3].y);
     ctx.restore();
 }
 export function drawProjectedRailWallCap(ctx, box, viewport, state, face) {

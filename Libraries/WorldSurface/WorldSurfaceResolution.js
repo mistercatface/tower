@@ -1,4 +1,4 @@
-import { drawImageQuad } from "../Canvas/AffineTexture.js";
+import { drawImageQuadScalars } from "../Canvas/AffineTexture.js";
 import { projectWorldAabbCornersInto } from "../Spatial/elevation/RadialElevationProjection.js";
 const sProjectedChunkCorners = [
     { x: 0, y: 0 },
@@ -19,5 +19,20 @@ export function isDrawableBakedSurface(canvas) {
 }
 export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, viewport) {
     projectWorldAabbCornersInto(sProjectedChunkCorners, bounds, zLevel, viewport);
-    drawImageQuad(ctx, canvas, 0, 0, canvas.width, canvas.height, sProjectedChunkCorners[0], sProjectedChunkCorners[1], sProjectedChunkCorners[2], sProjectedChunkCorners[3]);
+    drawImageQuadScalars(
+        ctx,
+        canvas,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+        sProjectedChunkCorners[0].x,
+        sProjectedChunkCorners[0].y,
+        sProjectedChunkCorners[1].x,
+        sProjectedChunkCorners[1].y,
+        sProjectedChunkCorners[2].x,
+        sProjectedChunkCorners[2].y,
+        sProjectedChunkCorners[3].x,
+        sProjectedChunkCorners[3].y,
+    );
 }

@@ -63,9 +63,6 @@ export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y,
     ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
     ctx.setTransform(currentTransform);
 }
-export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
-    drawImageTriangleScalars(ctx, img, s0.x, s0.y, s1.x, s1.y, s2.x, s2.y, d0.x, d0.y, d1.x, d1.y, d2.x, d2.y);
-}
 export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
     drawImageTriangleScalars(
         ctx,
@@ -84,7 +81,7 @@ export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
         dstFlat[i2 * 2 + 1],
     );
 }
-function drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y) {
+export function drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y) {
     const diag02 = (d2x - d0x) ** 2 + (d2y - d0y) ** 2;
     const diag13 = (d3x - d1x) ** 2 + (d3y - d1y) ** 2;
     if (diag13 < diag02) {
@@ -99,7 +96,4 @@ export function drawImageQuadFromFlatRings(ctx, img, sx0, sy0, sx1, sy1, baseRin
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
     drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, baseRing[ai], baseRing[ai + 1], baseRing[bi], baseRing[bi + 1], topRing[bi], topRing[bi + 1], topRing[ai], topRing[ai + 1]);
-}
-export function drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, d0, d1, d2, d3) {
-    drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0.x, d0.y, d1.x, d1.y, d2.x, d2.y, d3.x, d3.y);
 }
