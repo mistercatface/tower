@@ -62,65 +62,120 @@ export const kineticConstraintSlab = {
         this.groupCount = 0;
     },
 };
+import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
 const constraintPhysSyncSeen = new Set();
 const constraintBridgePhysIds = [];
-function constraintEdgeKey(bodyAId, bodyBId) {
-    return bodyAId < bodyBId ? bodyAId * CONSTRAINT_EDGE_KEY_SCALE + bodyBId : bodyBId * CONSTRAINT_EDGE_KEY_SCALE + bodyAId;
+const orderBodyByPhysId = new Array(MAX_PHYS_BODIES);
+const orderSeenPhysIds = new Uint8Array(MAX_PHYS_BODIES);
+const orderUniquePhysIds = [];
+const orderUsedItems = new Uint8Array(MAX_KINETIC_CONSTRAINTS);
+const orderOrdered = [];
+const bucketRoots = new Int32Array(MAX_ISLAND_GROUPS);
+const gatherBuckets = new Array(MAX_ISLAND_GROUPS);
+const awakeGroups = [];
+const asleepGroups = [];
+const bucketPool = [];
+let bucketPoolUseCount = 0;
+function getPoolArray() {
+    if (bucketPoolUseCount >= bucketPool.length) bucketPool.push([]);
+    const arr = bucketPool[bucketPoolUseCount++];
+    arr.length = 0;
+    return arr;
 }
+const itemPool = [];
+let itemPoolUseCount = 0;
+function getPoolItem() {
+    if (itemPoolUseCount >= itemPool.length) itemPool.push({ entry: null, bodyA: null, bodyB: null });
+    return itemPool[itemPoolUseCount++];
+}
+const anchorAWorld = { x: 0, y: 0 };
+const anchorBWorld = { x: 0, y: 0 };
 function orderIslandConstraintItems(items) {
     if (items.length <= 1) return items;
-    const bodyById = new Map();
-    const bodySet = new Set();
-    const byEdge = new Map();
+    orderUniquePhysIds.length = 0;
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        bodyById.set(item.bodyA.id, item.bodyA);
-        bodyById.set(item.bodyB.id, item.bodyB);
-        bodySet.add(item.bodyA.id);
-        bodySet.add(item.bodyB.id);
-        byEdge.set(constraintEdgeKey(item.bodyA.id, item.bodyB.id), item);
+        const physA = item.bodyA._physId;
+        const physB = item.bodyB._physId;
+        if (physA !== undefined && physA !== -1 && orderSeenPhysIds[physA] === 0) {
+            orderSeenPhysIds[physA] = 1;
+            orderUniquePhysIds.push(physA);
+            orderBodyByPhysId[physA] = item.bodyA;
+        }
+        if (physB !== undefined && physB !== -1 && orderSeenPhysIds[physB] === 0) {
+            orderSeenPhysIds[physB] = 1;
+            orderUniquePhysIds.push(physB);
+            orderBodyByPhysId[physB] = item.bodyB;
+        }
     }
     let startId = null;
-    for (const id of bodySet) {
-        const body = bodyById.get(id);
-        const inIsland = (body._kineticLinkNeighbors ?? []).filter((neighbor) => bodySet.has(neighbor.id));
-        if (inIsland.length <= 1) {
-            startId = id;
+    let startPhysId = null;
+    for (let i = 0; i < orderUniquePhysIds.length; i++) {
+        const physId = orderUniquePhysIds[i];
+        const body = orderBodyByPhysId[physId];
+        const neighbors = body._kineticLinkNeighbors;
+        let inIslandCount = 0;
+        if (neighbors)
+            for (let j = 0; j < neighbors.length; j++) {
+                const neighborPhys = neighbors[j]._physId;
+                if (neighborPhys !== undefined && neighborPhys !== -1 && orderSeenPhysIds[neighborPhys] === 1) inIslandCount++;
+            }
+        if (inIslandCount <= 1) {
+            startPhysId = physId;
+            startId = body.id;
             break;
         }
     }
     if (startId == null) {
         let minId = Infinity;
-        for (const id of bodySet) if (id < minId) minId = id;
-        startId = minId;
+        for (let i = 0; i < orderUniquePhysIds.length; i++) {
+            const physId = orderUniquePhysIds[i];
+            const body = orderBodyByPhysId[physId];
+            if (body.id < minId) {
+                minId = body.id;
+                startPhysId = physId;
+                startId = body.id;
+            }
+        }
     }
-    const ordered = [];
-    const usedEdges = new Set();
-    let currentId = startId;
-    while (ordered.length < items.length) {
-        const body = bodyById.get(currentId);
+    orderOrdered.length = 0;
+    orderUsedItems.fill(0, 0, items.length);
+    let currentPhysId = startPhysId;
+    while (orderOrdered.length < items.length) {
+        const body = orderBodyByPhysId[currentPhysId];
         const neighbors = body._kineticLinkNeighbors ?? [];
         let advanced = false;
         for (let i = 0; i < neighbors.length; i++) {
             const neighbor = neighbors[i];
-            if (!bodySet.has(neighbor.id)) continue;
-            const key = constraintEdgeKey(currentId, neighbor.id);
-            if (usedEdges.has(key)) continue;
-            const item = byEdge.get(key);
-            if (!item) continue;
-            ordered.push(item);
-            usedEdges.add(key);
-            currentId = neighbor.id;
+            const neighborPhys = neighbor._physId;
+            if (neighborPhys === undefined || neighborPhys === -1 || orderSeenPhysIds[neighborPhys] === 0) continue;
+            let itemIdx = -1;
+            for (let k = 0; k < items.length; k++) {
+                if (orderUsedItems[k] === 1) continue;
+                const item = items[k];
+                const physA = item.bodyA._physId;
+                const physB = item.bodyB._physId;
+                if ((physA === currentPhysId && physB === neighborPhys) || (physA === neighborPhys && physB === currentPhysId)) {
+                    itemIdx = k;
+                    break;
+                }
+            }
+            if (itemIdx === -1) continue;
+            orderOrdered.push(items[itemIdx]);
+            orderUsedItems[itemIdx] = 1;
+            currentPhysId = neighborPhys;
             advanced = true;
             break;
         }
         if (!advanced) break;
     }
-    for (let i = 0; i < items.length; i++) {
-        const key = constraintEdgeKey(items[i].bodyA.id, items[i].bodyB.id);
-        if (!usedEdges.has(key)) ordered.push(items[i]);
+    for (let i = 0; i < items.length; i++) if (orderUsedItems[i] === 0) orderOrdered.push(items[i]);
+    for (let i = 0; i < orderUniquePhysIds.length; i++) {
+        const physId = orderUniquePhysIds[i];
+        orderBodyByPhysId[physId] = undefined;
+        orderSeenPhysIds[physId] = 0;
     }
-    return ordered;
+    return orderOrdered;
 }
 function circleRadiusFromBody(body) {
     const parts = getEntityCollisionParts(body);
@@ -223,7 +278,9 @@ export function gatherKineticConstraintSlab(tick) {
     const session = world.kinetic;
     const plan = ensureKineticIslandPlan(session, frame._kineticBodies);
     const list = session.kineticConstraints;
-    const buckets = new Map();
+    bucketPoolUseCount = 0;
+    itemPoolUseCount = 0;
+    let bucketCount = 0;
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance" && entry.type !== "angle") continue;
@@ -232,15 +289,41 @@ export function gatherKineticConstraintSlab(tick) {
         if (bodyA.isDead || bodyB.isDead) continue;
         if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
         const root = plan.bodyIdToIslandRoot.get(bodyA.id) ?? bodyA.id;
-        if (!buckets.has(root)) buckets.set(root, []);
-        buckets.get(root).push({ entry, bodyA, bodyB });
+        let bucketIdx = -1;
+        for (let j = 0; j < bucketCount; j++)
+            if (bucketRoots[j] === root) {
+                bucketIdx = j;
+                break;
+            }
+        if (bucketIdx === -1)
+            if (bucketCount < MAX_ISLAND_GROUPS) {
+                bucketIdx = bucketCount;
+                bucketRoots[bucketCount] = root;
+                bucketCount++;
+                gatherBuckets[bucketIdx] = getPoolArray();
+            }
+        if (bucketIdx !== -1) {
+            const item = getPoolItem();
+            item.entry = entry;
+            item.bodyA = bodyA;
+            item.bodyB = bodyB;
+            gatherBuckets[bucketIdx].push(item);
+        }
     }
-    const awakeGroups = [];
-    const asleepGroups = [];
-    for (const items of buckets.values()) {
+    awakeGroups.length = 0;
+    asleepGroups.length = 0;
+    for (let i = 0; i < bucketCount; i++) {
+        const items = gatherBuckets[i];
         const ordered = orderIslandConstraintItems(items);
-        if (islandItemsAsleep(ordered)) asleepGroups.push(ordered);
-        else awakeGroups.push(ordered);
+        if (islandItemsAsleep(ordered)) {
+            const groupCopy = getPoolArray();
+            for (let j = 0; j < ordered.length; j++) groupCopy.push(ordered[j]);
+            asleepGroups.push(groupCopy);
+        } else {
+            const groupCopy = getPoolArray();
+            for (let j = 0; j < ordered.length; j++) groupCopy.push(ordered[j]);
+            awakeGroups.push(groupCopy);
+        }
     }
     for (let g = 0; g < awakeGroups.length; g++) {
         if (slab.count >= MAX_KINETIC_CONSTRAINTS || slab.groupCount >= MAX_ISLAND_GROUPS) break;
@@ -295,8 +378,8 @@ function shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, 
         linkWallsOut.length = 0;
         return false;
     }
-    const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy);
-    const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy);
+    const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy, anchorAWorld);
+    const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy, anchorBWorld);
     collectLinkOverlappingWalls(wa.x, wa.y, wb.x, wb.y, capsuleRadius, islandWalls, linkWallsOut);
     return linkWallsOut.length > 0;
 }
@@ -318,8 +401,8 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
     const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
-        const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy);
-        const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy);
+        const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy, anchorAWorld);
+        const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy, anchorBWorld);
         let best = null;
         for (let i = 0; i < linkWalls.length; i++) {
             const seg = linkWalls[i];
@@ -399,8 +482,8 @@ function projectDistanceConstraint(slab, index) {
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     const dynSlab = kineticDynamicSlab;
-    const wa = worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab);
-    const wb = worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab);
+    const wa = worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, anchorAWorld);
+    const wb = worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, anchorBWorld);
     const dx = wb.x - wa.x;
     const dy = wb.y - wa.y;
     const dist = Math.hypot(dx, dy);
@@ -507,8 +590,8 @@ function warmStartDistanceConstraint(slab, i, dynSlab) {
     const bodyB = slab.bodyB[i];
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);
-    const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab);
+    const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
+    const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
     const dx = wb.x - wa.x;
     const dy = wb.y - wa.y;
     const dist = Math.hypot(dx, dy);
@@ -640,8 +723,8 @@ export function measureConstraintSlabMaxError() {
         if (slab.type[i] === "angle") continue;
         const bodyA = slab.bodyA[i];
         const bodyB = slab.bodyB[i];
-        const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab);
-        const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab);
+        const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
+        const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
         const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - slab.static.restLength[i]);
         if (error > max) max = error;
     }

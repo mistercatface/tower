@@ -32,18 +32,18 @@ function union(i, j) {
             rank[rootI]++;
         }
 }
+const bodyByPhysId = new Array(MAX_PHYS_BODIES);
 export function advanceKineticSleepIslands(frame, session, contacts = sleepContactBuffer) {
     const activeBodies = frame._activeKineticBodies;
     if (!activeBodies || activeBodies.length === 0) return;
     parent.fill(-1);
     rank.fill(0);
-    const bodies = [];
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
         parent[physId] = physId;
-        bodies[physId] = body;
+        bodyByPhysId[physId] = body;
     }
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
@@ -65,8 +65,8 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
             const physIdA = contacts.physIdA[i];
             const physIdB = contacts.physIdB[i];
             if (parent[physIdA] === -1 || parent[physIdB] === -1) continue;
-            const bodyA = bodies[physIdA];
-            const bodyB = bodies[physIdB];
+            const bodyA = bodyByPhysId[physIdA];
+            const bodyB = bodyByPhysId[physIdB];
             if (!bodyA || !bodyB) continue;
             const isResting = contacts.resting[i] === 1;
             const eitherActive = isKinematicallyActive(bodyA) || isKinematicallyActive(bodyB);
@@ -101,6 +101,10 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
         const root = componentRoot[physId];
         const eligible = componentHasBlocker[root] === 0;
         advanceKineticSleep(body, eligible);
+    }
+    for (let i = 0; i < activeBodies.length; i++) {
+        const physId = activeBodies[i]._physId;
+        if (physId !== undefined && physId !== -1) bodyByPhysId[physId] = undefined;
     }
 }
 const ISLAND_SLEEP_QUERY_BOUNDS = createAabb();

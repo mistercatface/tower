@@ -29,9 +29,6 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
         for (let i = 0; i < wallCandidates.length; i++) {
             const seg = wallCandidates[i];
             const segShape = ensureWallSegmentPolygonShape(seg);
-            if (SAT_RESULT[0] !== undefined) {
-                // SAT_RESULT logic
-            }
             if (SatCollision.checkCollision(px, py, entityFacing(prop), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
         }
     }

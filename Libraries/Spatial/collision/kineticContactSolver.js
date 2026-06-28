@@ -290,7 +290,9 @@ function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        if (!kineticPairBodiesAt(spatialFrame, physIdA, physIdB)) continue;
+        const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
+        const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
+        if (!bodyA || !bodyB) continue;
         const tier = pairs.static.tier[i];
         if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE)
             narrowPhaseCircleContact(physIdA, physIdB, pairs.dynamic, i, pairs.static.restitution[i], pairs.static.friction[i], pairs.static.warmStartPairKey[i], contacts);
@@ -414,11 +416,12 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
 }
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
-        const pair = kineticContactBodiesAt(spatialFrame, contacts.physIdA[i], contacts.physIdB[i]);
-        if (!pair) continue;
-        invalidateWallResolveCache(pair.bodyA, pair.bodyB);
-        spatialFrame.scheduleKineticActivation(pair.bodyA);
-        spatialFrame.scheduleKineticActivation(pair.bodyB);
+        const bodyA = kineticPairBodyAt(spatialFrame, contacts.physIdA[i]);
+        const bodyB = kineticPairBodyAt(spatialFrame, contacts.physIdB[i]);
+        if (!bodyA || !bodyB) continue;
+        invalidateWallResolveCache(bodyA, bodyB);
+        spatialFrame.scheduleKineticActivation(bodyA);
+        spatialFrame.scheduleKineticActivation(bodyB);
     }
 }
 export function gatherKineticContactPairs(tick) {
