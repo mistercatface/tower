@@ -77,7 +77,7 @@ describe("chunk surface regions", () => {
         const bounds = setChunkSurfaceProfileRangeEdit(state, { startCol: 1, endCol: 1, startRow: 0, endRow: 1 }, "east");
         assert.deepEqual(bounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
         assert.equal(invalidated.idx, null);
-        assert.equal(invalidated.stateArg, state);
+        assert.equal(invalidated.stateArg, grid);
         assert.equal(resolveChunkSurfaceProfileId(grid, 1, 1, "base"), "east");
     });
 });

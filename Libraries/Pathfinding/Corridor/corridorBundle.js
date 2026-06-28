@@ -108,7 +108,6 @@ export function solveCorridorBundle(params) {
                 footprint: FULL_FOOTPRINT,
                 roomBlocked,
             });
-            console.log("TRYING PAIR:", pg.anchor, "->", cg.anchor, "SUCCESS:", !!path);
             if (!path) continue;
             pickedParent.push(pg);
             pickedChild.push(cg);

@@ -68,8 +68,9 @@ export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnch
         } else spec = resolveRailedBeltFromSides(3, 1);
         for (let ci = 0; ci < cells.length; ci++) {
             const cell = cells[ci];
-            if (cellInsideAnyRoom(rooms, cell.c, cell.r)) continue;
-            byCell.set(layoutAbsCellIndex(layout, cell.c, cell.r), { col: cell.c, row: cell.r, kind: spec.kind, facingIndex: spec.facingIndex });
+            const idx = layoutAbsCellIndex(layout, cell.c, cell.r);
+            if (cellInsideAnyRoom(rooms, idx, layout)) continue;
+            byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
         }
     }
     return byCell;
@@ -93,5 +94,9 @@ export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, parent
             byCell.set(key, { ...belt, kind });
         }
     }
-    return [...byCell.values()];
+    return [...byCell.values()].map((belt) => {
+        const col = (belt.idx % layout.strideCols) + layout.originCol;
+        const row = ((belt.idx / layout.strideCols) | 0) + layout.originRow;
+        return { col, row, kind: belt.kind, facingIndex: belt.facingIndex };
+    });
 }

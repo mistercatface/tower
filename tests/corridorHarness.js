@@ -71,9 +71,12 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     const corridorFootprint = corridorOnlyFootprint(bundle.paths[laneIndex], bundle.corridorWidths[laneIndex], layout);
     const mouthExteriorIndices = new Set([layoutAbsCellIndex(layout, exteriorA.c, exteriorA.r), layoutAbsCellIndex(layout, exteriorB.c, exteriorB.r)]);
     for (const idx of mouthExteriorIndices) {
-        const { col, row } = { col: (idx % layout.strideCols) + layout.originCol, row: Math.floor(idx / layout.strideCols) + layout.originRow };
-        if (cellInsideAnyRoom(rooms, col, row)) continue;
-        if (!beltsByCell.has(idx) && corridorFootprint.has(idx)) throw new Error(`${label}: missing belt at room mouth ${col},${row}`);
+        if (cellInsideAnyRoom(rooms, idx, layout)) continue;
+        if (!beltsByCell.has(idx) && corridorFootprint.has(idx)) {
+            const col = (idx % layout.strideCols) + layout.originCol;
+            const row = ((idx / layout.strideCols) | 0) + layout.originRow;
+            throw new Error(`${label}: missing belt at room mouth ${col},${row}`);
+        }
     }
     assertBeltChains(corridorFootprint, beltsByCell, layout, label, mouthExteriorIndices);
 }
@@ -81,12 +84,12 @@ function beltIsElbow(kind) {
     return kind === 5 || kind === 6;
 }
 export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label = "lane") {
-    const layout = fixtureLayout(fixture);
     const rooms = [fixture.roomA, fixture.roomB];
     const parentHole = bundle.parentAnchors[laneIndex];
     const childHole = bundle.childAnchors[laneIndex];
     const exteriorA = corridorExteriorCellFromWallHole(parentHole);
     const exteriorB = corridorExteriorCellFromWallHole(childHole);
+    const layout = fixtureLayout(fixture);
     const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, [parentHole], [childHole], layout);
     const beltsByCell = beltMap(belts, layout);
     const intoRoom = (hole) => oppositeSide(hole.side);
@@ -94,8 +97,8 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         [parentHole, exteriorA, "parent", "entry"],
         [childHole, exteriorB, "child", "exit"],
     ]) {
-        if (cellInsideAnyRoom(rooms, exterior.c, exterior.r)) continue;
         const idx = layoutAbsCellIndex(layout, exterior.c, exterior.r);
+        if (cellInsideAnyRoom(rooms, idx, layout)) continue;
         const belt = beltsByCell.get(idx);
         if (!belt) throw new Error(`${label}: missing belt at ${role} mouth ${exterior.c},${exterior.r}`);
         const sides = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
@@ -104,7 +107,7 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         if (actual !== wantIntoRoom) throw new Error(`${label}: ${role} mouth belt at ${exterior.c},${exterior.r} ${check} side ${actual}, expected ${wantIntoRoom} into room`);
     }
     const childIdx = layoutAbsCellIndex(layout, exteriorB.c, exteriorB.r);
-    if (!cellInsideAnyRoom(rooms, exteriorB.c, exteriorB.r)) {
+    if (!cellInsideAnyRoom(rooms, childIdx, layout)) {
         const childBelt = beltsByCell.get(childIdx);
         const { entrySide, exitSide } = floorBeltEntryExitSides(childBelt.kind, childBelt.facingIndex);
         const straightThrough = (entrySide + 2) % 4 === exitSide;

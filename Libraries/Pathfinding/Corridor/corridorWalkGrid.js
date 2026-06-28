@@ -34,36 +34,20 @@ export function buildRoomInteriorBlockedGridForLayout(layout, rooms) {
     }
     return grid;
 }
-/** @param {RoomRect[]} rooms @param {number} c @param {number} r */
-export function cellInsideAnyRoom(rooms, c, r) {
+/**
+ * @param {RoomRect[]} rooms
+ * @param {number} idx
+ * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout | number} layoutOrCols
+ */
+export function cellInsideAnyRoom(rooms, idx, layoutOrCols) {
+    const stride = typeof layoutOrCols === "number" ? layoutOrCols : layoutOrCols.strideCols;
+    const originCol = typeof layoutOrCols === "number" ? 0 : (layoutOrCols.originCol ?? 0);
+    const originRow = typeof layoutOrCols === "number" ? 0 : (layoutOrCols.originRow ?? 0);
+    const c = (idx % stride) + originCol;
+    const r = ((idx / stride) | 0) + originRow;
     for (let i = 0; i < rooms.length; i++) {
         const node = rooms[i];
         if (c >= node.c0 && c <= node.c1 && r >= node.r0 && r <= node.r1) return true;
-    }
-    return false;
-}
-/** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms */
-export function corridorPathMidCellsClear(rooms, path) {
-    for (let i = 1; i < path.length - 1; i++) if (cellInsideAnyRoom(rooms, path[i].c, path[i].r)) return false;
-    return true;
-}
-/** @param {import("./corridorFootprint.js").CorridorCell[]} path @param {RoomRect[]} rooms @param {number} corridorWidth @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
-export function corridorPathFootprintInsideAnyRoom(rooms, path, corridorWidth, layout) {
-    const stride = layout.strideCols;
-    for (let i = 0; i < path.length; i++) {
-        let p, prev, next;
-        if (typeof path[i] === "number") {
-            const pIdx = path[i];
-            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
-            prev = i > 0 ? { c: (path[i - 1] % stride) + layout.originCol, r: ((path[i - 1] / stride) | 0) + layout.originRow } : undefined;
-            next = i + 1 < path.length ? { c: (path[i + 1] % stride) + layout.originCol, r: ((path[i + 1] / stride) | 0) + layout.originRow } : undefined;
-        } else {
-            p = path[i];
-            prev = i > 0 ? path[i - 1] : undefined;
-            next = i + 1 < path.length ? path[i + 1] : undefined;
-        }
-        const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
-        for (let ci = 0; ci < cells.length; ci++) if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) return true;
     }
     return false;
 }

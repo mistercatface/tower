@@ -1,6 +1,6 @@
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
-import { createCellIndexLayout, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../Spatial/grid/GridUtils.js";
+import { createCellIndexLayout, layoutAbsCellIndex, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../Spatial/grid/GridUtils.js";
 import {
     DEFAULT_RAIL_WALL_HEIGHT_LEVEL,
     DEFAULT_RAIL_WALL_THICKNESS_LEVEL,
@@ -51,8 +51,9 @@ function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
         }
         const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
         for (let ci = 0; ci < cells.length; ci++) {
-            if (cellInsideAnyRoom(rooms, cells[ci].c, cells[ci].r)) continue;
             if (!layoutContainsAbsCell(layout, cells[ci].c, cells[ci].r)) continue;
+            const idx = layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r);
+            if (cellInsideAnyRoom(rooms, idx, layout)) continue;
             const local = layoutAbsToLocalCell(layout, cells[ci].c, cells[ci].r);
             mask[layoutLocalCellIndex(layout, local.col, local.row)] = 1;
         }
