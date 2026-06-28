@@ -265,11 +265,11 @@ export class HpaPathWorker {
         this.sabCardinalOpen = arena.sabCardinalOpen;
         this.sabVertexPassability = arena.sabVertexPassability;
     }
-    _ensureNavBuffers(size, vertCount, edgePoolRefs = 4) {
+    _ensureNavBuffers(size, vertCount, edgePoolRefs = 4, cols = 0, rows = 0) {
         this._ensureNavEdgePoolSab(edgePoolRefs);
         if (this._navSize !== size) {
             this._navSize = size;
-            this._navArena = createNavTopologySabArena(size, vertCount);
+            this._navArena = createNavTopologySabArena(size, vertCount, cols, rows);
         } else growNavTopologyVertexSab(this._navArena, vertCount);
         this._syncNavArenaFields();
     }
@@ -288,7 +288,7 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         if (size <= 0) return;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
-        this._ensureNavBuffers(size, vertCount, Math.max(grid.edgeStore.pool.length, 4));
+        this._ensureNavBuffers(size, vertCount, Math.max(grid.edgeStore.pool.length, 4), grid.cols, grid.rows);
     }
     getGridFrame() {
         return this._gridFrame;
@@ -345,7 +345,7 @@ export class HpaPathWorker {
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
         this._inFlightNavCacheKey = gridNavCacheKey(grid);
         const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
-        this._ensureNavBuffers(size, vertCount, edgePoolRefs);
+        this._ensureNavBuffers(size, vertCount, edgePoolRefs, grid.cols, grid.rows);
         const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
         packNavTopologyFromGrid(grid, this._navArena, rebindArena ? null : damageBounds);
         this._packNavEdgePoolForWorker(grid);

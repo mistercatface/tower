@@ -1,4 +1,4 @@
-import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase } from "../Spatial/grid/cellEdgeSlots.js";
+import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "../Spatial/grid/cellEdgeSlots.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS, OCTILE_DIR_TO_IDX } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
@@ -48,8 +48,9 @@ export function navTopologyFromSab(sabBlocked, sabOctileNeighbors, sabOctilePred
     return { blocked: new Uint8Array(sabBlocked), octileNeighbors: new Int32Array(sabOctileNeighbors), octilePredecessors: new Int32Array(sabOctilePredecessors) };
 }
 /** @param {number} cellCount @param {number} vertCount */
-export function createNavTopologySabArena(cellCount, vertCount) {
+export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows = 0) {
     const vertBytes = Math.max(vertCount, 4);
+    const expCellCount = cols > 0 && rows > 0 ? (cols + 1) * (rows + 1) : cellCount;
     /** @type {NavTopologySabArena} */
     const arena = {
         cellCount,
@@ -57,7 +58,7 @@ export function createNavTopologySabArena(cellCount, vertCount) {
         sabGridFill: new SharedArrayBuffer(cellCount),
         sabFloorKind: new SharedArrayBuffer(cellCount),
         sabFloorFacing: new SharedArrayBuffer(cellCount),
-        sabEdgeSlots: new SharedArrayBuffer(cellCount * CELL_EDGE_SLOT_BYTES),
+        sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES),
         sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
         sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
         sabCardinalOpen: new SharedArrayBuffer(cellCount),
@@ -104,6 +105,7 @@ export function expandNavTopologyBakeBounds(bounds, cols, rows, padding = 1) {
     return padCellBoundsToGrid(bounds, cols, rows, padding);
 }
 export function packNavTopologyFromGrid(grid, arena, idx = null) {
+    const cols = grid.cols;
     if (idx === null) {
         arena.gridFill.set(grid.grid);
         arena.floorKind.set(grid.floorStore.kind);
@@ -114,8 +116,10 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     arena.gridFill[idx] = grid.grid[idx];
     arena.floorKind[idx] = grid.floorStore.kind[idx];
     arena.floorFacing[idx] = grid.floorStore.facing[idx];
-    const slotBase = cellEdgeSlotBase(idx);
-    arena.edgeSlots.set(grid.edgeStore.slots.subarray(slotBase, slotBase + CELL_EDGE_SIDES), slotBase);
+    for (let side = 0; side < 4; side++) {
+        const offset = cellEdgeSlotOffset(idx, side, cols);
+        arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
+    }
 }
 /** @param {Uint8Array} gridFill @param {Uint8Array} blocked @param {number} cols @param {number | null} idx */
 export function recomputeBlockedFromGridFill(gridFill, blocked, cols, idx = null) {

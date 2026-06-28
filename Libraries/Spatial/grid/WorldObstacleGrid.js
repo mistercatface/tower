@@ -220,9 +220,9 @@ export class WorldObstacleGrid {
         this.rows = Math.ceil(height / this.cellSize);
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
-        this.edgeStore.reset(size);
+        this.edgeStore.reset(size, this.cols, this.rows);
         this.floorStore.reset(size);
-        this.surfaceMaterials.reset();
+        this.surfaceMaterials.reset(this.cols, this.rows);
         bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();

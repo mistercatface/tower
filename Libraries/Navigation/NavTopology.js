@@ -142,7 +142,7 @@ function ensureLocalBakeArena(grid) {
     const vertCount = (grid.cols + 1) * (grid.rows + 1);
     let arena = localBakeArenas.get(grid);
     if (!arena || arena.cellCount !== cellCount) {
-        arena = createNavTopologySabArena(cellCount, vertCount);
+        arena = createNavTopologySabArena(cellCount, vertCount, grid.cols, grid.rows);
         localBakeArenas.set(grid, arena);
     }
     return arena;
@@ -156,9 +156,7 @@ export function invalidateGridLocalNavBake(grid) {
 export function navTopologyGraphCanStep(navTopology, fromIdx, toIdx) {
     const cardinalOpen = navTopology.navCardinalOpen;
     const vertexPassability = navTopology.vertexPassability;
-    if (cardinalOpen && vertexPassability) {
-        return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
-    }
+    if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
     const frame = navTopology.frame;
     const topology = navTopology.topology;
     if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);

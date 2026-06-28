@@ -1,4 +1,5 @@
 import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
+import { cellEdgeSlotOffset } from "../Spatial/grid/cellEdgeSlots.js";
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
  * @param {import("./GridNavSnapshot.js").GridFrame} frame
@@ -15,7 +16,7 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
         slots: edgeSlots,
         pool: edgePool,
         getIdx(idx, side) {
-            const ref = edgeSlots[idx * 4 + side];
+            const ref = edgeSlots[cellEdgeSlotOffset(idx, side, frame.cols)];
             if (ref < 0) return null;
             return edgeStore.pool[ref];
         },
