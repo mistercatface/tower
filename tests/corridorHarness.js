@@ -2,7 +2,7 @@ import { corridorPathOccupiedCellIndices } from "../Libraries/Pathfinding/Corrid
 import { corridorSearchBounds, corridorSearchLayout } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
 import { solveUniformCorridorBundle } from "../Libraries/Pathfinding/Corridor/corridorBundle.js";
 import { maxCorridorLanesBetweenNodes } from "../Libraries/Pathfinding/Corridor/corridorWallSlots.js";
-import { cellInsideAnyRoom } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
+import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
 import { createSeededRng } from "../Libraries/Math/SeededRng.js";
 import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole } from "../Libraries/RoomGraph/roomGraphCorridorBelts.js";
 import { assertBeltChains, beltMapFromFloorBelts } from "../Libraries/Procedural/Mazes/beltChainValidation.js";
@@ -70,8 +70,9 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     const beltsByCell = beltMap(belts, layout);
     const corridorFootprint = corridorOnlyFootprint(bundle.paths[laneIndex], bundle.corridorWidths[laneIndex], layout);
     const mouthExteriorIndices = new Set([layoutAbsCellIndex(layout, exteriorA.c, exteriorA.r), layoutAbsCellIndex(layout, exteriorB.c, exteriorB.r)]);
+    const roomFootprintMask = buildRoomFootprintMaskForLayout(layout, rooms);
     for (const idx of mouthExteriorIndices) {
-        if (cellInsideAnyRoom(rooms, idx, layout)) continue;
+        if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
         if (!beltsByCell.has(idx) && corridorFootprint.has(idx)) {
             const col = (idx % layout.strideCols) + layout.originCol;
             const row = ((idx / layout.strideCols) | 0) + layout.originRow;
@@ -92,13 +93,14 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
     const layout = fixtureLayout(fixture);
     const belts = buildCorridorBeltsFromPaths([bundle.paths[laneIndex]], [bundle.corridorWidths[laneIndex]], rooms, [parentHole], [childHole], layout);
     const beltsByCell = beltMap(belts, layout);
+    const roomFootprintMask = buildRoomFootprintMaskForLayout(layout, rooms);
     const intoRoom = (hole) => oppositeSide(hole.side);
     for (const [hole, exterior, role, check] of [
         [parentHole, exteriorA, "parent", "entry"],
         [childHole, exteriorB, "child", "exit"],
     ]) {
         const idx = layoutAbsCellIndex(layout, exterior.c, exterior.r);
-        if (cellInsideAnyRoom(rooms, idx, layout)) continue;
+        if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
         const belt = beltsByCell.get(idx);
         if (!belt) throw new Error(`${label}: missing belt at ${role} mouth ${exterior.c},${exterior.r}`);
         const sides = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
@@ -107,7 +109,7 @@ export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label
         if (actual !== wantIntoRoom) throw new Error(`${label}: ${role} mouth belt at ${exterior.c},${exterior.r} ${check} side ${actual}, expected ${wantIntoRoom} into room`);
     }
     const childIdx = layoutAbsCellIndex(layout, exteriorB.c, exteriorB.r);
-    if (!cellInsideAnyRoom(rooms, childIdx, layout)) {
+    if (!cellInsideAnyRoom(roomFootprintMask, childIdx)) {
         const childBelt = beltsByCell.get(childIdx);
         const { entrySide, exitSide } = floorBeltEntryExitSides(childBelt.kind, childBelt.facingIndex);
         const straightThrough = (entrySide + 2) % 4 === exitSide;

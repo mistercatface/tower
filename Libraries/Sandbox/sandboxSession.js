@@ -218,9 +218,10 @@ export function createSandboxSession(state) {
             if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
             const kind = grid.floorStore.kind[idx];
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-            grid.clearFloorCell(col, row);
-            if (!grid.writeFloorCell(targetCol, targetRow, kind, facingRadians)) {
-                grid.writeFloorCell(col, row, kind, facingRadians);
+            const targetIdx = targetCol + targetRow * grid.cols;
+            grid.clearFloorCell(idx);
+            if (!grid.writeFloorCell(targetIdx, kind, facingRadians)) {
+                grid.writeFloorCell(idx, kind, facingRadians);
                 return false;
             }
             commitGridNavEdit(state, idx);
@@ -240,7 +241,7 @@ export function createSandboxSession(state) {
             }
             if (grid.floorStore.kind[idx] === kind) return true;
             const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-            applyFloorCellEdit(state, col, row, kind, facingRadians);
+            applyFloorCellEdit(state, idx, kind, facingRadians);
             notifyUi();
             return true;
         },
@@ -253,8 +254,8 @@ export function createSandboxSession(state) {
             if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) {
                 if (!clearPassagePowerSourceAt(state, col, row)) return false;
             } else if (grid.floorStore.isBeltKindAtIdx(idx)) {
-                if (!clearFloorCellNavEdit(state, col, row)) return false;
-            } else if (!grid.clearFloorCell(col, row)) return false;
+                if (!clearFloorCellNavEdit(state, idx)) return false;
+            } else if (!grid.clearFloorCell(idx)) return false;
             else markGridZoneSubscriptionsDirty(state);
             placement.forgetFloorPlacement(col, row);
             clearSelection();

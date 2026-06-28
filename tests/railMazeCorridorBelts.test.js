@@ -105,10 +105,12 @@ describe("rail maze corridor belts", () => {
         assert.equal(plan.validation.ok, true);
         for (let bi = 0; bi < plan.floorBelts.length; bi++) {
             const belt = plan.floorBelts[bi];
-            const idx = globalCellIdx(belt.col, belt.row, grid.cols);
+            const col = belt.idx % grid.cols;
+            const row = (belt.idx / grid.cols) | 0;
+            const idx = globalCellIdx(col, row, grid.cols);
             const rt = indexToColRow(idx, grid.cols);
-            assert.equal(rt.col, belt.col);
-            assert.equal(rt.row, belt.row);
+            assert.equal(rt.col, col);
+            assert.equal(rt.row, row);
         }
     });
     it("rolls open vs railed belt kind per cell", async () => {

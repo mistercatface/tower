@@ -5,8 +5,7 @@ import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
 import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
-import { syncBeltCellToEdges, clearBeltCellEdges } from "./navGridMutations.js";
+import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom, reconcileBeltBoundaries, clearBeltBoundariesForCell } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
@@ -364,23 +363,22 @@ export class WorldObstacleGrid {
     edgeBlocksStep(idx, side) {
         return boundaryBlocksStep(this, idx, side);
     }
-    syncFloorBeltRailEdges(col, row, kind, facingIndex) {
-        syncBeltCellToEdges(this, col, row, kind, facingIndex);
+    syncFloorBeltRailEdges(idx, kind, facingIndex) {
+        reconcileBeltBoundaries(this, idx, kind, facingIndex);
     }
-    clearFloorBeltRailEdges(col, row, kind, facingIndex) {
-        clearBeltCellEdges(this, col, row, kind, facingIndex);
+    clearFloorBeltRailEdges(idx, kind, facingIndex) {
+        clearBeltBoundariesForCell(this, idx, kind, facingIndex);
     }
-    writeFloorCell(col, row, kind, facingRadians) {
-        if (this.isBlocked(col, row)) return false;
-        const idx = colRowToIndex(col, row, this.cols);
+    writeFloorCell(idx, kind, facingRadians) {
+        if (this.isBlockedIdx(idx)) return false;
         const prevKind = this.floorStore.kind[idx];
         const prevFacing = this.floorStore.facing[idx];
-        if (isFloorBeltRailsKind(prevKind)) this.clearFloorBeltRailEdges(col, row, prevKind, prevFacing);
+        if (isFloorBeltRailsKind(prevKind)) this.clearFloorBeltRailEdges(idx, prevKind, prevFacing);
         const facingIndex = floorBeltFacingToIndex(facingRadians);
         this.floorStore.setAtIdx(idx, kind, facingIndex);
         let edgeChanged = false;
         if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
-        if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(col, row, kind, facingIndex);
+        if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(idx, kind, facingIndex);
         const floorNavChanged =
             (isFloorBeltKind(prevKind) || isFloorBeltKind(kind) || isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
@@ -388,25 +386,24 @@ export class WorldObstacleGrid {
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
-    writeFloorBelt(col, row, facingRadians) {
-        return this.writeFloorCell(col, row, FLOOR_CELL_KIND.Belt, facingRadians);
+    writeFloorBelt(idx, facingRadians) {
+        return this.writeFloorCell(idx, FLOOR_CELL_KIND.Belt, facingRadians);
     }
-    hasFloorOccupancy(col, row) {
-        if (!cellInRect(col, row, this.cols, this.rows)) return false;
-        return this.floorStore.hasAnyAtIdx(colRowToIndex(col, row, this.cols));
+    hasFloorOccupancy(idx) {
+        if (idx < 0 || idx >= this.cols * this.rows) return false;
+        return this.floorStore.hasAnyAtIdx(idx);
     }
-    hasFloorBelt(col, row) {
-        if (!cellInRect(col, row, this.cols, this.rows)) return false;
-        return this.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, this.cols));
+    hasFloorBelt(idx) {
+        if (idx < 0 || idx >= this.cols * this.rows) return false;
+        return this.floorStore.isBeltKindAtIdx(idx);
     }
-    clearFloorCell(col, row) {
-        if (!cellInRect(col, row, this.cols, this.rows)) return false;
-        const idx = colRowToIndex(col, row, this.cols);
+    clearFloorCell(idx) {
+        if (idx < 0 || idx >= this.cols * this.rows) return false;
         if (!this.floorStore.hasAnyAtIdx(idx)) return false;
         const kind = this.floorStore.kind[idx];
         const facingIndex = this.floorStore.facing[idx];
         if (isFloorBeltRailsKind(kind)) {
-            this.clearFloorBeltRailEdges(col, row, kind, facingIndex);
+            this.clearFloorBeltRailEdges(idx, kind, facingIndex);
             bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         }
         if (isFloorBeltKind(kind) || isFloorBeltRailsKind(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
@@ -419,7 +416,7 @@ export class WorldObstacleGrid {
         for (let idx = 0; idx < size; idx++) {
             const kind = this.floorStore.kind[idx];
             if (!isFloorBeltRailsKind(kind)) continue;
-            this.clearFloorBeltRailEdges(idx % this.cols, (idx / this.cols) | 0, kind, this.floorStore.facing[idx]);
+            this.clearFloorBeltRailEdges(idx, kind, this.floorStore.facing[idx]);
         }
         this.floorStore.reset(size);
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);

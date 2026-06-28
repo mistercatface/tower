@@ -9,7 +9,7 @@ export function roomNodeCellBlocked(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return true;
     if (grid.isBlocked(col, row)) return true;
-    if (grid.hasFloorOccupancy(col, row)) return true;
+    if (grid.hasFloorOccupancy(col + row * grid.cols)) return true;
     if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return true;
     if (roomNodeOccupiesCell(state, col, row)) return true;
     return false;

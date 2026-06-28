@@ -68,7 +68,7 @@ export function createSandboxPrimaryPointerTools(
                 exitButtonWire();
                 return true;
             }
-            if (grid.hasFloorOccupancy(col, row)) {
+            if (grid.hasFloorOccupancy(col + row * grid.cols)) {
                 session.select({ kind: "floor", col, row });
                 return true;
             }

@@ -104,6 +104,14 @@ function collectNorthSeamMouthIndices(cells, northReserveRows, footprint, layout
 }
 function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
     let belts = floorBelts.slice();
+    const stride = layout.strideCols;
+    const stepSide = (idx, side) => {
+        if (side === 0) return idx - stride;
+        if (side === 1) return idx + 1;
+        if (side === 2) return idx + stride;
+        if (side === 3) return idx - 1;
+        return idx;
+    };
     for (let pass = 0; pass < belts.length + 4; pass++) {
         const validation = tryValidateBeltChains(belts, layout, mouthExteriorIndices);
         if (validation.ok) return { floorBelts: belts, validation };
@@ -113,10 +121,8 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
         for (const idx of footprint) {
             const belt = byCell.get(idx);
             const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
-            const entry = { col: belt.col + CARDINAL_OFFSETS[entrySide].dc, row: belt.row + CARDINAL_OFFSETS[entrySide].dr };
-            const exit = { col: belt.col + CARDINAL_OFFSETS[exitSide].dc, row: belt.row + CARDINAL_OFFSETS[exitSide].dr };
-            const entryIdx = layoutAbsCellIndex(layout, entry.col, entry.row);
-            const exitIdx = layoutAbsCellIndex(layout, exit.col, exit.row);
+            const entryIdx = stepSide(belt.idx, entrySide);
+            const exitIdx = stepSide(belt.idx, exitSide);
             const entryInFootprint = footprint.has(entryIdx);
             const exitInFootprint = footprint.has(exitIdx);
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
@@ -132,7 +138,7 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
             }
         }
         if (removeIndices.size === 0) return { floorBelts: belts, validation };
-        belts = belts.filter((belt) => !removeIndices.has(layoutAbsCellIndex(layout, belt.col, belt.row)));
+        belts = belts.filter((belt) => !removeIndices.has(belt.idx));
         if (belts.length === 0) return { floorBelts: belts, validation: tryValidateBeltChains(belts, layout, mouthExteriorIndices) };
     }
     return { floorBelts: belts, validation: tryValidateBeltChains(belts, layout, mouthExteriorIndices) };
@@ -233,7 +239,7 @@ export function planRailMazeCorridorBelts({
     const degreeByIndex = degreeInZone(zoneCells, neighborAtIdx, grid.cols);
     let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, globalLayout, { openBeltChance, rng: random });
     const protectedIndices = collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows);
-    if (protectedIndices.size) floorBelts = floorBelts.filter((belt) => !protectedIndices.has(globalCellIdx(belt.col, belt.row, grid.cols)));
+    if (protectedIndices.size) floorBelts = floorBelts.filter((belt) => !protectedIndices.has(belt.idx));
     const footprint = beltFootprintIndices(floorBelts, globalLayout);
     const mouthExteriorIndices = new Set([...collectNorthSeamMouthIndices(zoneCells, northReserveRows, footprint, globalLayout), ...collectPathMouthExteriorIndices(paths, grid)]);
     const peeled = peelBrokenBelts(floorBelts, mouthExteriorIndices, globalLayout);

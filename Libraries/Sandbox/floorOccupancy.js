@@ -28,7 +28,7 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
         if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
         const beltKind = grid.floorStore.kind[idx];
         const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-        grid.writeFloorCell(col, row, beltKind, stepCardinalFacing(facingRadians, steps));
+        grid.writeFloorCell(idx, beltKind, stepCardinalFacing(facingRadians, steps));
         commitGridNavEdit(state, idx);
         return true;
     }
@@ -38,7 +38,7 @@ export function canStampFloorOccupancyAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
-    if (grid.hasFloorOccupancy(col, row)) return false;
+    if (grid.hasFloorOccupancy(col + row * grid.cols)) return false;
     if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return false;
     return true;
 }
@@ -47,7 +47,7 @@ export const canStampPassagePowerSourceAt = canStampFloorOccupancyAt;
 export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, facingRadians) {
     let changed = false;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
-        if (grid.writeFloorBelt(col, row, facingRadians)) changed = true;
+        if (grid.writeFloorBelt(col + row * grid.cols, facingRadians)) changed = true;
     });
     return changed;
 }
@@ -77,7 +77,7 @@ export function clearFloorOverlayAt(state, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
     if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) return clearPassagePowerSourceAt(state, col, row);
-    if (!grid.clearFloorCell(col, row)) return false;
+    if (!grid.clearFloorCell(idx)) return false;
     markGridZoneSubscriptionsDirty(state);
     return true;
 }

@@ -184,7 +184,7 @@ describe("cellTargetHpaNav", () => {
         const seeker = testSeeker();
         const beltCol = 2;
         const beltRow = 3;
-        writeNavFloorCell(grid, beltCol, beltRow, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, beltCol + beltRow * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         const beltWorld = grid.gridToWorld(beltCol, beltRow);
         seeker.x = beltWorld.x;
         seeker.y = beltWorld.y;
@@ -199,7 +199,7 @@ describe("cellTargetHpaNav", () => {
         const seeker = testSeeker();
         const beltCol = 2;
         const beltRow = 3;
-        writeNavFloorCell(grid, beltCol, beltRow, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, beltCol + beltRow * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         const beltWorld = grid.gridToWorld(beltCol, beltRow);
         seeker.x = beltWorld.x;
         seeker.y = beltWorld.y;

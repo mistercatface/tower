@@ -26,9 +26,9 @@ describe("nav topology parity", () => {
     it("local bake matches worker canStep for belts and rail walls", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 12 * 16, 12 * 16);
-        grid.writeFloorCell(4, 4, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        grid.writeFloorCell(5, 4, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        grid.writeFloorCell(7, 7, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
+        grid.writeFloorCell(4 + 4 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        grid.writeFloorCell(5 + 4 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        grid.writeFloorCell(7 + 7 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
         stampRailWallsQuiet({ obstacleGrid: grid, worldSurfaces: { settings: { maxWallHeightLevel: 4 } } }, [{ col: 3, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
 
         const navigation = await createWorkerNavigation(grid);

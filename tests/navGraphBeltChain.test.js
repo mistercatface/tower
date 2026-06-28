@@ -29,9 +29,9 @@ describe("navGraph belt chain", () => {
     it("writeNavFloorCell syncs belt rails and local bake blocks wrong-way steps", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
-        writeNavFloorCell(grid, 2, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 3, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 4, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 2 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 3 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 4 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
 
         assert.ok(isBeltRailEdge(grid.edgeStore.getIdx(colRowToIndex(2, 2, grid.cols), 0)));
         assert.ok(isBeltRailEdge(grid.edgeStore.getIdx(colRowToIndex(2, 2, grid.cols), 2)));
@@ -52,7 +52,7 @@ describe("navGraph belt chain", () => {
     it("snapNavGoal routes through belt entry via navGraph", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
-        writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 3 + 3 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         const graph = createNavGraphView(grid);
         const cols = grid.cols;
         const snappedIdx = snapNavGraphGoalCellIdx(graph, colRowToIndex(0, 3, cols), colRowToIndex(3, 3, cols));
@@ -64,7 +64,7 @@ describe("navGraph belt chain", () => {
     it("open belts allow side entry but only exit with belt flow", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
-        writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
+        writeNavFloorCell(grid, 3 + 3 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
         const graph = createNavGraphViewWithLocalBake(grid);
         const cols = grid.cols;
 
@@ -79,7 +79,7 @@ describe("navGraph belt chain", () => {
     it("HPA region graph inherits belt direction as directed edges", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
-        writeNavFloorCell(grid, 3, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
+        writeNavFloorCell(grid, 3 + 3 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(1));
         const graph = createNavGraphViewWithLocalBake(grid);
         const regionGraph = buildFullRegionGraph({
             blocked: graph.topology.blocked,
@@ -109,9 +109,9 @@ describe("navGraph belt chain", () => {
         const navigation = await createWorkerNavigation(grid);
         state.nav = navigation;
 
-        writeNavFloorCell(grid, 2, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 3, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 4, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 2 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 3 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 4 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
 
         await commitGridNavEditUnion(state, 26, 27, 28);
         await navigation.awaitWorkerNavReady();

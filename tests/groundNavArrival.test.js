@@ -81,7 +81,7 @@ describe("ground nav arrival", () => {
         const state = createNavState(prop);
         const grid = state.obstacleGrid;
         const hpa = createHpaGroundNavBehavior(state);
-        writeNavFloorCell(grid, 2, 3, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 2 + 3 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
         const beltWorld = grid.gridToWorld(2, 3);
         prop.x = beltWorld.x;
         prop.y = beltWorld.y;
@@ -116,7 +116,7 @@ describe("cellTargetHasArrivedAtDestCell", () => {
     it("requires standing on a belt destination cell, not the entry mouth", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(64, 64, 128, 128);
-        grid.writeFloorCell(5, 5, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        grid.writeFloorCell(5 + 5 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
         assert.equal(cellTargetHasArrivedAtDestCell(grid, 4, 5, 5, 5), false);
         assert.equal(cellTargetHasArrivedAtDestCell(grid, 5, 5, 5, 5), true);
     });

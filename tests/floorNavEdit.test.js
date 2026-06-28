@@ -34,15 +34,17 @@ function createNavEditTestState() {
 describe("gridNavEdit", () => {
     it("applyFloorCellEdit calls commitEdit with the edited cell index", async () => {
         const state = createNavEditTestState();
-        await applyFloorCellEdit(state, 2, 2, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
-        assert.equal(state.syncBounds, 66);
+        const idx = 2 + 2 * state.obstacleGrid.cols;
+        await applyFloorCellEdit(state, idx, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        assert.equal(state.syncBounds, idx);
     });
 
     it("clearFloorCellNavEdit resyncs after belt removal", async () => {
         const state = createNavEditTestState();
-        state.obstacleGrid.writeFloorCell(2, 2, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
-        await clearFloorCellNavEdit(state, 2, 2);
-        assert.equal(state.syncBounds, 66);
+        const idx = 2 + 2 * state.obstacleGrid.cols;
+        state.obstacleGrid.writeFloorCell(idx, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        await clearFloorCellNavEdit(state, idx);
+        assert.equal(state.syncBounds, idx);
     });
 
     it("commitGridNavEdit supports full-grid sync", async () => {

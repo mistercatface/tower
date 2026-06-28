@@ -54,17 +54,13 @@ export function setChunkSurfaceProfileRangeEdit(state, chunkBounds, profileId) {
     return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
 }
 /** Stamp or replace one floor cell and resync nav topology. */
-export function applyFloorCellEdit(state, col, row, kind, facingRadians) {
-    const { changed } = writeNavFloorCell(state.obstacleGrid, col, row, kind, facingRadians);
-    if (!changed) return null;
-    const idx = col + row * state.obstacleGrid.cols;
+export function applyFloorCellEdit(state, idx, kind, facingRadians) {
+    if (!writeNavFloorCell(state.obstacleGrid, idx, kind, facingRadians)) return null;
     return commitGridNavEdit(state, idx);
 }
 /** Clear one floor cell and resync nav topology. */
-export function clearFloorCellNavEdit(state, col, row) {
-    const { changed } = clearNavFloorCell(state.obstacleGrid, col, row);
-    if (!changed) return null;
-    const idx = col + row * state.obstacleGrid.cols;
+export function clearFloorCellNavEdit(state, idx) {
+    if (!clearNavFloorCell(state.obstacleGrid, idx)) return null;
     return commitGridNavEdit(state, idx);
 }
 /** @param {object} state @param {{ col: number, row: number }[]} cells */

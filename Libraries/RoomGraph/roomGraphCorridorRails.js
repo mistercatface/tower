@@ -1,5 +1,5 @@
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
-import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
+import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { createCellIndexLayout, layoutAbsCellIndex, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../Spatial/grid/GridUtils.js";
 import {
     DEFAULT_RAIL_WALL_HEIGHT_LEVEL,
@@ -33,8 +33,8 @@ function dedupeRailWallsByEdge(rails) {
     }
     return out;
 }
-/** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {GraphNode[]} rooms */
-function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
+/** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {Uint8Array} roomFootprintMask */
+function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, roomFootprintMask) {
     const layout = createCellIndexLayout(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows);
     const stride = layout.strideCols;
     for (let i = 0; i < path.length; i++) {
@@ -53,7 +53,7 @@ function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, rooms) {
         for (let ci = 0; ci < cells.length; ci++) {
             if (!layoutContainsAbsCell(layout, cells[ci].c, cells[ci].r)) continue;
             const idx = layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r);
-            if (cellInsideAnyRoom(rooms, idx, layout)) continue;
+            if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
             const local = layoutAbsToLocalCell(layout, cells[ci].c, cells[ci].r);
             mask[layoutLocalCellIndex(layout, local.col, local.row)] = 1;
         }
@@ -79,15 +79,15 @@ export function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, h
         }
     return walls;
 }
-/** @param {Cell[][]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {GraphNode[]} rooms @param {number} heightLevel @param {number} thicknessLevel */
-function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms, heightLevel, thicknessLevel) {
+/** @param {Cell[][]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {Uint8Array} roomFootprintMask @param {number} heightLevel @param {number} thicknessLevel */
+function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, roomFootprintMask, heightLevel, thicknessLevel) {
     /** @type {RailWall[]} */
     const rails = [];
     const layout = createCellIndexLayout(stampBounds.originCol, stampBounds.originRow, stampBounds.cols, stampBounds.rows);
     for (let pi = 0; pi < paths.length; pi++) {
         const laneMask = new Uint8Array(layout.cellCount);
         const width = Array.isArray(corridorWidths) ? corridorWidths[pi] : corridorWidths;
-        stampCorridorTubeLocal(laneMask, stampBounds, paths[pi], width, rooms);
+        stampCorridorTubeLocal(laneMask, stampBounds, paths[pi], width, roomFootprintMask);
         rails.push(...railWallsFromFloorMask(laneMask, stampBounds.cols, stampBounds.rows, stampBounds.originCol, stampBounds.originRow, heightLevel, thicknessLevel));
     }
     return omitRailWallsAtGapKeys(dedupeRailWallsByEdge(rails), gapKeysWorld);
@@ -105,5 +105,15 @@ export function buildCorridorRailWallsFromPaths(
     railWallThicknessLevel = DEFAULT_RAIL_WALL_THICKNESS_LEVEL,
 ) {
     const gapKeysWorld = roomWallGapKeysWorld(closedRooms, originCol, originRow);
-    return corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, rooms, resolveRailWallHeightLevel(railWallHeightLevel), resolveRailWallThicknessLevel(railWallThicknessLevel));
+    const layout = createCellIndexLayout(stampBounds.originCol, stampBounds.originRow, stampBounds.cols, stampBounds.rows);
+    const roomFootprintMask = buildRoomFootprintMaskForLayout(layout, rooms);
+    return corridorRailWallsForPaths(
+        paths,
+        stampBounds,
+        corridorWidths,
+        gapKeysWorld,
+        roomFootprintMask,
+        resolveRailWallHeightLevel(railWallHeightLevel),
+        resolveRailWallThicknessLevel(railWallThicknessLevel),
+    );
 }

@@ -1,5 +1,5 @@
 import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
-import { cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
+import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { gridSideFromCellToNeighbor, resolveRailedBeltFromSides, unrailedBeltKindFromRailed } from "../Spatial/grid/FloorCell.js";
 import { gridSideNeighborCell, layoutAbsCellIndex } from "../Spatial/grid/GridUtils.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
@@ -33,8 +33,8 @@ export function collapsePathRevisits(path, layout) {
     }
     return out;
 }
-/** @param {Cell[]|number[]} path @param {number} width @param {GraphNode[]} rooms @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @param {CellIndexLayout} layout @returns {Map<number, BakedFloorBelt>} */
-export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnchor, layout) {
+/** @param {Cell[]|number[]} path @param {number} width @param {Uint8Array} roomFootprintMask @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @param {CellIndexLayout} layout @returns {Map<number, BakedFloorBelt>} */
+export function beltsForPathPolyline(path, width, roomFootprintMask, parentAnchor, childAnchor, layout) {
     const collapsed = collapsePathRevisits(path, layout);
     const byCell = new Map();
     const stride = layout.strideCols;
@@ -69,7 +69,7 @@ export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnch
         for (let ci = 0; ci < cells.length; ci++) {
             const cell = cells[ci];
             const idx = layoutAbsCellIndex(layout, cell.c, cell.r);
-            if (cellInsideAnyRoom(rooms, idx, layout)) continue;
+            if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
             byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
         }
     }
@@ -86,17 +86,14 @@ export function beltsForPathPolyline(path, width, rooms, parentAnchor, childAnch
  * @param {CellIndexLayout} layout
  */
 export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, parentAnchors, childAnchors, layout, { openBeltChance = 0, rng = Math.random } = {}) {
+    const roomFootprintMask = buildRoomFootprintMaskForLayout(layout, rooms);
     const byCell = new Map();
     for (let pi = 0; pi < paths.length; pi++) {
-        const laneBelts = beltsForPathPolyline(paths[pi], corridorWidths[pi], rooms, parentAnchors?.[pi] ?? null, childAnchors?.[pi] ?? null, layout);
+        const laneBelts = beltsForPathPolyline(paths[pi], corridorWidths[pi], roomFootprintMask, parentAnchors?.[pi] ?? null, childAnchors?.[pi] ?? null, layout);
         for (const [key, belt] of laneBelts) {
             const kind = openBeltChance > 0 && rng() < openBeltChance ? unrailedBeltKindFromRailed(belt.kind) : belt.kind;
             byCell.set(key, { ...belt, kind });
         }
     }
-    return [...byCell.values()].map((belt) => {
-        const col = (belt.idx % layout.strideCols) + layout.originCol;
-        const row = ((belt.idx / layout.strideCols) | 0) + layout.originRow;
-        return { col, row, kind: belt.kind, facingIndex: belt.facingIndex };
-    });
+    return [...byCell.values()].map((belt) => ({ idx: belt.idx, kind: belt.kind, facingIndex: belt.facingIndex }));
 }

@@ -35,21 +35,33 @@ export function buildRoomInteriorBlockedGridForLayout(layout, rooms) {
     return grid;
 }
 /**
+ * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout
  * @param {RoomRect[]} rooms
- * @param {number} idx
- * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout | number} layoutOrCols
+ * @returns {Uint8Array}
  */
-export function cellInsideAnyRoom(rooms, idx, layoutOrCols) {
-    const stride = typeof layoutOrCols === "number" ? layoutOrCols : layoutOrCols.strideCols;
-    const originCol = typeof layoutOrCols === "number" ? 0 : (layoutOrCols.originCol ?? 0);
-    const originRow = typeof layoutOrCols === "number" ? 0 : (layoutOrCols.originRow ?? 0);
-    const c = (idx % stride) + originCol;
-    const r = ((idx / stride) | 0) + originRow;
+export function buildRoomFootprintMaskForLayout(layout, rooms) {
+    const mask = new Uint8Array(layout.cellCount);
+    if (!rooms) return mask;
     for (let i = 0; i < rooms.length; i++) {
         const node = rooms[i];
-        if (c >= node.c0 && c <= node.c1 && r >= node.r0 && r <= node.r1) return true;
+        const c0 = Math.max(layout.originCol, node.c0);
+        const c1 = Math.min(layout.originCol + layout.strideCols - 1, node.c1);
+        const r0 = Math.max(layout.originRow, node.r0);
+        const r1 = Math.min(layout.originRow + Math.floor(layout.cellCount / layout.strideCols) - 1, node.r1);
+        for (let r = r0; r <= r1; r++)
+            for (let c = c0; c <= c1; c++) {
+                const idx = (r - layout.originRow) * layout.strideCols + (c - layout.originCol);
+                mask[idx] = 1;
+            }
     }
-    return false;
+    return mask;
+}
+/**
+ * @param {Uint8Array} roomFootprintMask
+ * @param {number} idx
+ */
+export function cellInsideAnyRoom(roomFootprintMask, idx) {
+    return roomFootprintMask[idx] === 1;
 }
 /** @param {CorridorSearchBounds} bounds */
 export function corridorSearchLayout(bounds) {

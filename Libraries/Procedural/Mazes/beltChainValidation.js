@@ -7,20 +7,20 @@ function neighborForSide(col, row, side) {
 function oppositeSide(side) {
     return (side + 2) % 4;
 }
-/** @param {{ col: number, row: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
+/** @param {{ idx: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function beltFootprintIndices(belts, layout) {
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} */
     const footprint = new Set();
-    for (let i = 0; i < belts.length; i++) footprint.add(layoutAbsCellIndex(layout, belts[i].col, belts[i].row));
+    for (let i = 0; i < belts.length; i++) footprint.add(belts[i].idx);
     return footprint;
 }
-/** @param {{ col: number, row: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
+/** @param {{ idx: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function beltMapFromFloorBelts(belts, layout) {
-    /** @type {Map<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx, { col: number, row: number, kind: number, facingIndex: number }>} */
+    /** @type {Map<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx, { idx: number, kind: number, facingIndex: number }>} */
     const map = new Map();
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
-        map.set(layoutAbsCellIndex(layout, belt.col, belt.row), belt);
+        map.set(belt.idx, belt);
     }
     return map;
 }
@@ -31,19 +31,25 @@ function formatLayoutCellForError(idx, layout) {
 }
 /**
  * @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} footprint
- * @param {Map<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx, { col: number, row: number, kind: number, facingIndex: number }>} beltsByCell
+ * @param {Map<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx, { idx: number, kind: number, facingIndex: number }>} beltsByCell
  * @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout
  * @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} [mouthExteriorIndices]
  */
 export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExteriorIndices = new Set()) {
+    const stride = layout.strideCols;
+    const stepSide = (idx, side) => {
+        if (side === 0) return idx - stride;
+        if (side === 1) return idx + 1;
+        if (side === 2) return idx + stride;
+        if (side === 3) return idx - 1;
+        return idx;
+    };
     for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatLayoutCellForError(idx, layout)}`);
     for (const idx of footprint) {
         const belt = beltsByCell.get(idx);
         const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
-        const entry = neighborForSide(belt.col, belt.row, entrySide);
-        const exit = neighborForSide(belt.col, belt.row, exitSide);
-        const entryIdx = layoutAbsCellIndex(layout, entry.col, entry.row);
-        const exitIdx = layoutAbsCellIndex(layout, exit.col, exit.row);
+        const entryIdx = stepSide(belt.idx, entrySide);
+        const exitIdx = stepSide(belt.idx, exitSide);
         const entryInFootprint = footprint.has(entryIdx);
         const exitInFootprint = footprint.has(exitIdx);
         if (entryInFootprint) {
