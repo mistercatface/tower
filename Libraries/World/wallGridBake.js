@@ -231,6 +231,42 @@ export function railWallCapUvCornersInto(out4, grid, box) {
     out4[3].y = b.maxY;
     return out4;
 }
+export function flatRailWallCapUvCornersInto(out8, grid, box) {
+    const b = grid.getCellBounds(box.gridCol, box.gridRow);
+    return fillFlatUvFromBounds(out8, b, box.gridSide);
+}
+export function flatRailWallCapUvCornersIntoFlat(out8, grid, data, base) {
+    const col = data[base + RAIL_BOX.gridCol];
+    const row = data[base + RAIL_BOX.gridRow];
+    const side = data[base + RAIL_BOX.gridSide];
+    const b = grid.getCellBounds(col, row);
+    return fillFlatUvFromBounds(out8, b, side);
+}
+function fillFlatUvFromBounds(out8, b, side) {
+    if (side === 0) {
+        out8[0] = b.minX; out8[1] = b.minY;
+        out8[2] = b.maxX; out8[3] = b.minY;
+        out8[4] = b.maxX; out8[5] = b.maxY;
+        out8[6] = b.minX; out8[7] = b.maxY;
+    } else if (side === 1) {
+        out8[0] = b.maxX; out8[1] = b.minY;
+        out8[2] = b.maxX; out8[3] = b.maxY;
+        out8[4] = b.minX; out8[5] = b.maxY;
+        out8[6] = b.minX; out8[7] = b.minY;
+    } else if (side === 2) {
+        out8[0] = b.maxX; out8[1] = b.maxY;
+        out8[2] = b.minX; out8[3] = b.maxY;
+        out8[4] = b.minX; out8[5] = b.minY;
+        out8[6] = b.maxX; out8[7] = b.minY;
+    } else {
+        out8[0] = b.minX; out8[1] = b.maxY;
+        out8[2] = b.minX; out8[3] = b.minY;
+        out8[4] = b.maxX; out8[5] = b.minY;
+        out8[6] = b.maxX; out8[7] = b.maxY;
+    }
+    return out8;
+}
+
 function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
     const halfT = railWallFootprintHalfThickness(grid, col, row, edge);
     const b = grid.getCellBounds(col, row);

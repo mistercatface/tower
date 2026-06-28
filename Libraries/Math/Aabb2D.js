@@ -257,3 +257,12 @@ export function aabbHash(bounds) {
     for (let i = 1; i < 8; i++) h = Math.imul(h ^ AABB_HASH_U32[i], 0x9e3779b1);
     return h >>> 0;
 }
+export function flatQuadOverlapAabb(x0, y0, x1, y1, x2, y2, x3, y3, box) {
+    if (!box) return true;
+    const minX = Math.min(x0, x1, x2, x3);
+    const maxX = Math.max(x0, x1, x2, x3);
+    const minY = Math.min(y0, y1, y2, y3);
+    const maxY = Math.max(y0, y1, y2, y3);
+    return aabbIntersectsScalars(minX, minY, maxX, maxY, box);
+}
+

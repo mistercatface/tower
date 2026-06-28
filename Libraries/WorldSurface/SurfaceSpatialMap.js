@@ -70,6 +70,26 @@ export class SurfaceSpatialMap {
         const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow);
         return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
     }
+    flatHorizontalSample(worldCorners8, obstacleGrid) {
+        const chunkSizePx = this.chunkSizePx(obstacleGrid);
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (let i = 0; i < 4; i++) {
+            const px = worldCorners8[i * 2];
+            const py = worldCorners8[i * 2 + 1];
+            if (px < minX) minX = px;
+            if (px > maxX) maxX = px;
+            if (py < minY) minY = py;
+            if (py > maxY) maxY = py;
+        }
+        const chunkCol = this.worldToChunkCol(minX, obstacleGrid.minX, chunkSizePx);
+        const chunkRow = this.worldToChunkRow(minY, obstacleGrid.minY, chunkSizePx);
+        const bounds = this.chunkBoundsInto(this._chunkBounds, obstacleGrid, chunkCol, chunkRow);
+        return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+    }
+
     wallChunkTextureSample(cellSize) {
         const chunkSizePx = cellSize * this.settings.cellsPerChunk;
         const chunkCol = WALL_CHUNK_TEXTURE_SAMPLE_CHUNK;

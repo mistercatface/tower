@@ -134,3 +134,29 @@ export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngl
     grad.addColorStop(1.0, colors.shadow);
     return grad;
 }
+export function projectWorldQuadInto(out8, x0, y0, x1, y1, x2, y2, x3, y3, height, viewport) {
+    const alpha = resolveElevationAlpha(height, viewport);
+    if (alpha <= 0) {
+        out8[0] = x0; out8[1] = y0;
+        out8[2] = x1; out8[3] = y1;
+        out8[4] = x2; out8[5] = y2;
+        out8[6] = x3; out8[7] = y3;
+    } else {
+        const vx = viewport.x;
+        const vy = viewport.y;
+        out8[0] = x0 + (x0 - vx) * alpha; out8[1] = y0 + (y0 - vy) * alpha;
+        out8[2] = x1 + (x1 - vx) * alpha; out8[3] = y1 + (y1 - vy) * alpha;
+        out8[4] = x2 + (x2 - vx) * alpha; out8[5] = y2 + (y2 - vy) * alpha;
+        out8[6] = x3 + (x3 - vx) * alpha; out8[7] = y3 + (y3 - vy) * alpha;
+    }
+    return out8;
+}
+export function pointOnFrustumInto(out, offset, projection, baseRadius, topRadius, t, angle) {
+    const { cx, cy, topX, topY } = projection;
+    const radius = radiusAtT(baseRadius, topRadius, t);
+    const centerX = cx + (topX - cx) * t;
+    const centerY = cy + (topY - cy) * t;
+    out[offset] = centerX + Math.cos(angle) * radius;
+    out[offset + 1] = centerY + Math.sin(angle) * radius;
+}
+

@@ -1,6 +1,7 @@
 import {
     extrudeLocalVertsInto,
     pointOnFrustum,
+    pointOnFrustumInto,
     radiusAtT,
     getHeightSlice,
     getRadialSilhouette,
@@ -18,6 +19,7 @@ import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 const sPinwheelLocalVerts = new Float32Array(24);
+const sBandQuad = new Float32Array(8);
 const sBoxFootprint = new Float32Array(8);
 let sBaseRing = new Float32Array(0);
 let sTopRing = new Float32Array(0);
@@ -119,18 +121,18 @@ export function drawRadialBand(ctx, prop, viewport, options) {
     for (let i = 0; i < segments; i++) {
         const a0 = facing + (i / segments) * Math.PI * 2;
         const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
-        const edgeMidX = (pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0).x + pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1).x) / 2;
-        const edgeMidY = (pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0).y + pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1).y) / 2;
+        pointOnFrustumInto(sBandQuad, 0, projection, baseRadius, resolvedTop, t0, a0);
+        pointOnFrustumInto(sBandQuad, 2, projection, baseRadius, resolvedTop, t0, a1);
+        const edgeMidX = (sBandQuad[0] + sBandQuad[2]) * 0.5;
+        const edgeMidY = (sBandQuad[1] + sBandQuad[3]) * 0.5;
         if (!isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) continue;
-        const p0a = pointOnFrustum(projection, baseRadius, resolvedTop, t0, a0);
-        const p0b = pointOnFrustum(projection, baseRadius, resolvedTop, t0, a1);
-        const p1a = pointOnFrustum(projection, baseRadius, resolvedTop, t1, a0);
-        const p1b = pointOnFrustum(projection, baseRadius, resolvedTop, t1, a1);
+        pointOnFrustumInto(sBandQuad, 4, projection, baseRadius, resolvedTop, t1, a1);
+        pointOnFrustumInto(sBandQuad, 6, projection, baseRadius, resolvedTop, t1, a0);
         ctx.fillStyle = fill;
         ctx.strokeStyle = stroke;
         ctx.lineWidth = lineWidth;
         ctx.beginPath();
-        traceQuad(ctx, p0a, p0b, p1b, p1a);
+        traceFlatQuad(ctx, sBandQuad[0], sBandQuad[1], sBandQuad[2], sBandQuad[3], sBandQuad[4], sBandQuad[5], sBandQuad[6], sBandQuad[7]);
         ctx.fill();
         ctx.stroke();
     }

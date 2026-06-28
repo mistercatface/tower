@@ -1,45 +1,39 @@
 import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
 import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
-import { isPropMeshFaceVisible, projectPropVertexInto } from "../Props3D/propMesh.js";
+import { isPropMeshFaceVisible, projectPropVertexInto, projectPropVertexScalarsInto } from "../Props3D/propMesh.js";
 import { tessellateSphereCapQuads, tessellateSphereQuads } from "./sphereSurface.js";
-import { drawTexturedQuadCells, gatherTexturedQuadCells } from "./texturedCells.js";
-/** @type {{ depth: number, u0: number, u1: number, v0: number, v1: number, d0: { x: number, y: number }, d1: { x: number, y: number }, d2: { x: number, y: number }, d3: { x: number, y: number } }[]} */
-const sProjectedSphereCells = [];
-/** @param {number} index */
-function borrowProjectedSphereCell(index) {
-    while (sProjectedSphereCells.length <= index) sProjectedSphereCells.push({ depth: 0, u0: 0, u1: 0, v0: 0, v1: 0, d0: { x: 0, y: 0 }, d1: { x: 0, y: 0 }, d2: { x: 0, y: 0 }, d3: { x: 0, y: 0 } });
-    return sProjectedSphereCells[index];
+import { drawTexturedQuadCells, gatherTexturedQuadCells, drawTexturedQuadCellsFlat, gatherTexturedQuadCellsFlat } from "./texturedCells.js";
+
+let sProjectedSphereCellsData = new Float32Array(1024 * 13);
+let sCellIndices = new Int32Array(1024);
+
+function ensureProjectedCapacity(count) {
+    if (sProjectedSphereCellsData.length < count * 13) {
+        const newLen = Math.max(sProjectedSphereCellsData.length * 2, count * 13);
+        sProjectedSphereCellsData = new Float32Array(newLen);
+        sCellIndices = new Int32Array(newLen / 13);
+    }
 }
-/**
- * @param {object} prop
- * @param {number} px
- * @param {number} py
- * @param {object[]} verts
- */
+
 function isSphereQuadVisible(prop, viewport, verts) {
     const [v00, v01, v11, v10] = verts;
     return isPropMeshFaceVisible(prop, viewport, [v00, v01, v11]) || isPropMeshFaceVisible(prop, viewport, [v00, v11, v10]);
 }
-/**
- * @param {ReturnType<typeof borrowProjectedSphereCell>} out
- * @param {object} cell
- * @param {object} prop
- * @param {number} px
- * @param {number} py
- */
-function projectSphereCellInto(out, cell, prop, viewport) {
+
+function projectSphereCellIntoFlat(data, index, cell, prop, viewport) {
     const [v00, v01, v11, v10] = cell.verts;
-    out.depth = cell.depth;
-    out.u0 = cell.u0;
-    out.u1 = cell.u1;
-    out.v0 = cell.v0;
-    out.v1 = cell.v1;
-    projectPropVertexInto(out.d0, prop, viewport, v00.lx, v00.ly, v00.z);
-    projectPropVertexInto(out.d1, prop, viewport, v01.lx, v01.ly, v01.z);
-    projectPropVertexInto(out.d2, prop, viewport, v11.lx, v11.ly, v11.z);
-    projectPropVertexInto(out.d3, prop, viewport, v10.lx, v10.ly, v10.z);
-    return out;
+    const base = index * 13;
+    data[base + 0] = cell.depth;
+    data[base + 1] = cell.u0;
+    data[base + 2] = cell.u1;
+    data[base + 3] = cell.v0;
+    data[base + 4] = cell.v1;
+    projectPropVertexScalarsInto(data, base + 5, prop, viewport, v00.lx, v00.ly, v00.z);
+    projectPropVertexScalarsInto(data, base + 7, prop, viewport, v01.lx, v01.ly, v01.z);
+    projectPropVertexScalarsInto(data, base + 9, prop, viewport, v11.lx, v11.ly, v11.z);
+    projectPropVertexScalarsInto(data, base + 11, prop, viewport, v10.lx, v10.ly, v10.z);
 }
+
 /**
  * Map an image onto a rolled spherical patch in radial elevation space.
  * Uses the same quad + affine texture path as inspect cylindrical labels.
@@ -100,13 +94,14 @@ export function drawSphereTexturePatch(ctx, prop, viewport, img, options = {}) {
                   radiusInflate,
               });
     let projectedCount = 0;
+    ensureProjectedCapacity(rawCells.length);
     for (let i = 0; i < rawCells.length; i++) {
         const cell = rawCells[i];
         if (!isSphereQuadVisible(prop, viewport, cell.verts)) continue;
-        projectSphereCellInto(borrowProjectedSphereCell(projectedCount), cell, prop, viewport);
+        projectSphereCellIntoFlat(sProjectedSphereCellsData, projectedCount, cell, prop, viewport);
+        sCellIndices[projectedCount] = projectedCount;
         projectedCount++;
     }
-    sProjectedSphereCells.length = projectedCount;
-    const cells = gatherTexturedQuadCells(sProjectedSphereCells, img, options.uvBleed ?? 1);
-    drawTexturedQuadCells(ctx, cells, img);
+    gatherTexturedQuadCellsFlat(sProjectedSphereCellsData, projectedCount, img, options.uvBleed ?? 1);
+    drawTexturedQuadCellsFlat(ctx, sProjectedSphereCellsData, sCellIndices, projectedCount, img);
 }

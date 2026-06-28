@@ -170,6 +170,19 @@ export class WorldSurfaceEngine {
         }
         return isDrawableBakedSurface(canvas) ? canvas : null;
     }
+    fillHorizontalCapDrawSampleIntoFlat(worldCorners8, zLevel, state, outSrc8) {
+        const surfaceBakeScale = this.settings.surfaceBakeScale;
+        const obstacleGrid = state.obstacleGrid;
+        const sample = this.surfaceSpace.flatHorizontalSample(worldCorners8, obstacleGrid);
+        const profileId = resolveChunkSurfaceProfileId(obstacleGrid, sample.chunkCol, sample.chunkRow, this.activeSurfaceProfileId);
+        const canvas = this.getGroundChunkCanvas(sample.chunkCol, sample.chunkRow, state, zLevel, null, profileId)[0];
+        for (let i = 0; i < 4; i++) {
+            outSrc8[i * 2] = (worldCorners8[i * 2] - sample.minX) * surfaceBakeScale;
+            outSrc8[i * 2 + 1] = (worldCorners8[i * 2 + 1] - sample.minY) * surfaceBakeScale;
+        }
+        return isDrawableBakedSurface(canvas) ? canvas : null;
+    }
+
     bindGroundChunkDraw(ctx, state, viewport, beforeDraw = null) {
         const d = this._chunkDraw;
         d.ctx = ctx;
