@@ -40,12 +40,6 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
 }
-const CARDINAL_OFFSETS = [
-    { dc: 1, dr: 0, bit: 1 },
-    { dc: 0, dr: 1, bit: 2 },
-    { dc: -1, dr: 0, bit: 4 },
-    { dc: 0, dr: -1, bit: 8 },
-];
 const DIAG_1_1 = [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth];
 const DIAG_N1_N1 = [VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.SeNorth, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeWest];
 const DIAG_1_N1 = [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast];
@@ -64,12 +58,25 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
                 continue;
             }
             let mask = 0;
-            for (let i = 0; i < CARDINAL_OFFSETS.length; i++) {
-                const { dc, dr, bit } = CARDINAL_OFFSETS[i];
-                const nc = col + dc;
-                const nr = row + dr;
-                if (!cellInRect(nc, nr, cols, rows)) continue;
-                if (!grid.isBlocked(nc, nr) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, colRowToIndex(nc, nr, cols))) mask |= bit;
+            // East
+            if (col < cols - 1) {
+                const nIdx = idx + 1;
+                if (!grid.isBlocked(col + 1, row) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 1;
+            }
+            // South
+            if (row < rows - 1) {
+                const nIdx = idx + cols;
+                if (!grid.isBlocked(col, row + 1) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 2;
+            }
+            // West
+            if (col > 0) {
+                const nIdx = idx - 1;
+                if (!grid.isBlocked(col - 1, row) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 4;
+            }
+            // North
+            if (row > 0) {
+                const nIdx = idx - cols;
+                if (!grid.isBlocked(col, row - 1) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 8;
             }
             cardinalOpen[idx] = mask;
         }
