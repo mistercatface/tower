@@ -1,4 +1,4 @@
-import { cellBoundsAtIdx, unionCellBounds } from "../DataStructures/CellRect.js";
+import { emptyCellBounds, growCellBoundsIdx } from "../DataStructures/CellRect.js";
 import { markGridZoneSubscriptionsDirty } from "../Sandbox/gridZoneTick.js";
 import { floorBeltFacingFromIndex } from "../Spatial/grid/FloorCell.js";
 import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
@@ -6,26 +6,34 @@ import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMut
 export function clearBakedFloorBeltsQuiet(state, belts) {
     if (!belts.length) return null;
     const grid = state.obstacleGrid;
-    let bounds = null;
+    const bounds = emptyCellBounds();
+    let changed = false;
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
         if (!clearNavFloorCell(grid, belt.idx)) continue;
-        bounds = unionCellBounds(bounds, cellBoundsAtIdx(belt.idx, grid.cols));
+        changed = true;
+        growCellBoundsIdx(bounds, belt.idx, grid.cols);
     }
-    if (bounds) markGridZoneSubscriptionsDirty(state);
-    return bounds;
+    if (changed) {
+        markGridZoneSubscriptionsDirty(state);
+        return bounds;
+    }
+    return null;
 }
 export function stampBakedFloorBeltsQuiet(state, belts) {
     const grid = state.obstacleGrid;
     /** @type {BakedFloorBelt[]} */
     const stamped = [];
-    let bounds = null;
+    const bounds = emptyCellBounds();
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
         if (!writeNavFloorCell(grid, belt.idx, belt.kind, floorBeltFacingFromIndex(belt.facingIndex))) continue;
         stamped.push(belt);
-        bounds = unionCellBounds(bounds, cellBoundsAtIdx(belt.idx, grid.cols));
+        growCellBoundsIdx(bounds, belt.idx, grid.cols);
     }
-    if (stamped.length) markGridZoneSubscriptionsDirty(state);
-    return { bounds, stamped };
+    if (stamped.length) {
+        markGridZoneSubscriptionsDirty(state);
+        return { bounds, stamped };
+    }
+    return { bounds: null, stamped };
 }
