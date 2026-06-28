@@ -94,7 +94,7 @@ export class FlatGridSearch {
                 for (let i = 0; i < maxDirs; i++) {
                     const nIdx = neighbors[base + i];
                     if (nIdx === -1) continue;
-                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCost(nIdx) : 0;
                     const tentativeG = currentG + edgeCosts[i] + stepExtra;
                     if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
                     visited[nIdx] = runId;
@@ -117,7 +117,7 @@ export class FlatGridSearch {
                 for (let i = 0; i < maxDirs; i++) {
                     const nIdx = currIdx + offsets[i];
                     if (!grid.canStep(currIdx, nIdx)) continue;
-                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCostForIdx(nIdx) : 0;
+                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCost(nIdx) : 0;
                     const tentativeG = currentG + edgeCosts[i] + stepExtra;
                     if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
                     visited[nIdx] = runId;
