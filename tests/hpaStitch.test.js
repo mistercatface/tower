@@ -46,14 +46,14 @@ describe("HPA Path Stitching Suite", () => {
         resolveRegionLeg.scratch = scratch;
 
         const abstractIdx = [2, 0, 1, 3];
-        const outCols = new Uint16Array(100);
-        const outRows = new Uint16Array(100);
-        const len = stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outCols, outRows, cols);
+        const outIdx = new Int32Array(100);
+        const len = stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outIdx, cols);
 
         assert.equal(len, 5);
         const path = [];
         for (let i = 0; i < len; i++) {
-            path.push({ col: outCols[i], row: outRows[i] });
+            const idx = outIdx[i];
+            path.push({ col: idx % cols, row: (idx / cols) | 0 });
         }
 
         assert.deepEqual(path, [
@@ -80,15 +80,15 @@ describe("HPA Path Stitching Suite", () => {
         const tempLegsLengths = new Map();
         const resolveRegionLeg = () => 0;
 
-        const outCols = new Uint16Array(100);
-        const outRows = new Uint16Array(100);
+        const outIdx = new Int32Array(100);
         const stitcher = new HpaPathStitcher(prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, cols);
-        const len = stitcher.stitch([1, 0, 2], outCols, outRows);
+        const len = stitcher.stitch([1, 0, 2], outIdx);
 
         assert.equal(len, 3);
         const path = [];
         for (let i = 0; i < len; i++) {
-            path.push({ col: outCols[i], row: outRows[i] });
+            const idx = outIdx[i];
+            path.push({ col: idx % cols, row: (idx / cols) | 0 });
         }
         assert.deepEqual(path, [
             { col: 1, row: 1 },

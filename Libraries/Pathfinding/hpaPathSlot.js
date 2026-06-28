@@ -1,20 +1,16 @@
 const PATH_WAYPOINT_ARRIVAL_PX = 16;
 function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid, navTopology) {
-    const wp = sabPathWorldAt(worker, slot, i, grid);
-    if (Math.hypot(wp.x - bodyX, wp.y - bodyY) > arrivalPx) return false;
+    const idx = worker.pathIdx(slot, i);
+    const wx = grid.gridCenterXByIdx(idx);
+    const wy = grid.gridCenterYByIdx(idx);
+    if (Math.hypot(wx - bodyX, wy - bodyY) > arrivalPx) return false;
     const fromCol = grid.worldCol(bodyX);
     const fromRow = grid.worldRow(bodyY);
-    const toCol = grid.worldCol(wp.x);
-    const toRow = grid.worldRow(wp.y);
+    const toCol = grid.worldCol(wx);
+    const toRow = grid.worldRow(wy);
     if (fromCol === toCol && fromRow === toRow) return true;
     if (Math.abs(fromCol - toCol) > 1 || Math.abs(fromRow - toRow) > 1) return false;
     return grid.canStep(fromCol, fromRow, toCol, toRow, navTopology);
-}
-/** @param {import("./HpaPathWorker.js").HpaPathWorker} worker @param {number} slot @param {number} i @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
-export function sabPathWorldAt(worker, slot, i, grid) {
-    const col = worker.pathCol(slot, i);
-    const row = worker.pathRow(slot, i);
-    return { x: grid.gridCenterX(col), y: grid.gridCenterY(row) };
 }
 /**
  * @param {number} x
@@ -30,19 +26,22 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
     const hereRow = grid.worldRow(y);
     let idx = 0;
     for (let i = 0; i < pathLen; i++) {
-        const col = worker.pathCol(slot, i);
-        const row = worker.pathRow(slot, i);
+        const cellIdx = worker.pathIdx(slot, i);
+        const col = cellIdx % grid.cols;
+        const row = (cellIdx / grid.cols) | 0;
         if (col === hereCol && row === hereRow) idx = i + 1;
     }
     if (idx >= pathLen) idx = pathLen - 1;
     const waypointArrival = PATH_WAYPOINT_ARRIVAL_PX;
     while (idx < pathLen - 1) {
-        const wp = sabPathWorldAt(worker, slot, idx, grid);
-        if (Math.hypot(wp.x - x, wp.y - y) > waypointArrival) break;
+        const cellIdx = worker.pathIdx(slot, idx);
+        const wx = grid.gridCenterXByIdx(cellIdx);
+        const wy = grid.gridCenterYByIdx(cellIdx);
+        if (Math.hypot(wx - x, wy - y) > waypointArrival) break;
         const fromCol = grid.worldCol(x);
         const fromRow = grid.worldRow(y);
-        const toCol = grid.worldCol(wp.x);
-        const toRow = grid.worldRow(wp.y);
+        const toCol = grid.worldCol(wx);
+        const toRow = grid.worldRow(wy);
         if (fromCol === toCol && fromRow === toRow) {
             idx++;
             continue;
@@ -66,7 +65,10 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
     if (pathLen <= 0) return { pathNodes: [] };
     const idx = Math.max(0, Math.min(progressIdx ?? 0, pathLen - 1));
     const pathNodes = [];
-    for (let i = idx; i < pathLen; i++) pathNodes.push(sabPathWorldAt(worker, slot, i, grid));
+    for (let i = idx; i < pathLen; i++) {
+        const cellIdx = worker.pathIdx(slot, i);
+        pathNodes.push({ x: grid.gridCenterXByIdx(cellIdx), y: grid.gridCenterYByIdx(cellIdx) });
+    }
     const first = pathNodes[0];
     if (first && Math.hypot(first.x - x, first.y - y) > 1) {
         const aCol = grid.worldCol(x);
@@ -89,13 +91,13 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
     if (pathLen <= 0) return null;
     const abstractLen = worker.abstractPathLen(slot);
     if (abstractLen <= 0) {
-        const start = sabPathWorldAt(worker, slot, 0, grid);
-        const target = sabPathWorldAt(worker, slot, pathLen - 1, grid);
+        const startIdx = worker.pathIdx(slot, 0);
+        const targetIdx = worker.pathIdx(slot, pathLen - 1);
         return {
             pathPlanner: "local",
             abstractPath: [
-                { x: start.x, y: start.y, id: "start" },
-                { x: target.x, y: target.y, id: "target" },
+                { x: grid.gridCenterXByIdx(startIdx), y: grid.gridCenterYByIdx(startIdx), id: "start" },
+                { x: grid.gridCenterXByIdx(targetIdx), y: grid.gridCenterYByIdx(targetIdx), id: "target" },
             ],
         };
     }
@@ -107,11 +109,11 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
     for (let i = 0; i < abstractLen; i++) {
         const idx = worker.abstractPathIdx(slot, i);
         if (idx === startTemp) {
-            const w = sabPathWorldAt(worker, slot, 0, grid);
-            abstractPath.push({ x: w.x, y: w.y, id: "start" });
+            const startIdx = worker.pathIdx(slot, 0);
+            abstractPath.push({ x: grid.gridCenterXByIdx(startIdx), y: grid.gridCenterYByIdx(startIdx), id: "start" });
         } else if (idx === targetTemp) {
-            const w = sabPathWorldAt(worker, slot, pathLen - 1, grid);
-            abstractPath.push({ x: w.x, y: w.y, id: "target" });
+            const targetIdx = worker.pathIdx(slot, pathLen - 1);
+            abstractPath.push({ x: grid.gridCenterXByIdx(targetIdx), y: grid.gridCenterYByIdx(targetIdx), id: "target" });
         } else {
             const col = worker.graphNodeCol(idx);
             const row = worker.graphNodeRow(idx);
@@ -140,16 +142,20 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     const offPathDistance = settings.pathOffPathDistance;
     let step = navState?.pathProgressIdx ?? 0;
     if (step >= pathLen) step = pathLen - 1;
-    let steerTarget = sabPathWorldAt(worker, slot, step, grid);
-    let dx = steerTarget.x - x;
-    let dy = steerTarget.y - y;
+    let steerIdx = worker.pathIdx(slot, step);
+    let steerX = grid.gridCenterXByIdx(steerIdx);
+    let steerY = grid.gridCenterYByIdx(steerIdx);
+    let dx = steerX - x;
+    let dy = steerY - y;
     let dist = Math.hypot(dx, dy);
     while (dist < waypointArrival && step < pathLen - 1 && sabWaypointArrived(x, y, worker, slot, step, waypointArrival, grid, navTopology)) {
         step++;
         if (navState) navState.pathProgressIdx = step;
-        steerTarget = sabPathWorldAt(worker, slot, step, grid);
-        dx = steerTarget.x - x;
-        dy = steerTarget.y - y;
+        steerIdx = worker.pathIdx(slot, step);
+        steerX = grid.gridCenterXByIdx(steerIdx);
+        steerY = grid.gridCenterYByIdx(steerIdx);
+        dx = steerX - x;
+        dy = steerY - y;
         dist = Math.hypot(dx, dy);
     }
     const distToTarget = Math.hypot(targetX - x, targetY - y);

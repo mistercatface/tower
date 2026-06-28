@@ -10,13 +10,10 @@ async function createGridWithNav() {
     const navigation = await createWorkerNavigation(grid);
     return { grid, navTopology: navigation.topology, navigation };
 }
-function mockWorker(path) {
+function mockWorker(path, grid) {
     return {
-        pathCol(_slot, i) {
-            return path[i].col;
-        },
-        pathRow(_slot, i) {
-            return path[i].row;
+        pathIdx(_slot, i) {
+            return grid.idx(path[i].col, path[i].row);
         },
     };
 }
@@ -27,7 +24,7 @@ describe("hpaPathSlot", () => {
             { col: 4, row: 4 },
             { col: 5, row: 4 },
         ];
-        const worker = mockWorker(path);
+        const worker = mockWorker(path, grid);
         const start = grid.gridToWorld(4, 4);
         const idx = findSabPathProgressIdx(start.x, start.y, worker, 0, path.length, grid, navTopology);
         assert.ok(idx >= 1);
@@ -40,7 +37,7 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 4 },
             { col: 6, row: 4 },
         ];
-        const worker = mockWorker(path);
+        const worker = mockWorker(path, grid);
         const start = grid.gridToWorld(4, 4);
         const target = grid.gridToWorld(6, 4);
         const steering = computeSabPathSteering({ x: start.x, y: start.y }, worker, 0, path.length, target.x, target.y, grid, navTopology, {

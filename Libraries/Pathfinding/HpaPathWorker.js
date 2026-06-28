@@ -3,7 +3,7 @@ import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
 import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "./navTopologySab.js";
-import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotMeta, hpaPathSlotCols, hpaPathSlotRows, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
+import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/grid/navEdgePoolSab.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
@@ -75,8 +75,7 @@ export class HpaPathWorker {
             maxCellsPerChunk: gridSettings.maxCellsPerChunk,
             minCellsPerChunk: gridSettings.minCellsPerChunk,
             sabPathMetaPool: this.sabPathMetaPool,
-            sabPathColsPool: this.sabPathColsPool,
-            sabPathRowsPool: this.sabPathRowsPool,
+            sabPathIdxPool: this.sabPathIdxPool,
             sabAbstractIdxPool: this.sabAbstractIdxPool,
             sabPersistGraphNodeCol: this.sabPersistGraphNodeCol,
             sabPersistGraphNodeRow: this.sabPersistGraphNodeRow,
@@ -225,11 +224,8 @@ export class HpaPathWorker {
     pathLength(slot) {
         return this._pathMeta(slot)[0];
     }
-    pathCol(slot, i) {
-        return this._pathCols(slot)[i];
-    }
-    pathRow(slot, i) {
-        return this._pathRows(slot)[i];
+    pathIdx(slot, i) {
+        return this._pathIdx(slot)[i];
     }
     abstractPathLen(slot) {
         return this._pathMeta(slot)[1];
@@ -246,11 +242,8 @@ export class HpaPathWorker {
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);
     }
-    _pathCols(slot) {
-        return hpaPathSlotCols(this.sabPathColsPool, slot, MAX_HPA_PATH_LEN);
-    }
-    _pathRows(slot) {
-        return hpaPathSlotRows(this.sabPathRowsPool, slot, MAX_HPA_PATH_LEN);
+    _pathIdx(slot) {
+        return hpaPathSlotIdx(this.sabPathIdxPool, slot, MAX_HPA_PATH_LEN);
     }
     _abstractIdx(slot) {
         return hpaPathSlotAbstractIdx(this.sabAbstractIdxPool, slot, MAX_HPA_ABSTRACT_LEN);

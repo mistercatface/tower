@@ -5,13 +5,9 @@ export const HPA_PATH_META_STRIDE_BYTES = HPA_PATH_META_FIELDS * 4;
 export function hpaPathSlotMeta(sabPathMetaPool, slot) {
     return new Int32Array(sabPathMetaPool, slot * HPA_PATH_META_STRIDE_BYTES, HPA_PATH_META_FIELDS);
 }
-/** @param {SharedArrayBuffer} sabPathColsPool @param {number} slot @param {number} maxPathLen */
-export function hpaPathSlotCols(sabPathColsPool, slot, maxPathLen) {
-    return new Int16Array(sabPathColsPool, slot * maxPathLen * 2, maxPathLen);
-}
-/** @param {SharedArrayBuffer} sabPathRowsPool @param {number} slot @param {number} maxPathLen */
-export function hpaPathSlotRows(sabPathRowsPool, slot, maxPathLen) {
-    return new Int16Array(sabPathRowsPool, slot * maxPathLen * 2, maxPathLen);
+/** @param {SharedArrayBuffer} sabPathIdxPool @param {number} slot @param {number} maxPathLen */
+export function hpaPathSlotIdx(sabPathIdxPool, slot, maxPathLen) {
+    return new Int32Array(sabPathIdxPool, slot * maxPathLen * 4, maxPathLen);
 }
 /** @param {SharedArrayBuffer} sabAbstractIdxPool @param {number} slot @param {number} maxAbstractLen */
 export function hpaPathSlotAbstractIdx(sabAbstractIdxPool, slot, maxAbstractLen) {
@@ -28,8 +24,7 @@ export function hpaPathSlotAbstractIdx(sabAbstractIdxPool, slot, maxAbstractLen)
 export function createHpaWorkerSabPools({ maxSlots, maxPathLen, maxAbstractLen, maxGraphNodes, maxGraphEdges }) {
     return {
         sabPathMetaPool: new SharedArrayBuffer(maxSlots * HPA_PATH_META_STRIDE_BYTES),
-        sabPathColsPool: new SharedArrayBuffer(maxSlots * maxPathLen * 2),
-        sabPathRowsPool: new SharedArrayBuffer(maxSlots * maxPathLen * 2),
+        sabPathIdxPool: new SharedArrayBuffer(maxSlots * maxPathLen * 4),
         sabAbstractIdxPool: new SharedArrayBuffer(maxSlots * maxAbstractLen * 2),
         sabPersistGraphNodeCol: new SharedArrayBuffer(maxGraphNodes * 2),
         sabPersistGraphNodeRow: new SharedArrayBuffer(maxGraphNodes * 2),

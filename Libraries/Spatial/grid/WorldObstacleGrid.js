@@ -439,6 +439,17 @@ export class WorldObstacleGrid {
     gridCenterY(row) {
         return gridCenterYAtOrigin(row, this.minY, this.cellHalfSize);
     }
+    gridCenterXByIdx(idx) {
+        const col = idx % this.cols;
+        return gridCenterXAtOrigin(col, this.minX, this.cellHalfSize);
+    }
+    gridCenterYByIdx(idx) {
+        const row = (idx / this.cols) | 0;
+        return gridCenterYAtOrigin(row, this.minY, this.cellHalfSize);
+    }
+    idx(col, row) {
+        return row * this.cols + col;
+    }
     worldToGrid(x, y) {
         return { col: this.worldCol(x), row: this.worldRow(y) };
     }

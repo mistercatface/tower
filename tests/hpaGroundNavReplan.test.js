@@ -81,11 +81,8 @@ describe("hpa ground nav replan policy", () => {
         let replans = 0;
         const worker = {
             releaseOwnedPathSlot() {},
-            pathCol(_slot, i) {
-                return i === 0 ? 4 : 5;
-            },
-            pathRow() {
-                return 4;
+            pathIdx(_slot, i) {
+                return i === 0 ? grid.idx(4, 4) : grid.idx(5, 4);
             },
         };
         const state = {
@@ -128,11 +125,8 @@ describe("hpa ground nav replan policy", () => {
         nav.pendingReplanReason = "offPath";
         const worker = {
             releaseOwnedPathSlot() {},
-            pathCol(_slot, i) {
-                return i === 0 ? 2 : 4;
-            },
-            pathRow() {
-                return 3;
+            pathIdx(_slot, i) {
+                return i === 0 ? grid.idx(2, 3) : grid.idx(4, 3);
             },
         };
         const request = new HpaReplanRequest({

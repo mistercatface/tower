@@ -7,14 +7,14 @@ export class HpaPathStitcher {
         this.resolveRegionLeg = resolveRegionLeg;
         this.cols = cols;
     }
-    stitch(abstractIdx, outCols, outRows) {
+    stitch(abstractIdx, outIdx) {
         if (!abstractIdx || !abstractIdx.length) return 0;
         let offset = 0;
         const lastLeg = abstractIdx.length - 1;
-        for (let i = 0; i < lastLeg; i++) offset = this.appendLeg(outCols, outRows, offset, abstractIdx[i], abstractIdx[i + 1]);
+        for (let i = 0; i < lastLeg; i++) offset = this.appendLeg(outIdx, offset, abstractIdx[i], abstractIdx[i + 1]);
         return offset;
     }
-    appendLeg(outCols, outRows, offset, aIdx, bIdx) {
+    appendLeg(outIdx, offset, aIdx, bIdx) {
         const legKey = (aIdx << 16) | bIdx;
         let legOffset = this.tempLegsOffsets.get(legKey);
         let legLen = 0;
@@ -26,31 +26,13 @@ export class HpaPathStitcher {
         }
         if (legLen > 0) {
             const start = offset === 0 ? 0 : 1;
-            if (isTempLeg)
-                for (let i = start; i < legLen; i++) {
-                    const idx = this.tempLegsBuffer[legOffset + i];
-                    outCols[offset] = idx % this.cols;
-                    outRows[offset] = (idx / this.cols) | 0;
-                    offset++;
-                }
-            else
-                for (let i = start; i < legLen; i++) {
-                    const idx = this.resolveRegionLeg.scratch[i];
-                    outCols[offset] = idx % this.cols;
-                    outRows[offset] = (idx / this.cols) | 0;
-                    offset++;
-                }
+            if (isTempLeg) for (let i = start; i < legLen; i++) outIdx[offset++] = this.tempLegsBuffer[legOffset + i];
+            else for (let i = start; i < legLen; i++) outIdx[offset++] = this.resolveRegionLeg.scratch[i];
             return offset;
         }
-        const { aCol, aRow, bCol, bRow } = this.endpointCells(aIdx, bIdx);
-        if (offset === 0) {
-            outCols[offset] = aCol;
-            outRows[offset] = aRow;
-            offset++;
-        }
-        outCols[offset] = bCol;
-        outRows[offset] = bRow;
-        offset++;
+        const { aCellIdx, bCellIdx } = this.endpointCells(aIdx, bIdx);
+        if (offset === 0) outIdx[offset++] = aCellIdx;
+        outIdx[offset++] = bCellIdx;
         return offset;
     }
     endpointCells(aIdx, bIdx) {
@@ -58,20 +40,14 @@ export class HpaPathStitcher {
         const cols = this.cols;
         const startIdx = this.prep.startIdx;
         const targetIdx = this.prep.targetIdx;
-        const startCol = startIdx % cols;
-        const startRow = (startIdx / cols) | 0;
-        const targetCol = targetIdx % cols;
-        const targetRow = (targetIdx / cols) | 0;
         const startTemp = nodeCount;
         const targetTemp = nodeCount + 1;
-        const aCol = aIdx === startTemp ? startCol : aIdx === targetTemp ? targetCol : nodeCol[aIdx];
-        const aRow = aIdx === startTemp ? startRow : aIdx === targetTemp ? targetRow : nodeRow[aIdx];
-        const bCol = bIdx === startTemp ? startCol : bIdx === targetTemp ? targetCol : nodeCol[bIdx];
-        const bRow = bIdx === startTemp ? startRow : bIdx === targetTemp ? targetRow : nodeRow[bIdx];
-        return { aCol, aRow, bCol, bRow };
+        const aCellIdx = aIdx === startTemp ? startIdx : aIdx === targetTemp ? targetIdx : nodeCol[aIdx] + nodeRow[aIdx] * cols;
+        const bCellIdx = bIdx === startTemp ? startIdx : bIdx === targetTemp ? targetIdx : nodeCol[bIdx] + nodeRow[bIdx] * cols;
+        return { aCellIdx, bCellIdx };
     }
 }
-export function stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outCols, outRows, cols) {
+export function stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outIdx, cols) {
     const stitcher = new HpaPathStitcher(prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, cols);
-    return stitcher.stitch(abstractIdx, outCols, outRows);
+    return stitcher.stitch(abstractIdx, outIdx);
 }

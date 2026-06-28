@@ -9,7 +9,7 @@ import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPa
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
-import { hpaPathSlotAbstractIdx, hpaPathSlotCols, hpaPathSlotMeta, hpaPathSlotRows, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
+import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
 export class HpaBufferManager {
     constructor() {
@@ -21,8 +21,7 @@ export class HpaBufferManager {
         this.maxCellsPerChunk = 0;
         this.minCellsPerChunk = 0;
         this.sabPathMetaPool = null;
-        this.sabPathColsPool = null;
-        this.sabPathRowsPool = null;
+        this.sabPathIdxPool = null;
         this.sabAbstractIdxPool = null;
         this.sabPersistGraphNodeCol = null;
         this.sabPersistGraphNodeRow = null;
@@ -41,8 +40,7 @@ export class HpaBufferManager {
         this.maxCellsPerChunk = data.maxCellsPerChunk;
         this.minCellsPerChunk = data.minCellsPerChunk;
         this.sabPathMetaPool = data.sabPathMetaPool;
-        this.sabPathColsPool = data.sabPathColsPool;
-        this.sabPathRowsPool = data.sabPathRowsPool;
+        this.sabPathIdxPool = data.sabPathIdxPool;
         this.sabAbstractIdxPool = data.sabAbstractIdxPool;
         this.sabPersistGraphNodeCol = data.sabPersistGraphNodeCol;
         this.sabPersistGraphNodeRow = data.sabPersistGraphNodeRow;
@@ -52,16 +50,12 @@ export class HpaBufferManager {
         this.sabPersistGraphEdgeSources = data.sabPersistGraphEdgeSources;
         this.sabCellToRegionIdx = data.sabCellToRegionIdx;
     }
-    writeCellPath(slot, path) {
+    writeCellPath(slot, pathScratch, len) {
         const pathMeta = hpaPathSlotMeta(this.sabPathMetaPool, slot);
-        pathMeta[0] = path ? path.length : 0;
-        if (!path) return;
-        const pathCols = hpaPathSlotCols(this.sabPathColsPool, slot, this.maxPathLen);
-        const pathRows = hpaPathSlotRows(this.sabPathRowsPool, slot, this.maxPathLen);
-        for (let i = 0; i < path.length; i++) {
-            pathCols[i] = path[i].col;
-            pathRows[i] = path[i].row;
-        }
+        pathMeta[0] = len;
+        if (len === 0) return;
+        const pathIdx = hpaPathSlotIdx(this.sabPathIdxPool, slot, this.maxPathLen);
+        pathIdx.set(pathScratch.subarray(0, len));
     }
     writeAbstractPath(slot, pathIdx) {
         const pathMeta = hpaPathSlotMeta(this.sabPathMetaPool, slot);
@@ -244,16 +238,11 @@ export class HpaReplanPlanner {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
         const len = gridSearch.local(startIdx, targetIdx, HPA_LOCAL_MAX_LEN, this.localPathScratch);
         if (len === 0) {
-            this.buffers.writeCellPath(slot, null);
+            this.buffers.writeCellPath(slot, this.localPathScratch, 0);
             this.buffers.writeAbstractPath(slot, null);
             return this.buffers.buildReplanResult(slot);
         }
-        const path = new Array(len);
-        for (let i = 0; i < len; i++) {
-            const idx = this.localPathScratch[i];
-            path[i] = { col: idx % cols, row: (idx / cols) | 0 };
-        }
-        this.buffers.writeCellPath(slot, path);
+        this.buffers.writeCellPath(slot, this.localPathScratch, len);
         this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
@@ -273,16 +262,15 @@ export class HpaReplanPlanner {
         const abstractLen = abstractSearch.run(startTemp, targetTemp, this.abstractPathScratch);
         if (abstractLen === 0) {
             this.buffers.writeAbstractPath(slot, null);
-            this.buffers.writeCellPath(slot, null);
+            this.buffers.writeCellPath(slot, this.localPathScratch, 0);
             return this.buffers.buildReplanResult(slot);
         }
         const abstractPath = Array.from(this.abstractPathScratch.subarray(0, abstractLen));
         this.buffers.writeAbstractPath(slot, abstractPath);
-        const pathCols = hpaPathSlotCols(this.buffers.sabPathColsPool, slot, this.buffers.maxPathLen);
-        const pathRows = hpaPathSlotRows(this.buffers.sabPathRowsPool, slot, this.buffers.maxPathLen);
+        const pathIdx = hpaPathSlotIdx(this.buffers.sabPathIdxPool, slot, this.buffers.maxPathLen);
         const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols);
         resolveFn.scratch = this.localPathScratch;
-        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathCols, pathRows, cols);
+        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathIdx, cols);
         const pathMeta = hpaPathSlotMeta(this.buffers.sabPathMetaPool, slot);
         pathMeta[0] = pathLen;
         return this.buffers.buildReplanResult(slot);
