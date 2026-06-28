@@ -1,13 +1,11 @@
 const PATH_WAYPOINT_ARRIVAL_PX = 16;
-function sabWaypointArrived(bodyX, bodyY, worker, slot, i, arrivalPx, grid, navTopology) {
+function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, grid, navTopology) {
     const idx = worker.pathIdx(slot, i);
     const wx = grid.gridCenterXByIdx(idx);
     const wy = grid.gridCenterYByIdx(idx);
     if (Math.hypot(wx - bodyX, wy - bodyY) > arrivalPx) return false;
-    const cols = grid.cols;
-    const fromIdx = grid.worldCol(bodyX) + grid.worldRow(bodyY) * cols;
-    if (fromIdx === idx) return true;
-    return grid.canStepIdx(fromIdx, idx, navTopology);
+    if (bodyIdx === idx) return true;
+    return grid.canStepIdx(bodyIdx, idx, navTopology);
 }
 /**
  * @param {number} x
@@ -30,12 +28,11 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
         const wx = grid.gridCenterXByIdx(cellIdx);
         const wy = grid.gridCenterYByIdx(cellIdx);
         if (Math.hypot(wx - x, wy - y) > waypointArrival) break;
-        const fromIdx = grid.worldCol(x) + grid.worldRow(y) * cols;
-        if (fromIdx === cellIdx) {
+        if (hereIdx === cellIdx) {
             idx++;
             continue;
         }
-        if (!grid.canStepIdx(fromIdx, cellIdx, navTopology)) break;
+        if (!grid.canStepIdx(hereIdx, cellIdx, navTopology)) break;
         idx++;
     }
     return idx;
@@ -106,6 +103,7 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen) {
 export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
     const x = pose.x;
     const y = pose.y;
+    const bodyIdx = grid.worldCol(x) + grid.worldRow(y) * grid.cols;
     const waypointArrival = settings.pathWaypointArrival;
     const arrivalDistance = settings.arrivalDistance;
     const offPathDistance = settings.pathOffPathDistance;
@@ -117,7 +115,7 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     let dx = steerX - x;
     let dy = steerY - y;
     let dist = Math.hypot(dx, dy);
-    while (dist < waypointArrival && step < pathLen - 1 && sabWaypointArrived(x, y, worker, slot, step, waypointArrival, grid, navTopology)) {
+    while (dist < waypointArrival && step < pathLen - 1 && sabWaypointArrived(x, y, bodyIdx, worker, slot, step, waypointArrival, grid, navTopology)) {
         step++;
         if (navState) navState.pathProgressIdx = step;
         steerIdx = worker.pathIdx(slot, step);
