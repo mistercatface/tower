@@ -1,11 +1,12 @@
 /**
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
-import { collectVoxelWallFacesInAabbFlat, VoxelWallFaceList, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../../World/wallGridBake.js";
+import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../../World/wallGridBake.js";
+import { StrideFloatList } from "../../World/StrideFloatList.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
-import { borrowTicket } from "../Structure3D/visibleTickets.js";
 import { drawProjectedWallFaceScalars } from "./ProjectedWallDraw.js";
-const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: new VoxelWallFaceList() };
+import { DRAW_KIND_VOXEL } from "./VisibleDrawQueue.js";
+const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: new StrideFloatList(VOXEL_FACE_STRIDE) };
 export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
     return (
         cache.grid === grid &&
@@ -28,7 +29,7 @@ export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds) {
     cache.boundsMinY = bounds.minY;
     cache.boundsMaxY = bounds.maxY;
 }
-export function collectStaticGridWallDrawables(obstacleGrid, viewport, out) {
+export function collectStaticGridWallDrawables(obstacleGrid, viewport, outQueue) {
     const bounds = viewport.bounds("structure");
     const viewerX = viewport.x;
     const viewerY = viewport.y;
@@ -50,9 +51,8 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, out) {
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
         const distSq = viewX * viewX + viewY * viewY;
-        out.push(borrowTicket("voxel", base, null, distSq));
+        outQueue.push(DRAW_KIND_VOXEL, base, null, distSq);
     }
-    return out;
 }
 export function getVoxelWallFaceData() {
     return sGeomCache.faces.data;

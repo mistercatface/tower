@@ -8,6 +8,8 @@ import { isForcefieldEdge, PASSAGE_MODE, resolvePassageEdge } from "../Spatial/g
 import { gridEdgeSideFacing, gridSideOutwardVector } from "../Spatial/grid/GridUtils.js";
 import { forEachCellEdge, cellEdgeEndpoints, canonicalEdgeCellKey } from "../Spatial/grid/gridCellTopology.js";
 import { isPassagePowerSourceEnergized } from "./passagePowerNetwork.js";
+import { DRAW_KIND_FORCEFIELD } from "../Render/Structure3D/VisibleDrawQueue.js";
+import { projectPropVertexScalarsInto } from "../Render/Props3D/propMesh.js";
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
@@ -23,6 +25,7 @@ const beltRailsDrawByTurn = {
     left: createConveyorDraw({ turnDirection: "left", ...railDrawOpts }),
     right: createConveyorDraw({ turnDirection: "right", ...railDrawOpts }),
 };
+const sForcefieldScratch = new Float32Array(8);
 const floorBeltStampProxyProto = {
     ageMs: 0,
     getCustomSpriteCacheKey() {
@@ -61,10 +64,18 @@ const forcefieldEdgeDraw = (ctx, prop, viewport) => {
     const l2x = prop._l2x;
     const l2y = prop._l2y;
     const lineScale = getCanvasLineScale(ctx);
-    const p1Base = projectPropVertex(prop, viewport, l1x, l1y, 0);
-    const p1Top = projectPropVertex(prop, viewport, l1x, l1y, FORCEFIELD_HEIGHT);
-    const p2Base = projectPropVertex(prop, viewport, l2x, l2y, 0);
-    const p2Top = projectPropVertex(prop, viewport, l2x, l2y, FORCEFIELD_HEIGHT);
+    projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l1x, l1y, 0);
+    const p1BaseX = sForcefieldScratch[0],
+        p1BaseY = sForcefieldScratch[1];
+    projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l1x, l1y, FORCEFIELD_HEIGHT);
+    const p1TopX = sForcefieldScratch[0],
+        p1TopY = sForcefieldScratch[1];
+    projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l2x, l2y, 0);
+    const p2BaseX = sForcefieldScratch[0],
+        p2BaseY = sForcefieldScratch[1];
+    projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l2x, l2y, FORCEFIELD_HEIGHT);
+    const p2TopX = sForcefieldScratch[0],
+        p2TopY = sForcefieldScratch[1];
     ctx.save();
     ctx.lineCap = "round";
     if (powered) {
@@ -91,28 +102,32 @@ const forcefieldEdgeDraw = (ctx, prop, viewport) => {
         }
         ctx.fillStyle = glowColor;
         ctx.beginPath();
-        ctx.moveTo(p1Base.x, p1Base.y);
-        ctx.lineTo(p2Base.x, p2Base.y);
-        ctx.lineTo(p2Top.x, p2Top.y);
-        ctx.lineTo(p1Top.x, p1Top.y);
+        ctx.moveTo(p1BaseX, p1BaseY);
+        ctx.lineTo(p2BaseX, p2BaseY);
+        ctx.lineTo(p2TopX, p2TopY);
+        ctx.lineTo(p1TopX, p1TopY);
         ctx.closePath();
         ctx.fill();
         for (const h of [2.0, 5.0, 8.0]) {
-            const beamStart = projectPropVertex(prop, viewport, l1x, l1y, h);
-            const beamEnd = projectPropVertex(prop, viewport, l2x, l2y, h);
+            projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l1x, l1y, h);
+            const beamStartX = sForcefieldScratch[0],
+                beamStartY = sForcefieldScratch[1];
+            projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l2x, l2y, h);
+            const beamEndX = sForcefieldScratch[0],
+                beamEndY = sForcefieldScratch[1];
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 3.5 * lineScale;
             ctx.globalAlpha = 0.6;
             ctx.beginPath();
-            ctx.moveTo(beamStart.x, beamStart.y);
-            ctx.lineTo(beamEnd.x, beamEnd.y);
+            ctx.moveTo(beamStartX, beamStartY);
+            ctx.lineTo(beamEndX, beamEndY);
             ctx.stroke();
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 1.0 * lineScale;
             ctx.globalAlpha = 1.0;
             ctx.beginPath();
-            ctx.moveTo(beamStart.x, beamStart.y);
-            ctx.lineTo(beamEnd.x, beamEnd.y);
+            ctx.moveTo(beamStartX, beamStartY);
+            ctx.lineTo(beamEndX, beamEndY);
             ctx.stroke();
         }
     } else {
@@ -120,11 +135,15 @@ const forcefieldEdgeDraw = (ctx, prop, viewport) => {
         ctx.lineWidth = 1.2 * lineScale;
         ctx.setLineDash([4 * lineScale, 5 * lineScale]);
         for (const h of [2.0, 5.0, 8.0]) {
-            const beamStart = projectPropVertex(prop, viewport, l1x, l1y, h);
-            const beamEnd = projectPropVertex(prop, viewport, l2x, l2y, h);
+            projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l1x, l1y, h);
+            const beamStartX = sForcefieldScratch[0],
+                beamStartY = sForcefieldScratch[1];
+            projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, l2x, l2y, h);
+            const beamEndX = sForcefieldScratch[0],
+                beamEndY = sForcefieldScratch[1];
             ctx.beginPath();
-            ctx.moveTo(beamStart.x, beamStart.y);
-            ctx.lineTo(beamEnd.x, beamEnd.y);
+            ctx.moveTo(beamStartX, beamStartY);
+            ctx.lineTo(beamEndX, beamEndY);
             ctx.stroke();
         }
         ctx.setLineDash([]);
@@ -132,24 +151,26 @@ const forcefieldEdgeDraw = (ctx, prop, viewport) => {
     ctx.strokeStyle = powered ? "#475569" : "#334155";
     ctx.lineWidth = 2.5 * lineScale;
     ctx.beginPath();
-    ctx.moveTo(p1Base.x, p1Base.y);
-    ctx.lineTo(p1Top.x, p1Top.y);
+    ctx.moveTo(p1BaseX, p1BaseY);
+    ctx.lineTo(p1TopX, p1TopY);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(p2Base.x, p2Base.y);
-    ctx.lineTo(p2Top.x, p2Top.y);
+    ctx.moveTo(p2BaseX, p2BaseY);
+    ctx.lineTo(p2TopX, p2TopY);
     ctx.stroke();
     ctx.fillStyle = powered ? "#64748b" : "#475569";
     ctx.beginPath();
-    ctx.arc(p1Top.x, p1Top.y, 1.8 * lineScale, 0, Math.PI * 2);
+    ctx.arc(p1TopX, p1TopY, 1.8 * lineScale, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(p2Top.x, p2Top.y, 1.8 * lineScale, 0, Math.PI * 2);
+    ctx.arc(p2TopX, p2TopY, 1.8 * lineScale, 0, Math.PI * 2);
     ctx.fill();
     if (mode === PASSAGE_MODE.OneWay) {
         const { x: ax, y: ay } = gridSideOutwardVector(allowedSide);
-        const arrowCenter = projectPropVertex(prop, viewport, 0, 0, 5.0);
-        drawDirectionalArrow(ctx, arrowCenter.x, arrowCenter.y, ax, ay, 6 * lineScale, powered ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.45)");
+        projectPropVertexScalarsInto(sForcefieldScratch, 0, prop, viewport, 0, 0, 5.0);
+        const arrowCenterX = sForcefieldScratch[0],
+            arrowCenterY = sForcefieldScratch[1];
+        drawDirectionalArrow(ctx, arrowCenterX, arrowCenterY, ax, ay, 6 * lineScale, powered ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.45)");
     }
     ctx.restore();
 };
@@ -245,8 +266,7 @@ export function syncPassageEdgeStampDrawCache(state, grid) {
     state.sandbox._passageEdgeDrawCache = next;
     return next;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {object} gameState @param {import("../Viewport/Viewport.js").Viewport} viewport @param {object[]} out */
-export function collectForcefieldEdgeDrawables(grid, gameState, viewport, out) {
+export function collectForcefieldEdgeDrawables(grid, gameState, viewport, outQueue) {
     if (!grid.cols || !grid.edgeStore.passageEdgeCount || !gameState.sandbox) return;
     const cached = syncPassageEdgeStampDrawCache(gameState, grid);
     if (!cached?.edges.length) return;
@@ -258,7 +278,7 @@ export function collectForcefieldEdgeDrawables(grid, gameState, viewport, out) {
         const tripped = item.proxy._forcefield.powered && tripwireTriggered.has(item.edgeKey);
         if (tripped !== item.proxy._forcefield.tripped) item.proxy._forcefield.tripped = tripped;
         item.proxy._distSq = (item.midX - viewport.x) ** 2 + (item.midY - viewport.y) ** 2;
-        out.push(item.proxy);
+        outQueue.push(DRAW_KIND_FORCEFIELD, 0, item.proxy, item.proxy._distSq);
     }
 }
 export function drawForcefieldEdgeProp(ctx, proxy, viewport) {

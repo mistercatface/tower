@@ -1,9 +1,10 @@
-import { collectRailWallBoxesInAabb, RailWallBoxList, RAIL_BOX, RAIL_BOX_STRIDE } from "../../World/wallGridBake.js";
+import { collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE } from "../../World/wallGridBake.js";
+import { StrideFloatList } from "../../World/StrideFloatList.js";
 import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { drawProjectedWallFaceScalars, drawProjectedRailWallCapFlat } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
-import { borrowTicket } from "../Structure3D/visibleTickets.js";
-const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new RailWallBoxList() };
+import { DRAW_KIND_RAIL } from "./VisibleDrawQueue.js";
+const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new StrideFloatList(RAIL_BOX_STRIDE) };
 function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     const minX = data[base + RAIL_BOX.minX];
     const maxX = data[base + RAIL_BOX.maxX];
@@ -36,7 +37,7 @@ function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     if (isOutwardFaceTowardViewer((innerP2x + outerP2x) * 0.5, (innerP2y + outerP2y) * 0.5, tx, ty, viewerX, viewerY)) return true;
     return false;
 }
-export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, out) {
+export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, outQueue) {
     const bounds = viewport.bounds("structure");
     const viewerX = viewport.x;
     const viewerY = viewport.y;
@@ -56,9 +57,8 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, out) 
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
         const distSq = viewX * viewX + viewY * viewY;
-        out.push(borrowTicket("rail", base, null, distSq));
+        outQueue.push(DRAW_KIND_RAIL, base, null, distSq);
     }
-    return out;
 }
 export function getRailWallBoxData() {
     return sBoxCache.boxes.data;

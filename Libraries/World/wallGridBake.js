@@ -3,6 +3,7 @@ import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { edgeNeighbor, cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/world.js";
+import { StrideFloatList } from "./StrideFloatList.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 export const RAIL_BOX = {
@@ -34,26 +35,6 @@ export const RAIL_BOX = {
     cy: 25,
 };
 export const RAIL_BOX_STRIDE = 26;
-export class RailWallBoxList {
-    constructor(initialCapacity = 64) {
-        this.data = new Float32Array(initialCapacity * RAIL_BOX_STRIDE);
-        this.length = 0;
-        this.order = [];
-        this.scratch = new Float32Array(initialCapacity * RAIL_BOX_STRIDE);
-    }
-    clear() {
-        this.length = 0;
-    }
-    ensureCapacity(count) {
-        const required = count * RAIL_BOX_STRIDE;
-        if (this.data.length >= required) return;
-        const nextLength = Math.max(this.data.length * 2, required);
-        const nextData = new Float32Array(nextLength);
-        nextData.set(this.data);
-        this.data = nextData;
-        this.scratch = new Float32Array(nextLength);
-    }
-}
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
@@ -320,12 +301,13 @@ function copyRailWallBoxRecord(data, dstIndex, src, srcIndex) {
 function mergeCollinearRailWallBoxRecordsInPlace(list) {
     const n = list.length;
     if (n <= 1) return n;
-    const { data, order, scratch } = list;
+    const { data } = list;
+    const order = new Array(n);
     for (let i = 0; i < n; i++) order[i] = i;
-    order.length = n;
     order.sort((a, b) => compareRailWallBoxRecords(data, a, b));
+    const scratch = new Float32Array(n * RAIL_BOX_STRIDE);
     for (let i = 0; i < n; i++) copyRailWallBoxRecord(scratch, i, data, order[i]);
-    data.set(scratch.subarray(0, n * RAIL_BOX_STRIDE));
+    data.set(scratch);
     let write = 1;
     let cur = 0;
     for (let i = 1; i < n; i++)
@@ -339,22 +321,6 @@ function mergeCollinearRailWallBoxRecordsInPlace(list) {
 }
 export const VOXEL_FACE = { gridCol: 0, gridRow: 1, gridIdx: 2, gridSide: 3, x1: 4, y1: 5, x2: 6, y2: 7, wallBaseZ: 8, wallHeight: 9, wallCapHeight: 10, cx: 11, cy: 12, outX: 13, outY: 14 };
 export const VOXEL_FACE_STRIDE = 15;
-export class VoxelWallFaceList {
-    constructor(initialCapacity = 256) {
-        this.data = new Float32Array(initialCapacity * VOXEL_FACE_STRIDE);
-        this.length = 0;
-    }
-    clear() {
-        this.length = 0;
-    }
-    ensureCapacity(capacity) {
-        if (this.data.length < capacity * VOXEL_FACE_STRIDE) {
-            const newData = new Float32Array(Math.max(this.data.length * 2, capacity * VOXEL_FACE_STRIDE));
-            newData.set(this.data);
-            this.data = newData;
-        }
-    }
-}
 export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, col, row, edge) {
     const base = baseIndex * VOXEL_FACE_STRIDE;
     const cols = grid.cols;

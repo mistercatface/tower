@@ -5,7 +5,7 @@ import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import { RAIL_BOX, VOXEL_FACE } from "../World/wallGridBake.js";
 import { drawFlatWallChunkProp } from "./Props3D/SolidDraw.js";
 import propCatalog from "../../Assets/props/index.js";
-import { resetTicketPool, borrowTicket } from "./Structure3D/visibleTickets.js";
+import { VisibleDrawQueue, DRAW_KIND_PROP, DRAW_KIND_FORCEFIELD, DRAW_KIND_VOXEL, DRAW_KIND_RAIL } from "./Structure3D/VisibleDrawQueue.js";
 function drawProjectile(ctx, prop, viewport) {
     const length = 1.0;
     const width = 0.6;
@@ -62,7 +62,7 @@ const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
 function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
     scratch.atlasFaceId = undefined;
-    if (kind === "rail") {
+    if (kind === DRAW_KIND_RAIL) {
         const d = getRailWallBoxData();
         const b = baseIndex;
         scratch.wallHeight = d[b + RAIL_BOX.wallHeight];
@@ -74,7 +74,7 @@ function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
         scratch.gridSide = d[b + RAIL_BOX.gridSide];
         scratch.gridIdx = d[b + RAIL_BOX.gridIdx];
         scratch.isEdgeRail = true;
-    } else if (kind === "voxel") {
+    } else if (kind === DRAW_KIND_VOXEL) {
         const d = getVoxelWallFaceData();
         const b = baseIndex;
         scratch.wallHeight = d[b + VOXEL_FACE.wallHeight];
@@ -94,68 +94,11 @@ function prepareWallChunkPropTextures(state, prop) {
     prop._wallChunkTextures = textures;
     prop._wallChunkTextureReady = !!textures.ready;
 }
-function parallelInsertionSort(drawables, depths, start, end) {
-    for (let i = start + 1; i <= end; i++) {
-        const keyDrawable = drawables[i];
-        const keyDepth = depths[i];
-        let j = i - 1;
-        while (j >= start && depths[j] < keyDepth) {
-            drawables[j + 1] = drawables[j];
-            depths[j + 1] = depths[j];
-            j--;
-        }
-        drawables[j + 1] = keyDrawable;
-        depths[j + 1] = keyDepth;
-    }
-}
-function heapify(drawables, depths, n, i) {
-    let root = i;
-    while (true) {
-        let smallest = root;
-        const left = 2 * root + 1;
-        const right = 2 * root + 2;
-        if (left < n && depths[left] < depths[smallest]) smallest = left;
-        if (right < n && depths[right] < depths[smallest]) smallest = right;
-        if (smallest === root) break;
-        const tempD = drawables[root];
-        drawables[root] = drawables[smallest];
-        drawables[smallest] = tempD;
-        const tempDepth = depths[root];
-        depths[root] = depths[smallest];
-        depths[smallest] = tempDepth;
-        root = smallest;
-    }
-}
-function parallelHeapSort(drawables, depths, n) {
-    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(drawables, depths, n, i);
-    for (let i = n - 1; i > 0; i--) {
-        const tempD = drawables[0];
-        drawables[0] = drawables[i];
-        drawables[i] = tempD;
-        const tempDepth = depths[0];
-        depths[0] = depths[i];
-        depths[i] = tempDepth;
-        heapify(drawables, depths, i, 0);
-    }
-}
-function parallelSort(drawables, depths) {
-    const n = drawables.length;
-    if (n <= 1) return;
-    if (n <= 32) parallelInsertionSort(drawables, depths, 0, n - 1);
-    else parallelHeapSort(drawables, depths, n);
-}
+// Removed parallel sort (now in VisibleDrawQueue.js)
 export class WorldSceneRenderer {
     constructor() {
-        this.visibleDrawables = [];
-        this.visibleDrawableDepths = [];
-        this.staticGridDrawables = [];
-        this.staticGridEdgeRailDrawables = [];
-        this.forcefieldEdgeDrawables = [];
+        this.visibleDrawQueue = new VisibleDrawQueue();
         this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridCol: 0, gridRow: 0, gridSide: 0, gridIdx: 0, isEdgeRail: false };
-    }
-    _appendDrawable(drawable, distSq) {
-        this.visibleDrawables.push(drawable);
-        this.visibleDrawableDepths.push(distSq);
     }
     drawDebrisProps(ctx, state, viewport, options = {}) {
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, DEBRIS_QUERY_OPTIONS);
@@ -164,84 +107,64 @@ export class WorldSceneRenderer {
     drawFloorProps(ctx, state, viewport) {
         drawFloorOccupancyBelts(ctx, state, viewport);
         drawFloorOccupancyPowerSources(ctx, state, viewport);
-        const visibleObjects = this.visibleDrawables;
-        visibleObjects.length = 0;
-        this.visibleDrawableDepths.length = 0;
-        resetTicketPool();
+        const q = this.visibleDrawQueue;
+        q.clear();
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, FLOOR_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
             const distSq = (prop.x - viewport.x) ** 2 + (prop.y - viewport.y) ** 2;
-            this._appendDrawable(borrowTicket("prop", 0, prop, distSq), distSq);
+            q.push(DRAW_KIND_PROP, 0, prop, distSq);
         }
-        parallelSort(visibleObjects, this.visibleDrawableDepths);
-        for (let i = 0; i < visibleObjects.length; i++) this._drawProp(ctx, visibleObjects[i].ref, viewport);
+        q.sort();
+        for (let i = 0; i < q.length; i++) this._drawProp(ctx, q.refs[i], viewport);
     }
     _appendVisible3dProps(state, viewport) {
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, THREE_D_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) {
             const p = props[i];
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
-            this._appendDrawable(borrowTicket("prop", 0, p, distSq), distSq);
+            this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, p, distSq);
         }
     }
     _appendVisibleStaticGridWalls(state, viewport) {
-        this.staticGridDrawables.length = 0;
-        this.staticGridEdgeRailDrawables.length = 0;
-        collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.staticGridDrawables);
-        collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.staticGridEdgeRailDrawables);
-        for (let i = 0; i < this.staticGridDrawables.length; i++) {
-            const d = this.staticGridDrawables[i];
-            this._appendDrawable(d, d._distSq);
-        }
-        for (let i = 0; i < this.staticGridEdgeRailDrawables.length; i++) {
-            const d = this.staticGridEdgeRailDrawables[i];
-            this._appendDrawable(d, d._distSq);
-        }
+        collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);
+        collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);
     }
     _appendVisibleForcefieldEdges(state, viewport) {
-        const grid = state.obstacleGrid;
-        if (!grid || !state.sandbox) return;
-        const drawables = this.forcefieldEdgeDrawables;
-        drawables.length = 0;
-        collectForcefieldEdgeDrawables(grid, state, viewport, drawables);
-        for (let i = 0; i < drawables.length; i++) {
-            const d = drawables[i];
-            this._appendDrawable(borrowTicket("forcefield", 0, d, d._distSq), d._distSq);
-        }
+        if (!state.obstacleGrid || !state.sandbox) return;
+        collectForcefieldEdgeDrawables(state.obstacleGrid, state, viewport, this.visibleDrawQueue);
     }
     draw3DBuildings(ctx, state, viewport, options = {}) {
-        const visibleObjects = this.visibleDrawables;
+        const q = this.visibleDrawQueue;
         const face = this.wallFaceScratch;
-        visibleObjects.length = 0;
-        this.visibleDrawableDepths.length = 0;
-        resetTicketPool();
+        q.clear();
         this._appendVisible3dProps(state, viewport);
         const projectiles = state.projectiles || [];
         for (let i = 0; i < projectiles.length; i++) {
             const proj = projectiles[i];
             if (viewport.circleInBounds(proj.x, proj.y, proj.radius, "props")) {
                 const distSq = (proj.x - viewport.x) ** 2 + (proj.y - viewport.y) ** 2;
-                this._appendDrawable(borrowTicket("prop", 0, proj, distSq), distSq);
+                q.push(DRAW_KIND_PROP, 0, proj, distSq);
             }
         }
         const skipWalls = options.skipWalls === true;
         const skipWallCaps = options.skipWallCaps === true;
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
         this._appendVisibleForcefieldEdges(state, viewport);
-        parallelSort(visibleObjects, this.visibleDrawableDepths);
+        q.sort();
         const flatWallChunks = options.flatWallChunks === true;
-        for (let i = 0; i < visibleObjects.length; i++) {
-            const obj = visibleObjects[i];
-            const kind = obj.kind;
-            if (kind === "prop") this._drawProp(ctx, obj.ref, viewport, state, { flatWallChunks });
-            else if (kind === "forcefield") drawForcefieldEdgeProp(ctx, obj.ref, viewport);
-            else if (kind === "voxel") {
-                bindWallFaceScratchFlat(face, "voxel", obj.baseIndex);
-                drawProjectedVoxelWallFaceFlat(ctx, obj.baseIndex, viewport, state, face);
-            } else if (kind === "rail") {
-                bindWallFaceScratchFlat(face, "rail", obj.baseIndex);
-                drawProjectedGridEdgeRailFlat(ctx, obj.baseIndex, viewport, state, face, skipWallCaps);
+        for (let i = 0; i < q.length; i++) {
+            const kind = q.kinds[i];
+            const baseIndex = q.baseIndices[i];
+            const ref = q.refs[i];
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatWallChunks });
+            else if (kind === DRAW_KIND_FORCEFIELD) drawForcefieldEdgeProp(ctx, ref, viewport);
+            else if (kind === DRAW_KIND_VOXEL) {
+                bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
+                drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);
+            } else if (kind === DRAW_KIND_RAIL) {
+                bindWallFaceScratchFlat(face, DRAW_KIND_RAIL, baseIndex);
+                drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, face, skipWallCaps);
             }
         }
     }

@@ -1,5 +1,6 @@
-import { collectRailWallBoxesInAabb, RailWallBoxList, RAIL_BOX, RAIL_BOX_STRIDE } from "../../World/wallGridBake.js";
-const sRailShadowBoxes = new RailWallBoxList();
+import { collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE } from "../../World/wallGridBake.js";
+import { StrideFloatList } from "../../World/StrideFloatList.js";
+const sRailShadowBoxes = new StrideFloatList(RAIL_BOX_STRIDE);
 function pushRailWallBoxCapShadowEdges(data, index, out) {
     const base = index * RAIL_BOX_STRIDE;
     const wallTopZ = data[base + RAIL_BOX.wallCapHeight];
