@@ -44,12 +44,7 @@ function isPointVisibleFromHeadVision(pointX, pointY, originX, originY, originCo
 }
 function queryGridCellVision(observer, candidates, { range, navTopology }) {
     const visionRange = { range };
-    const frame = createObserverVisionFrame({
-        tickId: 1,
-        navTopology,
-        visionRange,
-        viewport: { circleInBounds: () => true },
-    });
+    const frame = createObserverVisionFrame({ tickId: 1, navTopology, visionRange, viewport: { circleInBounds: () => true } });
     const vision = frame.ensureHeadVision(observer);
     const cellSet = vision.cellSet;
     const visible = [];
@@ -78,7 +73,7 @@ describe("grid cell line of sight", () => {
     });
     it("blocks sight through a rail wall on the shared edge graph", async () => {
         const ctx = await createVisionGrid();
-        setBoundary(ctx.grid, colRowToIndex(6, 8, ctx.grid.cols), 1, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 }, { bumpRevision: true });
+        setBoundary(ctx.grid, colRowToIndex(6, 8, ctx.grid.cols), 1, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 }, true);
         await syncNavBounds(ctx, 5, 7, 7, 9);
         assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 10, 8), false);
         assert.equal(hasGridCellLineOfSight(ctx.navTopology, 2, 8, 4, 8), true);
@@ -156,12 +151,7 @@ describe("grid cell vision", () => {
         resetVisionFullBuildCount();
         const ctx = await createVisionGrid();
         const visionRange = { range: 200 };
-        const frame = createObserverVisionFrame({
-            tickId: 9,
-            navTopology: ctx.navTopology,
-            visionRange,
-            viewport: { circleInBounds: () => true },
-        });
+        const frame = createObserverVisionFrame({ tickId: 9, navTopology: ctx.navTopology, visionRange, viewport: { circleInBounds: () => true } });
         const observer = { id: 1, x: 128, y: 128, vx: 10, vy: 0, facing: 0, _brainSyncPass: 1 };
         frame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 1);
@@ -170,12 +160,7 @@ describe("grid cell vision", () => {
         const vision = frame.readHeadVision(observer);
         assert.ok(vision.cellSet instanceof Set);
         assert.equal(vision.cellSet.size, vision.cells.length);
-        const nextFrame = createObserverVisionFrame({
-            tickId: 10,
-            navTopology: ctx.navTopology,
-            visionRange,
-            viewport: { circleInBounds: () => true },
-        });
+        const nextFrame = createObserverVisionFrame({ tickId: 10, navTopology: ctx.navTopology, visionRange, viewport: { circleInBounds: () => true } });
         nextFrame.ensureHeadVision(observer);
         assert.equal(getVisionFullBuildCount(), 2);
         terminateWorkerNavigation(ctx.nav);

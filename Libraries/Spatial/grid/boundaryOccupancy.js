@@ -28,21 +28,21 @@ export function setPassagePowered(grid, idx, side, powered) {
 export function setPassageProfile(grid, idx, side, mode, allowedSide) {
     const edge = grid.edgeStore.getIdx(idx, side);
     if (!isForcefieldEdge(edge)) return false;
-    return setBoundary(grid, idx, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: edge.powered === true }, { bumpRevision: true });
+    return setBoundary(grid, idx, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: edge.powered === true }, true);
 }
 /**
  * Sole writer for primary boundary roles (railWall, passage). Derived beltRail uses reconcileBeltBoundaries.
  */
-export function setBoundary(grid, idx, side, spec, { bumpRevision = false } = {}) {
+export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
     if (spec === null) {
-        clearBoundaryPrimary(grid, idx, side, { bumpRevision });
+        clearBoundaryPrimary(grid, idx, side, bumpRevision);
         return true;
     }
     if (spec.kind === "railWall") {
-        if (spec.capHeightLevel === 0) return setBoundary(grid, idx, side, null, { bumpRevision });
+        if (spec.capHeightLevel === 0) return setBoundary(grid, idx, side, null, bumpRevision);
         grid.edgeStore.writeMirrored(idx, side, cols, rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
         if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
@@ -57,7 +57,7 @@ export function setBoundary(grid, idx, side, spec, { bumpRevision = false } = {}
     }
     return false;
 }
-export function clearBoundaryPrimary(grid, idx, side, { bumpRevision = false } = {}) {
+export function clearBoundaryPrimary(grid, idx, side, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
@@ -70,13 +70,13 @@ export function clearBoundaryPrimary(grid, idx, side, { bumpRevision = false } =
 /**
  * Clear one boundary slot — primary (railWall, passage) or derived beltRail.
  */
-export function clearBoundaryAtSide(grid, idx, side, { bumpRevision = false } = {}) {
+export function clearBoundaryAtSide(grid, idx, side, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
     const edge = grid.edgeStore.getIdx(idx, side);
     if (!edge) return false;
-    if (isRailWallEdge(edge) || isForcefieldEdge(edge)) return clearBoundaryPrimary(grid, idx, side, { bumpRevision });
+    if (isRailWallEdge(edge) || isForcefieldEdge(edge)) return clearBoundaryPrimary(grid, idx, side, bumpRevision);
     if (isBeltRailEdge(edge)) {
         clearDerivedBeltRail(grid, idx, side);
         if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
@@ -84,9 +84,9 @@ export function clearBoundaryAtSide(grid, idx, side, { bumpRevision = false } = 
     }
     return false;
 }
-export function clearAllBoundariesAtCell(grid, idx, { bumpRevision = false } = {}) {
+export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
     let changed = false;
-    for (let side = 0; side < 4; side++) if (clearBoundaryAtSide(grid, idx, side, { bumpRevision: false })) changed = true;
+    for (let side = 0; side < 4; side++) if (clearBoundaryAtSide(grid, idx, side, bumpRevision)) changed = true;
     if (changed && bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return changed;
 }

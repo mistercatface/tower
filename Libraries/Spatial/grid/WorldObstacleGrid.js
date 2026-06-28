@@ -315,13 +315,13 @@ export class WorldObstacleGrid {
         setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel });
     }
     stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel }, { bumpRevision: true });
+        setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel }, true);
     }
     clearCellEdge(col, row, side) {
-        clearBoundaryPrimary(this, colRowToIndex(col, row, this.cols), side, { bumpRevision: true });
+        clearBoundaryPrimary(this, colRowToIndex(col, row, this.cols), side, true);
     }
     clearCellEdges(col, row) {
-        clearAllBoundariesAtCell(this, colRowToIndex(col, row, this.cols), { bumpRevision: false });
+        clearAllBoundariesAtCell(this, colRowToIndex(col, row, this.cols), false);
     }
     setCellSurfaceProfileAtIdx(idx, profileId) {
         this.surfaceMaterials.setCellAtIdx(idx, profileId);

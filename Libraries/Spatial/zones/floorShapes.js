@@ -4,7 +4,6 @@ import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { boxLocalFootprint, convexFootprintHalfExtents, vertCount } from "../../Math/Poly2D.js";
 import { kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 import { stepCardinalFacing } from "../../Math/Angle.js";
-import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
 import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;
@@ -85,11 +84,12 @@ export function obstacleGridCellHalfExtents(obstacleGrid) {
     return { halfWidth: half, halfHeight: half };
 }
 export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY) {
-    const { col, row, x, y } = snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY);
+    const col = obstacleGrid.worldCol(worldX);
+    const row = obstacleGrid.worldRow(worldY);
     prop.gridCol = col;
     prop.gridRow = row;
-    prop.x = x;
-    prop.y = y;
+    prop.x = obstacleGrid.gridCenterX(col);
+    prop.y = obstacleGrid.gridCenterY(row);
     const { halfWidth, halfHeight } = obstacleGridCellHalfExtents(obstacleGrid);
     resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
 }

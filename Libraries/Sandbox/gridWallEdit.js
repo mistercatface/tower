@@ -242,19 +242,19 @@ export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     const grid = state.obstacleGrid;
     clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
-    setBoundary(grid, idx, side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, { bumpRevision: true });
+    setBoundary(grid, idx, side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, true);
     commitGridNavEdit(state, idx);
     return true;
 }
 export function clearRailWallAt(state, idx, side) {
-    if (clearPrimaryBoundaryAt(state, idx, side, { bumpRevision: true }) !== "railWall") return false;
+    if (clearPrimaryBoundaryAt(state, idx, side, true) !== "railWall") return false;
     commitGridNavEdit(state, idx);
     return true;
 }
 export function stampForcefieldAt(state, idx, side, { mode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
     const grid = state.obstacleGrid;
     clearPrimaryBoundaryAt(state, idx, side);
-    if (!setBoundary(grid, idx, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, { bumpRevision: true })) return false;
+    if (!setBoundary(grid, idx, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, true)) return false;
     syncPassagePowerNetwork(state);
     return true;
 }
@@ -265,7 +265,7 @@ export function setForcefieldProfileAt(state, idx, side, mode, allowedSide) {
     return true;
 }
 export function clearForcefieldAt(state, idx, side) {
-    if (clearPrimaryBoundaryAt(state, idx, side, { bumpRevision: true }) !== "passage") return false;
+    if (clearPrimaryBoundaryAt(state, idx, side, true) !== "passage") return false;
     syncPassagePowerNetwork(state);
     return true;
 }

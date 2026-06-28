@@ -114,13 +114,6 @@ export function worldBoundsFromCellOriginInto(out, col, row, cols, rows, cellSiz
 export function worldBoundsFromCellOrigin(col, row, cols, rows, cellSize) {
     return worldBoundsFromCellOriginInto(createAabb(), col, row, cols, rows, cellSize);
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {number} worldX @param {number} worldY */
-export function snapWorldToObstacleCellCenter(obstacleGrid, worldX, worldY) {
-    const col = obstacleGrid.worldCol(worldX);
-    const row = obstacleGrid.worldRow(worldY);
-    console.log(col, row);
-    return { col, row, x: obstacleGrid.gridCenterX(col), y: obstacleGrid.gridCenterY(row) };
-}
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
