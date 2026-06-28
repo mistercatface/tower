@@ -1,4 +1,4 @@
-import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
+import { collectCorridorPathPointCells, collectCorridorPathPointIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { createCellIndexLayout, layoutAbsCellIndex, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../Spatial/grid/GridUtils.js";
 import {
@@ -36,28 +36,31 @@ function dedupeRailWallsByEdge(rails) {
 /** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {Uint8Array} roomFootprintMask */
 function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, roomFootprintMask) {
     const layout = createCellIndexLayout(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows);
-    const stride = layout.strideCols;
-    for (let i = 0; i < path.length; i++) {
-        let p, prev, next;
+    for (let i = 0; i < path.length; i++)
         if (typeof path[i] === "number") {
             const pIdx = path[i];
-            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
-            prev = i > 0 ? { c: (path[i - 1] % stride) + layout.originCol, r: ((path[i - 1] / stride) | 0) + layout.originRow } : undefined;
-            next = i + 1 < path.length ? { c: (path[i + 1] % stride) + layout.originCol, r: ((path[i + 1] / stride) | 0) + layout.originRow } : undefined;
+            const prevIdx = i > 0 ? path[i - 1] : undefined;
+            const nextIdx = i + 1 < path.length ? path[i + 1] : undefined;
+            const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, corridorWidth, false, i, path.length, layout);
+            for (let ci = 0; ci < cells.length; ci++) {
+                const idx = cells[ci];
+                if (idx < 0 || idx >= layout.cellCount) continue;
+                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
+                mask[idx] = 1;
+            }
         } else {
-            p = path[i];
-            prev = i > 0 ? path[i - 1] : undefined;
-            next = i + 1 < path.length ? path[i + 1] : undefined;
+            const p = path[i];
+            const prev = i > 0 ? path[i - 1] : undefined;
+            const next = i + 1 < path.length ? path[i + 1] : undefined;
+            const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
+            for (let ci = 0; ci < cells.length; ci++) {
+                if (!layoutContainsAbsCell(layout, cells[ci].c, cells[ci].r)) continue;
+                const idx = layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r);
+                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
+                const local = layoutAbsToLocalCell(layout, cells[ci].c, cells[ci].r);
+                mask[layoutLocalCellIndex(layout, local.col, local.row)] = 1;
+            }
         }
-        const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
-        for (let ci = 0; ci < cells.length; ci++) {
-            if (!layoutContainsAbsCell(layout, cells[ci].c, cells[ci].r)) continue;
-            const idx = layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r);
-            if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
-            const local = layoutAbsToLocalCell(layout, cells[ci].c, cells[ci].r);
-            mask[layoutLocalCellIndex(layout, local.col, local.row)] = 1;
-        }
-    }
 }
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow @param {number} heightLevel @param {number} thicknessLevel */
 export function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, heightLevel, thicknessLevel) {

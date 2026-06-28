@@ -38,5 +38,5 @@ export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
     const graph = createNavGraphView(grid);
     const sides = graph.beltEntryExitIdx(targetIdx);
     if (!sides) return { x: targetX, y: targetY };
-    return floorBeltEntryEdgeWorldPoint(grid, targetCol, targetRow, sides.entrySide);
+    return floorBeltEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
 }

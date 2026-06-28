@@ -54,27 +54,72 @@ export function collectCorridorPathPointCells(p, prev, next, corridorWidth, inte
     cells.push({ c: p.c, r: p.r });
     return cells;
 }
-/** @param {CorridorCell[]} path @param {number} corridorWidth @param {CellIndexLayout} layout @param {{ interiorOnly?: boolean }} [options] */
+/** @param {number} pIdx @param {number | undefined} prevIdx @param {number | undefined} nextIdx @param {number} corridorWidth @param {boolean} interiorOnly @param {number} pathIndex @param {number} pathLength @param {CellIndexLayout} layout */
+export function collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, corridorWidth, interiorOnly, pathIndex, pathLength, layout) {
+    if (interiorOnly && (pathIndex === 0 || pathIndex === pathLength - 1)) return [];
+    const offsets = corridorPerpendicularOffsets(corridorWidth);
+    const stride = layout.strideCols;
+    let alongH = false;
+    let alongV = false;
+    if (prevIdx !== undefined) {
+        const diff = prevIdx - pIdx;
+        if (Math.abs(diff) === 1) alongH = true;
+        else if (Math.abs(diff) === stride) alongV = true;
+    }
+    if (nextIdx !== undefined) {
+        const diff = nextIdx - pIdx;
+        if (Math.abs(diff) === 1) alongH = true;
+        else if (Math.abs(diff) === stride) alongV = true;
+    }
+    /** @type {number[]} */
+    const indices = [];
+    if (alongH && alongV) {
+        /** @type {Set<number>} */
+        const seen = new Set();
+        for (let oi = 0; oi < offsets.length; oi++) {
+            const hIdx = pIdx + offsets[oi] * stride;
+            const vIdx = pIdx + offsets[oi];
+            if (!seen.has(hIdx)) {
+                seen.add(hIdx);
+                indices.push(hIdx);
+            }
+            if (!seen.has(vIdx)) {
+                seen.add(vIdx);
+                indices.push(vIdx);
+            }
+        }
+        return indices;
+    }
+    if (alongH) {
+        for (let oi = 0; oi < offsets.length; oi++) indices.push(pIdx + offsets[oi] * stride);
+        return indices;
+    }
+    if (alongV) {
+        for (let oi = 0; oi < offsets.length; oi++) indices.push(pIdx + offsets[oi]);
+        return indices;
+    }
+    indices.push(pIdx);
+    return indices;
+}
+/** @param {CorridorCell[]|number[]} path @param {number} corridorWidth @param {CellIndexLayout} layout @param {{ interiorOnly?: boolean }} [options] */
 export function corridorPathOccupiedCellIndices(path, corridorWidth, layout, options = {}) {
     const interiorOnly = options.interiorOnly !== false;
     /** @type {Set<number>} */
     const indices = new Set();
-    const stride = layout.strideCols;
-    for (let i = 0; i < path.length; i++) {
-        let p, prev, next;
+    for (let i = 0; i < path.length; i++)
         if (typeof path[i] === "number") {
             const pIdx = path[i];
-            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
-            prev = i > 0 ? { c: (path[i - 1] % stride) + layout.originCol, r: ((path[i - 1] / stride) | 0) + layout.originRow } : undefined;
-            next = i + 1 < path.length ? { c: (path[i + 1] % stride) + layout.originCol, r: ((path[i + 1] / stride) | 0) + layout.originRow } : undefined;
+            const prevIdx = i > 0 ? path[i - 1] : undefined;
+            const nextIdx = i + 1 < path.length ? path[i + 1] : undefined;
+            const ptIndices = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, corridorWidth, interiorOnly, i, path.length, layout);
+            for (let ci = 0; ci < ptIndices.length; ci++) indices.add(ptIndices[ci]);
         } else {
-            p = path[i];
-            prev = i > 0 ? path[i - 1] : undefined;
-            next = i + 1 < path.length ? path[i + 1] : undefined;
+            const p = path[i];
+            const prev = i > 0 ? path[i - 1] : undefined;
+            const next = i + 1 < path.length ? path[i + 1] : undefined;
+            const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, interiorOnly, i, path.length, layout);
+            for (let ci = 0; ci < cells.length; ci++) indices.add(layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r));
         }
-        const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, interiorOnly, i, path.length, layout);
-        for (let ci = 0; ci < cells.length; ci++) indices.add(layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r));
-    }
     return indices;
 }
 /** @param {CorridorCell[]} path @param {number} pathWidth @param {CorridorCell[][]} others @param {number[]} otherWidths @param {CellIndexLayout} layout @param {{ interiorOnly?: boolean }} [options] */

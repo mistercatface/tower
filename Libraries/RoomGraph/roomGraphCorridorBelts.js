@@ -1,6 +1,6 @@
-import { collectCorridorPathPointCells } from "../Pathfinding/Corridor/corridorFootprint.js";
+import { collectCorridorPathPointCells, collectCorridorPathPointIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
-import { gridSideFromCellToNeighbor, resolveRailedBeltFromSides, unrailedBeltKindFromRailed } from "../Spatial/grid/FloorCell.js";
+import { gridSideFromCellToNeighbor, gridSideFromCellIdxToNeighborIdx, resolveRailedBeltFromSides, unrailedBeltKindFromRailed } from "../Spatial/grid/FloorCell.js";
 import { gridSideNeighborCell, layoutAbsCellIndex } from "../Spatial/grid/GridUtils.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
@@ -38,41 +38,59 @@ export function beltsForPathPolyline(path, width, roomFootprintMask, parentAncho
     const collapsed = collapsePathRevisits(path, layout);
     const byCell = new Map();
     const stride = layout.strideCols;
-    for (let i = 0; i < collapsed.length; i++) {
-        let p, prev, next;
+    for (let i = 0; i < collapsed.length; i++)
         if (typeof collapsed[i] === "number") {
             const pIdx = collapsed[i];
-            p = { c: (pIdx % stride) + layout.originCol, r: ((pIdx / stride) | 0) + layout.originRow };
-            prev = i > 0 ? { c: (collapsed[i - 1] % stride) + layout.originCol, r: ((collapsed[i - 1] / stride) | 0) + layout.originRow } : null;
-            next = i < collapsed.length - 1 ? { c: (collapsed[i + 1] % stride) + layout.originCol, r: ((collapsed[i + 1] / stride) | 0) + layout.originRow } : null;
+            const prevIdx = i > 0 ? collapsed[i - 1] : undefined;
+            const nextIdx = i < collapsed.length - 1 ? collapsed[i + 1] : undefined;
+            if (prevIdx !== undefined && pIdx === prevIdx) continue;
+            const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, width, false, i, collapsed.length, layout);
+            let spec;
+            if (prevIdx !== undefined && nextIdx !== undefined) {
+                const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
+                const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
+                spec = resolveRailedBeltFromSides(entrySide, exitSide);
+            } else if (nextIdx !== undefined) {
+                const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
+                const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
+                spec = resolveRailedBeltFromSides(entrySide, exitSide);
+            } else if (prevIdx !== undefined) {
+                const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
+                const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
+                spec = resolveRailedBeltFromSides(entrySide, exitSide);
+            } else spec = resolveRailedBeltFromSides(3, 1);
+            for (let ci = 0; ci < cells.length; ci++) {
+                const idx = cells[ci];
+                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
+                byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
+            }
         } else {
-            p = collapsed[i];
-            prev = i > 0 ? collapsed[i - 1] : null;
-            next = i < collapsed.length - 1 ? collapsed[i + 1] : null;
+            const p = collapsed[i];
+            const prev = i > 0 ? collapsed[i - 1] : null;
+            const next = i < collapsed.length - 1 ? collapsed[i + 1] : null;
+            if (prev && p.c === prev.c && p.r === prev.r) continue;
+            const cells = collectCorridorPathPointCells(p, prev, next, width, false, i, collapsed.length, layout);
+            let spec;
+            if (prev && next) {
+                const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
+                const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
+                spec = resolveRailedBeltFromSides(entrySide, exitSide);
+            } else if (next) {
+                const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
+                const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
+                spec = resolveRailedBeltFromSides(entrySide, exitSide);
+            } else if (prev) {
+                const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
+                const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
+                spec = resolveRailedBeltFromSides(entrySide, exitSide);
+            } else spec = resolveRailedBeltFromSides(3, 1);
+            for (let ci = 0; ci < cells.length; ci++) {
+                const cell = cells[ci];
+                const idx = layoutAbsCellIndex(layout, cell.c, cell.r);
+                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
+                byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
+            }
         }
-        if (prev && p.c === prev.c && p.r === prev.r) continue;
-        const cells = collectCorridorPathPointCells(p, prev, next, width, false, i, collapsed.length, layout);
-        let spec;
-        if (prev && next) {
-            const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
-            const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
-            spec = resolveRailedBeltFromSides(entrySide, exitSide);
-        } else if (next) {
-            const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
-            const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
-            spec = resolveRailedBeltFromSides(entrySide, exitSide);
-        } else if (prev) {
-            const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
-            const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
-            spec = resolveRailedBeltFromSides(entrySide, exitSide);
-        } else spec = resolveRailedBeltFromSides(3, 1);
-        for (let ci = 0; ci < cells.length; ci++) {
-            const cell = cells[ci];
-            const idx = layoutAbsCellIndex(layout, cell.c, cell.r);
-            if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
-            byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
-        }
-    }
     return byCell;
 }
 /**

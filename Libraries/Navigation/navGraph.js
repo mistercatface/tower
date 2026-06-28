@@ -80,13 +80,12 @@ export function validateBeltChain(graph, cellIndices) {
         const facingB = grid.floorStore.facing[b];
         const { exitSide } = floorBeltEntryExitSides(kindA, facingA);
         const { entrySide } = floorBeltEntryExitSides(kindB, facingB);
-        const dc = (b % cols) - (a % cols);
-        const dr = ((b / cols) | 0) - ((a / cols) | 0);
+        const diff = b - a;
         let stepSide = -1;
-        if (dc === 1 && dr === 0) stepSide = 1;
-        else if (dc === -1 && dr === 0) stepSide = 3;
-        else if (dc === 0 && dr === 1) stepSide = 2;
-        else if (dc === 0 && dr === -1) stepSide = 0;
+        if (diff === 1 && (a + 1) % cols !== 0) stepSide = 1;
+        else if (diff === -1 && a % cols !== 0) stepSide = 3;
+        else if (diff === cols) stepSide = 2;
+        else if (diff === -cols) stepSide = 0;
         if (stepSide !== exitSide) return { ok: false, reason: `cell ${i} exit ${exitSide} ≠ step ${stepSide} toward ${i + 1}` };
         const reverseSide = stepSide === 1 ? 3 : stepSide === 3 ? 1 : stepSide === 2 ? 0 : 2;
         if (reverseSide !== entrySide) return { ok: false, reason: `cell ${i + 1} entry ${entrySide} ≠ approach ${reverseSide}` };

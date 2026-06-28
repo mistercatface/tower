@@ -83,6 +83,9 @@ export class SurfaceMaterialStore {
     getEdge(col, row, side, cols) {
         return this.edgeProfileIds.get(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)) ?? null;
     }
+    getEdgeByIdx(idx, side) {
+        return this.edgeProfileIds.get(cellEdgeSlotOffset(idx, side)) ?? null;
+    }
     writeEdgeMirrored(col, row, side, cols, rows, profileId) {
         if (!cellInRect(col, row, cols, rows)) return;
         this.clearEdgeMirrored(col, row, side, cols, rows);
@@ -133,9 +136,8 @@ export function resolveCellSurfaceProfileId(grid, idx, baseProfileId, cellsPerCh
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, baseProfileId, cellsPerChunk, idx);
 }
 export function resolveEdgeSurfaceProfileId(grid, idx, side, baseProfileId, cellsPerChunk = 0) {
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Edge, baseProfileId, cellsPerChunk, col, row, side);
+    const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, idx % grid.cols, (idx / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
+    return grid.surfaceMaterials.getEdgeByIdx(idx, side) ?? chunkBase;
 }
 export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerChunk = 0) {
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, baseProfileId, cellsPerChunk, 0, 0, 0, face);

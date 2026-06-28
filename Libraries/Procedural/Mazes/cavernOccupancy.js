@@ -35,30 +35,28 @@ function carveCavernSouthVent(cells, cols, rows, stripRows) {
                 while (queue.length) {
                     const cur = queue.pop();
                     members.push(cur);
-                    const cr = (cur / cols) | 0;
-                    const cc = cur - cr * cols;
-                    if (cc > 0) {
+                    if (cur % cols > 0) {
                         const left = cur - 1;
                         if (cells[left] === 0 && !seen[left]) {
                             seen[left] = 1;
                             queue.push(left);
                         }
                     }
-                    if (cc + 1 < cols) {
+                    if ((cur + 1) % cols !== 0) {
                         const right = cur + 1;
                         if (cells[right] === 0 && !seen[right]) {
                             seen[right] = 1;
                             queue.push(right);
                         }
                     }
-                    if (cr > 0) {
+                    if (cur >= cols) {
                         const up = cur - cols;
                         if (cells[up] === 0 && !seen[up]) {
                             seen[up] = 1;
                             queue.push(up);
                         }
                     }
-                    if (cr + 1 < rows) {
+                    if (cur < cols * (rows - 1)) {
                         const down = cur + cols;
                         if (cells[down] === 0 && !seen[down]) {
                             seen[down] = 1;
@@ -68,7 +66,7 @@ function carveCavernSouthVent(cells, cols, rows, stripRows) {
                 }
                 let touchesSouth = false;
                 for (let i = 0; i < members.length; i++)
-                    if ((members[i] / cols) | (0 >= startRow)) {
+                    if (members[i] >= startRow * cols) {
                         touchesSouth = true;
                         break;
                     }
@@ -80,7 +78,7 @@ function carveCavernSouthVent(cells, cols, rows, stripRows) {
             if (component.touchesSouth) continue;
             carved = true;
             const targetRow = (component.sample / cols) | 0;
-            const targetCol = component.sample - targetRow * cols;
+            const targetCol = component.sample % cols;
             const exitCol = (cols / 2) | 0;
             const exitRow = rows - depth;
             for (let lc = Math.min(exitCol, targetCol); lc <= Math.max(exitCol, targetCol); lc++) cells[exitRow * cols + lc] = 0;

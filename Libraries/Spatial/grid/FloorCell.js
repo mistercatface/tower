@@ -89,6 +89,15 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     if (dc === 0 && dr === -1) return 0;
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
+/** Neighbor cell side index 0=N,1=E,2=S,3=W from `idx` toward `nIdx`. */
+export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
+    const diff = nIdx - idx;
+    if (diff === 1) return 1;
+    if (diff === -1) return 3;
+    if (diff === cols) return 2;
+    if (diff === -cols) return 0;
+    throw new Error(`gridSideFromCellIdxToNeighborIdx: non-cardinal step index diff ${diff} with cols ${cols}`);
+}
 /** @param {number} entrySide @param {number} exitSide */
 export function resolveRailedBeltFromSides(entrySide, exitSide) {
     /** @type {number[]} */
@@ -111,10 +120,10 @@ export function floorBeltFacingToIndex(facingRadians) {
     const q = quantizeCardinalAngle(facingRadians);
     return Math.round(q / ((Math.PI * 2) / CARDINAL_FACING_STEPS)) % CARDINAL_FACING_STEPS;
 }
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} entrySide */
-export function floorBeltEntryEdgeWorldPoint(grid, col, row, entrySide) {
-    const x = grid.gridCenterX(col);
-    const y = grid.gridCenterY(row);
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} idx @param {number} entrySide */
+export function floorBeltEntryEdgeWorldPoint(grid, idx, entrySide) {
+    const x = grid.gridCenterXByIdx(idx);
+    const y = grid.gridCenterYByIdx(idx);
     const inset = grid.cellSize * 0.35;
     if (entrySide === 0) return { x, y: y - inset };
     if (entrySide === 1) return { x: x + inset, y };
