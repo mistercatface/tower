@@ -591,4 +591,60 @@ describe("flee agent decision model", () => {
 
         assert.ok(ctxClose.candidateScores.shoot_enemy > ctxFar.candidateScores.shoot_enemy, "Closer targets should score higher than far targets");
     });
+
+    it("allows aiming at close range and tolerates temporary line-of-sight loss in integration", async () => {
+        resetKineticConstraintIds(104);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        applySnakeGameConfig();
+
+        const charliePack = spawnGameAgentChain(state, { col: 10, row: 10 }, "flee_agent", { faction: "charlie" });
+        const charlie = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: charliePack.head, spawnGroupId: charliePack.spawnGroupId });
+        charliePack.head.id = 20;
+        registerAgentInstance(snakeGame, "flee_agent", charlie);
+        charlie.start();
+        setAgentHunger(charlie.metabolism, 0.9);
+        charliePack.head.facing = 0;
+
+        const deltaPack = spawnGameAgentChain(state, { col: 11, row: 10 }, "flee_agent", { faction: "delta" });
+        const delta = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: deltaPack.head, spawnGroupId: deltaPack.spawnGroupId });
+        deltaPack.head.id = 10;
+        deltaPack.head.x = charliePack.head.x + 20;
+        registerAgentInstance(snakeGame, "flee_agent", delta);
+        delta.start();
+        setAgentHunger(delta.metabolism, 0.9);
+
+        primeSnakeHeadVision(state, charliePack.head, getSnakeGameConfig().shared.visionRange);
+        primeSnakeHeadVision(state, deltaPack.head, getSnakeGameConfig().shared.visionRange);
+
+        charlie.autosim.tick(16);
+        assert.equal(charlie.intent.getMode(), "shoot_enemy");
+        assert.equal(charlie.combatAction.phase, "reacting");
+
+        let mockFrame = state.nav.observerVisionFrame;
+        if (mockFrame) {
+            mockFrame.isVisible = () => false;
+        }
+        Object.defineProperty(state.nav, "observerVisionFrame", {
+            get() {
+                return mockFrame;
+            },
+            set(val) {
+                mockFrame = val;
+                if (mockFrame) {
+                    mockFrame.isVisible = () => false;
+                }
+            },
+            configurable: true
+        });
+
+        charlie.autosim.tick(100);
+        assert.equal(charlie.combatAction.phase, "reacting", "Aim should not be aborted under 200ms limit");
+
+        charlie.autosim.tick(150);
+        assert.equal(charlie.combatAction.phase, "idle", "Aim should reset to idle after exceeding 200ms limit");
+
+        delete state.nav.observerVisionFrame;
+        state.nav.observerVisionFrame = mockFrame;
+    });
 });
