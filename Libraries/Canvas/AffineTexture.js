@@ -1,35 +1,29 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 const WALL_TEXTURE_SEAM_BLEED_PX = WORLD_SURFACE_DEFAULTS.wallTextureBleedPx;
-const sPoint0 = { x: 0, y: 0 };
-const sPoint1 = { x: 0, y: 0 };
-const sPoint2 = { x: 0, y: 0 };
-const sPoint3 = { x: 0, y: 0 };
-const sDst1 = { x: 0, y: 0 };
-const sDst2 = { x: 0, y: 0 };
-export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
-    let ts0_x = s0.x,
-        ts0_y = s0.y;
-    let ts1_x = s1.x,
-        ts1_y = s1.y;
-    let ts2_x = s2.x,
-        ts2_y = s2.y;
-    const cx = (d0.x + d1.x + d2.x) / 3;
-    const cy = (d0.y + d1.y + d2.y) / 3;
-    let dx = d0.x - cx;
-    let dy = d0.y - cy;
+export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y) {
+    let ts0_x = s0x;
+    let ts0_y = s0y;
+    let ts1_x = s1x;
+    let ts1_y = s1y;
+    let ts2_x = s2x;
+    let ts2_y = s2y;
+    const cx = (d0x + d1x + d2x) / 3;
+    const cy = (d0y + d1y + d2y) / 3;
+    let dx = d0x - cx;
+    let dy = d0y - cy;
     let len = Math.hypot(dx, dy) || 1;
-    let r0_x = d0.x + (dx / len) * WALL_TEXTURE_SEAM_BLEED_PX;
-    let r0_y = d0.y + (dy / len) * WALL_TEXTURE_SEAM_BLEED_PX;
-    dx = d1.x - cx;
-    dy = d1.y - cy;
+    let r0_x = d0x + (dx / len) * WALL_TEXTURE_SEAM_BLEED_PX;
+    let r0_y = d0y + (dy / len) * WALL_TEXTURE_SEAM_BLEED_PX;
+    dx = d1x - cx;
+    dy = d1y - cy;
     len = Math.hypot(dx, dy) || 1;
-    let r1_x = d1.x + (dx / len) * WALL_TEXTURE_SEAM_BLEED_PX;
-    let r1_y = d1.y + (dy / len) * WALL_TEXTURE_SEAM_BLEED_PX;
-    dx = d2.x - cx;
-    dy = d2.y - cy;
+    let r1_x = d1x + (dx / len) * WALL_TEXTURE_SEAM_BLEED_PX;
+    let r1_y = d1y + (dy / len) * WALL_TEXTURE_SEAM_BLEED_PX;
+    dx = d2x - cx;
+    dy = d2y - cy;
     len = Math.hypot(dx, dy) || 1;
-    let r2_x = d2.x + (dx / len) * WALL_TEXTURE_SEAM_BLEED_PX;
-    let r2_y = d2.y + (dy / len) * WALL_TEXTURE_SEAM_BLEED_PX;
+    let r2_x = d2x + (dx / len) * WALL_TEXTURE_SEAM_BLEED_PX;
+    let r2_y = d2y + (dy / len) * WALL_TEXTURE_SEAM_BLEED_PX;
     let denom = ts0_x * (ts1_y - ts2_y) + ts1_x * (ts2_y - ts0_y) + ts2_x * (ts0_y - ts1_y);
     if (Math.abs(denom) < 0.001) return;
     if (denom < 0) {
@@ -69,58 +63,43 @@ export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
     ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
     ctx.setTransform(currentTransform);
 }
+export function drawImageTriangle(ctx, img, s0, s1, s2, d0, d1, d2) {
+    drawImageTriangleScalars(ctx, img, s0.x, s0.y, s1.x, s1.y, s2.x, s2.y, d0.x, d0.y, d1.x, d1.y, d2.x, d2.y);
+}
 export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
-    sPoint0.x = srcFlat[i0 * 2];
-    sPoint0.y = srcFlat[i0 * 2 + 1];
-    sPoint1.x = srcFlat[i1 * 2];
-    sPoint1.y = srcFlat[i1 * 2 + 1];
-    sPoint2.x = srcFlat[i2 * 2];
-    sPoint2.y = srcFlat[i2 * 2 + 1];
-    sPoint3.x = dstFlat[i0 * 2];
-    sPoint3.y = dstFlat[i0 * 2 + 1];
-    sDst1.x = dstFlat[i1 * 2];
-    sDst1.y = dstFlat[i1 * 2 + 1];
-    sDst2.x = dstFlat[i2 * 2];
-    sDst2.y = dstFlat[i2 * 2 + 1];
-    drawImageTriangle(ctx, img, sPoint0, sPoint1, sPoint2, sPoint3, sDst1, sDst2);
+    drawImageTriangleScalars(
+        ctx,
+        img,
+        srcFlat[i0 * 2],
+        srcFlat[i0 * 2 + 1],
+        srcFlat[i1 * 2],
+        srcFlat[i1 * 2 + 1],
+        srcFlat[i2 * 2],
+        srcFlat[i2 * 2 + 1],
+        dstFlat[i0 * 2],
+        dstFlat[i0 * 2 + 1],
+        dstFlat[i1 * 2],
+        dstFlat[i1 * 2 + 1],
+        dstFlat[i2 * 2],
+        dstFlat[i2 * 2 + 1],
+    );
+}
+function drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y) {
+    const diag02 = (d2x - d0x) ** 2 + (d2y - d0y) ** 2;
+    const diag13 = (d3x - d1x) ** 2 + (d3y - d1y) ** 2;
+    if (diag13 < diag02) {
+        drawImageTriangleScalars(ctx, img, sx0, sy0, sx1, sy0, sx0, sy1, d0x, d0y, d1x, d1y, d3x, d3y);
+        drawImageTriangleScalars(ctx, img, sx1, sy0, sx1, sy1, sx0, sy1, d1x, d1y, d2x, d2y, d3x, d3y);
+        return;
+    }
+    drawImageTriangleScalars(ctx, img, sx0, sy0, sx1, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y);
+    drawImageTriangleScalars(ctx, img, sx0, sy0, sx1, sy1, sx0, sy1, d0x, d0y, d2x, d2y, d3x, d3y);
 }
 export function drawImageQuadFromFlatRings(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
-    sPoint0.x = baseRing[ai];
-    sPoint0.y = baseRing[ai + 1];
-    sPoint1.x = baseRing[bi];
-    sPoint1.y = baseRing[bi + 1];
-    sPoint2.x = topRing[bi];
-    sPoint2.y = topRing[bi + 1];
-    sPoint3.x = topRing[ai];
-    sPoint3.y = topRing[ai + 1];
-    drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, sPoint0, sPoint1, sPoint2, sPoint3);
+    drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, baseRing[ai], baseRing[ai + 1], baseRing[bi], baseRing[bi + 1], topRing[bi], topRing[bi + 1], topRing[ai], topRing[ai + 1]);
 }
 export function drawImageQuad(ctx, img, sx0, sy0, sx1, sy1, d0, d1, d2, d3) {
-    const diag02 = (d2.x - d0.x) ** 2 + (d2.y - d0.y) ** 2;
-    const diag13 = (d3.x - d1.x) ** 2 + (d3.y - d1.y) ** 2;
-    if (diag13 < diag02) {
-        sPoint0.x = sx0;
-        sPoint0.y = sy0;
-        sPoint1.x = sx1;
-        sPoint1.y = sy0;
-        sPoint2.x = sx0;
-        sPoint2.y = sy1;
-        sPoint3.x = sx1;
-        sPoint3.y = sy1;
-        drawImageTriangle(ctx, img, sPoint0, sPoint1, sPoint2, d0, d1, d3);
-        drawImageTriangle(ctx, img, sPoint1, sPoint3, sPoint2, d1, d2, d3);
-        return;
-    }
-    sPoint0.x = sx0;
-    sPoint0.y = sy0;
-    sPoint1.x = sx1;
-    sPoint1.y = sy0;
-    sPoint2.x = sx1;
-    sPoint2.y = sy1;
-    sPoint3.x = sx0;
-    sPoint3.y = sy1;
-    drawImageTriangle(ctx, img, sPoint0, sPoint1, sPoint2, d0, d1, d2);
-    drawImageTriangle(ctx, img, sPoint0, sPoint2, sPoint3, d0, d2, d3);
+    drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0.x, d0.y, d1.x, d1.y, d2.x, d2.y, d3.x, d3.y);
 }
