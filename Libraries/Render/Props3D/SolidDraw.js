@@ -283,7 +283,7 @@ export function drawFlatWallChunkProp(ctx, prop) {
     const parts = getEntityCollisionParts(prop);
     if (parts.length !== 1) return false;
     const verts = parts[0].vertices;
-    if (!verts || verts.length < 3) return false;
+    if (!verts || verts.length < 6) return false;
     drawFlatWallChunkCap(ctx, prop, verts);
     return true;
 }

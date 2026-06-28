@@ -1,7 +1,7 @@
 import { CircleShape, PolygonShape } from "../collision/Shapes.js";
 import { SatCollision, entityFacing } from "../collision/SatCollision.js";
 import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { boxLocalFootprint, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
+import { boxLocalFootprint, convexFootprintHalfExtents, vertCount } from "../../Math/Poly2D.js";
 import { kineticNeighborQueryPad } from "../collision/entityBroadphase.js";
 import { stepCardinalFacing } from "../../Math/Angle.js";
 import { snapWorldToObstacleCellCenter } from "../grid/GridCoords.js";
@@ -30,7 +30,7 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
 }
 export function syncFloorPropCollisionShape(prop) {
     const footprint = prop.strategy.localFootprint;
-    if (footprint?.length >= 3) prop.shape = new PolygonShape(footprint);
+    if (footprint && vertCount(footprint) >= 3) prop.shape = new PolygonShape(footprint);
     else {
         const radius = prop.radius ?? prop.strategy.radius ?? 0;
         prop.shape = new CircleShape(radius);

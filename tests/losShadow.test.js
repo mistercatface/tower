@@ -7,6 +7,7 @@ import { collectRailWallShadowEdgesInAabb } from "../Libraries/Render/losShadow/
 import { collectExposedWallEdges, collectExposedWallEdgesInAabb } from "../Libraries/Spatial/grid/gridCellTopology.js";
 import { projectWorldPointToScreenInto } from "../Libraries/Spatial/elevation/RadialElevationProjection.js";
 import { projectWallShadowQuadScreenInto, shadowGroundContactXY } from "../Libraries/Spatial/elevation/shadowProjection.js";
+import { EdgeList } from "../Libraries/Render/losShadow/EdgeList.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
@@ -95,7 +96,7 @@ describe("collectExposedWallEdges", () => {
     it("isolates a single wall cell to four exposed edges", () => {
         const grid = makeTestObstacleGrid(8, 8);
         stampWallRect(grid, 0, 0, 1, 1);
-        const edges = [];
+        const edges = new EdgeList();
         collectExposedWallEdges(grid, edges);
         assert.equal(edges.length, 4);
     });
@@ -199,5 +200,41 @@ describe("losShadow render gate", () => {
             ctx.ops.some((o) => o.op === "drawImage"),
             false,
         );
+    });
+});
+describe("EdgeList (reusable edge pooling)", () => {
+    it("pools and reuses objects to prevent per-frame garbage collection", () => {
+        const pool = new EdgeList();
+        assert.equal(pool.length, 0);
+        
+        // Collect first time
+        pool.add(1, 2, 3, 4, 1, 0, 10);
+        pool.add(5, 6, 7, 8, 0, 1, 12);
+        assert.equal(pool.length, 2);
+        assert.equal(pool.edges[0].x1, 1);
+        assert.equal(pool.edges[1].wallTopZ, 12);
+        
+        const firstEdge0 = pool.edges[0];
+        const firstEdge1 = pool.edges[1];
+        
+        // Reset pool
+        pool.clear();
+        assert.equal(pool.length, 0);
+        
+        // Collect second time (should reuse same objects in-place)
+        pool.add(10, 20, 30, 40, -1, 0, 20);
+        pool.add(50, 60, 70, 80, 0, -1, 24);
+        assert.equal(pool.length, 2);
+        
+        // Assert that the array has not grown beyond size 2
+        assert.equal(pool.edges.length, 2);
+        
+        // Assert object identity matches the first allocation (pooling worked!)
+        assert.equal(pool.edges[0], firstEdge0);
+        assert.equal(pool.edges[1], firstEdge1);
+        
+        // Assert values are updated correctly
+        assert.equal(pool.edges[0].x1, 10);
+        assert.equal(pool.edges[1].wallTopZ, 24);
     });
 });

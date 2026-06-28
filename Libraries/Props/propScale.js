@@ -2,6 +2,7 @@ import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { kineticMassFromFootprint, syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
+import { scaleFlatVerts } from "../Math/Poly2D.js";
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
@@ -11,17 +12,11 @@ export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;
     if (shape?.type !== "Polygon") throw new Error(`scalePolygonPropFootprint requires a polygon prop, got ${shape?.type ?? "none"}`);
-    const count = shape.vertices.length;
-    const scaled = new Float32Array(count);
-    for (let i = 0; i < count; i++) scaled[i] = shape.vertices[i] * scale;
+    const scaled = new Float32Array(shape.vertices);
+    scaleFlatVerts(scaled, scale);
     prop.shape = new PolygonShape(scaled);
     prop.radius = prop.shape.getBoundingRadius();
-    if (prop.strategy?.localFootprint)
-        if (typeof prop.strategy.localFootprint[0] === "number") {
-            const scaledFootprint = new Float32Array(prop.strategy.localFootprint.length);
-            for (let i = 0; i < prop.strategy.localFootprint.length; i++) scaledFootprint[i] = prop.strategy.localFootprint[i] * scale;
-            prop.strategy.localFootprint = scaledFootprint;
-        } else if (prop.strategy.localFootprint.length >= 3) prop.strategy.localFootprint = prop.strategy.localFootprint.map((v) => ({ x: v.x * scale, y: v.y * scale }));
+    if (prop.strategy?.localFootprint) scaleFlatVerts(prop.strategy.localFootprint, scale);
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
     invalidateBroadphaseBounds(prop);

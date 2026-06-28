@@ -1,6 +1,6 @@
 import { propQuantizeSteps } from "./propRenderDefaults.js";
 import { initFractureFootprint } from "./propFracture.js";
-import { boxLocalFootprint, convexFootprintHalfExtents, ensureFlatVerts } from "../Math/Poly2D.js";
+import { boxLocalFootprint, convexFootprintHalfExtents, ensureFlatVerts, vertCount } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
@@ -35,7 +35,7 @@ export function initWorldPropShape(prop) {
         return;
     }
     const footprint = prop.strategy.localFootprint;
-    if (footprint?.length >= 3) {
+    if (footprint && vertCount(footprint) >= 3) {
         prop.shape = new PolygonShape(footprint);
         prop.radius = prop.shape.getBoundingRadius();
         if (prop.strategy.fracture && prop.strategy.fractureMode !== "glass") initFractureFootprint(prop);
@@ -128,10 +128,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
 export function applyCrossPinwheelFootprint(prop, length, thickness) {
     const halfL = length / 2;
     const halfT = thickness / 2;
-    prop.collisionParts = [
-        new PolygonShape(new Float32Array([-halfL, -halfT, halfL, -halfT, halfL, halfT, -halfL, halfT])),
-        new PolygonShape(new Float32Array([-halfT, -halfL, halfT, -halfL, halfT, halfL, -halfT, halfL])),
-    ];
+    prop.collisionParts = [new PolygonShape(boxLocalFootprint(halfL, halfT)), new PolygonShape(boxLocalFootprint(halfT, halfL))];
     prop.shape = prop.collisionParts[0];
     prop.radius = Math.hypot(halfL, halfT);
     prop.crossLength = length;
