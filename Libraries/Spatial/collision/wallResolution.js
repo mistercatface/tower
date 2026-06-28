@@ -87,12 +87,7 @@ export function ensureWallSegmentPolygonShape(segment) {
     if (!segment.shape) {
         const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
         const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
-        segment.shape = new PolygonShape([
-            { x: -halfX, y: -halfY },
-            { x: halfX, y: -halfY },
-            { x: halfX, y: halfY },
-            { x: -halfX, y: halfY },
-        ]);
+        segment.shape = new PolygonShape(new Float32Array([-halfX, -halfY, halfX, -halfY, halfX, halfY, -halfX, halfY]));
     }
     return segment.shape;
 }

@@ -42,13 +42,7 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     return Boolean(prop.chunks && prop.chunks.length > 1);
 }
 function flatVertsFromShape(prop) {
-    const shape = prop.shape;
-    const flat = new Float32Array(shape.vertices.length * 2);
-    for (let i = 0; i < shape.vertices.length; i++) {
-        flat[i * 2] = shape.vertices[i].x;
-        flat[i * 2 + 1] = shape.vertices[i].y;
-    }
-    return flat;
+    return prop.shape.vertices;
 }
 export function initFractureFootprint(prop) {
     if (isGlassFracture(prop)) return;
@@ -59,10 +53,7 @@ function applyFractureGeometryToProp(prop, geometry) {
     prop.footprintVertices = geometry.footprintVertices;
     prop.footprintArea = geometry.footprintArea;
     prop.radius = geometry.boundingRadius;
-    const count = geometry.footprintVertices.length / 2;
-    const verts = [];
-    for (let i = 0; i < count; i++) verts.push({ x: geometry.footprintVertices[i * 2], y: geometry.footprintVertices[i * 2 + 1] });
-    prop.shape = new PolygonShape(verts);
+    prop.shape = new PolygonShape(geometry.footprintVertices);
     prop.chunks = undefined;
     prop.collisionParts = undefined;
     invalidateBroadphaseBounds(prop);
@@ -102,17 +93,18 @@ export function buildCircleImpactShards(radius, localHit, impactForce, { minShar
     const apex = { x: localHit.x * inset, y: localHit.y * inset };
     const start = Math.atan2(localHit.y, localHit.x) - Math.PI / count;
     const polySides = 16;
-    const parentPoints = [];
+    const parentPoints = new Float32Array(polySides * 2);
     for (let i = 0; i < polySides; i++) {
         const angle = (i * Math.PI * 2) / polySides;
-        parentPoints.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
+        parentPoints[i * 2] = Math.cos(angle) * radius;
+        parentPoints[i * 2 + 1] = Math.sin(angle) * radius;
     }
     const shards = [];
     for (let i = 0; i < count; i++) {
         const a0 = start + (i * Math.PI * 2) / count;
         const a1 = start + ((i + 1) * Math.PI * 2) / count;
         const poly = wedgePolygonIntersection(parentPoints, apex.x, apex.y, a0, a1);
-        if (poly.length >= 3) shards.push(buildShardGeometry(poly));
+        if (poly.length >= 6) shards.push(buildShardGeometry(poly));
     }
     return shards;
 }

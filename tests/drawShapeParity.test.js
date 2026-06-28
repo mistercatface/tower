@@ -37,7 +37,7 @@ describe("draw shape parity", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
         const shape = prop.shape;
         assert.equal(shape.type, "Polygon");
-        assert.equal(shape.vertices.length, 6);
+        assert.equal(shape.vertices.length / 2, 6);
         assert.ok(Math.abs(polygonSignedArea2D(shape.vertices)) > 160);
         assert.equal(kineticFootprintArea(prop), Math.abs(polygonSignedArea2D(shape.vertices)));
     });
@@ -59,8 +59,8 @@ describe("draw shape parity", () => {
     it("sprite bake stage passes live polygon verts to draw", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
         const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX: 50, anchorY: 50 });
-        assert.equal(stageProp.shape.vertices.length, 6);
-        assert.equal(stageProp.shape.vertices[0].x, prop.shape.vertices[0].x);
+        assert.equal(stageProp.shape.vertices.length / 2, 6);
+        assert.equal(stageProp.shape.vertices[0], prop.shape.vertices[0]);
         assert.equal(stageProp.halfExtents.x, propFootprintHalfExtents(prop).x);
     });
     it("polygon primitive extrudes live shape without a parallel rect path", () => {
@@ -75,8 +75,8 @@ describe("draw shape parity", () => {
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
         draw(createMockCtx(), prop, viewport);
-        assert.equal(prop.shape.vertices[1].x, 12);
-        assert.equal(prop.shape.vertices[2].y, 5);
+        assert.equal(prop.shape.vertices[2], 12);
+        assert.equal(prop.shape.vertices[5], 5);
     });
     it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
         const prop = new WorldProp(0, 0, "ball", 0);

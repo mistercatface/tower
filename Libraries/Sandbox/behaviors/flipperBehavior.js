@@ -75,13 +75,7 @@ export function syncFlipperCollisionShape(prop) {
     const key = `flip_${spec.side}_${angle.toFixed(3)}_${length}_${halfW}`;
     if (prop._flipperShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
     const tipR = Math.max(1, halfW * 0.45);
-    prop.shape = new PolygonShape([
-        { x: 0, y: -halfW },
-        { x: (length - tipR) * extendDir, y: -tipR },
-        { x: length * extendDir, y: 0 },
-        { x: (length - tipR) * extendDir, y: tipR },
-        { x: 0, y: halfW },
-    ]);
+    prop.shape = new PolygonShape(new Float32Array([0, -halfW, (length - tipR) * extendDir, -tipR, length * extendDir, 0, (length - tipR) * extendDir, tipR, 0, halfW]));
     prop._collisionFacing = angle;
     prop._flipperShapeKey = key;
     return prop.shape;

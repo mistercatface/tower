@@ -56,7 +56,10 @@ function scaleVirtualPropShape(prop, scale) {
         return;
     }
     if (shape?.type === "Polygon") {
-        prop.shape = new PolygonShape(shape.vertices.map((v) => ({ x: v.x * scale, y: v.y * scale })));
+        const count = shape.vertices.length;
+        const scaled = new Float32Array(count);
+        for (let i = 0; i < count; i++) scaled[i] = shape.vertices[i] * scale;
+        prop.shape = new PolygonShape(scaled);
         prop.radius = prop.shape.getBoundingRadius();
         if (prop.height != null) prop.height *= scale;
     }

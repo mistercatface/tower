@@ -6,9 +6,9 @@ describe("tri wedge prop", () => {
         const prop = new WorldProp(0, 0, "tri_wedge", 0);
         const shape = prop.shape;
         assert.equal(shape.type, "Polygon");
-        assert.equal(shape.vertices.length, 3);
-        assert.ok(shape.vertices[0].x < 0);
-        assert.ok(shape.vertices[2].y > 0);
+        assert.equal(shape.vertices.length / 2, 3);
+        assert.ok(shape.vertices[0] < 0);
+        assert.ok(shape.vertices[5] > 0);
     });
     it("uses bounding radius for broadphase", () => {
         const prop = new WorldProp(0, 0, "tri_wedge", 0);

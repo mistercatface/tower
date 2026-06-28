@@ -259,13 +259,13 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing
     const sin = Math.sin(angle);
     const px = prop.x;
     const py = prop.y;
-    const count = localVerts.length;
+    const count = localVerts.length / 2;
     if (count < 3) return;
     const worldCorners = [];
     const srcCorners = [];
     for (let i = 0; i < count; i++) {
-        const lx = localVerts[i].x;
-        const ly = localVerts[i].y;
+        const lx = localVerts[i * 2];
+        const ly = localVerts[i * 2 + 1];
         worldCorners.push({ x: px + lx * cos - ly * sin, y: py + lx * sin + ly * cos });
         const rx = lx * cos - ly * sin;
         const ry = lx * sin + ly * cos;

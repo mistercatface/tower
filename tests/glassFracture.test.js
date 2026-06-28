@@ -18,10 +18,14 @@ function shardWorldBody(originX, originY, facing, geom) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const world = transformPoint2DInto({ x: 0, y: 0 }, originX, originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-    const verts = [];
     const flat = geom.footprintVertices;
-    for (let i = 0; i < flat.length / 2; i++) {
-        verts.push(transformPoint2DInto({ x: 0, y: 0 }, world.x, world.y, flat[i * 2], flat[i * 2 + 1], cos, sin));
+    const count = flat.length;
+    const verts = new Float32Array(count);
+    const outPoint = { x: 0, y: 0 };
+    for (let i = 0; i < count; i += 2) {
+        transformPoint2DInto(outPoint, world.x, world.y, flat[i], flat[i + 1], cos, sin);
+        verts[i] = outPoint.x;
+        verts[i + 1] = outPoint.y;
     }
     return { x: world.x, y: world.y, facing, verts };
 }
@@ -81,7 +85,7 @@ describe("glass fracture", () => {
     it("glass pane init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         assert.equal(prop.poxels, undefined);
-        assert.equal(prop.shape.vertices.length, 4);
+        assert.equal(prop.shape.vertices.length / 2, 4);
         assert.ok(canFracturePropSplit(prop));
     });
 
@@ -167,12 +171,12 @@ describe("glass fracture", () => {
     });
 
     it("128x128 min shard area scales with pane size", () => {
-        const minArea = minShardAreaForPolygon([
-            { x: -64, y: -64 },
-            { x: 64, y: -64 },
-            { x: 64, y: 64 },
-            { x: -64, y: 64 },
-        ]);
+        const minArea = minShardAreaForPolygon(new Float32Array([
+            -64, -64,
+            64, -64,
+            64, 64,
+            -64, 64,
+        ]));
         assert.ok(minArea > 900);
         const shards = shatterGlassFootprint(64, 64, 0, 0, 25, deterministicRandom);
         const largest = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));

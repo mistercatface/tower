@@ -33,7 +33,7 @@ describe("chunk fracture", () => {
         const frag = buildGeometryFromChunkParts(subset);
         assert.ok(frag.collisionParts.length >= 1);
         assert.equal(frag.collisionParts[0].type, "Polygon");
-        assert.equal(frag.collisionParts[0].vertices.length, 4);
+        assert.equal(frag.collisionParts[0].vertices.length / 2, 4);
     });
     it("splitPoxels breaks chunk connectivity on a strong center hit", () => {
         const geom = bakeChunkOutline(localBoxOutline(8, 8));

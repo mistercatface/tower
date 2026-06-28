@@ -5,18 +5,18 @@ import { inverseMassFromBody, kineticDensity, kineticFootprintArea, kineticInert
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
-        const smallVerts = [
-            { x: -8, y: -8 },
-            { x: 8, y: -8 },
-            { x: 8, y: 8 },
-            { x: -8, y: 8 },
-        ];
-        const largeVerts = [
-            { x: -16, y: -16 },
-            { x: 16, y: -16 },
-            { x: 16, y: 16 },
-            { x: -16, y: 16 },
-        ];
+        const smallVerts = new Float32Array([
+            -8, -8,
+            8, -8,
+            8, 8,
+            -8, 8,
+        ]);
+        const largeVerts = new Float32Array([
+            -16, -16,
+            16, -16,
+            16, 16,
+            -16, 16,
+        ]);
         const small = { strategy: {}, shape: { type: "Polygon", vertices: smallVerts } };
         const large = { strategy: {}, shape: { type: "Polygon", vertices: largeVerts } };
         syncKineticRigidBody(small);
@@ -30,12 +30,12 @@ describe("bodyMass", () => {
             footprintArea: 100,
             shape: {
                 type: "Polygon",
-                vertices: [
-                    { x: -10, y: -10 },
-                    { x: 10, y: -10 },
-                    { x: 10, y: 10 },
-                    { x: -10, y: 10 },
-                ],
+                vertices: new Float32Array([
+                    -10, -10,
+                    10, -10,
+                    10, 10,
+                    -10, 10,
+                ]),
             },
         };
         assert.equal(kineticFootprintArea(body), 100);
@@ -47,12 +47,12 @@ describe("bodyMass", () => {
         assert.ok(Math.abs(body.mass - 0.01 * Math.PI * 100) < 1e-6);
     });
     it("kineticFootprintArea uses polygon vertices when present", () => {
-        const boxVerts = [
-            { x: -16, y: -8 },
-            { x: 16, y: -8 },
-            { x: 16, y: 8 },
-            { x: -16, y: 8 },
-        ];
+        const boxVerts = new Float32Array([
+            -16, -8,
+            16, -8,
+            16, 8,
+            -16, 8,
+        ]);
         const body = { shape: { type: "Polygon", vertices: boxVerts } };
         assert.equal(kineticFootprintArea(body), 512);
         assert.equal(kineticMassFromFootprint(body), 3);
@@ -60,12 +60,12 @@ describe("bodyMass", () => {
     it("rectangle polygon inertia matches thin plate formula", () => {
         const w = 32;
         const h = 16;
-        const verts = [
-            { x: -w / 2, y: -h / 2 },
-            { x: w / 2, y: -h / 2 },
-            { x: w / 2, y: h / 2 },
-            { x: -w / 2, y: h / 2 },
-        ];
+        const verts = new Float32Array([
+            -w / 2, -h / 2,
+            w / 2, -h / 2,
+            w / 2, h / 2,
+            -w / 2, h / 2,
+        ]);
         const area = Math.abs(polygonSignedArea2D(verts));
         const inertiaFactor = polygonSecondMomentAboutCentroid2D(verts) / area;
         const body = { mass: 2, shape: { type: "Polygon", vertices: verts } };

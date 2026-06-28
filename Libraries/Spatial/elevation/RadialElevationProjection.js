@@ -86,29 +86,37 @@ export function extrudeBox(projection, halfSize, angle = 0) {
     const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
     const topHx = scaleAtHeight(hx, alpha, 1);
     const topHy = scaleAtHeight(hy, alpha, 1);
-    const baseCorners = rectCorners(cx, cy, { x: hx, y: hy }, angle);
-    const topCorners = rectCorners(topX, topY, { x: topHx, y: topHy }, angle);
-    return {
-        halfSize: { x: hx, y: hy },
-        topHalfSize: { x: topHx, y: topHy },
-        baseCorners,
-        topCorners,
-        faces: baseCorners.map((_, i) => {
-            const next = (i + 1) % 4;
-            return { baseA: baseCorners[i], baseB: baseCorners[next], topA: topCorners[i], topB: topCorners[next] };
-        }),
-    };
+    const baseCornersFlat = rectCorners(cx, cy, { x: hx, y: hy }, angle);
+    const topCornersFlat = rectCorners(topX, topY, { x: topHx, y: topHy }, angle);
+    const baseCorners = [
+        { x: baseCornersFlat[0], y: baseCornersFlat[1] },
+        { x: baseCornersFlat[2], y: baseCornersFlat[3] },
+        { x: baseCornersFlat[4], y: baseCornersFlat[5] },
+        { x: baseCornersFlat[6], y: baseCornersFlat[7] },
+    ];
+    const topCorners = [
+        { x: topCornersFlat[0], y: topCornersFlat[1] },
+        { x: topCornersFlat[2], y: topCornersFlat[3] },
+        { x: topCornersFlat[4], y: topCornersFlat[5] },
+        { x: topCornersFlat[6], y: topCornersFlat[7] },
+    ];
+    const faces = new Array(4);
+    for (let i = 0; i < 4; i++) {
+        const next = (i + 1) % 4;
+        faces[i] = { baseA: baseCorners[i], baseB: baseCorners[next], topA: topCorners[i], topB: topCorners[next] };
+    }
+    return { halfSize: { x: hx, y: hy }, topHalfSize: { x: topHx, y: topHy }, baseCorners, topCorners, faces };
 }
 export function extrudeConvexFootprint(projection, localVerts, angle = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    const count = localVerts.length;
+    const count = localVerts.length / 2;
     const baseCorners = new Array(count);
     const topCorners = new Array(count);
     for (let i = 0; i < count; i++) {
-        const lx = localVerts[i].x;
-        const ly = localVerts[i].y;
+        const lx = localVerts[i * 2];
+        const ly = localVerts[i * 2 + 1];
         const topLx = scaleAtHeight(lx, alpha, 1);
         const topLy = scaleAtHeight(ly, alpha, 1);
         baseCorners[i] = { x: cx + lx * cos - ly * sin, y: cy + lx * sin + ly * cos };

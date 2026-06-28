@@ -33,10 +33,13 @@ function worldPropFootprintInto(out, prop, shape) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const verts = shape.vertices;
-    out.length = verts.length;
-    for (let i = 0; i < verts.length; i++) {
-        if (!out[i]) out[i] = { x: 0, y: 0 };
-        transformPoint2DInto(out[i], prop.x, prop.y, verts[i].x, verts[i].y, cos, sin);
+    const count = verts.length;
+    out.length = count;
+    for (let i = 0; i < count; i += 2) {
+        const lx = verts[i];
+        const ly = verts[i + 1];
+        out[i] = prop.x + lx * cos - ly * sin;
+        out[i + 1] = prop.y + lx * sin + ly * cos;
     }
     return out;
 }
@@ -57,10 +60,13 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
             if (pointInPolygon(worldX, worldY, worldPoly)) return true;
             if (padding <= 0) continue;
             const padSq = padding * padding;
-            for (let i = 0, j = worldPoly.length - 1; i < worldPoly.length; j = i++) {
-                const a = worldPoly[j];
-                const b = worldPoly[i];
-                if (distanceSqToLineSegment(worldX, worldY, a.x, a.y, b.x, b.y) <= padSq) return true;
+            const count = worldPoly.length / 2;
+            for (let i = 0, j = count - 1; i < count; j = i++) {
+                const ax = worldPoly[j * 2];
+                const ay = worldPoly[j * 2 + 1];
+                const bx = worldPoly[i * 2];
+                const by = worldPoly[i * 2 + 1];
+                if (distanceSqToLineSegment(worldX, worldY, ax, ay, bx, by) <= padSq) return true;
             }
         }
     }

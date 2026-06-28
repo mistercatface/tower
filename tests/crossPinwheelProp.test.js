@@ -94,10 +94,10 @@ describe("cross pinwheel prop", () => {
 
         // Vertices of the horizontal bar (part 0) should be sized to 48x10
         const part0 = pinwheel.collisionParts[0];
-        assert.equal(part0.vertices[0].x, -24);
-        assert.equal(part0.vertices[0].y, -5);
-        assert.equal(part0.vertices[2].x, 24);
-        assert.equal(part0.vertices[2].y, 5);
+        assert.equal(part0.vertices[0], -24);
+        assert.equal(part0.vertices[1], -5);
+        assert.equal(part0.vertices[4], 24);
+        assert.equal(part0.vertices[5], 5);
 
         // Combined area should be 2 * (48 * 10) = 960
         assert.equal(kineticFootprintArea(pinwheel), 960);

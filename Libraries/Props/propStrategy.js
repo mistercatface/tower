@@ -24,7 +24,18 @@ export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
             if (typeof part.getBoundingRadius === "function") return part;
-            if (part.type === "Polygon") return new PolygonShape(part.vertices.map((v) => ({ x: v.x, y: v.y })));
+            if (part.type === "Polygon") {
+                let flat;
+                if (typeof part.vertices[0] === "number") flat = part.vertices instanceof Float32Array ? part.vertices : new Float32Array(part.vertices);
+                else {
+                    flat = new Float32Array(part.vertices.length * 2);
+                    for (let i = 0; i < part.vertices.length; i++) {
+                        flat[i * 2] = part.vertices[i].x;
+                        flat[i * 2 + 1] = part.vertices[i].y;
+                    }
+                }
+                return new PolygonShape(flat);
+            }
             if (part.type === "Circle") return new CircleShape(part.radius);
             throw new Error(`Unknown collision part type: ${part.type}`);
         });
@@ -36,8 +47,16 @@ export function initWorldPropShape(prop) {
     }
     const footprint = prop.strategy.localFootprint;
     if (footprint?.length >= 3) {
-        const verts = footprint.map((v) => ({ x: v.x, y: v.y }));
-        prop.shape = new PolygonShape(verts);
+        let flat;
+        if (typeof footprint[0] === "number") flat = footprint instanceof Float32Array ? footprint : new Float32Array(footprint);
+        else {
+            flat = new Float32Array(footprint.length * 2);
+            for (let i = 0; i < footprint.length; i++) {
+                flat[i * 2] = footprint[i].x;
+                flat[i * 2 + 1] = footprint[i].y;
+            }
+        }
+        prop.shape = new PolygonShape(flat);
         prop.radius = prop.shape.getBoundingRadius();
         if (prop.strategy.fracture && prop.strategy.fractureMode !== "glass") initFractureFootprint(prop);
         return;
@@ -54,7 +73,10 @@ export function propFootprintHalfExtents(prop) {
 function propShapeFootprintKey(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") {
-        let key = shape.vertices.map((v) => `${Math.round(v.x)},${Math.round(v.y)}`).join("_");
+        const count = shape.vertices.length / 2;
+        const parts = [];
+        for (let i = 0; i < count; i++) parts.push(`${Math.round(shape.vertices[i * 2])},${Math.round(shape.vertices[i * 2 + 1])}`);
+        let key = parts.join("_");
         if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;
         return key;
     }
@@ -121,18 +143,8 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     const halfL = length / 2;
     const halfT = thickness / 2;
     prop.collisionParts = [
-        new PolygonShape([
-            { x: -halfL, y: -halfT },
-            { x: halfL, y: -halfT },
-            { x: halfL, y: halfT },
-            { x: -halfL, y: halfT },
-        ]),
-        new PolygonShape([
-            { x: -halfT, y: -halfL },
-            { x: halfT, y: -halfL },
-            { x: halfT, y: halfL },
-            { x: -halfT, y: halfL },
-        ]),
+        new PolygonShape(new Float32Array([-halfL, -halfT, halfL, -halfT, halfL, halfT, -halfL, halfT])),
+        new PolygonShape(new Float32Array([-halfT, -halfL, halfT, -halfL, halfT, halfL, -halfT, halfL])),
     ];
     prop.shape = prop.collisionParts[0];
     prop.radius = Math.hypot(halfL, halfT);

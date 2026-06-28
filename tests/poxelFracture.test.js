@@ -16,11 +16,9 @@ describe("poxel fracture", () => {
         const subset = crate.poxels.slice(0, 4).map((p) => ({ vertices: p.vertices }));
         const frag = buildGeometryFromPoxelParts(subset);
         assert.ok(frag.footprintVertices.length >= 6);
-        const verts = [];
-        for (let i = 0; i < frag.footprintVertices.length / 2; i++) verts.push({ x: frag.footprintVertices[i * 2], y: frag.footprintVertices[i * 2 + 1] });
-        const shape = new PolygonShape(verts);
+        const shape = new PolygonShape(frag.footprintVertices);
         assert.equal(shape.type, "Polygon");
-        assert.ok(shape.vertices.length >= 3);
+        assert.ok(shape.vertices.length / 2 >= 3);
     });
     it("splitPoxels breaks connectivity on a strong center hit", () => {
         const geom = bakePoxelOutline(localBoxOutline(8, 8));

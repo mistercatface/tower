@@ -1,4 +1,5 @@
 import { collisionSettings } from "../../Collision/collisionDefaults.js";
+import { computeCompoundLocalBounds } from "../../Math/Poly2D.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
 import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
@@ -25,31 +26,12 @@ function entityAngle(entity) {
     if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
 }
+const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (let p = 0; p < parts.length; p++) {
-        const part = parts[p];
-        if (part.type === "Circle") {
-            minX = Math.min(minX, -part.radius);
-            maxX = Math.max(maxX, part.radius);
-            minY = Math.min(minY, -part.radius);
-            maxY = Math.max(maxY, part.radius);
-            continue;
-        }
-        const verts = part.vertices;
-        for (let i = 0; i < verts.length; i++) {
-            minX = Math.min(minX, verts[i].x);
-            maxX = Math.max(maxX, verts[i].x);
-            minY = Math.min(minY, verts[i].y);
-            maxY = Math.max(maxY, verts[i].y);
-        }
-    }
-    return lengthXY((maxX - minX) * 0.5, (maxY - minY) * 0.5);
+    const bounds = computeCompoundLocalBounds(parts, COMPOUND_BOUNDS_SCRATCH);
+    return lengthXY((bounds.maxX - bounds.minX) * 0.5, (bounds.maxY - bounds.minY) * 0.5);
 }
 function ensureBroadphaseCache(entity) {
     if (!entity.broadphaseBounds) entity.broadphaseBounds = createBroadphaseBounds();

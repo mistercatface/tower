@@ -108,12 +108,7 @@ function chunkMaterialArea(chunks) {
     return area;
 }
 function polygonShapeFromRect(rect) {
-    return new PolygonShape([
-        { x: rect.x0, y: rect.y0 },
-        { x: rect.x1, y: rect.y0 },
-        { x: rect.x1, y: rect.y1 },
-        { x: rect.x0, y: rect.y1 },
-    ]);
+    return new PolygonShape(new Float32Array([rect.x0, rect.y0, rect.x1, rect.y0, rect.x1, rect.y1, rect.x0, rect.y1]));
 }
 function collisionPartsFromChunks(chunks) {
     return mergeChunkCollisionRects(chunks).map(polygonShapeFromRect);
@@ -130,11 +125,14 @@ function footprintVerticesFromParts(collisionParts) {
     let maxY = -Infinity;
     for (let p = 0; p < collisionParts.length; p++) {
         const verts = collisionParts[p].vertices;
-        for (let i = 0; i < verts.length; i++) {
-            minX = Math.min(minX, verts[i].x);
-            maxX = Math.max(maxX, verts[i].x);
-            minY = Math.min(minY, verts[i].y);
-            maxY = Math.max(maxY, verts[i].y);
+        const count = verts.length;
+        for (let i = 0; i < count; i += 2) {
+            const x = verts[i];
+            const y = verts[i + 1];
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
         }
     }
     return new Float32Array([minX, minY, maxX, minY, maxX, maxY, minX, maxY]);
@@ -207,8 +205,8 @@ export function chunkCollisionPartsArea(collisionParts) {
     let area = 0;
     for (let i = 0; i < collisionParts.length; i++) {
         const verts = collisionParts[i].vertices;
-        const w = Math.abs(verts[1].x - verts[0].x);
-        const h = Math.abs(verts[2].y - verts[1].y);
+        const w = Math.abs(verts[2] - verts[0]);
+        const h = Math.abs(verts[5] - verts[3]);
         area += w * h;
     }
     return area;

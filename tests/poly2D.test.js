@@ -29,22 +29,24 @@ describe("Poly2D.transformPoint2DInto", () => {
 describe("Poly2D.rectCorners", () => {
     it("axis-aligned unit square", () => {
         const corners = rectCorners(0, 0, 1, 0);
-        assert.equal(corners.length, 4);
-        assertPointNear(corners[0], -1, -1);
-        assertPointNear(corners[2], 1, 1);
+        assert.equal(corners.length, 8);
+        assertPointNear({ x: corners[0], y: corners[1] }, -1, -1);
+        assertPointNear({ x: corners[4], y: corners[5] }, 1, 1);
     });
     it("rotated square preserves center symmetry", () => {
         const corners = rectCorners(0, 0, { x: 1, y: 1 }, Math.PI / 4);
-        for (const corner of corners) assertNear(Math.hypot(corner.x, corner.y), Math.SQRT2);
+        for (let i = 0; i < 4; i++) {
+            assertNear(Math.hypot(corners[i * 2], corners[i * 2 + 1]), Math.SQRT2, 1e-6);
+        }
     });
 });
 describe("Poly2D.pointInPolygon", () => {
-    const square = [
-        { x: 0, y: 0 },
-        { x: 10, y: 0 },
-        { x: 10, y: 10 },
-        { x: 0, y: 10 },
-    ];
+    const square = new Float32Array([
+        0, 0,
+        10, 0,
+        10, 10,
+        0, 10,
+    ]);
     it("inside", () => {
         assert.equal(pointInPolygon(5, 5, square), true);
     });
@@ -65,10 +67,10 @@ describe("Poly2D.pointInPolygon", () => {
     });
     it("rejects too few vertices", () => {
         assert.equal(
-            pointInPolygon(1, 1, [
-                { x: 0, y: 0 },
-                { x: 2, y: 0 },
-            ]),
+            pointInPolygon(1, 1, new Float32Array([
+                0, 0,
+                2, 0,
+            ])),
             false,
         );
         assert.equal(pointInPolygon(1, 1, [0, 0, 2, 0]), false);

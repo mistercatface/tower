@@ -19,14 +19,16 @@ const posScratch = { x: 0, y: 0 };
 function findEdgeMostAligned(normals, cos, sin, axisX, axisY, wantMax) {
     let bestDot = wantMax ? -Infinity : Infinity;
     let bestIndex = 0;
-    for (let i = 0; i < normals.length; i++) {
-        const n = normals[i];
-        const rx = n.x * cos - n.y * sin;
-        const ry = n.x * sin + n.y * cos;
+    const count = normals.length;
+    for (let i = 0; i < count; i += 2) {
+        const nx = normals[i];
+        const ny = normals[i + 1];
+        const rx = nx * cos - ny * sin;
+        const ry = nx * sin + ny * cos;
         const dot = rx * axisX + ry * axisY;
         if (wantMax ? dot > bestDot : dot < bestDot) {
             bestDot = dot;
-            bestIndex = i;
+            bestIndex = i / 2;
         }
     }
     return bestIndex;
@@ -56,23 +58,24 @@ function clipSegmentToHalfPlane(x0, y0, x1, y1, nx, ny, offset, outX, outY, outS
 function nearestIncidentVertexIndex(vertices, pxVal, pyVal, cos, sin, px, py) {
     let bestDistSq = Infinity;
     let bestIndex = 0;
-    for (let i = 0; i < vertices.length; i++) {
-        const v = vertices[i];
-        const vx = pxVal + v.x * cos - v.y * sin;
-        const vy = pyVal + v.x * sin + v.y * cos;
+    const count = vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        const lx = vertices[i];
+        const ly = vertices[i + 1];
+        const vx = pxVal + lx * cos - ly * sin;
+        const vy = pyVal + lx * sin + ly * cos;
         const dx = px - vx;
         const dy = py - vy;
         const distSq = dx * dx + dy * dy;
         if (distSq < bestDistSq) {
             bestDistSq = distSq;
-            bestIndex = i;
+            bestIndex = i / 2;
         }
     }
     return bestIndex;
 }
 function worldEdgeNormalInto(out, normals, edgeIndex, cos, sin) {
-    const n = normals[edgeIndex];
-    return rotateXYInto(out, n.x, n.y, cos, sin);
+    return rotateXYInto(out, normals[edgeIndex * 2], normals[edgeIndex * 2 + 1], cos, sin);
 }
 function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, nx, ny, refPolyIsA, refEdgeIndex) {
     const refShape = refPolyIsA ? shapeA : shapeB;
@@ -89,14 +92,12 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const incSin = Math.sin(incAngle);
     const refFaceNx = refPolyIsA ? nx : -nx;
     const refFaceNy = refPolyIsA ? ny : -ny;
-    const refCount = refShape.vertices.length;
+    const refCount = refShape.vertices.length / 2;
     const refEdgeNext = (refEdgeIndex + 1) % refCount;
     const sideEdgeA = (refEdgeIndex + refCount - 1) % refCount;
     const sideEdgeB = refEdgeNext;
-    const vIndex = refShape.vertices[refEdgeIndex];
-    transformPoint2DInto(contactA, refX, refY, vIndex.x, vIndex.y, refCos, refSin);
-    const vNext = refShape.vertices[refEdgeNext];
-    transformPoint2DInto(contactB, refX, refY, vNext.x, vNext.y, refCos, refSin);
+    transformPoint2DInto(contactA, refX, refY, refShape.vertices[refEdgeIndex * 2], refShape.vertices[refEdgeIndex * 2 + 1], refCos, refSin);
+    transformPoint2DInto(contactB, refX, refY, refShape.vertices[refEdgeNext * 2], refShape.vertices[refEdgeNext * 2 + 1], refCos, refSin);
     worldEdgeNormalInto(closestVertex, refShape.normals, sideEdgeA, refCos, refSin);
     const sideANx = -closestVertex.x;
     const sideANy = -closestVertex.y;
@@ -106,14 +107,12 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const sideBNy = -closestVertex.y;
     const sideBOffset = sideBNx * contactB.x + sideBNy * contactB.y;
     const incidentEdge = findEdgeMostAligned(incShape.normals, incCos, incSin, refFaceNx, refFaceNy, true);
-    const incCount = incShape.vertices.length;
+    const incCount = incShape.vertices.length / 2;
     const incEdgeNext = (incidentEdge + 1) % incCount;
-    const vInc = incShape.vertices[incidentEdge];
-    transformPoint2DInto(closestVertex, incX, incY, vInc.x, vInc.y, incCos, incSin);
+    transformPoint2DInto(closestVertex, incX, incY, incShape.vertices[incidentEdge * 2], incShape.vertices[incidentEdge * 2 + 1], incCos, incSin);
     const incX0 = closestVertex.x;
     const incY0 = closestVertex.y;
-    const vIncNext = incShape.vertices[incEdgeNext];
-    transformPoint2DInto(closestVertex, incX, incY, vIncNext.x, vIncNext.y, incCos, incSin);
+    transformPoint2DInto(closestVertex, incX, incY, incShape.vertices[incEdgeNext * 2], incShape.vertices[incEdgeNext * 2 + 1], incCos, incSin);
     let clipCount = clipSegmentToHalfPlane(incX0, incY0, closestVertex.x, closestVertex.y, sideANx, sideANy, sideAOffset, clipX, clipY, 0);
     if (clipCount === 0) return null;
     if (clipCount === 1) {
@@ -182,7 +181,7 @@ export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
         SAT_RESULT[2] = 0;
         SAT_RESULT[3] = xA;
         SAT_RESULT[4] = yA;
-        SAT_RESULT[5] = 1; // coincident
+        SAT_RESULT[5] = 1;
         SAT_RESULT[6] = 0;
         SAT_RESULT[7] = 0;
         SAT_RESULT[8] = 0;
@@ -199,7 +198,7 @@ export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
     SAT_RESULT[2] = ny;
     SAT_RESULT[3] = cx;
     SAT_RESULT[4] = cy;
-    SAT_RESULT[5] = 0; // coincident
+    SAT_RESULT[5] = 0;
     SAT_RESULT[6] = 0;
     SAT_RESULT[7] = 0;
     SAT_RESULT[8] = 1;
@@ -266,29 +265,48 @@ export class SatCollision {
         let minNormalY = 0;
         let refPolyIsA = true;
         let refEdgeIndex = 0;
-        const checkAxes = (poly, px, py, angle, isPolyA) => {
-            const cos = Math.cos(angle);
-            const sin = Math.sin(angle);
-            for (let i = 0; i < poly.normals.length; i++) {
-                const n = poly.normals[i];
-                const rNx = n.x * cos - n.y * sin;
-                const rNy = n.x * sin + n.y * cos;
-                this._projectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
-                this._projectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
-                if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
-                const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-                if (overlap < minOverlap) {
-                    minOverlap = overlap;
-                    minNormalX = rNx;
-                    minNormalY = rNy;
-                    refPolyIsA = isPolyA;
-                    refEdgeIndex = i;
-                }
+        // Check shapeA axes
+        let cos = Math.cos(angleA);
+        let sin = Math.sin(angleA);
+        const normalsCountA = shapeA.normals.length;
+        for (let i = 0; i < normalsCountA; i += 2) {
+            const nx = shapeA.normals[i];
+            const ny = shapeA.normals[i + 1];
+            const rNx = nx * cos - ny * sin;
+            const rNy = nx * sin + ny * cos;
+            this._projectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
+            this._projectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
+            if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+            const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                minNormalX = rNx;
+                minNormalY = rNy;
+                refPolyIsA = true;
+                refEdgeIndex = i / 2;
             }
-            return true;
-        };
-        if (!checkAxes(shapeA, xA, yA, angleA, true)) return false;
-        if (!checkAxes(shapeB, xB, yB, angleB, false)) return false;
+        }
+        // Check shapeB axes
+        cos = Math.cos(angleB);
+        sin = Math.sin(angleB);
+        const normalsCountB = shapeB.normals.length;
+        for (let i = 0; i < normalsCountB; i += 2) {
+            const nx = shapeB.normals[i];
+            const ny = shapeB.normals[i + 1];
+            const rNx = nx * cos - ny * sin;
+            const rNy = nx * sin + ny * cos;
+            this._projectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
+            this._projectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
+            if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+            const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                minNormalX = rNx;
+                minNormalY = rNy;
+                refPolyIsA = false;
+                refEdgeIndex = i / 2;
+            }
+        }
         const dx = xB - xA;
         const dy = yB - yA;
         if (dx * minNormalX + dy * minNormalY < 0) {
@@ -351,10 +369,12 @@ export class SatCollision {
         let minNormalY = 0;
         const cosP = Math.cos(anglePoly);
         const sinP = Math.sin(anglePoly);
-        for (let i = 0; i < polyShape.normals.length; i++) {
-            const n = polyShape.normals[i];
-            const rNx = n.x * cosP - n.y * sinP;
-            const rNy = n.x * sinP + n.y * cosP;
+        const normalsCount = polyShape.normals.length;
+        for (let i = 0; i < normalsCount; i += 2) {
+            const nx = polyShape.normals[i];
+            const ny = polyShape.normals[i + 1];
+            const rNx = nx * cosP - ny * sinP;
+            const rNy = nx * sinP + ny * cosP;
             this._projectCircle(PROJ_A, rNx, rNy, cxCircle, cyCircle, circleShape);
             this._projectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, anglePoly);
             if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
@@ -412,10 +432,12 @@ export class SatCollision {
         let max = -Infinity;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        for (let i = 0; i < shape.vertices.length; i++) {
-            const v = shape.vertices[i];
-            const rx = v.x * cos - v.y * sin;
-            const ry = v.x * sin + v.y * cos;
+        const count = shape.vertices.length;
+        for (let i = 0; i < count; i += 2) {
+            const vx_local = shape.vertices[i];
+            const vy_local = shape.vertices[i + 1];
+            const rx = vx_local * cos - vy_local * sin;
+            const ry = vx_local * sin + vy_local * cos;
             const vx = px + rx;
             const vy = py + ry;
             const projection = vx * axisX + vy * axisY;

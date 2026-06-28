@@ -13,7 +13,6 @@ export function transformPoint2DInto(out, centerX, centerY, lx, ly, cos, sin) {
     out.y = centerY + lx * sin + ly * cos;
     return out;
 }
-/** Rotate local offset (lx, ly) around origin and translate to (centerX, centerY). */
 export function rotatePoint(centerX, centerY, lx, ly, angle) {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
@@ -24,46 +23,60 @@ export function rectCorners(centerX, centerY, halfSize, angle = 0) {
     const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    const corner = (lx, ly) => transformPoint2DInto({ x: 0, y: 0 }, centerX, centerY, lx, ly, cos, sin);
-    return [corner(-hx, -hy), corner(hx, -hy), corner(hx, hy), corner(-hx, hy)];
+    const out = new Float32Array(8);
+    // (-hx, -hy)
+    out[0] = centerX - hx * cos + hy * sin;
+    out[1] = centerY - hx * sin - hy * cos;
+    // (hx, -hy)
+    out[2] = centerX + hx * cos + hy * sin;
+    out[3] = centerY + hx * sin - hy * cos;
+    // (hx, hy)
+    out[4] = centerX + hx * cos - hy * sin;
+    out[5] = centerY + hx * sin + hy * cos;
+    // (-hx, hy)
+    out[6] = centerX - hx * cos - hy * sin;
+    out[7] = centerY - hx * sin + hy * cos;
+    return out;
 }
 export function boxLocalFootprint(hx, hy) {
-    return [
-        { x: -hx, y: -hy },
-        { x: hx, y: -hy },
-        { x: hx, y: hy },
-        { x: -hx, y: hy },
-    ];
+    return new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]);
 }
 export function regularConvexPolygonFootprint(sides, radius, startAngle = -Math.PI / 2) {
-    const verts = [];
+    const verts = new Float32Array(sides * 2);
     for (let i = 0; i < sides; i++) {
         const angle = startAngle + (i * Math.PI * 2) / sides;
-        verts.push({ x: Math.round(Math.cos(angle) * radius), y: Math.round(Math.sin(angle) * radius) });
+        verts[i * 2] = Math.round(Math.cos(angle) * radius);
+        verts[i * 2 + 1] = Math.round(Math.sin(angle) * radius);
     }
     return verts;
 }
 export function regularStarFootprint(points, outerRadius, innerRadius, startAngle = -Math.PI / 2) {
-    const verts = [];
+    const verts = new Float32Array(points * 4);
     const step = Math.PI / points;
     for (let i = 0; i < points * 2; i++) {
         const angle = startAngle + i * step;
         const radius = i % 2 === 0 ? outerRadius : innerRadius;
-        verts.push({ x: Math.round(Math.cos(angle) * radius), y: Math.round(Math.sin(angle) * radius) });
+        verts[i * 2] = Math.round(Math.cos(angle) * radius);
+        verts[i * 2 + 1] = Math.round(Math.sin(angle) * radius);
     }
     return verts;
 }
 export function fanTriangulateFromOrigin(vertices) {
     const triangles = [];
-    for (let i = 0; i < vertices.length; i++) triangles.push([{ x: 0, y: 0 }, vertices[i], vertices[(i + 1) % vertices.length]]);
+    const count = vertices.length / 2;
+    for (let i = 0; i < count; i++) {
+        const nextIdx = ((i + 1) % count) * 2;
+        triangles.push(new Float32Array([0, 0, vertices[i * 2], vertices[i * 2 + 1], vertices[nextIdx], vertices[nextIdx + 1]]));
+    }
     return triangles;
 }
 export function convexFootprintHalfExtents(vertices) {
     let hx = 0;
     let hy = 0;
-    for (let i = 0; i < vertices.length; i++) {
-        hx = Math.max(hx, Math.abs(vertices[i].x));
-        hy = Math.max(hy, Math.abs(vertices[i].y));
+    const count = vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        hx = Math.max(hx, Math.abs(vertices[i]));
+        hy = Math.max(hy, Math.abs(vertices[i + 1]));
     }
     return { x: hx, y: hy };
 }
@@ -72,16 +85,18 @@ export function findExtremeVertexInto(out, vertices, pos, cos, sin, axisX, axisY
     let bestIndex = 0;
     out.x = pos.x;
     out.y = pos.y;
-    for (let i = 0; i < vertices.length; i++) {
-        const v = vertices[i];
-        const vx = pos.x + v.x * cos - v.y * sin;
-        const vy = pos.y + v.x * sin + v.y * cos;
+    const count = vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        const lx = vertices[i];
+        const ly = vertices[i + 1];
+        const vx = pos.x + lx * cos - ly * sin;
+        const vy = pos.y + lx * sin + ly * cos;
         const proj = vx * axisX + vy * axisY;
         if (findMax ? proj > bestProj : proj < bestProj) {
             bestProj = proj;
             out.x = vx;
             out.y = vy;
-            bestIndex = i;
+            bestIndex = i / 2;
         }
     }
     return bestIndex;
@@ -91,10 +106,12 @@ export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX
     let bestIndex = 0;
     out.x = pos.x;
     out.y = pos.y;
-    for (let i = 0; i < vertices.length; i++) {
-        const v = vertices[i];
-        const vx = pos.x + v.x * cos - v.y * sin;
-        const vy = pos.y + v.x * sin + v.y * cos;
+    const count = vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        const lx = vertices[i];
+        const ly = vertices[i + 1];
+        const vx = pos.x + lx * cos - ly * sin;
+        const vy = pos.y + lx * sin + ly * cos;
         const dx = targetX - vx;
         const dy = targetY - vy;
         const distSq = dx * dx + dy * dy;
@@ -102,7 +119,7 @@ export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX
             bestDistSq = distSq;
             out.x = vx;
             out.y = vy;
-            bestIndex = i;
+            bestIndex = i / 2;
         }
     }
     return bestIndex;
@@ -125,72 +142,42 @@ function pointInPolygonRing(px, py, count, xAt, yAt) {
     }
     return inside;
 }
-/** Ray cast; boundary points (edges and vertices) count as inside. `polygon` is `{x,y}[]` or flat `[x0,y0,...]`. */
 export function pointInPolygon(px, py, polygon) {
-    if (!polygon || polygon.length < 3) return false;
-    if (typeof polygon[0] === "number") {
-        if (polygon.length < 6 || polygon.length % 2 !== 0) return false;
-        const count = polygon.length / 2;
-        return pointInPolygonRing(
-            px,
-            py,
-            count,
-            (i) => polygon[i * 2],
-            (i) => polygon[i * 2 + 1],
-        );
-    }
+    if (!polygon || polygon.length < 6 || polygon.length % 2 !== 0) return false;
+    const count = polygon.length / 2;
     return pointInPolygonRing(
         px,
         py,
-        polygon.length,
-        (i) => polygon[i].x,
-        (i) => polygon[i].y,
+        count,
+        (i) => polygon[i * 2],
+        (i) => polygon[i * 2 + 1],
     );
 }
 export function polygonSignedArea2D(vertices) {
     let area = 0;
-    const count = vertices.length;
+    const count = vertices.length / 2;
     for (let i = 0; i < count; i++) {
-        const j = (i + 1) % count;
-        area += vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
+        const nextIdx = ((i + 1) % count) * 2;
+        area += vertices[i * 2] * vertices[nextIdx + 1] - vertices[nextIdx] * vertices[i * 2 + 1];
     }
     return area * 0.5;
 }
 const CENTROID_SCRATCH = { cx: 0, cy: 0, signedArea: 0 };
-/**
- * Zero-allocation polygon centroid and signed area calculation.
- * Supports flat coordinate arrays [x0, y0, x1, y1...] and object arrays [{x, y}, ...].
- *
- * @param {({x: number, y: number}[]|number[])} vertices
- * @param {{cx: number, cy: number, signedArea: number}} [out]
- * @returns {{cx: number, cy: number, signedArea: number}}
- */
 export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
     let cx = 0;
     let cy = 0;
     let signedArea = 0;
-    if (typeof vertices[0] === "number") {
-        const count = vertices.length / 2;
-        for (let i = 0; i < count; i++) {
-            const x1 = vertices[i * 2];
-            const y1 = vertices[i * 2 + 1];
-            const nextIdx = ((i + 1) % count) * 2;
-            const x2 = vertices[nextIdx];
-            const y2 = vertices[nextIdx + 1];
-            const cross = x1 * y2 - x2 * y1;
-            signedArea += cross;
-            cx += (x1 + x2) * cross;
-            cy += (y1 + y2) * cross;
-        }
-    } else {
-        const count = vertices.length;
-        for (let i = 0; i < count; i++) {
-            const j = (i + 1) % count;
-            const cross = vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
-            signedArea += cross;
-            cx += (vertices[i].x + vertices[j].x) * cross;
-            cy += (vertices[i].y + vertices[j].y) * cross;
-        }
+    const count = vertices.length / 2;
+    for (let i = 0; i < count; i++) {
+        const x1 = vertices[i * 2];
+        const y1 = vertices[i * 2 + 1];
+        const nextIdx = ((i + 1) % count) * 2;
+        const x2 = vertices[nextIdx];
+        const y2 = vertices[nextIdx + 1];
+        const cross = x1 * y2 - x2 * y1;
+        signedArea += cross;
+        cx += (x1 + x2) * cross;
+        cy += (y1 + y2) * cross;
     }
     signedArea *= 0.5;
     if (Math.abs(signedArea) > 1e-10) {
@@ -207,17 +194,17 @@ export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
     return out;
 }
 export function polygonSecondMomentAboutCentroid2D(vertices) {
-    const count = vertices.length;
+    const count = vertices.length / 2;
     if (count < 3) return 0;
     const { cx, cy, signedArea } = polygonCentroid2D(vertices, CENTROID_SCRATCH);
     if (Math.abs(signedArea) < 1e-10) return 0;
     let inertia = 0;
     for (let i = 0; i < count; i++) {
         const j = (i + 1) % count;
-        const x0 = vertices[i].x - cx;
-        const y0 = vertices[i].y - cy;
-        const x1 = vertices[j].x - cx;
-        const y1 = vertices[j].y - cy;
+        const x0 = vertices[i * 2] - cx;
+        const y0 = vertices[i * 2 + 1] - cy;
+        const x1 = vertices[j * 2] - cx;
+        const y1 = vertices[j * 2 + 1] - cy;
         const cross = x0 * y1 - x1 * y0;
         const dot = x0 * x1 + y0 * y1;
         const sq0 = x0 * x0 + y0 * y0;
@@ -225,4 +212,37 @@ export function polygonSecondMomentAboutCentroid2D(vertices) {
         inertia += cross * (sq0 + dot + sq1);
     }
     return inertia / 12;
+}
+export function computeCompoundLocalBounds(parts, out) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    const length = parts.length;
+    for (let p = 0; p < length; p++) {
+        const part = parts[p];
+        if (part.type === "Circle") {
+            const r = part.radius;
+            if (-r < minX) minX = -r;
+            if (r > maxX) maxX = r;
+            if (-r < minY) minY = -r;
+            if (r > maxY) maxY = r;
+            continue;
+        }
+        const verts = part.vertices;
+        const count = verts.length;
+        for (let i = 0; i < count; i += 2) {
+            const x = verts[i];
+            const y = verts[i + 1];
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+    }
+    out.minX = minX;
+    out.maxX = maxX;
+    out.minY = minY;
+    out.maxY = maxY;
+    return out;
 }

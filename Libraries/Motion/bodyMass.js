@@ -2,12 +2,12 @@ import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D } from "../Math/Poly2D.js";
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
-    if (!verts || verts.length < 3) return 0;
+    if (!verts || verts.length < 6) return 0;
     return Math.abs(polygonSignedArea2D(verts));
 }
 function polygonShapeInertiaFactor(shape) {
     const verts = shape.vertices;
-    if (!verts || verts.length < 3) return 0;
+    if (!verts || verts.length < 6) return 0;
     const area = Math.abs(polygonSignedArea2D(verts));
     if (area < 1e-10) return 0;
     return polygonSecondMomentAboutCentroid2D(verts) / area;

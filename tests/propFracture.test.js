@@ -43,7 +43,7 @@ describe("prop impact fracture", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 20, 10);
         assert.ok(prop.chunks.length > 1);
-        assert.equal(prop.shape.vertices.length, 4);
+        assert.equal(prop.shape.vertices.length / 2, 4);
     });
 
     it("chunk fracture collision parts match stored material area", () => {

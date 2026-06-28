@@ -8,12 +8,12 @@ function boxProp(x, y, hx, hy, facing = 0) {
         y,
         facing,
         radius: Math.hypot(hx, hy),
-        shape: new PolygonShape([
-            { x: -hx, y: -hy },
-            { x: hx, y: -hy },
-            { x: hx, y: hy },
-            { x: -hx, y: hy },
-        ]),
+        shape: new PolygonShape(new Float32Array([
+            -hx, -hy,
+            hx, -hy,
+            hx, hy,
+            -hx, hy,
+        ])),
     };
 }
 describe("worldPropContainsPoint", () => {

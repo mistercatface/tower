@@ -30,8 +30,14 @@ export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
 }
 export function syncFloorPropCollisionShape(prop) {
     const footprint = prop.strategy.localFootprint;
-    if (footprint?.length >= 3) prop.shape = new PolygonShape(footprint.map((v) => ({ x: v.x, y: v.y })));
-    else {
+    if (footprint?.length >= 3) {
+        const flat = new Float32Array(footprint.length * 2);
+        for (let i = 0; i < footprint.length; i++) {
+            flat[i * 2] = footprint[i].x;
+            flat[i * 2 + 1] = footprint[i].y;
+        }
+        prop.shape = new PolygonShape(flat);
+    } else {
         const radius = prop.radius ?? prop.strategy.radius ?? 0;
         prop.shape = new CircleShape(radius);
     }

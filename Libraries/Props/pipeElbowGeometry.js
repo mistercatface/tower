@@ -63,7 +63,12 @@ export function syncPipeElbowCollisionShape(prop) {
     const key = footprint.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
     prop._collisionFacing = prop.facing ?? 0;
     if (prop._pipeElbowShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
-    prop.shape = new PolygonShape(footprint);
+    const flat = new Float32Array(footprint.length * 2);
+    for (let i = 0; i < footprint.length; i++) {
+        flat[i * 2] = footprint[i].x;
+        flat[i * 2 + 1] = footprint[i].y;
+    }
+    prop.shape = new PolygonShape(flat);
     prop._pipeElbowShapeKey = key;
     return prop.shape;
 }

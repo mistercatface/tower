@@ -39,7 +39,7 @@ describe("propScale", () => {
         const baseline = getPolygonPropBoundingRadius(wedge);
         setPolygonPropBoundingRadius(wedge, 2);
         assert.ok(Math.abs(getPolygonPropBoundingRadius(wedge) - 2) < 0.01);
-        assert.ok(wedge.shape.vertices.every((vertex) => Math.abs(vertex.x) <= 2.5));
+        assert.ok(wedge.shape.vertices.every((val) => Math.abs(val) <= 2.5));
         assert.ok(baseline > 9);
     });
 

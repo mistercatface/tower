@@ -1,5 +1,5 @@
 import { normalizeXY } from "../../Math/Vec2.js";
-import { convexFootprintHalfExtents } from "../../Math/Poly2D.js";
+import { computeCompoundLocalBounds, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
 /** @typedef {{ kind: "circle", cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
 /** @returns {BroadphaseBounds} */
 export function createBroadphaseBounds() {
@@ -49,47 +49,24 @@ function circleObbOverlap(circle, obb) {
     }
     return true;
 }
-const BROADPHASE_UNION_PROXY = {
-    type: "Polygon",
-    vertices: [
-        { x: 0, y: 0 },
-        { x: 0, y: 0 },
-        { x: 0, y: 0 },
-        { x: 0, y: 0 },
-    ],
-};
+const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle = 0) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (let p = 0; p < parts.length; p++) {
-        const part = parts[p];
-        if (part.type === "Circle") {
-            minX = Math.min(minX, -part.radius);
-            maxX = Math.max(maxX, part.radius);
-            minY = Math.min(minY, -part.radius);
-            maxY = Math.max(maxY, part.radius);
-            continue;
-        }
-        const verts = part.vertices;
-        for (let i = 0; i < verts.length; i++) {
-            minX = Math.min(minX, verts[i].x);
-            maxX = Math.max(maxX, verts[i].x);
-            minY = Math.min(minY, verts[i].y);
-            maxY = Math.max(maxY, verts[i].y);
-        }
-    }
-    const proxy = BROADPHASE_UNION_PROXY;
-    proxy.vertices[0].x = minX;
-    proxy.vertices[0].y = minY;
-    proxy.vertices[1].x = maxX;
-    proxy.vertices[1].y = minY;
-    proxy.vertices[2].x = maxX;
-    proxy.vertices[2].y = maxY;
-    proxy.vertices[3].x = minX;
-    proxy.vertices[3].y = maxY;
-    return broadphaseBoundsFromShapeInto(out, proxy, cx, cy, angle);
+    if (parts.length <= 1) return broadphaseBoundsFromShapeInto(out, parts[0], cx, cy, angle);
+    const bounds = computeCompoundLocalBounds(parts, COMPOUND_BOUNDS_SCRATCH);
+    const hx = (bounds.maxX - bounds.minX) * 0.5;
+    const hy = (bounds.maxY - bounds.minY) * 0.5;
+    const localCx = (bounds.minX + bounds.maxX) * 0.5;
+    const localCy = (bounds.minY + bounds.maxY) * 0.5;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    out.kind = "obb";
+    out.cx = cx + localCx * cos - localCy * sin;
+    out.cy = cy + localCx * sin + localCy * cos;
+    out.cos = cos;
+    out.sin = sin;
+    out.hx = hx;
+    out.hy = hy;
+    return out;
 }
 export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
     if (shape.type === "Circle") {

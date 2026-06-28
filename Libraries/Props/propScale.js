@@ -11,10 +11,17 @@ export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;
     if (shape?.type !== "Polygon") throw new Error(`scalePolygonPropFootprint requires a polygon prop, got ${shape?.type ?? "none"}`);
-    const scaled = shape.vertices.map((vertex) => ({ x: vertex.x * scale, y: vertex.y * scale }));
+    const count = shape.vertices.length;
+    const scaled = new Float32Array(count);
+    for (let i = 0; i < count; i++) scaled[i] = shape.vertices[i] * scale;
     prop.shape = new PolygonShape(scaled);
     prop.radius = prop.shape.getBoundingRadius();
-    if (prop.strategy?.localFootprint?.length >= 3) prop.strategy.localFootprint = scaled.map((vertex) => ({ x: vertex.x, y: vertex.y }));
+    if (prop.strategy?.localFootprint)
+        if (typeof prop.strategy.localFootprint[0] === "number") {
+            const scaledFootprint = new Float32Array(prop.strategy.localFootprint.length);
+            for (let i = 0; i < prop.strategy.localFootprint.length; i++) scaledFootprint[i] = prop.strategy.localFootprint[i] * scale;
+            prop.strategy.localFootprint = scaledFootprint;
+        } else if (prop.strategy.localFootprint.length >= 3) prop.strategy.localFootprint = prop.strategy.localFootprint.map((v) => ({ x: v.x * scale, y: v.y * scale }));
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
     invalidateBroadphaseBounds(prop);
