@@ -11,7 +11,12 @@ import {
     createSideGradient,
     projectVertical,
     scaleAtHeight,
+    resetExtrusionPool,
+    leaseBaseCorner,
+    leaseTopCorner,
+    leaseFace,
 } from "../../Spatial/elevation/RadialElevationProjection.js";
+const sPinwheelLocalVerts = new Float32Array(24);
 import { traceClosedPolygon, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 import { drawImageQuad, drawImageTriangle } from "../../Canvas/AffineTexture.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
@@ -110,6 +115,7 @@ export function drawBox(
     viewport,
     { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
+    resetExtrusionPool();
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const box = extrudeBox(projection, halfSize, facing);
@@ -164,6 +170,7 @@ export function drawExtrudedConvexPolygon(
     viewport,
     { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
+    resetExtrusionPool();
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const body = extrudeConvexFootprint(projection, localVerts, facing);
@@ -249,6 +256,7 @@ export function drawExtrudedConvexPolygon(
     }
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing) {
+    resetExtrusionPool();
     const textures = prop._wallChunkTextures;
     if (!textures?.ready) return;
     const capCanvas = textures.capCanvas;
@@ -261,15 +269,15 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing
     const py = prop.y;
     const count = localVerts.length / 2;
     if (count < 3) return;
-    const worldCorners = [];
+    const worldCorners = new Array(count);
     const srcCorners = [];
     for (let i = 0; i < count; i++) {
         const lx = localVerts[i * 2];
         const ly = localVerts[i * 2 + 1];
-        worldCorners.push({ x: px + lx * cos - ly * sin, y: py + lx * sin + ly * cos });
+        worldCorners[i] = leaseTopCorner(px + lx * cos - ly * sin, py + lx * sin + ly * cos);
         const rx = lx * cos - ly * sin;
         const ry = lx * sin + ly * cos;
-        srcCorners.push({ x: (rx + offset) * textureScale, y: (ry + offset) * textureScale });
+        srcCorners.push(leaseBaseCorner((rx + offset) * textureScale, (ry + offset) * textureScale));
     }
     ctx.save();
     ctx.beginPath();
@@ -294,36 +302,36 @@ export function drawExtrudedCompoundPolygon(
     { partsVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
 ) {
     if (prop.type === "cross_pinwheel") {
+        resetExtrusionPool();
         const length = prop.crossLength ?? 32;
         const thickness = prop.crossThickness ?? 8;
         const halfL = length / 2;
         const halfT = thickness / 2;
-        const localVerts = new Float32Array([
-            -halfT,
-            -halfL,
-            halfT,
-            -halfL,
-            halfT,
-            -halfT,
-            halfL,
-            -halfT,
-            halfL,
-            halfT,
-            halfT,
-            halfT,
-            halfT,
-            halfL,
-            -halfT,
-            halfL,
-            -halfT,
-            halfT,
-            -halfL,
-            halfT,
-            -halfL,
-            -halfT,
-            -halfT,
-            -halfT,
-        ]);
+        const localVerts = sPinwheelLocalVerts;
+        localVerts[0] = -halfT;
+        localVerts[1] = -halfL;
+        localVerts[2] = halfT;
+        localVerts[3] = -halfL;
+        localVerts[4] = halfT;
+        localVerts[5] = -halfT;
+        localVerts[6] = halfL;
+        localVerts[7] = -halfT;
+        localVerts[8] = halfL;
+        localVerts[9] = halfT;
+        localVerts[10] = halfT;
+        localVerts[11] = halfT;
+        localVerts[12] = halfT;
+        localVerts[13] = halfL;
+        localVerts[14] = -halfT;
+        localVerts[15] = halfL;
+        localVerts[16] = -halfT;
+        localVerts[17] = halfT;
+        localVerts[18] = -halfL;
+        localVerts[19] = halfT;
+        localVerts[20] = -halfL;
+        localVerts[21] = -halfT;
+        localVerts[22] = -halfT;
+        localVerts[23] = -halfT;
         const projection = projectVertical(prop.x, prop.y, height, viewport);
         const { cx, cy, topX, topY, alpha } = projection;
         const cos = Math.cos(facing);
@@ -336,8 +344,8 @@ export function drawExtrudedCompoundPolygon(
             const ly = localVerts[i * 2 + 1];
             const topLx = scaleAtHeight(lx, alpha, 1);
             const topLy = scaleAtHeight(ly, alpha, 1);
-            baseCorners[i] = { x: cx + lx * cos - ly * sin, y: cy + lx * sin + ly * cos };
-            topCorners[i] = { x: topX + topLx * cos - topLy * sin, y: topY + topLx * sin + topLy * cos };
+            baseCorners[i] = leaseBaseCorner(cx + lx * cos - ly * sin, cy + lx * sin + ly * cos);
+            topCorners[i] = leaseTopCorner(topX + topLx * cos - topLy * sin, topY + topLx * sin + topLy * cos);
         }
         const faces = [];
         for (let i = 0; i < count; i++) {
@@ -350,14 +358,9 @@ export function drawExtrudedCompoundPolygon(
             const ly = -(pBx - pAx);
             const worldNx = lx * cos - ly * sin;
             const worldNy = lx * sin + ly * cos;
-            const face = {
-                baseA: baseCorners[i],
-                baseB: baseCorners[next],
-                topA: topCorners[i],
-                topB: topCorners[next],
-                midX: (baseCorners[i].x + baseCorners[next].x + topCorners[i].x + topCorners[next].x) / 4,
-                midY: (baseCorners[i].y + baseCorners[next].y + topCorners[i].y + topCorners[next].y) / 4,
-            };
+            const face = leaseFace(baseCorners[i], baseCorners[next], topCorners[i], topCorners[next]);
+            face.midX = (face.baseA.x + face.baseB.x + face.topA.x + face.topB.x) / 4;
+            face.midY = (face.baseA.y + face.baseB.y + face.topA.y + face.topB.y) / 4;
             face.visible = isOutwardFaceTowardViewer(face.midX, face.midY, worldNx, worldNy, viewport.x, viewport.y);
             faces.push(face);
         }
@@ -396,6 +399,7 @@ export function drawExtrudedCompoundPolygon(
         ctx.stroke();
         return;
     }
+    resetExtrusionPool();
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const { cx, cy, topX, topY } = projection;
     const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };

@@ -117,10 +117,10 @@ export function withPropStrategyDefaults(strategy) {
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) return withPropStrategyDefaults({});
     const { spawn, renderMode, ...strategy } = asset.physics;
-    if (strategy.localFootprint) strategy.localFootprint = ensureFlatVerts(strategy.localFootprint);
+    if (strategy.localFootprint) strategy.localFootprint = new Float32Array(ensureFlatVerts(strategy.localFootprint));
     if (strategy.collisionParts)
         strategy.collisionParts = strategy.collisionParts.map((part) => {
-            if (part.type === "Polygon" && part.vertices) return { ...part, vertices: ensureFlatVerts(part.vertices) };
+            if (part.type === "Polygon" && part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
             return part;
         });
     return withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });

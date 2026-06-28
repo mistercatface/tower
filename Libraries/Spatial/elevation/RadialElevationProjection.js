@@ -89,21 +89,21 @@ export function extrudeBox(projection, halfSize, angle = 0) {
     const baseCornersFlat = rectCorners(cx, cy, { x: hx, y: hy }, angle);
     const topCornersFlat = rectCorners(topX, topY, { x: topHx, y: topHy }, angle);
     const baseCorners = [
-        { x: baseCornersFlat[0], y: baseCornersFlat[1] },
-        { x: baseCornersFlat[2], y: baseCornersFlat[3] },
-        { x: baseCornersFlat[4], y: baseCornersFlat[5] },
-        { x: baseCornersFlat[6], y: baseCornersFlat[7] },
+        leaseBaseCorner(baseCornersFlat[0], baseCornersFlat[1]),
+        leaseBaseCorner(baseCornersFlat[2], baseCornersFlat[3]),
+        leaseBaseCorner(baseCornersFlat[4], baseCornersFlat[5]),
+        leaseBaseCorner(baseCornersFlat[6], baseCornersFlat[7]),
     ];
     const topCorners = [
-        { x: topCornersFlat[0], y: topCornersFlat[1] },
-        { x: topCornersFlat[2], y: topCornersFlat[3] },
-        { x: topCornersFlat[4], y: topCornersFlat[5] },
-        { x: topCornersFlat[6], y: topCornersFlat[7] },
+        leaseTopCorner(topCornersFlat[0], topCornersFlat[1]),
+        leaseTopCorner(topCornersFlat[2], topCornersFlat[3]),
+        leaseTopCorner(topCornersFlat[4], topCornersFlat[5]),
+        leaseTopCorner(topCornersFlat[6], topCornersFlat[7]),
     ];
     const faces = new Array(4);
     for (let i = 0; i < 4; i++) {
         const next = (i + 1) % 4;
-        faces[i] = { baseA: baseCorners[i], baseB: baseCorners[next], topA: topCorners[i], topB: topCorners[next] };
+        faces[i] = leaseFace(baseCorners[i], baseCorners[next], topCorners[i], topCorners[next]);
     }
     return { halfSize: { x: hx, y: hy }, topHalfSize: { x: topHx, y: topHy }, baseCorners, topCorners, faces };
 }
@@ -119,13 +119,13 @@ export function extrudeConvexFootprint(projection, localVerts, angle = 0) {
         const ly = localVerts[i * 2 + 1];
         const topLx = scaleAtHeight(lx, alpha, 1);
         const topLy = scaleAtHeight(ly, alpha, 1);
-        baseCorners[i] = { x: cx + lx * cos - ly * sin, y: cy + lx * sin + ly * cos };
-        topCorners[i] = { x: topX + topLx * cos - topLy * sin, y: topY + topLx * sin + topLy * cos };
+        baseCorners[i] = leaseBaseCorner(cx + lx * cos - ly * sin, cy + lx * sin + ly * cos);
+        topCorners[i] = leaseTopCorner(topX + topLx * cos - topLy * sin, topY + topLx * sin + topLy * cos);
     }
     const faces = new Array(count);
     for (let i = 0; i < count; i++) {
         const next = (i + 1) % count;
-        faces[i] = { baseA: baseCorners[i], baseB: baseCorners[next], topA: topCorners[i], topB: topCorners[next] };
+        faces[i] = leaseFace(baseCorners[i], baseCorners[next], topCorners[i], topCorners[next]);
     }
     return { baseCorners, topCorners, faces };
 }
@@ -163,4 +163,53 @@ export function createSideGradient(ctx, left, right, viewAngle, colors) {
     grad.addColorStop(Math.min(1.0, t + 0.25), colors.mid);
     grad.addColorStop(1.0, colors.shadow);
     return grad;
+}
+const sBaseCornersPool = [];
+const sTopCornersPool = [];
+const sFacesPool = [];
+let sBaseCornersUsed = 0;
+let sTopCornersUsed = 0;
+let sFacesUsed = 0;
+export function resetExtrusionPool() {
+    sBaseCornersUsed = 0;
+    sTopCornersUsed = 0;
+    sFacesUsed = 0;
+}
+export function leaseBaseCorner(x, y) {
+    let pt;
+    if (sBaseCornersUsed < sBaseCornersPool.length) pt = sBaseCornersPool[sBaseCornersUsed];
+    else {
+        pt = { x: 0, y: 0 };
+        sBaseCornersPool.push(pt);
+    }
+    sBaseCornersUsed++;
+    pt.x = x;
+    pt.y = y;
+    return pt;
+}
+export function leaseTopCorner(x, y) {
+    let pt;
+    if (sTopCornersUsed < sTopCornersPool.length) pt = sTopCornersPool[sTopCornersUsed];
+    else {
+        pt = { x: 0, y: 0 };
+        sTopCornersPool.push(pt);
+    }
+    sTopCornersUsed++;
+    pt.x = x;
+    pt.y = y;
+    return pt;
+}
+export function leaseFace(baseA, baseB, topA, topB) {
+    let face;
+    if (sFacesUsed < sFacesPool.length) face = sFacesPool[sFacesUsed];
+    else {
+        face = { baseA: null, baseB: null, topA: null, topB: null };
+        sFacesPool.push(face);
+    }
+    sFacesUsed++;
+    face.baseA = baseA;
+    face.baseB = baseB;
+    face.topA = topA;
+    face.topB = topB;
+    return face;
 }

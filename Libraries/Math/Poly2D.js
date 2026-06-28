@@ -61,15 +61,6 @@ export function regularStarFootprint(points, outerRadius, innerRadius, startAngl
     }
     return verts;
 }
-export function fanTriangulateFromOrigin(vertices) {
-    const triangles = [];
-    const count = vertices.length / 2;
-    for (let i = 0; i < count; i++) {
-        const nextIdx = ((i + 1) % count) * 2;
-        triangles.push(new Float32Array([0, 0, vertices[i * 2], vertices[i * 2 + 1], vertices[nextIdx], vertices[nextIdx + 1]]));
-    }
-    return triangles;
-}
 export function convexFootprintHalfExtents(vertices) {
     let hx = 0;
     let hy = 0;

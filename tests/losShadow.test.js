@@ -103,7 +103,7 @@ describe("collectExposedWallEdges", () => {
     it("merges shared edge between equal-height neighbors", () => {
         const grid = makeTestObstacleGrid(8, 8);
         stampWallRect(grid, 0, 0, 2, 1);
-        const edges = [];
+        const edges = new EdgeList();
         collectExposedWallEdges(grid, edges);
         assert.equal(edges.length, 6);
     });
@@ -111,11 +111,11 @@ describe("collectExposedWallEdges", () => {
         const grid = makeTestObstacleGrid(32, 32);
         stampWallRect(grid, 2, 2, 1, 1);
         stampWallRect(grid, 28, 28, 1, 1);
-        const near = [];
+        const near = new EdgeList();
         collectExposedWallEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 128, maxY: 128 }, near);
-        const far = [];
+        const far = new EdgeList();
         collectExposedWallEdgesInAabb(grid, { minX: 400, minY: 400, maxX: 512, maxY: 512 }, far);
-        const empty = [];
+        const empty = new EdgeList();
         collectExposedWallEdgesInAabb(grid, { minX: 200, minY: 200, maxX: 280, maxY: 280 }, empty);
         assert.equal(near.length, 4);
         assert.equal(far.length, 4);
@@ -126,19 +126,19 @@ describe("collectRailWallShadowEdgesInAabb", () => {
     it("emits four cap edges for a single rail wall segment", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampRailWallEdge(grid, 4, 4, 0, 1);
-        const edges = [];
+        const edges = new EdgeList();
         collectRailWallShadowEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, edges);
         assert.equal(edges.length, 4);
-        assert.equal(edges[0].wallTopZ, grid.cellSize);
+        assert.equal(edges.edges[0].wallTopZ, grid.cellSize);
     });
     it("defers to rail cap edges when a voxel cell shares the same side", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);
         stampRailWallEdge(grid, 4, 4, 0, 1);
-        const voxelEdges = [];
+        const voxelEdges = new EdgeList();
         collectExposedWallEdges(grid, voxelEdges);
         assert.equal(voxelEdges.length, 3);
-        const all = [];
+        const all = new EdgeList();
         collectExposedWallEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, all);
         collectRailWallShadowEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, all);
         assert.equal(all.length, 3 + 4);
@@ -152,7 +152,7 @@ describe("losShadowEdges", () => {
     it("emits projected roof-anchored shadow quads for edges in range", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);
-        const edges = [];
+        const edges = new EdgeList();
         collectExposedWallEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 256, maxY: 256 }, edges);
         const viewport = makeTestViewport(128, 128);
         const scratch = new Float32Array(8);

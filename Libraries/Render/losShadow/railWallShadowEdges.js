@@ -2,29 +2,16 @@ import { collectRailWallBoxesInAabb } from "../../World/wallGridBake.js";
 const sRailShadowBoxes = [];
 function pushRailWallBoxCapShadowEdges(box, out) {
     const wallTopZ = box.wallCapHeight;
-    if (typeof out.add === "function") {
-        out.add(box.outerP1x, box.outerP1y, box.outerP2x, box.outerP2y, -box.inwardX, -box.inwardY, wallTopZ);
-        out.add(box.innerP1x, box.innerP1y, box.innerP2x, box.innerP2y, box.inwardX, box.inwardY, wallTopZ);
-        const dx = box.innerP2x - box.innerP1x;
-        const dy = box.innerP2y - box.innerP1y;
-        const len = Math.hypot(dx, dy);
-        if (len > 0) {
-            const tx = dx / len;
-            const ty = dy / len;
-            out.add(box.outerP1x, box.outerP1y, box.innerP1x, box.innerP1y, -tx, -ty, wallTopZ);
-            out.add(box.innerP2x, box.innerP2y, box.outerP2x, box.outerP2y, tx, ty, wallTopZ);
-        }
-    } else {
-        out.push({ x1: box.outerP1x, y1: box.outerP1y, x2: box.outerP2x, y2: box.outerP2y, nx: -box.inwardX, ny: -box.inwardY, wallTopZ });
-        out.push({ x1: box.innerP1x, y1: box.innerP1y, x2: box.innerP2x, y2: box.innerP2y, nx: box.inwardX, ny: box.inwardY, wallTopZ });
-        const dx = box.innerP2x - box.innerP1x;
-        const dy = box.innerP2y - box.innerP1y;
-        const len = Math.hypot(dx, dy);
-        if (len <= 0) return;
+    out.add(box.outerP1x, box.outerP1y, box.outerP2x, box.outerP2y, -box.inwardX, -box.inwardY, wallTopZ);
+    out.add(box.innerP1x, box.innerP1y, box.innerP2x, box.innerP2y, box.inwardX, box.inwardY, wallTopZ);
+    const dx = box.innerP2x - box.innerP1x;
+    const dy = box.innerP2y - box.innerP1y;
+    const len = Math.hypot(dx, dy);
+    if (len > 0) {
         const tx = dx / len;
         const ty = dy / len;
-        out.push({ x1: box.outerP1x, y1: box.outerP1y, x2: box.innerP1x, y2: box.innerP1y, nx: -tx, ny: -ty, wallTopZ });
-        out.push({ x1: box.innerP2x, y1: box.innerP2y, x2: box.outerP2x, y2: box.outerP2y, nx: tx, ny: ty, wallTopZ });
+        out.add(box.outerP1x, box.outerP1y, box.innerP1x, box.innerP1y, -tx, -ty, wallTopZ);
+        out.add(box.innerP2x, box.innerP2y, box.outerP2x, box.outerP2y, tx, ty, wallTopZ);
     }
 }
 export function collectRailWallShadowEdgesInAabb(grid, bounds, out) {
