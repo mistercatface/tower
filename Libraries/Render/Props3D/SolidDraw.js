@@ -24,7 +24,7 @@ let sTopRing = new Float32Array(0);
 let sCapSrcRing = new Float32Array(0);
 let sFaceVisible = new Uint8Array(0);
 let sFaceMidY = new Float32Array(0);
-const sFaceOrder = [];
+let sFaceOrder = new Int32Array(0);
 function ensurePrismScratch(vertexCount) {
     const ringLen = vertexCount * 2;
     if (sBaseRing.length < ringLen) {
@@ -33,8 +33,8 @@ function ensurePrismScratch(vertexCount) {
         sCapSrcRing = new Float32Array(ringLen);
         sFaceVisible = new Uint8Array(vertexCount);
         sFaceMidY = new Float32Array(vertexCount);
+        sFaceOrder = new Int32Array(vertexCount);
     }
-    while (sFaceOrder.length < vertexCount) sFaceOrder.push(0);
 }
 function fillBoxFootprintInto(out, hx, hy) {
     out[0] = -hx;
