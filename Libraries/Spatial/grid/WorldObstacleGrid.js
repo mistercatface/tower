@@ -7,7 +7,7 @@ import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
 import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
 import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom, reconcileBeltBoundaries, clearBeltBoundariesForCell } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
+import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsAtOriginIdxInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision, bumpSurfaceMaterialRevision } from "./gridNavEpoch.js";
 import { entityBroadphaseExtent } from "../collision/entityBroadphase.js";
@@ -475,5 +475,8 @@ export class WorldObstacleGrid {
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
+    }
+    getCellBoundsByIdx(idx) {
+        return cellBoundsAtOriginIdxInto(this.cellBoundsScratch, this.minX, this.minY, idx, this.cols, this.cellSize);
     }
 }

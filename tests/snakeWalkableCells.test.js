@@ -66,7 +66,7 @@ describe("snake navWalkable session", () => {
         const grid = state.obstacleGrid;
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
-            assert.ok(isNavWalkableCell(grid, state.nav.topology, cell.col, cell.row), `cell ${colRowToIndex(cell.col, cell.row, grid.cols)} not nav-walkable`);
+            assert.ok(isNavWalkableCell(grid, state.nav.topology, cell.col + cell.row * grid.cols), `cell ${colRowToIndex(cell.col, cell.row, grid.cols)} not nav-walkable`);
         }
     });
     it("baked navWalkable drops disconnected cells on the split map", async () => {
@@ -82,7 +82,7 @@ describe("snake navWalkable session", () => {
         const cellSize = grid.cellSize;
         forEachGlobalCellInMapGenBounds(playable, (globalCol, globalRow) => {
             const { col, row } = grid.worldToGrid(globalCol * cellSize, globalRow * cellSize);
-            if (isNavWalkableCell(grid, state.nav.topology, col, row)) localPassCount++;
+            if (isNavWalkableCell(grid, state.nav.topology, col + row * grid.cols)) localPassCount++;
         });
         assert.ok(scene.navWalkable.cells().length < localPassCount);
     });

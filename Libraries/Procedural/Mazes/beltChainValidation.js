@@ -1,5 +1,5 @@
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
-import { CARDINAL_OFFSETS, layoutAbsCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
 function neighborForSide(col, row, side) {
     const off = CARDINAL_OFFSETS[side];
     return { col: col + off.dc, row: row + off.dr };
@@ -26,8 +26,9 @@ export function beltMapFromFloorBelts(belts, layout) {
 }
 /** Human-readable coords for validation errors only — not a lookup key. */
 function formatLayoutCellForError(idx, layout) {
-    const { col, row } = layoutIndexToAbsColRow(idx, layout);
-    return `(${col},${row})`;
+    const row = (idx / layout.strideCols) | 0;
+    const col = idx - row * layout.strideCols;
+    return `(${col + layout.originCol},${row + layout.originRow})`;
 }
 /**
  * @param {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} footprint

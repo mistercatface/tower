@@ -1,16 +1,15 @@
 import { isEdgeZoneKey } from "../../DataStructures/CellKey.js";
-import { cellInRect, colRowToIndex, indexToColRow } from "../grid/GridUtils.js";
+import { cellInRect, colRowToIndex } from "../grid/GridUtils.js";
 import { isPassagePowered } from "../grid/boundaryOccupancy.js";
 import { canonicalEdgeCellKey } from "../grid/gridCellTopology.js";
-/** @typedef {{ col: number, row: number, side: number, mode: string }} GridEdgeSubscription */
+/** @typedef {{ idx: number, side: number, mode: string }} GridEdgeSubscription */
 /** @typedef {{ cells: Set<number>, edges: Map<number, GridEdgeSubscription> }} GridZoneSubscriptions */
 /**
  * @typedef {object} GridZoneEvent
  * @property {"cell" | "edge"} kind
  * @property {number} key
  * @property {object} entity
- * @property {number} col
- * @property {number} row
+ * @property {number} idx
  * @property {number} [side]
  * @property {GridEdgeSubscription} [edgeMeta]
  */
@@ -42,7 +41,7 @@ export function entityInGridEdgeBand(grid, x, y, col, row, side, band) {
 function addPoweredSubscribedEdgeKey(grid, key, subscribedEdges, out) {
     if (!subscribedEdges.has(key)) return;
     const meta = subscribedEdges.get(key);
-    if (isPassagePowered(grid, meta.col, meta.row, meta.side)) out.add(key);
+    if (isPassagePowered(grid, meta.idx, meta.side)) out.add(key);
 }
 /** @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} prevCol @param {number} prevRow @param {number} col @param {number} row @param {Map<number, GridEdgeSubscription>} subscribedEdges @param {Set<number>} out */
 export function appendCrossedEdgeZoneKeys(grid, prevCol, prevRow, col, row, subscribedEdges, out) {
@@ -89,7 +88,7 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
                 for (let side = 0; side < 4; side++) {
                     const key = canonicalEdgeCellKey(grid, nc, nr, side);
                     if (!subscriptions.edges.has(key)) continue;
-                    if (!isPassagePowered(grid, nc, nr, side)) continue;
+                    if (!isPassagePowered(grid, nc + nr * grid.cols, side)) continue;
                     if (entityInGridEdgeBand(grid, x, y, nc, nr, side, band)) out.add(key);
                 }
             }
@@ -118,29 +117,20 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
             const key = entered[j];
             if (isEdgeZoneKey(key)) {
                 const meta = subscriptions.edges.get(key);
-                handlers.onEnter({ kind: "edge", key, entity, col: meta.col, row: meta.row, side: meta.side, edgeMeta: meta });
-            } else {
-                const { col, row } = indexToColRow(key, grid.cols);
-                handlers.onEnter({ kind: "cell", key, entity, col, row });
-            }
+                handlers.onEnter({ kind: "edge", key, entity, idx: meta.idx, side: meta.side, edgeMeta: meta });
+            } else handlers.onEnter({ kind: "cell", key, entity, idx: key });
         }
         for (const key of next)
             if (isEdgeZoneKey(key)) {
                 const meta = subscriptions.edges.get(key);
-                handlers.onOn({ kind: "edge", key, entity, col: meta.col, row: meta.row, side: meta.side, edgeMeta: meta });
-            } else {
-                const { col, row } = indexToColRow(key, grid.cols);
-                handlers.onOn({ kind: "cell", key, entity, col, row });
-            }
+                handlers.onOn({ kind: "edge", key, entity, idx: meta.idx, side: meta.side, edgeMeta: meta });
+            } else handlers.onOn({ kind: "cell", key, entity, idx: key });
         for (let j = 0; j < exited.length; j++) {
             const key = exited[j];
             if (isEdgeZoneKey(key)) {
                 const meta = subscriptions.edges.get(key);
-                handlers.onExit({ kind: "edge", key, entity, col: meta.col, row: meta.row, side: meta.side, edgeMeta: meta });
-            } else {
-                const { col, row } = indexToColRow(key, grid.cols);
-                handlers.onExit({ kind: "cell", key, entity, col, row });
-            }
+                handlers.onExit({ kind: "edge", key, entity, idx: meta.idx, side: meta.side, edgeMeta: meta });
+            } else handlers.onExit({ kind: "cell", key, entity, idx: key });
         }
         entity._gridZoneKeys = next;
         entity._gridZoneNextKeys = prev;

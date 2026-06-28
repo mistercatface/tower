@@ -22,9 +22,33 @@ export function edgeMirrorSide(side) {
     return (side + 2) % 4;
 }
 export function cellEdgeEndpointsIdx(grid, idx, side, p1, p2, inset = 0) {
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return cellEdgeEndpoints(grid, col, row, side, p1, p2, inset);
+    const bounds = grid.getCellBoundsByIdx(idx);
+    const minX = bounds.minX;
+    const minY = bounds.minY;
+    const maxX = bounds.maxX;
+    const maxY = bounds.maxY;
+    if (side === 0) {
+        p1.x = minX;
+        p1.y = minY + inset;
+        p2.x = maxX;
+        p2.y = minY + inset;
+    } else if (side === 1) {
+        p1.x = maxX - inset;
+        p1.y = minY;
+        p2.x = maxX - inset;
+        p2.y = maxY;
+    } else if (side === 2) {
+        p1.x = minX;
+        p1.y = maxY - inset;
+        p2.x = maxX;
+        p2.y = maxY - inset;
+    } else {
+        p1.x = minX + inset;
+        p1.y = minY;
+        p2.x = minX + inset;
+        p2.y = maxY;
+    }
+    return p1;
 }
 export function cellEdgeEndpoints(grid, col, row, side, p1, p2, inset = 0) {
     const bounds = grid.getCellBounds(col, row);

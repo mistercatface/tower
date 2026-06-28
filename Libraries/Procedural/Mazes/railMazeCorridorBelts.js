@@ -55,7 +55,8 @@ export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, nort
         const col = grid.worldCol(globalCol * cellSize);
         const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        if (!isNavWalkableAt(navWalkableIndex, col, row)) return;
+        const idx = col + row * grid.cols;
+        if (!isNavWalkableAt(navWalkableIndex, idx)) return;
         cells.push({ col, row, globalCol, globalRow });
     });
     return cells;

@@ -97,6 +97,12 @@ export function cellBoundsAtOriginInto(out, originMinX, originMinY, col, row, ce
     return minCornerAabbInto(out, originMinX + col * cellSize, originMinY + row * cellSize, cellSize, cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
+export function cellBoundsAtOriginIdxInto(out, originMinX, originMinY, idx, cols, cellSize) {
+    const row = (idx / cols) | 0;
+    const col = idx - row * cols;
+    return minCornerAabbInto(out, originMinX + col * cellSize, originMinY + row * cellSize, cellSize, cellSize);
+}
+/** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
 export function cellBoundsToWorldBoundsInto(out, bounds, originX, originY, cellSize) {
     out.minX = originX + bounds.startCol * cellSize;
     out.minY = originY + bounds.startRow * cellSize;

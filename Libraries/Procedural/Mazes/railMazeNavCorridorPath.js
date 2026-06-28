@@ -4,7 +4,6 @@ import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
 import { colRowToIndex, gridCellLayout } from "../../Spatial/grid/GridUtils.js";
-import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 let pathScratch = new Int32Array(512);
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
@@ -20,11 +19,14 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
     const cellCount = gridCols * grid.rows;
     const globalLayout = gridCellLayout(grid);
     const walkable = new Uint8Array(cellCount);
-    for (let r = bounds.startRow; r <= bounds.endRow; r++)
+    for (let r = bounds.startRow; r <= bounds.endRow; r++) {
+        const rowOffset = r * navWalkableIndex.cols;
+        const globalRowOffset = r * gridCols;
         for (let c = bounds.startCol; c <= bounds.endCol; c++) {
-            if (!readNavWalkableFlag(navWalkableIndex.flags, navWalkableIndex.cols, c, r)) continue;
-            walkable[colRowToIndex(c, r, gridCols)] = 1;
+            if (navWalkableIndex.flags[rowOffset + c] === 0) continue;
+            walkable[globalRowOffset + c] = 1;
         }
+    }
     const searchState = new SearchState(cellCount);
     let reservedGlobalIndices = new Set();
     const gridView = new FlatGridView(gridCols, grid.rows, {

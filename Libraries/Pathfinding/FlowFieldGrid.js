@@ -175,6 +175,11 @@ export class FlowFieldGrid {
         const dist = this.flowDistPool[slot * this.cols * this.rows + idx];
         return dist >= 0 ? dist : null;
     }
+    readFlowStepsAtIdx(slot, idx) {
+        if (idx < 0 || idx >= this.cols * this.rows) return null;
+        const dist = this.flowDistPool[slot * this.cols * this.rows + idx];
+        return dist >= 0 ? dist : null;
+    }
     readFlowStepsForTargetInto(out, agentX, agentY, targetX, targetY, range = 999999) {
         out.slot = null;
         out.steps = null;

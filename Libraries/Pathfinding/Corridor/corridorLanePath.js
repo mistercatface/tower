@@ -1,4 +1,4 @@
-import { gridSideNeighborCell, layoutAbsCellIndex, layoutIndexToAbsColRow } from "../../Spatial/grid/GridUtils.js";
+import { layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { corridorPathHitsOccupied, corridorPathIntersectsPaths, corridorPathOccupiedCellIndices, corridorPathsToOccupiedCellIndices } from "./corridorFootprint.js";
 import { CorridorGridPathfinder } from "./corridorGridPathfinder.js";
 import { buildRoomInteriorBlockedGridForLayout, buildRoomFootprintMaskForLayout, cellInsideAnyRoom, corridorSearchBounds, corridorSearchLayout } from "./corridorWalkGrid.js";

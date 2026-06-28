@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { collectWalkableCells, collectNavWalkableCells, createNavWalkableAccess, getNavWalkableCellIndex, getNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, pickRandomWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
-import { readNavWalkableFlag } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
+import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -71,7 +71,7 @@ describe("walkableCells", () => {
         assert.ok(index.flags instanceof Uint8Array);
         assert.equal(index.flags.length, state.obstacleGrid.cols * state.obstacleGrid.rows);
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
-        assert.ok(readNavWalkableFlag(index.flags, index.cols, picked.col, picked.row));
+        assert.ok(isNavWalkableAt(index, picked.col + picked.row * index.cols));
         terminateWorkerNavigation(state.nav);
     });
     it("patchNavWalkableCellIndex rebakes cached bounds after obstacle epoch bump", async () => {
@@ -102,7 +102,7 @@ describe("walkableCells", () => {
         const picked = pickNavWalkableCell(state, { rng: () => 0 });
         assert.ok(picked);
         assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
-        assert.ok(isNavWalkableCell(state.obstacleGrid, state.nav.topology, picked.col, picked.row));
+        assert.ok(isNavWalkableCell(state.obstacleGrid, state.nav.topology, picked.col + picked.row * state.obstacleGrid.cols));
         terminateWorkerNavigation(state.nav);
     });
     it("createNavWalkableAccess binds state and bounds for pick/has/rebake", async () => {

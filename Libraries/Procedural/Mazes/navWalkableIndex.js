@@ -1,13 +1,8 @@
-import { cellInRect, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 /** @typedef {{ flags: Uint8Array, cols: number, rows: number }} NavWalkableIndex */
-/** @param {Uint8Array} flags @param {number} cols @param {number} col @param {number} row */
-export function readNavWalkableFlag(flags, cols, col, row) {
-    return flags[colRowToIndex(col, row, cols)] !== 0;
-}
-/** @param {NavWalkableIndex} index @param {number} col @param {number} row */
-export function isNavWalkableAt(index, col, row) {
-    if (!cellInRect(col, row, index.cols, index.rows)) return false;
-    return readNavWalkableFlag(index.flags, index.cols, col, row);
+/** @param {NavWalkableIndex} index @param {number} idx */
+export function isNavWalkableAt(index, idx) {
+    if (idx < 0 || idx >= index.flags.length) return false;
+    return index.flags[idx] !== 0;
 }
 /** @param {Uint8Array} flags */
 export function countNavWalkableFlags(flags) {
@@ -20,7 +15,7 @@ export function writeNavWalkableFlags(flags, cols, cells) {
     flags.fill(0);
     for (let i = 0; i < cells.length; i++) {
         const { col, row } = cells[i];
-        flags[colRowToIndex(col, row, cols)] = 1;
+        flags[col + row * cols] = 1;
     }
 }
 /**
@@ -29,13 +24,14 @@ export function writeNavWalkableFlags(flags, cols, cells) {
  * @param {Uint8Array | null} [reuse]
  */
 export function createNavWalkableCandidateMask(grid, cells, reuse = null) {
-    const size = grid.cols * grid.rows;
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const size = cols * rows;
     const mask = reuse && reuse.length === size ? reuse : new Uint8Array(size);
     mask.fill(0);
     for (let i = 0; i < cells.length; i++) {
         const { col, row } = cells[i];
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        mask[colRowToIndex(col, row, grid.cols)] = 1;
+        if (col >= 0 && col < cols && row >= 0 && row < rows) mask[col + row * cols] = 1;
     }
     return mask;
 }

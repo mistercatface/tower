@@ -22,10 +22,6 @@ export function layoutAbsToLocalCell(layout, col, row) {
 export function layoutLocalToAbsCell(layout, col, row) {
     return { col: col + layout.originCol, row: row + layout.originRow };
 }
-/** @param {LayoutCellIdx} idx @param {CellIndexLayout} layout */
-export function layoutIndexToAbsColRow(idx, layout) {
-    return { col: (idx % layout.strideCols) + layout.originCol, row: Math.floor(idx / layout.strideCols) + layout.originRow };
-}
 /** Dense index for absolute (col, row) within a bounded layout rect. */
 export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
     return colRowToIndex(absCol - originCol, absRow - originRow, strideCols);
@@ -38,9 +34,9 @@ export function layoutLocalCellIndex(layout, localCol, localRow) {
 }
 /** @param {number} idx @param {CellIndexLayout} layout @param {number} gridCols */
 export function layoutIndexToGlobalIndex(idx, layout, gridCols) {
-    const col = (idx % layout.strideCols) + layout.originCol;
-    const row = Math.floor(idx / layout.strideCols) + layout.originRow;
-    return colRowToIndex(col, row, gridCols);
+    const localRow = (idx / layout.strideCols) | 0;
+    const localCol = idx - localRow * layout.strideCols;
+    return (layout.originRow + localRow) * gridCols + (layout.originCol + localCol);
 }
 /** @param {Iterable<number>} indices @param {CellIndexLayout} layout @param {number} gridCols */
 export function layoutIndicesToGlobalIndices(indices, layout, gridCols) {
@@ -61,9 +57,6 @@ export function gridCellLayout(grid) {
 /** @param {number} col @param {number} row @param {number} cols @param {number} rows */
 export function cellInRect(col, row, cols, rows) {
     return col >= 0 && col < cols && row >= 0 && row < rows;
-}
-export function indexToColRow(idx, cols) {
-    return { col: idx % cols, row: Math.floor(idx / cols) };
 }
 export const CARDINAL_OFFSETS = [
     { dc: 0, dr: -1 },
@@ -133,22 +126,32 @@ export function octileDistance(col, row, targetCol, targetRow) {
     return dy * Math.SQRT2 + (dx - dy);
 }
 export function manhattanDistanceIdx(idxA, idxB, cols) {
-    const dx = Math.abs((idxA % cols) - (idxB % cols));
-    const dy = Math.abs(((idxA / cols) | 0) - ((idxB / cols) | 0));
-    return dx + dy;
+    const rowA = (idxA / cols) | 0;
+    const colA = idxA - rowA * cols;
+    const rowB = (idxB / cols) | 0;
+    const colB = idxB - rowB * cols;
+    return Math.abs(colA - colB) + Math.abs(rowA - rowB);
 }
 export function octileDistanceIdx(idxA, idxB, cols) {
-    const dx = Math.abs((idxA % cols) - (idxB % cols));
-    const dy = Math.abs(((idxA / cols) | 0) - ((idxB / cols) | 0));
+    const rowA = (idxA / cols) | 0;
+    const colA = idxA - rowA * cols;
+    const rowB = (idxB / cols) | 0;
+    const colB = idxB - rowB * cols;
+    const dx = Math.abs(colA - colB);
+    const dy = Math.abs(rowA - rowB);
     const min = Math.min(dx, dy);
     const max = Math.max(dx, dy);
     return min * 1.41421356 + (max - min);
 }
 export function forEachCardinalNeighborIdx(idx, cols, rows, fn) {
-    const col = idx % cols;
     const row = (idx / cols) | 0;
-    if (row > 0) fn(idx - cols); // North
-    if (col < cols - 1) fn(idx + 1); // East
-    if (row < rows - 1) fn(idx + cols); // South
-    if (col > 0) fn(idx - 1); // West
+    const col = idx - row * cols;
+    if (row > 0) fn(idx - cols);
+    if (col < cols - 1) fn(idx + 1);
+    if (row < rows - 1) fn(idx + cols);
+    if (col > 0) fn(idx - 1);
+}
+export function gridSideNeighborIdx(idx, side, cols) {
+    const { dc, dr } = CARDINAL_OFFSETS[side];
+    return idx + dr * cols + dc;
 }

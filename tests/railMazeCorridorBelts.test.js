@@ -10,7 +10,7 @@ import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snake
 import { createNavRuntime, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
-import { colRowToIndex, globalCellIdx, indexToColRow } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex, globalCellIdx } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
@@ -95,11 +95,12 @@ describe("rail maze corridor belts", () => {
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
             const { col, row } = zoneCells[i];
-            assert.ok(isNavWalkableAt(navWalkableIndex, col, row));
             const idx = globalCellIdx(col, row, grid.cols);
-            const roundTrip = indexToColRow(idx, grid.cols);
-            assert.equal(roundTrip.col, col);
-            assert.equal(roundTrip.row, row);
+            assert.ok(isNavWalkableAt(navWalkableIndex, idx));
+            const rtRow = (idx / grid.cols) | 0;
+            const rtCol = idx - (rtRow * grid.cols);
+            assert.equal(rtCol, col);
+            assert.equal(rtRow, row);
         }
         const plan = planRailMazeCorridorBelts({ grid, navTopology, railConfig, northReserveRows: layout.northReserveRows, navWalkableIndex, mapSeed: layout.mapSeed });
         assert.equal(plan.validation.ok, true);
@@ -108,9 +109,10 @@ describe("rail maze corridor belts", () => {
             const col = belt.idx % grid.cols;
             const row = (belt.idx / grid.cols) | 0;
             const idx = globalCellIdx(col, row, grid.cols);
-            const rt = indexToColRow(idx, grid.cols);
-            assert.equal(rt.col, col);
-            assert.equal(rt.row, row);
+            const rtRow = (idx / grid.cols) | 0;
+            const rtCol = idx - (rtRow * grid.cols);
+            assert.equal(rtCol, col);
+            assert.equal(rtRow, row);
         }
     });
     it("rolls open vs railed belt kind per cell", async () => {

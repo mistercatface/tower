@@ -4,7 +4,7 @@ import { floodConnectedNavWalkableCells, isNavWalkableCell } from "../../Spatial
 import { forEachGlobalCellInMapGenBounds, isGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { expandNavTopologyBakeBounds } from "../../Pathfinding/navTopologySab.js";
 import { clampCellBoundsToGrid, forEachDenseCellInRect, padCellIdxToGrid } from "../../DataStructures/CellRect.js";
-import { createNavWalkableCandidateMask, createNavWalkableReachedMask, isNavWalkableAt, readNavWalkableFlag, writeNavWalkableFlags } from "./navWalkableIndex.js";
+import { createNavWalkableCandidateMask, createNavWalkableReachedMask, isNavWalkableAt, writeNavWalkableFlags } from "./navWalkableIndex.js";
 /** @typedef {import("./navWalkableIndex.js").NavWalkableIndex} NavWalkableIndex */
 function cellIndex(col, row, cols) {
     return colRowToIndex(col, row, cols);
@@ -55,22 +55,21 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
     const { cols } = grid;
     cache.candidates = cache.candidates.filter((cell) => {
         if (cell.col < patchBounds.startCol || cell.col > patchBounds.endCol || cell.row < patchBounds.startRow || cell.row > patchBounds.endRow) return true;
-        const walkable = isNavWalkableCell(grid, navTopology, cell.col, cell.row);
-        const idx = colRowToIndex(cell.col, cell.row, cols);
+        const idx = cell.col + cell.row * cols;
+        const walkable = isNavWalkableCell(grid, navTopology, idx);
         cache.candidateMask[idx] = walkable ? 1 : 0;
         return walkable;
     });
-    const seen = new Set(cache.candidates.map((cell) => colRowToIndex(cell.col, cell.row, cols)));
+    const seen = new Set(cache.candidates.map((cell) => cell.col + cell.row * cols));
     forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (col, row) => {
         const { globalCol, globalRow } = globalCellForGridCell(grid, col, row);
+        const idx = col + row * cols;
         if (!isGlobalCellInMapGenBounds(boundsConfig, globalCol, globalRow)) {
-            const idx = colRowToIndex(col, row, cols);
             cache.candidateMask[idx] = 0;
             return;
         }
-        const idx = colRowToIndex(col, row, cols);
         if (seen.has(idx)) return;
-        if (!isNavWalkableCell(grid, navTopology, col, row)) {
+        if (!isNavWalkableCell(grid, navTopology, idx)) {
             cache.candidateMask[idx] = 0;
             return;
         }
@@ -127,8 +126,8 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     forEachGlobalCellInMapGenBounds(boundsConfig, (globalCol, globalRow) => {
         const col = grid.worldCol(globalCol * cellSize);
         const row = grid.worldRow(globalRow * cellSize);
-        if (!isNavWalkableCell(grid, navTopology, col, row)) return;
-        const idx = colRowToIndex(col, row, grid.cols);
+        const idx = col + row * grid.cols;
+        if (!isNavWalkableCell(grid, navTopology, idx)) return;
         if (seen[idx]) return;
         seen[idx] = 1;
         candidates.push({ col, row });
@@ -172,14 +171,14 @@ export function getNavWalkableCellIndex(state, boundsConfig = state.editor.caver
 export function getNavWalkableCells(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     return getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
 }
-/** @param {NavWalkableIndex} navWalkableIndex @param {number} col @param {number} row */
-export function isNavWalkableCellAtIndex(navWalkableIndex, col, row) {
-    return isNavWalkableAt(navWalkableIndex, col, row);
+/** @param {NavWalkableIndex} navWalkableIndex @param {number} idx */
+export function isNavWalkableCellAtIndex(navWalkableIndex, idx) {
+    return isNavWalkableAt(navWalkableIndex, idx);
 }
 export function isNavWalkableCellAt(state, col, row, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     const index = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);
     if (!cellInRect(col, row, index.cols, index.rows)) return false;
-    return readNavWalkableFlag(index.flags, index.cols, col, row);
+    return isNavWalkableAt(index, col + row * index.cols);
 }
 /**
  * Rebake the cached nav-walkable index after navigation epoch advances (e.g. wall edit).
@@ -226,7 +225,7 @@ export function createNavWalkableAccess(state, boundsConfig, { floodSeedBounds =
         has(col, row) {
             const index = ensure();
             if (!cellInRect(col, row, index.cols, index.rows)) return false;
-            return readNavWalkableFlag(index.flags, index.cols, col, row);
+            return isNavWalkableAt(index, col + row * index.cols);
         },
         pick({ excludeIndices = null, filterBoundsConfig = null, rng = Math.random } = {}) {
             return pickNavWalkableCell(state, { boundsConfig, floodSeedBounds, excludeIndices, filterBoundsConfig, rng });

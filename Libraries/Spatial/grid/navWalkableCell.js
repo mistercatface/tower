@@ -1,18 +1,28 @@
 import { cellInRect } from "./GridUtils.js";
-const CARDINALS = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-];
-export function isNavWalkableCell(grid, navTopology, col, row) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    if (grid.isBlocked(col, row)) return false;
-    const idx = col + row * grid.cols;
-    for (let i = 0; i < CARDINALS.length; i++) {
-        const nc = col + CARDINALS[i][0];
-        const nr = row + CARDINALS[i][1];
-        const nIdx = nc + nr * grid.cols;
+export function isNavWalkableCell(grid, navTopology, idx) {
+    const cols = grid.cols;
+    const rows = grid.rows;
+    if (idx < 0 || idx >= cols * rows) return false;
+    if (grid.isBlockedIdx(idx)) return false;
+    const col = idx % cols;
+    // West
+    if (col > 0) {
+        const nIdx = idx - 1;
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) return true;
+    }
+    // East
+    if (col + 1 < cols) {
+        const nIdx = idx + 1;
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) return true;
+    }
+    // North
+    if (idx >= cols) {
+        const nIdx = idx - cols;
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) return true;
+    }
+    // South
+    if (idx < cols * (rows - 1)) {
+        const nIdx = idx + cols;
         if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) return true;
     }
     return false;

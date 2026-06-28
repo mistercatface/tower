@@ -36,6 +36,10 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
         isBlocked(col, row) {
             return gridFill[row * frame.cols + col] !== 0;
         },
+        isBlockedIdx(idx) {
+            if (idx < 0 || idx >= gridFill.length) return true;
+            return gridFill[idx] !== 0;
+        },
     };
     Object.defineProperties(simView, {
         cols: {

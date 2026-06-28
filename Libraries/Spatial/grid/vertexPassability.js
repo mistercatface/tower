@@ -53,7 +53,7 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
     for (let row = r0; row <= r1; row++)
         for (let col = c0; col <= c1; col++) {
             const idx = colRowToIndex(col, row, cols);
-            if (grid.isBlocked(col, row)) {
+            if (grid.isBlockedIdx(idx)) {
                 cardinalOpen[idx] = 0;
                 continue;
             }
@@ -61,22 +61,22 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
             // East
             if (col < cols - 1) {
                 const nIdx = idx + 1;
-                if (!grid.isBlocked(col + 1, row) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 1;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 1;
             }
             // South
             if (row < rows - 1) {
                 const nIdx = idx + cols;
-                if (!grid.isBlocked(col, row + 1) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 2;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 2;
             }
             // West
             if (col > 0) {
                 const nIdx = idx - 1;
-                if (!grid.isBlocked(col - 1, row) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 4;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 4;
             }
             // North
             if (row > 0) {
                 const nIdx = idx - cols;
-                if (!grid.isBlocked(col, row - 1) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 8;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 8;
             }
             cardinalOpen[idx] = mask;
         }

@@ -28,8 +28,8 @@ export class FloorCellStore {
         const oldSize = oldCols * oldRows;
         for (let idx = 0; idx < oldSize; idx++) {
             if (oldKind[idx] === FLOOR_CELL_KIND.None) continue;
-            const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
+            const col = idx - row * oldCols;
             const nc = col + colOffset;
             const nr = row + rowOffset;
             if (!cellInRect(nc, nr, newCols, newRows)) continue;
