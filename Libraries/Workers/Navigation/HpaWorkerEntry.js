@@ -2,7 +2,6 @@ import { FlatAbstractGraphSearch, FlatGridSearch } from "../../Pathfinding/AStar
 import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
-import { stitchAbstractCellPath } from "../../Pathfinding/hpaStitch.js";
 import { HpaAbstractGraph } from "../../Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
@@ -10,6 +9,38 @@ import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTop
 import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
+export function stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outIdx, cols) {
+    if (!abstractIdx || !abstractIdx.length) return 0;
+    let offset = 0;
+    const lastLeg = abstractIdx.length - 1;
+    const { nodeIdx, nodeCount, startIdx, targetIdx } = prep;
+    const startTemp = nodeCount;
+    const targetTemp = nodeCount + 1;
+    for (let i = 0; i < lastLeg; i++) {
+        const aIdx = abstractIdx[i];
+        const bIdx = abstractIdx[i + 1];
+        const legKey = (aIdx << 16) | bIdx;
+        let legOffset = tempLegsOffsets.get(legKey);
+        let legLen = 0;
+        let isTempLeg = true;
+        if (legOffset !== undefined) legLen = tempLegsLengths.get(legKey);
+        else if (aIdx < nodeCount && bIdx < nodeCount) {
+            legLen = resolveRegionLeg(aIdx, bIdx);
+            isTempLeg = false;
+        }
+        if (legLen > 0) {
+            const start = offset === 0 ? 0 : 1;
+            if (isTempLeg) for (let j = start; j < legLen; j++) outIdx[offset++] = tempLegsBuffer[legOffset + j];
+            else for (let j = start; j < legLen; j++) outIdx[offset++] = resolveRegionLeg.scratch[j];
+            continue;
+        }
+        const aCellIdx = aIdx === startTemp ? startIdx : aIdx === targetTemp ? targetIdx : nodeIdx[aIdx];
+        const bCellIdx = bIdx === startTemp ? startIdx : bIdx === targetTemp ? targetIdx : nodeIdx[bIdx];
+        if (offset === 0) outIdx[offset++] = aCellIdx;
+        outIdx[offset++] = bCellIdx;
+    }
+    return offset;
+}
 export class HpaBufferManager {
     constructor() {
         this.maxSlots = 0;
