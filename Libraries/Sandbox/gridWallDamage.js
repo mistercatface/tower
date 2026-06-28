@@ -19,11 +19,11 @@ export function resolveWallDamageTarget(grid, segment) {
     const col = segment.gridCol;
     const row = segment.gridRow;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    if (segment.isStaticGridProxy && cellIsStaticWall(grid, col, row)) return { kind: "voxel", col, row };
+    if (segment.isStaticGridProxy && cellIsStaticWall(grid, col + row * grid.cols)) return { kind: "voxel", col, row };
     if (segment.isEdgeRail) {
         const side = segment.gridSide;
         if (side == null) return null;
-        const edge = grid.edgeStore.get(col, row, side, grid.cols);
+        const edge = grid.edgeStore.getIdx(col + row * grid.cols, side);
         if (!isRailWallEdge(edge)) return null;
         return { kind: "rail", col, row, side };
     }
@@ -123,7 +123,7 @@ export function applyPendingWallDamage(state, wallDamage) {
                 sourceMass: item.sourceMass ?? 1,
             });
         } else {
-            const info = getRailWallInfo(grid, target.col, target.row, target.side);
+            const info = getRailWallInfo(grid, target.col + target.row * grid.cols, target.side);
             if (!info) continue;
             const p1 = { x: 0, y: 0 };
             const p2 = { x: 0, y: 0 };

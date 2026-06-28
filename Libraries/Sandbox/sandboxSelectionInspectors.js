@@ -62,11 +62,17 @@ export function buildVoxelWallInspectorInfo(state, sel) {
 }
 export function buildRailWallInspectorInfo(state, sel) {
     const edge = selectionRailEdge(sel);
-    return edge && railWallEdgeAt(state.obstacleGrid, edge.col, edge.row, edge.side) ? getRailWallInfo(state.obstacleGrid, edge.col, edge.row, edge.side) : null;
+    if (!edge) return null;
+    const grid = state.obstacleGrid;
+    const idx = edge.row * grid.cols + edge.col;
+    return railWallEdgeAt(grid, idx, edge.side) ? getRailWallInfo(grid, idx, edge.side) : null;
 }
 export function buildForcefieldInspectorInfo(state, sel) {
     const edge = selectionRailEdge(sel);
-    return edge && forcefieldEdgeAt(state.obstacleGrid, edge.col, edge.row, edge.side) ? getForcefieldInfo(state.obstacleGrid, edge.col, edge.row, edge.side) : null;
+    if (!edge) return null;
+    const grid = state.obstacleGrid;
+    const idx = edge.row * grid.cols + edge.col;
+    return forcefieldEdgeAt(grid, idx, edge.side) ? getForcefieldInfo(grid, idx, edge.side) : null;
 }
 export function buildRoomNodeInspectorInfo(state, sel) {
     const id = selectionRoomNodeId(sel);

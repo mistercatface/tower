@@ -54,8 +54,8 @@ describe("wall delete batching (4a)", () => {
         const bounds = clearGridWallsQuiet(state, { voxels: [{ col: 2, row: 2 }], rails: [{ col: 3, row: 3, side: 1 }] });
         assert.ok(bounds);
         assert.equal(state.notifyCount, 0);
-        assert.ok(!cellIsStaticWall(state.obstacleGrid, 2, 2));
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(3, 3, 1, state.obstacleGrid.cols)));
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(2, 2, state.obstacleGrid.cols)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(3, 3, state.obstacleGrid.cols), 1)));
         terminateWorkerNavigation(state.nav);
     });
     it("clearGridWallsBatch deletes voxel and rail in one nav invalidation", async () => {
@@ -66,8 +66,8 @@ describe("wall delete batching (4a)", () => {
         const bounds = clearGridWallsBatch(state, { voxels: [{ col: 1, row: 1 }], rails: [{ col: 4, row: 4, side: 0 }] });
         assert.ok(bounds);
         assert.equal(state.notifyCount, 1);
-        assert.ok(!cellIsStaticWall(state.obstacleGrid, 1, 1));
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 0, state.obstacleGrid.cols)));
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(1, 1, state.obstacleGrid.cols)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(4, 4, state.obstacleGrid.cols), 0)));
         terminateWorkerNavigation(state.nav);
     });
     it("deferred commit batches mixed voxel and rail clears into one notify", async () => {
@@ -82,8 +82,8 @@ describe("wall delete batching (4a)", () => {
         const bounds = commit.flush();
         assert.ok(bounds);
         assert.equal(state.notifyCount, 1);
-        assert.ok(!cellIsStaticWall(state.obstacleGrid, 5, 5));
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(6, 6, 2, state.obstacleGrid.cols)));
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(5, 5, state.obstacleGrid.cols)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(6, 6, state.obstacleGrid.cols), 2)));
         terminateWorkerNavigation(state.nav);
     });
     it("deferred clearWalls batches voxel and rail in one flush", async () => {

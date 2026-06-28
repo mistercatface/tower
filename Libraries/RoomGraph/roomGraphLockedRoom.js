@@ -47,7 +47,7 @@ export function resolveLockedRoomEgressLayout(node, hole) {
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {GridCell} power @param {number} egressSide */
 export function lockedRoomPowerSharesPerimeterRail(grid, power, egressSide) {
-    return railWallEdgeAt(grid, power.col, power.row, egressSide) != null;
+    return railWallEdgeAt(grid, colRowToIndex(power.col, power.row, grid.cols), egressSide) != null;
 }
 /** @param {object} state */
 export function clearLockedRoomBakes(state) {

@@ -115,7 +115,7 @@ function paintRails(ctx, grid, rails, oCol, oRow, cols, rows, px, cellSize) {
         const { col, row } = grid.worldToGrid(rail.col * cellSize, rail.row * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         // Critical Fix: Only draw rail walls if they actually exist on the grid (weren't cleared)
-        if (!grid.hasCellEdge(col, row, rail.side)) continue;
+        if (!grid.hasCellEdge(colRowToIndex(col, row, grid.cols), rail.side)) continue;
         const r = rect(rail.col, rail.row, oCol, oRow, px);
         if (rail.side === 0) ctx.fillRect(r.x, r.y - half, r.s, bar);
         else if (rail.side === 1) ctx.fillRect(r.x + r.s - half, r.y, bar, r.s);

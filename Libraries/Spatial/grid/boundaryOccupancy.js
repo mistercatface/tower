@@ -43,9 +43,7 @@ export function setBoundary(grid, idx, side, spec, { bumpRevision = false } = {}
     }
     if (spec.kind === "railWall") {
         if (spec.capHeightLevel === 0) return setBoundary(grid, idx, side, null, { bumpRevision });
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        grid.edgeStore.writeMirrored(idx, side, cols, rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, col, row, side)));
+        grid.edgeStore.writeMirrored(idx, side, cols, rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
         if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         return true;
     }

@@ -1,5 +1,5 @@
-import { cellInRect, colRowToIndex } from "./GridUtils.js";
-import { CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "./cellEdgeSlots.js";
+import { cellInRect } from "./GridUtils.js";
+import { CELL_EDGE_SIDES, cellEdgeSlotBase } from "./cellEdgeSlots.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
 import { createRailWallEdge, isBeltRailEdge, isForcefieldEdge, isRailWallEdge, railWallHeightPx } from "./CellEdge.js";
@@ -49,18 +49,12 @@ export class CellEdgeStore {
         this.slots = newSlots;
     }
     getIdx(idx, side) {
-        const ref = this.slots[cellEdgeSlotOffset(idx, side)];
+        const ref = this.slots[idx * 4 + side];
         if (ref === EMPTY) return null;
         return this.pool[ref];
     }
     hasIdx(idx, side) {
-        return this.slots[cellEdgeSlotOffset(idx, side)] !== EMPTY;
-    }
-    get(col, row, side, cols) {
-        return this.getIdx(colRowToIndex(col, row, cols), side);
-    }
-    has(col, row, side, cols) {
-        return this.hasIdx(colRowToIndex(col, row, cols), side);
+        return this.slots[idx * 4 + side] !== EMPTY;
     }
     _alloc(edge) {
         if (this.free.length) {
@@ -96,7 +90,7 @@ export class CellEdgeStore {
         this.free.push(ref);
     }
     _setSlot(idx, side, ref) {
-        this.slots[cellEdgeSlotOffset(idx, side)] = ref;
+        this.slots[idx * 4 + side] = ref;
     }
     writeMirrored(idx, side, cols, rows, edge) {
         if (idx < 0 || idx >= cols * rows) return;
@@ -116,7 +110,7 @@ export class CellEdgeStore {
     }
     clearMirrored(idx, side, cols, rows) {
         if (idx < 0 || idx >= cols * rows) return;
-        const slot = cellEdgeSlotOffset(idx, side);
+        const slot = idx * 4 + side;
         const ref = this.slots[slot];
         if (ref === EMPTY) return;
         if (isForcefieldEdge(this.pool[ref])) this.passageEdgeCount--;
@@ -124,7 +118,7 @@ export class CellEdgeStore {
         const nIdx = edgeNeighborIdx(idx, side, cols, rows);
         if (nIdx !== -1) {
             const nSide = (side + 2) % 4;
-            this.slots[cellEdgeSlotOffset(nIdx, nSide)] = EMPTY;
+            this.slots[nIdx * 4 + nSide] = EMPTY;
         }
         this._free(ref);
     }
@@ -142,13 +136,11 @@ export class CellEdgeStore {
         const size = grid.cols * grid.rows;
         for (let idx = 0; idx < size; idx++)
             for (let side = 0; side < CELL_EDGE_SIDES; side++) {
-                const ref = this.slots[cellEdgeSlotOffset(idx, side)];
+                const ref = this.slots[idx * 4 + side];
                 if (ref === EMPTY) continue;
                 const edge = this.pool[ref];
                 if (!isRailWallEdge(edge)) continue;
-                const col = idx % cols;
-                const row = (idx / cols) | 0;
-                seen.add(railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, col, row, side)));
+                seen.add(railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, idx, side)));
             }
         const out = [...seen];
         out.sort((a, b) => a - b);

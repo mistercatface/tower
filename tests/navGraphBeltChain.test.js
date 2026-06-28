@@ -33,8 +33,8 @@ describe("navGraph belt chain", () => {
         writeNavFloorCell(grid, 3, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
         writeNavFloorCell(grid, 4, 2, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
 
-        assert.ok(isBeltRailEdge(grid.edgeStore.get(2, 2, 0, grid.cols)));
-        assert.ok(isBeltRailEdge(grid.edgeStore.get(2, 2, 2, grid.cols)));
+        assert.ok(isBeltRailEdge(grid.edgeStore.getIdx(colRowToIndex(2, 2, grid.cols), 0)));
+        assert.ok(isBeltRailEdge(grid.edgeStore.getIdx(colRowToIndex(2, 2, grid.cols), 2)));
 
         const graph = createNavGraphViewWithLocalBake(grid);
         const cols = grid.cols;

@@ -144,9 +144,9 @@ export class WorldObstacleGrid {
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
             if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterX(col), this.gridCenterY(row), col, row));
             for (let side = 0; side < 4; side++) {
-                if (!edgeRailCollisionShouldEmit(this, col, row, side)) continue;
-                const blockingPassage = blockingPassageEdgeAt(this, col, row, side);
-                const thickness = edgeRailCollisionThicknessPx(this, col, row, side);
+                if (!edgeRailCollisionShouldEmit(this, idx, side)) continue;
+                const blockingPassage = blockingPassageEdgeAt(this, idx, side);
+                const thickness = edgeRailCollisionThicknessPx(this, idx, side);
                 cellEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
                 const p1x = EDGE_PROXY_P1.x;
                 const p1y = EDGE_PROXY_P1.y;
@@ -355,14 +355,14 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.setChunkRange(chunkBounds, profileId);
         bumpSurfaceMaterialRevision(this);
     }
-    getCellEdge(col, row, side) {
-        return this.edgeStore.get(col, row, side, this.cols);
+    getCellEdge(idx, side) {
+        return this.edgeStore.getIdx(idx, side);
     }
-    hasCellEdge(col, row, side) {
-        return this.edgeStore.has(col, row, side, this.cols);
+    hasCellEdge(idx, side) {
+        return this.edgeStore.hasIdx(idx, side);
     }
-    edgeBlocksStep(col, row, side) {
-        return boundaryBlocksStep(this, colRowToIndex(col, row, this.cols), side);
+    edgeBlocksStep(idx, side) {
+        return boundaryBlocksStep(this, idx, side);
     }
     syncFloorBeltRailEdges(col, row, kind, facingIndex) {
         syncBeltCellToEdges(this, col, row, kind, facingIndex);

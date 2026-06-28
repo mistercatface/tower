@@ -303,7 +303,7 @@ export function createSandboxSession(state) {
             const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const { col, row, side } = railEdge;
-            const info = getForcefieldInfo(state.obstacleGrid, col, row, side);
+            const info = getForcefieldInfo(state.obstacleGrid, col + row * state.obstacleGrid.cols, side);
             if (!info) return false;
             const allowedSide = mode === PASSAGE_MODE.OneWay ? (info.mode === PASSAGE_MODE.OneWay ? (info.allowedSide ?? side) : side) : side;
             if (!setForcefieldProfileAt(state, col, row, side, mode, allowedSide)) return false;
@@ -314,7 +314,7 @@ export function createSandboxSession(state) {
             const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const { col, row, side } = railEdge;
-            const info = getForcefieldInfo(state.obstacleGrid, col, row, side);
+            const info = getForcefieldInfo(state.obstacleGrid, col + row * state.obstacleGrid.cols, side);
             if (!info || info.mode !== PASSAGE_MODE.OneWay) return false;
             if (!setForcefieldProfileAt(state, col, row, side, PASSAGE_MODE.OneWay, allowedSide)) return false;
             notifyUi();
@@ -326,7 +326,7 @@ export function createSandboxSession(state) {
             if (wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
-                if (forcefieldEdgeAt(grid, hit.col, hit.row, hit.side)) {
+                if (forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) {
                     pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                     return true;
                 }
@@ -338,7 +338,7 @@ export function createSandboxSession(state) {
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
-                if (railWallEdgeAt(state.obstacleGrid, hit.col, hit.row, hit.side)) {
+                if (railWallEdgeAt(state.obstacleGrid, hit.col + hit.row * state.obstacleGrid.cols, hit.side)) {
                     pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                     return true;
                 }
@@ -347,7 +347,7 @@ export function createSandboxSession(state) {
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
-            if (cellIsStaticWall(state.obstacleGrid, col, row)) {
+            if (cellIsStaticWall(state.obstacleGrid, col + row * state.obstacleGrid.cols)) {
                 pickSelection({ kind: "voxel", col, row });
                 return true;
             }
@@ -381,9 +381,9 @@ export function createSandboxSession(state) {
             if (!railEdge) return false;
             const grid = state.obstacleGrid;
             const { col, row, side } = railEdge;
-            const info = getRailWallInfo(grid, col, row, side);
+            const info = getRailWallInfo(grid, col + row * grid.cols, side);
             if (!info || info.side === newSide) return true;
-            if (railWallEdgeAt(grid, col, row, newSide)) return false;
+            if (railWallEdgeAt(grid, col + row * grid.cols, newSide)) return false;
             if (!clearRailWallAt(state, col, row, side)) return false;
             if (!stampRailWallAt(state, col, row, newSide, info.heightLevel, info.thicknessLevel)) return false;
             pickSelection({ kind: "rail", col, row, side: newSide });
@@ -402,7 +402,7 @@ export function createSandboxSession(state) {
             if (railEdge) {
                 const { col, row, side } = railEdge;
                 const grid = state.obstacleGrid;
-                if (forcefieldEdgeAt(grid, col, row, side)) {
+                if (forcefieldEdgeAt(grid, col + row * grid.cols, side)) {
                     if (!clearForcefieldAt(state, col, row, side)) return false;
                     placement.forgetEdgePlacement("forcefield", col, row, side);
                 } else if (!clearRailWallAt(state, col, row, side)) return false;
@@ -418,11 +418,11 @@ export function createSandboxSession(state) {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
                 if (wallStampMode === "forcefield") {
-                    if (!forcefieldEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
                     if (!clearForcefieldAt(state, hit.col, hit.row, hit.side)) return false;
                     placement.forgetEdgePlacement("forcefield", hit.col, hit.row, hit.side);
                 } else {
-                    if (!railWallEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
+                    if (!railWallEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
                     if (!clearRailWallAt(state, hit.col, hit.row, hit.side)) return false;
                     placement.forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
                 }
@@ -443,13 +443,13 @@ export function createSandboxSession(state) {
             const edgeHit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
             if (edgeHit) {
                 const { col, row, side } = edgeHit;
-                if (forcefieldEdgeAt(grid, col, row, side)) {
+                if (forcefieldEdgeAt(grid, col + row * grid.cols, side)) {
                     placePaletteKey = "wall:forcefield";
                     wallStampMode = "forcefield";
                     pickSelection({ kind: "rail", col, row, side });
                     return true;
                 }
-                if (railWallEdgeAt(grid, col, row, side)) {
+                if (railWallEdgeAt(grid, col + row * grid.cols, side)) {
                     placePaletteKey = "wall:rail";
                     wallStampMode = "rail";
                     pickSelection({ kind: "rail", col, row, side });
@@ -458,7 +458,7 @@ export function createSandboxSession(state) {
             }
             const col = grid.worldCol(worldX);
             const row = grid.worldRow(worldY);
-            if (!cellIsStaticWall(grid, col, row)) return false;
+            if (!cellIsStaticWall(grid, col + row * grid.cols)) return false;
             placePaletteKey = "wall:voxel";
             wallStampMode = "voxel";
             pickSelection({ kind: "voxel", col, row });
@@ -468,19 +468,19 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             if (wallStampMode === "forcefield") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !forcefieldEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
+                if (!hit || !forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !railWallEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
+                if (!hit || !railWallEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
                 pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
                 return true;
             }
             const col = grid.worldCol(worldX);
             const row = grid.worldRow(worldY);
-            if (!cellIsStaticWall(grid, col, row)) return false;
+            if (!cellIsStaticWall(grid, col + row * grid.cols)) return false;
             pickSelection({ kind: "voxel", col, row });
             return true;
         },
@@ -488,7 +488,7 @@ export function createSandboxSession(state) {
         pickForcefieldAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-            if (!hit || !forcefieldEdgeAt(grid, hit.col, hit.row, hit.side)) return false;
+            if (!hit || !forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
             pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
             return true;
         },

@@ -212,9 +212,9 @@ export function clearVoxelWallAt(state, col, row) {
 }
 export function setVoxelWallHeightAt(state, col, row, heightLevel) {
     const grid = state.obstacleGrid;
-    if (!cellIsStaticWall(grid, col, row)) return false;
-    const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     const idx = colRowToIndex(col, row, grid.cols);
+    if (!cellIsStaticWall(grid, idx)) return false;
+    const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     if (grid.grid[idx] === level) return true;
     grid.grid[idx] = level;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
@@ -254,10 +254,12 @@ export function clearForcefieldAt(state, col, row, side) {
     syncPassagePowerNetwork(state);
     return true;
 }
-export function getForcefieldInfo(grid, col, row, side) {
-    const boundary = getBoundary(grid, col, row, side);
+export function getForcefieldInfo(grid, idx, side) {
+    const boundary = getBoundary(grid, idx, side);
     if (boundary.primary !== "passage") return null;
     const mode = parsePassageMode(boundary.mode);
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
     return {
         col,
         row,
@@ -308,8 +310,8 @@ export function listPlacedRailWalls(grid) {
     const counts = new Map();
     forEachCellEdge(
         grid,
-        (col, row, side, edge) => {
-            const capLevel = railWallCapLevel(edge, neighborFillLevel(grid, col, row, side));
+        (col, row, side, edge, idx) => {
+            const capLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
             const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
@@ -319,15 +321,18 @@ export function listPlacedRailWalls(grid) {
     );
     return placed;
 }
-export function getVoxelWallInfo(grid, col, row) {
-    if (!cellIsStaticWall(grid, col, row)) return null;
-    const idx = colRowToIndex(col, row, grid.cols);
+export function getVoxelWallInfo(grid, idx) {
+    if (!cellIsStaticWall(grid, idx)) return null;
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
     return { col, row, heightLevel: grid.grid[idx] };
 }
-export function getRailWallInfo(grid, col, row, side) {
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+export function getRailWallInfo(grid, idx, side) {
+    const edge = grid.edgeStore.getIdx(idx, side);
     if (!isRailWallEdge(edge)) return null;
-    const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, col, row, side));
+    const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
     return { col, row, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };
 }
 export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {

@@ -61,7 +61,7 @@ describe("kinetic wall damage", () => {
         resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
         assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:6,6").strength, 1);
         flushPendingWallDamage(state);
-        assert.ok(!cellIsStaticWall(state.obstacleGrid, 6, 6));
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(6, 6, state.obstacleGrid.cols)));
         assert.equal(state.sandbox.gridWallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
@@ -85,7 +85,7 @@ describe("kinetic wall damage", () => {
         const hit = { approachDot: -560, normalX: 1, normalY: 0, segment };
         queueWallHits(wallDamage, grid, [hit], 560);
         await applyPendingWallDamage(state, wallDamage);
-        assert.ok(!cellIsStaticWall(grid, 3, 3));
+        assert.ok(!cellIsStaticWall(grid, colRowToIndex(3, 3, grid.cols)));
         assert.equal(wallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
@@ -98,7 +98,7 @@ describe("kinetic wall damage", () => {
         const hit = { approachDot: -560, normalX: 0, normalY: 1, segment };
         queueWallHits(wallDamage, grid, [hit], 560);
         await applyPendingWallDamage(state, wallDamage);
-        assert.ok(!isRailWallEdge(grid.edgeStore.get(5, 5, 0, grid.cols)));
+        assert.ok(!isRailWallEdge(grid.edgeStore.getIdx(colRowToIndex(5, 5, grid.cols), 0)));
         assert.equal(wallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
@@ -139,7 +139,7 @@ describe("kinetic wall damage", () => {
         
         flushPendingWallDamage(state);
         
-        assert.ok(!cellIsStaticWall(state.obstacleGrid, 3, 3));
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(3, 3, state.obstacleGrid.cols)));
         assert.ok(state.worldProps.length > 0);
         
         const shards = state.worldProps.filter(p => p.type === "wall_voxel_chunk");
@@ -180,7 +180,7 @@ describe("kinetic wall damage", () => {
         
         flushPendingWallDamage(state);
         
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 1, state.obstacleGrid.cols)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(4, 4, state.obstacleGrid.cols), 1)));
         assert.ok(state.worldProps.length > 0);
         const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);
@@ -217,7 +217,7 @@ describe("kinetic wall damage", () => {
         
         flushPendingWallDamage(state);
         
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.get(4, 4, 1, state.obstacleGrid.cols)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(4, 4, state.obstacleGrid.cols), 1)));
         assert.ok(state.worldProps.length > 0);
         const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);

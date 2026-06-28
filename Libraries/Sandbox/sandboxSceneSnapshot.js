@@ -60,7 +60,7 @@ export function collectSandboxSceneSnapshot(state) {
         const { col, row, side } = listedForcefields[i];
         if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
         const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
-        const info = getForcefieldInfo(grid, col, row, side);
+        const info = getForcefieldInfo(grid, col + row * grid.cols, side);
         if (!info) continue;
         const entry = { col: globalCol, row: globalRow, side, mode: info.mode };
         if (info.mode === "oneWay") entry.allowedSide = info.allowedSide;
@@ -146,7 +146,6 @@ function spawnSnapshotProp(state, entry) {
     const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents, entry.visualOverride);
     if (entry.radius != null) setCirclePropRadius(prop, entry.radius);
     if (prop && entry.type === "cross_pinwheel" && (entry.crossLength != null || entry.crossThickness != null)) applyCrossPinwheelFootprint(prop, entry.crossLength ?? 32, entry.crossThickness ?? 8);
-
     return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */

@@ -2,6 +2,13 @@ import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
 import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
+export function edgeNeighborIdx(idx, side, cols, rows) {
+    if (side === 0) return idx >= cols ? idx - cols : -1;
+    if (side === 1) return (idx + 1) % cols !== 0 ? idx + 1 : -1;
+    if (side === 2) return idx < cols * (rows - 1) ? idx + cols : -1;
+    if (side === 3) return idx % cols !== 0 ? idx - 1 : -1;
+    return -1;
+}
 export function edgeNeighbor(col, row, side) {
     let nc = col;
     let nr = row;
@@ -42,59 +49,57 @@ export function cellEdgeEndpoints(grid, col, row, side, p1, p2, inset = 0) {
         p2.y = minY;
     }
 }
-function edgeRailEmitOwner(grid, col, row, side) {
+function edgeRailEmitOwner(grid, idx, side) {
     if (side === 2 || side === 1) return true;
-    if (side === 0) return row === 0;
-    return col === 0;
+    if (side === 0) return idx < grid.cols;
+    return idx % grid.cols === 0;
 }
-export function edgeAt(grid, col, row, side) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    return grid.edgeStore.get(col, row, side, grid.cols);
+export function edgeAt(grid, idx, side) {
+    if (idx < 0 || idx >= grid.cols * grid.rows) return null;
+    return grid.edgeStore.getIdx(idx, side);
 }
-export function beltRailEdgeAt(grid, col, row, side) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+export function beltRailEdgeAt(grid, idx, side) {
+    const edge = edgeAt(grid, idx, side);
     if (!isBeltRailEdge(edge)) return null;
     return edge;
 }
-export function railWallEdgeAt(grid, col, row, side) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    const edge = grid.edgeStore.get(col, row, side, grid.cols);
+export function railWallEdgeAt(grid, idx, side) {
+    const edge = edgeAt(grid, idx, side);
     if (!isRailWallEdge(edge)) return null;
     return edge;
 }
-export function forcefieldEdgeAt(grid, col, row, side) {
-    const edge = edgeAt(grid, col, row, side);
+export function forcefieldEdgeAt(grid, idx, side) {
+    const edge = edgeAt(grid, idx, side);
     if (!isForcefieldEdge(edge)) return null;
     return edge;
 }
-export function railWallEdgeShouldEmit(grid, col, row, side) {
-    if (!railWallEdgeAt(grid, col, row, side)) return false;
-    return edgeRailEmitOwner(grid, col, row, side);
+export function railWallEdgeShouldEmit(grid, idx, side) {
+    if (!railWallEdgeAt(grid, idx, side)) return false;
+    return edgeRailEmitOwner(grid, idx, side);
 }
-export function beltRailEdgeShouldEmit(grid, col, row, side) {
-    if (!beltRailEdgeAt(grid, col, row, side)) return false;
-    return edgeRailEmitOwner(grid, col, row, side);
+export function beltRailEdgeShouldEmit(grid, idx, side) {
+    if (!beltRailEdgeAt(grid, idx, side)) return false;
+    return edgeRailEmitOwner(grid, idx, side);
 }
-export function blockingPassageEdgeAt(grid, col, row, side) {
-    if (!edgeRailEmitOwner(grid, col, row, side)) return null;
-    const forcefield = forcefieldEdgeAt(grid, col, row, side);
+export function blockingPassageEdgeAt(grid, idx, side) {
+    if (!edgeRailEmitOwner(grid, idx, side)) return null;
+    const forcefield = forcefieldEdgeAt(grid, idx, side);
     if (forcefield && passageEdgeEmitsCollision(forcefield)) return forcefield;
     return null;
 }
-export function edgeRailCollisionShouldEmit(grid, col, row, side) {
-    return beltRailEdgeShouldEmit(grid, col, row, side) || railWallEdgeShouldEmit(grid, col, row, side) || blockingPassageEdgeAt(grid, col, row, side) != null;
+export function edgeRailCollisionShouldEmit(grid, idx, side) {
+    return beltRailEdgeShouldEmit(grid, idx, side) || railWallEdgeShouldEmit(grid, idx, side) || blockingPassageEdgeAt(grid, idx, side) != null;
 }
-export function edgeRailCollisionThicknessPx(grid, col, row, side, defaultPassageThicknessLevel = 2) {
-    const railEdge = railWallEdgeAt(grid, col, row, side);
+export function edgeRailCollisionThicknessPx(grid, idx, side, defaultPassageThicknessLevel = 2) {
+    const railEdge = railWallEdgeAt(grid, idx, side);
     if (railEdge) return railWallThicknessPx(railEdge);
-    if (blockingPassageEdgeAt(grid, col, row, side)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
+    if (blockingPassageEdgeAt(grid, idx, side)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
     return 1;
 }
-export function neighborFillLevel(grid, col, row, side) {
-    const { nc, nr } = edgeNeighbor(col, row, side);
-    if (!cellInRect(nc, nr, grid.cols, grid.rows)) return 0;
-    return grid.grid[nc + nr * grid.cols];
+export function neighborFillLevel(grid, idx, side) {
+    const nIdx = edgeNeighborIdx(idx, side, grid.cols, grid.rows);
+    if (nIdx === -1) return 0;
+    return grid.grid[nIdx];
 }
 export function cellIsStaticWallAtIdx(grid, idx) {
     return grid.grid[idx] !== 0;
@@ -104,13 +109,13 @@ export function resolveCellWallHeightAtIdx(grid, idx) {
     if (level === 0) return 0;
     return level * grid.cellSize;
 }
-export function cellIsStaticWall(grid, col, row) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    return cellIsStaticWallAtIdx(grid, colRowToIndex(col, row, grid.cols));
+export function cellIsStaticWall(grid, idx) {
+    if (idx < 0 || idx >= grid.cols * grid.rows) return false;
+    return grid.grid[idx] !== 0;
 }
-export function resolveCellWallHeightPx(grid, col, row) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return 0;
-    return resolveCellWallHeightAtIdx(grid, colRowToIndex(col, row, grid.cols));
+export function resolveCellWallHeightPx(grid, idx) {
+    if (idx < 0 || idx >= grid.cols * grid.rows) return 0;
+    return resolveCellWallHeightAtIdx(grid, idx);
 }
 const sExposedEdgeP1 = { x: 0, y: 0 };
 const sExposedEdgeP2 = { x: 0, y: 0 };
@@ -122,11 +127,11 @@ function pushExposedWallEdgesForCell(grid, col, row, out) {
     if (level === 0) return;
     const wallTopZ = resolveCellWallHeightAtIdx(grid, idx);
     for (let side = 0; side < 4; side++) {
-        const { nc, nr } = edgeNeighbor(col, row, side);
+        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
         let neighborLevel = 0;
-        if (cellInRect(nc, nr, cols, rows)) neighborLevel = grid.grid[nc + nr * cols];
+        if (nIdx !== -1) neighborLevel = grid.grid[nIdx];
         if (neighborLevel >= level) continue;
-        if (railWallEdgeAt(grid, col, row, side)) continue;
+        if (railWallEdgeAt(grid, idx, side)) continue;
         cellEdgeEndpoints(grid, col, row, side, sExposedEdgeP1, sExposedEdgeP2, 0);
         const outward = gridSideOutwardVector(side);
         out.add(sExposedEdgeP1.x, sExposedEdgeP1.y, sExposedEdgeP2.x, sExposedEdgeP2.y, outward.x, outward.y, wallTopZ);
@@ -172,7 +177,7 @@ export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCo
             const cellIdx = colRowToIndex(col, row, grid.cols);
             for (let side = 0; side < 4; side++) {
                 if (canonicalOnly && !isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-                const edge = grid.edgeStore.get(col, row, side, grid.cols);
+                const edge = grid.edgeStore.getIdx(cellIdx, side);
                 if (!edge) continue;
                 if (filter && !filter(edge)) continue;
                 if (fn(col, row, side, edge, cellIdx) === false) return;

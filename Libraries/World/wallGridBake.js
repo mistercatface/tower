@@ -1,6 +1,6 @@
 import { cellToChunkCoord, forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { edgeNeighbor, cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
+import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx } from "../Spatial/grid/gridCellTopology.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdge.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
@@ -49,39 +49,39 @@ export function railWallInwardNormal(edge) {
     if (edge === 2) return { x: 0, y: -1 };
     return { x: 1, y: 0 };
 }
-export function railWallTopZAt(grid, col, row, side) {
-    const edge = railWallEdgeAt(grid, col, row, side);
+export function railWallTopZAt(grid, idx, side) {
+    const edge = railWallEdgeAt(grid, idx, side);
     if (!edge) return 0;
-    return railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, col, row, side));
+    return railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, idx, side));
 }
-export function railWallAtZLevel(grid, col, row, side, zLevel) {
-    return railWallEdgeShouldEmit(grid, col, row, side) && railWallTopZAt(grid, col, row, side) === zLevel;
+export function railWallAtZLevel(grid, idx, side, zLevel) {
+    return railWallEdgeShouldEmit(grid, idx, side) && railWallTopZAt(grid, idx, side) === zLevel;
 }
-export function railWallFootprintHalfThickness(grid, col, row, side) {
-    const railEdge = railWallEdgeAt(grid, col, row, side);
+export function railWallFootprintHalfThickness(grid, idx, side) {
+    const railEdge = railWallEdgeAt(grid, idx, side);
     if (!railEdge) return 0;
     return railWallThicknessPx(railEdge) / 2;
 }
-export function resolveRailWallNeighborContext(grid, col, row, side) {
-    const fillLevel = neighborFillLevel(grid, col, row, side);
-    const { nc, nr } = edgeNeighbor(col, row, side);
+export function resolveRailWallNeighborContext(grid, idx, side) {
+    const fillLevel = neighborFillLevel(grid, idx, side);
+    const nIdx = edgeNeighborIdx(idx, side, grid.cols, grid.rows);
     let neighborFillHeightPx = 0;
-    if (cellInRect(nc, nr, grid.cols, grid.rows)) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nc + nr * grid.cols);
+    if (nIdx !== -1) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nIdx);
     const neighborCap = neighborFillHeightPx > 0 ? neighborFillHeightPx : null;
-    const railEdge = railWallEdgeAt(grid, col, row, side);
+    const railEdge = railWallEdgeAt(grid, idx, side);
     const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid.cellSize, fillLevel) : 0;
     return { neighborFillLevel: fillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
 }
 export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {
     forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
         for (let side = 0; side < 4; side++) {
-            if (!railWallAtZLevel(grid, col, row, side, zLevel)) continue;
+            if (!railWallAtZLevel(grid, idx, side, zLevel)) continue;
             fn(col, row, side, idx);
         }
     });
 }
 export function railWallFootprintAabb(grid, col, row, edge) {
-    const halfT = railWallFootprintHalfThickness(grid, col, row, edge);
+    const halfT = railWallFootprintHalfThickness(grid, colRowToIndex(col, row, grid.cols), edge);
     const b = grid.getCellBounds(col, row);
     if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
     if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
@@ -136,7 +136,7 @@ function fillFlatUvFromBounds(out8, b, side) {
     return out8;
 }
 function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
-    const halfT = railWallFootprintHalfThickness(grid, col, row, edge);
+    const halfT = railWallFootprintHalfThickness(grid, colRowToIndex(col, row, grid.cols), edge);
     const b = grid.getCellBounds(col, row);
     if (edge === 0) {
         const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
@@ -165,12 +165,12 @@ function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
     }
 }
 function writeRailWallBoxRecordInto(data, recordIndex, grid, col, row, edge) {
-    if (!railWallEdgeShouldEmit(grid, col, row, edge)) return false;
     const cols = grid.cols;
     const idx = col + row * cols;
-    const railEdge = railWallEdgeAt(grid, col, row, edge);
+    if (!railWallEdgeShouldEmit(grid, idx, edge)) return false;
+    const railEdge = railWallEdgeAt(grid, idx, edge);
     if (!railEdge) return false;
-    const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, col, row, edge);
+    const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, idx, edge);
     if (edgeHeight <= 0) return false;
     if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return false;
     const fp = railWallFootprintAabb(grid, col, row, edge);
@@ -326,14 +326,14 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, col, row, edge
     const cols = grid.cols;
     const idx = col + row * cols;
     const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
-    const storedEdge = railWallEdgeAt(grid, col, row, edge);
-    const edgeLevel = storedEdge ? railWallCapLevel(storedEdge, neighborFillLevel(grid, col, row, edge)) : 0;
+    const storedEdge = railWallEdgeAt(grid, idx, edge);
+    const edgeLevel = storedEdge ? railWallCapLevel(storedEdge, neighborFillLevel(grid, idx, edge)) : 0;
     if (edgeLevel > 0) return false;
     if (fillHeight === 0) return false;
     const faceHeight = fillHeight;
-    const { nc, nr } = edgeNeighbor(col, row, edge);
+    const nIdx = edgeNeighborIdx(idx, edge, cols, grid.rows);
     let neighborFillHeight = 0;
-    if (cellInRect(nc, nr, cols, grid.rows)) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nc + nr * cols);
+    if (nIdx !== -1) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nIdx);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
     if (!voxelWallFaceVisible(neighborCap, faceHeight)) return false;
     cellEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
