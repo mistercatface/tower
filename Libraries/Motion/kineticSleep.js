@@ -2,6 +2,107 @@ import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { createAabb, emptyAabbInto, growAabbFromCenterInto } from "../Math/Aabb2D.js";
 import { entityBroadphaseExtent, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "../Spatial/collision/entityBroadphase.js";
 import { shareKineticIsland } from "./kineticIslands.js";
+import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
+import { sleepContactBuffer } from "../Spatial/collision/kineticContactSolver.js";
+const parent = new Int32Array(MAX_PHYS_BODIES);
+const rank = new Int32Array(MAX_PHYS_BODIES);
+const componentRoot = new Int32Array(MAX_PHYS_BODIES);
+const componentMaxSpeedSq = new Float32Array(MAX_PHYS_BODIES);
+const componentHasBlocker = new Uint8Array(MAX_PHYS_BODIES);
+const componentMemberCount = new Int32Array(MAX_PHYS_BODIES);
+function find(i) {
+    let root = i;
+    while (parent[root] !== root) root = parent[root];
+    let curr = i;
+    while (curr !== root) {
+        let nxt = parent[curr];
+        parent[curr] = root;
+        curr = nxt;
+    }
+    return root;
+}
+function union(i, j) {
+    let rootI = find(i);
+    let rootJ = find(j);
+    if (rootI !== rootJ)
+        if (rank[rootI] < rank[rootJ]) parent[rootI] = rootJ;
+        else if (rank[rootI] > rank[rootJ]) parent[rootJ] = rootI;
+        else {
+            parent[rootJ] = rootI;
+            rank[rootI]++;
+        }
+}
+export function advanceKineticSleepIslands(frame, session, contacts = sleepContactBuffer) {
+    const activeBodies = frame._activeKineticBodies;
+    if (!activeBodies || activeBodies.length === 0) return;
+    parent.fill(-1);
+    rank.fill(0);
+    const bodies = [];
+    for (let i = 0; i < activeBodies.length; i++) {
+        const body = activeBodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
+        parent[physId] = physId;
+        bodies[physId] = body;
+    }
+    for (let i = 0; i < activeBodies.length; i++) {
+        const body = activeBodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
+        const peers = body._kineticIslandPeers;
+        if (peers)
+            for (let j = 0; j < peers.length; j++) {
+                const peer = peers[j];
+                if (peer === body) continue;
+                const peerPhysId = peer._physId;
+                if (peerPhysId === undefined || peerPhysId === -1) continue;
+                if (parent[peerPhysId] === -1) parent[peerPhysId] = peerPhysId;
+                union(physId, peerPhysId);
+            }
+    }
+    if (contacts && contacts.count > 0)
+        for (let i = 0; i < contacts.count; i++) {
+            const physIdA = contacts.physIdA[i];
+            const physIdB = contacts.physIdB[i];
+            if (parent[physIdA] === -1 || parent[physIdB] === -1) continue;
+            const bodyA = bodies[physIdA];
+            const bodyB = bodies[physIdB];
+            if (!bodyA || !bodyB) continue;
+            const isResting = contacts.resting[i] === 1;
+            const eitherActive = isKinematicallyActive(bodyA) || isKinematicallyActive(bodyB);
+            if (isResting || eitherActive) union(physIdA, physIdB);
+        }
+    for (let i = 0; i < activeBodies.length; i++) {
+        const body = activeBodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
+        const root = find(physId);
+        componentRoot[physId] = root;
+        componentMaxSpeedSq[root] = 0;
+        componentHasBlocker[root] = 0;
+        componentMemberCount[root] = 0;
+    }
+    for (let i = 0; i < activeBodies.length; i++) {
+        const body = activeBodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
+        const root = componentRoot[physId];
+        const vx = body.vx || 0;
+        const vy = body.vy || 0;
+        const speedSq = vx * vx + vy * vy;
+        if (speedSq > componentMaxSpeedSq[root]) componentMaxSpeedSq[root] = speedSq;
+        if (!canSleepKinetic(body)) componentHasBlocker[root] = 1;
+        componentMemberCount[root]++;
+    }
+    for (let i = 0; i < activeBodies.length; i++) {
+        const body = activeBodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
+        const root = componentRoot[physId];
+        const eligible = componentHasBlocker[root] === 0;
+        advanceKineticSleep(body, eligible);
+    }
+}
 const ISLAND_SLEEP_QUERY_BOUNDS = createAabb();
 export function kineticSleepFramesRequired() {
     return collisionSettings.kineticSleep.frames;

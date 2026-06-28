@@ -2,12 +2,12 @@ import { collisionSettings } from "../../Collision/collisionDefaults.js";
 import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
-import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "./kineticContactSolver.js";
+import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
 import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab, kineticDynamicSlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
-import { SatCollision, getEntityCollisionParts, entityFacing } from "./SatCollision.js";
+import { SatCollision, SAT_RESULT, getEntityCollisionParts, entityFacing } from "./SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
 /** @param {object} prop @param {object[]} wallCandidates */
 function kineticOverlapsWallSegment(prop, wallCandidates) {
@@ -29,6 +29,9 @@ function kineticOverlapsWallSegment(prop, wallCandidates) {
         for (let i = 0; i < wallCandidates.length; i++) {
             const seg = wallCandidates[i];
             const segShape = ensureWallSegmentPolygonShape(seg);
+            if (SAT_RESULT[0] !== undefined) {
+                // SAT_RESULT logic
+            }
             if (SatCollision.checkCollision(px, py, entityFacing(prop), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
         }
     }
@@ -69,6 +72,7 @@ export function runCollisionPipeline(
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
+        sleepContactBuffer.reset();
         gatherKineticConstraintSlab(tick);
         ensureKineticContactPairs(tick, persistedKineticPairBuffer);
         const patchBodies = tick.world.kinetic.substepPairPatchBodies ?? (tick.world.kinetic.substepPairPatchBodies = []);

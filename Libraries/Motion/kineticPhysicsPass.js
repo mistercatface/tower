@@ -1,22 +1,9 @@
 import { collisionSettings } from "../Collision/collisionDefaults.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
-import { advanceKineticSleep, evaluateKineticIslandSleepEligible } from "./kineticSleep.js";
+import { advanceKineticSleepIslands, wakeKineticBody } from "./kineticSleep.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
-import { wakeKineticBody } from "./kineticSleep.js";
 import { countMotionSubsteps, maxActiveKineticSpeedSq } from "./motionSubsteps.js";
-function tickKineticSleep(frame) {
-    const kineticBodies = frame._kineticBodies;
-    if (!kineticBodies) return;
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const prop = kineticBodies[i];
-        const root = prop._kineticIslandRoot ?? prop.id;
-        if (prop.id !== root) continue;
-        const islandMembers = prop._kineticIslandPeers ?? [prop];
-        const eligible = evaluateKineticIslandSleepEligible(islandMembers, frame);
-        for (let j = 0; j < islandMembers.length; j++) advanceKineticSleep(islandMembers[j], eligible);
-    }
-}
 export function runKineticPhysics(tick, dt, hooks) {
     const world = tick.world;
     world.sandbox?.simulationFrameHooks?.beforePhysics?.(world);
@@ -54,7 +41,7 @@ export function runKineticPhysics(tick, dt, hooks) {
         }
     }
     session.motionSubstepStats = { substepsRun, substepsPlanned: steps };
-    tickKineticSleep(frame);
+    advanceKineticSleepIslands(frame, session);
     frame.syncActiveKineticBodies();
     world.sandbox?.simulationFrameHooks?.afterPhysics?.(world);
     hooks.afterKineticPhysics?.(tick);

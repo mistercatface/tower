@@ -457,6 +457,28 @@ export function ensureKineticContactPairs(tick, outPairs) {
     }
     return outPairs;
 }
+export const sleepContactBuffer = {
+    count: 0,
+    physIdA: new Int32Array(MAX_CONTACTS),
+    physIdB: new Int32Array(MAX_CONTACTS),
+    resting: new Uint8Array(MAX_CONTACTS),
+    reset() {
+        this.count = 0;
+    },
+    add(idA, idB, isResting) {
+        for (let i = 0; i < this.count; i++)
+            if ((this.physIdA[i] === idA && this.physIdB[i] === idB) || (this.physIdA[i] === idB && this.physIdB[i] === idA)) {
+                if (isResting) this.resting[i] = 1;
+                return;
+            }
+        if (this.count < MAX_CONTACTS) {
+            this.physIdA[this.count] = idA;
+            this.physIdB[this.count] = idB;
+            this.resting[this.count] = isResting ? 1 : 0;
+            this.count++;
+        }
+    },
+};
 export function resolveKineticContactPassWithPairs(tick, pairs) {
     const frame = tick.frame;
     refreshKineticPairRelativeVelocities(pairs);
@@ -468,4 +490,5 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     tick.world.kinetic.kineticContactStats = solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
     storeKineticWarmStartCache(contacts);
     applyKineticContactWake(contacts, frame);
+    for (let i = 0; i < contacts.count; i++) sleepContactBuffer.add(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
 }

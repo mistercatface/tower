@@ -7,7 +7,8 @@ import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBod
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
-import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
+import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
+import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 
@@ -164,5 +165,60 @@ describe("kinetic islands", () => {
         state.kinetic.kineticConstraintsDirty = false;
         addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
         assert.equal(state.kinetic.kineticConstraintsDirty, true);
+    });
+
+    it("unlinked resting crate pile/contact-island sleeps together after consecutive still frames", () => {
+        resetMockKineticCircleIds(1);
+        const a = mockKineticCircle(0, 0, 10, 0, 0);
+        const b = mockKineticCircle(0, 18, 10, 0, 0);
+        const c = mockKineticCircle(0, 36, 10, 0, 0);
+        const bodies = [a, b, c];
+        const tick = createKineticTestTick(bodies);
+        
+        for (let frame = 0; frame < SLEEP_FRAMES; frame++) {
+            runKineticPhysics(tick, 16.667, {
+                updateProp: (prop, subDt) => {
+                    prop.x += (prop.vx || 0) * (subDt / 1000);
+                    prop.y += (prop.vy || 0) * (subDt / 1000);
+                },
+                ...kineticPipelineStubs,
+            });
+        }
+        
+        assert.equal(a.isSleeping, true);
+        assert.equal(b.isSleeping, true);
+        assert.equal(c.isSleeping, true);
+    });
+
+    it("active overlapping neighbor wakes sleeping body and prevents sleep", () => {
+        resetMockKineticCircleIds(10);
+        const a = mockKineticCircle(0, 0, 10, 0, 0);
+        const b = mockKineticCircle(0, 18, 10, 5, 0); // moving with vx = 5
+        const bodies = [a, b];
+        const tick = createKineticTestTick(bodies);
+        
+        // Put A to sleep manually first
+        a.isSleeping = true;
+        a._sleepFrames = SLEEP_FRAMES;
+        tick.frame.syncActiveKineticBodies();
+        
+        assert.equal(a.isSleeping, true);
+        assert.equal(b.isSleeping, false);
+        
+        // Run one frame of physics
+        runKineticPhysics(tick, 16.667, {
+            updateProp: (prop, subDt) => {
+                prop.x += (prop.vx || 0) * (subDt / 1000);
+                prop.y += (prop.vy || 0) * (subDt / 1000);
+            },
+            ...kineticPipelineStubs,
+        });
+        
+        // A should be woken up because B was active and overlapped
+        assert.equal(a.isSleeping, false);
+        assert.equal(a._sleepFrames, 0);
+        
+        // And they should not sleep as long as B is moving
+        assert.equal(b.isSleeping, false);
     });
 });
