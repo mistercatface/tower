@@ -219,6 +219,8 @@ export class HpaReplanPlanner {
         this.tempLegsOffsets = new Map();
         this.tempLegsLengths = new Map();
         this.gridSearch = new FlatGridSearch(this.searchState);
+        this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
     }
     run(slot, context, data) {
         const startIdx = data.startIdx;
@@ -233,7 +235,6 @@ export class HpaReplanPlanner {
         return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols);
     }
     writeLocalResult(slot, gridSearch, startIdx, targetIdx, cols) {
-        if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
         const len = gridSearch.local(startIdx, targetIdx, HPA_LOCAL_MAX_LEN, this.localPathScratch);
         if (len === 0) {
             this.buffers.writeCellPath(slot, this.localPathScratch, 0);
@@ -245,8 +246,6 @@ export class HpaReplanPlanner {
         return this.buffers.buildReplanResult(slot);
     }
     writeHpaResult(slot, gridSearch, baseGraph, prep, startIdx, targetIdx, cols) {
-        if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-        if (!this.abstractPathScratch) this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
         this.tempLegsOffsets.clear();
         this.tempLegsLengths.clear();
         const { extendedGraph, startTemp, targetTemp } = baseGraph.buildExtended(startIdx, targetIdx, cols, prep, this.buffers.maxCellsPerChunk, (lStartIdx, lTargetIdx, legKey, offset) => {
@@ -274,7 +273,6 @@ export class HpaReplanPlanner {
         return this.buffers.buildReplanResult(slot);
     }
     resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
-        if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
         const startIdx = baseGraph.nodeIdx[aIdx];
         const targetIdx = baseGraph.nodeIdx[bIdx];
         const len = gridSearch.local(startIdx, targetIdx, prep.regionConnectMaxLen, this.localPathScratch);
@@ -287,6 +285,7 @@ export class HpaPathfindingWorker {
         this.topology = new HpaTopologyArena();
         this.graph = new HpaRegionGraphManager(this.buffers);
         this.searchState = null;
+        this.planner = null;
     }
     postGraphPatchDone(meta) {
         self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
@@ -308,7 +307,7 @@ export class HpaPathfindingWorker {
         const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
         const baseGraph = this.graph.abstractGraph();
         const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, penaltyLookup: stepPenaltyLookup, cellToRegion });
-        return new HpaReplanPlanner(this.buffers, this.searchState).run(slot, context, data);
+        return this.planner.run(slot, context, data);
     }
     onMessage(e) {
         const { type, slot, requestId } = e.data;
@@ -317,14 +316,17 @@ export class HpaPathfindingWorker {
             this.buffers.init(data);
             const size = data.maxGraphNodes || 4096;
             this.searchState = new SearchState(size + 2);
+            this.planner = new HpaReplanPlanner(this.buffers, this.searchState);
             return;
         }
         if (type === "buildNavTopology") {
             this.topology.buildNavTopologyOnWorker(e.data);
             const size = this.topology.requireGridFrame().cols * this.topology.requireGridFrame().rows;
             const searchStateSize = Math.max(size, (this.buffers.maxGraphNodes || 4096) + 2);
-            if (!this.searchState) this.searchState = new SearchState(searchStateSize);
-            else this.searchState.resize(searchStateSize);
+            if (!this.searchState) {
+                this.searchState = new SearchState(searchStateSize);
+                if (!this.planner) this.planner = new HpaReplanPlanner(this.buffers, this.searchState);
+            } else this.searchState.resize(searchStateSize);
             self.postMessage({ type: "syncNavDone" });
             return;
         }
