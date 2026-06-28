@@ -19,8 +19,13 @@ describe("AStar Engine Search Suite", () => {
         };
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
-        const path = search.cardinal(GridPathQuery.fromCells(0, 2, 4, 2), 20);
-        assert.ok(path);
+        const outPath = new Int32Array(100);
+        const len = search.cardinal(GridPathQuery.fromCells(0, 2, 4, 2), 20, outPath);
+        assert.ok(len > 0);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
+        }
         for (let i = 1; i < path.length; i++) {
             const dc = Math.abs(path[i].col - path[i - 1].col);
             const dr = Math.abs(path[i].row - path[i - 1].row);
@@ -36,8 +41,13 @@ describe("AStar Engine Search Suite", () => {
         const navGraph = { canStep: () => true };
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
-        const path = search.local(GridPathQuery.fromCells(0, 0, 2, 2), 20);
-        assert.ok(path);
+        const outPath = new Int32Array(100);
+        const len = search.local(GridPathQuery.fromCells(0, 0, 2, 2), 20, outPath);
+        assert.ok(len > 0);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
+        }
         assert.equal(path.length, 3);
         assert.deepEqual(path, [
             { col: 0, row: 0 },
@@ -51,8 +61,13 @@ describe("AStar Engine Search Suite", () => {
         const navGraph = { canStep: () => true };
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
-        const path = search.dijkstra(GridPathQuery.fromCells(0, 0, 2, 2), 20);
-        assert.ok(path);
+        const outPath = new Int32Array(100);
+        const len = search.dijkstra(GridPathQuery.fromCells(0, 0, 2, 2), 20, outPath);
+        assert.ok(len > 0);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
+        }
         assert.equal(path.length, 3);
         assert.deepEqual(path, [
             { col: 0, row: 0 },
@@ -66,8 +81,13 @@ describe("AStar Engine Search Suite", () => {
         const navGraph = { canStep: () => true };
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
-        const path = search.greedy(GridPathQuery.fromCells(0, 0, 2, 2), 20);
-        assert.ok(path);
+        const outPath = new Int32Array(100);
+        const len = search.greedy(GridPathQuery.fromCells(0, 0, 2, 2), 20, outPath);
+        assert.ok(len > 0);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
+        }
         assert.deepEqual(path[path.length - 1], { col: 2, row: 2 });
     });
 
@@ -81,9 +101,10 @@ describe("AStar Engine Search Suite", () => {
 
         const graph = new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
         const search = new FlatAbstractGraphSearch({ graph, searchState });
-        const path = search.run(0, 2);
-        assert.ok(path);
-        assert.deepEqual(Array.from(path), [0, 1, 2], "Should resolve flat indices 0 -> 1 -> 2");
+        const outPath = new Int32Array(10);
+        const len = search.run(0, 2, outPath);
+        assert.ok(len > 0);
+        assert.deepEqual(Array.from(outPath.subarray(0, len)), [0, 1, 2], "Should resolve flat indices 0 -> 1 -> 2");
     });
 
     it("FlatAbstractGraphSearch prefers cheaper multi-hop route over direct edge", () => {
@@ -95,8 +116,9 @@ describe("AStar Engine Search Suite", () => {
         const edgeCosts = new Float32Array([1, 10, 1]);
         const graph = new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
         const search = new FlatAbstractGraphSearch({ graph, searchState });
-        const path = search.run(0, 2);
-        assert.ok(path);
-        assert.deepEqual(Array.from(path), [0, 1, 2]);
+        const outPath = new Int32Array(10);
+        const len = search.run(0, 2, outPath);
+        assert.ok(len > 0);
+        assert.deepEqual(Array.from(outPath.subarray(0, len)), [0, 1, 2]);
     });
 });

@@ -13,8 +13,13 @@ describe("nav step penalty", () => {
         const searchState = new SearchState(cols * rows);
         const penalty = createNavStepPenaltyLookup(cols, [packCellKey(2, 1)], [100]);
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState, stepPenaltyLookup: penalty });
-        const path = search.local(GridPathQuery.fromCells(0, 1, 4, 1), 96);
-        assert.ok(path);
+        const outPath = new Int32Array(100);
+        const len = search.local(GridPathQuery.fromCells(0, 1, 4, 1), 96, outPath);
+        assert.ok(len > 0);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
+        }
         assert.ok(!path.some((cell) => cell.col === 2 && cell.row === 1));
     });
 });

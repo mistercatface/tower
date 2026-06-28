@@ -10,10 +10,8 @@ import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
-
 import propCatalog from "../Assets/props/index.js";
 const deterministicRandom = () => 0.5;
-
 function shardWorldBody(originX, originY, facing, geom) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
@@ -29,10 +27,9 @@ function shardWorldBody(originX, originY, facing, geom) {
     }
     return { x: world.x, y: world.y, facing, verts };
 }
-
 function countSpawnOverlaps(debris, originX = 0, originY = 0, facing = 0) {
     let overlaps = 0;
-    for (let i = 0; i < debris.length; i++) {
+    for (let i = 0; i < debris.length; i++)
         for (let j = i + 1; j < debris.length; j++) {
             const a = shardWorldBody(originX, originY, facing, debris[i]);
             const b = shardWorldBody(originX, originY, facing, debris[j]);
@@ -40,10 +37,8 @@ function countSpawnOverlaps(debris, originX = 0, originY = 0, facing = 0) {
             const bodyB = { x: b.x, y: b.y, facing: b.facing };
             if (SatCollision.checkCollision(bodyA.x, bodyA.y, bodyA.facing, new PolygonShape(a.verts), bodyB.x, bodyB.y, bodyB.facing, new PolygonShape(b.verts))) overlaps++;
         }
-    }
     return overlaps;
 }
-
 function analyzeShards(shards, parentArea) {
     let totalArea = 0;
     let maxAspect = 0;
@@ -56,11 +51,9 @@ function analyzeShards(shards, parentArea) {
     }
     return { totalArea, maxAspect, minThin, count: shards.length };
 }
-
 function liveGlassPropCount(world) {
     return world.worldProps.length;
 }
-
 function makeOverlappingGlassShards() {
     const shards = shatterGlassFootprint(20, 14, 0, 0, 40, deterministicRandom);
     const a = new WorldProp(0, 0, "glass_pane", 0);
@@ -74,21 +67,18 @@ function makeOverlappingGlassShards() {
     assert.ok(SatCollision.checkCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape));
     return { a, b };
 }
-
 describe("glass fracture", () => {
     it("glass_pane asset uses glass fracture mode and resizable spawn", () => {
         const asset = propCatalog["glass_pane"];
         assert.equal(asset.physics.fractureMode, "glass");
         assert.ok(asset.sandbox.resizableBox);
     });
-
     it("glass pane init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         assert.equal(prop.poxels, undefined);
         assert.equal(prop.shape.vertices.length / 2, 4);
         assert.ok(canFracturePropSplit(prop));
     });
-
     it("shatterGlassFootprint produces radial shards without poxels", () => {
         const shards = shatterGlassFootprint(12, 8, 2, -1, 20, deterministicRandom);
         assert.ok(shards.length >= 4);
@@ -98,7 +88,6 @@ describe("glass fracture", () => {
             assert.ok(shard.centroid);
         }
     });
-
     it("fracturePropOnImpact returns all shards for glass and no parent geometry", () => {
         const prop = new WorldProp(50, 50, "glass_pane", 0);
         applyPropBoxFootprint(prop, 16, 10);
@@ -108,7 +97,6 @@ describe("glass fracture", () => {
         assert.ok(fracture.impactLocal);
         assert.equal(prop.poxels, undefined);
     });
-
     it("glass shard fractures again on its actual polygon footprint", () => {
         const shards = shatterGlassFootprint(12, 8, 0, 0, 30, deterministicRandom);
         const big = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
@@ -120,20 +108,17 @@ describe("glass fracture", () => {
         assert.ok(fracture.debris.length >= 2);
         for (const piece of fracture.debris) assert.ok(piece.footprintArea < big.footprintArea);
     });
-
     it("shatterGlassPolygon splits non-rect shard geometry", () => {
         const parentShards = shatterGlassFootprint(10, 6, 1, 0, 25, deterministicRandom);
         const shard = parentShards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         const again = shatterGlassPolygon(shard.footprintVertices, 0, 0, 25, deterministicRandom);
         assert.ok(again.length >= 2);
     });
-
     it("tiny glass pieces stop splitting at min size", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         applyPropBoxFootprint(prop, 2, 2);
         assert.equal(canFracturePropSplit(prop), false);
     });
-
     it("128x128 shatter stays bounded and avoids needle slivers", () => {
         const parentArea = 128 * 128;
         const hits = [
@@ -154,11 +139,8 @@ describe("glass fracture", () => {
             assert.equal(countSpawnOverlaps(shards), 0, `hit ${hitX},${hitY} spawn overlap`);
         }
     });
-
     it("128x128 cascade from largest shard stays bounded for two generations", () => {
-        let shard = shatterGlassFootprint(64, 64, 0, 0, 25, deterministicRandom).reduce((a, b) =>
-            a.footprintArea > b.footprintArea ? a : b,
-        );
+        let shard = shatterGlassFootprint(64, 64, 0, 0, 25, deterministicRandom).reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         for (let gen = 1; gen <= 2; gen++) {
             const pieces = shatterGlassPolygon(shard.footprintVertices, 0, 0, 25, deterministicRandom);
             const stats = analyzeShards(pieces, shard.footprintArea);
@@ -169,20 +151,13 @@ describe("glass fracture", () => {
             shard = pieces.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         }
     });
-
     it("128x128 min shard area scales with pane size", () => {
-        const minArea = minShardAreaForPolygon(new Float32Array([
-            -64, -64,
-            64, -64,
-            64, 64,
-            -64, 64,
-        ]));
+        const minArea = minShardAreaForPolygon(new Float32Array([-64, -64, 64, -64, 64, 64, -64, 64]));
         assert.ok(minArea > 900);
         const shards = shatterGlassFootprint(64, 64, 0, 0, 25, deterministicRandom);
         const largest = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         assert.ok(largest.footprintArea >= minArea * 0.5);
     });
-
     it("spawnGlassShatter sets fracture cooldown on new shards", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         applyPropBoxFootprint(prop, 32, 32);
@@ -192,7 +167,9 @@ describe("glass fracture", () => {
         const state = {
             worldProps: spawned,
             entityRegistry: {
-                register(_kind, frag) { spawned.push(frag); },
+                register(_kind, frag) {
+                    spawned.push(frag);
+                },
                 beginMembershipBatch() {},
                 endMembershipBatch() {},
             },
@@ -201,14 +178,12 @@ describe("glass fracture", () => {
         assert.ok(spawned.length >= 2);
         for (const frag of spawned) assert.ok(frag._glassFractureCooldown > 0);
     });
-
     it("glass shard on glass shard does not reproduce on kinetic contact", () => {
         const { a, b } = makeOverlappingGlassShards();
         const tick = createKineticTestTick([a, b]);
         tryFractureKineticContact(tick, a, b, 4, 0, 240);
         assert.equal(liveGlassPropCount(tick.world), 2);
     });
-
     it("resolveKineticContactPassWithEffects keeps glass shard count stable across substeps", () => {
         const { a, b } = makeOverlappingGlassShards();
         const tick = createKineticTestTick([a, b]);
@@ -217,7 +192,6 @@ describe("glass fracture", () => {
             assert.equal(liveGlassPropCount(tick.world), 2, `reproduced on substep ${step}`);
         }
     });
-
     it("glass shard still shatters against a non-glass kinetic prop", () => {
         const shards = shatterGlassFootprint(24, 18, 0, 0, 40, deterministicRandom);
         const glass = new WorldProp(0, 0, "glass_pane", 0);
@@ -232,7 +206,6 @@ describe("glass fracture", () => {
         assert.ok(liveGlassPropCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
     });
-
     it("runCollisionPipeline does not reproduce glass across persisted pair iterations", () => {
         const glass = new WorldProp(0, 0, "glass_pane", 0);
         const ball = new WorldProp(18, 0, "ball", 0);
@@ -247,7 +220,6 @@ describe("glass fracture", () => {
         assert.ok(count <= GLASS_MAX_SHARDS_PER_SHATTER + 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
     });
-
     it("shattered glass shards conserve the total area of the parent shape without gaps", () => {
         const flat = new Float32Array([-16, -16, 16, -16, 16, 16, -16, 16]);
         const parentArea = 32 * 32; // 1024
@@ -258,11 +230,8 @@ describe("glass fracture", () => {
             const shards = shatterGlassPolygon(flat, hitX, hitY, 30, Math.random);
             assert.ok(shards.length >= 2, "Should produce at least 2 shards");
             let totalArea = 0;
-            for (const shard of shards) {
-                totalArea += shard.footprintArea;
-            }
+            for (const shard of shards) totalArea += shard.footprintArea;
             assert.ok(Math.abs(totalArea - parentArea) < 1e-3, `Expected total area close to ${parentArea}, got ${totalArea}`);
         }
     });
 });
-

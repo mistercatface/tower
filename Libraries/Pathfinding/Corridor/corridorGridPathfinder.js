@@ -20,6 +20,7 @@ export class CorridorGridPathfinder {
             },
         });
         this.gridSearch = new FlatGridSearch({ grid: this.grid, searchState: this.searchState });
+        this.pathScratch = new Int32Array(512);
     }
     blockedAtAbs(absCol, absRow) {
         if (!layoutContainsAbsCell(this.layout, absCol, absRow)) return true;
@@ -47,11 +48,16 @@ export class CorridorGridPathfinder {
         const start = layoutAbsToLocalCell(this.layout, query.start.col, query.start.row);
         const goal = layoutAbsToLocalCell(this.layout, query.target.col, query.target.row);
         if (this.isBlocked(start.col, start.row) || this.isBlocked(goal.col, goal.row)) return null;
-        const flat = this.gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen);
-        if (!flat) return null;
-        const path = new Array(flat.length);
-        for (let i = 0; i < flat.length; i++) {
-            const abs = layoutLocalToAbsCell(this.layout, flat[i].col, flat[i].row);
+        if (this.pathScratch.length < maxPathLen) this.pathScratch = new Int32Array(maxPathLen);
+        const len = this.gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen, this.pathScratch);
+        if (len === 0) return null;
+        const path = new Array(len);
+        const cols = this.gridSearch.grid.cols;
+        for (let i = 0; i < len; i++) {
+            const idx = this.pathScratch[i];
+            const col = idx % cols;
+            const row = (idx / cols) | 0;
+            const abs = layoutLocalToAbsCell(this.layout, col, row);
             path[i] = { c: abs.col, r: abs.row };
         }
         return path;

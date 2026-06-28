@@ -3,9 +3,19 @@ import { SearchState } from "../../Pathfinding/SearchState.js";
 import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-import { createCellIndexLayout, globalCellIdx, gridCellLayout, layoutAbsCellIndex, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
+import {
+    createCellIndexLayout,
+    globalCellIdx,
+    gridCellLayout,
+    layoutAbsCellIndex,
+    layoutAbsToLocalCell,
+    layoutContainsAbsCell,
+    layoutLocalCellIndex,
+    layoutLocalToAbsCell,
+} from "../../Spatial/grid/GridUtils.js";
 import { readNavWalkableFlag } from "./navWalkableIndex.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
+let pathScratch = new Int32Array(512);
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
     const cellSize = grid.cellSize;
     const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
@@ -56,11 +66,16 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             if (!walkable[si] || !walkable[gi]) return null;
             if (reservedGlobalIndices.has(globalCellIdx(query.start.col, query.start.row, grid.cols)) || reservedGlobalIndices.has(globalCellIdx(query.target.col, query.target.row, grid.cols)))
                 return null;
-            const flat = gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen);
-            if (!flat) return null;
-            const path = new Array(flat.length);
-            for (let i = 0; i < flat.length; i++) {
-                const abs = layoutLocalToAbsCell(patchLayout, flat[i].col, flat[i].row);
+            if (pathScratch.length < maxPathLen) pathScratch = new Int32Array(maxPathLen);
+            const len = gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen, pathScratch);
+            if (len === 0) return null;
+            const path = new Array(len);
+            const cols = gridSearch.grid.cols;
+            for (let i = 0; i < len; i++) {
+                const idx = pathScratch[i];
+                const col = idx % cols;
+                const row = (idx / cols) | 0;
+                const abs = layoutLocalToAbsCell(patchLayout, col, row);
                 path[i] = { c: abs.col, r: abs.row };
             }
             return path;

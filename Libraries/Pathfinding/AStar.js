@@ -28,6 +28,21 @@ function reconstructIndexPath(cameFrom, targetIdx) {
     path.reverse();
     return path;
 }
+function reconstructIndexPathInto(cameFrom, targetIdx, outPath) {
+    let count = 0;
+    let node = targetIdx;
+    while (node !== -1) {
+        outPath[count++] = node;
+        node = cameFrom[node];
+    }
+    for (let i = 0; i < count >> 1; i++) {
+        const tmp = outPath[i];
+        outPath[i] = outPath[count - 1 - i];
+        outPath[count - 1 - i] = tmp;
+    }
+    return count;
+}
+const globalOpenSet = new IdxMinHeap();
 export class GridPathQuery {
     constructor(start, target) {
         this.start = start;
@@ -43,27 +58,33 @@ export class FlatGridSearch {
         this.searchState = searchState;
         this.stepPenaltyLookup = stepPenaltyLookup;
     }
-    cardinal(query, maxPathLen) {
-        return this.runGrid(query, maxPathLen, { offsets: CARDINAL_OFFSETS, heuristic: manhattanDistance, priority: "astar", stale: "astar", stepPenalty: false });
+    cardinal(query, maxPathLen, outPath) {
+        return this.runGrid(query, maxPathLen, { offsets: CARDINAL_OFFSETS, heuristic: manhattanDistance, priority: "astar", stale: "astar", stepPenalty: false }, outPath);
     }
-    local(query, maxPathLen) {
-        return this.runGrid(query, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "astar", stale: "astar", stepPenalty: true });
+    local(query, maxPathLen, outPath) {
+        return this.runGrid(query, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "astar", stale: "astar", stepPenalty: true }, outPath);
     }
-    dijkstra(query, maxPathLen) {
-        return this.runGrid(query, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "dijkstra", stale: "dijkstra", stepPenalty: true });
+    dijkstra(query, maxPathLen, outPath) {
+        return this.runGrid(query, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "dijkstra", stale: "dijkstra", stepPenalty: true }, outPath);
     }
-    greedy(query, maxPathLen) {
-        return this.runGrid(query, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "greedy", stale: null, stepPenalty: true });
+    greedy(query, maxPathLen, outPath) {
+        return this.runGrid(query, maxPathLen, { offsets: OCTILE_OFFSETS, heuristic: octileDistance, priority: "greedy", stale: null, stepPenalty: true }, outPath);
     }
-    runGrid(query, maxPathLen, policy) {
+    runGrid(query, maxPathLen, policy, outPath) {
         const { start, target } = query;
         const grid = this.grid;
         const cols = grid.cols;
         const rows = grid.rows;
         const startIdx = grid.idx(start.col, start.row);
         const targetIdx = grid.idx(target.col, target.row);
-        if (startIdx === targetIdx) return [{ col: start.col, row: start.row }];
-        const openSet = new IdxMinHeap();
+        if (startIdx === targetIdx) {
+            if (outPath) {
+                outPath[0] = startIdx;
+                return 1;
+            }
+            return [{ col: start.col, row: start.row }];
+        }
+        globalOpenSet.reset();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
         const targetCol = target.col;
         const targetRow = target.row;
@@ -71,16 +92,17 @@ export class FlatGridSearch {
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        openSet.push(startIdx, this.priorityFor(policy.priority, 0, start.col, start.row, targetCol, targetRow, heuristic));
-        while (openSet.size > 0) {
-            const curr = openSet.pop();
-            const currIdx = curr.idx;
+        globalOpenSet.push(startIdx, this.priorityFor(policy.priority, 0, start.col, start.row, targetCol, targetRow, heuristic));
+        while (globalOpenSet.size > 0) {
+            const currIdx = globalOpenSet.pop();
             const currCol = currIdx % cols;
             const currRow = (currIdx / cols) | 0;
             const currentG = gScore[currIdx];
-            if (this.isStaleQueueEntry(curr.f, currentG, currCol, currRow, targetCol, targetRow, heuristic, policy.stale)) continue;
+            if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currCol, currRow, targetCol, targetRow, heuristic, policy.stale)) continue;
             if (currentG > maxPathLen) continue;
-            if (currIdx === targetIdx) return reconstructGridPath(cameFrom, currIdx, cols);
+            if (currIdx === targetIdx)
+                if (outPath) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
+                else return reconstructGridPath(cameFrom, currIdx, cols);
             for (const offset of policy.offsets) {
                 const nc = currCol + offset.dc;
                 const nr = currRow + offset.dr;
@@ -93,10 +115,10 @@ export class FlatGridSearch {
                 visited[nIdx] = runId;
                 gScore[nIdx] = tentativeG;
                 cameFrom[nIdx] = currIdx;
-                openSet.push(nIdx, this.priorityFor(policy.priority, tentativeG, nc, nr, targetCol, targetRow, heuristic));
+                globalOpenSet.push(nIdx, this.priorityFor(policy.priority, tentativeG, nc, nr, targetCol, targetRow, heuristic));
             }
         }
-        return null;
+        return outPath ? 0 : null;
     }
     priorityFor(priority, tentativeG, col, row, targetCol, targetRow, heuristic) {
         if (priority === "dijkstra") return tentativeG;
@@ -127,24 +149,31 @@ export class FlatAbstractGraphSearch {
         this.graph = graph ?? new FlatGraphView({ nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
         this.searchState = searchState;
     }
-    run(startIdx, targetIdx) {
+    run(startIdx, targetIdx, outPath) {
         const graph = this.graph;
-        if (startIdx === targetIdx) return [startIdx];
+        if (startIdx === targetIdx) {
+            if (outPath) {
+                outPath[0] = startIdx;
+                return 1;
+            }
+            return [startIdx];
+        }
         const targetCol = graph.nodeCol[targetIdx];
         const targetRow = graph.nodeRow[targetIdx];
-        const openSet = new IdxMinHeap();
+        globalOpenSet.reset();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        openSet.push(startIdx, octileDistance(graph.nodeCol[startIdx], graph.nodeRow[startIdx], targetCol, targetRow));
-        while (openSet.size > 0) {
-            const curr = openSet.pop();
-            const currentIdx = curr.idx;
+        globalOpenSet.push(startIdx, octileDistance(graph.nodeCol[startIdx], graph.nodeRow[startIdx], targetCol, targetRow));
+        while (globalOpenSet.size > 0) {
+            const currentIdx = globalOpenSet.pop();
             const currentG = gScore[currentIdx];
             const bestF = currentG + octileDistance(graph.nodeCol[currentIdx], graph.nodeRow[currentIdx], targetCol, targetRow);
-            if (curr.f > bestF + STALE_F_EPSILON) continue;
-            if (currentIdx === targetIdx) return reconstructIndexPath(cameFrom, currentIdx);
+            if (globalOpenSet.lastPopPriority > bestF + STALE_F_EPSILON) continue;
+            if (currentIdx === targetIdx)
+                if (outPath) return reconstructIndexPathInto(cameFrom, currentIdx, outPath);
+                else return reconstructIndexPath(cameFrom, currentIdx);
             const edgeStart = graph.edgeOffsets[currentIdx];
             const edgeEnd = graph.edgeOffsets[currentIdx + 1];
             for (let i = edgeStart; i < edgeEnd; i++) {
@@ -154,9 +183,9 @@ export class FlatAbstractGraphSearch {
                 visited[neighborIdx] = runId;
                 cameFrom[neighborIdx] = currentIdx;
                 gScore[neighborIdx] = tentativeG;
-                openSet.push(neighborIdx, tentativeG + octileDistance(graph.nodeCol[neighborIdx], graph.nodeRow[neighborIdx], targetCol, targetRow));
+                globalOpenSet.push(neighborIdx, tentativeG + octileDistance(graph.nodeCol[neighborIdx], graph.nodeRow[neighborIdx], targetCol, targetRow));
             }
         }
-        return null;
+        return outPath ? 0 : null;
     }
 }

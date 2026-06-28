@@ -49,29 +49,33 @@ export class MinHeap {
 }
 export class IdxMinHeap {
     constructor() {
-        this.idx = [];
-        this.f = [];
-        this.top = { idx: 0, f: 0 };
+        const MAX_HEAP_SIZE = 16384;
+        this.idx = new Int32Array(MAX_HEAP_SIZE);
+        this.f = new Float32Array(MAX_HEAP_SIZE);
+        this._size = 0;
+        this.lastPopPriority = 0;
+    }
+    reset() {
+        this._size = 0;
     }
     push(idx, f) {
-        this.idx.push(idx);
-        this.f.push(f);
-        this.up(this.idx.length - 1);
+        if (this._size >= this.idx.length) return;
+        const i = this._size++;
+        this.idx[i] = idx;
+        this.f[i] = f;
+        this.up(i);
     }
     pop() {
-        const top = this.top;
-        top.idx = this.idx[0];
-        top.f = this.f[0];
-        const len = this.idx.length;
-        if (len === 1) {
-            this.idx.pop();
-            this.f.pop();
-            return top;
+        if (this._size === 0) return -1;
+        const topIdx = this.idx[0];
+        this.lastPopPriority = this.f[0];
+        this._size--;
+        if (this._size > 0) {
+            this.idx[0] = this.idx[this._size];
+            this.f[0] = this.f[this._size];
+            this.down(0);
         }
-        this.idx[0] = this.idx.pop();
-        this.f[0] = this.f.pop();
-        this.down(0);
-        return top;
+        return topIdx;
     }
     up(i) {
         const idxArr = this.idx;
@@ -92,7 +96,7 @@ export class IdxMinHeap {
     down(i) {
         const idxArr = this.idx;
         const fArr = this.f;
-        const len = idxArr.length;
+        const len = this._size;
         while ((i << 1) + 1 < len) {
             const left = (i << 1) + 1;
             const right = left + 1;
@@ -110,6 +114,6 @@ export class IdxMinHeap {
         }
     }
     get size() {
-        return this.idx.length;
+        return this._size;
     }
 }

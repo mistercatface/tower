@@ -184,15 +184,19 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
     if (components.length <= 1) return null;
     components.sort((a, b) => b.length - a.length);
-    const { x: originX, y: originY } = propWorldPosition(prop);
+    const physId = prop._physId;
+    const originX = kineticDynamicSlab.x[physId];
+    const originY = kineticDynamicSlab.y[physId];
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
     return { debris, originX, originY, facing: prop.facing };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
-    const pos = propWorldPosition(prop);
-    const dx = worldX - pos.x;
-    const dy = worldY - pos.y;
+    const physId = prop._physId;
+    const wx = kineticDynamicSlab.x[physId];
+    const wy = kineticDynamicSlab.y[physId];
+    const dx = worldX - wx;
+    const dy = worldY - wy;
     const cos = Math.cos(prop.facing);
     const sin = Math.sin(prop.facing);
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
@@ -202,17 +206,32 @@ export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
 }
 export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
-    const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
-    const debris = shatterGlassPolygon(flatVertsFromShape(prop), local.x, local.y, impactForce);
+    const physId = prop._physId;
+    const wx = kineticDynamicSlab.x[physId];
+    const wy = kineticDynamicSlab.y[physId];
+    const dx = worldHitX - wx;
+    const dy = worldHitY - wy;
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    const localHitX = dx * cos + dy * sin;
+    const localHitY = -dx * sin + dy * cos;
+    const debris = shatterGlassPolygon(flatVertsFromShape(prop), localHitX, localHitY, impactForce);
     if (debris.length < 2) return null;
-    const { x: originX, y: originY } = propWorldPosition(prop);
-    return { debris, originX, originY, facing: prop.facing, impactLocal: local, impactForce };
+    return { debris, originX: wx, originY: wy, facing: prop.facing, impactLocal: { x: localHitX, y: localHitY }, impactForce };
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     if (!canFracturePropSplit(prop)) return null;
-    const local = worldHitToPropLocal(prop, worldHitX, worldHitY);
-    return peelSolidFracture(prop, local.x, local.y, impactForce);
+    const physId = prop._physId;
+    const wx = kineticDynamicSlab.x[physId];
+    const wy = kineticDynamicSlab.y[physId];
+    const dx = worldHitX - wx;
+    const dy = worldHitY - wy;
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    const localHitX = dx * cos + dy * sin;
+    const localHitY = -dx * sin + dy * cos;
+    return peelSolidFracture(prop, localHitX, localHitY, impactForce);
 }
 function evictFracturedProp(world, prop, spatialFrame) {
     removeWorldPropFromState(world, prop, spatialFrame);
@@ -277,6 +296,7 @@ export function flushDeferredFractures(world, spatialFrame) {
         deferredFracturesCount = 0;
     }
 }
+// TESTING ONLY FUNTION
 export function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
     queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed);
     flushDeferredFractures(tick.world, tick.frame);

@@ -1,5 +1,5 @@
 import { queueFractureKineticContact, flushDeferredFractures } from "../../Props/propFracture.js";
-import { kineticContactBodiesAt } from "./kineticPairStream.js";
+import { kineticPairBodyAt } from "./kineticPairStream.js";
 import { kineticDynamicSlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
 export function applyKineticContactSideEffects(tick, contacts) {
@@ -8,9 +8,9 @@ export function applyKineticContactSideEffects(tick, contacts) {
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];
-        const pair = kineticContactBodiesAt(tick.frame, physIdA, physIdB);
-        if (!pair) continue;
-        const { bodyA, bodyB } = pair;
+        const bodyA = kineticPairBodyAt(tick.frame, physIdA);
+        const bodyB = kineticPairBodyAt(tick.frame, physIdB);
+        if (!bodyA || !bodyB) continue;
         const nx = contacts.dynamic.nx[i];
         const ny = contacts.dynamic.ny[i];
         let hitX;

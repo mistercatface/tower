@@ -229,36 +229,63 @@ export class HpaReplanPlanner {
         const query = new GridPathQuery(data.query.start, data.query.target);
         const gridSearch = new FlatGridSearch({ grid: context.grid, searchState: this.searchState, stepPenaltyLookup: context.penaltyLookup });
         const prep = prepareHpaReplanPrep(context.frame.cols, context.cellToRegion, context.graph, query);
-        if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, query);
-        return this.writeHpaResult(slot, gridSearch, context.graph, prep, query);
+        if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, query, context.frame.cols);
+        return this.writeHpaResult(slot, gridSearch, context.graph, prep, query, context.frame.cols);
     }
-    writeLocalResult(slot, gridSearch, query) {
-        const path = gridSearch.local(query, HPA_LOCAL_MAX_LEN);
+    writeLocalResult(slot, gridSearch, query, cols) {
+        if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        const len = gridSearch.local(query, HPA_LOCAL_MAX_LEN, this.localPathScratch);
+        if (len === 0) {
+            this.buffers.writeCellPath(slot, null);
+            this.buffers.writeAbstractPath(slot, null);
+            return this.buffers.buildReplanResult(slot);
+        }
+        const path = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const idx = this.localPathScratch[i];
+            path[i] = { col: idx % cols, row: (idx / cols) | 0 };
+        }
         this.buffers.writeCellPath(slot, path);
         this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
-    writeHpaResult(slot, gridSearch, baseGraph, prep, query) {
+    writeHpaResult(slot, gridSearch, baseGraph, prep, query, cols) {
+        if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        if (!this.abstractPathScratch) this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
         const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, prep, this.buffers.maxCellsPerChunk, (legQuery) => {
-            const path = gridSearch.local(legQuery, prep.regionConnectMaxLen);
-            return path ? { cost: path.length, path } : { cost: 0 };
+            const len = gridSearch.local(legQuery, prep.regionConnectMaxLen, this.localPathScratch);
+            if (len === 0) return { cost: 0 };
+            const path = new Array(len);
+            for (let i = 0; i < len; i++) {
+                const idx = this.localPathScratch[i];
+                path[i] = { col: idx % cols, row: (idx / cols) | 0 };
+            }
+            return { cost: len, path };
         });
         const abstractSearch = new FlatAbstractGraphSearch({ graph: extendedGraph, searchState: this.searchState });
-        const abstractPath = abstractSearch.run(startTemp, targetTemp);
-        this.buffers.writeAbstractPath(slot, abstractPath);
-        if (!abstractPath) {
+        const abstractLen = abstractSearch.run(startTemp, targetTemp, this.abstractPathScratch);
+        if (abstractLen === 0) {
+            this.buffers.writeAbstractPath(slot, null);
             this.buffers.writeCellPath(slot, null);
             return this.buffers.buildReplanResult(slot);
         }
-        const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx));
+        const abstractPath = Array.from(this.abstractPathScratch.subarray(0, abstractLen));
+        this.buffers.writeAbstractPath(slot, abstractPath);
+        const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols));
         this.buffers.writeCellPath(slot, cellPath);
         return this.buffers.buildReplanResult(slot);
     }
-    resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx) {
-        return gridSearch.local(
-            new GridPathQuery({ col: baseGraph.nodeCol[aIdx], row: baseGraph.nodeRow[aIdx] }, { col: baseGraph.nodeCol[bIdx], row: baseGraph.nodeRow[bIdx] }),
-            prep.regionConnectMaxLen,
-        );
+    resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
+        if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        const query = new GridPathQuery({ col: baseGraph.nodeCol[aIdx], row: baseGraph.nodeRow[aIdx] }, { col: baseGraph.nodeCol[bIdx], row: baseGraph.nodeRow[bIdx] });
+        const len = gridSearch.local(query, prep.regionConnectMaxLen, this.localPathScratch);
+        if (len === 0) return null;
+        const path = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const idx = this.localPathScratch[i];
+            path[i] = { col: idx % cols, row: (idx / cols) | 0 };
+        }
+        return path;
     }
 }
 export class HpaPathfindingWorker {
