@@ -85,9 +85,7 @@ export class SpatialFrameCore {
     getNeighbors(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighbors;
         if (!entity._neighbors) entity._neighbors = [];
-        else entity._neighbors.length = 0;
-        const res = this.entityGrid.collectNearby(entity);
-        for (let i = 0; i < res.length; i++) entity._neighbors.push(res[i]);
+        this.entityGrid.collectNearbyInto(entity, entity._neighbors);
         entity._neighborsFrameId = this.frameId;
         return entity._neighbors;
     }

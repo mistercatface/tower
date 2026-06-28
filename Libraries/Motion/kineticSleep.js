@@ -1,15 +1,22 @@
 import { collisionSettings } from "../Collision/collisionDefaults.js";
-import { isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "../Spatial/collision/entityBroadphase.js";
+import { createAabb, emptyAabbInto, growAabbFromCenterInto } from "../Math/Aabb2D.js";
+import { entityBroadphaseExtent, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "../Spatial/collision/entityBroadphase.js";
 import { shareKineticIsland } from "./kineticIslands.js";
+const ISLAND_SLEEP_QUERY_BOUNDS = createAabb();
 export function kineticSleepFramesRequired() {
     return collisionSettings.kineticSleep.frames;
 }
 export function isKinetic(entity) {
     return Boolean(entity?.strategy?.isKinetic);
 }
-export function canSleepKinetic(entity, { blocksSleep = () => false } = {}) {
+function propBlocksSleep(prop) {
+    const fn = prop.currentState?.blocksSleep;
+    if (fn) return fn.call(prop.currentState);
+    return false;
+}
+export function canSleepKinetic(entity) {
     if (!isKinetic(entity)) return false;
-    if (blocksSleep(entity)) return false;
+    if (propBlocksSleep(entity)) return false;
     return !isKinematicallyActive(entity);
 }
 export function wakeKineticBody(entity) {
@@ -49,25 +56,29 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSl
 function isKineticSleepNeighbor(other) {
     return Boolean(other.strategy?.isKinetic);
 }
-export function hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps = pairBroadphaseOverlapSnapshotted, skipNeighbor = () => false } = {}) {
+export function hasSleepBlockingNeighbor(prop, neighbors) {
     for (let i = 0; i < neighbors.length; i++) {
         const other = neighbors[i];
         if (other === prop || !isKineticSleepNeighbor(other)) continue;
-        if (skipNeighbor(prop, other)) continue;
-        if (!pairOverlaps(prop, other)) continue;
+        if (shareKineticIsland(prop, other)) continue;
+        if (!pairBroadphaseOverlapSnapshotted(prop, other)) continue;
         if (other.isSleeping) continue;
         if (isKinematicallyActive(other)) return true;
     }
     return false;
 }
-export function evaluateKineticSleepEligible(prop, neighbors, { blocksSleep = () => false, pairOverlaps } = {}) {
-    return canSleepKinetic(prop, { blocksSleep }) && !hasSleepBlockingNeighbor(prop, neighbors, { pairOverlaps, skipNeighbor: shareKineticIsland });
+export function evaluateKineticSleepEligible(prop, neighbors) {
+    return canSleepKinetic(prop) && !hasSleepBlockingNeighbor(prop, neighbors);
 }
-export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame, { blocksSleep = () => false, pairOverlaps = pairBroadphaseOverlapSnapshotted } = {}) {
-    for (let i = 0; i < islandMembers.length; i++) if (!canSleepKinetic(islandMembers[i], { blocksSleep })) return false;
+export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) {
+    emptyAabbInto(ISLAND_SLEEP_QUERY_BOUNDS);
     for (let i = 0; i < islandMembers.length; i++) {
         const prop = islandMembers[i];
-        if (hasSleepBlockingNeighbor(prop, spatialFrame.getNeighbors(prop), { pairOverlaps, skipNeighbor: shareKineticIsland })) return false;
+        if (!canSleepKinetic(prop)) return false;
+        const extent = entityBroadphaseExtent(prop);
+        growAabbFromCenterInto(ISLAND_SLEEP_QUERY_BOUNDS, prop.x, prop.y, extent, extent);
     }
+    const neighbors = spatialFrame.collectEntitiesInBounds(ISLAND_SLEEP_QUERY_BOUNDS);
+    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
 }

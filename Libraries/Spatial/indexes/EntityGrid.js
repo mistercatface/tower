@@ -4,7 +4,6 @@ import { entityBroadphaseExtent, kineticNeighborQueryPad } from "../collision/en
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 import { MAX_ENTITIES } from "../../../Core/engineLimits.js";
-const GLOBAL_QUERY_RESULT = [];
 export class EntityGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
@@ -146,14 +145,14 @@ export class EntityGrid {
         }
         return query.collectInIndex(this, bounds, exclude);
     }
-    collectNearby(entity) {
-        GLOBAL_QUERY_RESULT.length = 0;
+    collectNearbyInto(entity, out) {
+        out.length = 0;
         this.queryGen++;
         const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + kineticNeighborQueryPad();
         centerReachAabbInto(this.queryBoundsScratch, entity.x, entity.y, searchRadius);
         this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, (other) => {
-            GLOBAL_QUERY_RESULT.push(other);
+            out.push(other);
         });
-        return GLOBAL_QUERY_RESULT;
+        return out;
     }
 }

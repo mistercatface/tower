@@ -142,7 +142,11 @@ export function refreshActiveKineticBodySlabPose(bodies) {
         const entity = bodies[i];
         const physId = entity._physId;
         writeActiveKineticBodySlabPose(entity);
-        if (slab.bpKind[physId] !== BP_KIND_CIRCLE) writeBroadphaseFromBounds(physId, getBroadphaseBounds(entity));
+        if (slab.bpKind[physId] !== BP_KIND_CIRCLE) {
+            const angle = entityAngle(entity);
+            slab.cos[physId] = Math.cos(angle);
+            slab.sin[physId] = Math.sin(angle);
+        }
     }
 }
 export function pairCircleCircleOverlapSnapshotted(a, b) {

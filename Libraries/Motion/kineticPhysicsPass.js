@@ -5,11 +5,6 @@ import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 import { countMotionSubsteps, maxActiveKineticSpeedSq } from "./motionSubsteps.js";
-function propBlocksSleep(prop) {
-    const fn = prop.currentState?.blocksSleep;
-    if (fn) return fn.call(prop.currentState);
-    return false;
-}
 function tickKineticSleep(frame) {
     const kineticBodies = frame._kineticBodies;
     if (!kineticBodies) return;
@@ -18,7 +13,7 @@ function tickKineticSleep(frame) {
         const root = prop._kineticIslandRoot ?? prop.id;
         if (prop.id !== root) continue;
         const islandMembers = prop._kineticIslandPeers ?? [prop];
-        const eligible = evaluateKineticIslandSleepEligible(islandMembers, frame, { blocksSleep: propBlocksSleep });
+        const eligible = evaluateKineticIslandSleepEligible(islandMembers, frame);
         for (let j = 0; j < islandMembers.length; j++) advanceKineticSleep(islandMembers[j], eligible);
     }
 }
