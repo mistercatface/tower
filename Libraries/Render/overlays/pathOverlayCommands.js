@@ -61,20 +61,29 @@ function appendNormalPathOverlayCommands(out, overlay) {
     if (pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(156, 39, 176, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
     appendPathEndArrow(out, pathNodes ?? [], targetX, targetY, hpaColor);
 }
-function appendAbstractPathCommands(out, abstractPath, pathPlanner = "hpa") {
+function appendAbstractPathCommands(out, abstractPath, grid, pathPlanner = "hpa") {
     if (abstractPath.length < 2) return;
     const isLocal = pathPlanner === "local";
     const lineColor = isLocal ? "#ff9800" : "#ffeb3b";
     const nodeColor = isLocal ? "#ffb74d" : "#ffeb3b";
     const endpointColor = isLocal ? "#f57c00" : "#ff9800";
-    out.push(overlayPolyline(abstractPath, { stroke: lineColor, lineWidth: 5, dash: [12, 8] }));
+    
+    const points = [];
     for (let i = 0; i < abstractPath.length; i++) {
-        const node = abstractPath[i];
-        const isEndpoint = node.id === "start" || node.id === "target";
-        out.push(overlayCachedPathDebugNode(node.x, node.y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }));
+        const idx = abstractPath[i];
+        points.push({ x: grid.gridCenterXByIdx(idx), y: grid.gridCenterYByIdx(idx) });
+    }
+    out.push(overlayPolyline(points, { stroke: lineColor, lineWidth: 5, dash: [12, 8] }));
+    
+    for (let i = 0; i < abstractPath.length; i++) {
+        const idx = abstractPath[i];
+        const isEndpoint = i === 0 || i === abstractPath.length - 1;
+        const x = grid.gridCenterXByIdx(idx);
+        const y = grid.gridCenterYByIdx(idx);
+        out.push(overlayCachedPathDebugNode(x, y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }));
     }
 }
-export function appendPathOverlayCommands(out, overlay, visual = "debug") {
+export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") {
     if (!overlay) return;
     if (visual === "normal") {
         appendNormalPathOverlayCommands(out, overlay);
@@ -82,7 +91,7 @@ export function appendPathOverlayCommands(out, overlay, visual = "debug") {
     }
     const { mode, targetX, targetY, pathNodes, abstractPath, pathPlanner } = overlay;
     if (mode === "hpa") {
-        if (abstractPath) appendAbstractPathCommands(out, abstractPath, pathPlanner ?? "hpa");
+        if (abstractPath) appendAbstractPathCommands(out, abstractPath, grid, pathPlanner ?? "hpa");
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
         if (pathNodes.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
         for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedPathDebugNode(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }));

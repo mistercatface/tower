@@ -1,4 +1,4 @@
-import { colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { colRowToIndex, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 import { snapNavGoalCellIndex } from "../Navigation/snapNavGoal.js";
 import { findSabPathProgressIdx } from "./hpaPathSlot.js";
 export const HPA_LOCAL_MAX_LEN = 96;
@@ -26,33 +26,9 @@ export class HpaReplanRequest {
         let targetCol = Math.max(0, Math.min(cols - 1, grid.worldCol(this.targetX)));
         let targetRow = Math.max(0, Math.min(rows - 1, grid.worldRow(this.targetY)));
         let startIdx = startCol + startRow * cols;
-        if (grid.isBlocked(startCol, startRow)) {
-            let found = false;
-            for (let r = 1; r <= 5 && !found; r++)
-                for (let dr = -r; dr <= r && !found; dr++)
-                    for (let dc = -r; dc <= r && !found; dc++) {
-                        const nc = startCol + dc;
-                        const nr = startRow + dr;
-                        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && !grid.isBlocked(nc, nr)) {
-                            startIdx = nc + nr * cols;
-                            found = true;
-                        }
-                    }
-        }
+        startIdx = findNearestOpenCellIdx(grid.grid, cols, rows, startIdx);
         let targetIdx = targetCol + targetRow * cols;
-        if (grid.isBlocked(targetCol, targetRow)) {
-            let found = false;
-            for (let r = 1; r <= 5 && !found; r++)
-                for (let dr = -r; dr <= r && !found; dr++)
-                    for (let dc = -r; dc <= r && !found; dc++) {
-                        const nc = targetCol + dc;
-                        const nr = targetRow + dr;
-                        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && !grid.isBlocked(nc, nr)) {
-                            targetIdx = nc + nr * cols;
-                            found = true;
-                        }
-                    }
-        }
+        targetIdx = findNearestOpenCellIdx(grid.grid, cols, rows, targetIdx);
         const snappedIdx = snapNavGoalCellIndex(grid, startIdx, targetIdx);
         globalReplanPayload.startIdx = startIdx;
         globalReplanPayload.targetIdx = snappedIdx;
@@ -84,29 +60,24 @@ export class HpaReplanRequest {
 export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startIdx, targetIdx) {
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
-    const sc = startIdx % cols;
-    const sr = (startIdx / cols) | 0;
-    const tc = targetIdx % cols;
-    const tr = (targetIdx / cols) | 0;
-    const cellDist = Math.hypot(sc - tc, sr - tr);
+    const cellDist = octileDistanceIdx(startIdx, targetIdx, cols);
     if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startIdx, targetIdx };
     const { nodeIds, nodeIdx } = graphMeta;
     return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
 }
-function findNearestOpenCellCore(cols, rows, col, row, isOpen) {
-    if (isOpen(col, row)) return { col, row };
+export function findNearestOpenCellIdx(blocked, cols, rows, idx) {
+    if (blocked[idx] === 0) return idx;
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
     for (let r = 1; r <= 5; r++)
         for (let dr = -r; dr <= r; dr++)
             for (let dc = -r; dc <= r; dc++) {
                 const nc = col + dc;
                 const nr = row + dr;
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && isOpen(nc, nr)) return { col: nc, row: nr };
+                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                    const nIdx = nr * cols + nc;
+                    if (blocked[nIdx] === 0) return nIdx;
+                }
             }
-    return { col, row };
-}
-export function findNearestOpenCell(grid, col, row) {
-    return findNearestOpenCellCore(grid.cols, grid.rows, col, row, (c, r) => !grid.isBlocked(c, r));
-}
-export function findNearestOpenCellBlocked(blocked, cols, rows, col, row) {
-    return findNearestOpenCellCore(cols, rows, col, row, (c, r) => !blocked[colRowToIndex(c, r, cols)]);
+    return idx;
 }

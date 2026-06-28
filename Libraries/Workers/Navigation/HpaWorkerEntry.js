@@ -197,6 +197,9 @@ export class HpaRegionGraphManager {
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, data) {
+        if (!this.regionGraphState) {
+            return this.buildRegionGraphFull(gridFrame, topology, navView, data);
+        }
         rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView);
         return this.writeRegionGraphToSab(gridFrame);
     }
@@ -292,6 +295,7 @@ export class HpaPathfindingWorker {
         self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
     }
     postGraphPatchError(err) {
+        console.error("Worker graph patch error:", err.stack || err);
         self.postMessage({ type: "graphPatchError", message: err?.message ?? String(err) });
     }
     runGraphPatch(fn) {

@@ -21,14 +21,9 @@ export class FlatGridView {
     canStep(idx0, idx1) {
         if (idx0 < 0 || idx0 >= this.cellCount || idx1 < 0 || idx1 >= this.cellCount) return false;
         const cols = this.cols;
-        const col0 = idx0 % cols;
-        const col1 = idx1 % cols;
-        if (Math.abs(col0 - col1) > 1) return false; // Boundary horizontal wrap check
-        if (this._canStep) return this._canStep(col0, (idx0 / cols) | 0, col1, (idx1 / cols) | 0);
+        if (Math.abs((idx0 % cols) - (idx1 % cols)) > 1) return false; // Boundary horizontal wrap check
+        if (this._canStep) return this._canStep(idx0, idx1);
         if (this.blocked) return !this.blocked[idx1];
         return true;
-    }
-    canStepIdx(idx0, idx1) {
-        return this.canStep(idx0, idx1);
     }
 }

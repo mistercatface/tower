@@ -478,8 +478,11 @@ export class WorldObstacleGrid {
         const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
         const vertexPassability = navTopology.vertexPassability;
         if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, fromIdx, toIdx);
-        const cols = this.cols;
-        return this.canStep(fromIdx % cols, (fromIdx / cols) | 0, toIdx % cols, (toIdx / cols) | 0, navTopology);
+        if (typeof navTopology.canStep === "function") {
+            const cols = this.cols;
+            return navTopology.canStep(fromIdx % cols, (fromIdx / cols) | 0, toIdx % cols, (toIdx / cols) | 0);
+        }
+        return false;
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

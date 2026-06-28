@@ -1,6 +1,6 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
-import { colRowToIndex, forEachCardinalNeighbor, forEachCardinalNeighborIdx } from "../Spatial/grid/GridUtils.js";
-import { findNearestOpenCellBlocked } from "./hpaPathRequest.js";
+import { colRowToIndex, forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
+import { findNearestOpenCellIdx } from "./hpaPathRequest.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, repositionNodeCentroid, repositionRegionCentroids, mergeSmallRegions, floodFillRegion } from "./VoronoiRegions.js";
@@ -9,42 +9,40 @@ export class HpaRegionGraph {
     constructor(frame, nodesMap = {}, cellToNode = null, nodeIdCounter = 0) {
         this.frame = frame;
         this.nodesMap = nodesMap;
-        this.cellToNode = cellToNode ?? new Array(frame.cols * frame.rows).fill(null);
+        this.cellToNode = cellToNode ?? new Int32Array(frame.cols * frame.rows).fill(-1);
         this.nodeIdCounter = nodeIdCounter;
     }
     static fromState(state, frame) {
         return new HpaRegionGraph(frame, state.nodesMap, state.cellToNode, state.nodeIdCounter);
     }
     static fromVoronoiResult(result, frame) {
-        return new HpaRegionGraph(frame, result.nodesMap, result.cellToNode, result.nodeIdCounter);
+        return new HpaRegionGraph(frame, result.nodesMap, result.cellToNode, 0);
     }
     exportState() {
         return { nodesMap: this.nodesMap, cellToNode: this.cellToNode, nodeIdCounter: this.nodeIdCounter };
     }
-    nextNodeId() {
-        return `node_${++this.nodeIdCounter}`;
-    }
     createRegionAtCell(startIdx) {
-        const { cols, minX, minY, cellSize } = this.frame;
-        const startCol = startIdx % cols;
-        const startRow = (startIdx / cols) | 0;
-        const node = new RegionNode(this.nextNodeId(), startCol, startRow, startCol, startRow, minX, minY, cellSize);
-        this.nodesMap[node.id] = node;
+        const id = `node_${startIdx}`;
+        const node = new RegionNode(id, startIdx);
+        this.nodesMap[id] = node;
         return node;
     }
-    getNode(id) {
-        return this.nodesMap[id] ?? null;
+    getNode(idOrIdx) {
+        if (typeof idOrIdx === "number") return this.nodesMap[`node_${idOrIdx}`] ?? null;
+        return this.nodesMap[idOrIdx] ?? null;
     }
     nodeForCell(idx) {
-        return this.cellToNode[idx] ?? null;
+        const nodeIdx = this.cellToNode[idx];
+        if (nodeIdx === undefined || nodeIdx === -1) return null;
+        return this.nodesMap[`node_${nodeIdx}`] ?? null;
     }
     assignCell(node, idx) {
         if (!node) return;
-        this.cellToNode[idx] = node;
+        this.cellToNode[idx] = node.idx;
         node.cells.push(idx);
     }
     unassignCell(idx) {
-        this.cellToNode[idx] = null;
+        this.cellToNode[idx] = -1;
     }
     nodes() {
         return Object.values(this.nodesMap);
@@ -60,7 +58,8 @@ export class HpaRegionGraph {
     }
     connectEdge(nodeA, nodeB) {
         if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
-        const costAB = Math.max(Math.abs(nodeA.col - nodeB.col), Math.abs(nodeA.row - nodeB.row));
+        const cols = this.frame.cols;
+        const costAB = octileDistanceIdx(nodeA.idx, nodeB.idx, cols);
         if (costAB > 0 && !nodeA.edges.some((e) => e.targetId === nodeB.id)) nodeA.edges.push({ targetId: nodeB.id, cost: costAB });
     }
     stripEdgesBetween(nodeA, nodeB) {
@@ -74,7 +73,7 @@ export class HpaRegionGraph {
     removeRegion(nodeOrId) {
         const node = typeof nodeOrId === "string" ? this.getNode(nodeOrId) : nodeOrId;
         if (!node) return;
-        for (let i = 0; i < node.cells.length; i++) this.cellToNode[node.cells[i]] = null;
+        for (let i = 0; i < node.cells.length; i++) this.cellToNode[node.cells[i]] = -1;
         delete this.nodesMap[node.id];
         this.removeInboundEdges(node.id);
     }
@@ -99,11 +98,9 @@ export class HpaRegionGraph {
         state.nodeIdCounter = this.nodeIdCounter;
     }
 }
-/** @param {import("../DataStructures/CellRect.js").CellBounds} bounds @param {import("./GridNavSnapshot.js").GridFrame} frame @param {number} [padding] */
 export function expandRegionDamageBounds(bounds, frame, padding = 12) {
     return padCellBoundsToGrid(bounds, frame.cols, frame.rows, padding);
 }
-/** @param {import("./VoronoiRegions.js").RegionNode} nodeA @param {import("./VoronoiRegions.js").RegionNode} nodeB */
 function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     if (!nodeA || !nodeB || nodeA.id === nodeB.id) return false;
     const { cols, rows } = frame;
@@ -119,7 +116,6 @@ function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     }
     return false;
 }
-/** @param {import("./VoronoiRegions.js").RegionNode} node */
 function validateRegionEdges(navGraph, frame, node, graph) {
     if (!node) return;
     node.edges = node.edges.filter((edge) => {
@@ -151,7 +147,7 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
     }
 }
 function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph) {
-    const { cols, rows, minX, minY, cellSize } = frame;
+    const { cols, rows } = frame;
     if (cells.length === 0) return { newIds: [], nodeIdCounter: graph.nodeIdCounter };
     if (!distToWall || distToWall.length !== cols * rows) distToWall = computeDistanceTransform(blocked, frame, distToWall);
     const unassigned = new Set(cells);
@@ -163,7 +159,7 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
         const node = graph.createRegionAtCell(startIdx);
         node.cells.length = 0;
         floodFillRegion(startIdx, node, blocked, frame, graph.cellToNode, node.cells, maxCellsPerChunk, navGraph, unassigned);
-        repositionNodeCentroid(node, graph.cellToNode, blocked, frame);
+        repositionNodeCentroid(node, graph.cellToNode, blocked, frame, graph.nodesMap);
         newIds.push(node.id);
     }
     if (minCellsPerChunk > 0) mergeSmallRegions(graph.nodesMap, graph.cellToNode, frame, minCellsPerChunk, navGraph);
@@ -186,7 +182,7 @@ function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
             graph.removeRegion(node);
             continue;
         }
-        repositionNodeCentroid(node, graph.cellToNode, blocked, frame);
+        repositionNodeCentroid(node, graph.cellToNode, blocked, frame, graph.nodesMap);
     }
 }
 function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, bounds) {
@@ -233,8 +229,8 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
 function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY) {
     const { cols, rows } = frame;
     const { col, row } = snapshotWorldToGrid(frame, seedWorldX, seedWorldY);
-    const start = findNearestOpenCellBlocked(blocked, cols, rows, col, row);
-    const startIdx = colRowToIndex(start.col, start.row, cols);
+    const seedIdx = colRowToIndex(col, row, cols);
+    const startIdx = findNearestOpenCellIdx(blocked, cols, rows, seedIdx);
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;
     bfsIndices([startIdx], (idx, enqueue) => {
@@ -262,20 +258,11 @@ function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph) 
     const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
     pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY);
 }
-/**
- * @param {{
- *   blocked: Uint8Array,
- *   frame: import("./GridNavSnapshot.js").GridFrame,
- *   navGraph: object,
- *   maxCellsPerChunk: number,
- *   minCellsPerChunk: number,
- * }} opts
- */
 export function buildFullRegionGraph(opts) {
     const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
-    const cellToNode = new Array(size).fill(null);
+    const cellToNode = new Int32Array(size).fill(-1);
     const distToWall = computeDistanceTransform(blocked, frame);
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
@@ -283,21 +270,6 @@ export function buildFullRegionGraph(opts) {
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
     return { ...graph.exportState(), graph };
 }
-/**
- * @param {{
- *   nodesMap: Record<string, import("./VoronoiRegions.js").RegionNode>,
- *   cellToNode: Array<import("./VoronoiRegions.js").RegionNode | null>,
- *   nodeIdCounter: number,
- *   maxCellsPerChunk: number,
- *   minCellsPerChunk: number,
- *   damagePadding?: number,
- *   distToWall?: Float32Array | null,
- * }} state
- * @param {import("../DataStructures/CellRect.js").CellBounds} bounds
- * @param {import("./GridNavSnapshot.js").GridFrame} frame
- * @param {Uint8Array} blocked
- * @param {{ canStep: (fromCol: number, fromRow: number, toCol: number, toRow: number) => boolean }} navGraph
- */
 export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
@@ -321,7 +293,6 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     graph.syncState(state);
     return state;
 }
-/** @param {Record<string, import("./VoronoiRegions.js").RegionNode> | HpaRegionGraph} nodesMap @param {Array<import("./VoronoiRegions.js").RegionNode | null>} cellToNode @param {import("./GridNavSnapshot.js").GridFrame} frame */
 export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     const graph = nodesMap instanceof HpaRegionGraph ? nodesMap : new HpaRegionGraph(frame, nodesMap, cellToNode);
     const size = frame.cols * frame.rows;
@@ -337,7 +308,7 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     for (let i = 0; i < nodeCount; i++) {
         idToIdx.set(nodeIds[i], i);
         const node = graph.getNode(nodeIds[i]);
-        nodeIdx[i] = node.col + node.row * frame.cols;
+        nodeIdx[i] = node.idx;
         for (let c = 0; c < node.cells.length; c++) cellToRegion[node.cells[c]] = i;
     }
     const edgeSources = [];
@@ -365,26 +336,23 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
         idToIdx,
     };
 }
-/** @param {Int16Array} cellToRegion @param {Int32Array} nodeIdx @param {number} nodeCount @param {import("./GridNavSnapshot.js").GridFrame} frame */
 export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame) {
-    const { cols, rows, minX, minY, cellSize } = frame;
+    const { cols, rows } = frame;
     const size = cols * rows;
-    const cellToNode = new Array(size).fill(null);
+    const cellToNode = new Int32Array(size).fill(-1);
     const nodesMap = {};
     for (let i = 0; i < nodeCount; i++) {
-        const id = `node_${i}`;
+        const id = `node_${nodeIdx[i]}`;
         const idx = nodeIdx[i];
-        const col = idx % cols;
-        const row = (idx / cols) | 0;
-        const node = new RegionNode(id, col, row, col, row, minX, minY, cellSize);
+        const node = new RegionNode(id, idx);
         node.cells = [];
         nodesMap[id] = node;
     }
     for (let idx = 0; idx < size; idx++) {
         const regionIdx = cellToRegion[idx];
         if (regionIdx < 0) continue;
-        const node = nodesMap[`node_${regionIdx}`];
-        cellToNode[idx] = node;
+        const node = nodesMap[`node_${nodeIdx[regionIdx]}`];
+        cellToNode[idx] = node.idx;
         node.cells.push(idx);
     }
     return { nodesMap, cellToNode, nodeIdCounter: nodeCount };

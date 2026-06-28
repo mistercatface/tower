@@ -60,7 +60,7 @@ export function buildSandboxOverlayCommands({
             const behavior = resolveGroundNavPathOverlayBehavior(state, prop, behaviorById) ?? behaviorById.get(getPropBehaviorId(prop));
             if (!behavior?.getPathOverlay) continue;
             const overlay = behavior.getPathOverlay(prop);
-            appendPathOverlayCommands(commands, overlay, visual);
+            appendPathOverlayCommands(commands, overlay, state.obstacleGrid, visual);
         }
     }
     appendSelectionOverlayCommands(commands, {

@@ -1,9 +1,10 @@
 import { FlatGraphView } from "./AStar.js";
+import { octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 export class HpaAbstractGraph extends FlatGraphView {
     constructor(nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
         super({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
     }
-    collectTempConnectCandidates(gridCol, gridRow, isStart, maxCellsPerChunk, anchorRegionIdx) {
+    collectTempConnectCandidates(centerIdx, isStart, maxCellsPerChunk, anchorRegionIdx) {
         const searchRadius = Math.ceil(Math.sqrt(maxCellsPerChunk)) * 2;
         const out = [];
         const seen = new Set();
@@ -32,20 +33,13 @@ export class HpaAbstractGraph extends FlatGraphView {
         }
         for (let i = 0; i < this.nodeCount; i++) {
             const idx = this.nodeIdx[i];
-            const nc = idx % this.cols;
-            const nr = (idx / this.cols) | 0;
-            const d = Math.hypot(gridCol - nc, gridRow - nr);
-            if (d <= searchRadius) add(i);
+            if (octileDistanceIdx(centerIdx, idx, this.cols) <= searchRadius) add(i);
         }
         return out;
     }
     buildExtended(startIdx, targetIdx, cols, prep, maxCellsPerChunk, resolveLegCost) {
-        const sc = startIdx % cols;
-        const sr = (startIdx / cols) | 0;
-        const tc = targetIdx % cols;
-        const tr = (targetIdx / cols) | 0;
-        const startCandidates = this.collectTempConnectCandidates(sc, sr, true, maxCellsPerChunk, prep.startRegion);
-        const targetCandidates = this.collectTempConnectCandidates(tc, tr, false, maxCellsPerChunk, prep.targetRegion);
+        const startCandidates = this.collectTempConnectCandidates(startIdx, true, maxCellsPerChunk, prep.startRegion);
+        const targetCandidates = this.collectTempConnectCandidates(targetIdx, false, maxCellsPerChunk, prep.targetRegion);
         const startTemp = this.nodeCount;
         const targetTemp = this.nodeCount + 1;
         const extCount = this.nodeCount + 2;

@@ -18,5 +18,5 @@ export function appendPropGroundNavPathOverlay(out, state, prop, behaviorById, v
     if (!behavior) return;
     const overlay = behavior.getPathOverlay(prop);
     if (!overlay) return;
-    appendPathOverlayCommands(out, overlay, visual);
+    appendPathOverlayCommands(out, overlay, state.obstacleGrid, visual);
 }

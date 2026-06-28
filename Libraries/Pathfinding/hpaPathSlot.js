@@ -87,38 +87,27 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  * @returns {{ pathPlanner: "local" | "hpa", abstractPath: Array<{ x: number, y: number, id?: string }> } | null}
  */
-export function buildSabAbstractPathOverlay(worker, slot, pathLen, grid) {
+export function buildSabAbstractPathOverlay(worker, slot, pathLen) {
     if (pathLen <= 0) return null;
     const abstractLen = worker.abstractPathLen(slot);
     if (abstractLen <= 0) {
-        const startIdx = worker.pathIdx(slot, 0);
-        const targetIdx = worker.pathIdx(slot, pathLen - 1);
         return {
             pathPlanner: "local",
-            abstractPath: [
-                { x: grid.gridCenterXByIdx(startIdx), y: grid.gridCenterYByIdx(startIdx), id: "start" },
-                { x: grid.gridCenterXByIdx(targetIdx), y: grid.gridCenterYByIdx(targetIdx), id: "target" },
-            ],
+            abstractPath: [worker.pathIdx(slot, 0), worker.pathIdx(slot, pathLen - 1)],
         };
     }
     const nodeCount = worker.graphNodeCount;
     const startTemp = nodeCount;
     const targetTemp = nodeCount + 1;
-    const nodeIds = worker.graphNodeIds;
     const abstractPath = [];
     for (let i = 0; i < abstractLen; i++) {
         const idx = worker.abstractPathIdx(slot, i);
         if (idx === startTemp) {
-            const startIdx = worker.pathIdx(slot, 0);
-            abstractPath.push({ x: grid.gridCenterXByIdx(startIdx), y: grid.gridCenterYByIdx(startIdx), id: "start" });
+            abstractPath.push(worker.pathIdx(slot, 0));
         } else if (idx === targetTemp) {
-            const targetIdx = worker.pathIdx(slot, pathLen - 1);
-            abstractPath.push({ x: grid.gridCenterXByIdx(targetIdx), y: grid.gridCenterYByIdx(targetIdx), id: "target" });
+            abstractPath.push(worker.pathIdx(slot, pathLen - 1));
         } else {
-            const nodeIdx = worker.graphNodeIdx(idx);
-            const col = nodeIdx % grid.cols;
-            const row = (nodeIdx / grid.cols) | 0;
-            abstractPath.push({ x: grid.gridCenterX(col), y: grid.gridCenterY(row), id: nodeIds[idx] });
+            abstractPath.push(worker.graphNodeIdx(idx));
         }
     }
     return { pathPlanner: "hpa", abstractPath };

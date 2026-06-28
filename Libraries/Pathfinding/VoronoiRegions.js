@@ -1,14 +1,9 @@
 import { bfsColRowQueue, bfsIndices } from "../DataStructures/gridBfs.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS, makeAdjacencyKey, forEachCardinalNeighbor, forEachCardinalNeighborIdx } from "../Spatial/grid/GridUtils.js";
 export class RegionNode {
-    constructor(id, col, row, sectorCol, sectorRow, minX, minY, cellSize) {
+    constructor(id, idx) {
         this.id = id;
-        this.col = col;
-        this.row = row;
-        this.sectorCol = sectorCol;
-        this.sectorRow = sectorRow;
-        this.x = minX + col * cellSize + cellSize / 2;
-        this.y = minY + row * cellSize + cellSize / 2;
+        this.idx = idx;
         this.edges = [];
         this.cells = [];
     }
@@ -48,16 +43,16 @@ export function computeDistanceTransform(grid, frame, distToWall = null) {
 export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
     const { cols, rows } = frame;
     let cellCount = 0;
-    cellToNode[startIdx] = node;
+    cellToNode[startIdx] = node.idx;
     nodeCells.push(startIdx);
     cellCount++;
     bfsIndices([startIdx], (currIdx, enqueue) => {
         if (cellCount >= maxCellsPerChunk) return;
         forEachCardinalNeighborIdx(currIdx, cols, rows, (nIdx) => {
             if (navGraph && (!navGraph.canStepIdx(currIdx, nIdx) || !navGraph.canStepIdx(nIdx, currIdx))) return;
-            if (grid[nIdx] === 0 && cellToNode[nIdx] === null && (!unassigned || unassigned.has(nIdx))) {
+            if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
                 if (unassigned) unassigned.delete(nIdx);
-                cellToNode[nIdx] = node;
+                cellToNode[nIdx] = node.idx;
                 nodeCells.push(nIdx);
                 enqueue(nIdx);
                 cellCount++;
@@ -81,8 +76,11 @@ export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk,
                 const cellIdx = nodeCells[i];
                 forEachCardinalNeighborIdx(cellIdx, cols, rows, (nIdx) => {
                     if (neighborNode) return;
-                    const nNode = cellToNode[nIdx];
-                    if (nNode && nNode.id !== id) if (!navGraph || (navGraph.canStepIdx(cellIdx, nIdx) && navGraph.canStepIdx(nIdx, cellIdx))) neighborNode = nNode;
+                    const nNodeIdx = cellToNode[nIdx];
+                    if (nNodeIdx !== -1 && nNodeIdx !== node.idx) {
+                        const nNode = nodesMap[`node_${nNodeIdx}`];
+                        if (nNode && (!navGraph || (navGraph.canStepIdx(cellIdx, nIdx) && navGraph.canStepIdx(nIdx, cellIdx)))) neighborNode = nNode;
+                    }
                 });
                 if (neighborNode) break;
             }
@@ -90,7 +88,7 @@ export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk,
                 const targetCells = neighborNode.cells;
                 for (let i = 0; i < nodeCells.length; i++) {
                     const cellIdx = nodeCells[i];
-                    cellToNode[cellIdx] = neighborNode;
+                    cellToNode[cellIdx] = neighborNode.idx;
                     targetCells.push(cellIdx);
                 }
                 node.cells = [];
@@ -101,9 +99,10 @@ export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk,
     } while (merged);
 }
 export function repositionRegionCentroids(nodesMap, grid, frame, cellToNode) {
-    const { cols, rows, minX, minY, cellSize } = frame;
-    for (const id in nodesMap) {
+    const { cols } = frame;
+    for (const id of Object.keys(nodesMap)) {
         const node = nodesMap[id];
+        if (!node) continue;
         const nodeCells = node.cells;
         if (!nodeCells || nodeCells.length === 0) continue;
         let sumCol = 0;
@@ -114,64 +113,62 @@ export function repositionRegionCentroids(nodesMap, grid, frame, cellToNode) {
             sumCol += cellIdx % cols;
             sumRow += (cellIdx / cols) | 0;
         }
-        const startCol = node.col;
-        const startRow = node.row;
-        node.col = Math.floor(sumCol / count);
-        node.row = Math.floor(sumRow / count);
-        const centroidIdx = node.row * cols + node.col;
-        if (grid[centroidIdx] || cellToNode[centroidIdx]?.id !== node.id) {
-            node.col = startCol;
-            node.row = startRow;
+        const startIdx = node.idx;
+        const centroidIdx = Math.floor(sumRow / count) * cols + Math.floor(sumCol / count);
+        const finalIdx = grid[centroidIdx] || cellToNode[centroidIdx] !== node.idx ? startIdx : centroidIdx;
+        if (finalIdx !== startIdx) {
+            node.idx = finalIdx;
+            const newId = `node_${finalIdx}`;
+            node.id = newId;
+            delete nodesMap[id];
+            nodesMap[newId] = node;
+            for (let i = 0; i < nodeCells.length; i++) cellToNode[nodeCells[i]] = finalIdx;
         }
-        node.x = minX + node.col * cellSize + cellSize / 2;
-        node.y = minY + node.row * cellSize + cellSize / 2;
     }
 }
 export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
-    const { cols, rows, minX, minY, cellSize } = frame;
+    const { cols, rows } = frame;
     const size = cols * rows;
-    const assignment = cellToNode ?? new Array(size).fill(null);
-    assignment.fill(null);
+    const assignment = cellToNode ?? new Int32Array(size).fill(-1);
+    assignment.fill(-1);
     const nodesMap = {};
-    let nodeIdCounter = 0;
     const emptyCells = [];
     for (let i = 0; i < size; i++) if (grid[i] === 0) emptyCells.push(i);
     emptyCells.sort((a, b) => distToWall[b] - distToWall[a]);
     for (const startIdx of emptyCells) {
-        if (assignment[startIdx] !== null) continue;
-        const startCol = startIdx % cols;
-        const startRow = (startIdx / cols) | 0;
-        const id = `node_${++nodeIdCounter}`;
-        const node = new RegionNode(id, startCol, startRow, startCol, startRow, minX, minY, cellSize);
+        if (assignment[startIdx] !== -1) continue;
+        const id = `node_${startIdx}`;
+        const node = new RegionNode(id, startIdx);
         nodesMap[id] = node;
         floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph);
     }
     if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, frame, minCellsPerChunk, navGraph);
     repositionRegionCentroids(nodesMap, grid, frame, assignment);
-    return { nodesMap, cellToNode: assignment, nodeIdCounter };
+    return { nodesMap, cellToNode: assignment };
 }
 export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, startRow, endRow, navGraph = null) {
-    const { cols, rows } = frame;
+    const { cols } = frame;
     const adjacencies = new Set();
     for (let r = startRow; r <= endRow; r++)
         for (let c = startCol; c <= endCol; c++) {
             const idx = r * cols + c;
-            const nodeA = cellToNode[idx];
-            if (!nodeA) continue;
+            const nodeAIdx = cellToNode[idx];
+            if (nodeAIdx === -1) continue;
             if (c + 1 <= endCol) {
-                const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                const nodeBIdx = cellToNode[idx + 1];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx)))
+                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
             if (r + 1 <= endRow) {
-                const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
-                    adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                const nodeBIdx = cellToNode[idx + cols];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
+                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
         }
     return adjacencies;
 }
-export function repositionNodeCentroid(node, cellToNode, grid, frame) {
-    const { cols, rows, minX, minY, cellSize } = frame;
+export function repositionNodeCentroid(node, cellToNode, grid, frame, nodesMap = null) {
+    const { cols } = frame;
     const nodeCells = node.cells;
     const count = nodeCells.length;
     if (count === 0) return;
@@ -182,16 +179,19 @@ export function repositionNodeCentroid(node, cellToNode, grid, frame) {
         sumCol += idx % cols;
         sumRow += (idx / cols) | 0;
     }
-    node.col = Math.floor(sumCol / count);
-    node.row = Math.floor(sumRow / count);
-    const centroidIdx = node.row * cols + node.col;
-    if (grid[centroidIdx] || cellToNode[centroidIdx]?.id !== node.id) {
-        const anchorIdx = nodeCells[0];
-        node.col = anchorIdx % cols;
-        node.row = (anchorIdx / cols) | 0;
+    const centroidIdx = Math.floor(sumRow / count) * cols + Math.floor(sumCol / count);
+    const finalIdx = grid[centroidIdx] || cellToNode[centroidIdx] !== node.idx ? nodeCells[0] : centroidIdx;
+    if (finalIdx !== node.idx) {
+        const oldId = node.id;
+        node.idx = finalIdx;
+        const newId = `node_${finalIdx}`;
+        node.id = newId;
+        if (nodesMap) {
+            delete nodesMap[oldId];
+            nodesMap[newId] = node;
+        }
+        for (let i = 0; i < nodeCells.length; i++) cellToNode[nodeCells[i]] = finalIdx;
     }
-    node.x = minX + node.col * cellSize + cellSize / 2;
-    node.y = minY + node.row * cellSize + cellSize / 2;
 }
 export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) {
     const { cols, rows } = frame;
@@ -199,16 +199,17 @@ export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) 
     for (let r = 0; r < rows; r++)
         for (let c = 0; c < cols; c++) {
             const idx = r * cols + c;
-            const nodeA = cellToNode[idx];
-            if (!nodeA) continue;
+            const nodeAIdx = cellToNode[idx];
+            if (nodeAIdx === -1) continue;
             if (c + 1 < cols) {
-                const nodeB = cellToNode[idx + 1];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                const nodeBIdx = cellToNode[idx + 1];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx)))
+                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
             if (r + 1 < rows) {
-                const nodeB = cellToNode[idx + cols];
-                if (nodeB && nodeA.id !== nodeB.id && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
-                    adjacencies.add(makeAdjacencyKey(nodeA.id, nodeB.id));
+                const nodeBIdx = cellToNode[idx + cols];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
+                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
         }
     return adjacencies;

@@ -6,23 +6,6 @@ import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {{ col: number, row: number }} NavGraphCell */
 /** @typedef {{ col: number, row: number, side: number }} NavGraphEdgeRef */
 /** @typedef {{ grid: import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid, navCardinalOpen: Uint8Array, vertexPassability: Uint8Array }} NavTopologyLike */
-function gridSide(fromCol, fromRow, toCol, toRow) {
-    const dc = toCol - fromCol;
-    const dr = toRow - fromRow;
-    if (dc === 1 && dr === 0) return 1;
-    if (dc === -1 && dr === 0) return 3;
-    if (dc === 0 && dr === 1) return 2;
-    if (dc === 0 && dr === -1) return 0;
-    return -1;
-}
-/**
- * Logical nav graph view over one grid — cell nodes + cardinal step edges.
- * Authoring reads floorStore + edgeStore; pathfinding reads baked arena when present.
- *
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {{ cardinalOpen?: Uint8Array, vertexPassability?: Uint8Array }} [baked]
- * @param {import("./NavTopology.js").NavTopology | null} [navTopology]
- */
 export function createNavGraphView(grid, baked = null, navTopology = null) {
     const topologyRef = navTopology ?? grid._navTopologyRef;
     const frame = topologyRef?.frame ?? null;
@@ -51,42 +34,38 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
             if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
             return isFloorBeltKind(grid.floorStore.kind[colRowToIndex(col, row, grid.cols)]);
         },
+        beltEntryExitIdx(idx) {
+            if (idx < 0 || idx >= grid.cols * grid.rows) return null;
+            const kind = grid.floorStore.kind[idx];
+            if (!isFloorBeltKind(kind)) return null;
+            return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
+        },
+        beltEntryNeighborIdx(idx) {
+            const sides = this.beltEntryExitIdx(idx);
+            if (!sides) return -1;
+            const cols = grid.cols;
+            const side = sides.entrySide;
+            if (side === 0) return idx - cols >= 0 ? idx - cols : -1;
+            if (side === 1) return (idx % cols) + 1 < cols ? idx + 1 : -1;
+            if (side === 2) return idx + cols < cols * grid.rows ? idx + cols : -1;
+            if (side === 3) return idx % cols > 0 ? idx - 1 : -1;
+            return -1;
+        },
         beltEntryExit(col, row) {
-            if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-            const idx = colRowToIndex(col, row, grid.cols);
-            if (!isFloorBeltKind(grid.floorStore.kind[idx])) return null;
-            return floorBeltEntryExitSides(grid.floorStore.kind[idx], grid.floorStore.facing[idx]);
+            return this.beltEntryExitIdx(colRowToIndex(col, row, grid.cols));
         },
         beltEntryNeighbor(col, row) {
-            const sides = this.beltEntryExit(col, row);
-            if (!sides) return null;
-            return floorBeltEntryNeighborCell(col, row, sides.entrySide);
+            const nIdx = this.beltEntryNeighborIdx(colRowToIndex(col, row, grid.cols));
+            if (nIdx === -1) return null;
+            return { col: nIdx % grid.cols, row: (nIdx / grid.cols) | 0 };
         },
-        /** Baked octile step when topology is ready; otherwise cardinal-only authoring check. */
         canStep(fromCol, fromRow, toCol, toRow) {
-            if (this.cardinalOpen && this.vertexPassability) {
-                const cols = grid.cols;
-                return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromCol + fromRow * cols, toCol + toRow * cols);
-            }
-            if (frame && topology) return navCanStep(frame, topology, fromCol, fromRow, toCol, toRow);
-            return false;
+            const cols = grid.cols;
+            return this.canStepIdx(fromCol + fromRow * cols, toCol + toRow * cols);
         },
         canStepIdx(fromIdx, toIdx) {
-            if (this.cardinalOpen && this.vertexPassability) {
-                return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromIdx, toIdx);
-            }
+            if (this.cardinalOpen && this.vertexPassability) return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromIdx, toIdx);
             if (frame && topology) return navCanStepIdx(frame, topology, fromIdx, toIdx);
-            return false;
-        },
-        /** Belt traversal must enter through entry side and leave through exit side. */
-        beltBlocksEntry(fromCol, fromRow, toCol, toRow) {
-            const stepSide = gridSide(fromCol, fromRow, toCol, toRow);
-            const fromBelt = this.beltEntryExit(fromCol, fromRow);
-            const toBelt = this.beltEntryExit(toCol, toRow);
-            if (!fromBelt && !toBelt) return false;
-            if (stepSide < 0) return true;
-            if (fromBelt && stepSide !== fromBelt.exitSide) return true;
-            if (toBelt && ((stepSide + 2) % 4) === toBelt.exitSide) return true;
             return false;
         },
     };
