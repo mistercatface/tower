@@ -1,4 +1,4 @@
-import { FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
+import { FlatGridSearch } from "../../Pathfinding/AStar.js";
 import { SearchState } from "../../Pathfinding/SearchState.js";
 import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
@@ -67,7 +67,7 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             if (reservedGlobalIndices.has(globalCellIdx(query.start.col, query.start.row, grid.cols)) || reservedGlobalIndices.has(globalCellIdx(query.target.col, query.target.row, grid.cols)))
                 return null;
             if (pathScratch.length < maxPathLen) pathScratch = new Int32Array(maxPathLen);
-            const len = gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen, pathScratch);
+            const len = gridSearch.cardinal(start.col, start.row, goal.col, goal.row, maxPathLen, pathScratch);
             if (len === 0) return null;
             const path = new Array(len);
             const cols = gridSearch.grid.cols;
@@ -81,13 +81,13 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
             return path;
         },
         findPath(startCol, startRow, goalCol, goalRow, maxPathLen = 512) {
-            return this.findQuery(GridPathQuery.fromCells(startCol, startRow, goalCol, goalRow), maxPathLen);
+            return this.findQuery({ start: { col: startCol, row: startRow }, target: { col: goalCol, row: goalRow } }, maxPathLen);
         },
     };
 }
 export function findRailMazeNavCorridorPath(pathfinder, start, end, occupiedGlobalIndices, corridorWidth = 1, maxPathLen = 512) {
     pathfinder.setReservedGlobalIndices(occupiedGlobalIndices);
-    const path = pathfinder.findQuery(new GridPathQuery(start, end), maxPathLen);
+    const path = pathfinder.findQuery({ start, target: end }, maxPathLen);
     if (!path || path.length < 2) return null;
     if (corridorPathHitsOccupied(path, occupiedGlobalIndices, corridorWidth, pathfinder.globalLayout, FULL_FOOTPRINT)) return null;
     return path;

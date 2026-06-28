@@ -1,4 +1,4 @@
-import { FlatGridSearch, GridPathQuery } from "../AStar.js";
+import { FlatGridSearch } from "../AStar.js";
 import { SearchState } from "../SearchState.js";
 import { FlatGridView } from "../FlatGridView.js";
 import { layoutAbsCellIndex, layoutAbsToLocalCell, layoutCellRows, layoutContainsAbsCell, layoutLocalToAbsCell } from "../../Spatial/grid/GridUtils.js";
@@ -49,7 +49,7 @@ export class CorridorGridPathfinder {
         const goal = layoutAbsToLocalCell(this.layout, query.target.col, query.target.row);
         if (this.isBlocked(start.col, start.row) || this.isBlocked(goal.col, goal.row)) return null;
         if (this.pathScratch.length < maxPathLen) this.pathScratch = new Int32Array(maxPathLen);
-        const len = this.gridSearch.cardinal(new GridPathQuery(start, goal), maxPathLen, this.pathScratch);
+        const len = this.gridSearch.cardinal(start.col, start.row, goal.col, goal.row, maxPathLen, this.pathScratch);
         if (len === 0) return null;
         const path = new Array(len);
         const cols = this.gridSearch.grid.cols;

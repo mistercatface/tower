@@ -193,8 +193,8 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const physId = prop._physId;
-    const wx = kineticDynamicSlab.x[physId];
-    const wy = kineticDynamicSlab.y[physId];
+    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
+    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldX - wx;
     const dy = worldY - wy;
     const cos = Math.cos(prop.facing);

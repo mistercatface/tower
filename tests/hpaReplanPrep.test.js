@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { GridPathQuery } from "../Libraries/Pathfinding/AStar.js";
 import { HpaAbstractGraph } from "../Libraries/Pathfinding/hpaReplanPrep.js";
 
 describe("HpaAbstractGraph Suite", () => {
@@ -37,12 +36,11 @@ describe("HpaAbstractGraph Suite", () => {
         const edgeCosts = new Uint16Array([]);
         const graph = new HpaAbstractGraph(nodeCol, nodeRow, edgeOffsets, edgeTargets, edgeCosts, 1, 0, ["A"]);
 
-        const query = GridPathQuery.fromCells(2, 2, 18, 18);
-        const resolveLegCost = (legQuery) => {
-            return { cost: 5, path: [legQuery.start, legQuery.target] };
+        const resolveLegCost = (lsc, lsr, ltc, ltr, legKey, offset) => {
+            return 5;
         };
 
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = graph.buildExtended(query, { startRegion: -1, targetRegion: -1 }, 64, resolveLegCost);
+        const { extendedGraph, startTemp, targetTemp } = graph.buildExtended(2, 2, 18, 18, { startRegion: -1, targetRegion: -1 }, 64, resolveLegCost);
 
         assert.equal(extendedGraph.nodeCount, 3);
         assert.equal(extendedGraph.nodeCol[startTemp], 2);
@@ -52,6 +50,5 @@ describe("HpaAbstractGraph Suite", () => {
 
         assert.equal(extendedGraph.edgeWrite, 2);
         assert.equal(extendedGraph.edgeTargets[extendedGraph.edgeOffsets[startTemp]], 0);
-        assert.equal(tempLegs.size, 2);
     });
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FlatAbstractGraphSearch, FlatGraphView, FlatGridSearch, GridPathQuery } from "../Libraries/Pathfinding/AStar.js";
+import { FlatAbstractGraphSearch, FlatGraphView, FlatGridSearch } from "../Libraries/Pathfinding/AStar.js";
 import { SearchState } from "../Libraries/Pathfinding/SearchState.js";
 
 describe("AStar Engine Search Suite", () => {
@@ -20,7 +20,7 @@ describe("AStar Engine Search Suite", () => {
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
         const outPath = new Int32Array(100);
-        const len = search.cardinal(GridPathQuery.fromCells(0, 2, 4, 2), 20, outPath);
+        const len = search.cardinal(0, 2, 4, 2, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {
@@ -42,7 +42,7 @@ describe("AStar Engine Search Suite", () => {
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
         const outPath = new Int32Array(100);
-        const len = search.local(GridPathQuery.fromCells(0, 0, 2, 2), 20, outPath);
+        const len = search.local(0, 0, 2, 2, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {
@@ -62,7 +62,7 @@ describe("AStar Engine Search Suite", () => {
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
         const outPath = new Int32Array(100);
-        const len = search.dijkstra(GridPathQuery.fromCells(0, 0, 2, 2), 20, outPath);
+        const len = search.dijkstra(0, 0, 2, 2, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {
@@ -82,7 +82,7 @@ describe("AStar Engine Search Suite", () => {
 
         const search = new FlatGridSearch({ navGraph, cols, rows, searchState });
         const outPath = new Int32Array(100);
-        const len = search.greedy(GridPathQuery.fromCells(0, 0, 2, 2), 20, outPath);
+        const len = search.greedy(0, 0, 2, 2, 20, outPath);
         assert.ok(len > 0);
         const path = [];
         for (let i = 0; i < len; i++) {

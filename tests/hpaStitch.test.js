@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { GridPathQuery } from "../Libraries/Pathfinding/AStar.js";
 import { HpaPathStitcher, stitchAbstractCellPath } from "../Libraries/Pathfinding/hpaStitch.js";
 
 describe("HPA Path Stitching Suite", () => {
     it("stitches sequential legs together cleanly", () => {
+        const cols = 50;
         const prep = {
             nodeCount: 2,
             nodeCol: [10, 20],
@@ -15,34 +15,49 @@ describe("HPA Path Stitching Suite", () => {
             targetRow: 25,
         };
 
-        const tempLegs = new Map();
-        // A temp leg between start (nodeCount = 2) and region node 0
-        tempLegs.set("2,0", [
-            { col: 5, row: 5 },
-            { col: 10, row: 10 }
-        ]);
-        // A temp leg between region node 1 and target (nodeCount + 1 = 3)
-        tempLegs.set("1,3", [
-            { col: 20, row: 20 },
-            { col: 25, row: 25 }
-        ]);
+        const tempLegsBuffer = new Int32Array(100);
+        const tempLegsOffsets = new Map();
+        const tempLegsLengths = new Map();
 
-        // Mock resolver for the main region leg (from 0 to 1)
+        const startIdx = 2;
+        const node0Idx = 0;
+        const key20 = (startIdx << 16) | node0Idx;
+        tempLegsOffsets.set(key20, 0);
+        tempLegsLengths.set(key20, 2);
+        tempLegsBuffer[0] = 5 + 5 * cols;
+        tempLegsBuffer[1] = 10 + 10 * cols;
+
+        const node1Idx = 1;
+        const targetIdx = 3;
+        const key13 = (node1Idx << 16) | targetIdx;
+        tempLegsOffsets.set(key13, 2);
+        tempLegsLengths.set(key13, 2);
+        tempLegsBuffer[2] = 20 + 20 * cols;
+        tempLegsBuffer[3] = 25 + 25 * cols;
+
+        const scratch = new Int32Array(100);
         const resolveRegionLeg = (aIdx, bIdx) => {
             if (aIdx === 0 && bIdx === 1) {
-                return [
-                    { col: 10, row: 10 },
-                    { col: 15, row: 15 },
-                    { col: 20, row: 20 }
-                ];
+                scratch[0] = 10 + 10 * cols;
+                scratch[1] = 15 + 15 * cols;
+                scratch[2] = 20 + 20 * cols;
+                return 3;
             }
-            return null;
+            return 0;
         };
+        resolveRegionLeg.scratch = scratch;
 
-        const abstractIdx = [2, 0, 1, 3]; // start -> node 0 -> node 1 -> target
-        const path = stitchAbstractCellPath(abstractIdx, prep, tempLegs, resolveRegionLeg);
+        const abstractIdx = [2, 0, 1, 3];
+        const outCols = new Uint16Array(100);
+        const outRows = new Uint16Array(100);
+        const len = stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outCols, outRows, cols);
 
-        assert.ok(path);
+        assert.equal(len, 5);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outCols[i], row: outRows[i] });
+        }
+
         assert.deepEqual(path, [
             { col: 5, row: 5 },
             { col: 10, row: 10 },
@@ -53,20 +68,32 @@ describe("HPA Path Stitching Suite", () => {
     });
 
     it("uses class-based HpaPathStitcher to perform custom leg stitching", () => {
+        const cols = 50;
         const prep = {
             nodeCount: 1,
             nodeCol: [10],
             nodeRow: [10],
-            query: GridPathQuery.fromCells(1, 1, 20, 20),
+            startCol: 1,
+            startRow: 1,
+            targetCol: 20,
+            targetRow: 20,
         };
 
-        const tempLegs = new Map();
-        const resolveRegionLeg = () => null;
+        const tempLegsBuffer = new Int32Array(100);
+        const tempLegsOffsets = new Map();
+        const tempLegsLengths = new Map();
+        const resolveRegionLeg = () => 0;
 
-        const stitcher = new HpaPathStitcher(prep, tempLegs, resolveRegionLeg);
-        const path = stitcher.stitch([1, 0, 2]); // start (1) -> node 0 -> target (2)
+        const outCols = new Uint16Array(100);
+        const outRows = new Uint16Array(100);
+        const stitcher = new HpaPathStitcher(prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, cols);
+        const len = stitcher.stitch([1, 0, 2], outCols, outRows);
 
-        assert.ok(path);
+        assert.equal(len, 3);
+        const path = [];
+        for (let i = 0; i < len; i++) {
+            path.push({ col: outCols[i], row: outRows[i] });
+        }
         assert.deepEqual(path, [
             { col: 1, row: 1 },
             { col: 10, row: 10 },

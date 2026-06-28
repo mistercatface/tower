@@ -1,4 +1,4 @@
-import { FlatAbstractGraphSearch, FlatGridSearch, GridPathQuery } from "../../Pathfinding/AStar.js";
+import { FlatAbstractGraphSearch, FlatGridSearch } from "../../Pathfinding/AStar.js";
 import { createNavStepPenaltyLookup } from "../../Pathfinding/navStepPenalty.js";
 import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
@@ -224,17 +224,23 @@ export class HpaReplanPlanner {
     constructor(buffers, searchState) {
         this.buffers = buffers;
         this.searchState = searchState;
+        this.tempLegsBuffer = new Int32Array(32768);
+        this.tempLegsOffsets = new Map();
+        this.tempLegsLengths = new Map();
     }
     run(slot, context, data) {
-        const query = new GridPathQuery(data.query.start, data.query.target);
+        const sc = data.query.start.col;
+        const sr = data.query.start.row;
+        const tc = data.query.target.col;
+        const tr = data.query.target.row;
         const gridSearch = new FlatGridSearch({ grid: context.grid, searchState: this.searchState, stepPenaltyLookup: context.penaltyLookup });
-        const prep = prepareHpaReplanPrep(context.frame.cols, context.cellToRegion, context.graph, query);
-        if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, query, context.frame.cols);
-        return this.writeHpaResult(slot, gridSearch, context.graph, prep, query, context.frame.cols);
+        const prep = prepareHpaReplanPrep(context.frame.cols, context.cellToRegion, context.graph, sc, sr, tc, tr);
+        if (prep.mode === "local") return this.writeLocalResult(slot, gridSearch, sc, sr, tc, tr, context.frame.cols);
+        return this.writeHpaResult(slot, gridSearch, context.graph, prep, sc, sr, tc, tr, context.frame.cols);
     }
-    writeLocalResult(slot, gridSearch, query, cols) {
+    writeLocalResult(slot, gridSearch, sc, sr, tc, tr, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-        const len = gridSearch.local(query, HPA_LOCAL_MAX_LEN, this.localPathScratch);
+        const len = gridSearch.local(sc, sr, tc, tr, HPA_LOCAL_MAX_LEN, this.localPathScratch);
         if (len === 0) {
             this.buffers.writeCellPath(slot, null);
             this.buffers.writeAbstractPath(slot, null);
@@ -249,18 +255,17 @@ export class HpaReplanPlanner {
         this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
-    writeHpaResult(slot, gridSearch, baseGraph, prep, query, cols) {
+    writeHpaResult(slot, gridSearch, baseGraph, prep, sc, sr, tc, tr, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
         if (!this.abstractPathScratch) this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
-        const { extendedGraph, startTemp, targetTemp, tempLegs } = baseGraph.buildExtended(query, prep, this.buffers.maxCellsPerChunk, (legQuery) => {
-            const len = gridSearch.local(legQuery, prep.regionConnectMaxLen, this.localPathScratch);
-            if (len === 0) return { cost: 0 };
-            const path = new Array(len);
-            for (let i = 0; i < len; i++) {
-                const idx = this.localPathScratch[i];
-                path[i] = { col: idx % cols, row: (idx / cols) | 0 };
-            }
-            return { cost: len, path };
+        this.tempLegsOffsets.clear();
+        this.tempLegsLengths.clear();
+        const { extendedGraph, startTemp, targetTemp } = baseGraph.buildExtended(sc, sr, tc, tr, prep, this.buffers.maxCellsPerChunk, (lsc, lsr, ltc, ltr, legKey, offset) => {
+            const len = gridSearch.local(lsc, lsr, ltc, ltr, prep.regionConnectMaxLen, this.tempLegsBuffer.subarray(offset));
+            if (len === 0) return 0;
+            this.tempLegsOffsets.set(legKey, offset);
+            this.tempLegsLengths.set(legKey, len);
+            return len;
         });
         const abstractSearch = new FlatAbstractGraphSearch({ graph: extendedGraph, searchState: this.searchState });
         const abstractLen = abstractSearch.run(startTemp, targetTemp, this.abstractPathScratch);
@@ -271,21 +276,23 @@ export class HpaReplanPlanner {
         }
         const abstractPath = Array.from(this.abstractPathScratch.subarray(0, abstractLen));
         this.buffers.writeAbstractPath(slot, abstractPath);
-        const cellPath = stitchAbstractCellPath(abstractPath, prep, tempLegs, (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols));
-        this.buffers.writeCellPath(slot, cellPath);
+        const pathCols = hpaPathSlotCols(this.buffers.sabPathColsPool, slot, this.buffers.maxPathLen);
+        const pathRows = hpaPathSlotRows(this.buffers.sabPathRowsPool, slot, this.buffers.maxPathLen);
+        const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols);
+        resolveFn.scratch = this.localPathScratch;
+        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathCols, pathRows, cols);
+        const pathMeta = hpaPathSlotMeta(this.buffers.sabPathMetaPool, slot);
+        pathMeta[0] = pathLen;
         return this.buffers.buildReplanResult(slot);
     }
     resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
         if (!this.localPathScratch) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-        const query = new GridPathQuery({ col: baseGraph.nodeCol[aIdx], row: baseGraph.nodeRow[aIdx] }, { col: baseGraph.nodeCol[bIdx], row: baseGraph.nodeRow[bIdx] });
-        const len = gridSearch.local(query, prep.regionConnectMaxLen, this.localPathScratch);
-        if (len === 0) return null;
-        const path = new Array(len);
-        for (let i = 0; i < len; i++) {
-            const idx = this.localPathScratch[i];
-            path[i] = { col: idx % cols, row: (idx / cols) | 0 };
-        }
-        return path;
+        const sc = baseGraph.nodeCol[aIdx];
+        const sr = baseGraph.nodeRow[aIdx];
+        const tc = baseGraph.nodeCol[bIdx];
+        const tr = baseGraph.nodeRow[bIdx];
+        const len = gridSearch.local(sc, sr, tc, tr, prep.regionConnectMaxLen, this.localPathScratch);
+        return len;
     }
 }
 export class HpaPathfindingWorker {

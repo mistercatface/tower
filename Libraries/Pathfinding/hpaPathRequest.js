@@ -90,18 +90,13 @@ export function resolveSnappedPathEndpoints(grid, startX, startY, targetX, targe
     targetRow = snapped.row;
     return { startCol, startRow, targetCol, targetRow };
 }
-export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, query) {
-    const { start, target } = query;
-    const startCol = start.col;
-    const startRow = start.row;
-    const targetCol = target.col;
-    const targetRow = target.row;
-    const startIdx = colRowToIndex(startCol, startRow, cols);
-    const targetIdx = colRowToIndex(targetCol, targetRow, cols);
+export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, sc, sr, tc, tr) {
+    const startIdx = colRowToIndex(sc, sr, cols);
+    const targetIdx = colRowToIndex(tc, tr, cols);
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
-    const cellDist = Math.hypot(startCol - targetCol, startRow - targetRow);
-    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", query };
+    const cellDist = Math.hypot(sc - tc, sr - tr);
+    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", sc, sr, tc, tr };
     const { nodeIds, nodeCol, nodeRow } = graphMeta;
-    return { mode: "hpa", query, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
+    return { mode: "hpa", sc, sr, tc, tr, nodeCount: graphMeta.nodeCount, nodeIds, nodeCol, nodeRow, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
 }
