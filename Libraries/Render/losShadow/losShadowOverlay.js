@@ -6,7 +6,8 @@ import { collectExposedWallEdgesInAabb } from "../../Spatial/grid/gridCellTopolo
 import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
 import { forEachLosShadowQuadInRange } from "./losShadowEdges.js";
 import { collectRailWallShadowEdgesInAabb } from "./railWallShadowEdges.js";
-const sEdgeScratch = [];
+import { EdgeList } from "./EdgeList.js";
+const sEdgeScratch = new EdgeList();
 const sQuadScratch = new Float32Array(8);
 const sLightQueryBounds = createAabb();
 const sScreenLight = { x: 0, y: 0 };

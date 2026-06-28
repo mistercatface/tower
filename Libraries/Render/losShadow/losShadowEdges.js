@@ -10,10 +10,12 @@ export function edgeSegmentOutsideCircle(edge, centerX, centerY, rangeSq) {
     const segment = aabbFromTwoPointsInto(sEdgeSegmentAabb, edge.x1, edge.y1, edge.x2, edge.y2);
     return distanceSqToAabb(centerX, centerY, segment.minX, segment.minY, segment.maxX, segment.maxY) > rangeSq;
 }
-export function forEachLosShadowQuadInRange(edges, lightX, lightY, range, lightZ, viewport, quadScratch, emitQuad) {
+export function forEachLosShadowQuadInRange(edgeList, lightX, lightY, range, lightZ, viewport, quadScratch, emitQuad) {
     const rSq = range * range;
-    for (let i = 0; i < edges.length; i++) {
-        const edge = edges[i];
+    const count = edgeList.edges !== undefined ? edgeList.length : edgeList.length;
+    const list = edgeList.edges !== undefined ? edgeList.edges : edgeList;
+    for (let i = 0; i < count; i++) {
+        const edge = list[i];
         if (edgeSegmentOutsideCircle(edge, lightX, lightY, rSq)) continue;
         const closestX = clampSegmentCoord(edge.x1, edge.x2, lightX);
         const closestY = clampSegmentCoord(edge.y1, edge.y2, lightY);

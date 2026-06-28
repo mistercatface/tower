@@ -1,6 +1,6 @@
 import { propQuantizeSteps } from "./propRenderDefaults.js";
 import { initFractureFootprint } from "./propFracture.js";
-import { boxLocalFootprint, convexFootprintHalfExtents } from "../Math/Poly2D.js";
+import { boxLocalFootprint, convexFootprintHalfExtents, ensureFlatVerts } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
@@ -24,18 +24,7 @@ export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
             if (typeof part.getBoundingRadius === "function") return part;
-            if (part.type === "Polygon") {
-                let flat;
-                if (typeof part.vertices[0] === "number") flat = part.vertices instanceof Float32Array ? part.vertices : new Float32Array(part.vertices);
-                else {
-                    flat = new Float32Array(part.vertices.length * 2);
-                    for (let i = 0; i < part.vertices.length; i++) {
-                        flat[i * 2] = part.vertices[i].x;
-                        flat[i * 2 + 1] = part.vertices[i].y;
-                    }
-                }
-                return new PolygonShape(flat);
-            }
+            if (part.type === "Polygon") return new PolygonShape(part.vertices);
             if (part.type === "Circle") return new CircleShape(part.radius);
             throw new Error(`Unknown collision part type: ${part.type}`);
         });
@@ -47,16 +36,7 @@ export function initWorldPropShape(prop) {
     }
     const footprint = prop.strategy.localFootprint;
     if (footprint?.length >= 3) {
-        let flat;
-        if (typeof footprint[0] === "number") flat = footprint instanceof Float32Array ? footprint : new Float32Array(footprint);
-        else {
-            flat = new Float32Array(footprint.length * 2);
-            for (let i = 0; i < footprint.length; i++) {
-                flat[i * 2] = footprint[i].x;
-                flat[i * 2 + 1] = footprint[i].y;
-            }
-        }
-        prop.shape = new PolygonShape(flat);
+        prop.shape = new PolygonShape(footprint);
         prop.radius = prop.shape.getBoundingRadius();
         if (prop.strategy.fracture && prop.strategy.fractureMode !== "glass") initFractureFootprint(prop);
         return;
@@ -137,6 +117,12 @@ export function withPropStrategyDefaults(strategy) {
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) return withPropStrategyDefaults({});
     const { spawn, renderMode, ...strategy } = asset.physics;
+    if (strategy.localFootprint) strategy.localFootprint = ensureFlatVerts(strategy.localFootprint);
+    if (strategy.collisionParts)
+        strategy.collisionParts = strategy.collisionParts.map((part) => {
+            if (part.type === "Polygon" && part.vertices) return { ...part, vertices: ensureFlatVerts(part.vertices) };
+            return part;
+        });
     return withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });
 }
 export function applyCrossPinwheelFootprint(prop, length, thickness) {

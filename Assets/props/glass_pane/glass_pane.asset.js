@@ -1,15 +1,11 @@
+import { boxLocalFootprint } from "../../../Libraries/Math/Poly2D.js";
 export default {
     id: "glass_pane",
     primitive: "polygon",
     sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Glass pane", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: {
         isKinetic: true,
-        localFootprint: [
-            { x: -12, y: -8 },
-            { x: 12, y: -8 },
-            { x: 12, y: 8 },
-            { x: -12, y: 8 },
-        ],
+        localFootprint: boxLocalFootprint(12, 8),
         density: 0.45 / 256,
         wallPhysics: { restitution: 0.06, friction: 0.25 },
         pairRestitution: 0.06,

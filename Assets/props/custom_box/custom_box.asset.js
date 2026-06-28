@@ -1,19 +1,9 @@
+import { boxLocalFootprint } from "../../../Libraries/Math/Poly2D.js";
 export default {
     id: "custom_box",
     primitive: "polygon",
     sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Custom box", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
-    physics: {
-        isKinetic: true,
-        localFootprint: [
-            { x: -8, y: -8 },
-            { x: 8, y: -8 },
-            { x: 8, y: 8 },
-            { x: -8, y: 8 },
-        ],
-        wallPhysics: { restitution: 0.15, friction: 0.8 },
-        fracture: true,
-        fractureMode: "chunk",
-    },
+    physics: { isKinetic: true, localFootprint: boxLocalFootprint(8, 8), wallPhysics: { restitution: 0.15, friction: 0.8 }, fracture: true, fractureMode: "chunk" },
     visuals: {
         colors: {
             side: "#9575CD",

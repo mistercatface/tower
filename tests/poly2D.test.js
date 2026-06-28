@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
+import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto, ensureFlatVerts } from "../Libraries/Math/Poly2D.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
@@ -74,5 +74,29 @@ describe("Poly2D.pointInPolygon", () => {
             false,
         );
         assert.equal(pointInPolygon(1, 1, [0, 0, 2, 0]), false);
+    });
+});
+describe("Poly2D.ensureFlatVerts", () => {
+    it("handles Float32Array", () => {
+        const flat = new Float32Array([1, 2, 3, 4]);
+        const res = ensureFlatVerts(flat);
+        assert.equal(res, flat);
+    });
+    it("handles number array", () => {
+        const arr = [1, 2, 3, 4];
+        const res = ensureFlatVerts(arr);
+        assert.ok(res instanceof Float32Array);
+        assert.equal(res.length, 4);
+        assert.equal(res[2], 3);
+    });
+    it("handles array of objects", () => {
+        const objs = [{ x: 1, y: 2 }, { x: 3, y: 4 }];
+        const res = ensureFlatVerts(objs);
+        assert.ok(res instanceof Float32Array);
+        assert.equal(res.length, 4);
+        assert.equal(res[0], 1);
+        assert.equal(res[1], 2);
+        assert.equal(res[2], 3);
+        assert.equal(res[3], 4);
     });
 });

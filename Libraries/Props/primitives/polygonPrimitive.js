@@ -1,6 +1,7 @@
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
+import { ensureFlatVerts } from "../../Math/Poly2D.js";
 import propCatalog from "../../../Assets/props/index.js";
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
@@ -11,10 +12,12 @@ export function createPolygonPrimitive(visuals) {
         const height = prop.height ?? world?.height ?? 12;
         const asset = propCatalog[prop.type];
         let scale = 1.0;
-        const footprint = prop.strategy?.localFootprint ?? asset?.physics?.localFootprint;
-        if (footprint?.length) {
+        const rawFootprint = prop.strategy?.localFootprint ?? asset?.physics?.localFootprint;
+        if (rawFootprint) {
+            const footprint = ensureFlatVerts(rawFootprint);
             let maxDist = 0;
-            for (let i = 0; i < footprint.length; i++) maxDist = Math.max(maxDist, Math.hypot(footprint[i].x, footprint[i].y));
+            const count = footprint.length / 2;
+            for (let i = 0; i < count; i++) maxDist = Math.max(maxDist, Math.hypot(footprint[i * 2], footprint[i * 2 + 1]));
             if (maxDist > 0 && prop.radius) scale = prop.radius / maxDist;
         }
         const baseLineWidth = lineWidth ?? 1.0;

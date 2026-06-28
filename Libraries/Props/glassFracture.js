@@ -1,4 +1,4 @@
-import { pointInPolygon, polygonSignedArea2D, polygonCentroid2D } from "../Math/Poly2D.js";
+import { pointInPolygon, polygonSignedArea2D, polygonCentroid2D, boxLocalFootprint } from "../Math/Poly2D.js";
 import { closestPointOnLineSegment } from "../Math/Segment2D.js";
 export const GLASS_FRACTURE_IMPACT_THRESHOLD = 6;
 export const GLASS_MIN_SHARD_AREA = 12;
@@ -248,6 +248,6 @@ export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, ran
     return shards.length >= 2 ? shards : [];
 }
 export function shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10, random = Math.random) {
-    const flat = new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]);
+    const flat = boxLocalFootprint(hx, hy);
     return shatterGlassPolygon(flat, hitX, hitY, impactForce, random);
 }

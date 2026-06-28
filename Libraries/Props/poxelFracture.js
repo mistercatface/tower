@@ -1,4 +1,4 @@
-import { polygonCentroid2D } from "../Math/Poly2D.js";
+import { polygonCentroid2D, boxLocalFootprint } from "../Math/Poly2D.js";
 export const POXEL_TARGET_EDGE = 4;
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const MAX_FRAC_VERTS = 2048;
@@ -401,7 +401,7 @@ function finalizeFootprintGeometry(centeredVerts, visualParts, signedArea, centr
     return { footprintVertices: centeredVerts, poxels: clonePoxels(poxels), footprintArea, halfExtents, boundingRadius, centroid };
 }
 export function localBoxOutline(halfX, halfY) {
-    return new Float32Array([-halfX, -halfY, halfX, -halfY, halfX, halfY, -halfX, halfY]);
+    return boxLocalFootprint(halfX, halfY);
 }
 export function bakePoxelOutline(flatVerts, targetEdgeLen = POXEL_TARGET_EDGE) {
     const { cx, cy, signedArea } = polygonCentroid2D(flatVerts, SHARED_CENTROID);

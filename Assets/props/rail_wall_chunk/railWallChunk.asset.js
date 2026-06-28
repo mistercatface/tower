@@ -1,3 +1,4 @@
+import { boxLocalFootprint } from "../../../Libraries/Math/Poly2D.js";
 import { NEUTRAL_BOX_COLORS } from "../shared/neutralCoats.js";
 import { getWallChunkSpriteCacheKey } from "../../../Libraries/Props/propStrategy.js";
 export default {
@@ -7,12 +8,7 @@ export default {
     physics: {
         isKinetic: true,
         density: 0.01,
-        localFootprint: [
-            { x: -8, y: -2 },
-            { x: 8, y: -2 },
-            { x: 8, y: 2 },
-            { x: -8, y: 2 },
-        ],
+        localFootprint: boxLocalFootprint(8, 2),
         wallPhysics: { restitution: 0.15, friction: 0.8 },
         quantizeSteps: { view: 6, facing: 64 },
         fracture: true,

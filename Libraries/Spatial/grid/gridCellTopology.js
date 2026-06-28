@@ -129,17 +129,20 @@ function pushExposedWallEdgesForCell(grid, col, row, out) {
         if (railWallEdgeAt(grid, col, row, side)) continue;
         cellEdgeEndpoints(grid, col, row, side, sExposedEdgeP1, sExposedEdgeP2, 0);
         const outward = gridSideOutwardVector(side);
-        out.push({ x1: sExposedEdgeP1.x, y1: sExposedEdgeP1.y, x2: sExposedEdgeP2.x, y2: sExposedEdgeP2.y, nx: outward.x, ny: outward.y, wallTopZ });
+        if (typeof out.add === "function") out.add(sExposedEdgeP1.x, sExposedEdgeP1.y, sExposedEdgeP2.x, sExposedEdgeP2.y, outward.x, outward.y, wallTopZ);
+        else out.push({ x1: sExposedEdgeP1.x, y1: sExposedEdgeP1.y, x2: sExposedEdgeP2.x, y2: sExposedEdgeP2.y, nx: outward.x, ny: outward.y, wallTopZ });
     }
 }
 /** Perimeter edges where a filled wall cell meets lower or empty neighbor. */
 export function collectExposedWallEdges(grid, out) {
-    out.length = 0;
+    if (typeof out.clear === "function") out.clear();
+    else out.length = 0;
     for (let row = 0; row < grid.rows; row++) for (let col = 0; col < grid.cols; col++) pushExposedWallEdgesForCell(grid, col, row, out);
 }
 /** Same as collectExposedWallEdges but only visits wall cells overlapping the world AABB. */
 export function collectExposedWallEdgesInAabb(grid, bounds, out) {
-    out.length = 0;
+    if (typeof out.clear === "function") out.clear();
+    else out.length = 0;
     forEachObstacleGridCellInAabb(grid, bounds, (col, row) => {
         pushExposedWallEdgesForCell(grid, col, row, out);
     });

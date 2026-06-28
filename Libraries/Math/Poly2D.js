@@ -246,3 +246,22 @@ export function computeCompoundLocalBounds(parts, out) {
     out.maxY = maxY;
     return out;
 }
+export function ensureFlatVerts(input) {
+    if (input instanceof Float32Array) return input;
+    if (!input || input.length === 0) return new Float32Array(0);
+    if (typeof input[0] === "number") return new Float32Array(input);
+    const flat = new Float32Array(input.length * 2);
+    for (let i = 0; i < input.length; i++) {
+        flat[i * 2] = input[i].x;
+        flat[i * 2 + 1] = input[i].y;
+    }
+    return flat;
+}
+export function scaleFlatVerts(flat, scale) {
+    const count = flat.length;
+    for (let i = 0; i < count; i++) flat[i] *= scale;
+    return flat;
+}
+export function vertCount(flat) {
+    return flat.length / 2;
+}

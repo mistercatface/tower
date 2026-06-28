@@ -2,6 +2,7 @@ import { getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
 import { resolvePassageWallContact } from "../../Spatial/grid/passageWallContact.js";
 import { SatCollision, entityFacing, SAT_RESULT } from "./SatCollision.js";
 import { PolygonShape } from "./Shapes.js";
+import { boxLocalFootprint } from "../../Math/Poly2D.js";
 import { applyPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
 import { kineticDynamicSlab, kineticStaticSlab } from "./kineticBodySlab.js";
 import { inverseMassFromBody } from "../../Motion/bodyMass.js";
@@ -87,7 +88,7 @@ export function ensureWallSegmentPolygonShape(segment) {
     if (!segment.shape) {
         const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
         const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
-        segment.shape = new PolygonShape(new Float32Array([-halfX, -halfY, halfX, -halfY, halfX, halfY, -halfX, halfY]));
+        segment.shape = new PolygonShape(boxLocalFootprint(halfX, halfY));
     }
     return segment.shape;
 }

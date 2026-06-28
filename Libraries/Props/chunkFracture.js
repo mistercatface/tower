@@ -191,7 +191,7 @@ export function bakeChunkOutline(flatVerts) {
     return {
         chunks: mesh.poxels,
         collisionParts: [new PolygonShape(boxLocalFootprint(hx, hy))],
-        footprintVertices: new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]),
+        footprintVertices: boxLocalFootprint(hx, hy),
         boundingRadius: Math.hypot(hx, hy),
         footprintArea: hx * hy * 4,
     };

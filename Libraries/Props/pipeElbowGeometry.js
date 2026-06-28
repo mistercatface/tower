@@ -1,5 +1,5 @@
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { transformPoint2DInto } from "../Math/Poly2D.js";
+import { transformPoint2DInto, ensureFlatVerts } from "../Math/Poly2D.js";
 import { quantizeAngleIndex } from "../Math/Angle.js";
 import propCatalog from "../../Assets/props/index.js";
 const FACING_STEPS = 24;
@@ -63,12 +63,7 @@ export function syncPipeElbowCollisionShape(prop) {
     const key = footprint.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
     prop._collisionFacing = prop.facing ?? 0;
     if (prop._pipeElbowShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
-    const flat = new Float32Array(footprint.length * 2);
-    for (let i = 0; i < footprint.length; i++) {
-        flat[i * 2] = footprint[i].x;
-        flat[i * 2 + 1] = footprint[i].y;
-    }
-    prop.shape = new PolygonShape(flat);
+    prop.shape = new PolygonShape(ensureFlatVerts(footprint));
     prop._pipeElbowShapeKey = key;
     return prop.shape;
 }
