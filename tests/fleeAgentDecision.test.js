@@ -505,4 +505,90 @@ describe("flee agent decision model", () => {
         
         assert.equal(ctxReacting.combatState.shouldBackOffEnemy, false, "Should stand ground when aiming");
     });
+
+    it("does not penalize shooting score when speed is below combatStrafeMaxSpeed", () => {
+        applySnakeGameConfig();
+        const enemy = mockTarget("enemy");
+        enemy.x = 80;
+        
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { vx: 30, vy: 0, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+            combatStrafeMaxSpeed: 50,
+        }));
+        
+        const ctxZero = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { vx: 0, vy: 0, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+            combatStrafeMaxSpeed: 50,
+        }));
+        
+        assert.equal(ctx.candidateScores.shoot_enemy, ctxZero.candidateScores.shoot_enemy, "Should have no penalty under the strafe threshold");
+    });
+
+    it("penalizes shooting score when speed is above combatStrafeMaxSpeed", () => {
+        applySnakeGameConfig();
+        const enemy = mockTarget("enemy");
+        enemy.x = 80;
+        
+        const ctxHighSpeed = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { vx: 100, vy: 0, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+            combatStrafeMaxSpeed: 50,
+        }));
+
+        const ctxZeroSpeed = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 4 }),
+            foodFraction: 0.9,
+            agent: { vx: 0, vy: 0, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+            combatStrafeMaxSpeed: 50,
+        }));
+        
+        assert.ok(ctxHighSpeed.candidateScores.shoot_enemy < ctxZeroSpeed.candidateScores.shoot_enemy, "Sprinting/running fast should degrade shoot score");
+    });
+
+    it("factors distance into shoot utility (closer targets yield higher score)", () => {
+        applySnakeGameConfig();
+        
+        const enemyClose = mockTarget("enemy_close");
+        enemyClose.x = 50;
+        
+        const ctxClose = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemyClose, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 3 }),
+            foodFraction: 0.9,
+            agent: { x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        }));
+
+        const enemyFar = mockTarget("enemy_far");
+        enemyFar.x = 100;
+        
+        const ctxFar = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, fleeDecisionInput({
+            visibleWorld: { threat: null, prey: enemyFar, food: null, ally: null, allyCount: 0, threatCount: 0 },
+            reachSteps: fleeReach({ enemy: 3 }),
+            foodFraction: 0.9,
+            agent: { x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: createRangedCombatActionState(),
+        }));
+
+        assert.ok(ctxClose.candidateScores.shoot_enemy > ctxFar.candidateScores.shoot_enemy, "Closer targets should score higher than far targets");
+    });
 });

@@ -198,6 +198,7 @@ function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, age
         cellSize: state.obstacleGrid.cellSize,
         shared: agentCtx.session.config.shared,
         foodFraction: getAgentHunger(instance.metabolism),
+        combatStrafeMaxSpeed: instance.combatStrafeMaxSpeed ?? instance.walkMaxSpeed * 0.5,
     };
     const fields = profile.intent.decisionFields ?? {};
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;

@@ -65,10 +65,38 @@ const SCORERS = {
     },
     rangedAttack(ctx, modeDef, weights, pressure) {
         const combat = ctx.combatState;
+        // 1. Guard: Ensure the agent has an active weapon and is in an eligible combat state
         if (!combat?.canShoot && combat?.phase !== "reacting" && combat?.phase !== "fire_delay" && combat?.phase !== "reloading") return SCORE_ABSENT;
         if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        // 2. Resolve base weight for shooting
         const weightKey = modeDef.weightKey ?? "shoot_enemy";
-        const value = weights[weightKey] ?? weights.enemy ?? weights.explore;
+        const baseValue = weights[weightKey] ?? weights.enemy ?? weights.explore;
+        let value = baseValue;
+        // 3. Apply Distance-Based Shoot Bonus:
+        // Targets that are closer are easier to hit and present a higher priority.
+        const weapon = combat.weapon;
+        if (weapon && combat.distWorld != null) {
+            const maxRange = weapon.maxRange ?? 112;
+            const fleeRange = weapon.fleeRange ?? 48;
+            const dist = combat.distWorld;
+            const denominator = maxRange - fleeRange;
+            // Normalize distance factor between 0 (at max range) and 1 (at flee/ideal range)
+            const distFactor = denominator > 0 ? Math.max(0, Math.min(1, (maxRange - dist) / denominator)) : 1;
+            const distanceBonus = distFactor * (pressure.distanceAttackBonus ?? 100);
+            value += distanceBonus;
+        }
+        // 4. Apply Speed-Affected Aiming Penalty:
+        // We only penalize speed if it exceeds the agent's natural combat strafing speed threshold.
+        // This ensures the agent still strafes correctly while shooting.
+        const speed = combat.agentSpeed ?? 0;
+        const strafeSpeed = combat.combatStrafeMaxSpeed ?? 50;
+        if (speed > strafeSpeed && strafeSpeed > 0) {
+            const excessSpeed = speed - strafeSpeed;
+            const speedFactor = excessSpeed / strafeSpeed;
+            const speedPenalty = speedFactor * (pressure.speedAimPenalty ?? 150);
+            value -= speedPenalty;
+        }
+        // 5. Compute net score including pathfinding cell reach costs
         return netScoreDetail(value, combat.reachCells ?? ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
     },
     regroupAlly(ctx, modeDef, weights, pressure, env) {

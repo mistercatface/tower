@@ -35,6 +35,7 @@ export function rangedCombatActionIsBusy(action) {
     return action?.phase === "reacting" || action?.phase === "fire_delay" || action?.phase === "reloading";
 }
 export function deriveRangedCombatState(ctx, input, profile) {
+    // 1. Resolve weapon properties based on equip state and profile.
     const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
     if (!weapon) return null;
     const maxRange = weapon.maxRange;
@@ -42,9 +43,11 @@ export function deriveRangedCombatState(ctx, input, profile) {
     const action = input.actionState ?? null;
     const seeker = input.agent;
     const state = input.state;
+    // 2. Identify the active target (visible enemy, falling back to remembered target).
     const visibleEnemy = ctx.visible.enemy;
     const knownEnemy = ctx.known.enemy;
     const enemy = visibleEnemy ?? knownEnemy;
+    // 3. Compute target facts (straight-line distance).
     let distWorld = null;
     if (enemy && seeker) {
         const dx = enemy.x - seeker.x;
@@ -52,13 +55,25 @@ export function deriveRangedCombatState(ctx, input, profile) {
         distWorld = Math.hypot(dx, dy);
     }
     const reachCells = ctx.reachSteps?.enemy;
+    // 4. Compute physical speeds and thresholds for accuracy / decision modeling.
+    const agentSpeed = seeker ? Math.hypot(seeker.vx ?? 0, seeker.vy ?? 0) : 0;
+    const combatStrafeMaxSpeed = input.combatStrafeMaxSpeed ?? 50;
+    // 5. Query environment facts (line of sight, range boundaries).
     const los = visibleEnemy ? getObserverVisionFrame(state).isVisible(seeker, visibleEnemy.x, visibleEnemy.y) : false;
     const inWeaponRange = distWorld != null && distWorld <= maxRange;
     const tooClose = distWorld != null && distWorld <= fleeRange;
+    // 6. Resolve FSM combat action phase.
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
     const busy = action ? rangedCombatActionIsBusy(action) : false;
+    // 7. Shoot Eligibility: Can shoot if target is visible, in range, has LOS, and weapon is idle.
+    // NOTE: We allow shooting at close range (no !tooClose guard) so close-quarters combat works properly.
     const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle";
+    // 8. Asymmetric Back-Off / Flee logic:
+    // We only back off if too close AND either:
+    // a) We are reloading (defenseless).
+    // b) We are idle, but the enemy has ID advantage (prevents mutual fleeing / synchronized dancing).
+    // Agents actively aiming or firing will stand their ground.
     const hasIdAdvantage = seeker && enemy && seeker.id != null && enemy.id != null ? seeker.id > enemy.id : false;
     const shouldBackOffEnemy = !!visibleEnemy && tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage));
     return {
@@ -68,6 +83,8 @@ export function deriveRangedCombatState(ctx, input, profile) {
         visibleEnemyId: visibleEnemy?.id ?? null,
         distWorld,
         reachCells,
+        agentSpeed,
+        combatStrafeMaxSpeed,
         hasLineOfSight: los,
         inWeaponRange,
         tooClose,
@@ -87,8 +104,36 @@ function resolveLiveTarget(ctx) {
     if (ctx.targetId == null) return null;
     return ctx.state.entityRegistry.getLive(ctx.targetId);
 }
-function aimRotationRadPerSec(weapon) {
-    return weapon.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
+// --- Aiming Calculations & Movement-Affected Penalties ---
+function getAimTurnSpeedMultiplier(combat) {
+    if (!combat) return 1;
+    const speed = combat.agentSpeed ?? 0;
+    const strafeSpeed = combat.combatStrafeMaxSpeed ?? 50;
+    if (speed <= strafeSpeed) return 1;
+    // Linearly reduce aiming speed by up to 50% as velocity exceeds the strafe threshold.
+    const excess = speed - strafeSpeed;
+    const penaltyScale = Math.min(0.5, excess / strafeSpeed);
+    return 1 - penaltyScale;
+}
+function getAimToleranceMultiplier(combat) {
+    if (!combat) return 1;
+    const speed = combat.agentSpeed ?? 0;
+    const strafeSpeed = combat.combatStrafeMaxSpeed ?? 50;
+    if (speed <= strafeSpeed) return 1;
+    // Proportional accuracy degradation: widen aiming tolerance up to 2.5x.
+    const excess = speed - strafeSpeed;
+    const penaltyScale = Math.min(1.5, excess / strafeSpeed);
+    return 1 + penaltyScale;
+}
+function getAimRotationSpeed(ctx, weapon) {
+    const baseSpeed = weapon.aimRotationRadPerSec ?? DEFAULT_BALL_FACING_TURN_RAD_PER_SEC;
+    const combat = ctx.world?.decisionContext?.combatState;
+    return baseSpeed * getAimTurnSpeedMultiplier(combat);
+}
+function getAimToleranceRad(ctx, weapon) {
+    const baseTolerance = weapon.fireAimToleranceRad ?? DEFAULT_FIRE_AIM_TOLERANCE_RAD;
+    const combat = ctx.world?.decisionContext?.combatState;
+    return baseTolerance * getAimToleranceMultiplier(combat);
 }
 function targetAngleFromAgent(agent, target) {
     return Math.atan2(target.y - agent.y, target.x - agent.x);
@@ -104,10 +149,11 @@ function targetInWeaponWindow(agent, target, weapon) {
     const fleeRange = weapon.fleeRange;
     return dist <= maxRange && dist > fleeRange;
 }
-function aimReadyForShot(agent, target, action, weapon) {
+function aimReadyForShot(ctx, agent, target, action, weapon) {
     const aimAngle = action.aimAngle ?? agent.facing ?? targetAngleFromAgent(agent, target);
     const targetAngle = targetAngleFromAgent(agent, target);
-    return Math.abs(angleDelta(aimAngle, targetAngle)) <= (weapon.fireAimToleranceRad ?? DEFAULT_FIRE_AIM_TOLERANCE_RAD);
+    const tolerance = getAimToleranceRad(ctx, weapon);
+    return Math.abs(angleDelta(aimAngle, targetAngle)) <= tolerance;
 }
 function shotReady(ctx, action, weapon, target) {
     if (!target || target.isDead) {
@@ -118,7 +164,7 @@ function shotReady(ctx, action, weapon, target) {
         resetRangedCombatAction(action);
         return false;
     }
-    return aimReadyForShot(ctx.agent, target, action, weapon);
+    return aimReadyForShot(ctx, ctx.agent, target, action, weapon);
 }
 function beginReaction(ctx, action, agent, target, weapon, dtMs) {
     action.phase = "reacting";
@@ -126,7 +172,7 @@ function beginReaction(ctx, action, agent, target, weapon, dtMs) {
     action.timerMs = weapon.reactionMs ?? 1000;
     const targetAngle = targetAngleFromAgent(agent, target);
     const initialAngle = agent.facing !== undefined && !Number.isNaN(agent.facing) ? agent.facing : targetAngle;
-    const turnRadPerSec = aimRotationRadPerSec(weapon);
+    const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     const maxStep = turnRadPerSec * (dtMs / 1000);
     action.aimAngle = rotateAngleTowards(initialAngle, targetAngle, maxStep);
     agent.facing = action.aimAngle;
@@ -135,7 +181,7 @@ function tickReaction(ctx, instance, action, weapon, dtMs) {
     const agent = ctx.agent;
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
-    const turnRadPerSec = aimRotationRadPerSec(weapon);
+    const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0 && shotReady(ctx, action, weapon, target)) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
@@ -155,7 +201,7 @@ function tickFireDelay(ctx, instance, action, weapon, dtMs) {
     const agent = ctx.agent;
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
-    const turnRadPerSec = aimRotationRadPerSec(weapon);
+    const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0 && shotReady(ctx, action, weapon, target)) {
         const angle = action.aimAngle ?? agent.facing ?? 0;
@@ -175,7 +221,7 @@ function tickReloading(ctx, action, weapon, dtMs) {
     const agent = ctx.agent;
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const target = resolveLiveTarget(ctx);
-    const turnRadPerSec = aimRotationRadPerSec(weapon);
+    const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0) resetRangedCombatAction(action);
 }
@@ -210,51 +256,62 @@ function maintainCombatStrafe(ctx, strafeState, weapon) {
     }
     ctx.effects.holdDestination("shoot_strafe_hold");
 }
+// --- Ranged Shoot FSM State ---
 export function createRangedShootIntentState(instance, resolveWeapon) {
     const strafeState = { lastCell: null, repickAt: 0 };
     return {
+        /**
+         * Executed upon entering the shoot_enemy state.
+         */
         enter(ctx) {
             const weapon = resolveWeapon(instance);
             if (!weapon) return;
             const action = instance.combatAction;
             const combat = ctx.world.decisionContext.combatState;
+            // 1. Maintain or initialize combat strafing movement
             maintainCombatStrafe(ctx, strafeState, weapon);
+            // 2. Start aiming reaction if the weapon is idle and ready to shoot
             if (action.phase === "idle" && combat?.canShoot && ctx.target) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
-            else if (action.phase === "reacting") tickReaction(ctx, instance, action, weapon, 0);
+            else if (action.phase === "reacting")
+                // Instantly tick reaction progress for the initial frame
+                tickReaction(ctx, instance, action, weapon, 0);
         },
+        /**
+         * Executed every frame update while in shoot_enemy state.
+         */
         update(ctx) {
             const weapon = resolveWeapon(instance);
             if (!weapon) return;
             const action = instance.combatAction;
             const dtMs = ctx.dtMs ?? 16;
             const combat = ctx.world.decisionContext.combatState;
-            if (action.phase === "reloading") {
-                tickReloading(ctx, action, weapon, dtMs);
-                maintainCombatStrafe(ctx, strafeState, weapon);
-                if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
-                return;
+            // Step 1: Tick the current combat action phase
+            switch (action.phase) {
+                case "reloading":
+                    tickReloading(ctx, action, weapon, dtMs);
+                    maintainCombatStrafe(ctx, strafeState, weapon);
+                    // Transition out if the decision logic has shifted away from shooting
+                    if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
+                    return;
+                case "fire_delay":
+                    tickFireDelay(ctx, instance, action, weapon, dtMs);
+                    maintainCombatStrafe(ctx, strafeState, weapon);
+                    return;
+                case "reacting":
+                    tickReaction(ctx, instance, action, weapon, dtMs);
+                    maintainCombatStrafe(ctx, strafeState, weapon);
+                    return;
             }
-            if (action.phase === "fire_delay") {
-                tickFireDelay(ctx, instance, action, weapon, dtMs);
-                maintainCombatStrafe(ctx, strafeState, weapon);
-                return;
-            }
-            if (action.phase === "reacting") {
-                tickReaction(ctx, instance, action, weapon, dtMs);
-                maintainCombatStrafe(ctx, strafeState, weapon);
-                return;
-            }
+            // Step 2: Handle target loss (dead or gone)
             if (!ctx.target || ctx.target.isDead) {
                 strafeState.lastCell = null;
                 strafeState.repickAt = 0;
                 ctx.effects.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
                 return;
             }
-            if (combat?.canShoot) {
-                beginReaction(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
-                maintainCombatStrafe(ctx, strafeState, weapon);
-                return;
-            }
+            // Step 3: Initiate shooting reaction if weapon is idle and eligible
+            if (combat?.canShoot) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
+            // Step 4: Continue maintaining lateral movement/positioning
             maintainCombatStrafe(ctx, strafeState, weapon);
         },
     };
