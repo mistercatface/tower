@@ -59,7 +59,7 @@ describe("kinetic wall damage", () => {
             },
         };
         resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
-        assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:6,6").strength, 1);
+        assert.equal(state.sandbox.gridWallDamage.pendingBreaks.get("v:54").strength, 1);
         flushPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(6, 6, state.obstacleGrid.cols)));
         assert.equal(state.sandbox.gridWallDamage.pendingBreaks.size, 0);
@@ -103,8 +103,8 @@ describe("kinetic wall damage", () => {
         terminateWorkerNavigation(state.nav);
     });
     it("wallDamageKey round-trips voxel and rail targets", () => {
-        assert.equal(wallDamageKey({ kind: "voxel", col: 1, row: 2 }), "v:1,2");
-        assert.equal(wallDamageKey({ kind: "rail", col: 3, row: 4, side: 1 }), "r:3,4:1");
+        assert.equal(wallDamageKey({ kind: "voxel", idx: 17 }), "v:17");
+        assert.equal(wallDamageKey({ kind: "rail", idx: 35, side: 1 }), "r:35:1");
     });
     it("voxel wall hit clears grid wall, spawns a voxel chunk prop, and fractures it", async () => {
         const state = await createWallDamageTestState();
@@ -130,7 +130,7 @@ describe("kinetic wall damage", () => {
         
         resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
         
-        const queued = state.sandbox.gridWallDamage.pendingBreaks.get("v:3,3");
+        const queued = state.sandbox.gridWallDamage.pendingBreaks.get("v:27");
         assert.ok(queued);
         assert.equal(queued.contactX, 3 * 16 + 8);
         assert.equal(queued.normalX, 1);
@@ -173,7 +173,7 @@ describe("kinetic wall damage", () => {
         
         resolveKineticWallDamage(state, entity, { evictKineticProp() {} }, wallResolver);
         
-        const queued = state.sandbox.gridWallDamage.pendingBreaks.get("r:4,4:1");
+        const queued = state.sandbox.gridWallDamage.pendingBreaks.get("r:36:1");
         assert.ok(queued);
         assert.equal(queued.contactY, 4 * 16 + 16);
         assert.equal(queued.normalY, -1);
@@ -213,7 +213,7 @@ describe("kinetic wall damage", () => {
         };
         
         resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);
-        assert.ok(state.sandbox.gridWallDamage.pendingBreaks.has("r:4,4:1"));
+        assert.ok(state.sandbox.gridWallDamage.pendingBreaks.has("r:36:1"));
         
         flushPendingWallDamage(state);
         

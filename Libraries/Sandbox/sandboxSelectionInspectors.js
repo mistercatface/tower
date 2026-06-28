@@ -58,7 +58,10 @@ export function buildPassagePowerSourceInspectorInfo(state, sel) {
 }
 export function buildVoxelWallInspectorInfo(state, sel) {
     const cell = selectionVoxelCell(sel);
-    return cell ? getVoxelWallInfo(state.obstacleGrid, cell.col, cell.row) : null;
+    if (!cell) return null;
+    const grid = state.obstacleGrid;
+    const idx = cell.col + cell.row * grid.cols;
+    return getVoxelWallInfo(grid, idx);
 }
 export function buildRailWallInspectorInfo(state, sel) {
     const edge = selectionRailEdge(sel);

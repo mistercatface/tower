@@ -323,9 +323,7 @@ export function listPlacedRailWalls(grid) {
 }
 export function getVoxelWallInfo(grid, idx) {
     if (!cellIsStaticWall(grid, idx)) return null;
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return { col, row, heightLevel: grid.grid[idx] };
+    return { idx, heightLevel: grid.grid[idx] };
 }
 export function getRailWallInfo(grid, idx, side) {
     const edge = grid.edgeStore.getIdx(idx, side);

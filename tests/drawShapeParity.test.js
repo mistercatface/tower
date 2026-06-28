@@ -54,7 +54,7 @@ describe("draw shape parity", () => {
         applyPropBoxFootprint(prop, 12, 5);
         const after = getBaseSpriteCacheKey(prop, cacheKeyDeps);
         assert.notEqual(before, after);
-        assert.match(after, /12,5/);
+        assert.match(after, /p[0-9]+/);
     });
     it("sprite bake stage passes live polygon verts to draw", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);

@@ -12,20 +12,21 @@ import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
 import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";
 /** @typedef {{ kind: "voxel", col: number, row: number } | { kind: "rail", col: number, row: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
-    return target.kind === "voxel" ? `v:${target.col},${target.row}` : `r:${target.col},${target.row}:${target.side}`;
+    return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
 }
 export function resolveWallDamageTarget(grid, segment) {
     if (segment.passageEdge) return null;
     const col = segment.gridCol;
     const row = segment.gridRow;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    if (segment.isStaticGridProxy && cellIsStaticWall(grid, col + row * grid.cols)) return { kind: "voxel", col, row };
+    const idx = col + row * grid.cols;
+    if (segment.isStaticGridProxy && cellIsStaticWall(grid, idx)) return { kind: "voxel", idx };
     if (segment.isEdgeRail) {
         const side = segment.gridSide;
         if (side == null) return null;
-        const edge = grid.edgeStore.getIdx(col + row * grid.cols, side);
+        const edge = grid.edgeStore.getIdx(idx, side);
         if (!isRailWallEdge(edge)) return null;
-        return { kind: "rail", col, row, side };
+        return { kind: "rail", idx, side };
     }
     return null;
 }
@@ -57,9 +58,11 @@ export function flushPendingWallDamage(state) {
     if (!wallDamage) return null;
     return applyPendingWallDamage(state, wallDamage);
 }
-function targetToSegment(target) {
-    if (target.kind === "voxel") return { gridCol: target.col, gridRow: target.row, isStaticGridProxy: true, isEdgeRail: false };
-    return { gridCol: target.col, gridRow: target.row, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
+function targetToSegment(grid, target) {
+    const col = target.idx % grid.cols;
+    const row = (target.idx / grid.cols) | 0;
+    if (target.kind === "voxel") return { gridCol: col, gridRow: row, isStaticGridProxy: true, isEdgeRail: false };
+    return { gridCol: col, gridRow: row, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
 }
 export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
     const config = wallDamage.config;
@@ -71,8 +74,10 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
         if (strength < config.minBreakStrength) continue;
         const key = wallDamageKey(target);
         if (!wallDamage.pendingBreaks.has(key)) {
-            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterX(target.col);
-            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterY(target.row);
+            const col = target.idx % grid.cols;
+            const row = (target.idx / grid.cols) | 0;
+            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterX(col);
+            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterY(row);
             wallDamage.pendingBreaks.set(key, {
                 target,
                 strength,
@@ -93,19 +98,22 @@ export function applyPendingWallDamage(state, wallDamage) {
     const descriptors = [];
     for (const item of wallDamage.pendingBreaks.values()) {
         const target = item.target;
-        if (!resolveWallDamageTarget(grid, targetToSegment(target))) continue;
+        if (!resolveWallDamageTarget(grid, targetToSegment(grid, target))) continue;
+        const idx = target.idx;
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
         if (target.kind === "voxel") {
-            const info = getVoxelWallInfo(grid, target.col, target.row);
+            const info = getVoxelWallInfo(grid, idx);
             if (!info) continue;
-            const cx = grid.gridCenterX(target.col);
-            const cy = grid.gridCenterY(target.row);
+            const cx = grid.gridCenterX(col);
+            const cy = grid.gridCenterY(row);
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-            const profileId = resolveCellSurfaceProfileId(grid, target.col + target.row * grid.cols, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
+            const profileId = resolveCellSurfaceProfileId(grid, idx, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "voxel",
-                col: target.col,
-                row: target.row,
+                col: col,
+                row: row,
                 x: cx,
                 y: cy,
                 angle: 0,
@@ -123,21 +131,21 @@ export function applyPendingWallDamage(state, wallDamage) {
                 sourceMass: item.sourceMass ?? 1,
             });
         } else {
-            const info = getRailWallInfo(grid, target.col + target.row * grid.cols, target.side);
+            const info = getRailWallInfo(grid, idx, target.side);
             if (!info) continue;
             const p1 = { x: 0, y: 0 };
             const p2 = { x: 0, y: 0 };
-            cellEdgeEndpoints(grid, target.col, target.row, target.side, p1, p2, 0);
+            cellEdgeEndpoints(grid, col, row, target.side, p1, p2, 0);
             const cx = (p1.x + p2.x) * 0.5;
             const cy = (p1.y + p2.y) * 0.5;
             const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-            const profileId = resolveEdgeSurfaceProfileId(grid, target.col, target.row, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
+            const profileId = resolveEdgeSurfaceProfileId(grid, col, row, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const wallHeightPx = info.heightLevel * grid.cellSize;
             descriptors.push({
                 kind: "rail",
-                col: target.col,
-                row: target.row,
+                col: col,
+                row: row,
                 side: target.side,
                 x: cx,
                 y: cy,
