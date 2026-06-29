@@ -376,7 +376,6 @@ const SCORERS = {
         const hungerTier = ctx.hungerTier;
         const allyReach = ctx.reachSteps[slot];
         if (allyReach == null) return SCORE_ABSENT;
-        if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 3)) return SCORE_ABSENT;
         let value = weights.seek_ally ?? weights.explore;
         if (modeDef.cohesion === "snake") {
             const sizeFactor = regroupSizeFactor(ctx.seekerSegmentCount, cohesion);

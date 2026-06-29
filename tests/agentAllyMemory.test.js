@@ -9,8 +9,9 @@ import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js"
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createAgentIntentMemory, createSnakeAgentSession, registerAgentInstance } from "./harness/agentTestCompat.js";
-import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
+import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE, scoreAgentIntentCandidates } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/AgentProfiles.js";
+import { classifyAgentVisionInto } from "../Libraries/AI/perception/classifyAgentVision.js";
 
 import { deriveSnakeEngagementState } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
@@ -133,5 +134,60 @@ describe("ally intent memory", () => {
         const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, { visibleWorld: enriched, memoryWorld: enriched, memorySource: enriched.memorySource, shared: getSnakeGameConfig().shared });
         assert.equal(ctx.allyState.ally.id, allyPack.head.id);
         assert.equal(ctx.allyState.remembered, true);
+    });
+});
+
+describe("emergent squad following and regrouping", () => {
+    it("asymmetric ally selection by entity ID", () => {
+        const allyLowProp = { id: "ally_low", x: 20, y: 0 };
+        const allyHighProp = { id: "ally_high", x: 40, y: 0 };
+        const state = {
+            entityRegistry: {
+                queryView: () => [allyLowProp, allyHighProp]
+            },
+            nav: {
+                observerVisionFrame: {
+                    ensureHeadVision: () => ({
+                        cells: [0],
+                        cellSet: new Set([0])
+                    }),
+                    navTopology: { grid: { cols: 64, worldCol: () => 0, worldRow: () => 0 } }
+                }
+            },
+            sandbox: {
+                snakeGame: {
+                    instancesByHeadId: new Map([
+                        ["seeker", { lifecycle: "alive", head: { id: "seeker", x: 0, y: 0 }, intent: { getMode: () => "seek_ally", getTargetId: () => "none" } }],
+                        ["ally_low", { lifecycle: "alive", head: allyLowProp, intent: { getMode: () => "seek_ally", getTargetId: () => "seeker" } }],
+                        ["ally_high", { lifecycle: "alive", head: allyHighProp, intent: { getMode: () => "seek_ally", getTargetId: () => "seeker" } }]
+                    ])
+                }
+            }
+        };
+
+        const seeker = { id: "seeker", x: 0, y: 0, visionRange: { range: 100 } };
+        const resolveRelationship = (agent, target) => "ally";
+
+        const out = {};
+        classifyAgentVisionInto(out, state, seeker, {
+            resolveRelationship,
+            trackPrey: false,
+            visionRange: { range: 100 }
+        });
+
+        assert.equal(out.ally.id, "ally_low", "Should only follow allies with lower IDs when loop is detected");
+        assert.equal(out.allyCount, 2, "Should still count all allies in the pack");
+    });
+
+    it("regroupAlly scorer does not abort at close range", () => {
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+            visibleWorld: { threat: null, prey: null, food: null, ally: { id: "ally_1" }, allyCount: 1, allyCentroid: null },
+            reachSteps: { ally: 2 }, // 2 cells away (close range)
+            shared: getSnakeGameConfig().shared,
+            instance: { ammo: 10 }
+        });
+
+        const score = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.flee, ctx);
+        assert.ok(score.seek_ally > -Infinity, "Should retain seek_ally score when close to teammate");
     });
 });

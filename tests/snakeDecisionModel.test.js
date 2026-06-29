@@ -324,11 +324,11 @@ describe("snake seek_ally cohesion (4c)", () => {
         const ctx = context({ ...aw.visible, food: snake(7) }, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: { ...aw.reachSteps, food: 1 } });
         assert.equal(ctx.chosenIntent.mode, "seek_food");
     });
-    it("does not regroup when already within ideal stop distance", () => {
+    it("regroups and parks when within ideal stop distance", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { factionCohesion: { idealStopDist: 3 } } } });
         const aw = allyWorld("ally1", 2);
         const ctx = context(aw.visible, { foodFraction: 0.9, seekerSegmentCount: 3, reachSteps: aw.reachSteps });
-        assert.equal(ctx.chosenIntent.mode, "explore");
+        assert.equal(ctx.chosenIntent.mode, "seek_ally");
     });
 });
 

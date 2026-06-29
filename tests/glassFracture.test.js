@@ -11,6 +11,8 @@ import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import propCatalog from "../Assets/props/index.js";
+const originalMathRandom = Math.random;
+Math.random = () => 0.5;
 const deterministicRandom = () => 0.5;
 function shardWorldBody(originX, originY, facing, geom) {
     const cos = Math.cos(facing);
@@ -235,3 +237,4 @@ describe("glass fracture", () => {
         }
     });
 });
+Math.random = originalMathRandom;

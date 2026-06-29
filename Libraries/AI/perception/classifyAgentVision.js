@@ -55,7 +55,15 @@ export function classifyAgentVisionInto(out, state, seeker, options = {}) {
             allyCount++;
             allyCentroidX += head.x;
             allyCentroidY += head.y;
-            if (compareDistSq < bestAllyDistSq) {
+            let skipAsFollowTarget = false;
+            const targetInstance = agentCtx.session?.instancesByHeadId?.get(head.id);
+            const targetMode = targetInstance?.intent?.getMode();
+            const targetTargetId = targetInstance?.intent?.getTargetId();
+            if (targetMode === "seek_ally")
+                if (targetTargetId === seeker.id) {
+                    if (head.id >= seeker.id) skipAsFollowTarget = true;
+                } else if (head.id >= seeker.id) skipAsFollowTarget = true;
+            if (!skipAsFollowTarget && compareDistSq < bestAllyDistSq) {
                 bestAllyDistSq = compareDistSq;
                 ally = head;
             }
