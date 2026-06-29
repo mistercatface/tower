@@ -42,3 +42,72 @@ describe("surface tile cutoff", () => {
         assert.deepEqual(atlas.wrappedP2, { x: 16, y: 0 });
     });
 });
+
+import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
+import { TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+
+describe("world surface retry and cooldown", () => {
+    it("handles worker bake failure, sets cooldown, and retries after expiration", async () => {
+        const settings = createGameWorldSurfaceSettings();
+        const engine = new WorldSurfaceEngine(settings);
+        const obstacleGrid = {
+            cols: 8,
+            rows: 8,
+            minX: 0,
+            minY: 0,
+            cellSize: 16,
+            collectStaticStructureZLevels: () => [0],
+            worldCol: () => 0,
+            worldRow: () => 0
+        };
+        const mockState = { obstacleGrid };
+        
+        let shouldFail = true;
+        let callCount = 0;
+        
+        // Mock the TileWorkerCoordinator calls
+        const originalRequest = TileWorkerCoordinator.requestGroundChunkBake;
+        TileWorkerCoordinator.requestGroundChunkBake = async (payload) => {
+            callCount++;
+            if (shouldFail) {
+                throw new Error("Simulated worker timeout");
+            }
+            return [new class FakeImageBitmap {
+                width = 16;
+                height = 16;
+                close() {}
+            }];
+        };
+        
+        try {
+            // First attempt: should fail and set cooldown
+            const result1 = engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            assert.ok(result1[0].isPlaceholder, "Should initially return a placeholder");
+            
+            // Wait for promise microtasks to resolve the failure
+            await new Promise(resolve => setTimeout(resolve, 0));
+            
+            // Check that placeholder is evicted (should return null if on cooldown)
+            const result2 = engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            assert.equal(result2, null, "Should return null when on cooldown");
+            
+            // Fast-forward or force cooldown expiration
+            const key = engine.cacheKeys.groundChunkKey(0, 0, "test_profile", 0);
+            engine.bakeCooldowns.set(key, 0); // Expired cooldown
+            
+            // Try again: should re-attempt bake (callCount increments)
+            shouldFail = false;
+            const result3 = engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            assert.ok(result3[0].isPlaceholder, "Should return placeholder again on retry");
+            
+            await new Promise(resolve => setTimeout(resolve, 0));
+            
+            // Verify bake resolved successfully and no longer has placeholder
+            const finalCanvas = engine.surfaceCache.get(key);
+            assert.ok(finalCanvas && !finalCanvas[0].isPlaceholder, "Should now be the resolved canvas");
+            assert.equal(callCount, 2, "Should have called bake function exactly twice");
+        } finally {
+            TileWorkerCoordinator.requestGroundChunkBake = originalRequest;
+        }
+    });
+});

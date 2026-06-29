@@ -29,6 +29,8 @@ export class WorldSurfaceEngine {
         this._chunkBounds = createAabb();
         this.activeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
         this.worldSurfaceSeed = (Math.random() * 0x100000000) >>> 0;
+        this.bakeCooldowns = new Map();
+        this.bakeFailCounts = new Map();
     }
     clearBakeCache() {
         this.surfaceCache.clear();
@@ -78,6 +80,8 @@ export class WorldSurfaceEngine {
     ensureWallAtlas(key, p1, p2, columns, wallHeight, profileId) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
+        const cooldown = this.bakeCooldowns.get(key);
+        if (cooldown && performance.now() < cooldown) return null;
         const edgeLen = createWallFaceAxes(p1, p2).edgeLen;
         if (edgeLen < 0.001 || columns.length === 0) return null;
         const cellSize = this.settings.cellSize;
@@ -105,9 +109,23 @@ export class WorldSurfaceEngine {
     _scheduleBake(key, bakeFn) {
         const placeholder = this.surfaceCache.getOrStart(key);
         const generation = this.surfaceCache.getCurrentGeneration(key);
-        bakeFn().then((bitmaps) => {
-            this.surfaceCache.commitBake(key, generation, bitmaps);
-        });
+        bakeFn()
+            .then((bitmaps) => {
+                if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) throw new Error("Invalid or empty bitmaps returned from bake");
+                this.surfaceCache.commitBake(key, generation, bitmaps);
+                this.bakeFailCounts.delete(key);
+                this.bakeCooldowns.delete(key);
+            })
+            .catch((err) => {
+                if (this.surfaceCache.isValidGeneration(key, generation)) {
+                    this.surfaceCache.delete(key);
+                    const fails = (this.bakeFailCounts.get(key) || 0) + 1;
+                    this.bakeFailCounts.set(key, fails);
+                    const delay = Math.min(10000, 1000 * Math.pow(2, fails - 1));
+                    this.bakeCooldowns.set(key, performance.now() + delay);
+                    console.log("retrying bake request");
+                }
+            });
         return placeholder;
     }
     getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel = 0, boundsSample = null, profileIdOverride = null) {
@@ -115,6 +133,8 @@ export class WorldSurfaceEngine {
         const key = this.cacheKeys.groundChunkKey(chunkCol, chunkRow, profileId, zLevel);
         const canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
+        const cooldown = this.bakeCooldowns.get(key);
+        if (cooldown && performance.now() < cooldown) return null;
         const payload = this.buildGroundChunkPayload(state, chunkCol, chunkRow, profileId, zLevel, boundsSample);
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
     }
@@ -211,8 +231,9 @@ export class WorldSurfaceEngine {
     _fillDrawableGroundChunkCanvas(chunkCol, chunkRow, zLevel) {
         const state = this._chunkDraw.state;
         const profileId = resolveChunkSurfaceProfileId(state.obstacleGrid, chunkCol, chunkRow, this.activeSurfaceProfileId);
-        const canvas = this.getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel, null, profileId)[0];
-        if (canvas?.isPlaceholder) return false;
+        const canvases = this.getGroundChunkCanvas(chunkCol, chunkRow, state, zLevel, null, profileId);
+        const canvas = canvases ? canvases[0] : null;
+        if (!canvas || canvas.isPlaceholder) return false;
         this._resolvedChunkCanvas = canvas;
         return true;
     }
