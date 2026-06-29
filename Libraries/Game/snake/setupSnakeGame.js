@@ -18,7 +18,7 @@ import { applyKineticContactSideEffects } from "../../Spatial/collision/kineticC
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
 import { applySnakeHuntContactDrive, resolveSnakeCombatFromContacts } from "./snakeCombat.js";
 import { fractureRetiredSnakeSegmentsFromContacts } from "./snakeSegmentFracture.js";
-import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "./snakePerception.js";
+import { beginSnakePerceptionFrame, endSnakePerceptionFrame, requireSnakeVisionFrame } from "./snakePerception.js";
 import { createGridWallDamage } from "../../Sandbox/gridWallDamage.js";
 import { spawnPopulationScene } from "./spawnPopulationInScene.js";
 import { CUSTOM_SYSTEMS } from "./customSystems.js";
@@ -225,7 +225,7 @@ function focusedPathPreviewStyle(config) {
         nodeRadiusScale: style.nodeRadiusScale ?? 0.45,
     };
 }
-function appendFocusedAgentPathPreviewCommands(out, pathOverlay, headRadius) {
+export function appendFocusedAgentPathPreviewCommands(out, pathOverlay, headRadius) {
     if (!pathOverlay?.pathNodes?.length) return;
     const style = focusedPathPreviewStyle(getSnakeGameConfig());
     const headR = headRadius ?? 3;
@@ -240,7 +240,7 @@ function focusedTargetRingStyle(config) {
     const style = config.focusedAgentDebug?.targetRing ?? {};
     return { fill: style.fill ?? "rgba(255, 60, 60, 0.22)", stroke: style.stroke ?? "rgba(255, 80, 80, 0.9)", entityPad: style.entityPad ?? 2, cellScale: style.cellScale ?? 0.38 };
 }
-function resolveCommittedTargetWorld(state, intentTarget) {
+export function resolveCommittedTargetWorld(state, intentTarget) {
     if (!intentTarget) return null;
     const { targetId, destination } = intentTarget;
     const grid = state.obstacleGrid;
@@ -261,7 +261,7 @@ function readIntentTarget(instance) {
     if (!intent) return null;
     return { mode: intent.getMode(), targetId: intent.getTargetId(), destination: intent.getDestination() };
 }
-function appendFocusedAgentTargetOverlayCommands(out, state, session) {
+export function appendFocusedAgentTargetOverlayCommands(out, state, session) {
     const prop = state.followCamera?.targetProp;
     if (!prop) return;
     const instance = session.instancesByHeadId.get(prop.id);
@@ -286,7 +286,7 @@ function appendAgentRing(out, agent, style) {
     const pad = style.pad ?? 3;
     out.push(overlayCircleFillStroke(agent.x, agent.y, radius + pad, { fill: style.fill, stroke: style.stroke, lineWidth: style.lineWidth ?? 1 }));
 }
-function appendFocusedAgentVisibleEntityOverlayCommands(out, state, session) {
+export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, session) {
     const config = session.config;
     const shared = config.shared;
     const prop = state.followCamera?.targetProp;

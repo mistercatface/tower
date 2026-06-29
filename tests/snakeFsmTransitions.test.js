@@ -20,7 +20,7 @@ import { createBrain } from "./harness/agentTestCompat.js";
 import { createSpatialBrainSync } from "../Libraries/Game/snake/AgentInstance.js";
 import { FRAME_MS } from "./frameMs.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
-import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.js";
+import { applyAgentGameplay } from "./harness/agentTestCompat.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";

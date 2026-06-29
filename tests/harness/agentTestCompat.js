@@ -14,7 +14,8 @@ import {
     copySnakeChainTintFromHead
 } from "../../Libraries/Game/snake/AgentInstance.js";
 import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentIntentMemory, ModePolicyLatch, resolveRangedWeapon } from "../../Libraries/Game/snake/GroundNavIntentAdapter.js";
-import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "../../Libraries/Game/snake/snakeCombat.js";
+import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill, COMBAT_TRAIT_DEFAULTS, matchesBrainRamResolver } from "../../Libraries/Game/snake/snakeCombat.js";
+import { AgentFrameOrchestrator } from "../../Libraries/Game/snake/snakeAgentSession.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
 export {
@@ -32,7 +33,9 @@ export {
     copySnakeChainTintFromHead,
     isBallCombatTopology,
     isChainCombatTopology,
-    shouldSkipPreyHeadRamKill
+    shouldSkipPreyHeadRamKill,
+    COMBAT_TRAIT_DEFAULTS,
+    matchesBrainRamResolver
 };
 
 export function syncBallAgentFacingAfterPhysics(instance, dtMs) {
@@ -100,4 +103,8 @@ export function createAgentIntentMemory(config) {
 
 export function createModePolicyLatch(config) {
     return new ModePolicyLatch(config);
+}
+
+export function createAgentFrameOrchestrator(config) {
+    return new AgentFrameOrchestrator(config);
 }

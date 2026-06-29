@@ -1,7 +1,7 @@
 import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
 import { getAgentProfile } from "../../AI/agents/AgentProfiles.js";
 import { resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
-import { applyAgentGameplay } from "./applyAgentGameplay.js";
+import { applyAgentGameplay } from "./AgentInstance.js";
 function applySpawnedChainGameplay(profile, chain) {
     const leaderGameplay = profile.gameplay.leader;
     const bodyGameplay = profile.gameplay.body;

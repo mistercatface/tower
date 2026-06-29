@@ -8,7 +8,7 @@ import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentit
 import { getAgentProfile } from "../../AI/agents/AgentProfiles.js";
 import { spawnGameAgentChain } from "./spawnAgentChain.js";
 import { hashString } from "../../Math/hash.js";
-import { applySnakeChainTint, resolveAgentTeamForIndex } from "./snakeChainColor.js";
+import { applySnakeChainTint, resolveAgentTeamForIndex } from "./AgentInstance.js";
 function isValidAgentAnchorCell(navWalkable, grid, anchorCell, { excludeIndices }) {
     const { col, row } = anchorCell;
     if (!navWalkable.has(col, row)) return false;

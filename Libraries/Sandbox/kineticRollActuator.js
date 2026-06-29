@@ -2,7 +2,7 @@ import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { physicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { maySnakeHeadReceiveRoll } from "../Game/snake/snakeSteeringLease.js";
+import { maySnakeHeadReceiveRoll } from "../Game/snake/AgentInstance.js";
 export function snapMoveTargetToCellCenter(grid, world) {
     const col = grid.worldCol(world.x);
     const row = grid.worldRow(world.y);

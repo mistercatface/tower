@@ -2,7 +2,7 @@ import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/AgentProfiles
 import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/AgentProfiles.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments, spawnAmmoShards } from "../snakeSegmentFracture.js";
-import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
+import { clearSnakeSteeringLeaseFromProp } from "../AgentInstance.js";
 import { AgentInstance } from "../AgentInstance.js";
 import { getSnakeGameConfig } from "../snakeGameConfig.js";
 import { removeWorldPropFromState } from "../../../../GameState/EntityRegistry.js";

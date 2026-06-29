@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createAgentFrameOrchestrator } from "../Libraries/Game/snake/agentFrameOrchestrator.js";
+import { createAgentFrameOrchestrator } from "./harness/agentTestCompat.js";
 
 function agent(id) {
     return { head: { id, x: 0, y: 0, radius: 1 } };

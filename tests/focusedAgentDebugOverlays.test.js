@@ -7,9 +7,12 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { wireSnakeTestGame, registerSnakeTestInstance, createWiredSnakeAutosim, createSnakeGameHarnessState } from "./harness/snakeGameHarness.js";
-import { appendFocusedAgentPathPreviewCommands } from "../Libraries/Game/snake/focusedAgentPathOverlays.js";
-import { appendFocusedAgentTargetOverlayCommands, resolveCommittedTargetWorld } from "../Libraries/Game/snake/focusedAgentTargetOverlays.js";
-import { appendFocusedAgentVisibleEntityOverlayCommands } from "../Libraries/Game/snake/focusedAgentVisibleEntityOverlays.js";
+import {
+    appendFocusedAgentPathPreviewCommands,
+    appendFocusedAgentTargetOverlayCommands,
+    resolveCommittedTargetWorld,
+    appendFocusedAgentVisibleEntityOverlayCommands
+} from "../Libraries/Game/snake/setupSnakeGame.js";
 
 describe("focused agent debug overlays", () => {
     it("appendFocusedAgentPathPreviewCommands draws at most three scaled purple nodes", () => {

@@ -8,8 +8,7 @@ import { applyPlayAreaConfig, generateLabCaverns, generateLabRailMaze, clearSnak
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs } from "./snakeGameConfig.js";
-import { applySnakeChainTint, resolveAgentTeamForFaction, resolveAgentTeamForIndex } from "./snakeChainColor.js";
-import { applyAgentGameplay } from "./applyAgentGameplay.js";
+import { applySnakeChainTint, resolveAgentTeamForFaction, resolveAgentTeamForIndex, applyAgentGameplay } from "./AgentInstance.js";
 import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";

@@ -21,7 +21,7 @@ import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
 import { rotateAngleTowards } from "../../Math/Angle.js";
 import { getPropVisualTint, setPropVisualTint } from "../../Color/visualOverride.js";
 import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
-import { COMBAT_TRAIT_DEFAULTS } from "./snakeCombat.js";
+import { COMBAT_TRAIT_DEFAULTS, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./snakeCombat.js";
 export class AgentInstance {
     constructor(state, { profileId, head, spawnGroupId, lifecycle = "alive", memberIds = [] }) {
         this.profileId = profileId;
