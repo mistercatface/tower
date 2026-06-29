@@ -1,13 +1,23 @@
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
+import { createObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 const AGENT_VISION_QUERY_BOUNDS = createAabb();
 /**
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
  */
-export function classifyAgentVision(seeker, agentCtx, state, frame, vision, options = {}) {
-    const { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, trackPrey = true, committedTargetId = null, targetStickyFactor = 1.0 } = options;
+export function classifyAgentVision(state, seeker, options = {}) {
+    const instance = state.sandbox.snakeGame?.instancesByHeadId?.get(seeker.id) ?? null;
+    const agentCtx = { instance, session: state.sandbox.snakeGame };
+    const resolvedVision = seeker.visionRange ?? instance?.visionRange ?? state.nav?.observerVisionFrame?.visionRange ?? options.visionRange;
+    const frame =
+        state.nav?.observerVisionFrame ??
+        (state.nav?.topology
+            ? createObserverVisionFrame({ tickId: state.sandbox?.snakeGame?.simTick ?? 1, navTopology: state.nav.topology, visionRange: resolvedVision, viewport: state.viewport })
+            : null);
+    const vision = frame.ensureHeadVision(seeker, resolvedVision);
+    const { visionRange = resolvedVision, agentRange = visionRange.range, resolveRelationship, trackPrey = true, committedTargetId = null, targetStickyFactor = 1.0 } = options;
     const navTopology = frame.navTopology;
     const range = agentRange ?? visionRange.range;
     const rangeSq = range * range;

@@ -27,9 +27,8 @@ import { perceiveAgentWorld } from "../Libraries/AI/perception/agentWorldPercept
 import { buildTestAgentPerceptionOptions } from "./harness/snakeGameHarness.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 function findNearestVisibleSnakeFood(state, seeker) {
-    const frame = requireSnakeVisionFrame(state);
     const index = getPropCategoryIndex(state, "food");
-    return resolveVisibleCategoryInVision(index, seeker, frame, frame.visionRange, isEdibleSnakeFoodForSeeker);
+    return resolveVisibleCategoryInVision(state, seeker, index, isEdibleSnakeFoodForSeeker);
 }
 async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -213,7 +212,7 @@ describe("snake intent integration", () => {
         const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
         const shared = getSnakeGameConfig().shared;
         const options = buildTestAgentPerceptionOptions(shared.visionRange, shared, agentCtx, null);
-        const world = perceiveAgentWorld(seeker, agentCtx, state, () => null, shared.visionRange, options);
+        const world = perceiveAgentWorld(state, seeker, () => null, options);
         assert.equal(world.prey, null);
     });
     it("uses a single head vision build per perceive and caches cellSet", async () => {
@@ -226,13 +225,13 @@ describe("snake intent integration", () => {
         const agentCtx = { instance, session: state.sandbox.snakeGame, navWalkable: state.sandbox.snakeGame.navWalkable };
         assert.equal(getVisionFullBuildCount(), 0);
         beginSnakePerceptionFrame(state);
-        const foodResolver = (seeker, state, { frame, visionRange, vision }) => {
+        const foodResolver = (state, seeker, options) => {
             const index = getPropCategoryIndex(state, "food");
-            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, () => true, null, 1.0, vision);
+            return resolveVisibleCategoryInVision(state, seeker, index, () => true, options);
         };
         const shared = getSnakeGameConfig().shared;
         const options = buildTestAgentPerceptionOptions(shared.visionRange, shared, agentCtx, null);
-        perceiveAgentWorld(seeker, agentCtx, state, { food: foodResolver }, shared.visionRange, options);
+        perceiveAgentWorld(state, seeker, { food: foodResolver }, options);
         endSnakePerceptionFrame(state);
         assert.equal(getVisionFullBuildCount(), 1);
         const frame = requireSnakeVisionFrame(state);

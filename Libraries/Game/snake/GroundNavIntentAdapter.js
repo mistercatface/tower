@@ -507,47 +507,50 @@ export function createRangedShootIntentState(instance, resolveWeapon, adapterIns
 export function resetInstanceRangedCombatAction(instance) {
     if (instance.combatAction) instance.combatAction.reset();
 }
+export class RangedCombatPolicyExtension {
+    constructor() {
+        this.shootLatch = new ModePolicyLatch({
+            mode: "shoot_enemy",
+            minTicks: 0,
+            holdReason: "shoot_held",
+            refreshWhen: ({ world }) => {
+                const combat = world.decisionContext.combatState;
+                if (!combat) return false;
+                if (combat.busy) return true;
+                return combat.canShoot;
+            },
+            canRelease: ({ world, policy }) => {
+                const combat = world.decisionContext.combatState;
+                if (!combat) return true;
+                if (combat.busy) return false;
+                if (policy.mode === "flee") return true;
+                if (combat.canShoot) return false;
+                return combat.phase === "idle" || combat.phase == null;
+            },
+        });
+    }
+    clear() {
+        this.shootLatch.clear();
+    }
+    apply({ world, currentMode, sprintConfig, policyIn, policyOut }) {
+        const ctx = world.decisionContext;
+        const resolved = this.shootLatch.apply(policyIn, { world, currentMode, policy: policyIn });
+        if (resolved.mode === "shoot_enemy" && resolved.targetId == null) resolved.targetId = policyIn.targetId ?? ctx.known.enemy?.id ?? null;
+        policyOut.mode = resolved.mode;
+        policyOut.targetId = resolved.targetId ?? null;
+        policyOut.reason = resolved.reason ?? null;
+        if (resolved !== policyIn) {
+            ctx.chosenIntent = resolved;
+            ctx.chosenReason = resolved.reason ?? null;
+            ctx.targetId = resolved.targetId ?? null;
+            ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
+        }
+        ctx.policyLatch = { ...(ctx.policyLatch ?? {}), shoot: this.shootLatch.snapshot() };
+        return policyOut;
+    }
+}
 export function createRangedCombatPolicyExtension() {
-    const shootLatch = new ModePolicyLatch({
-        mode: "shoot_enemy",
-        minTicks: 0,
-        holdReason: "shoot_held",
-        refreshWhen: ({ world }) => {
-            const combat = world.decisionContext.combatState;
-            if (!combat) return false;
-            if (combat.busy) return true;
-            return combat.canShoot;
-        },
-        canRelease: ({ world, policy }) => {
-            const combat = world.decisionContext.combatState;
-            if (!combat) return true;
-            if (combat.busy) return false;
-            if (policy.mode === "flee") return true;
-            if (combat.canShoot) return false;
-            return combat.phase === "idle" || combat.phase == null;
-        },
-    });
-    return {
-        clear() {
-            shootLatch.clear();
-        },
-        apply({ world, currentMode, sprintConfig, policyIn, policyOut }) {
-            const ctx = world.decisionContext;
-            const resolved = shootLatch.apply(policyIn, { world, currentMode, policy: policyIn });
-            if (resolved.mode === "shoot_enemy" && resolved.targetId == null) resolved.targetId = policyIn.targetId ?? ctx.known.enemy?.id ?? null;
-            policyOut.mode = resolved.mode;
-            policyOut.targetId = resolved.targetId ?? null;
-            policyOut.reason = resolved.reason ?? null;
-            if (resolved !== policyIn) {
-                ctx.chosenIntent = resolved;
-                ctx.chosenReason = resolved.reason ?? null;
-                ctx.targetId = resolved.targetId ?? null;
-                ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
-            }
-            ctx.policyLatch = { ...(ctx.policyLatch ?? {}), shoot: shootLatch.snapshot() };
-            return policyOut;
-        },
-    };
+    return new RangedCombatPolicyExtension();
 }
 // ==========================================
 // Inner FSM Infrastructure Helpers
@@ -564,21 +567,25 @@ function readAgentRouteStatusInto(out, locomotion, agent, state) {
     out.pathLen = status.pathLen;
     return out;
 }
+export class BrainArrivalStamper {
+    constructor(brain) {
+        this.brain = brain;
+        this.lastArrivalIdx = null;
+    }
+    stamp(agent, grid) {
+        const col = grid.worldCol(agent.x);
+        const row = grid.worldRow(agent.y);
+        const idx = col + row * grid.cols;
+        if (idx === this.lastArrivalIdx) return;
+        this.lastArrivalIdx = idx;
+        this.brain.stampArrival(idx);
+    }
+    reset() {
+        this.lastArrivalIdx = null;
+    }
+}
 function createBrainArrivalStamper(brain) {
-    let lastArrivalIdx = null;
-    return {
-        stamp(agent, grid) {
-            const col = grid.worldCol(agent.x);
-            const row = grid.worldRow(agent.y);
-            const idx = col + row * grid.cols;
-            if (idx === lastArrivalIdx) return;
-            lastArrivalIdx = idx;
-            brain.stampArrival(idx);
-        },
-        reset() {
-            lastArrivalIdx = null;
-        },
-    };
+    return new BrainArrivalStamper(brain);
 }
 function transitionReason(seekModes) {
     return (prevMode, nextMode, policy) => {
@@ -607,9 +614,9 @@ function buildVisibleSourceResolvers(profile) {
         const accept = ACCEPT_PREDICATES[config.accept];
         if (!accept) throw new Error(`Unknown accept predicate: ${config.accept}`);
         const categoryId = config.category;
-        resolvers[slotId] = (seeker, state, { frame, visionRange, committedTargetId, targetStickyFactor, vision }) => {
+        resolvers[slotId] = (state, seeker, options) => {
             const index = getPropCategoryIndex(state, categoryId);
-            return resolveVisibleCategoryInVision(index, seeker, frame, visionRange, accept, committedTargetId, targetStickyFactor, vision);
+            return resolveVisibleCategoryInVision(state, seeker, index, accept, options);
         };
     }
     return resolvers;
@@ -733,7 +740,7 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             },
             perceiveWorld: (agent, state) => {
                 perceptionOptions.committedTargetId = this.getTargetId();
-                perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, perceptionOptions);
+                perceiveAgentWorldInto(visible, state, agent, visibleSourceResolvers, perceptionOptions);
                 intentMemory.update(agent, state, visible);
                 const memoryWorld = intentMemory.enrichWorld(state, visible);
                 committed.mode = this.getMode();
@@ -915,10 +922,11 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
         const instance = this.agentCtx.instance;
         const profile = instance.profile;
+        const fields = profile.intent.decisionFields ?? {};
+        const hasRanged = !!(profile.weapon || hasRangedShootMode(profile));
         const decisionInput = {
             visibleWorld: visible,
             memoryWorld,
-            memorySource: memoryWorld.memorySource,
             committedTarget: committed,
             routeStatus,
             reachSteps,
@@ -926,20 +934,16 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             shared: this.shared,
             foodFraction: instance.metabolism.getHunger(),
             combatStrafeMaxSpeed: instance.combatStrafeMaxSpeed ?? instance.walkMaxSpeed * 0.5,
-            agentInstance: instance,
-            instance: instance,
+            instance,
+            seekerFaction: fields.seekerFaction ? agent.faction : null,
+            seekerSegmentCount: fields.seekerSegmentCount ? this.resolveSegmentCount() : null,
+            session: fields.session ? state.sandbox.snakeGame : null,
+            agent: hasRanged ? agent : null,
+            state: hasRanged ? state : null,
+            actionState: hasRanged ? (instance.combatAction ?? null) : null,
+            equippedWeapon: hasRanged ? (instance.equippedWeapon ?? null) : null,
+            weaponVisionRange: hasRanged ? (instance.visionRange?.range ?? 0) : 0,
         };
-        const fields = profile.intent.decisionFields ?? {};
-        if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;
-        if (fields.seekerSegmentCount) decisionInput.seekerSegmentCount = this.resolveSegmentCount();
-        if (fields.session) decisionInput.session = state.sandbox.snakeGame;
-        if (profile.weapon || hasRangedShootMode(profile)) {
-            decisionInput.agent = agent;
-            decisionInput.state = state;
-            decisionInput.actionState = instance.combatAction;
-            decisionInput.equippedWeapon = instance.equippedWeapon ?? null;
-            decisionInput.weaponVisionRange = instance.visionRange.range;
-        }
         return buildAgentDecisionContextInto(this._lastDecisionContext, this.decisionSpec, decisionInput, { includeScoreDetails: false });
     }
     applyFleePolicyLatch(fleeLatch, world, policyOut) {

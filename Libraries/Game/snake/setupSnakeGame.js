@@ -305,7 +305,7 @@ export function appendFocusedAgentVisibleEntityOverlayCommands(out, state, sessi
         targetStickyFactor: shared.targetingHysteresis.targetStickyFactor ?? 0.75,
     };
     const vision = frame.ensureHeadVision(head, visionRange);
-    const world = classifyAgentVision(head, agentCtx, state, frame, vision, perceptionOptions);
+    const world = classifyAgentVision(state, instance, perceptionOptions);
     if (world.threat) appendAgentRing(out, world.threat, agentRingStyle(config, "threat"));
     if (world.prey && world.prey.id !== committedTargetId) appendAgentRing(out, world.prey, agentRingStyle(config, "prey"));
     if (world.ally) appendAgentRing(out, world.ally, agentRingStyle(config, "ally"));

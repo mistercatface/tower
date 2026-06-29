@@ -1,10 +1,15 @@
 import { classifyAgentVision } from "./classifyAgentVision.js";
-export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, visionRange, accept, committedTargetId = null, targetStickyFactor = 1.0, vision = null) {
-    const resolvedVision = vision ?? frame.ensureHeadVision(seeker, visionRange);
+export function resolveVisibleCategoryInVision(state, seeker, categoryIndex, accept, options = {}) {
+    const frame = state.nav.observerVisionFrame;
+    const instance = state.sandbox.snakeGame?.instancesByHeadId?.get(seeker.id) ?? null;
+    const visionRange = options.visionRange ?? seeker.visionRange ?? instance?.visionRange ?? frame.visionRange;
+    const resolvedVision = frame.ensureHeadVision(seeker, visionRange);
     const rangeSq = visionRange.range * visionRange.range;
     const cols = frame.navTopology.grid.cols;
-    let best = null,
-        bestDistSq = Infinity;
+    const committedTargetId = options.committedTargetId ?? null;
+    const targetStickyFactor = options.targetStickyFactor ?? 1.0;
+    let best = null;
+    let bestDistSq = Infinity;
     for (let i = 0; i < resolvedVision.cells.length; i++) {
         const idx = resolvedVision.cells[i];
         const col = idx % cols;
@@ -12,9 +17,9 @@ export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, vis
         if (categoryIndex.countAtCell(col, row) === 0) continue;
         const prop = categoryIndex.nearestItemInCell(col, row, seeker.x, seeker.y, (p) => accept(seeker, p));
         if (!prop) continue;
-        const dx = prop.x - seeker.x,
-            dy = prop.y - seeker.y,
-            d = dx * dx + dy * dy;
+        const dx = prop.x - seeker.x;
+        const dy = prop.y - seeker.y;
+        const d = dx * dx + dy * dy;
         if (d > rangeSq) continue;
         let compareDistSq = d;
         if (committedTargetId !== null && prop.id === committedTargetId) compareDistSq *= targetStickyFactor;
@@ -24,47 +29,27 @@ export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, vis
     }
     return best;
 }
-export function classifyVisibleAgentsFromVision(seeker, agentCtx, state, frame, vision, options) {
-    const { visionRange = frame.visionRange, agentRange = visionRange.range, resolveRelationship, committedTargetId = null, targetStickyFactor = 1.0 } = options;
-    return classifyAgentVision(seeker, agentCtx, state, frame, vision, { visionRange, agentRange, resolveRelationship, trackPrey: true, committedTargetId, targetStickyFactor });
+export function classifyVisibleAgentsFromVision(state, seeker, options) {
+    return classifyAgentVision(state, seeker, options);
 }
-export function findNearestVisibleThreatFromVision(seeker, agentCtx, state, frame, vision, perceptionOptions) {
-    return classifyVisibleAgentsFromVision(seeker, agentCtx, state, frame, vision, perceptionOptions).threat;
+export function findNearestVisibleThreatFromVision(state, seeker, options) {
+    return classifyAgentVision(state, seeker, options).threat;
 }
-export function findNearestVisibleThreat(seeker, agentCtx, state, visionRange, { readVisionFrame, agentRange, resolveRelationship }) {
-    const frame = readVisionFrame(state);
-    const resolved = visionRange ?? frame.visionRange;
-    const range = agentRange ?? resolved.range;
-    const vision = frame.ensureHeadVision(seeker, resolved);
-    return findNearestVisibleThreatFromVision(seeker, agentCtx, state, frame, vision, { visionRange: resolved, agentRange: range, resolveRelationship });
+export function findNearestVisibleThreat(state, seeker, options) {
+    return classifyAgentVision(state, seeker, options).threat;
 }
-export function perceiveAgentWorldInto(out, seeker, agentCtx, state, visibleSourceResolvers, visionRange, options) {
-    const { readVisionFrame, agentRange, resolveRelationship, committedTargetId = null, targetStickyFactor = 1.0 } = options;
-    const frame = readVisionFrame(state);
-    const resolved = visionRange ?? frame.visionRange;
-    const range = agentRange ?? resolved.range;
-    const vision = frame.ensureHeadVision(seeker, resolved);
-    const agents = classifyVisibleAgentsFromVision(seeker, agentCtx, state, frame, vision, { visionRange: resolved, agentRange: range, resolveRelationship, committedTargetId, targetStickyFactor });
+export function perceiveAgentWorldInto(out, state, seeker, visibleSourceResolvers, options) {
+    const agents = classifyAgentVision(state, seeker, options);
     out.threat = agents.threat;
     out.prey = agents.prey;
     out.ally = agents.ally;
     out.allyCount = agents.allyCount;
     out.allyCentroid = agents.allyCentroid;
     out.threatCount = agents.threatCount;
-    if (visibleSourceResolvers)
-        for (const slotId in visibleSourceResolvers)
-            out[slotId] = visibleSourceResolvers[slotId](seeker, state, { frame, visionRange: resolved, committedTargetId, targetStickyFactor, vision }) ?? null;
+    if (visibleSourceResolvers) for (const slotId in visibleSourceResolvers) out[slotId] = visibleSourceResolvers[slotId](state, seeker, options) ?? null;
     else out.food = null;
     return out;
 }
-export function perceiveAgentWorld(seeker, agentCtx, state, visibleSourceResolvers, visionRange, perceptionOptions) {
-    return perceiveAgentWorldInto(
-        { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 },
-        seeker,
-        agentCtx,
-        state,
-        visibleSourceResolvers,
-        visionRange,
-        perceptionOptions,
-    );
+export function perceiveAgentWorld(state, seeker, visibleSourceResolvers, options) {
+    return perceiveAgentWorldInto({ threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 }, state, seeker, visibleSourceResolvers, options);
 }

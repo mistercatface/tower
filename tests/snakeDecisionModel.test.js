@@ -21,7 +21,8 @@ function world({ threat = null, prey = null, food = null, ally = null, allyCount
 }
 function inferReachSteps(visibleWorld, { committedTarget, routeStatus, memoryWorld, memorySource } = {}) {
     const pick = (visibleTarget, mode, kind) => {
-        const target = visibleTarget ?? (memorySource?.[kind] ? memoryWorld?.[kind] : null);
+        const source = memoryWorld?.memorySource ?? memorySource;
+        const target = visibleTarget ?? (source?.[kind] ? memoryWorld?.[kind] : null);
         if (!target) return null;
         if (committedTarget?.mode === mode && committedTarget.targetId === target.id && Number.isFinite(routeStatus?.pathLen)) return routeStatus.pathLen;
         return 1;
@@ -35,14 +36,22 @@ function inferReachSteps(visibleWorld, { committedTarget, routeStatus, memoryWor
 }
 function context(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), cellSize: CELL, shared: getSnakeGameConfig().shared, ...rest });
+    const memoryWorld = opts.memoryWorld ? { ...opts.memoryWorld } : null;
+    if (memoryWorld && opts.memorySource) {
+        memoryWorld.memorySource = opts.memorySource;
+    }
+    return buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), cellSize: CELL, shared: getSnakeGameConfig().shared, ...rest, memoryWorld });
 }
 function snake(id, extra = {}) {
     return { id, x: 0, y: 0, isDead: false, ...extra };
 }
 function decisionFrame(visibleWorld, opts = {}) {
     const { reachSteps, ...rest } = opts;
-    return buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), shared: getSnakeGameConfig().shared, ...rest });
+    const memoryWorld = opts.memoryWorld ? { ...opts.memoryWorld } : null;
+    if (memoryWorld && opts.memorySource) {
+        memoryWorld.memorySource = opts.memorySource;
+    }
+    return buildAgentDecisionFrameFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, reachSteps: reachSteps ?? inferReachSteps(visibleWorld, opts), shared: getSnakeGameConfig().shared, ...rest, memoryWorld });
 }
 describe("snake hunger facts (PR1)", () => {
     it("derives satisfied/hungry/desperate from food fraction", () => {

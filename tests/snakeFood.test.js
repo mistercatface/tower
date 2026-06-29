@@ -18,9 +18,8 @@ import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigation
 import { markSnakeSegmentsFracturable } from "../Libraries/Game/snake/snakeSegmentFracture.js";
 
 function findNearestVisibleSnakeFood(state, seeker) {
-    const frame = requireSnakeVisionFrame(state);
     const index = getPropCategoryIndex(state, "food");
-    return resolveVisibleCategoryInVision(index, seeker, frame, frame.visionRange, isEdibleSnakeFoodForSeeker);
+    return resolveVisibleCategoryInVision(state, seeker, index, isEdibleSnakeFoodForSeeker);
 }
 
 async function createFoodQueryState() {

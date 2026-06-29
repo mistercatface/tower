@@ -141,7 +141,7 @@ describe("AI ammo economy system", () => {
             agent: { vx: 0, vy: 0, x: 0, y: 0 },
             state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
             actionState: null,
-            agentInstance: fullInstance,
+            instance: fullInstance,
         }));
         
         const fullScores = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.flee, ctxFull);
@@ -155,7 +155,7 @@ describe("AI ammo economy system", () => {
             agent: { vx: 0, vy: 0, x: 0, y: 0 },
             state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
             actionState: null,
-            agentInstance: lowInstance,
+            instance: lowInstance,
         }));
         
         const lowScores = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.flee, ctxLow);

@@ -102,8 +102,8 @@ describe("ally intent memory", () => {
     it("surfaces allyState from memory on decision context", () => {
         applySnakeGameConfig();
         const visibleWorld = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null };
-        const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyCount: 1, allyCentroid: null };
-        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, memoryWorld, memorySource: { ally: true }, shared: getSnakeGameConfig().shared });
+        const memoryWorld = { ally: { id: 42, x: 100, y: 80 }, allyCount: 1, allyCentroid: null, memorySource: { ally: true } };
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.snake, { visibleWorld, memoryWorld, shared: getSnakeGameConfig().shared });
         assert.equal(ctx.known.ally.id, 42);
         assert.equal(ctx.allyState.remembered, true);
         assert.equal(ctx.allyState.visible, false);
