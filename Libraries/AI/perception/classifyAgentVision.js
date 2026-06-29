@@ -51,8 +51,9 @@ export function classifyAgentVisionInto(out, state, seeker, options = {}) {
         if (!vision.cellSet.has(colRowToIndex(targetCol, targetRow, navTopology.grid.cols))) continue;
         let compareDistSq = distSq;
         if (committedTargetId !== null && head.id === committedTargetId) compareDistSq *= targetStickyFactor;
-        if (relationship !== "ally" && state.sandbox?.snakeGame?.factionTargetRegistry) {
-            const registry = state.sandbox.snakeGame.factionTargetRegistry;
+        const session = state.sandbox?.snakeGame;
+        if (relationship !== "ally") {
+            const registry = session.factionTargetRegistry;
             if (registry.isClaimedByCloser(head.id, seeker.id, distSq)) compareDistSq *= 4.0;
         }
         if (relationship === "ally") {

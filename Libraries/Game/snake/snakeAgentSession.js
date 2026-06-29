@@ -5,6 +5,7 @@ import { markSnakeSegmentsFracturable, shatterSnakeSegments, spawnAmmoShards } f
 import { clearSnakeSteeringLeaseFromProp, AgentInstance } from "./AgentInstance.js";
 import { removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
+import { FactionTargetRegistry } from "./snakePerception.js";
 export class AgentFrameOrchestrator {
     constructor(config) {
         this.config = config;
@@ -57,6 +58,7 @@ export class SnakeAgentSession {
         this.orchestrator = new AgentFrameOrchestrator(this.config.aiBudget);
         this.activeGunBulletIds = [];
         this.lastDtMs = 0;
+        this.factionTargetRegistry = new FactionTargetRegistry();
     }
     registerAgentInstance(speciesId, instance) {
         const def = this.speciesById.get(speciesId);

@@ -1,5 +1,5 @@
 import { createObserverVisionFrame, getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
-class FactionTargetRegistry {
+export class FactionTargetRegistry {
     constructor() {
         this.claims = new Map(); // targetId -> { claimantId, distSq }
     }
@@ -35,18 +35,16 @@ export function beginSnakePerceptionTick(state, tickId) {
     if (snakeGame.lastVisionBeginTick === tickId) return;
     snakeGame.lastVisionBeginTick = tickId;
     refreshObserverVisionFrame(state);
-    if (snakeGame) {
-        if (!snakeGame.factionTargetRegistry) snakeGame.factionTargetRegistry = new FactionTargetRegistry();
-        snakeGame.factionTargetRegistry.clear();
-        for (const [headId, instance] of snakeGame.instancesByHeadId) {
-            if (instance.lifecycle !== "alive") continue;
-            const targetId = instance.intent?.getTargetId();
-            if (targetId != null) {
-                const target = state.entityRegistry.getLive(targetId);
-                if (target) {
-                    const distSq = (instance.head.x - target.x) * (instance.head.x - target.x) + (instance.head.y - target.y) * (instance.head.y - target.y);
-                    snakeGame.factionTargetRegistry.registerClaim(targetId, headId, distSq);
-                }
+    const registry = snakeGame.factionTargetRegistry;
+    registry.clear();
+    for (const [headId, instance] of snakeGame.instancesByHeadId) {
+        if (instance.lifecycle !== "alive") continue;
+        const targetId = instance.intent?.getTargetId();
+        if (targetId != null) {
+            const target = state.entityRegistry.getLive(targetId);
+            if (target) {
+                const distSq = (instance.head.x - target.x) * (instance.head.x - target.x) + (instance.head.y - target.y) * (instance.head.y - target.y);
+                registry.registerClaim(targetId, headId, distSq);
             }
         }
     }
