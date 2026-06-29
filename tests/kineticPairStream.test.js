@@ -79,15 +79,13 @@ describe("kinetic pair stream", () => {
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.deepEqual(pairKeys(kineticPairBuffer, frame), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
     });
-    it("moving body wakes sleeping overlapping neighbor during pair gather", () => {
+    it("moving body wakes sleeping overlapping neighbor during contact pass", () => {
         const mover = mockKineticCircle(0, 0, 10, 40, 0);
         const sleeper = mockKineticCircle(18, 0, 10, 0, 0);
         sleeper.isSleeping = true;
-        const frame = setupKineticTestFrame([mover, sleeper]);
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
-        gatherKineticCandidatePairs(frame, kineticPairBuffer);
+        const tick = createKineticTestTick([mover, sleeper]);
+        resolveKineticContactPass(tick);
         assert.equal(sleeper.isSleeping, false);
-        assert.equal(kineticPairBuffer.count, 1);
     });
 });
 describe("kinetic pair stream on proof props", () => {

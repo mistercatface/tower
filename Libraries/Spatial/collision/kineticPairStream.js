@@ -171,7 +171,6 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             if (keys.has(key)) continue;
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (neighbor.isSleeping && isKinematicallyActive(primary) && overlaps) spatialFrame.activateKineticBody(neighbor);
             if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) return added;
@@ -214,7 +213,6 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const physIdB = neighbor._physId;
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (neighbor.isSleeping && isKinematicallyActive(primary) && overlaps) spatialFrame.activateKineticBody(neighbor);
             if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
