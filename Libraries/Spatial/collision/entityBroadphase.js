@@ -164,6 +164,7 @@ export function shouldResolveKineticPair(a, b, overlaps) {
 export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (primary === other) return false;
     if (!other.strategy?.isKinetic) return false;
-    if (primary.id >= other.id) return false;
+    const otherActive = other._activeSlot != null && other._activeSlot >= 0;
+    if (otherActive && primary.id >= other.id) return false;
     return shouldResolveKineticPair(primary, other, overlaps);
 }
