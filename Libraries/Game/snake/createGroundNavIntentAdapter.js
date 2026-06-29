@@ -317,185 +317,178 @@ export function buildGroundNavIntentAdapterOptions({ state, instance, brain, syn
         };
     return adapter;
 }
-export function createGroundNavIntentAdapter({
-    brain,
-    sync,
-    headNav,
-    instance,
-    profile,
-    intentConfig,
-    visibleSourceResolvers,
-    resolveExploreCell,
-    agentCtx,
-    visionRange,
-    seekArrivalRadius,
-    resolveSegmentCount = null,
-    config,
-    intentMemoryOptions,
-    reachSlots,
-    buildDecisionContext,
-    decisionContext,
-    afterPerceive = null,
-    resolveCommittedTarget,
-    setFleeDestination,
-    setCombatStrafeDestination = null,
-    sprintConfig,
-    fleeHeldOn = "flee",
-    clearMemoryOnIntentClear = false,
-    onIntentClear = null,
-    transitionReason,
-    modeExitDelayTicks = { flee: 30 },
-    policyExtensions = [],
-}) {
-    const resolvedVision = visionRange ?? config.visionRange;
-    const locomotion = createCellTargetLocomotion(headNav);
-    const intentMemory = createAgentIntentMemory(intentMemoryOptions);
-    const fleeLatch = createFleeIntentLatch(config);
-    const arrivalStamper = createBrainArrivalStamper(brain);
-    const staleCache = createFlowReachStaleCache();
-    const reachSlotList = createFlowTargetStepSlots(reachSlots);
-    const visible = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 };
-    const routeStatus = { hasDestination: false, hasRoute: false, replanPending: false, routeFailed: false, destReached: false, stuckFrames: 0, pathLen: null };
-    const committed = { mode: null, targetId: null };
-    const reachSteps = {};
-    for (let i = 0; i < reachSlotList.length; i++) reachSteps[reachSlotList[i].key] = null;
-    const flowReachContext = { state: null, agent: null, staleCache, range: config.decisionReachHorizon ?? 32, flowResult: { slot: null, steps: null, ready: false } };
-    const perceiveWorld = { decisionContext };
-    let intent = null;
-    let lastDecisionContext = decisionContext;
-    const policyScratch = { mode: null, targetId: null, reason: null };
-    const perceptionOptions = {
-        readVisionFrame: requireSnakeVisionFrame,
-        agentRange: config.fleeRange ?? resolvedVision.range,
-        resolveRelationship: resolveRelationshipForInstances,
-        committedTargetId: null,
-        targetStickyFactor: config.targetingHysteresis.targetStickyFactor ?? 0.75,
-    };
-    const intentContext = {
-        agent: null,
-        state: null,
-        world: null,
-        policy: policyScratch,
-        mode: null,
-        targetId: null,
-        ticks: 0,
-        lastModeChangeTick: 0,
-        grid: null,
-        dest: null,
-        target: null,
-        fleeTarget: null,
-        locomotion: null,
-        dtMs: 16,
-    };
-    const states = createIntentStates(intentConfig.huntMode, instance, profile, { locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, setCombatStrafeDestination });
-    const perceiveWithMemory = (agent, state) => {
-        perceptionOptions.committedTargetId = intent.getTargetId();
-        perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, perceptionOptions);
-        intentMemory.update(agent, state, visible);
-        const memoryWorld = intentMemory.enrichWorld(state, visible);
-        if (intent) {
-            committed.mode = intent.getMode();
-            committed.targetId = intent.getTargetId();
-        } else {
-            committed.mode = null;
-            committed.targetId = null;
+export class GroundNavIntentAdapter extends AgentIntentFSM {
+    constructor(options) {
+        const {
+            brain,
+            sync,
+            headNav,
+            instance,
+            profile,
+            intentConfig,
+            visibleSourceResolvers,
+            resolveExploreCell,
+            agentCtx,
+            visionRange,
+            seekArrivalRadius,
+            resolveSegmentCount = null,
+            config,
+            intentMemoryOptions,
+            reachSlots,
+            buildDecisionContext,
+            decisionContext,
+            afterPerceive = null,
+            resolveCommittedTarget,
+            setFleeDestination,
+            setCombatStrafeDestination = null,
+            sprintConfig,
+            fleeHeldOn = "flee",
+            clearMemoryOnIntentClear = false,
+            onIntentClear = null,
+            transitionReason,
+            modeExitDelayTicks = { flee: 30 },
+            policyExtensions = [],
+        } = options;
+        const resolvedVision = visionRange ?? config.visionRange;
+        const locomotion = createCellTargetLocomotion(headNav);
+        const intentMemory = createAgentIntentMemory(intentMemoryOptions);
+        const fleeLatch = createFleeIntentLatch(config);
+        const arrivalStamper = createBrainArrivalStamper(brain);
+        const staleCache = createFlowReachStaleCache();
+        const reachSlotList = createFlowTargetStepSlots(reachSlots);
+        const visible = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0 };
+        const routeStatus = { hasDestination: false, hasRoute: false, replanPending: false, routeFailed: false, destReached: false, stuckFrames: 0, pathLen: null };
+        const committed = { mode: null, targetId: null };
+        const reachSteps = {};
+        for (let i = 0; i < reachSlotList.length; i++) reachSteps[reachSlotList[i].key] = null;
+        const flowReachContext = { state: null, agent: null, staleCache, range: config.decisionReachHorizon ?? 32, flowResult: { slot: null, steps: null, ready: false } };
+        const perceiveWorld = { decisionContext };
+        const policyScratch = { mode: null, targetId: null, reason: null };
+        const perceptionOptions = {
+            readVisionFrame: requireSnakeVisionFrame,
+            agentRange: config.fleeRange ?? resolvedVision.range,
+            resolveRelationship: resolveRelationshipForInstances,
+            committedTargetId: null,
+            targetStickyFactor: config.targetingHysteresis.targetStickyFactor ?? 0.75,
+        };
+        const intentContext = {
+            agent: null,
+            state: null,
+            world: null,
+            policy: policyScratch,
+            mode: null,
+            targetId: null,
+            ticks: 0,
+            lastModeChangeTick: 0,
+            grid: null,
+            dest: null,
+            target: null,
+            fleeTarget: null,
+            locomotion: null,
+            dtMs: 16,
+        };
+        const states = createIntentStates(intentConfig.huntMode, instance, profile, { locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, setCombatStrafeDestination });
+        super({
+            initialMode: "explore",
+            sync: (agent, state) => {
+                sync(agent, state);
+                arrivalStamper.stamp(agent, state.obstacleGrid);
+            },
+            perceiveWorld: (agent, state) => {
+                perceptionOptions.committedTargetId = this.getTargetId();
+                perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, perceptionOptions);
+                intentMemory.update(agent, state, visible);
+                const memoryWorld = intentMemory.enrichWorld(state, visible);
+                committed.mode = this.getMode();
+                committed.targetId = this.getTargetId();
+                readAgentRouteStatusInto(routeStatus, locomotion, agent, state);
+                flowReachContext.state = state;
+                flowReachContext.agent = agent;
+                buildFlowTargetStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlotList, flowReachContext);
+                buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
+                afterPerceive?.(decisionContext, agent, state);
+                this._lastDecisionContext = decisionContext;
+                return perceiveWorld;
+            },
+            pickPolicy: (world) => {
+                applyFleePolicyLatch({ world, fleeLatch, currentMode: this.getMode(), sprintConfig, fleeHeldOn, policyOut: policyScratch });
+                for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].apply({ world, currentMode: this.getMode(), sprintConfig, policyIn: policyScratch, policyOut: policyScratch });
+                return policyScratch;
+            },
+            transitionReason,
+            states,
+            modeExitDelayTicks,
+            contextFrame: intentContext,
+            augmentContext: (ctx) => augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarget }),
+            onClear: (agent, state) => {
+                arrivalStamper.reset();
+                fleeLatch.clear();
+                for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].clear?.();
+                if (clearMemoryOnIntentClear) intentMemory.clear();
+                onIntentClear?.();
+                locomotion.clear(agent, state);
+                if (agent) agent.navStepPenalty = null;
+            },
+            onResetMode: (agent, state) => {
+                arrivalStamper.reset();
+                fleeLatch.clear();
+                for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].clear?.();
+                locomotion.clearDestination(agent, state);
+            },
+            onTransition: (agent, state) => {
+                locomotion.clearDestination(agent, state);
+            },
+        });
+        this.brain = brain;
+        this.agentCtx = agentCtx;
+        this.locomotion = locomotion;
+        this.intentMemory = intentMemory;
+        this.intentContext = intentContext;
+        this.headId = agentCtx.instance.headId;
+        this.sprintWanted = false;
+        this._lastDecisionContext = decisionContext;
+    }
+    tick(agent, state, dtMs = 16) {
+        this.intentContext.dtMs = dtMs;
+        this.perceive(agent, state);
+        const choice = this.transition(agent, state);
+        const currentMode = this.getMode();
+        if (currentMode !== "shoot_enemy" && this.agentCtx.instance.combatAction) {
+            const action = this.agentCtx.instance.combatAction;
+            if (action.phase === "reloading") {
+                action.timerMs = Math.max(0, action.timerMs - dtMs);
+                if (action.timerMs <= 0) resetInstanceRangedCombatAction(this.agentCtx.instance);
+            } else if (action.phase === "reacting" || action.phase === "fire_delay") resetInstanceRangedCombatAction(this.agentCtx.instance);
         }
-        readAgentRouteStatusInto(routeStatus, locomotion, agent, state);
-        flowReachContext.state = state;
-        flowReachContext.agent = agent;
-        buildFlowTargetStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlotList, flowReachContext);
-        buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
-        afterPerceive?.(decisionContext, agent, state);
-        lastDecisionContext = decisionContext;
-        return perceiveWorld;
-    };
-    const resetArrivalAndLatch = () => {
-        arrivalStamper.reset();
-        fleeLatch.clear();
-        for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].clear?.();
-    };
-    intent = new AgentIntentFSM({
-        initialMode: "explore",
-        sync(agent, state) {
-            sync(agent, state);
-            arrivalStamper.stamp(agent, state.obstacleGrid);
-        },
-        perceiveWorld: perceiveWithMemory,
-        pickPolicy: (world) => {
-            applyFleePolicyLatch({ world, fleeLatch, currentMode: intent?.getMode(), sprintConfig, fleeHeldOn, policyOut: policyScratch });
-            for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].apply({ world, currentMode: intent?.getMode(), sprintConfig, policyIn: policyScratch, policyOut: policyScratch });
-            return policyScratch;
-        },
-        transitionReason,
-        states,
-        modeExitDelayTicks,
-        contextFrame: intentContext,
-        augmentContext: (ctx) => augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarget }),
-        onClear(agent, state) {
-            resetArrivalAndLatch();
-            if (clearMemoryOnIntentClear) intentMemory.clear();
-            onIntentClear?.();
-            locomotion.clear(agent, state);
-            if (agent) agent.navStepPenalty = null;
-        },
-        onResetMode(agent, state) {
-            resetArrivalAndLatch();
-            locomotion.clearDestination(agent, state);
-        },
-        onTransition(agent, state) {
-            locomotion.clearDestination(agent, state);
-        },
-    });
-    const base = {
-        ...intent,
-        getMode: () => intent.getMode(),
-        getTargetId: () => intent.getTargetId(),
-        clearTargetId: () => intent.clearTargetId(),
-        getLastTransitionReason: () => intent.getLastTransitionReason(),
-        perceive: (agent, state) => intent.perceive(agent, state),
-        transition: (agent, state) => intent.transition(agent, state),
-        headId: agentCtx.instance.headId,
-        sprintWanted: false,
-        tick(agent, state, dtMs = 16) {
-            intentContext.dtMs = dtMs;
-            intent.perceive(agent, state);
-            const choice = intent.transition(agent, state);
-            const currentMode = intent.getMode();
-            if (currentMode !== "shoot_enemy" && agentCtx.instance.combatAction) {
-                const action = agentCtx.instance.combatAction;
-                if (action.phase === "reloading") {
-                    action.timerMs = Math.max(0, action.timerMs - dtMs);
-                    if (action.timerMs <= 0) resetInstanceRangedCombatAction(agentCtx.instance);
-                } else if (action.phase === "reacting" || action.phase === "fire_delay") resetInstanceRangedCombatAction(agentCtx.instance);
-            }
-            base.sprintWanted = lastDecisionContext.sprintIntent.want === true;
-            return choice;
-        },
-        getDestination() {
-            return locomotion.getDestination();
-        },
-        getDecisionContext() {
-            return lastDecisionContext;
-        },
-        resetMemory() {
-            brain.clearMemory();
-            intentMemory.clear();
-        },
-        clear(agent, state) {
-            intent.clear(agent, state);
-            intentMemory.clear();
-        },
-        clearTrackedGoal() {
-            const id = intent.getTargetId();
-            intent.clearTargetId();
-            if (id != null) intentMemory.clearTarget(id);
-        },
-        resetMode() {
-            intent.resetMode(null, null);
-        },
-        hasMoveTarget() {
-            return locomotion.hasMoveTarget(null, null);
-        },
-    };
-    return base;
+        this.sprintWanted = this._lastDecisionContext.sprintIntent.want === true;
+        return choice;
+    }
+    getDestination() {
+        return this.locomotion.getDestination();
+    }
+    getDecisionContext() {
+        return this._lastDecisionContext;
+    }
+    resetMemory() {
+        this.brain.clearMemory();
+        this.intentMemory.clear();
+    }
+    clear(agent, state) {
+        super.clear(agent, state);
+        this.intentMemory.clear();
+    }
+    clearTrackedGoal() {
+        const id = this.getTargetId();
+        this.clearTargetId();
+        if (id != null) this.intentMemory.clearTarget(id);
+    }
+    resetMode() {
+        super.resetMode(null, null);
+    }
+    hasMoveTarget() {
+        return this.locomotion.hasMoveTarget(null, null);
+    }
+}
+export function createGroundNavIntentAdapter(options) {
+    return new GroundNavIntentAdapter(options);
 }
