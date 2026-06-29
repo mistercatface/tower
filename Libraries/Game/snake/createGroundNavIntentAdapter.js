@@ -84,49 +84,6 @@ function applyFleePolicyLatch({ world, fleeLatch, currentMode, sprintConfig, fle
     ctx.policyLatch = { flee: fleeLatch.snapshot() };
     return policyOut;
 }
-function createStableCellTargetIntentEffects({ locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, refreshCombatStrafeDestination, getContext, seekOptionsScratch }) {
-    return {
-        clearDestination() {
-            const ctx = getContext();
-            locomotion.clearDestination(ctx.agent, ctx.state);
-        },
-        setExploreDestination() {
-            const ctx = getContext();
-            const cell = resolveExploreCell(ctx.agent, ctx.state, brain.spatial, Math.random);
-            if (cell) locomotion.setExplore(ctx.agent, ctx.state, cell);
-            return cell;
-        },
-        setSeekDestination(target) {
-            const ctx = getContext();
-            if (!target) return;
-            const seekOptions = seekArrivalRadius(ctx.mode, ctx.agent, target, ctx.state);
-            if (typeof seekOptions === "object" && seekOptions !== null) {
-                seekOptionsScratch.arrivalRadius = seekOptions.arrivalRadius;
-                seekOptionsScratch.lockOnTarget = seekOptions.lockOnTarget;
-                seekOptionsScratch.terminalHoming = seekOptions.terminalHoming;
-            } else {
-                seekOptionsScratch.arrivalRadius = seekOptions;
-                seekOptionsScratch.lockOnTarget = undefined;
-                seekOptionsScratch.terminalHoming = undefined;
-            }
-            seekOptionsScratch.targetId = ctx.targetId;
-            locomotion.setSeek(ctx.agent, ctx.state, target, seekOptionsScratch);
-        },
-        updateSeekTarget(target) {
-            const ctx = getContext();
-            if (!target) return;
-            locomotion.updateSeekTarget(ctx.agent, ctx.state, target, { targetId: ctx.targetId });
-        },
-        setFleeDestination(avoidCell = null) {
-            const ctx = getContext();
-            return setFleeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell, locomotion });
-        },
-        setCombatStrafeDestination(avoidCell = null) {
-            const ctx = getContext();
-            return refreshCombatStrafeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell, locomotion });
-        },
-    };
-}
 function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarget }) {
     ctx.grid = ctx.state.obstacleGrid;
     ctx.dest = locomotion.getDestination();
@@ -165,10 +122,16 @@ function transitionReason(seekModes) {
 function hasRangedShootMode(profile) {
     return !!profile.decision?.modes?.shoot_enemy;
 }
-function createIntentStates(huntMode, instance, profile) {
-    const seek = createSeekIntentState();
-    const states = { explore: createExploreIntentState(), seek_food: seek, seek_ally: seek, flee: createFleeIntentState(), [huntMode]: seek };
-    if (hasRangedShootMode(profile) && instance.resolvedWeapon) states.shoot_enemy = createRangedShootIntentState(instance, () => instance.resolvedWeapon);
+function createIntentStates(huntMode, instance, profile, { locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, setCombatStrafeDestination }) {
+    const seek = createSeekIntentState({ locomotion, seekArrivalRadius });
+    const states = {
+        explore: createExploreIntentState({ locomotion, resolveExploreCell, brain }),
+        seek_food: seek,
+        seek_ally: seek,
+        flee: createFleeIntentState({ locomotion, setFleeDestination }),
+        [huntMode]: seek,
+    };
+    if (hasRangedShootMode(profile) && instance.resolvedWeapon) states.shoot_enemy = createRangedShootIntentState(instance, () => instance.resolvedWeapon, { setCombatStrafeDestination });
     return states;
 }
 function resolveCommittedTarget(committedSlots, id, world) {
@@ -324,6 +287,9 @@ export function buildGroundNavIntentAdapterOptions({ state, instance, brain, syn
         sync,
         headNav,
         agentCtx,
+        instance,
+        profile,
+        intentConfig: intent,
         visionRange: instance.visionRange,
         visibleSourceResolvers,
         resolveExploreCell,
@@ -341,7 +307,6 @@ export function buildGroundNavIntentAdapterOptions({ state, instance, brain, syn
         fleeHeldOn: intent.fleeHeldOn,
         clearMemoryOnIntentClear: intent.clearMemoryOnIntentClear,
         transitionReason: transitionReason(intent.seekModes),
-        states: createIntentStates(intent.huntMode, instance, profile),
         policyExtensions: hasRangedShoot ? [createRangedCombatPolicyExtension()] : [],
         modeExitDelayTicks: hasRangedShoot ? { flee: 30, shoot_enemy: 15 } : { flee: 30 },
         onIntentClear: hasRangedShoot ? () => resetInstanceRangedCombatAction(instance) : null,
@@ -356,6 +321,9 @@ export function createGroundNavIntentAdapter({
     brain,
     sync,
     headNav,
+    instance,
+    profile,
+    intentConfig,
     visibleSourceResolvers,
     resolveExploreCell,
     agentCtx,
@@ -376,7 +344,6 @@ export function createGroundNavIntentAdapter({
     clearMemoryOnIntentClear = false,
     onIntentClear = null,
     transitionReason,
-    states,
     modeExitDelayTicks = { flee: 30 },
     policyExtensions = [],
 }) {
@@ -404,7 +371,6 @@ export function createGroundNavIntentAdapter({
         committedTargetId: null,
         targetStickyFactor: config.targetingHysteresis.targetStickyFactor ?? 0.75,
     };
-    const seekOptionsScratch = { arrivalRadius: 0, lockOnTarget: undefined, terminalHoming: undefined, targetId: null };
     const intentContext = {
         agent: null,
         state: null,
@@ -419,20 +385,9 @@ export function createGroundNavIntentAdapter({
         target: null,
         fleeTarget: null,
         locomotion: null,
-        effects: null,
         dtMs: 16,
     };
-    const cellTargetEffects = createStableCellTargetIntentEffects({
-        locomotion,
-        resolveExploreCell,
-        brain,
-        seekArrivalRadius,
-        setFleeDestination,
-        refreshCombatStrafeDestination: setCombatStrafeDestination ?? (() => null),
-        getContext: () => intentContext,
-        seekOptionsScratch,
-    });
-    intentContext.effects = cellTargetEffects;
+    const states = createIntentStates(intentConfig.huntMode, instance, profile, { locomotion, resolveExploreCell, brain, seekArrivalRadius, setFleeDestination, setCombatStrafeDestination });
     const perceiveWithMemory = (agent, state) => {
         perceptionOptions.committedTargetId = intent.getTargetId();
         perceiveAgentWorldInto(visible, agent, agentCtx, state, visibleSourceResolvers, resolvedVision, perceptionOptions);
@@ -474,7 +429,6 @@ export function createGroundNavIntentAdapter({
         transitionReason,
         states,
         modeExitDelayTicks,
-        effects: cellTargetEffects,
         contextFrame: intentContext,
         augmentContext: (ctx) => augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarget }),
         onClear(agent, state) {
@@ -486,6 +440,9 @@ export function createGroundNavIntentAdapter({
         },
         onResetMode(agent, state) {
             resetArrivalAndLatch();
+            locomotion.clearDestination(agent, state);
+        },
+        onTransition(agent, state) {
             locomotion.clearDestination(agent, state);
         },
     });

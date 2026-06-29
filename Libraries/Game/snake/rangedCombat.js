@@ -231,41 +231,41 @@ function shouldRefreshCombatStrafe(ctx, strafeState, weapon) {
     if (ctx.locomotion.hasReachedDest(ctx.agent, ctx.grid)) return true;
     return false;
 }
-function maintainCombatStrafe(ctx, strafeState, weapon) {
+function maintainCombatStrafe(fsm, ctx, strafeState, weapon, { setCombatStrafeDestination }) {
     const combat = ctx.world.decisionContext.combatState;
     if (!combat?.hasLineOfSight || combat.tooClose || !ctx.target || ctx.target.isDead) {
         strafeState.lastCell = null;
         strafeState.repickAt = 0;
-        ctx.effects.clearDestination();
+        ctx.locomotion.clearDestination(ctx.agent, ctx.state);
         return;
     }
     if (!shouldRefreshCombatStrafe(ctx, strafeState, weapon)) {
-        ctx.effects.holdDestination("shoot_strafe");
+        fsm.holdDestination("shoot_strafe");
         return;
     }
-    const cell = ctx.effects.setCombatStrafeDestination(strafeState.lastCell);
+    const cell = setCombatStrafeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell: strafeState.lastCell, locomotion: ctx.locomotion });
     if (cell) {
         strafeState.lastCell = cell;
         strafeState.repickAt = ctx.ticks + strafeRepickTicks(weapon);
-        ctx.effects.setLastTransition("shoot_strafe");
+        fsm.setLastTransition("shoot_strafe");
         return;
     }
-    ctx.effects.holdDestination("shoot_strafe_hold");
+    fsm.holdDestination("shoot_strafe_hold");
 }
 // --- Ranged Shoot FSM State ---
-export function createRangedShootIntentState(instance, resolveWeapon) {
+export function createRangedShootIntentState(instance, resolveWeapon, { setCombatStrafeDestination }) {
     const strafeState = { lastCell: null, repickAt: 0 };
     return {
         /**
          * Executed upon entering the shoot_enemy state.
          */
-        enter(ctx) {
+        enter(fsm, ctx) {
             const weapon = resolveWeapon(instance);
             if (!weapon) return;
             const action = instance.combatAction;
             const combat = ctx.world.decisionContext.combatState;
             // 1. Maintain or initialize combat strafing movement
-            maintainCombatStrafe(ctx, strafeState, weapon);
+            maintainCombatStrafe(fsm, ctx, strafeState, weapon, { setCombatStrafeDestination });
             // 2. Start aiming reaction if the weapon is idle and ready to shoot
             if (action.phase === "idle" && combat?.canShoot && ctx.target) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
             else if (action.phase === "reacting")
@@ -275,7 +275,7 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
         /**
          * Executed every frame update while in shoot_enemy state.
          */
-        update(ctx) {
+        update(fsm, ctx) {
             const weapon = resolveWeapon(instance);
             if (!weapon) return;
             const action = instance.combatAction;
@@ -285,27 +285,27 @@ export function createRangedShootIntentState(instance, resolveWeapon) {
             switch (action.phase) {
                 case "reloading":
                     tickReloading(ctx, action, weapon, dtMs);
-                    maintainCombatStrafe(ctx, strafeState, weapon);
+                    maintainCombatStrafe(fsm, ctx, strafeState, weapon, { setCombatStrafeDestination });
                     // Transition out if the decision logic has shifted away from shooting
-                    if (ctx.policy.mode !== "shoot_enemy") ctx.effects.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
+                    if (ctx.policy.mode !== "shoot_enemy") fsm.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
                     return;
                 case "fire_delay":
                 case "reacting":
                     tickAimAndFire(ctx, instance, action, weapon, dtMs);
-                    maintainCombatStrafe(ctx, strafeState, weapon);
+                    maintainCombatStrafe(fsm, ctx, strafeState, weapon, { setCombatStrafeDestination });
                     return;
             }
             // Step 2: Handle target loss (dead or gone)
             if (!ctx.target || ctx.target.isDead) {
                 strafeState.lastCell = null;
                 strafeState.repickAt = 0;
-                ctx.effects.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
+                fsm.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
                 return;
             }
             // Step 3: Initiate shooting reaction if weapon is idle and eligible
             if (combat?.canShoot) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
             // Step 4: Continue maintaining lateral movement/positioning
-            maintainCombatStrafe(ctx, strafeState, weapon);
+            maintainCombatStrafe(fsm, ctx, strafeState, weapon, { setCombatStrafeDestination });
         },
     };
 }
