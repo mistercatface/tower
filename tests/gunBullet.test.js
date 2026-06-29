@@ -12,7 +12,7 @@ import { resolveGunBulletContacts, tickGunBullets, spawnGunBulletProjectile } fr
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
-import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
+import { syncBallAgentFacingAfterPhysics } from "./harness/agentTestCompat.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 describe("flee agent bullets and combat", () => {
     it("can spawn flee agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {

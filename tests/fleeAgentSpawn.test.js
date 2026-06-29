@@ -12,7 +12,7 @@ import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
-import { syncBallAgentFacingAfterPhysics } from "../Libraries/Game/snake/ballAgent.js";
+import { syncBallAgentFacingAfterPhysics } from "./harness/agentTestCompat.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";

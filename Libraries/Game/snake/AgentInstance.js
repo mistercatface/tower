@@ -5,25 +5,23 @@ import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/AgentProfiles.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
-import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/AgentProfiles.js";
+import { AGENT_PROFILE, getAgentProfile, isAliveAgentHead } from "../../AI/agents/AgentProfiles.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { GroundNavIntentAdapter } from "./GroundNavIntentAdapter.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { createSpatialCellMemory } from "../../AI/brain/brain.js";
-import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
-import { applyAgentGameplay } from "./applyAgentGameplay.js";
 import { RangedCombatActionState, resolveRangedWeapon } from "./GroundNavIntentAdapter.js";
-import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
-import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
 import { SNAKE_CHAIN_EXPORT_TYPE } from "./snakeScene.js";
-import { copySnakeChainTintFromHead } from "./snakeChainColor.js";
 import { canAgentEatSnakeFood, isSnakeFoodTarget } from "./snakeFood.js";
+import { rotateAngleTowards } from "../../Math/Angle.js";
+import { getPropVisualTint, setPropVisualTint } from "../../Color/visualOverride.js";
+import { syncKineticRigidBody } from "../../Motion/bodyMass.js";
+import { COMBAT_TRAIT_DEFAULTS } from "./snakeCombat.js";
 export class AgentInstance {
     constructor(state, { profileId, head, spawnGroupId, lifecycle = "alive", memberIds = [] }) {
         this.profileId = profileId;
@@ -140,6 +138,19 @@ export class AgentInstance {
             registry.instancesByMemberId.set(this.memberIds[i], this);
         }
         return this.memberIds;
+    }
+    syncBallAgentFacingAfterPhysics(dtMs) {
+        if (this.combatTraits.topology !== "ball") return;
+        const decisionCtx = this.intent?.getDecisionContext();
+        const combat = decisionCtx?.combatState;
+        const enemy = combat?.visibleEnemy ?? combat?.enemy;
+        const hasLos = combat?.hasLineOfSight;
+        if (enemy && hasLos && !enemy.isDead) {
+            syncBallAgentFacingToTarget(this.head, enemy, dtMs, this.aimTurnRadPerSec);
+            return;
+        }
+        if (!shouldSyncBallAgentFacingToVelocity(this.combatAction, this.intent)) return;
+        syncBallAgentFacingToVelocity(this.head, dtMs, this.aimTurnRadPerSec);
     }
     orderedMembers(state) {
         return getLinearChainOrderedMembers(state.kinetic, this.headId);
@@ -584,4 +595,129 @@ export class AgentAutosim {
         const drainMultiplier = this.instance.hungerDrainMultiplier();
         if (!fedThisTick) this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
     }
+}
+// ==========================================
+// Consolidated ballAgent, steeringLease, applyAgentGameplay, relationships, and colors helpers
+// ==========================================
+export const DEFAULT_BALL_FACING_TURN_RAD_PER_SEC = Math.PI * 1.5;
+const HEADING_SPEED_MIN = 0.25;
+export function shouldSyncBallAgentFacingToVelocity(combatAction, intent = null) {
+    if (intent?.getMode() === "flee") return true;
+    const phase = combatAction?.phase;
+    return phase !== "reacting" && phase !== "fire_delay" && phase !== "reloading";
+}
+export function syncBallAgentFacingToVelocity(head, dtMs, turnRadPerSec = DEFAULT_BALL_FACING_TURN_RAD_PER_SEC) {
+    const vx = head.vx ?? 0;
+    const vy = head.vy ?? 0;
+    const speed = Math.hypot(vx, vy);
+    if (speed < HEADING_SPEED_MIN) return;
+    const moveAngle = Math.atan2(vy, vx);
+    const maxStep = turnRadPerSec * (dtMs / 1000);
+    head.facing = rotateAngleTowards(head.facing ?? moveAngle, moveAngle, maxStep);
+}
+export function syncBallAgentFacingToTarget(head, target, dtMs, turnRadPerSec = DEFAULT_BALL_FACING_TURN_RAD_PER_SEC) {
+    if (!target || target.isDead) return head.facing ?? 0;
+    const targetAngle = Math.atan2(target.y - head.y, target.x - head.x);
+    const maxStep = turnRadPerSec * (dtMs / 1000);
+    head.facing = rotateAngleTowards(head.facing ?? targetAngle, targetAngle, maxStep);
+    return head.facing;
+}
+export function clearSnakeSteeringLeaseFromProp(prop) {
+    delete prop._snakeSteering;
+    clearGroundRollDrive(prop);
+}
+export function maySnakeHeadReceiveRoll(world, prop) {
+    const snakeGame = world?.sandbox?.snakeGame;
+    if (!snakeGame) return true;
+    const instance = snakeGame.instancesByHeadId.get(prop.id);
+    if (instance && instance.lifecycle === "alive" && isAliveAgentHead(snakeGame.registry, prop.id)) {
+        const lease = prop._snakeSteering;
+        return !!lease && instance.steeringEpoch === lease.epoch;
+    }
+    const isChainHead = getSandboxEntityMeta(world).isChainHead(prop.id);
+    if (isChainHead || prop._snakeSteering) {
+        clearSnakeSteeringLeaseFromProp(prop);
+        return false;
+    }
+    return true;
+}
+export function bakeRelationshipRules(profile, config) {
+    const baked = {};
+    for (const [targetId, rule] of Object.entries(profile.relationships ?? {})) {
+        if (typeof rule === "string") {
+            baked[targetId] = rule;
+            continue;
+        }
+        const r = { ...rule };
+        if (rule.type === "sizeBand") r._maxGap = rule.maxSegmentGap ?? profile.rivalBand?.maxSegmentGap ?? config.rivalBand?.maxSegmentGap ?? 2;
+        if (rule.type === "proximity") r._range = rule.range ?? profile.attackRange ?? config.shared?.lethalThreatRange ?? 48;
+        baked[targetId] = r;
+    }
+    return baked;
+}
+function readInstanceSegmentCount(instance) {
+    return instance.memberIds.length;
+}
+function resolveSizeBand(seekerSegs, targetSegs, maxGap) {
+    if (Math.abs(seekerSegs - targetSegs) <= maxGap) return "rival";
+    if (targetSegs > seekerSegs) return "threat";
+    if (targetSegs < seekerSegs) return "prey";
+    return "neutral";
+}
+function resolveFactionRelationship(seekerFaction, targetFaction, rule) {
+    if (!seekerFaction || !targetFaction) return "neutral";
+    if (seekerFaction === targetFaction) return rule.same ?? "ally";
+    return rule.different ?? "prey";
+}
+function resolveSizeBandRelationshipForInstances(seekerInstance, targetInstance, rule) {
+    const seekerFaction = seekerInstance.head.faction ?? null;
+    const targetFaction = targetInstance.head.faction ?? null;
+    if (rule.sameFaction != null) {
+        if (!seekerFaction || !targetFaction) return "neutral";
+        if (seekerFaction === targetFaction) return rule.sameFaction;
+    }
+    return resolveSizeBand(readInstanceSegmentCount(seekerInstance), readInstanceSegmentCount(targetInstance), rule._maxGap);
+}
+function resolveProximityRelationship(rule, distSq) {
+    if (distSq == null) return rule.far ?? "neutral";
+    return distSq <= rule._range * rule._range ? rule.near : (rule.far ?? "neutral");
+}
+export function resolveRelationshipForInstances(seekerInstance, targetInstance, distSq = null) {
+    const rule = seekerInstance.relationshipRules[targetInstance.profileId];
+    if (rule == null) return "neutral";
+    if (typeof rule === "string") return rule;
+    if (rule.type === "proximity") return resolveProximityRelationship(rule, distSq);
+    if (rule.type === "faction") return resolveFactionRelationship(seekerInstance.head.faction ?? null, targetInstance.head.faction ?? null, rule);
+    if (rule.type === "sizeBand") return resolveSizeBandRelationshipForInstances(seekerInstance, targetInstance, rule);
+    return "neutral";
+}
+export function applyAgentGameplay(spec, prop) {
+    if (spec.maxSpeed != null || spec.accel != null) {
+        if (!prop.strategy.groundNav) prop.strategy.groundNav = {};
+        if (spec.maxSpeed != null) prop.strategy.groundNav.maxSpeed = spec.maxSpeed;
+        if (spec.accel != null) prop.strategy.groundNav.accel = spec.accel;
+    }
+    if (spec.friction != null) prop.strategy.friction = spec.friction;
+    if (spec.density != null) {
+        prop.strategy.density = spec.density;
+        if (prop.strategy.isKinetic) syncKineticRigidBody(prop);
+    }
+}
+export function resolveAgentTeamForIndex(profile, index) {
+    const teams = profile.teams;
+    if (!Array.isArray(teams) || teams.length === 0) return { faction: profile.faction ?? "neutral", color: null };
+    return teams[index % teams.length] ?? teams[0];
+}
+export function resolveAgentTeamForFaction(profile, faction) {
+    const teams = profile.teams;
+    if (Array.isArray(teams)) for (let i = 0; i < teams.length; i++) if (teams[i].faction === faction) return teams[i];
+    return { faction, color: null };
+}
+export function applySnakeChainTint(members, tintHex) {
+    if (tintHex == null) return;
+    for (let i = 0; i < members.length; i++) setPropVisualTint(members[i], tintHex);
+}
+export function copySnakeChainTintFromHead(head, prop) {
+    const tint = getPropVisualTint(head);
+    if (tint != null) setPropVisualTint(prop, tint);
 }

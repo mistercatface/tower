@@ -14,7 +14,7 @@ import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hp
 import { createCellTargetHpaNav } from "../../Libraries/Sandbox/groundNav/cellTargetHpaNav.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeChainSpawnOptions, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
-import { applyAgentGameplay } from "../../Libraries/Game/snake/applyAgentGameplay.js";
+import { applyAgentGameplay } from "./agentTestCompat.js";
 import { getAgentHunger, setAgentHunger, createAgentAutosim } from "./agentTestCompat.js";
 import { AGENT_PROFILE } from "../../Libraries/AI/agents/AgentProfiles.js";
 import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
@@ -27,7 +27,7 @@ import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/AgentPr
 import { FollowCamera } from "../../Libraries/Sandbox/FollowCamera.js";
 import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { beginSnakePerceptionFrame, requireSnakeVisionFrame } from "../../Libraries/Game/snake/snakePerception.js";
-import { resolveRelationshipForInstances } from "../../Libraries/Game/snake/agentRelationships.js";
+import { resolveRelationshipForInstances } from "./agentTestCompat.js";
 import { getObserverVisionFrame } from "../../Libraries/Navigation/perception/observerVisionFrame.js";
 import { getPropCategoryIndex } from "../../GameState/SandboxWorldState.js";
 export function buildTestAgentPerceptionOptions(visionRange, shared, agentCtx, committedTargetId) {

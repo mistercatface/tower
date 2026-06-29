@@ -1,8 +1,45 @@
-import { AgentMetabolism, Brain, AgentAutosim, buildNavStepPenaltyFromSpatialMemory, getSnakeChainRadius, growSnakeChainAfterMeal } from "../../Libraries/Game/snake/AgentInstance.js";
+import {
+    AgentMetabolism,
+    Brain,
+    AgentAutosim,
+    buildNavStepPenaltyFromSpatialMemory,
+    getSnakeChainRadius,
+    growSnakeChainAfterMeal,
+    applyAgentGameplay,
+    resolveRelationshipForInstances,
+    bakeRelationshipRules,
+    resolveAgentTeamForIndex,
+    resolveAgentTeamForFaction,
+    applySnakeChainTint,
+    copySnakeChainTintFromHead
+} from "../../Libraries/Game/snake/AgentInstance.js";
 import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentIntentMemory, ModePolicyLatch, resolveRangedWeapon } from "../../Libraries/Game/snake/GroundNavIntentAdapter.js";
+import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "../../Libraries/Game/snake/snakeCombat.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
-export { targetFromMemoryRecord, buildNavStepPenaltyFromSpatialMemory, resolveRangedWeapon, getSnakeChainRadius, growSnakeChainAfterMeal };
+export {
+    targetFromMemoryRecord,
+    buildNavStepPenaltyFromSpatialMemory,
+    resolveRangedWeapon,
+    getSnakeChainRadius,
+    growSnakeChainAfterMeal,
+    applyAgentGameplay,
+    resolveRelationshipForInstances,
+    bakeRelationshipRules,
+    resolveAgentTeamForIndex,
+    resolveAgentTeamForFaction,
+    applySnakeChainTint,
+    copySnakeChainTintFromHead,
+    isBallCombatTopology,
+    isChainCombatTopology,
+    shouldSkipPreyHeadRamKill
+};
+
+export function syncBallAgentFacingAfterPhysics(instance, dtMs) {
+    if (instance && typeof instance.syncBallAgentFacingAfterPhysics === "function") {
+        instance.syncBallAgentFacingAfterPhysics(dtMs);
+    }
+}
 
 // --- Agent Metabolism Legacy Wrappers ---
 export function createAgentMetabolism(profile) {

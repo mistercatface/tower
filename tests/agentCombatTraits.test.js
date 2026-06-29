@@ -7,7 +7,7 @@ import {
     isChainCombatTopology,
     matchesBrainRamResolver,
     shouldSkipPreyHeadRamKill,
-} from "../Libraries/Game/snake/agentCombatTraits.js";
+} from "./harness/agentTestCompat.js";
 
 function combatTraits(profileId) {
     return { ...COMBAT_TRAIT_DEFAULTS, ...getAgentProfile(profileId).combat };
