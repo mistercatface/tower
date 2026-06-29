@@ -240,6 +240,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 sprintFleeMinHunger: 0.1,
                 outnumberedFleeBonus: 0.4,
                 sprintFoodCostPenalty: 40,
+                desiredAmmo: 30,
                 ammoNeedBonus: 200,
                 riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 },
                 effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } },
