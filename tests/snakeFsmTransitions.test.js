@@ -15,7 +15,7 @@ import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Li
 import { createGroundNavIntentAdapter, buildGroundNavIntentAdapterOptions, resolveSnakeExploreCell } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
-import { createAgentMetabolism } from "../Libraries/Game/snake/agentMetabolism.js";
+import { createAgentMetabolism } from "./harness/agentTestCompat.js";
 import { createBrain, createSpatialBrainSync } from "../Libraries/Game/snake/agentAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";

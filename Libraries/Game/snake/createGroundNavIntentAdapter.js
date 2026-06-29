@@ -17,7 +17,7 @@ import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
-import { getAgentHunger } from "./agentMetabolism.js";
+
 import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
@@ -156,7 +156,7 @@ function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, age
         reachSteps,
         cellSize: state.obstacleGrid.cellSize,
         shared: agentCtx.session.config.shared,
-        foodFraction: getAgentHunger(instance.metabolism),
+        foodFraction: instance.metabolism.getHunger(),
         combatStrafeMaxSpeed: instance.combatStrafeMaxSpeed ?? instance.walkMaxSpeed * 0.5,
         agentInstance: instance,
         instance: instance,

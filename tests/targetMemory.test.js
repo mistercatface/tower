@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createTargetMemory, targetFromMemoryRecord } from "../Libraries/AI/memory/targetMemory.js";
+import { createTargetMemory, targetFromMemoryRecord } from "./harness/agentTestCompat.js";
 
 const grid = {
     cellSize: 10,

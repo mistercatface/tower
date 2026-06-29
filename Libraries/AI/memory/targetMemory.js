@@ -63,6 +63,3 @@ export class TargetMemory {
         for (const kind of this.kinds) if (this.records[kind]?.id === id) this.records[kind] = null;
     }
 }
-export function createTargetMemory(kinds, ttlByKind) {
-    return new TargetMemory(kinds, ttlByKind);
-}

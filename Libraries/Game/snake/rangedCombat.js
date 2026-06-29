@@ -41,20 +41,7 @@ export class RangedCombatActionState {
         return this.phase === "reacting" || this.phase === "fire_delay" || this.phase === "reloading";
     }
 }
-export function createRangedCombatActionState() {
-    return new RangedCombatActionState();
-}
-export function resetRangedCombatAction(action) {
-    if (action) action.reset();
-}
-export function rangedCombatActionOnCooldown(action) {
-    if (!action) return false;
-    return typeof action.isOnCooldown === "function" ? action.isOnCooldown() : action.phase === "fire_delay" || action.phase === "reloading";
-}
-export function rangedCombatActionIsBusy(action) {
-    if (!action) return false;
-    return typeof action.isBusy === "function" ? action.isBusy() : action.phase === "reacting" || action.phase === "fire_delay" || action.phase === "reloading";
-}
+
 export function deriveRangedCombatStateInto(out, ctx, input, profile) {
     const weapon = input.agentInstance?.resolvedWeapon ?? resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
     if (!weapon) {
@@ -82,8 +69,8 @@ export function deriveRangedCombatStateInto(out, ctx, input, profile) {
     const inWeaponRange = distWorld != null && distWorld <= maxRange;
     const tooClose = distWorld != null && distWorld <= fleeRange;
     const phase = action?.phase ?? "idle";
-    const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
-    const busy = action ? rangedCombatActionIsBusy(action) : false;
+    const onCooldown = action ? action.isOnCooldown() : false;
+    const busy = action ? action.isBusy() : false;
     const hasAmmo = input.agentInstance ? input.agentInstance.ammo > 0 : input.instance ? input.instance.ammo > 0 : true;
     const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle" && hasAmmo;
     const hasIdAdvantage = seeker && enemy && seeker.id != null && enemy.id != null ? seeker.id > enemy.id : false;
@@ -191,7 +178,7 @@ function aimReadyForShot(ctx, agent, target, action, weapon) {
 function verifyTargetValid(ctx, action, weapon, target, dtMs) {
     // 1. Target must be alive and registered
     if (!target || target.isDead) {
-        resetRangedCombatAction(action);
+        action.reset();
         return false;
     }
     // 2. Target must be within weapon max range and in line of sight
@@ -201,7 +188,7 @@ function verifyTargetValid(ctx, action, weapon, target, dtMs) {
         // Increment frame-based lost timer
         action.lostLosMs = (action.lostLosMs ?? 0) + dtMs;
         const reachedToleranceLimit = action.lostLosMs > (weapon.aimLostTolerateMs ?? 200);
-        if (reachedToleranceLimit) resetRangedCombatAction(action);
+        if (reachedToleranceLimit) action.reset();
         return false;
     }
     // Reset lost timer upon clear visibility
@@ -244,7 +231,7 @@ function tickAimAndFire(ctx, instance, action, weapon, dtMs) {
                 action.phase = "reloading";
                 action.timerMs = weapon.reloadMs ?? 500;
             }
-        } else resetRangedCombatAction(action);
+        } else action.reset();
 }
 function tickReloading(ctx, action, weapon, dtMs) {
     const agent = ctx.agent;
@@ -252,7 +239,7 @@ function tickReloading(ctx, action, weapon, dtMs) {
     const target = resolveLiveTarget(ctx);
     const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (target && !target.isDead && combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
-    if (action.timerMs <= 0) resetRangedCombatAction(action);
+    if (action.timerMs <= 0) action.reset();
 }
 function strafeRepickTicks(weapon) {
     return weapon.combatMovement?.repickTicks ?? 45;
@@ -343,7 +330,7 @@ export function createRangedShootIntentState(instance, resolveWeapon, { setComba
     };
 }
 export function resetInstanceRangedCombatAction(instance) {
-    resetRangedCombatAction(instance.combatAction);
+    if (instance.combatAction) instance.combatAction.reset();
 }
 export function createRangedCombatPolicyExtension() {
     const shootLatch = createModePolicyLatch({
@@ -353,13 +340,13 @@ export function createRangedCombatPolicyExtension() {
         refreshWhen: ({ world }) => {
             const combat = world.decisionContext.combatState;
             if (!combat) return false;
-            if (rangedCombatActionIsBusy(combat)) return true;
+            if (combat.busy) return true;
             return combat.canShoot;
         },
         canRelease: ({ world, policy }) => {
             const combat = world.decisionContext.combatState;
             if (!combat) return true;
-            if (rangedCombatActionIsBusy(combat)) return false;
+            if (combat.busy) return false;
             if (policy.mode === "flee") return true;
             if (combat.canShoot) return false;
             return combat.phase === "idle" || combat.phase == null;

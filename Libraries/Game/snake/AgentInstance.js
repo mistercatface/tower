@@ -6,7 +6,7 @@ import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createAgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { advanceAgentMetabolismHunger, createAgentMetabolism, feedAgentMetabolism } from "./agentMetabolism.js";
+import { AgentMetabolism } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/AgentProfiles.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
@@ -15,7 +15,7 @@ import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/AgentProfiles.js
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
 import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
-import { createRangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
+import { RangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
@@ -43,7 +43,7 @@ export class AgentInstance {
         const hasWeapon = !!(profile.weapon || profile.decision?.modes?.shoot_enemy);
         this.ammo = profile.initialAmmo ?? (hasWeapon ? 10 : 0);
         this.profile = profile;
-        this.metabolism = createAgentMetabolism(profile);
+        this.metabolism = new AgentMetabolism(profile);
         this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this.bodyGameplay = profile.gameplay.body;
         this.walkMaxSpeed = profile.gameplay.leader.maxSpeed;
@@ -68,7 +68,7 @@ export class AgentInstance {
             this.combatStrafeMaxSpeed = this.walkMaxSpeed * (combatMovement.speedFraction ?? 0.5);
             this.combatStrafeAccel = this.walkAccel * (combatMovement.accelFraction ?? 0.6);
         }
-        this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? createRangedCombatActionState() : null;
+        this.combatAction = this.resolvedWeapon || profile?.decision?.modes?.shoot_enemy ? new RangedCombatActionState() : null;
         const session = state.sandbox.snakeGame;
         this.session = session;
         this.navWalkable = session.navWalkable;
@@ -256,7 +256,7 @@ export class AgentInstance {
     }
     tickMetabolism(state, dtMs, drainMultiplier = 1) {
         const metabolism = this.metabolism;
-        const starving = advanceAgentMetabolismHunger(metabolism, dtMs, drainMultiplier);
+        const starving = metabolism.advanceHunger(dtMs, drainMultiplier);
         if (!starving || metabolism.starveShedIntervalMs === null) return false;
         let shed = false;
         while (metabolism.starveMs >= metabolism.starveShedIntervalMs) {
@@ -311,7 +311,7 @@ export class AgentInstance {
         this.memberProps.push(newTail);
     }
     feedAndGrow(state, value) {
-        let pending = feedAgentMetabolism(this.metabolism, value);
+        let pending = this.metabolism.feed(value);
         const maxAliveSegmentCount = this.profile.maxAliveSegmentCount ?? 8;
         while (pending > 0 && this.memberProps.length < maxAliveSegmentCount) {
             this.growOneSegment(state);
@@ -333,7 +333,7 @@ export class AgentInstance {
         if (!this.consumeTargetAndResetNavigation(state, food)) return false;
         const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
         if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
-        else feedAgentMetabolism(this.metabolism, foodValue);
+        else this.metabolism.feed(foodValue);
         return true;
     }
     collectAmmoTarget(state, ammoProp) {

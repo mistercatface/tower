@@ -1,5 +1,5 @@
 import { isAgentEngaged } from "../agents/AgentProfiles.js";
-import { createTargetMemory, targetFromMemoryRecord } from "./targetMemory.js";
+import { TargetMemory, targetFromMemoryRecord } from "./targetMemory.js";
 const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
 function allyIfEngaged(session, ally) {
     if (!ally) return null;
@@ -17,7 +17,7 @@ function mergeAlly(visibleWorld, record, state, session, filterAllyForEngagement
 export class AgentIntentMemory {
     constructor({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60, filterAllyForEngagement = false } = {}) {
         this.filterAllyForEngagement = filterAllyForEngagement;
-        this.memory = createTargetMemory(INTENT_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks });
+        this.memory = new TargetMemory(INTENT_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks });
         this.memorySource = { threat: false, prey: false, food: false, ally: false };
         this.world = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0, memorySource: this.memorySource };
     }

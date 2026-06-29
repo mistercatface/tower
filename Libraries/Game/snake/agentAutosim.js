@@ -1,7 +1,7 @@
 import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
 import { buildGroundNavIntentAdapterOptions } from "./createGroundNavIntentAdapter.js";
 import { isSnakeFoodTarget } from "./snakeFood.js";
-import { setAgentHunger } from "./agentMetabolism.js";
+
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 import { createSpatialCellMemory } from "../../AI/brain/brain.js";
@@ -71,7 +71,7 @@ export class AgentAutosim {
     start() {
         this.active = true;
         this.instance.sprinting = false;
-        setAgentHunger(this.instance.metabolism, this.initialHunger);
+        this.instance.metabolism.setHunger(this.initialHunger);
         this.intent.resetMode();
         this.intent.resetMemory();
     }

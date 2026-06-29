@@ -8,7 +8,7 @@ import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getAgentIdentity, setAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
-import { createAgentMetabolism, getAgentHunger, setAgentHunger, advanceAgentMetabolismHunger } from "../Libraries/Game/snake/agentMetabolism.js";
+import { createAgentMetabolism, getAgentHunger, setAgentHunger, advanceAgentMetabolismHunger } from "./harness/agentTestCompat.js";
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { resolveSnakeEatRadius } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/AgentDecisionContext.js";

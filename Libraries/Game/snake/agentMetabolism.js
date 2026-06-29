@@ -50,21 +50,6 @@ export class AgentMetabolism {
         return true;
     }
 }
-export function createAgentMetabolism(profile) {
-    return new AgentMetabolism(profile);
-}
-export function getAgentHunger(metabolism) {
-    return metabolism.getHunger();
-}
-export function setAgentHunger(metabolism, fraction) {
-    metabolism.setHunger(fraction);
-}
-export function feedAgentMetabolism(metabolism, value = null) {
-    return metabolism.feed(value);
-}
-export function advanceAgentMetabolismHunger(metabolism, dtMs, drainMultiplier = 1) {
-    return metabolism.advanceHunger(dtMs, drainMultiplier);
-}
 // --- Snake Scaling & Growth Helpers ---
 export function getSnakeChainRadius(state, headId) {
     const head = state.entityRegistry.getLive(headId);
