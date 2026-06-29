@@ -34,20 +34,20 @@ export function rangedCombatActionOnCooldown(action) {
 export function rangedCombatActionIsBusy(action) {
     return action?.phase === "reacting" || action?.phase === "fire_delay" || action?.phase === "reloading";
 }
-export function deriveRangedCombatState(ctx, input, profile) {
-    // 1. Resolve weapon properties based on equip state and profile.
-    const weapon = resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
-    if (!weapon) return null;
+export function deriveRangedCombatStateInto(out, ctx, input, profile) {
+    const weapon = input.agentInstance?.resolvedWeapon ?? resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
+    if (!weapon) {
+        if (out) out.weapon = null;
+        return null;
+    }
     const maxRange = weapon.maxRange;
     const fleeRange = weapon.fleeRange;
     const action = input.actionState ?? null;
     const seeker = input.agent;
     const state = input.state;
-    // 2. Identify the active target (visible enemy, falling back to remembered target).
     const visibleEnemy = ctx.visible.enemy;
     const knownEnemy = ctx.known.enemy;
     const enemy = visibleEnemy ?? knownEnemy;
-    // 3. Compute target facts (straight-line distance).
     let distWorld = null;
     if (enemy && seeker) {
         const dx = enemy.x - seeker.x;
@@ -55,47 +55,59 @@ export function deriveRangedCombatState(ctx, input, profile) {
         distWorld = Math.hypot(dx, dy);
     }
     const reachCells = ctx.reachSteps?.enemy;
-    // 4. Compute physical speeds and thresholds for accuracy / decision modeling.
     const agentSpeed = seeker ? Math.hypot(seeker.vx ?? 0, seeker.vy ?? 0) : 0;
     const combatStrafeMaxSpeed = input.combatStrafeMaxSpeed ?? 50;
-    // 5. Query environment facts (line of sight, range boundaries).
     const los = visibleEnemy ? getObserverVisionFrame(state).isVisible(seeker, visibleEnemy.x, visibleEnemy.y) : false;
     const inWeaponRange = distWorld != null && distWorld <= maxRange;
     const tooClose = distWorld != null && distWorld <= fleeRange;
-    // 6. Resolve FSM combat action phase.
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
     const busy = action ? rangedCombatActionIsBusy(action) : false;
-    // 7. Shoot Eligibility: Can shoot if target is visible, in range, has LOS, weapon is idle, and we have ammo.
-    // NOTE: We allow shooting at close range (no !tooClose guard) so close-quarters combat works properly.
     const hasAmmo = input.agentInstance ? input.agentInstance.ammo > 0 : input.instance ? input.instance.ammo > 0 : true;
     const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle" && hasAmmo;
-    // 8. Asymmetric Back-Off / Flee logic:
-    // We only back off if too close AND either:
-    // a) We are reloading (defenseless).
-    // b) We are idle, but the enemy has ID advantage (prevents mutual fleeing / synchronized dancing).
-    // Agents actively aiming or firing will stand their ground.
     const hasIdAdvantage = seeker && enemy && seeker.id != null && enemy.id != null ? seeker.id > enemy.id : false;
     const shouldBackOffEnemy = !!visibleEnemy && tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage));
-    return {
-        enemy,
-        enemyId: enemy?.id ?? null,
-        visibleEnemy,
-        visibleEnemyId: visibleEnemy?.id ?? null,
-        distWorld,
-        reachCells,
-        agentSpeed,
-        combatStrafeMaxSpeed,
-        hasLineOfSight: los,
-        inWeaponRange,
-        tooClose,
-        shouldBackOffEnemy,
-        phase,
-        onCooldown,
-        busy,
-        canShoot,
-        weapon,
-    };
+    if (!out)
+        out = {
+            enemy: null,
+            enemyId: null,
+            visibleEnemy: null,
+            visibleEnemyId: null,
+            distWorld: null,
+            reachCells: null,
+            agentSpeed: 0,
+            combatStrafeMaxSpeed: 50,
+            hasLineOfSight: false,
+            inWeaponRange: false,
+            tooClose: false,
+            shouldBackOffEnemy: false,
+            phase: "idle",
+            onCooldown: false,
+            busy: false,
+            canShoot: false,
+            weapon: null,
+        };
+    out.enemy = enemy;
+    out.enemyId = enemy?.id ?? null;
+    out.visibleEnemy = visibleEnemy;
+    out.visibleEnemyId = visibleEnemy?.id ?? null;
+    out.distWorld = distWorld;
+    out.reachCells = reachCells;
+    out.agentSpeed = agentSpeed;
+    out.combatStrafeMaxSpeed = combatStrafeMaxSpeed;
+    out.hasLineOfSight = los;
+    out.inWeaponRange = inWeaponRange;
+    out.tooClose = tooClose;
+    out.shouldBackOffEnemy = shouldBackOffEnemy;
+    out.phase = phase;
+    out.onCooldown = onCooldown;
+    out.busy = busy;
+    out.canShoot = canShoot;
+    out.weapon = weapon;
+    return out;
+}
+export function deriveRangedCombatState(ctx, input, profile) {
+    return deriveRangedCombatStateInto(null, ctx, input, profile);
 }
 function fireBullet(state, shooterInstance, angle, weapon) {
     spawnGunBulletProjectile(state, shooterInstance, angle, weapon);

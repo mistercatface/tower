@@ -14,7 +14,7 @@ import {
     scoreRiskAdjustedFlee,
 } from "../utility/utilityScoring.js";
 import { AGENT_PROFILE, getAgentProfile, isAgentEngaged, readAgentEngagement } from "./AgentProfiles.js";
-import { deriveRangedCombatState } from "../../Game/snake/rangedCombat.js";
+import { deriveRangedCombatStateInto } from "../../Game/snake/rangedCombat.js";
 // === From bandFromThresholds.js ===
 /** @param {number | null | undefined} value @param {{ id: string, min: number }[]} bands highest `min` first */
 export function bandFromThresholds(value, bands) {
@@ -507,7 +507,25 @@ export function createAgentDecisionContextFrame(profileId, schema = getAgentProf
         recentFailures: [],
         seekerFaction: null,
         seekerSegmentCount: null,
-        combatState: null,
+        combatState: {
+            enemy: null,
+            enemyId: null,
+            visibleEnemy: null,
+            visibleEnemyId: null,
+            distWorld: null,
+            reachCells: null,
+            agentSpeed: 0,
+            combatStrafeMaxSpeed: 50,
+            hasLineOfSight: false,
+            inWeaponRange: false,
+            tooClose: false,
+            shouldBackOffEnemy: false,
+            phase: "idle",
+            onCooldown: false,
+            busy: false,
+            canShoot: false,
+            weapon: null,
+        },
         agentInstance: null,
     };
 }
@@ -534,9 +552,9 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
     }
     ctx.agentInstance = input.agentInstance ?? null;
     if (spec.deriveCombatState) {
-        ctx.combatState = spec.deriveCombatState(ctx, input);
+        ctx.combatState = spec.deriveCombatState(ctx.combatState, ctx, input);
         applyRangedBackOffThreat(ctx, input);
-    }
+    } else ctx.combatState = null;
     return ctx;
 }
 export function pickAgentIntentPolicyInto(out, ctx, scores, spec) {
@@ -627,7 +645,7 @@ export function buildAgentDecisionSpec(profileId, profile = getAgentProfile(prof
         scoringSprint: profile.scoringEnv?.sprint ? profile.sprint : null,
         ...(DECISION_EXTENSIONS[profileId] ?? {}),
     };
-    if (profile.weapon || profile.decision?.modes?.shoot_enemy) spec.deriveCombatState = (ctx, input) => deriveRangedCombatState(ctx, input, profile);
+    if (profile.weapon || profile.decision?.modes?.shoot_enemy) spec.deriveCombatState = (out, ctx, input) => deriveRangedCombatStateInto(out, ctx, input, profile);
     spec.compiledModes = compileDecisionSchemaModes(profile.decision);
     return spec;
 }
