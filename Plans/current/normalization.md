@@ -20,21 +20,21 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 ---
 
-## Tier 2 — AI consumer dedupe ([`fsmroadmap.md`](fsmroadmap.md) Part 1) — **next**
+## Tier 2 — AI consumer dedupe ([`fsmroadmap.md`](fsmroadmap.md) Part 1) — **done** ✅
 
-**Where:** `createSnakeForageIntent` / `createFleeExploreIntent`, `*DecisionModel.js`, `*IntentMemory.js`, `snakeIntent.js` / `fleeWorldPerception.js`
+**Where:** `AgentProfiles.js`, `AgentDecisionContext.js`, `GroundNavIntentAdapter.js`, `AgentIntent.js`
 
-**Before:** flee imports generic derives from `snakeDecisionModel.js`; twin ~270-line intent adapters; duplicate memory/perception/decision helpers
+**Before:** flee imported generic derives from snake decision code; twin intent adapters duplicated memory/perception/decision helpers.
 
-**After:** shared modules in `Libraries/AI/` (concrete files, no `decision/` package); species adapters thin; net −LOC
+**After:** profile schemas drive snake/flee/squid modes; shared facts/scoring live in `Libraries/AI/agents/AgentDecisionContext.js`; `GroundNavIntentAdapter.js` owns the snake-game target-memory/action boundary.
 
-**Gate:** Part 1 grep gates in [`fsmroadmap.md`](fsmroadmap.md) before Phase 2 flow locomotion.
+**Gate:** Do not reintroduce deleted per-species decision/memory modules before Phase 2 flow locomotion.
 
 ---
 
 ## Tier 2 — AI / decision reach ([`fsmroadmap.md`](fsmroadmap.md) phase 1) — **done** ✅
 
-**Where:** `flowTargetSteps.js`, intent adapters, `snakeDecisionModel` / `fleeDecisionModel`
+**Where:** `flowTargetSteps.js`, `flowReachStaleCache.js`, `GroundNavIntentAdapter.js`, `AgentDecisionContext.js`
 
 **Before:** `*Dist` passthrough → `reachForCandidate` → mixed pixel/cell dialect
 
@@ -115,7 +115,7 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 | Overlay command pooling                                     | Real win in editor, but **different pipeline**. Do if editor perf matters.                                                         |
 | First-person / fixed iso modes                              | New renderer branch (`Plans/rendering.md`), not consolidating overhead path.                                                       |
 | Per-agent flow windows for utility reach                    | Phase 2 locomotion; phase 1 = sync BFS ([`fsmroadmap.md`](fsmroadmap.md))                                                          |
-| Generic AI slot pipeline / `Libraries/AI/decision/` package | Two consumers — **Part 1** dedupes into concrete `Libraries/AI/*` files, not a framework folder ([`fsmroadmap.md`](fsmroadmap.md)) |
+| Generic AI slot pipeline / `Libraries/AI/decision/` package | Defer until another game mode needs it; profile schema is enough for the snake proving ground ([`fsmroadmap.md`](fsmroadmap.md))   |
 
 ---
 
@@ -123,7 +123,7 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 
 | Order | Item                                                                        | Why first                                                           |
 | ----- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **0** | **AI consumer dedupe** ([`fsmroadmap.md`](fsmroadmap.md) Part 1)            | Gate for flow locomotion; flee must not import snake decision model |
+| **0** | **Local flow locomotion** ([`fsmroadmap.md`](fsmroadmap.md) Part 2)          | Dedupe is done; flow execution is the next AI/nav bridge            |
 | **1** | **Prop catalog passthrough** ([`passthrough.md`](passthrough.md) Tier 1)    | Kill twin maps + load/getter theater                                |
 | **2** | **Library defaults getters** ([`library_defaults.md`](library_defaults.md)) | Same pattern as deleted boot getters                                |
 | **3** | **#6 Floor epoch / draw bump**                                              | Makes grid edits trustworthy                                        |
@@ -141,13 +141,13 @@ Those weren’t micro-optimizations — they **picked one dialect** and made who
 - [ ] Hot grid iteration uses **scalars or `*Into`**, not `{ col, row }` / `{ x, y }`
 - [ ] Grid edit path ends in **`commitGridNavEdit(bounds)`** — draw/nav bumps not manual at each callsite
 - [ ] Hot path reach uses **`flowTargetSteps`**, not `*Dist` or horizon objects — [`fsmroadmap.md`](fsmroadmap.md) phase 1 ✅
-- [ ] New agent species imports shared AI modules — not copy-paste from `Libraries/Game/snake/` — [`fsmroadmap.md`](fsmroadmap.md) Part 1
+- [ ] New agent species configures `AgentProfiles` / `AgentDecisionContext` — not copy-paste from old species modules — [`fsmroadmap.md`](fsmroadmap.md) Part 1
 
 ---
 
 ## Related docs
 
-- [`fsmroadmap.md`](fsmroadmap.md) — active plan (Part 1 dedupe · Part 2 flow)
+- [`fsmroadmap.md`](fsmroadmap.md) — active plan (Part 1 done · Part 2 flow)
 - [`frame.md`](frame.md) — frame draw pass (done)
 - [`passthrough.md`](passthrough.md) — passthrough audit
 - [`stupid.md`](stupid.md) — broader stupid-shit queue

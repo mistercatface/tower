@@ -132,6 +132,6 @@ describe("flee agent callouts", () => {
     it("loads phrase pools from snake game config", () => {
         const cfg = getSnakeGameConfig().agentCallouts;
         assert.ok(cfg.topics.falling_back.phrases.includes("oh crap!"));
-        assert.ok(cfg.topics.reloading.phrases.includes("mag out!"));
+        assert.ok(cfg.topics.reloading.phrases.includes("reloading!"));
     });
 });

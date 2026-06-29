@@ -77,11 +77,11 @@ export class EntityGrid {
     }
     remove(entity) {
         const idx = entity._gridTileIdx;
-        if (idx === -1 || idx === undefined) return;
+        if (idx === -1 || idx === undefined || idx < 0 || idx >= this.cellHead.length) return;
         const targetId = entity._physId;
         let curr = this.cellHead[idx];
         let prev = -1;
-        while (curr !== -1) {
+        while (curr !== -1 && curr !== undefined) {
             if (curr === targetId) {
                 if (prev !== -1) this.entityNext[prev] = this.entityNext[curr];
                 else this.cellHead[idx] = this.entityNext[curr];

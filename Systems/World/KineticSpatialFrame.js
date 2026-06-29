@@ -139,8 +139,9 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const slot = prop._activeSlot;
         if (slot == null || slot < 0) return;
         const active = this._activeKineticBodies;
+        if (slot >= active.length || active[slot] !== prop) return;
         const last = active.pop();
-        if (last !== prop) {
+        if (last && last !== prop) {
             active[slot] = last;
             last._activeSlot = slot;
             kineticDynamicSlab.activePhysIds[slot] = last._physId;

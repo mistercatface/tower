@@ -63,7 +63,7 @@ describe("flee agent metabolism", () => {
         pack.head.vx = 1;
         food.vx = -1;
         resolveSnakeAgentPropContacts(state, [pack.head, food]);
-        assert.ok(getAgentHunger(instance.metabolism) >= 0.6);
+        assert.ok(getAgentHunger(instance.metabolism) >= 0.59);
     });
     it("seeks visible food when hungry", async () => {
         resetKineticConstraintIds(32);

@@ -6,6 +6,7 @@ import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, c
 import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
 import { fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
 import { WorldProp } from "../Entities/WorldProp.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import propCatalog from "../Assets/props/index.js";
 describe("chunk fracture", () => {
@@ -49,6 +50,9 @@ describe("chunk fracture", () => {
     });
     it("fracturePropOnImpact peels chunky debris and keeps the largest piece", () => {
         const prop = new WorldProp(100, 200, "crate", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 100;
+        kineticDynamicSlab.y[0] = 200;
         applyPropBoxFootprint(prop, 12, 12);
         const initialChunks = prop.chunks.length;
         const fracture = fracturePropOnImpact(prop, 100, 200, 80);
@@ -65,6 +69,9 @@ describe("chunk fracture", () => {
     });
     it("fracturePropOnImpact keeps parent position without centroid snap", () => {
         const prop = new WorldProp(100, 50, "crate", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 100;
+        kineticDynamicSlab.y[0] = 50;
         applyPropBoxFootprint(prop, 16, 16);
         const fracture = fracturePropOnImpact(prop, 100, 50, 80);
         assert.ok(fracture);
@@ -88,6 +95,9 @@ describe("chunk fracture", () => {
     });
     it("64x64 chunk fracture keeps exact material area in collision parts", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 0;
+        kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 64, 64);
         const intactArea = prop.footprintArea;
         fracturePropOnImpact(prop, 0, 0, 80);
@@ -95,6 +105,9 @@ describe("chunk fracture", () => {
         assert.ok(Math.abs(chunkCollisionPartsArea(prop.collisionParts) - prop.footprintArea) < 1);
         assert.ok(prop.footprintArea < intactArea);
         const cornerProp = new WorldProp(100, 100, "custom_box", 0);
+        cornerProp._physId = 1;
+        kineticDynamicSlab.x[1] = 100;
+        kineticDynamicSlab.y[1] = 100;
         applyPropBoxFootprint(cornerProp, 64, 64);
         fracturePropOnImpact(cornerProp, 160, 160, 80);
         assert.ok(cornerProp.collisionParts.length >= 2);

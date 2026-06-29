@@ -1,216 +1,247 @@
-# Snake game — proving ground
+# Snake Game — Proving Ground
 
-The snake mode is the primary **pressure test** for generic AI, navigation, physics chains, and procgen chunk recipes. Game-specific rules live here; reusable pieces get extracted to `Libraries/AI`, `Libraries/Navigation`, `Libraries/Sandbox`, etc.
+The snake mode is the primary pressure test for generic AI, navigation, physics chains, combat, and procgen chunk recipes. Game-specific rules live here; reusable pieces get extracted to `Libraries/AI`, `Libraries/Navigation`, `Libraries/Sandbox`, and other engine homes.
 
-**Related:** generic AI stack → [AI.md](../AI.md) · layout recipes → [Mazes.md](../Mazes.md) · editor/game shell → [sandbox-editor.md](../sandbox-editor.md)
+**Related:** generic AI stack → [AI.md](../AI.md) · layout recipes → [Mazes.md](../Mazes.md) · editor/game shell → [sandbox-editor.md](../sandbox-editor.md) · active FSM plan → [fsmroadmap.md](../current/fsmroadmap.md)
 
 ---
 
-## Entry points
+## Entry Points
 
 | Path | Role |
 |---|---|
 | `Libraries/Game/gameLaunchers.js` | `snake` launcher → `setupSnakeGame` |
-| `Libraries/Game/snake/setupSnakeGame.js` | Scene spawn, agent session, camera cycler, HUD, tick hooks |
+| `Libraries/Game/snake/setupSnakeGame.js` | Scene spawn, agent session, HUD, camera, shadow/bloom controls, tick hook |
+| `Libraries/Game/snake/snakeAgentSession.js` | `SnakeAgentSession`, `DynamicSpeciesMap`, alive-agent loop, frame orchestrator |
+| `Libraries/Game/snake/AgentInstance.js` | Agent runtime instance, autosim, metabolism, relationships, HPA nav |
+| `Libraries/Game/snake/GroundNavIntentAdapter.js` | Target memory, FSM adapter, ranged-combat action state |
 | `Libraries/Game/snake/snakeScene.js` | Split-map orchestration (cavern + rail maze bands) |
-| `Config/games/snake.js` | `SNAKE_GAME_DEFAULTS` — all gameplay tuning |
-| `Libraries/Game/snake/snakeGameConfig.js` | Runtime config merge + derived helpers (spacing, eat radius, wall damage) |
+| `Config/games/snake.js` | `SNAKE_GAME_DEFAULTS` — all gameplay tuning and profile schemas |
 
 Launch: `?game=snake` via `runGameLaunch` → game shell (no TileLab sidebar). See [sandbox-editor.md](../sandbox-editor.md#game-shell-vs-tilelab).
 
 ---
 
-## Species model
+## Species Model
 
-Three agent species share one session via the **profile-driven species registry** pattern:
+Three agent species share one session through profile-driven configuration:
 
 | Species | ID | Body | Intent modes |
 |---|---|---|---|
-| **Snake** | `snake` | Linked ball chain (`spawnLinkedBallChain`) | explore, seek_food, seek_prey, flee, seek_ally |
-| **Flee agent** | `flee_agent` | Single rolling ball (`spawnPopulationInScene`) | explore, seek_food, flee, seek_ally |
-| **Ball agent** | `ball_agent` | Single ball, facing sync | explore, seek_food, flee, seek_ally, ranged_combat |
+| **Snake** | `snake` | Linked ball chain (`spawnAgentChain`) | explore, seek_food, seek_prey, flee, seek_ally |
+| **Flee agent** | `flee_agent` | Single rolling ball / triangle body | explore, flee, shoot_enemy, seek_enemy, seek_ammo, seek_food, seek_ally |
+| **Squid** | `squid` | Cluster / chain-combat body | explore, seek_food, seek_prey, flee |
 
 ```text
-DynamicSpeciesMap (Map lookup via species/index.js)
-  agentProfile.js — config-driven species profiles (lifecycle, weapon config)
+Config/games/snake.js
+  agentProfiles
 
-createSnakeAgentSession(state, { registry, navWalkable, speciesById })
-  registry              — agentPopulationRegistry (alive/dead by headId)
-  instancesByHeadId     — AgentInstance (all species)
-  autosimsByHeadId      — createAgentAutosim per head
-  engagementByHeadId    — published engagement facts (see below)
+AgentProfiles.js
+  profile ids, registry, identity helpers, engagement facts
+
+snakeAgentSession.js
+  DynamicSpeciesMap
+  registry
+  instancesByHeadId
+  instancesByMemberId
+  engagementByHeadId
+
+AgentInstance.js
+  runtime profile + relationship rules + metabolism + nav + intent adapter
 ```
 
-**Relationship resolution** (`resolveAgentRelationship`): species-specific, configured via profiles. Snakes use faction + segment count (ally / rival / threat / prey). Flee/ball agents treat snakes as threat, same-faction balls as ally.
-
-Registry + session: `Libraries/Game/snake/snakeAgentSession.js`, `Libraries/AI/agents/agentPopulationRegistry.js`, `Libraries/Game/snake/species/index.js`.
+Relationship resolution is profile-specific. Snakes use faction plus segment count for ally/rival/threat/prey. Flee agents use proximity and faction rules, including ammo/combat decisions. Squid uses cluster/brain-ram combat rules and proximity-based prey/threat relationships.
 
 ---
 
-## Tick pipeline (one frame)
+## Tick Pipeline
 
 ```text
 setupSnakeGame.tick(dt)
-  agentFrameOrchestrator.js            — coordinates simulation frame ticks
-  validateAliveAgents
-  beginSnakePerceptionFrame            — batch vision builds per tick
-  tickAliveAgents                      — species.tick → autosim / profile instance
-  customSystems.js                     — runs tickGunBullets and resolveGunBulletContacts
-  endSnakePerceptionFrame
+  snakeAgentSession.tickAliveAgents
+    AgentFrameOrchestrator.beginFrame
+    beginSnakePerceptionFrame
+    instance.autosim.tick(dt, admitted)
+      if admitted: intent.tick -> perceive, score, transition
+      always: combat action, movement intent, HPA nav, metabolism
+    customSystems.js
+      tickGunBullets
+      resolveGunBulletContacts
+    endSnakePerceptionFrame
   hud.update
 
-Kinetic frame (shared sim):
+Kinetic frame
   physics substeps
-  applyContactSideEffects              — combat, hunt drive, segment fracture
-  syncAgentsAfterPhysics               — chain sync, presentation, diagnostics
+  applyContactSideEffects
+    resolveSnakeCombatFromContacts
+    applySnakeHuntContactDrive
+    segment fracture / wall damage side effects
+  syncAgentsAfterPhysics
 ```
 
-Perception is **batched** when `session._batchingPerception` is set so all heads share one observer-vision frame build per tick.
+Perception is batched per simulation tick so agent heads share one observer-vision frame build. The frame orchestrator admits expensive perception/decision work under `config.aiBudget`; locomotion and metabolism continue every tick.
 
 ---
 
-## Agent intent stack (adapter pattern)
-
-Generic loop in `Libraries/AI`; species supply facts and scorers:
+## Agent Intent Stack
 
 ```text
-createAgentIntent (generic FSM host)
-  ├─ createSnakeForageIntent (snake)
-  │    perceiveSnakeIntentWorld → perceiveAgentWorld → classifyAgentVision
-  │    snakeIntentMemory → AI/memory/targetMemory.js
-  │    buildSnakeDecisionContext → snakeDecisionModel.js → utilityScoring
-  │    publishAgentEngagement(session, headId, engagementState)
-  │    snakeIntentStates (explore / seek_food / seek_prey / flee / seek_ally)
-  │
-  └─ Dynamic Profile-driven Intents (flee_agent, ball_agent)
-       uses dynamic agentProfile configs for target memory and utility scorers.
-       ball_agent includes ranged_combat intent triggers (aim, fire, reload phases).
+AgentIntent.js
+  generic flat FSM host
+
+GroundNavIntentAdapter.js
+  target memory
+  committed goal handling
+  combat action phases
+  HPA target handoff
+
+AgentDecisionContext.js
+  visible / known slots
+  reachSteps
+  hunger, threat, ally, ammo, combat facts
+  mode scoring and engagement derive
+
+classifyAgentVision.js + agentWorldPerception.js
+  shared threat / prey / food / ammo / ally classification
 ```
 
-**Ranged Combat / Gun System:**
-Wired in `rangedCombat.js` and `gunAgent/gunBulletSystem.js`. Agents with a configured weapon profile can target and shoot projectiles. Bullet ticks and contacts are evaluated in custom systems runners. Projectiles are rendered as faction-colored capsules directly in `WorldSceneRenderer.js`.
+The current pattern is schema-driven: profile config declares remembered slots, event targets, decision fields, modes, scorers, guards, sprint rules, and relationship policy. The adapter writes facts once, then scoring reads from the decision context.
 
-**Locomotion:** all species use per-agent HPA (`cellTargetHpaNav`). Flow fields exist for sandbox drag-nav only — not steering yet ([AI.md](../AI.md#future-local-flow-horizons)).
+**Locomotion:** all species still use per-agent HPA (`cellTargetHpaNav`) for agent movement. Flow fields are wired for sandbox flow nav and decision reach, not agent steering yet. Next work lives in [fsmroadmap.md](../current/fsmroadmap.md) Part 2.
 
 ---
 
-## Engagement blackboard (follow worthy allies)
+## Ranged Combat And Ammo
 
-Followers do **not** peek at neighbor autosim modes. Each agent publishes a fact after deciding; others read from session:
+Flee agents can carry a configured weapon profile:
+
+- `shoot_enemy` handles reaction, aim, fire delay, magazine, reload, and strafe movement.
+- `seek_enemy` closes distance when the target is outside ideal weapon range.
+- `seek_ammo` uses visible and remembered ammo shards when reload pressure is high.
+- `gunAgent/gunBulletSystem.js` ticks projectile entities and resolves contacts.
+- `WorldSceneRenderer.js` renders projectiles as faction-colored capsules.
+
+Ammo collection is handled as an agent contact collectible in `AgentInstance.collectContactProp`.
+
+---
+
+## Engagement Blackboard
+
+Followers do not inspect neighbor autosim modes directly. Agents publish engagement facts after a decision, and other agents read from the session.
 
 | Step | Where |
 |---|---|
-| Derive | `deriveSnakeEngagementState(blackboard, chosenIntent)` — active when acting on seek_food / seek_prey / flee with salient target; **never** active for explore or seek_ally |
-| Publish | `publishAgentEngagement(session, headId, state)` in `createSnakeForageIntent` after `buildSnakeDecisionContext` |
-| Read | `readAgentEngagement` / `isAgentEngaged` in `Libraries/AI/agents/agentEngagement.js` |
-| Consume | `deriveAllyState` → `leadworthy`; `scoreSeekAllyDetail` requires leadworthy; `snakeIntentMemory` only stamps engaged allies |
+| Derive | `deriveSnakeEngagementState` in `AgentDecisionContext.js` |
+| Publish/read | engagement helpers in `AgentProfiles.js` |
+| Store | `session.engagementByHeadId` on `state.sandbox.snakeGame` |
+| Consume | ally memory and `seek_ally` scoring require leadworthy or close-enough ally facts |
 
-`session.engagementByHeadId` lives on `state.sandbox.snakeGame`. Vision still sees all same-faction allies; memory and seek_ally scoring filter by engagement.
-
----
-
-## Perception & vision
-
-- **Entry:** `perceiveSnakeIntentWorld` → shared `perceiveAgentWorld` + `classifyAgentVision`
-- **Vision frame:** `requireSnakeVisionFrame` / `beginSnakePerceptionFrame` — cached per tick, position + range key
-- **Geometry:** 360° grid-cell collection + grid LOS (`Libraries/Navigation/perception/gridCellVision.js`)
-- **Food:** `snakeFood.js` — visible shard food deduped against `vision.cells`
-- **Slots:** threat, prey, food, ally (+ allyCount, allyCentroid)
-
-Config: `visionRange`, `fleeRange` (defaults to vision range), `lethalThreatRange`, `intentMemory` TTLs.
+Vision still sees all same-faction allies; memory and regroup scoring filter what becomes actionable.
 
 ---
 
-## Metabolism, growth, sprint
+## Perception And Vision
 
-- **Hunger bar** (0–1) drains per `metabolism.hungerDrainMs`; eating restores `foodValue`; overflow → growth via `growthCost`.
-- **Consolidated Metabolism**: All hunger, starvation, scaling, and segment growth logic is managed under `agentMetabolism.js`.
-- **Segments**: `minAliveSegmentCount` … `maxAliveSegmentCount`; starvation sheds on interval.
-- **Sprint**: burns hunger faster (`sprint.hungerDrainMultiplier`); modes: flee (severe threat), seek_prey, seek_food under threat.
-- **Facts**: `deriveSnakeHungerState` → satisfied / hungry / desperate gates scoring and regroup.
+- **Entry:** `perceiveAgentWorld` + `classifyAgentVision`.
+- **Vision frame:** `snakePerception.js` wraps observer frame begin/end and cached per-tick visibility.
+- **Geometry:** 360-degree grid-cell collection + grid LOS in `Libraries/Navigation/perception`.
+- **Food/ammo:** profile `visibleSources` decide which collectable categories enter slots.
+- **Slots:** threat, prey/enemy, food, ammo, ally, counts, centroids, and combat visibility.
+
+Config: `shared.visionRange`, `shared.fleeRange`, `shared.lethalThreatRange`, `shared.intentMemory`, profile weapon ranges, and profile decision schema.
 
 ---
 
-## Combat & fracture
+## Metabolism, Growth, Sprint
+
+- `AgentMetabolism` is in `AgentInstance.js`.
+- Hunger drains by profile `metabolism.hungerDrainMs`; eating restores `foodValue`.
+- Snake overflow growth uses `growthCost` and appends chain segments up to `maxAliveSegmentCount`.
+- Starvation can shed snake tail segments on `starveShedIntervalMs`.
+- Sprint rules are profile-driven and can depend on mode, threat severity, hunger, food/ammo pressure, and combat state.
+
+---
+
+## Combat And Fracture
 
 | System | File | Notes |
 |---|---|---|
-| Hunt / strike | `snakeCombat.js`, `snakeStriker.js` | Kinetic ram, faction-aware targeting |
-| Ranged Combat | `rangedCombat.js`, `gunAgent/gunBulletSystem.js` | Projectiles/gun simulation with aim, fire, reload phases |
-| Split | contact resolver + `splitImpulseThreshold` | Smaller snake splits at struck segment |
-| Segment fracture | `snakeSegmentFracture.js` | Retired segments → fracturable food props |
-| Wall damage | `gridWallDamage.js` + config `wallDamage` | Shared `SNAKE_KINETIC_MIN_STRIKE_SPEED` |
-| Death | `snakeSpecies.die` | Chain retire, shatter, registry purge |
+| Contact combat | `snakeCombat.js` | Chain/ball/squid ram rules, relationship-aware prey strikes |
+| Ranged combat | `GroundNavIntentAdapter.js`, `gunAgent/gunBulletSystem.js` | Action phases and projectile simulation |
+| Split | `AgentInstance.splitAtStruckSegment` | Smaller snake splits at struck segment |
+| Segment fracture | `snakeSegmentFracture.js` | Retired segments become fracturable food props |
+| Wall damage | `gridWallDamage.js` + config `wallDamage` | Shared kinetic strike threshold |
+| Death | profile species handlers from `snakeAgentSession.js` | Chain retire, shatter, registry purge |
 
-Fractured segments register as **food** targets via `snakeFood` query.
-
----
-
-## Scene & procgen hook
-
-`snakeScene.js` composes the playfield (not the algorithm catalog — see [Mazes.md](../Mazes.md)):
-
-- Upper band: cellular-automata cavern (`generateLabCaverns`)
-- Lower band: R-DFS rail maze (`generateLabRailDfsMaze`) via split layout
-- Walkable index + nav commit after stamp
-
-Flee agents spawn after snakes with occupied-cell exclusion.
+Fractured segments register as food targets through `snakeFood.js`.
 
 ---
 
-## HUD & debug overlays
+## Scene And Procgen Hook
+
+`snakeScene.js` composes the playfield:
+
+- upper band: cellular-automata cavern;
+- lower band: rail maze via split layout;
+- surface profile bands from `surfaceRegions`;
+- walkable index and nav commit after stamping;
+- profile populations spawned with occupied-cell exclusion.
+
+The algorithm catalog remains in [Mazes.md](../Mazes.md).
+
+---
+
+## HUD, Debug, And Callouts
 
 | UI | File |
 |---|---|
-| Focused name + Switch Camera + Overlay toggle | `snakeHud.js` |
-| Camera cycle | `CameraTargetCycler` — all alive head IDs |
-| Combat chips (optional) | `snakeCombatHud.js` |
+| Focused name, camera switch, overlays, shadow/bloom controls | `snakeHud.js`, `setupSnakeGame.js` |
+| Camera cycle | `CameraTargetCycler` over alive head IDs |
+| Focused debug overlays | `appendSnakeGameOverlayCommands` |
+| Flee callouts | `FleeAgentCalloutDirector` |
 
-**Focused agent debug** (`appendSnakeGameOverlayCommands`):
-
-- Vision cell highlights
-- Spatial memory heatmap (brain LRU)
-- Path preview (≤3 nodes)
-- Committed target ring
-
-Toggled at runtime via HUD **Overlay** button → `showFocusedAgentDebug` in active config. Layer flags: `focusedAgentDebug.{vision, spatialMemory, path}`.
-
-Context resolver: `resolveFocusedAgentDebugContext` — works for snake autosim and flee instance.
+Focused debug can show vision cells, spatial memory, path preview, and committed target rings. LOS shadow and bloom controls are game-shell presentation controls, not AI state.
 
 ---
 
-## Config surface (`Config/games/snake.js`)
+## Config Surface
 
-Grouped knobs (override via `applySnakeGameConfig` in tests):
+Grouped knobs in `Config/games/snake.js`:
 
 | Group | Keys |
 |---|---|
-| Population | `snakeCount`, `boidCount`, segment props, `linkSlack`, radii |
-| Flee agent | nested `fleeAgent.*` — metabolism, sprint, cohesion, `fleePackBlend` |
-| Vision / flee | `visionRange`, `fleeRange`, `lethalThreatRange`, `fleeHysteresis`, `terminalHoming` |
-| Memory | `spatialMemoryCapacity`, `navMemoryStepPenalty`, `intentMemory` TTLs |
-| Scoring | `decisionWeights`, `decisionPressure`, `rivalBand`, `factionCohesion` |
-| Combat / world | `splitImpulseThreshold`, `wallDamage`, `cavern`, `rail` |
-| Debug | `showFocusedAgentDebug`, `focusedAgentDebug`, `showMemoryHeatmap` |
+| Session / AI budget | `aiBudget`, `agentCallouts`, focused debug |
+| Shared agent facts | `shared.visionRange`, reach horizon, memory, flee/targeting hysteresis |
+| Profiles | `agentProfiles.snake`, `flee_agent`, `squid` |
+| Combat | profile `combat`, `weapon`, `attackRange`, `splitImpulseThreshold`, `wallDamage` |
+| Metabolism / sprint | profile `metabolism`, `hungerBands`, `sprint` |
+| Scoring | profile `decisionWeights`, `decisionPressure`, `decision.modes` |
+| World | `cavern`, `rail`, `surfaceRegions` |
+
+Tests override via `applySnakeGameConfig`.
 
 ---
 
-## Extracted vs still snake-specific
+## Extracted Vs Still Snake-Specific
 
 | Extracted to engine | Still in `Libraries/Game/snake` |
 |---|---|
-| `createAgentIntent`, utility scoring, target memory | `snakeDecisionModel`, hunger/threat facts, seek_ally cohesion scorers |
-| `classifyAgentVision`, `agentWorldPerception` | `snakeIntent`, `snakeIntentMemory`, DynamicSpeciesMap resolver |
-| `agentEngagement` publish/read | `deriveSnakeEngagementState`, session wiring |
-| Grid-cell vision, observer frame | `snakePerception` batching, food query |
-| `agentPopulationRegistry` | `AgentInstance`, combat traits, `agentMetabolism.js`, `agentFrameOrchestrator.js`, `rangedCombat.js`, `gunAgent/gunBulletSystem.js` |
+| `AgentIntent`, utility scoring, EQS scoring | Session wiring, scene composition, HUD/callouts |
+| `AgentProfiles`, identity, engagement helpers | `AgentInstance`, snake/flee/squid combat traits |
+| `classifyAgentVision`, `agentWorldPerception` | `GroundNavIntentAdapter`, because it owns snake-game locomotion/action policy |
+| Grid-cell vision, observer frame, LOS | `snakePerception`, `snakeFood`, profile spawning |
+| `flowTargetSteps` decision reach | HPA head-nav execution for this game mode |
 
-**Rule of thumb:** if a second game mode would need the same primitive, it belongs in `Libraries/AI` or `Libraries/Navigation`. If it references segment count, snake chains, or shard food, it stays here until a second consumer appears.
+Rule of thumb: if another game mode needs the same primitive, move it toward `Libraries/AI` or `Libraries/Navigation`. If it references snake-game collectables, chain topology, or this session's custom combat, keep it here until a second consumer appears.
 
 ---
 
-## Key tests
+## Key Tests
 
-`snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `agentAllyPerception`, `agentAllyMemory`, `focusedAgentDebugOverlays`, `snakeSplit`, `snakeSegmentFracture`, `snakeMulti`, `gridCellVision`, `gunBullet.test.js`, `shatterPerformance.test.js`.
+Representative suites:
+
+`snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeAutosim`, `snakeInstance`, `snakeMulti`, `snakePerfBudget`, `snakeSplit`, `snakeSegmentFracture`, `snakeStarvation`, `agentFrameOrchestrator`, `agentAllyPerception`, `agentAllyMemory`, `agentRelationships`, `agentCombatTraits`, `fleeAgentDecision`, `fleeAgentCombat`, `fleeAgentMetabolism`, `fleeAgentCallouts`, `ammoEconomy`, `gunBullet`, `createAgentSpecies`, `squidVsSquidCombat`, `squidVsFleeCombat`, `focusedAgentDebugOverlays`.
 
 Harness: `tests/harness/snakeGameHarness.js`.
+
+_Last updated: profile-driven snake/flee/squid stack, frame orchestrator, flee gun/ammo economy, and callouts._

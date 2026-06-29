@@ -108,21 +108,18 @@ export function buildCircleImpactShards(radius, localHit, impactForce, { minShar
     }
     return shards;
 }
-function propWorldPosition(prop) {
-    const physId = prop._physId;
-    if (physId !== undefined) return { x: kineticDynamicSlab.x[physId], y: kineticDynamicSlab.y[physId] };
-    return { x: prop.x, y: prop.y };
-}
 export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shardPropId, spatialFrame = null, configureShard = null) {
     const facing = propFacing(sourceProp);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const motion = currentPropMotion(sourceProp);
     const spawned = [];
-    const sourcePos = propWorldPosition(sourceProp);
+    const physId = sourceProp._physId;
+    const wx = kineticDynamicSlab.x[physId];
+    const wy = kineticDynamicSlab.y[physId];
     for (let i = 0; i < geometries.length; i++) {
         const geom = geometries[i];
-        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, sourcePos.x, sourcePos.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
+        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, geom.centroid.cx, geom.centroid.cy, cos, sin);
         const shard = acquireWorldProp(worldPos.x, worldPos.y, shardPropId, facing);
         if (geom.collisionParts) applyChunkGeometryToProp(shard, geom);
         else applyShardGeometryToProp(shard, geom);
@@ -185,11 +182,11 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     if (components.length <= 1) return null;
     components.sort((a, b) => b.length - a.length);
     const physId = prop._physId;
-    const originX = kineticDynamicSlab.x[physId];
-    const originY = kineticDynamicSlab.y[physId];
+    const wx = kineticDynamicSlab.x[physId];
+    const wy = kineticDynamicSlab.y[physId];
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
-    return { debris, originX, originY, facing: prop.facing };
+    return { debris, originX: wx, originY: wy, facing: prop.facing };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const physId = prop._physId;

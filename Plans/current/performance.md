@@ -30,11 +30,11 @@ This report provides an audit of the codebase to identify opportunities where in
 
 ### 2.4. Agent FSM & Passthrough Functions (`hygiene.md` enforcement)
 
-- **Current Issue**: The FSM setup violates `hygiene.md` in some places. `createGroundNavIntentAdapter` contains bloated "getter/resolver theater" (such as `resolveHunger` closures and `buildDecisionContextInto` wrapping logic without providing direct value).
+- **Current Issue**: The FSM setup still has some wrapper allocation risk around `GroundNavIntentAdapter.js` and `AgentDecisionContext.js`, even after the larger profile-driven consolidation landed.
 - **Opportunity**:
-    - Drop the wrappers in `groundNavIntentProfiles.js` (e.g. `buildDecisionContextInto`). Calculate `decisionInput` directly where it is consumed.
+    - Drop remaining adapter/context wrapper objects. Write facts directly into the preallocated decision context where practical.
     - Move FSM effects to operate on shared scalar structs instead of passing complex nested context objects between functions.
-    - Inline static configuration getters. Use `getSnakeGameConfig()` precisely where needed rather than threading it through FSM `buildDecisionContext` arguments.
+    - Inline static configuration getters only where they remove real pass-through; profile schema should remain the source of species policy.
 
 ### 2.5. Pathfinding (`flowTargetSteps.js`)
 
@@ -48,7 +48,7 @@ This report provides an audit of the codebase to identify opportunities where in
 
 1. **Flatten Collision Data Pipelines**: Begin refactoring `SatCollision` and `kineticBodySlab` to compute overlaps into a globally pre-allocated typed array structure. Eliminate all intermediate object allocations (`{ nx, ny, overlap, ... }`) in the hot loop.
 2. **Optimize Grid Cell Vision**: Rework the Bresenham line algorithm inside `hasGridCellLineOfSight` to trace without calling external utility functions like `navTopologyGraphCanStep` on every single step; instead, inline the passability checks.
-3. **Refactor FSM Intent Adapters**: Do a deletion pass on `groundNavIntentProfiles.js` and `createGroundNavIntentAdapter.js`. Delete "passthrough" functions. Delete closures generating option bags. Directly read `world.decisionContext.known` instead of copying fields.
+3. **Refactor FSM Adapter Hot Paths**: Audit `GroundNavIntentAdapter.js` and `AgentDecisionContext.js` for wrapper objects, closures, and pass-through option bags. Keep the shipped profile schema, but write per-tick facts more directly.
 4. **Fix EntityRegistry Iteration**: Remove the O(N) fallback in `EntityRegistry`. Guarantee that all items belong to the spatial grid so that `queryView` only iterates over localized `aabb` bounding regions.
 
 By strictly applying the single-dialect and net-negative line count directives from `hygiene.md`, these areas represent the clearest wins for performance and maintainability.

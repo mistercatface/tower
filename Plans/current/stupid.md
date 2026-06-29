@@ -96,7 +96,7 @@ Pass viewport. Read viewport. Nothing else.
 
 **Grep gates (still enforced):** zero `elevationCameraFrom`, `wallPassCamera`, `wallCtx`, `worldSceneDrawInput`, `drawCachedPropSprite(…, px, py` at call sites. Full checklist: `[frame.md](frame.md#review-bar)`.
 
-**Pattern for AI work:** same as `flowTargetSteps` + `createGroundNavIntentAdapter` — compute frame facts **once at the boundary**, pass the handle, delete the copies. Pass H2a collapsed `blackboard`/`decisionSnapshot` to flat `decisionContext` — **no test accommodation aliases** ([Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims)).
+**Pattern for AI work:** same as `flowTargetSteps` + `GroundNavIntentAdapter` — compute frame facts **once at the boundary**, pass the handle, delete the copies. Pass H2a collapsed `blackboard`/`decisionSnapshot` to flat `decisionContext` — **no test accommodation aliases** ([Tests follow the dialect](#tests-follow-the-dialect--never-ship-compatibility-shims)).
 
 ---
 

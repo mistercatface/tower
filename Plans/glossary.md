@@ -59,15 +59,15 @@ Full checklist and algorithm IDs (V-CA, R-DFS, G-corridor, …) → [Mazes.md](.
 | `prop.strategy`                                  | Prop capability config (physics, render, sandbox)             | AI strategy / GOAP (not implemented)              |
 | `target` in `snakeFood` or ground nav            | Movement target / food prop                                   | AI strategic objective                            |
 | `Libraries/FSM/transition.js`                    | Prop lifecycle transition helper                              | Agent intent FSM → `AI/agentIntent/`              |
-| `Libraries/AI/brain`                             | Spatial cell memory + nav step penalty producer               | Target memory → `AI/memory/targetMemory.js`       |
+| `Libraries/AI/brain`                             | Spatial cell memory + nav step penalty producer               | Target memory currently owned by `GroundNavIntentAdapter.js` |
 | `navStepPenalty.js` (×2)                         | Brain builds penalties; Pathfinding consumes in A\*           | Same implementation twice                         |
 | `Libraries/Navigation`                           | Runtime nav wiring, perception, steering, topology sync       | Search algorithms → `Libraries/Pathfinding`       |
 | `Libraries/Motion`                               | Integration, constraints, solver, wall resolution             | Collision → `Spatial/collision`                   |
 | `Libraries/WorldSurface`                         | Chunk floor/wall texture-atlas baking                         | Per-prop texturing → `Render/SurfaceTexturing`    |
 | `Libraries/Sandbox`                              | Engine sandbox systems (nav behaviors, snapshots, map-gen UI) | Snake game rules → `Libraries/Game/snake`         |
-| `agentProfile`                                   | Species-level capability configurations                       | Instances of `AgentInstance` or `agentIdentity`   |
+| `AgentProfiles.js`                               | Profile ids, registry helpers, and engagement facts            | Runtime instances → `AgentInstance.js`; identities → `agentIdentity.js` |
 | `DynamicSpeciesMap`                              | On-demand dynamic species lookup                              | Hardcoded species references                      |
-| `gunBulletSystem` / `rangedCombat`               | Projectile/shooting FSM and collision routines                | Core rigid body physics steps                     |
+| `gunBulletSystem` / combat action state          | Projectile simulation and shooting FSM phases                 | Core rigid body physics steps                     |
 | `customSystems`                                  | Custom ticker loop hooks runner (e.g., bullet ticks)          | Main game simulation loop (`setupSnakeGame`)      |
 
 Code map detail → [library-audit.md](./library-audit.md).

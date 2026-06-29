@@ -8,6 +8,7 @@ import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
 import propCatalog from "../Assets/props/index.js";
@@ -92,6 +93,9 @@ describe("glass fracture", () => {
     });
     it("fracturePropOnImpact returns all shards for glass and no parent geometry", () => {
         const prop = new WorldProp(50, 50, "glass_pane", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 50;
+        kineticDynamicSlab.y[0] = 50;
         applyPropBoxFootprint(prop, 16, 10);
         const fracture = fracturePropOnImpact(prop, 50, 50, 25);
         assert.ok(fracture);
@@ -103,6 +107,9 @@ describe("glass fracture", () => {
         const shards = shatterGlassFootprint(12, 8, 0, 0, 30, deterministicRandom);
         const big = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         const prop = new WorldProp(0, 0, "glass_pane", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 0;
+        kineticDynamicSlab.y[0] = 0;
         applyShardGeometryToProp(prop, big);
         assert.ok(canFracturePropSplit(prop));
         const fracture = fracturePropOnImpact(prop, 0, 0, 25);
@@ -162,6 +169,9 @@ describe("glass fracture", () => {
     });
     it("spawnGlassShatter sets fracture cooldown on new shards", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 0;
+        kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 32, 32);
         const fracture = fracturePropOnImpact(prop, 0, 0, 30);
         assert.ok(fracture);

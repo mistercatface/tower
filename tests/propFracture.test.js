@@ -3,12 +3,15 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { fracturePropOnImpact, impactForceFromContact, splitFootprintIntoComponents, worldHitToPropLocal } from "../Libraries/Props/propFracture.js";
 import { chunkCollisionPartsArea } from "../Libraries/Props/chunkFracture.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
 
 describe("prop impact fracture", () => {
     it("worldHitToPropLocal maps world hits into prop space", () => {
-        const prop = { x: 100, y: 200, facing: Math.PI / 2 };
+        const prop = { x: 100, y: 200, facing: Math.PI / 2, _physId: 0 };
+        kineticDynamicSlab.x[0] = 100;
+        kineticDynamicSlab.y[0] = 200;
         const local = worldHitToPropLocal(prop, 100, 210);
         assert.ok(Math.abs(local.x - 10) < 1e-6);
         assert.ok(Math.abs(local.y) < 1e-6);
@@ -29,6 +32,9 @@ describe("prop impact fracture", () => {
 
     it("fracturePropOnImpact keeps largest piece on parent and returns debris", () => {
         const prop = new WorldProp(100, 200, "crate", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 100;
+        kineticDynamicSlab.y[0] = 200;
         applyPropBoxFootprint(prop, 12, 12);
         const initialChunks = prop.chunks.length;
         const fracture = fracturePropOnImpact(prop, 100, 200, 80);
@@ -48,6 +54,9 @@ describe("prop impact fracture", () => {
 
     it("chunk fracture collision parts match stored material area", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 0;
+        kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 16, 16);
         const fracture = fracturePropOnImpact(prop, 0, 0, 80);
         assert.ok(fracture);

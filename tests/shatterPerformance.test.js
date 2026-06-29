@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry, addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Entities/WorldProp.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
@@ -46,6 +47,9 @@ describe("Shatter / Debris Performance Fixes", () => {
     it("WorldProp instances are correctly pooled and reused", () => {
         const state = createTestState();
         const prop = new WorldProp(0, 0, "glass_pane", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 0;
+        kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 32, 32);
         
         const fracture = fracturePropOnImpact(prop, 0, 0, 30);

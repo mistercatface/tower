@@ -18,9 +18,9 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | **Pathfinding** |     ~56% | pro-grade grid search + HPA/flow workers; missing smoothing and crowd layer                                   | octile A*, HPA* Voronoi regions, flow-field BFS, SAB workers                       | funnel / string-pull smoothing                | [pathfinding.md](./pathfinding.md)                                     |
 | **Rendering**   |     ~60% | radial pseudo-3D is strong; real-time LOS shadow overlay; projectile layer drawer                             | camera-relative elevation projection, painter sort, bake/blit LRU, stencil shadows | projected drop shadows                        | [rendering.md](./rendering.md)                                         |
 | **Procedural**  |     ~42% | strong bake/resolution; weak authorship/generator layer                                                       | CA caves, room-graph bake, cardinal corridor A\*                                   | unified root seed                             | [procedural.md](./procedural.md) · algorithms → [Mazes.md](./Mazes.md) |
-| **AI**          |     ~70% | agent profiles/identity, frame orchestrator, ranged combat / gun agents                                       | FSM, utility scoring, TTL target memory, dynamic profiles                          | Local flow locomotion (Part 2)                | [AI.md](./AI.md)                                                       |
+| **AI**          |     ~72% | profile-driven snake/flee/squid agents, frame orchestrator, flee gun/ammo economy                             | FSM, utility scoring, target memory, dynamic profiles                              | Local flow locomotion (Part 2)                | [AI.md](./AI.md)                                                       |
 
-**Overall engine maturity: ~61%** _(manual unweighted roll-up)._ Recent AI/Rendering work: agent profiles and dynamic species map, identity management, frame orchestrator, ranged combat / gun agent system. Real-time stencil-based LOS shadow overlay and direct pooled projectile draw layer in renderer.
+**Overall engine maturity: ~62%** _(manual unweighted roll-up)._ Recent AI/Rendering work: profile-driven snake/flee/squid agents, identity management, frame orchestrator, flee ranged combat and ammo economy. Real-time stencil-based LOS shadow overlay and direct pooled projectile draw layer in renderer.
 
 ---
 
@@ -62,7 +62,7 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | FSM                  | ✅ generic host; snake + flee 4 modes each         | FSM / behavior tree             | no hierarchy                            |
 | Utility scoring      | ✅ generic core; snake + flee scorers              | utility AI                      | no authoring layer                      |
 | EQS                  | 🟡 generic option scorer; explore consumer         | Unreal EQS                      | no debug UI                             |
-| Teams/factions       | 🟡 relationships + flee regroup                    | team-aware targeting            | snake regroup + pack flee pending       |
+| Teams/factions       | ✅ relationships + regroup + pack flee             | team-aware targeting            | squad blackboard / role assignment      |
 | Nav–AI bridge        | 🟡 HPA locomotion; flow for sandbox only           | local fields + global plan      | decision reach uses flow distance slots |
 | Strategy/game theory | ⬜ none                                            | GOAP/HTN/MCTS/minimax           | future                                  |
 
@@ -74,7 +74,7 @@ This is the hub for the 2D-canvas pseudo-3D sandbox engine. The spoke docs own d
 | Depth             | ✅ painter sort + per-face mesh sort      | painter / z / BSP            | no per-pixel z by design      |
 | Caching           | ✅ quantized bake/blit LRU                | atlas pipeline               | parity                        |
 | Texture           | ✅ affine wall and prop surface texturing | sprite/sector texturing      | affine only                   |
-| Shadows/lighting  | ⬜ shadow math exists, unwired            | baked/contact shadows        | biggest visual gap            |
+| Shadows/lighting  | 🟡 stencil LOS overlay shipped; drop shadows unwired | baked/contact shadows        | projected object shadows      |
 | Perspective modes | 🟡 radial full, flat2d partial            | multiple modes               | top-down/isometric incomplete |
 
 ### Procedural / level generation
@@ -193,7 +193,7 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 - [ ] ▶ Funnel/string-pull smoothing.
 - [ ] Local separation / RVO-style crowd.
 - [ ] **Local flow locomotion (Part 2)** — 2a flee flow steering, 2b hybrid HPA → 3 blended fields · [`current/fsmroadmap.md`](current/fsmroadmap.md)
-- [ ] **AI consumer dedupe & FSM hygiene (Part 4)** — dedupe snake/flee; generic derives in `Libraries/AI/` · [`current/fsmroadmap.md`](current/fsmroadmap.md)
+- [ ] **FSM hygiene (Part 4)** — wrapper allocation cleanup and stale naming sweep · [`current/fsmroadmap.md`](current/fsmroadmap.md)
 - [ ] **Per-agent local flow horizons (locomotion Part 2)** — 2a flee flow → 2b hybrid HPA → 3 blended fields · [AI.md](./AI.md#future-local-flow-horizons)
 
 ### Rendering
@@ -216,18 +216,18 @@ Physics/game hook boundary is peeled; render still reads live sim state without 
 
 - [x] Generic agent intent host.
 - [x] Spatial memory, target memory, utility scoring, EQS option scoring.
-- [x] Snake 4-mode forage FSM with effort-aware decisions and debug snapshots.
+- [x] Snake, flee-agent, and squid profiles run through the shared agent instance/session stack.
 - [x] Flee agent behavior unified into profile-driven dynamic FSM.
 - [x] Team hunting — faction relationships, rival band, config prey value, shared `classifyAgentVision`.
 - [x] Ally perception + memory + blackboard (`allyState`, TTL ally slot).
 - [x] Flee `seek_ally` regroup when safe and satisfied.
 - [x] Cohesion **4c** (snake regroup) and **4d** (flee pack flee blend).
 - [x] **FSM reach (`reachSteps`)** — Flow-backed reach ✅ · [`current/fsmroadmap.md`](current/fsmroadmap.md)
-- [x] **Agent Identity & Dynamic Profiles** — Config-driven species map (`DynamicSpeciesMap`), `agentIdentity.js`, and `spawnPopulationInScene.js`.
-- [x] **Ranged Combat & Gun System** — Weapon configurations, reload phases, and bullet collisions.
-- [x] **Agent Frame Orchestrator** — FSM orchestration layer (`agentFrameOrchestrator.js`).
+- [x] **Agent Identity & Dynamic Profiles** — Config-driven profiles (`AgentProfiles.js`), `agentIdentity.js`, `spawnPopulationInScene.js`, and `DynamicSpeciesMap`.
+- [x] **Ranged Combat & Gun System** — Flee weapon configurations, reload phases, ammo pickup, and bullet collisions.
+- [x] **Agent Frame Orchestrator** — Admission-budget FSM orchestration in `snakeAgentSession.js`.
 - [ ] **Local flow locomotion (Part 2)** — 2a flee flow steering, 2b hybrid HPA → 3 blended fields · [`current/fsmroadmap.md`](current/fsmroadmap.md)
-- [ ] **AI consumer dedupe & FSM hygiene (Part 4)** — dedupe snake/flee; generic derives in `Libraries/AI/` not `snakeDecisionModel.js`
+- [ ] **FSM hygiene (Part 4)** — reduce remaining wrapper allocations and stale pass-through naming after the profile consolidation
 - [ ] Behavior-tree skeleton over existing intent primitives.
 
 ---
@@ -240,7 +240,7 @@ The detailed map lives in [library-audit.md](./library-audit.md). Condensed:
 | ----------- | ----------------------------------------------------------------------------------------- | ---------------------------------------- |
 | Physics     | `Libraries/Motion`, `Libraries/Spatial/collision`, `Systems/World`                        |
 | Pathfinding | `Libraries/Pathfinding`, `Libraries/Navigation`, `Libraries/Workers`                      |
-| AI          | `Libraries/AI/agentIntent`, `AI/brain`, `AI/memory`, `AI/utility`, `AI/eqs`, `Agent`      |
+| AI          | `Libraries/AI/agentIntent`, `AI/agents`, `AI/brain`, `AI/perception`, `AI/steering`, `AI/utility`, `AI/eqs` |
 | Rendering   | `Libraries/Render`, `Canvas`, `WorldSurface`, `Spatial/elevation`, `Render`                     |
 | Procedural  | `Libraries/CA`, `RoomGraph`, `Procedural/Mazes`, `Procedural/Motifs`, `Config/procedural` |
 | Sandbox     | `Libraries/Sandbox`, `SandboxEditor`, `Editor`, `UI`, `Pipeline`                          | [sandbox-editor.md](./sandbox-editor.md) |
@@ -255,7 +255,7 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 ### Highest strategic overlap
 
 1. **Local flow locomotion (Part 2)** — 2a flee flow steer, 2b hybrid HPA, 3 blended fields · [`current/fsmroadmap.md`](current/fsmroadmap.md)
-2. **AI consumer dedupe & FSM hygiene (Part 4)** — snake/flee cleanup; generic derives in `Libraries/AI/` · same doc
+2. **FSM hygiene (Part 4)** — wrapper allocation cleanup and stale naming sweep · same doc
 3. **Funnel / string-pull path smoothing** — pathfinding feel win, visibly improves snake chase/explore.
 4. **Unified root seed** — procedural reproducibility, regression tests, future level generator.
 5. **Render cache telemetry** — supports dense snake/sandbox scenes and sizes caches from evidence.
@@ -264,7 +264,7 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 | Domain      | Grab-list                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AI          | local flow locomotion 2a–3; **FSM hygiene & dedupe (Part 4)**; behavior-tree skeleton; decision debug view                                       |
+| AI          | local flow locomotion 2a–3; **FSM hygiene (Part 4)**; behavior-tree skeleton; decision debug view                                               |
 | Pathfinding | path smoothing; per-agent local flow window pool; local separation; hybrid HPA waypoint + flow execution; worker resilience                      |
 | Procedural  | unified root seed; seed golden tests; room-graph generator v1; Poisson/min-distance placement                                                    |
 | Rendering   | projected shadows; cache telemetry; projection/viewport tests; top-down 2D completion                                                            |
@@ -288,4 +288,4 @@ See [NOW.md](./NOW.md) for the short weekly queue. This section is the longer st
 
 **Domain:** [games/snake.md](./games/snake.md) · [foundations/grid-contract.md](./foundations/grid-contract.md) · [foundations/architecture-health.md](./foundations/architecture-health.md) · [sandbox-editor.md](./sandbox-editor.md)
 
-_Last updated: FSM reach phase 1 (flow-backed reach) complete · [`current/fsmroadmap.md`](current/fsmroadmap.md)_
+_Last updated: Plans refresh after profile-driven snake/flee/squid stack, flee gun/ammo economy, and frame orchestrator._

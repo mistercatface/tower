@@ -66,17 +66,18 @@ The old navigation service/context wording is no longer the map of reality. Navi
 
 | Path | State | Role |
 |---|---|---|
-| `Libraries/AI/agentIntent` | ✅ | Generic agent intent FSM host (`createAgentIntent`) |
+| `Libraries/AI/agentIntent` | ✅ | Generic flat agent intent FSM host (`AgentIntent.js`) |
 | `Libraries/AI/identity` | ✅ | `agentIdentity.js` named agent and identity management |
-| `Libraries/AI/agents` | ✅ | `agentProfile.js` dynamic configuration-driven agent profiles |
+| `Libraries/AI/agents` | ✅ | `AgentProfiles.js` profile ids/registry/engagement and `AgentDecisionContext.js` schema-driven facts/scoring |
 | `Libraries/AI/brain` | ✅ | Spatial memory and memory-to-A* penalty producer |
-| `Libraries/AI/memory` | ✅ | Generic TTL target memory (`targetMemory`) |
+| `Libraries/AI/perception` | ✅ | Shared world perception and agent vision classification |
+| `Libraries/AI/steering` | ✅ | Flee-cell and combat-strafe cell scoring |
 | `Libraries/AI/utility` | ✅ | Generic utility/net-value candidate scoring |
 | `Libraries/AI/eqs` | ✅ | Tiny EQS-style weighted option scoring |
 | `Libraries/Agent` | ✅ | Agent pose / steering result contracts |
 | `Libraries/FSM` | 🟡 | Generic transition helper, separate from agent intent |
 
-Current first consumer: snake forage. Generic pieces now live outside `Libraries/Game/snake`.
+Current proving ground: snake game profiles (`snake`, `flee_agent`, `squid`). Target memory is currently owned by the snake-game adapter (`GroundNavIntentAdapter.js`), not a standalone `Libraries/AI/memory` package.
 
 ### 3.4 Rendering and presentation
 
@@ -142,6 +143,16 @@ Current first consumer: snake forage. Generic pieces now live outside `Libraries
 
 Condensed file map (detail in snake doc):
 
+| Path | Role |
+|---|---|
+| `Libraries/Game/snake/setupSnakeGame.js` | game launch setup, HUD, scene tick hook |
+| `Libraries/Game/snake/snakeAgentSession.js` | session, dynamic species map, frame orchestrator |
+| `Libraries/Game/snake/AgentInstance.js` | runtime instance, autosim, metabolism, relationships |
+| `Libraries/Game/snake/GroundNavIntentAdapter.js` | target memory, FSM adapter, ranged combat action state |
+| `Libraries/Game/snake/snakeCombat.js` | contact combat / ram rules |
+| `Libraries/Game/snake/gunAgent/gunBulletSystem.js` | projectile sim and contacts |
+| `Config/games/snake.js` | profile schemas and gameplay tuning |
+
 ---
 
 ## 5. Test coverage map
@@ -150,8 +161,8 @@ Condensed file map (detail in snake doc):
 |---|---|
 | Physics / kinetic | `kineticConstraintSolver`, `kineticContactSolver`, `kineticNarrowPhase`, `kineticPairStream`, `kineticIslands`, `kineticSleepProps`, `kineticContactManifold`, `activeKineticBodies`, `bodyMass`, `wallResolution`, `chainLinks`, `chainVsWallGrowth` |
 | Pathfinding / nav | `AStar`, `hpaGroundNavReplan`, `hpaPathSlot`, `hpaStitch`, `hpaRegionGraph`, `gridNavContext`, `hpaBeltNav`, `flowFieldBfs`, `lineOfSight`, corridor tests |
-| AI / decisions | `brain`, `navStepPenalty`, `targetMemory`, `utilityScoring`, `eqsScoreOptions`, `goalSeekAutosim`, `gridCellVision` |
-| Snake game | `snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeForageIntent`, `snakeAutosim`, `snakeMulti`, `snakePerfBudget`, `snakeMinLengthDeath`, `snakeSplit`, `gunBullet`, `shatterPerformance` |
+| AI / decisions | `brain`, `navStepPenalty`, `utilityScoring`, `eqsScoreOptions`, `goalSeekAutosim`, `gridCellVision`, `agentFrameOrchestrator`, `fleeAgentDecision`, `agentRelationships` |
+| Snake game | `snakeDecisionModel`, `snakeIntent`, `snakeFsmTransitions`, `snakeAutosim`, `snakeInstance`, `snakeMulti`, `snakePerfBudget`, `snakeMinLengthDeath`, `snakeSplit`, `snakeSegmentFracture`, `snakeStarvation`, `fleeAgentCombat`, `fleeAgentCallouts`, `ammoEconomy`, `gunBullet`, `createAgentSpecies`, `squidVsSquidCombat`, `squidVsFleeCombat`, `shatterPerformance` |
 | Procedural / mazes | `puzzleTemplateBeltCrate`, `lockedRoom`, `railMaze*`, `snakeSplitLayout`, `walkableCells`, `navWalkableIndex` |
 | Rendering / props | `vectorProp`, `drawShapeParity`, `maskCompositor`, `propScale`, `colorVisualOverride`, `shapeFirstProps`, `spawnShapeFamily`, `sandboxSceneSnapshot` |
 
@@ -168,8 +179,8 @@ Coverage read: physics, pathfinding, AI, and snake are the best-tested. Procedur
 | Editor or sandbox feedback | `Libraries/Render/overlays` + `SandboxEditor/buildSandboxOverlayCommands.js` | Overlay commands |
 | Path search behavior | `Libraries/Pathfinding` | A*, HPA, flow, worker sessions |
 | Runtime nav wiring | `Libraries/Navigation` | `NavRuntime`, `NavTopology`, worker navigation factory |
-| Agent memory | `Libraries/AI/brain` or `Libraries/AI/memory` | Spatial cells vs entity targets |
-| Agent scoring / decisions | `Libraries/AI/utility`, `Libraries/AI/eqs`, domain adapter | Generic scoring core, domain-specific facts/scorers |
+| Agent memory | `Libraries/AI/brain` or the domain adapter | Spatial cells vs entity targets |
+| Agent scoring / decisions | `Libraries/AI/agents/AgentDecisionContext.js`, `Libraries/AI/utility`, `Libraries/AI/eqs`, domain adapter | Generic scoring core, profile/domain facts |
 | Snake game behavior | `Libraries/Game/snake` | See [games/snake.md](./games/snake.md) |
 | Surface texture/theme | `Libraries/Procedural/Motifs` + `Config/procedural/storage` | Motif + profile preset |
 | Level/room geometry | `Libraries/RoomGraph`, `Libraries/CA`, `Libraries/Procedural/Mazes` | Room graph bake / maze helpers |
@@ -177,4 +188,4 @@ Coverage read: physics, pathfinding, AI, and snake are the best-tested. Procedur
 
 ---
 
-*Last updated: Current engine audit updated with dynamic agent profiles, agent identity, frame orchestrator, ranged combat, and metabolism changes.*
+*Last updated: Current engine audit updated with `AgentProfiles`, `AgentDecisionContext`, `GroundNavIntentAdapter`, flee gun/ammo economy, squid, and frame orchestration.*

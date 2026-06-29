@@ -35,11 +35,11 @@ TileLabGameState (SharedGameState + sandbox + editor + optional appLaunch)
   ↔ Apps/Editor/engine.js (RAF tick owns physics, floor, game session hooks, customSystems)
   ↔ preview.js / Render.js (draw path pulls editor + sandbox + surfaces)
   ↔ Libraries/Sandbox/* (behaviors, groundNav, chains, belts, damage, snapshots)
-  ↔ Libraries/Game/snake/* (consolidated metabolism, dynamic species registry, gun combat, imports groundNav)
-  ↔ Libraries/AI/* (extracted profiles, identity, and generic intent)
+  ↔ Libraries/Game/snake/* (AgentInstance, GroundNavIntentAdapter, dynamic species registry, gun combat, imports groundNav)
+  ↔ Libraries/AI/* (AgentProfiles, AgentDecisionContext, perception, steering, identity, and generic intent)
 ```
 
-Games are **not** thin at the import graph level, but species creation has been decoupled via profile configurations (`agentProfile.js`) and dynamic species maps.
+Games are **not** thin at the import graph level, but species creation has been decoupled via profile configurations (`AgentProfiles.js`) and dynamic species maps.
 
 ---
 
@@ -52,7 +52,7 @@ Games are **not** thin at the import graph level, but species creation has been 
 | `Libraries/Pathfinding` + workers | 🟢 | Strong; naming settled on `NavRuntime` / `NavTopology` |
 | `Libraries/Navigation/perception` | 🟢 | Vision frame + grid LOS; recently unified |
 | `Libraries/Render/overlays` + pipeline rule | 🟢 | Enforced by `.cursor/rules/rendering-pipelines.mdc` |
-| `Libraries/AI` (agent intent, utility, memory) | 🟡 | Generic core exists; only two consumers; slot pipeline deferred |
+| `Libraries/AI` (agent intent, profiles, decisions, perception, steering) | 🟡 | Generic core exists; snake game has three profile consumers; slot pipeline deferred |
 | `Libraries/Sandbox/groundNav` | 🟡 | **Locomotion lives in Sandbox**, not Navigation — snakes and editor props share behaviors here |
 | `Libraries/Sandbox` floor/mechanisms | 🟡 | Belts, power, buttons — puzzle layer mixed with editor tick |
 | `Libraries/SandboxEditor` + `sandboxSession` | 🔴 | Large god-modules (~560+ lines); tools + session + placement in one place |
@@ -100,7 +100,7 @@ That is at least three concerns in one package name. New code gravitates here be
 | Model | Where | Drives |
 |---|---|---|
 | **Prop behavior** | `Libraries/Sandbox/behaviors`, `sandboxEntityMeta` | Flipper, drag launch, ground-nav on selection |
-| **Agent intent** | `Libraries/AI/agentIntent`, game adapters | Snake, flee agents |
+| **Agent intent** | `Libraries/AI/agentIntent`, game adapters | Snake, flee agents, squid |
 
 They share grid and nav but not a unified host. Snake autosim selects its own intent; sandbox props get behavior ids from inspectors. No shared “actor” abstraction.
 
@@ -120,17 +120,19 @@ They share grid and nav but not a unified host. Snake autosim selects its own in
 
 **Extracted (good pattern):**
 
-- `classifyAgentVision`, `targetMemory`, `utilityScoring`, `createAgentIntent`
-- `agentEngagement` publish/read
+- `classifyAgentVision`, `utilityScoring`, `AgentIntent`
+- `AgentProfiles` profile ids, registry helpers, and engagement publish/read
+- `AgentDecisionContext` schema-driven facts and scoring
 - `NavRuntime` / perception frame
-- Agent profiles (`agentProfile.js`), unique identities (`agentIdentity.js`)
+- Unique identities (`agentIdentity.js`)
 - Dynamic population spawning in scenes (`spawnPopulationInScene.js`)
-- Consolidated agent metabolism (`agentMetabolism.js`)
+- Consolidated runtime agent/metabolism host (`AgentInstance.js`)
 
 **Still snake-adjacent or session-specific:**
 
 - Locomotion: `cellTargetHpaNav` under **Sandbox/groundNav**
 - Chain-specific spawn/growth: `spawnLinkedBallChain`, `growChainSegment`
+- Target memory and combat action phases still live in `GroundNavIntentAdapter.js`
 - Combat side effects wired in `setupSnakeGame` → `engine.js` hook
 - HUD in game code; overlay append via `appLaunch.session`
 
