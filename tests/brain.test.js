@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/brain.js";
-import { createBrain } from "../Libraries/AI/brain/createBrain.js";
-import { buildNavStepPenaltyFromSpatialMemory } from "../Libraries/AI/brain/navStepPenalty.js";
+import { createBrain, buildNavStepPenaltyFromSpatialMemory } from "../Libraries/Game/snake/agentAutosim.js";
 describe("spatialCellMemory", () => {
     it("evicts oldest cells when capacity is exceeded", () => {
         const memory = createSpatialCellMemory({ capacity: 3 });

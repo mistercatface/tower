@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey } from "../Libraries/WorldSurface/SurfaceBakeCacheKeys.js";
 import { SurfaceSpatialMap } from "../Libraries/WorldSurface/SurfaceSpatialMap.js";
+globalThis.ImageBitmap = class ImageBitmap { close() {} };
 
 function createSurfaceSpace(overrides = {}) {
     return new SurfaceSpatialMap(createGameWorldSurfaceSettings(overrides));

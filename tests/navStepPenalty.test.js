@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FlatGridSearch } from "../Libraries/Pathfinding/AStar.js";
-import { SearchState } from "../Libraries/Pathfinding/SearchState.js";
-import { FlatGridView } from "../Libraries/Pathfinding/FlatGridView.js";
-import { createNavStepPenaltyLookup } from "../Libraries/Workers/Navigation/HpaWorkerEntry.js";
-import { packCellKey } from "../Libraries/DataStructures/CellKey.js";
+globalThis.self = globalThis;
 describe("nav step penalty", () => {
-    it("local A* routes around a heavily penalized cell", () => {
+    it("local A* routes around a heavily penalized cell", async () => {
+        const { FlatGridSearch } = await import("../Libraries/Pathfinding/AStar.js");
+        const { SearchState } = await import("../Libraries/Pathfinding/SearchState.js");
+        const { FlatGridView } = await import("../Libraries/Pathfinding/FlatGridView.js");
+        const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
+        const { packCellKey } = await import("../Libraries/DataStructures/CellKey.js");
+
         const cols = 5;
         const rows = 3;
         const navGraph = { canStep: () => true };
