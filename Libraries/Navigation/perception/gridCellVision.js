@@ -75,10 +75,7 @@ export function hasGridCellLineOfSight(navTopology, col0, row0, col1, row1) {
 }
 export function buildVisionCellSet(cells, cols) {
     const set = new Set();
-    for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i];
-        set.add(colRowToIndex(cell.col, cell.row, cols));
-    }
+    for (let i = 0; i < cells.length; i++) set.add(cells[i]);
     return set;
 }
 export function collectVisibleGridCells(navTopology, originX, originY, range) {
@@ -92,6 +89,7 @@ export function collectVisibleGridCells(navTopology, originX, originY, range) {
     const minRow = Math.max(0, originRow - rangeCells);
     const maxRow = Math.min(grid.rows - 1, originRow + rangeCells);
     const cells = [];
+    const cols = grid.cols;
     for (let row = minRow; row <= maxRow; row++)
         for (let col = minCol; col <= maxCol; col++) {
             const x = grid.gridCenterX(col);
@@ -100,7 +98,7 @@ export function collectVisibleGridCells(navTopology, originX, originY, range) {
             const dy = y - originY;
             if (dx * dx + dy * dy > rangeSq) continue;
             if (!hasGridCellLineOfSight(navTopology, originCol, originRow, col, row)) continue;
-            cells.push({ col, row });
+            cells.push(colRowToIndex(col, row, cols));
         }
     return cells;
 }

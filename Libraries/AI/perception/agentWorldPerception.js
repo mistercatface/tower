@@ -2,9 +2,13 @@ import { classifyAgentVision } from "./classifyAgentVision.js";
 export function resolveVisibleCategoryInVision(categoryIndex, seeker, frame, visionRange, accept, committedTargetId = null, targetStickyFactor = 1.0, vision = null) {
     const resolvedVision = vision ?? frame.ensureHeadVision(seeker, visionRange);
     const rangeSq = visionRange.range * visionRange.range;
+    const cols = frame.navTopology.grid.cols;
     let best = null,
         bestDistSq = Infinity;
-    for (const { col, row } of resolvedVision.cells) {
+    for (let i = 0; i < resolvedVision.cells.length; i++) {
+        const idx = resolvedVision.cells[i];
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
         if (categoryIndex.countAtCell(col, row) === 0) continue;
         const prop = categoryIndex.nearestItemInCell(col, row, seeker.x, seeker.y, (p) => accept(seeker, p));
         if (!prop) continue;

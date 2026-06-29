@@ -1,10 +1,52 @@
-import { createBrain } from "../../AI/brain/createBrain.js";
-import { createSpatialBrainSync } from "../../AI/brain/syncSpatialBrain.js";
 import { createGroundNavIntentAdapter } from "./createGroundNavIntentAdapter.js";
 import { buildGroundNavIntentAdapterOptions } from "./createGroundNavIntentAdapter.js";
 import { isSnakeFoodTarget } from "./snakeFood.js";
 import { setAgentHunger } from "./agentMetabolism.js";
 import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
+import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
+import { createSpatialCellMemory } from "../../AI/brain/brain.js";
+export class Brain {
+    constructor({ spatialMemoryCapacity = 64, cols = 64 } = {}) {
+        this.spatial = createSpatialCellMemory({ capacity: spatialMemoryCapacity, cols });
+    }
+    stampSeenCells(cells) {
+        this.spatial.stampCells(cells);
+    }
+    stampArrival(col, row) {
+        this.spatial.stamp(col, row);
+    }
+    clearMemory() {
+        this.spatial.clear();
+    }
+}
+export function createBrain(config) {
+    return new Brain(config);
+}
+export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty, falloff }) {
+    const keys = [];
+    const costs = [];
+    spatial.forEachNewestFirstKey((key, _seq, rankFromNewest) => {
+        keys.push(key);
+        costs.push(basePenalty * falloff ** rankFromNewest);
+    });
+    if (!keys.length) return null;
+    return { keys: Int32Array.from(keys), costs: Float32Array.from(costs) };
+}
+export function createSpatialBrainSync(brain, { visionRange, navMemoryStepPenalty, navMemoryStepFalloff }) {
+    let lastPenaltyGeneration = -1;
+    let lastPenalty = null;
+    return function syncSpatialBrain(agent, state) {
+        const frame = getObserverVisionFrame(state);
+        const vision = frame.ensureHeadVision(agent, visionRange);
+        brain.stampSeenCells(vision.cells);
+        const generation = brain.spatial.generation;
+        if (generation !== lastPenaltyGeneration) {
+            lastPenalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: navMemoryStepPenalty, falloff: navMemoryStepFalloff });
+            lastPenaltyGeneration = generation;
+        }
+        agent.navStepPenalty = lastPenalty;
+    };
+}
 export class AgentAutosim {
     constructor(state, instance) {
         this.state = state;
@@ -14,7 +56,7 @@ export class AgentAutosim {
         this.entityRegistry = state.entityRegistry;
         this.agentCtx = { instance, session: this.session, navWalkable: this.session.navWalkable };
         this.profile = instance.profile;
-        this.brain = createBrain({ spatialMemoryCapacity: this.shared.spatialMemoryCapacity });
+        this.brain = createBrain({ spatialMemoryCapacity: this.shared.spatialMemoryCapacity, cols: state.obstacleGrid?.cols ?? 64 });
         this.sync = createSpatialBrainSync(this.brain, {
             visionRange: instance.visionRange,
             navMemoryStepPenalty: this.shared.navMemoryStepPenalty,

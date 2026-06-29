@@ -93,8 +93,8 @@ describe("grid cell vision", () => {
         const origin = cellCenter(ctx.grid, 2, 8);
         const cells = collectVisibleGridCells(ctx.navTopology, origin.x, origin.y, 200);
         assert.ok(cells.length > 0);
-        assert.ok(!cells.some((cell) => cell.col > 10));
-        assert.ok(cells.some((cell) => cell.col === 9));
+        assert.ok(!cells.some((idx) => (idx % ctx.grid.cols) > 10));
+        assert.ok(cells.some((idx) => (idx % ctx.grid.cols) === 9));
         terminateWorkerNavigation(ctx.nav);
     });
     it("queryGridCellVision hides goal behind wall and keeps open corridor goal", async () => {
@@ -120,7 +120,7 @@ describe("grid cell vision", () => {
             navTopology: ctx.navTopology,
         });
         assert.equal(vision.visible.length, 0);
-        assert.ok(!vision.cells.some((cell) => cell.col === 12 && cell.row === 4));
+        assert.ok(!vision.cells.includes(colRowToIndex(12, 4, ctx.grid.cols)));
         terminateWorkerNavigation(ctx.nav);
     });
     it("goal with clear grid LOS is visible in full circle", async () => {

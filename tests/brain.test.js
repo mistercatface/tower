@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createSpatialCellMemory } from "../Libraries/AI/brain/spatialCellMemory.js";
+import { createSpatialCellMemory } from "../Libraries/AI/brain/brain.js";
 import { createBrain } from "../Libraries/AI/brain/createBrain.js";
 import { buildNavStepPenaltyFromSpatialMemory } from "../Libraries/AI/brain/navStepPenalty.js";
-
 describe("spatialCellMemory", () => {
     it("evicts oldest cells when capacity is exceeded", () => {
         const memory = createSpatialCellMemory({ capacity: 3 });
@@ -18,7 +17,6 @@ describe("spatialCellMemory", () => {
         assert.ok(memory.has(3, 3));
         assert.ok(memory.has(4, 4));
     });
-
     it("refreshes recency when a cell is stamped again", () => {
         const memory = createSpatialCellMemory({ capacity: 3 });
         memory.stamp(1, 1);
@@ -31,7 +29,6 @@ describe("spatialCellMemory", () => {
         assert.ok(memory.has(3, 3));
         assert.ok(memory.has(4, 4));
     });
-
     it("iterates newest-first for recency-ordered reads", () => {
         const memory = createSpatialCellMemory({ capacity: 4 });
         memory.stamp(1, 1);
@@ -41,7 +38,6 @@ describe("spatialCellMemory", () => {
         memory.forEachNewestFirst((col, row) => order.push(`${col},${row}`));
         assert.deepEqual(order, ["1,1", "2,2"]);
     });
-
     it("getRecencyRankFromNewest orders oldest last", () => {
         const memory = createSpatialCellMemory({ capacity: 4 });
         memory.stamp(1, 1);
@@ -52,7 +48,6 @@ describe("spatialCellMemory", () => {
         assert.equal(memory.getRecencyRankFromNewest(9, 9), -1);
     });
 });
-
 describe("createBrain", () => {
     it("stamps seen cells and arrivals through spatial memory", () => {
         const brain = createBrain({ spatialMemoryCapacity: 2 });
@@ -65,7 +60,6 @@ describe("createBrain", () => {
         assert.ok(brain.spatial.has(6, 6));
         assert.ok(brain.spatial.has(7, 7));
     });
-
     it("buildNavStepPenaltyFromSpatialMemory assigns higher cost to newer cells", () => {
         const brain = createBrain({ spatialMemoryCapacity: 4 });
         brain.stampArrival(1, 1);
