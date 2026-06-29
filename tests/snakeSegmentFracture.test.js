@@ -15,6 +15,7 @@ import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -161,5 +162,34 @@ describe("snake segment fracture", () => {
         assert.equal(state.entityRegistry.get(head.id), null);
         assert.ok(state.entityRegistry.get(snake.chain.tail.id));
         assertSnakeShardCountForOneSegment(snakeShards(state).slice(initialShardCount));
+    });
+
+    it("newly spawned shards are admitted to kineticSpatial even before begin() runs (paused state)", () => {
+        // Reset the singleton frame back to initial state (populatedMembershipGen = 0, _nextPhysId = 0)
+        kineticSpatial.populatedMembershipGen = 0;
+        kineticSpatial._nextPhysId = 0;
+        kineticSpatial._kineticBodies = [];
+        kineticSpatial._activeKineticBodies = [];
+
+        applySnakeGameConfig({ startRadius: 2, agentProfiles: { snake: { minAliveSegmentCount: 3 } } });
+        resetKineticConstraintIds(1);
+        const state = createTestState();
+        const snake = spawnSnakeChain(state, { col: 8, row: 8 }, snakeChainOptions(3));
+        const instance = wireSnakeGame(state, snake);
+        const struck = snake.chain.members[1];
+
+        // Trigger kill without running simulation ticks (as in paused/initial state)
+        instance.kill(state, null, { worldX: struck.x, worldY: struck.y, impactForce: 30, struckSegmentId: struck.id });
+
+        const shards = snakeShards(state);
+        assert.ok(shards.length >= 2);
+        for (const shard of shards) {
+            // Verify shard has been admitted to the spatial frame
+            assert.notEqual(shard._physId, undefined);
+            assert.ok(!isNaN(shard._physId));
+            // Verify it is active
+            assert.ok(shard._activeSlot >= 0);
+            assert.ok(kineticSpatial._activeKineticBodies.includes(shard));
+        }
     });
 });

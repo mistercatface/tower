@@ -191,7 +191,7 @@ export function applyPendingWallDamage(state, wallDamage) {
         prop.angularVelocity = (Math.random() - 0.5) * 2.0;
         addWorldPropToState(state, prop);
         wakeKineticBody(prop);
-        if (spatialFrame?.admitKineticProp && spatialFrame.populatedMembershipGen >= 0) spatialFrame.admitKineticProp(prop, state);
+        if (spatialFrame?.admitKineticProp) spatialFrame.admitKineticProp(prop, state);
         const impactForce = desc.sourceSpeed * 0.5 + 10;
         const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
         if (fracture)

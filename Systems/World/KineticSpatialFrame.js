@@ -33,7 +33,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         /** Awake kinetic bodies only — reindex, pair loop, wall resolve substeps. */
         this._activeKineticBodies = [];
         /** Registry membershipGen when this frame was last populated. */
-        this.populatedMembershipGen = -1;
+        this.populatedMembershipGen = 0;
+        this._nextPhysId = 0;
         this._activationScheduled = new Set();
     }
     begin(state) {

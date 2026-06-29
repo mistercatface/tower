@@ -138,8 +138,8 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     if (spawned.length > 0) {
         addWorldPropsToState(world, spawned);
         for (let i = 0; i < spawned.length; i++) wakeKineticBody(spawned[i]);
-        if (spatialFrame?.admitKineticProps && spatialFrame.populatedMembershipGen >= 0) spatialFrame.admitKineticProps(spawned, world);
-        else if (spatialFrame?.admitKineticProp && spatialFrame.populatedMembershipGen >= 0) for (let i = 0; i < spawned.length; i++) spatialFrame.admitKineticProp(spawned[i], world);
+        if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(spawned, world);
+        else if (spatialFrame?.admitKineticProp) for (let i = 0; i < spawned.length; i++) spatialFrame.admitKineticProp(spawned[i], world);
     }
     return spawned;
 }
