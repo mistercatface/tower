@@ -185,7 +185,7 @@ function defaultSeekArrivalRadius(profileId, profile, shared, instance) {
         }
         const huntArrival = Math.max(2, headRadius * 0.25);
         if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy" || mode === "shoot_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
-        if (!isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
+        if (target?.type !== "ammo_shard" && !isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         return { arrivalRadius: instance.eatRadius, lockOnTarget: true, terminalHoming };
     };
 }

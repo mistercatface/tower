@@ -224,6 +224,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 riskTolerance: { satisfied: 0, hungry: 0.35, desperate: 0.65 },
                 effort: { costPerCell: { satisfied: 22, hungry: 18, desperate: 8 } },
             },
+            targetingHysteresis: { targetStickyFactor: 0.3 },
             decision: {
                 scoreOrder: ["flee", "shoot_enemy", "seek_enemy", "seek_ammo", "seek_food", "seek_ally", "explore"],
                 targetLost: { shoot_enemy: "enemy", seek_enemy: "enemy", seek_ammo: "ammo", seek_food: "food", seek_ally: "ally" },

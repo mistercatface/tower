@@ -217,27 +217,33 @@ const SCORERS = {
     preyWithEffort(ctx, modeDef, weights, pressure, env) {
         const prey = ctx.known[modeDef.slot];
         if (!prey) return SCORE_ABSENT;
+        const reach = ctx.reachSteps[modeDef.slot];
+        if (reach == null) return SCORE_ABSENT;
         const hungerTier = ctx.hungerTier;
         let value = preyValueForHunger(weights, pressure, hungerTier, env.effortFallback);
         const isPreySnake = prey.type === "snake_head";
         const seekerFaction = ctx.seekerFaction;
         if (isPreySnake && seekerFaction && prey.faction && prey.faction !== seekerFaction) value = pressure.enemySnakePreyValue ?? weights.prey + 1000;
         else if (hungerTier === "desperate" && (!ctx.known.food || ctx.routeStatus?.routeFailed)) value += pressure.preyDesperationBonus ?? 0;
-        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, hungerTier));
+        return netScoreDetail(value, reach, costPerCellForHunger(pressure, hungerTier));
     },
     foodWithHunger(ctx, modeDef, weights, pressure, env) {
         if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const reach = ctx.reachSteps[modeDef.slot];
+        if (reach == null) return SCORE_ABSENT;
         let value = foodHungerScoreValue(weights, pressure, ctx.foodFraction);
         const sprint = env.sprint;
         const threat = ctx.threatState;
         if (sprint && threat && !threat.lethal && threat.severity >= sprint.fleeSeverity) value -= pressure.sprintFoodCostPenalty ?? 0;
-        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+        return netScoreDetail(value, reach, costPerCellForHunger(pressure, ctx.hungerTier));
     },
     reachTarget(ctx, modeDef, weights, pressure) {
         if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const reach = ctx.reachSteps[modeDef.slot];
+        if (reach == null) return SCORE_ABSENT;
         const weightKey = modeDef.weightKey ?? modeDef.slot;
         const value = weights[weightKey] ?? weights.explore;
-        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+        return netScoreDetail(value, reach, costPerCellForHunger(pressure, ctx.hungerTier));
     },
     rangedAttack(ctx, modeDef, weights, pressure) {
         // Guard: Abort if we have an active agent instance and it is out of ammo.
@@ -248,6 +254,8 @@ const SCORERS = {
         // 1. Guard: Ensure the agent has an active weapon and is in an eligible combat state
         if (!combat?.canShoot && combat?.phase !== "reacting" && combat?.phase !== "fire_delay" && combat?.phase !== "reloading") return SCORE_ABSENT;
         if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const reach = combat.reachCells ?? ctx.reachSteps[modeDef.slot];
+        if (reach == null) return SCORE_ABSENT;
         // 2. Resolve base weight for shooting
         const weightKey = modeDef.weightKey ?? "shoot_enemy";
         const baseValue = weights[weightKey] ?? weights.enemy ?? weights.explore;
@@ -277,16 +285,18 @@ const SCORERS = {
             value -= speedPenalty;
         }
         // 5. Compute net score including pathfinding cell reach costs
-        return netScoreDetail(value, combat.reachCells ?? ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+        return netScoreDetail(value, reach, costPerCellForHunger(pressure, ctx.hungerTier));
     },
     ammoWithNeed(ctx, modeDef, weights, pressure) {
         if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const reach = ctx.reachSteps[modeDef.slot];
+        if (reach == null) return SCORE_ABSENT;
         const ammo = ctx.agentInstance != null ? ctx.agentInstance.ammo : 10;
         const desiredAmmo = pressure.desiredAmmo ?? 10;
         const deficit = Math.max(0, 1 - ammo / desiredAmmo);
         if (deficit === 0) return SCORE_ABSENT;
         const value = (weights.ammo ?? 380) + (pressure.ammoNeedBonus ?? 200) * deficit;
-        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+        return netScoreDetail(value, reach, costPerCellForHunger(pressure, ctx.hungerTier));
     },
     regroupAlly(ctx, modeDef, weights, pressure, env) {
         const slot = modeDef.slot;
@@ -295,6 +305,7 @@ const SCORERS = {
         const cohesion = env.cohesion ?? {};
         const hungerTier = ctx.hungerTier;
         const allyReach = ctx.reachSteps[slot];
+        if (allyReach == null) return SCORE_ABSENT;
         if (Number.isFinite(allyReach) && allyReach <= (cohesion.idealStopDist ?? 3)) return SCORE_ABSENT;
         let value = weights.seek_ally ?? weights.explore;
         if (modeDef.cohesion === "snake") {
