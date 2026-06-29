@@ -1,4 +1,4 @@
-import { classifyAgentVision } from "./classifyAgentVision.js";
+import { classifyAgentVision, classifyAgentVisionInto } from "./classifyAgentVision.js";
 export function resolveVisibleCategoryInVision(state, seeker, categoryIndex, accept, options = {}) {
     const frame = state.nav.observerVisionFrame;
     const instance = state.sandbox.snakeGame?.instancesByHeadId?.get(seeker.id) ?? null;
@@ -15,7 +15,7 @@ export function resolveVisibleCategoryInVision(state, seeker, categoryIndex, acc
         const col = idx % cols;
         const row = (idx / cols) | 0;
         if (categoryIndex.countAtCell(col, row) === 0) continue;
-        const prop = categoryIndex.nearestItemInCell(col, row, seeker.x, seeker.y, (p) => accept(seeker, p));
+        const prop = categoryIndex.nearestItemInCell(col, row, seeker.x, seeker.y, accept, seeker);
         if (!prop) continue;
         const dx = prop.x - seeker.x;
         const dy = prop.y - seeker.y;
@@ -39,13 +39,7 @@ export function findNearestVisibleThreat(state, seeker, options) {
     return classifyAgentVision(state, seeker, options).threat;
 }
 export function perceiveAgentWorldInto(out, state, seeker, visibleSourceResolvers, options) {
-    const agents = classifyAgentVision(state, seeker, options);
-    out.threat = agents.threat;
-    out.prey = agents.prey;
-    out.ally = agents.ally;
-    out.allyCount = agents.allyCount;
-    out.allyCentroid = agents.allyCentroid;
-    out.threatCount = agents.threatCount;
+    classifyAgentVisionInto(out, state, seeker, options);
     if (visibleSourceResolvers) for (const slotId in visibleSourceResolvers) out[slotId] = visibleSourceResolvers[slotId](state, seeker, options) ?? null;
     else out.food = null;
     return out;

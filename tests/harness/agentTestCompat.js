@@ -3,8 +3,6 @@ import {
     Brain,
     AgentAutosim,
     buildNavStepPenaltyFromSpatialMemory,
-    getSnakeChainRadius,
-    growSnakeChainAfterMeal,
     applyAgentGameplay,
     resolveRelationshipForInstances,
     bakeRelationshipRules,
@@ -15,7 +13,8 @@ import {
 } from "../../Libraries/Game/snake/AgentInstance.js";
 import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentIntentMemory, ModePolicyLatch, resolveRangedWeapon } from "../../Libraries/Game/snake/GroundNavIntentAdapter.js";
 import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill, COMBAT_TRAIT_DEFAULTS, matchesBrainRamResolver } from "../../Libraries/Game/snake/snakeCombat.js";
-import { AgentFrameOrchestrator, createAgentSpecies, SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/snakeAgentSession.js";
+import { AgentFrameOrchestrator, createAgentSpecies, SNAKE_GAME_SPECIES, SnakeAgentSession } from "../../Libraries/Game/snake/snakeAgentSession.js";
+import { getCirclePropRadius } from "../../Libraries/Props/propScale.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
 export {
@@ -24,8 +23,6 @@ export {
     targetFromMemoryRecord,
     buildNavStepPenaltyFromSpatialMemory,
     resolveRangedWeapon,
-    getSnakeChainRadius,
-    growSnakeChainAfterMeal,
     applyAgentGameplay,
     resolveRelationshipForInstances,
     bakeRelationshipRules,
@@ -109,4 +106,40 @@ export function createModePolicyLatch(config) {
 
 export function createAgentFrameOrchestrator(config) {
     return new AgentFrameOrchestrator(config);
+}
+
+// --- Local Implementations for Deprecated Helpers ---
+export function getSnakeChainRadius(state, headId) {
+    const head = state.entityRegistry.getLive(headId);
+    return getCirclePropRadius(head);
+}
+
+export function growSnakeChainAfterMeal(state, headId, profile) {
+    const segmentRadius = getSnakeChainRadius(state, headId);
+    const spacing = segmentRadius * 2 * (profile.linkSlack ?? 1);
+    return { segmentRadius, spacing, linkSlack: profile.linkSlack };
+}
+
+export function createSnakeAgentSession(options) {
+    return new SnakeAgentSession(options);
+}
+
+export function registerAgentInstance(session, speciesId, instance) {
+    session.registerAgentInstance(speciesId, instance);
+}
+
+export function tickAliveAgents(session, state, dtMs) {
+    session.tick(state, dtMs);
+}
+
+export function syncAgentsAfterPhysics(session, state) {
+    session.syncAfterPhysics(state);
+}
+
+export function stopAllAgents(session) {
+    session.stopAll();
+}
+
+export function spawnSpeciesBatch(session, state, speciesId, spawnCtxs) {
+    return session.spawnBatch(state, speciesId, spawnCtxs);
 }

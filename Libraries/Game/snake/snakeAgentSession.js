@@ -169,21 +169,3 @@ export const SNAKE_GAME_SPECIES = new DynamicSpeciesMap();
 // ==========================================
 // Compatibility Wrappers for Tests
 // ==========================================
-export function createSnakeAgentSession(options) {
-    return new SnakeAgentSession(options);
-}
-export function registerAgentInstance(session, speciesId, instance) {
-    session.registerAgentInstance(speciesId, instance);
-}
-export function tickAliveAgents(session, state, dtMs) {
-    session.tick(state, dtMs);
-}
-export function syncAgentsAfterPhysics(session, state) {
-    session.syncAfterPhysics(state);
-}
-export function stopAllAgents(session) {
-    session.stopAll();
-}
-export function spawnSpeciesBatch(session, state, speciesId, spawnCtxs) {
-    return session.spawnBatch(state, speciesId, spawnCtxs);
-}

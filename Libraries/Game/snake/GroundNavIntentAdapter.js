@@ -472,24 +472,20 @@ export function createRangedShootIntentState(instance, resolveWeapon, adapterIns
             const action = instance.combatAction;
             const combat = ctx.world.decisionContext.combatState;
             maintainCombatStrafe(fsm, ctx, strafeState, weapon, adapterInstance);
-            if (action.phase === "idle" && combat?.canShoot && ctx.target) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, ctx.dtMs ?? 16);
-            else if (action.phase === "reacting") tickAimAndFire(ctx, instance, action, weapon, 0);
+            if (action.phase === "idle" && combat?.canShoot && ctx.target) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, 0);
         },
         update(fsm, ctx) {
             const weapon = resolveWeapon(instance);
             if (!weapon) return;
             const action = instance.combatAction;
-            const dtMs = ctx.dtMs ?? 16;
             const combat = ctx.world.decisionContext.combatState;
             switch (action.phase) {
                 case "reloading":
-                    tickReloading(ctx, action, weapon, dtMs);
                     maintainCombatStrafe(fsm, ctx, strafeState, weapon, adapterInstance);
                     if (ctx.policy.mode !== "shoot_enemy") fsm.transitionTo(ctx.policy.mode, ctx.policy.reason ?? "reloading_done", ctx.policy.targetId);
                     return;
                 case "fire_delay":
                 case "reacting":
-                    tickAimAndFire(ctx, instance, action, weapon, dtMs);
                     maintainCombatStrafe(fsm, ctx, strafeState, weapon, adapterInstance);
                     return;
             }
@@ -499,7 +495,7 @@ export function createRangedShootIntentState(instance, resolveWeapon, adapterIns
                 fsm.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
                 return;
             }
-            if (combat?.canShoot) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, dtMs);
+            if (action.phase === "idle" && combat?.canShoot) beginReaction(ctx, action, ctx.agent, ctx.target, weapon, 0);
             maintainCombatStrafe(fsm, ctx, strafeState, weapon, adapterInstance);
         },
     };
@@ -606,7 +602,13 @@ function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarge
     ctx.locomotion = locomotion;
     return ctx;
 }
-const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker, ammoShard: (seeker, prop) => prop.type === "ammo_shard" && !prop.isDead };
+function isEdibleFood(prop, context) {
+    return isEdibleSnakeFoodForSeeker(context, prop);
+}
+function isAmmoShard(prop, context) {
+    return prop.type === "ammo_shard" && !prop.isDead;
+}
+const ACCEPT_PREDICATES = { edibleFood: isEdibleFood, ammoShard: isAmmoShard };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
     const resolvers = {};
@@ -808,16 +810,37 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         this.intentContext.dtMs = dtMs;
         this.perceive(agent, state);
         const choice = this.transition(agent, state);
-        const currentMode = this.getMode();
-        if (currentMode !== "shoot_enemy" && this.agentCtx.instance.combatAction) {
-            const action = this.agentCtx.instance.combatAction;
-            if (action.phase === "reloading") {
-                action.timerMs = Math.max(0, action.timerMs - dtMs);
-                if (action.timerMs <= 0) resetInstanceRangedCombatAction(this.agentCtx.instance);
-            } else if (action.phase === "reacting" || action.phase === "fire_delay") resetInstanceRangedCombatAction(this.agentCtx.instance);
-        }
         this.sprintWanted = this._lastDecisionContext.sprintIntent.want === true;
         return choice;
+    }
+    tickCombatAction(dtMs) {
+        const instance = this.agentCtx.instance;
+        const action = instance.combatAction;
+        if (!action) return;
+        const currentMode = this.getMode();
+        if (currentMode === "shoot_enemy") {
+            const weapon = instance.resolvedWeapon;
+            if (!weapon) return;
+            const context = this.intentContext;
+            context.dtMs = dtMs;
+            switch (action.phase) {
+                case "reloading":
+                    tickReloading(context, action, weapon, dtMs);
+                    break;
+                case "fire_delay":
+                case "reacting":
+                    tickAimAndFire(context, instance, action, weapon, dtMs);
+                    break;
+                case "idle":
+                    const combat = this._lastDecisionContext?.combatState;
+                    const target = resolveLiveTarget(context);
+                    if (combat?.canShoot && target) beginReaction(context, action, context.agent, target, weapon, dtMs);
+                    break;
+            }
+        } else if (action.phase === "reloading") {
+            action.timerMs = Math.max(0, action.timerMs - dtMs);
+            if (action.timerMs <= 0) resetInstanceRangedCombatAction(instance);
+        } else if (action.phase === "reacting" || action.phase === "fire_delay") resetInstanceRangedCombatAction(instance);
     }
     getDestination() {
         return this.locomotion.getDestination();

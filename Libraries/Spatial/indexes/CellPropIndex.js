@@ -1,5 +1,4 @@
 import { SparseBucketGrid } from "../../DataStructures/SparseBucketGrid.js";
-
 /**
  * A generic perceivable prop category system based on obstacle-grid cells.
  * Maps prop instances to the nav-grid aligned bucket grid.
@@ -15,7 +14,6 @@ export class CellPropIndex {
         this.cellSize = 16;
         this._totalCount = 0;
     }
-
     _propToCellIdx(prop) {
         if (!this.cols || !this.rows) return -1;
         const col = Math.floor((prop.x - this.minX) / this.cellSize);
@@ -23,7 +21,6 @@ export class CellPropIndex {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
         return col + row * this.cols;
     }
-
     register(prop) {
         if (prop._cellIndexCell !== undefined && prop._cellIndexCell !== -1) return;
         const idx = this._propToCellIdx(prop);
@@ -34,7 +31,6 @@ export class CellPropIndex {
             this._totalCount++;
         }
     }
-
     unregister(prop) {
         const idx = prop._cellIndexCell;
         if (idx !== undefined && idx !== -1)
@@ -42,10 +38,8 @@ export class CellPropIndex {
                 this.count[idx]--;
                 this._totalCount--;
             }
-
         prop._cellIndexCell = -1;
     }
-
     reconcile(prop) {
         if (prop._cellIndexCell === undefined) return;
         const newIdx = this._propToCellIdx(prop);
@@ -53,11 +47,9 @@ export class CellPropIndex {
         this.unregister(prop);
         this.register(prop);
     }
-
     totalCount() {
         return this._totalCount;
     }
-
     findNearest(x, y, accept = null) {
         let nearest = null;
         let bestDistSq = Infinity;
@@ -73,34 +65,27 @@ export class CellPropIndex {
                     nearest = item;
                 }
             }
-
         return nearest;
     }
-
     findFirst(accept = null) {
         for (const list of this.buckets.cells.values())
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
                 if (!accept || accept(item)) return item;
             }
-
         return null;
     }
-
     forEachRegistered(fn) {
         for (const list of this.buckets.cells.values()) for (let i = 0; i < list.length; i++) if (fn(list[i]) === true) return;
     }
-
     countAtIdx(idx) {
         if (idx < 0 || idx >= this.count.length) return 0;
         return this.count[idx];
     }
-
     countAtCell(col, row) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return 0;
         return this.count[col + row * this.cols];
     }
-
     forEachItemInCell(col, row, fn) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
         const idx = col + row * this.cols;
@@ -109,7 +94,6 @@ export class CellPropIndex {
         if (!list) return;
         for (let i = 0; i < list.length; i++) fn(list[i]);
     }
-
     /**
      * Returns a read-only live reference to the items in the cell. Do not mutate.
      * @param {number} col
@@ -121,19 +105,17 @@ export class CellPropIndex {
         const idx = col + row * this.cols;
         return this.buckets.peek(idx) ?? [];
     }
-
-    nearestItemInCell(col, row, x, y, accept) {
+    nearestItemInCell(col, row, x, y, accept, context) {
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
         const idx = col + row * this.cols;
         if (this.count[idx] === 0) return null;
         const list = this.buckets.peek(idx);
         if (!list) return null;
-
         let nearest = null;
         let bestDistSq = Infinity;
         for (let i = 0; i < list.length; i++) {
             const prop = list[i];
-            if (!accept(prop)) continue;
+            if (!accept(prop, context)) continue;
             const dx = prop.x - x;
             const dy = prop.y - y;
             const distSq = dx * dx + dy * dy;
@@ -144,7 +126,6 @@ export class CellPropIndex {
         }
         return nearest;
     }
-
     syncBounds(grid) {
         if (this.cols === grid.cols && this.rows === grid.rows && this.cellSize === grid.cellSize && this.minX === grid.minX && this.minY === grid.minY) return;
         this.minX = grid.minX;

@@ -6,13 +6,13 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+
 import { getObserverVisionFrame } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { resolveGunBulletContacts, tickGunBullets, spawnGunBulletProjectile } from "../Libraries/Game/snake/gunAgent/gunBulletSystem.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
-import { syncBallAgentFacingAfterPhysics } from "./harness/agentTestCompat.js";
+import { syncBallAgentFacingAfterPhysics, registerAgentInstance } from "./harness/agentTestCompat.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 describe("flee agent bullets and combat", () => {
     it("can spawn flee agents, shoot bullets, perform LOS check, resolve combat kills, and transition spent bullets to food", async () => {
@@ -151,7 +151,6 @@ describe("flee agent bullets and combat", () => {
         fleePack.head.facing = 0;
         primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
         fleeInstance.autosim.tick(16);
-        fleeInstance.autosim.tick(1);
         assert.equal(snakeGame.activeGunBulletIds.length, 1, "First shot should fire when already aligned");
         snakePack.chain.head.y += 64;
         fleeInstance.autosim.tick(150);

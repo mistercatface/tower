@@ -16,7 +16,7 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSpawnSpecs } from
 import { wireSnakeTestGame, createWiredSnakeAutosim, createSnakeNavWalkable, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { beginSnakePerceptionFrame, endSnakePerceptionFrame } from "../Libraries/Game/snake/snakePerception.js";
-import { tickAliveAgents } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { tickAliveAgents } from "./harness/agentTestCompat.js";
 import { getVisionFullBuildCount, resetVisionFullBuildCount } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { HPA_REPLAN_PEAK_INFLIGHT_CAP } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
 import { FRAME_MS } from "./frameMs.js";

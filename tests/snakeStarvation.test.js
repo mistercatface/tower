@@ -9,12 +9,12 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, getSnakeChainRadius } from "./harness/agentTestCompat.js";
+import { createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, getSnakeChainRadius, createSnakeAgentSession } from "./harness/agentTestCompat.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createAgentPopulationRegistry } from "../Libraries/AI/agents/AgentProfiles.js";
-import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
+
 import { SNAKE_GAME_SPECIES } from "./harness/agentTestCompat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";

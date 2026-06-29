@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
@@ -12,7 +12,7 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
-import { setAgentHunger, createRangedCombatActionState, resolveRangedWeapon } from "./harness/agentTestCompat.js";
+import { setAgentHunger, createRangedCombatActionState, resolveRangedWeapon, registerAgentInstance } from "./harness/agentTestCompat.js";
 import { pickCombatStrafeCell } from "../Libraries/AI/steering/pickCombatStrafeCell.js";
 
 const CELL = 16;

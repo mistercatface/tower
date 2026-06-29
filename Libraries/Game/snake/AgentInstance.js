@@ -463,15 +463,6 @@ export class AgentMetabolism {
     }
 }
 // --- Snake Scaling & Growth Helpers ---
-export function getSnakeChainRadius(state, headId) {
-    const head = state.entityRegistry.getLive(headId);
-    return getCirclePropRadius(head);
-}
-export function growSnakeChainAfterMeal(state, headId, profile) {
-    const segmentRadius = getSnakeChainRadius(state, headId);
-    const spacing = segmentRadius * 2 * (profile.linkSlack ?? 1);
-    return { segmentRadius, spacing, linkSlack: profile.linkSlack };
-}
 // --- Brain and Spatial Memory ---
 export class Brain {
     constructor({ spatialMemoryCapacity = 64, cols = 64 } = {}) {
@@ -580,6 +571,7 @@ export class AgentAutosim {
         else maybeBeginSnakeAutosimTick(this.state);
         let choice;
         if (admitted) choice = this.intent.tick(seeker, this.state, dtMs);
+        this.intent.tickCombatAction(dtMs);
         this.instance.applySprintMovementIntent();
         this.instance.headNav.tick(seeker, dtMs);
         if (soloTick) endSnakePerceptionFrame(this.state);

@@ -6,7 +6,7 @@ import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { registerAgentInstance } from "./harness/agentTestCompat.js";
 import { getObserverVisionFrame } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { buildAgentDecisionContextFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";

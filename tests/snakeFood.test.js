@@ -19,7 +19,7 @@ import { markSnakeSegmentsFracturable } from "../Libraries/Game/snake/snakeSegme
 
 function findNearestVisibleSnakeFood(state, seeker) {
     const index = getPropCategoryIndex(state, "food");
-    return resolveVisibleCategoryInVision(state, seeker, index, isEdibleSnakeFoodForSeeker);
+    return resolveVisibleCategoryInVision(state, seeker, index, (prop, context) => isEdibleSnakeFoodForSeeker(context, prop));
 }
 
 async function createFoodQueryState() {

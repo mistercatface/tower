@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+
 import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { spawnPopulationInScene } from "../Libraries/Game/snake/spawnPopulationInScene.js";
@@ -12,7 +12,7 @@ import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
-import { syncBallAgentFacingAfterPhysics } from "./harness/agentTestCompat.js";
+import { syncBallAgentFacingAfterPhysics, registerAgentInstance } from "./harness/agentTestCompat.js";
 import { attachKineticTestTickFromState } from "./harness/kineticTickHarness.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "../Libraries/Spatial/collision/kineticContactSideEffects.js";

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { registerAgentInstance } from "./harness/agentTestCompat.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";

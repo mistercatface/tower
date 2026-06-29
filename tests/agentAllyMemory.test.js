@@ -5,13 +5,13 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
-import { createAgentIntentMemory } from "./harness/agentTestCompat.js";
+import { createAgentIntentMemory, createSnakeAgentSession, registerAgentInstance } from "./harness/agentTestCompat.js";
 import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/AgentProfiles.js";
-import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
+
 import { deriveSnakeEngagementState } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 

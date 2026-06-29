@@ -9,7 +9,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { createSnakeAgentSession, registerAgentInstance } from "./harness/agentTestCompat.js";
 import { SNAKE_GAME_SPECIES } from "./harness/agentTestCompat.js";
 import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI/agents/AgentProfiles.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";

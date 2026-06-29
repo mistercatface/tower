@@ -5,7 +5,7 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snak
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
 import { resolvePackSteeringOptions } from "../Libraries/Game/snake/GroundNavIntentAdapter.js";
 import { buildAgentDecisionFrameFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { registerAgentInstance } from "./harness/agentTestCompat.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";

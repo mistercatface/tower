@@ -123,13 +123,25 @@ export function mergeSlotsFromSchemaInto(frame, schema, input) {
     const memoryWorld = input.memoryWorld ?? null;
     const memorySource = memoryWorld?.memorySource ?? null;
     buildAgentRememberedInto(frame.remembered, memoryWorld, memorySource, schema.remembered);
-    for (const slotKey of Object.keys(schema.slots)) frame.visible[slotKey] = visibleSlotValue(slotKey, schema.slots[slotKey], visibleWorld, memorySource);
-    if (schema.fields)
-        for (const [fieldKey, fieldDef] of Object.entries(schema.fields)) if (fieldDef.visible != null) frame.visible[fieldKey] = copyVisibleField(fieldDef.visible, visibleWorld, memorySource);
-    for (const [slotKey, slotDef] of Object.entries(schema.slots)) frame.known[slotKey] = mergeKnownSlot(slotKey, slotDef, frame.visible, frame.remembered, visibleWorld, input);
-    if (schema.fields)
-        for (const [fieldKey, fieldDef] of Object.entries(schema.fields))
-            if (fieldDef.known != null) frame.known[fieldKey] = copyKnownField(fieldDef.known, frame.visible, frame.remembered, visibleWorld, frame.known);
+    const slotKeys = schema.compiledSlots ?? Object.keys(schema.slots);
+    for (let i = 0; i < slotKeys.length; i++) {
+        const slotKey = slotKeys[i];
+        frame.visible[slotKey] = visibleSlotValue(slotKey, schema.slots[slotKey], visibleWorld, memorySource);
+    }
+    const fieldEntries = schema.compiledFieldsEntries ?? (schema.fields ? Object.entries(schema.fields) : []);
+    for (let i = 0; i < fieldEntries.length; i++) {
+        const [fieldKey, fieldDef] = fieldEntries[i];
+        if (fieldDef.visible != null) frame.visible[fieldKey] = copyVisibleField(fieldDef.visible, visibleWorld, memorySource);
+    }
+    const slotEntries = schema.compiledSlotsEntries ?? Object.entries(schema.slots);
+    for (let i = 0; i < slotEntries.length; i++) {
+        const [slotKey, slotDef] = slotEntries[i];
+        frame.known[slotKey] = mergeKnownSlot(slotKey, slotDef, frame.visible, frame.remembered, visibleWorld, input);
+    }
+    for (let i = 0; i < fieldEntries.length; i++) {
+        const [fieldKey, fieldDef] = fieldEntries[i];
+        if (fieldDef.known != null) frame.known[fieldKey] = copyKnownField(fieldDef.known, frame.visible, frame.remembered, visibleWorld, frame.known);
+    }
     return frame;
 }
 export function mergeSlotsFromSchema(schema, visibleWorld, memoryWorld, memorySource, input) {
@@ -643,9 +655,15 @@ const DECISION_EXTENSIONS = {
     },
 };
 export function buildAgentDecisionSpec(profileId, profile = getAgentProfile(profileId)) {
+    const decision = profile.decision;
+    if (decision) {
+        if (!decision.compiledSlots) decision.compiledSlots = Object.keys(decision.slots);
+        if (!decision.compiledSlotsEntries) decision.compiledSlotsEntries = Object.entries(decision.slots);
+        if (decision.fields && !decision.compiledFieldsEntries) decision.compiledFieldsEntries = Object.entries(decision.fields);
+    }
     const spec = {
         profileId,
-        decisionSchema: profile.decision,
+        decisionSchema: decision,
         hungerBands: profile.hungerBands,
         weights: profile.decisionWeights,
         pressure: profile.decisionPressure,

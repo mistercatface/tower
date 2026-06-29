@@ -4,8 +4,8 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { resolveRelationshipForInstances } from "./harness/agentTestCompat.js";
-import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
+import { resolveRelationshipForInstances, registerAgentInstance } from "./harness/agentTestCompat.js";
+
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";

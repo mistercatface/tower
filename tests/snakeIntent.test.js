@@ -28,7 +28,7 @@ import { buildTestAgentPerceptionOptions } from "./harness/snakeGameHarness.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 function findNearestVisibleSnakeFood(state, seeker) {
     const index = getPropCategoryIndex(state, "food");
-    return resolveVisibleCategoryInVision(state, seeker, index, isEdibleSnakeFoodForSeeker);
+    return resolveVisibleCategoryInVision(state, seeker, index, (prop, context) => isEdibleSnakeFoodForSeeker(context, prop));
 }
 async function createIntentTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

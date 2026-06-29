@@ -7,7 +7,7 @@ const AGENT_VISION_QUERY_BOUNDS = createAabb();
  * Single vision pass over alive agent heads — threat, prey/rival, and ally slots.
  * Allies are same-faction friendlies; they never occupy prey/threat.
  */
-export function classifyAgentVision(state, seeker, options = {}) {
+export function classifyAgentVisionInto(out, state, seeker, options = {}) {
     const instance = state.sandbox.snakeGame?.instancesByHeadId?.get(seeker.id) ?? null;
     const agentCtx = { instance, session: state.sandbox.snakeGame };
     const resolvedVision = seeker.visionRange ?? instance?.visionRange ?? state.nav?.observerVisionFrame?.visionRange ?? options.visionRange;
@@ -75,5 +75,18 @@ export function classifyAgentVision(state, seeker, options = {}) {
         bestPreyDistSq = compareDistSq;
         prey = head;
     }
-    return { threat, prey, ally, threatCount, allyCount, allyCentroid: allyCount > 0 ? { x: allyCentroidX / allyCount, y: allyCentroidY / allyCount } : null };
+    out.threat = threat;
+    out.prey = prey;
+    out.ally = ally;
+    out.threatCount = threatCount;
+    out.allyCount = allyCount;
+    if (allyCount > 0) {
+        if (!out.allyCentroid) out.allyCentroid = { x: 0, y: 0 };
+        out.allyCentroid.x = allyCentroidX / allyCount;
+        out.allyCentroid.y = allyCentroidY / allyCount;
+    } else out.allyCentroid = null;
+    return out;
+}
+export function classifyAgentVision(state, seeker, options = {}) {
+    return classifyAgentVisionInto({ threat: null, prey: null, ally: null, threatCount: 0, allyCount: 0, allyCentroid: null }, state, seeker, options);
 }
