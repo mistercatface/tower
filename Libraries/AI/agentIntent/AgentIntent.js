@@ -250,39 +250,49 @@ export function createFleeIntentState(deps = {}) {
 // ==========================================
 // Policy Latching / Hysteresis
 // ==========================================
-export function createModePolicyLatch({ mode, minTicks = 0, holdReason = `${mode}_held`, refreshWhen = () => false, canRelease = () => true }) {
-    let active = false;
-    let ticksRemaining = 0;
-    const holdPolicy = (policy) => ({ mode, targetId: null, reason: holdReason, blockedPolicy: policy });
-    return {
-        apply(policy, context = {}) {
-            if (context.currentMode === mode && !active) {
-                active = true;
-                ticksRemaining = minTicks;
-            }
-            if (policy.mode === mode) {
-                active = true;
-                ticksRemaining = Math.max(ticksRemaining, minTicks);
-                return policy;
-            }
-            if (!active) return policy;
-            if (refreshWhen(context, policy)) ticksRemaining = Math.max(ticksRemaining, minTicks);
-            if (ticksRemaining > 0) {
-                ticksRemaining--;
-                return holdPolicy(policy);
-            }
-            if (!canRelease(context, policy)) return holdPolicy(policy);
-            active = false;
+export class ModePolicyLatch {
+    constructor({ mode, minTicks = 0, holdReason = `${mode}_held`, refreshWhen = () => false, canRelease = () => true }) {
+        this.mode = mode;
+        this.minTicks = minTicks;
+        this.holdReason = holdReason;
+        this.refreshWhen = refreshWhen;
+        this.canRelease = canRelease;
+        this.active = false;
+        this.ticksRemaining = 0;
+    }
+    _holdPolicy(policy) {
+        return { mode: this.mode, targetId: null, reason: this.holdReason, blockedPolicy: policy };
+    }
+    apply(policy, context = {}) {
+        if (context.currentMode === this.mode && !this.active) {
+            this.active = true;
+            this.ticksRemaining = this.minTicks;
+        }
+        if (policy.mode === this.mode) {
+            this.active = true;
+            this.ticksRemaining = Math.max(this.ticksRemaining, this.minTicks);
             return policy;
-        },
-        clear() {
-            active = false;
-            ticksRemaining = 0;
-        },
-        snapshot() {
-            return { mode, active, ticksRemaining };
-        },
-    };
+        }
+        if (!this.active) return policy;
+        if (this.refreshWhen(context, policy)) this.ticksRemaining = Math.max(this.ticksRemaining, this.minTicks);
+        if (this.ticksRemaining > 0) {
+            this.ticksRemaining--;
+            return this._holdPolicy(policy);
+        }
+        if (!this.canRelease(context, policy)) return this._holdPolicy(policy);
+        this.active = false;
+        return policy;
+    }
+    clear() {
+        this.active = false;
+        this.ticksRemaining = 0;
+    }
+    snapshot() {
+        return { mode: this.mode, active: this.active, ticksRemaining: this.ticksRemaining };
+    }
+}
+export function createModePolicyLatch(config) {
+    return new ModePolicyLatch(config);
 }
 // ==========================================
 // Target Events
