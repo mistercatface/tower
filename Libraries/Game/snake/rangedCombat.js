@@ -1,7 +1,7 @@
 import { spawnGunBulletProjectile } from "./gunAgent/gunBulletSystem.js";
 import { angleDelta, rotateAngleTowards } from "../../Math/Angle.js";
-import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
-import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
+import { createModePolicyLatch } from "../../AI/agentIntent/AgentIntent.js";
+import { deriveSprintIntent } from "../../AI/agents/AgentDecisionContext.js";
 import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;

@@ -1,11 +1,7 @@
-import { createAgentIntent } from "../../AI/agentIntent/createAgentIntent.js";
-import { createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/intentStates.js";
-import { createModePolicyLatch } from "../../AI/agentIntent/policyHysteresis.js";
+import { AgentIntentFSM, createExploreIntentState, createFleeIntentState, createSeekIntentState, createModePolicyLatch } from "../../AI/agentIntent/AgentIntent.js";
 import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
-import { deriveSprintIntent } from "../../AI/agents/deriveSprintIntent.js";
-import { publishAgentEngagement } from "../../AI/agents/agentEngagement.js";
-import { buildAgentDecisionContextInto } from "../../AI/agents/buildAgentDecisionContext.js";
-import { buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/gameDecisionContext.js";
+import { deriveSprintIntent, buildAgentDecisionContextInto, buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/AgentDecisionContext.js";
+import { publishAgentEngagement } from "../../AI/agents/AgentProfiles.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { pickCombatStrafeCell } from "../../AI/steering/pickCombatStrafeCell.js";
 import { buildFlowTargetStepsInto, createFlowTargetStepSlots } from "../../Navigation/flowTargetSteps.js";
@@ -18,7 +14,7 @@ import { getCirclePropRadius } from "../../Props/propScale.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
-import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
 import { getAgentHunger } from "./agentMetabolism.js";
@@ -139,10 +135,7 @@ function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarge
     ctx.locomotion = locomotion;
     return ctx;
 }
-const ACCEPT_PREDICATES = {
-    edibleFood: isEdibleSnakeFoodForSeeker,
-    ammoShard: (seeker, prop) => prop.type === "ammo_shard" && !prop.isDead
-};
+const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker, ammoShard: (seeker, prop) => prop.type === "ammo_shard" && !prop.isDead };
 const PACK_STEERING_SCRATCH = { packAnchor: { x: 0, y: 0 }, packBlend: 0, maxPackDistCells: 16 };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
@@ -466,7 +459,7 @@ export function createGroundNavIntentAdapter({
         fleeLatch.clear();
         for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].clear?.();
     };
-    intent = createAgentIntent({
+    intent = new AgentIntentFSM({
         initialMode: "explore",
         sync(agent, state) {
             sync(agent, state);
@@ -498,6 +491,11 @@ export function createGroundNavIntentAdapter({
     });
     const base = {
         ...intent,
+        getMode: () => intent.getMode(),
+        getTargetId: () => intent.getTargetId(),
+        clearTargetId: () => intent.clearTargetId(),
+        perceive: (agent, state) => intent.perceive(agent, state),
+        transition: (agent, state) => intent.transition(agent, state),
         headId: agentCtx.instance.headId,
         sprintWanted: false,
         tick(agent, state, dtMs = 16) {

@@ -1,4 +1,4 @@
-import { aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
+import { aliveAgentInstances } from "../../AI/agents/AgentProfiles.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { createAgentFrameOrchestrator } from "./agentFrameOrchestrator.js";
 import { syncBallAgentFacingAfterPhysics } from "./ballAgent.js";

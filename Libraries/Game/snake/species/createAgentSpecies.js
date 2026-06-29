@@ -1,5 +1,5 @@
-import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/agentProfile.js";
-import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/agentPopulationRegistry.js";
+import { AGENT_PROFILE, getAgentProfile } from "../../../AI/agents/AgentProfiles.js";
+import { registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../../AI/agents/AgentProfiles.js";
 import { clearChainLinksForMembers } from "../../../Sandbox/chainLinks.js";
 import { markSnakeSegmentsFracturable, shatterSnakeSegments, spawnAmmoShards } from "../snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp } from "../snakeSteeringLease.js";
@@ -35,9 +35,7 @@ export function createAgentSpecies(profileId) {
         die(instance, state, deathImpact = null) {
             instance.lifecycle = "dead";
             instance.stopSteering();
-            if (instance.ammo > 0) {
-                spawnAmmoShards(state, instance.head, instance.ammo, deathImpact?.spatialFrame);
-            }
+            if (instance.ammo > 0) spawnAmmoShards(state, instance.head, instance.ammo, deathImpact?.spatialFrame);
             const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph();
             let resolvedMembers = connectedMembers;

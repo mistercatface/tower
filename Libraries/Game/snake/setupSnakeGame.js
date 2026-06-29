@@ -1,8 +1,8 @@
 import { setSandboxCameraTarget } from "../../Sandbox/sandboxCameraTarget.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { resolveAgentName } from "../../AI/identity/agentIdentity.js";
-import { createAgentPopulationRegistry, aliveAgentInstances } from "../../AI/agents/agentPopulationRegistry.js";
-import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { createAgentPopulationRegistry, aliveAgentInstances } from "../../AI/agents/AgentProfiles.js";
+import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeWallDamageConfig } from "./snakeGameConfig.js";
 import { createSnakeAgentSession, spawnSpeciesBatch, tickAliveAgents, syncAgentsAfterPhysics, stopAllAgents } from "./snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "./species/index.js";

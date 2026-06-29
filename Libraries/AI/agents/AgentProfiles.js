@@ -1,3 +1,16 @@
+import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
+// ==========================================
+// Agent Profile Definitions
+// ==========================================
+export const AGENT_PROFILE = Object.freeze({ snake: "snake", flee: "flee_agent", squid: "squid" });
+export function getAgentProfile(profileId, config = getSnakeGameConfig()) {
+    const profile = config.agentProfiles?.[profileId];
+    if (!profile) throw new Error(`unknown agent profile: ${profileId}`);
+    return profile;
+}
+// ==========================================
+// Population Registry
+// ==========================================
 export function createAgentPopulationRegistry() {
     return { instancesByHeadId: new Map(), instancesByMemberId: new Map(), deadHeadIds: new Set(), inertByLeadId: new Map() };
 }
@@ -22,4 +35,18 @@ export function purgeInertAgentsForHead(registry, headId) {
 }
 export function isAliveAgentHead(registry, headId) {
     return registry.instancesByHeadId.get(headId)?.lifecycle === "alive";
+}
+// ==========================================
+// Agent Engagement (Combat/Action states)
+// ==========================================
+export function publishAgentEngagement(session, headId, engagementState) {
+    if (!session || headId == null) return;
+    if (!session.engagementByHeadId) session.engagementByHeadId = new Map();
+    session.engagementByHeadId.set(headId, engagementState);
+}
+export function readAgentEngagement(session, headId) {
+    return session?.engagementByHeadId?.get(headId) ?? null;
+}
+export function isAgentEngaged(session, headId) {
+    return readAgentEngagement(session, headId)?.active === true;
 }

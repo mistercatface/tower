@@ -1,5 +1,5 @@
 import { spawnAgentChain } from "../../Sandbox/spawnAgentChain.js";
-import { getAgentProfile } from "../../AI/agents/agentProfile.js";
+import { getAgentProfile } from "../../AI/agents/AgentProfiles.js";
 import { resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
 function applySpawnedChainGameplay(profile, chain) {

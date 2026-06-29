@@ -1,4 +1,4 @@
-import { isAliveAgentHead } from "../../AI/agents/agentPopulationRegistry.js";
+import { isAliveAgentHead } from "../../AI/agents/AgentProfiles.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 export function clearSnakeSteeringLeaseFromProp(prop) {

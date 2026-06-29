@@ -1,4 +1,4 @@
-import { lookupBandTable } from "../agents/bandFromThresholds.js";
+import { lookupBandTable } from "../agents/AgentDecisionContext.js";
 export const SCORE_ABSENT = Object.freeze({ net: -Infinity });
 const DETAIL_SCRATCH = Array.from({ length: 8 }, () => ({ value: 0, reach: null, cost: 0, net: 0 }));
 let detailScratchIndex = 0;

@@ -5,7 +5,7 @@ import { linkedChainOccupiedCellIndices } from "../../Sandbox/spawnLinkedBallCha
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing } from "./snakeGameConfig.js";
 import { pickSnakeChainSpawnCell } from "./snakeScene.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
-import { getAgentProfile } from "../../AI/agents/agentProfile.js";
+import { getAgentProfile } from "../../AI/agents/AgentProfiles.js";
 import { spawnGameAgentChain } from "./spawnAgentChain.js";
 import { hashString } from "../../Math/hash.js";
 import { applySnakeChainTint, resolveAgentTeamForIndex } from "./snakeChainColor.js";

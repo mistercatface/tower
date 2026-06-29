@@ -1,4 +1,4 @@
-import { isAgentEngaged } from "../agents/agentEngagement.js";
+import { isAgentEngaged } from "../agents/AgentProfiles.js";
 import { createTargetMemory, targetFromMemoryRecord } from "./targetMemory.js";
 const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
 function allyIfEngaged(session, ally) {

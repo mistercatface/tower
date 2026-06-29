@@ -10,7 +10,7 @@ import { migrateMapGenBoundsForMode } from "../../Sandbox/mapGenBounds.js";
 import { getSnakeGameConfig, resolveSnakeSegmentSpacing, resolveSnakeSpawnSpecs } from "./snakeGameConfig.js";
 import { applySnakeChainTint, resolveAgentTeamForFaction, resolveAgentTeamForIndex } from "./snakeChainColor.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
-import { AGENT_PROFILE } from "../../AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
 function buildEmptySandboxDoc(state) {
