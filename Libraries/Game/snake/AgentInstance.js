@@ -356,6 +356,17 @@ export class AgentInstance {
         this.ammo += ammoProp.ammoValue ?? 1;
         return true;
     }
+    tryConsumeTarget(state, mode, target) {
+        if (!target || target.isDead) return false;
+        switch (mode) {
+            case "seek_food":
+                return this.eatFoodTarget(state, target);
+            case "seek_ammo":
+                return this.collectAmmoTarget(state, target);
+            default:
+                return false;
+        }
+    }
     severInertTail(state, tailIds) {
         this.retireMemberSegments(state, tailIds);
         markSnakeSegmentsFracturable(state, tailIds);
@@ -569,21 +580,18 @@ export class AgentAutosim {
         const soloTick = !this.session._batchingPerception;
         if (this.session._batchingPerception) ensureSnakePerceptionTick(this.state);
         else maybeBeginSnakeAutosimTick(this.state);
-        let choice;
-        if (admitted) choice = this.intent.tick(seeker, this.state, dtMs);
+        if (admitted) this.intent.tick(seeker, this.state, dtMs);
         this.intent.tickCombatAction(dtMs);
         this.instance.applySprintMovementIntent();
         this.instance.headNav.tick(seeker, dtMs);
         if (soloTick) endSnakePerceptionFrame(this.state);
         let fedThisTick = false;
-        let foodTarget = null;
-        if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) foodTarget = choice.target;
-        else if (this.intent.getMode() === "seek_food" && this.intent.getTargetId() != null) foodTarget = this.entityRegistry.getLive(this.intent.getTargetId());
-        if (foodTarget) fedThisTick = this.instance.eatFoodTarget(this.state, foodTarget);
-        let ammoTarget = null;
-        if (choice?.mode === "seek_ammo" && choice.target && choice.target.type === "ammo_shard") ammoTarget = choice.target;
-        else if (this.intent.getMode() === "seek_ammo" && this.intent.getTargetId() != null) ammoTarget = this.entityRegistry.getLive(this.intent.getTargetId());
-        if (ammoTarget) this.instance.collectAmmoTarget(this.state, ammoTarget);
+        const mode = this.intent.getMode();
+        const target = this.intent.context.target;
+        if (target) {
+            const consumed = this.instance.tryConsumeTarget(this.state, mode, target);
+            if (consumed && mode === "seek_food") fedThisTick = true;
+        }
         const drainMultiplier = this.instance.hungerDrainMultiplier();
         if (!fedThisTick) this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
     }

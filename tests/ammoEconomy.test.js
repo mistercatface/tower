@@ -183,4 +183,42 @@ describe("AI ammo economy system", () => {
         assert.ok(scores.flee > scores.shoot_enemy, "Flee score should be higher than shoot_enemy score");
         assert.ok(scores.flee > scores.seek_enemy, "Flee score should be higher than seek_enemy score");
     });
+
+    it("flee agent seeks and collects ammo when out of ammo", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start();
+        
+        fleeInstance.ammo = 0;
+        
+        const shard = new WorldProp(fleePack.head.x + 32, fleePack.head.y, "ammo_shard", 0);
+        shard.ammoValue = 5;
+        getPropCategoryIndex(state, "ammo").register(shard);
+        state.worldProps.push(shard);
+        
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: () => ({
+                cells: [5 + 5 * state.obstacleGrid.cols, 7 + 5 * state.obstacleGrid.cols],
+                cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 7 + 5 * state.obstacleGrid.cols]),
+            }),
+            isVisible: () => true,
+            navTopology: { grid: { cols: state.obstacleGrid.cols } }
+        };
+        primeSnakeHeadVision(state, fleePack.head, getSnakeGameConfig().shared.visionRange);
+        
+        fleeInstance.autosim.tick(16);
+        assert.equal(fleeInstance.intent.getMode(), "seek_ammo", "Should seek ammo when empty and shard is visible");
+        assert.ok(fleeInstance.intent.context.target === shard, "Should target the ammo shard directly in FSM context");
+        
+        fleePack.head.x = shard.x;
+        fleePack.head.y = shard.y;
+        
+        fleeInstance.autosim.tick(16);
+        assert.equal(fleeInstance.ammo, 5, "Ammo count should increase by the shard value");
+    });
 });

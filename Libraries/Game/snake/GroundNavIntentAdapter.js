@@ -24,7 +24,7 @@ import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } fro
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
 const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;
 const DEFAULT_WEAPON_MAX_RANGE = 128;
-const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
+const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally", "ammo"];
 export class AgentPolicy {
     constructor() {
         this.mode = null;
@@ -144,11 +144,11 @@ function mergeAlly(visibleWorld, record, state, session, filterAllyForEngagement
     return allyIfEngaged(session, ally);
 }
 export class AgentIntentMemory {
-    constructor({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60, filterAllyForEngagement = false } = {}) {
+    constructor({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60, ammoTtlTicks = 180, filterAllyForEngagement = false } = {}) {
         this.filterAllyForEngagement = filterAllyForEngagement;
-        this.memory = new TargetMemory(INTENT_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks });
-        this.memorySource = { threat: false, prey: false, food: false, ally: false };
-        this.world = { threat: null, prey: null, food: null, ally: null, allyCount: 0, allyCentroid: null, threatCount: 0, memorySource: this.memorySource };
+        this.memory = new TargetMemory(INTENT_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks, ammo: ammoTtlTicks });
+        this.memorySource = { threat: false, prey: false, food: false, ally: false, ammo: false };
+        this.world = { threat: null, prey: null, food: null, ally: null, ammo: null, allyCount: 0, allyCentroid: null, threatCount: 0, memorySource: this.memorySource };
     }
     update(seeker, state, visibleWorld) {
         const grid = state.obstacleGrid;
@@ -158,6 +158,7 @@ export class AgentIntentMemory {
         this.memory.observe("prey", visibleWorld.prey, seeker, grid);
         this.memory.observe("food", visibleWorld.food, seeker, grid);
         this.memory.observe("ally", ally, seeker, grid);
+        this.memory.observe("ammo", visibleWorld.ammo, seeker, grid);
     }
     enrichWorld(state, visibleWorld) {
         const session = state.sandbox?.snakeGame;
@@ -165,10 +166,12 @@ export class AgentIntentMemory {
         const prey = mergeTarget(visibleWorld, "prey", this.memory.record("prey"), state);
         const food = mergeTarget(visibleWorld, "food", this.memory.record("food"), state);
         const ally = mergeAlly(visibleWorld, this.memory.record("ally"), state, session, this.filterAllyForEngagement);
+        const ammo = mergeTarget(visibleWorld, "ammo", this.memory.record("ammo"), state);
         this.world.threat = threat;
         this.world.prey = prey;
         this.world.food = food;
         this.world.ally = ally;
+        this.world.ammo = ammo;
         this.world.threatCount = visibleWorld.threatCount ?? 0;
         this.world.allyCount = visibleWorld.ally ? (visibleWorld.allyCount ?? 1) : ally ? 1 : 0;
         this.world.allyCentroid = visibleWorld.ally ? (visibleWorld.allyCentroid ?? null) : null;
@@ -176,6 +179,7 @@ export class AgentIntentMemory {
         this.memorySource.prey = !visibleWorld.prey && !!prey;
         this.memorySource.food = !visibleWorld.food && !!food;
         this.memorySource.ally = !visibleWorld.ally && !!ally;
+        this.memorySource.ammo = !visibleWorld.ammo && !!ammo;
         return this.world;
     }
     getWorld() {
@@ -774,11 +778,13 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         };
         const states = {
             explore: createExploreIntentState({ locomotion, resolveExploreCell: (seeker, gameState, memory, exploreRng) => this.resolveExploreCell(seeker, gameState, memory, exploreRng), brain }),
-            seek_food: createSeekIntentState({ locomotion, seekArrivalRadius: (mode, agent, target) => this.seekArrivalRadius(mode, agent, target) }),
-            seek_ally: createSeekIntentState({ locomotion, seekArrivalRadius: (mode, agent, target) => this.seekArrivalRadius(mode, agent, target) }),
             flee: createFleeIntentState({ locomotion, setFleeDestination: (args) => this.setFleeDestination(args) }),
         };
-        states[intent.huntMode] = states.seek_food;
+        const seekState = createSeekIntentState({ locomotion, seekArrivalRadius: (mode, agent, target) => this.seekArrivalRadius(mode, agent, target) });
+        for (let i = 0; i < intent.seekModes.length; i++) {
+            const mode = intent.seekModes[i];
+            if (mode !== "shoot_enemy") states[mode] = seekState;
+        }
         super({
             initialMode: "explore",
             sync: (agent, state) => {
