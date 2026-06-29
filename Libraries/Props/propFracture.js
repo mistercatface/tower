@@ -115,8 +115,8 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     const motion = currentPropMotion(sourceProp);
     const spawned = [];
     const physId = sourceProp._physId;
-    const wx = kineticDynamicSlab.x[physId];
-    const wy = kineticDynamicSlab.y[physId];
+    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : sourceProp.x;
+    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : sourceProp.y;
     for (let i = 0; i < geometries.length; i++) {
         const geom = geometries[i];
         const worldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, geom.centroid.cx, geom.centroid.cy, cos, sin);
@@ -182,8 +182,8 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     if (components.length <= 1) return null;
     components.sort((a, b) => b.length - a.length);
     const physId = prop._physId;
-    const wx = kineticDynamicSlab.x[physId];
-    const wy = kineticDynamicSlab.y[physId];
+    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
+    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
     return { debris, originX: wx, originY: wy, facing: prop.facing };
@@ -204,8 +204,8 @@ export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
 export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
     const physId = prop._physId;
-    const wx = kineticDynamicSlab.x[physId];
-    const wy = kineticDynamicSlab.y[physId];
+    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
+    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldHitX - wx;
     const dy = worldHitY - wy;
     const cos = Math.cos(prop.facing);
@@ -220,8 +220,8 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     if (!canFracturePropSplit(prop)) return null;
     const physId = prop._physId;
-    const wx = kineticDynamicSlab.x[physId];
-    const wy = kineticDynamicSlab.y[physId];
+    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
+    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldHitX - wx;
     const dy = worldHitY - wy;
     const cos = Math.cos(prop.facing);

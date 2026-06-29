@@ -202,7 +202,13 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     evictKineticProp(prop, session) {
         if (!prop || prop._physId === undefined) return;
-        islandRootByPhysId[prop._physId] = -1;
+        const physId = prop._physId;
+        prop.x = kineticDynamicSlab.x[physId];
+        prop.y = kineticDynamicSlab.y[physId];
+        prop.vx = kineticDynamicSlab.vx[physId];
+        prop.vy = kineticDynamicSlab.vy[physId];
+        prop.angularVelocity = kineticDynamicSlab.w[physId];
+        islandRootByPhysId[physId] = -1;
         this.entityGrid.remove(prop);
         const all = this._kineticBodies;
         for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);
