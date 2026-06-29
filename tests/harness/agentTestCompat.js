@@ -15,10 +15,12 @@ import {
 } from "../../Libraries/Game/snake/AgentInstance.js";
 import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentIntentMemory, ModePolicyLatch, resolveRangedWeapon } from "../../Libraries/Game/snake/GroundNavIntentAdapter.js";
 import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill, COMBAT_TRAIT_DEFAULTS, matchesBrainRamResolver } from "../../Libraries/Game/snake/snakeCombat.js";
-import { AgentFrameOrchestrator } from "../../Libraries/Game/snake/snakeAgentSession.js";
+import { AgentFrameOrchestrator, createAgentSpecies, SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/snakeAgentSession.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
 export {
+    createAgentSpecies,
+    SNAKE_GAME_SPECIES,
     targetFromMemoryRecord,
     buildNavStepPenaltyFromSpatialMemory,
     resolveRangedWeapon,

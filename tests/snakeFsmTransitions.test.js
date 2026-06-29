@@ -23,7 +23,7 @@ import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { applyAgentGameplay } from "./harness/agentTestCompat.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
+import { SNAKE_GAME_SPECIES } from "./harness/agentTestCompat.js";
 import { createSeekIntentState } from "../Libraries/AI/agentIntent/AgentIntent.js";
 import { wireSnakeGameForHead, createWiredSnakeAutosim, snakeGameNavWalkable, createSnakeNavWalkable, wireSnakeTestGame, spawnSnakeFoodShardAtCell } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";

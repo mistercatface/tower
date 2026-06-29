@@ -10,7 +10,7 @@ import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snake/snakeScene.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
+import { SNAKE_GAME_SPECIES } from "./harness/agentTestCompat.js";
 import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI/agents/AgentProfiles.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";

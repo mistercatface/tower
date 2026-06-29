@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
-import { createAgentSpecies } from "../Libraries/Game/snake/species/createAgentSpecies.js";
+import { createAgentSpecies } from "./harness/agentTestCompat.js";
 
 describe("createAgentSpecies", () => {
     it("exports one species def per profile with shared lifecycle hooks", () => {

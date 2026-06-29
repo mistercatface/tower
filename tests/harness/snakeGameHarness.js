@@ -22,7 +22,7 @@ import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFrac
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../../Libraries/Game/snake/snakeAgentSession.js";
-import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js";
+import { SNAKE_GAME_SPECIES } from "./agentTestCompat.js";
 import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/AgentProfiles.js";
 import { FollowCamera } from "../../Libraries/Sandbox/FollowCamera.js";
 import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";

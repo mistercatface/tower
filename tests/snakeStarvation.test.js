@@ -15,7 +15,7 @@ import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createAgentPopulationRegistry } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
+import { SNAKE_GAME_SPECIES } from "./harness/agentTestCompat.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";
 import { createWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 async function createTestState(cols = 32, rows = 32) {
