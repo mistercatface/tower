@@ -331,21 +331,22 @@ export class AgentInstance {
             pending--;
         }
     }
-    consumeTargetAndResetNavigation(state, target) {
-        const seeker = this.head;
-        const targetRadius = getCirclePropRadius(target) ?? 0;
-        if (Math.hypot(target.x - seeker.x, target.y - seeker.y) > this.eatRadius + targetRadius) return false;
+    removeCollectedProp(state, target) {
         const grid = state.obstacleGrid;
         const idx = grid.worldCol(target.x) + grid.worldRow(target.y) * grid.cols;
         this.brain.stampArrival(idx);
         this.intent.clearTrackedGoal();
         this.headNav.clearDestination();
         removeSandboxWorldProp(state, target);
-        return true;
+    }
+    collectContactProp(state, prop) {
+        if (this.eatFoodTarget(state, prop)) return true;
+        if (this.collectAmmoTarget(state, prop)) return true;
+        return false;
     }
     eatFoodTarget(state, food) {
         if (!canAgentEatSnakeFood(this.head, food) || !isSnakeFoodTarget(food)) return false;
-        if (!this.consumeTargetAndResetNavigation(state, food)) return false;
+        this.removeCollectedProp(state, food);
         const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
         if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
         else this.metabolism.feed(foodValue);
@@ -353,30 +354,10 @@ export class AgentInstance {
     }
     collectAmmoTarget(state, ammoProp) {
         if (ammoProp.type !== "ammo_shard" || ammoProp.isDead) return false;
-        if (!this.consumeTargetAndResetNavigation(state, ammoProp)) return false;
+        if (!this.resolvedWeapon) return false;
+        this.removeCollectedProp(state, ammoProp);
         this.ammo += ammoProp.ammoValue ?? 1;
         return true;
-    }
-    canConsumeByReach(decisionCtx, spec) {
-        if (!decisionCtx || !spec) return false;
-        if (decisionCtx.routeStatus?.destReached) return true;
-        const reach = decisionCtx.reachSteps?.[spec.slot];
-        const maxReach = spec.reachSteps ?? 0;
-        if (!Number.isFinite(reach)) return false;
-        return reach <= maxReach;
-    }
-    tryConsumeCommittedTarget(state, mode, target, decisionCtx) {
-        const spec = this.profile.intent?.consumables?.[mode];
-        if (!spec || !target || target.isDead) return false;
-        if (!this.canConsumeByReach(decisionCtx, spec)) return false;
-        switch (spec.handler) {
-            case "food":
-                return this.eatFoodTarget(state, target);
-            case "ammo":
-                return this.collectAmmoTarget(state, target);
-            default:
-                return false;
-        }
     }
     severInertTail(state, tailIds) {
         this.retireMemberSegments(state, tailIds);
@@ -596,16 +577,8 @@ export class AgentAutosim {
         this.instance.applySprintMovementIntent();
         this.instance.headNav.tick(seeker, dtMs);
         if (soloTick) endSnakePerceptionFrame(this.state);
-        let fedThisTick = false;
-        const mode = this.intent.getMode();
-        const target = this.intent.context.target;
-        const decisionCtx = this.intent.getDecisionContext();
-        if (target) {
-            const consumed = this.instance.tryConsumeCommittedTarget(this.state, mode, target, decisionCtx);
-            if (consumed && mode === "seek_food") fedThisTick = true;
-        }
         const drainMultiplier = this.instance.hungerDrainMultiplier();
-        if (!fedThisTick) this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
+        this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
     }
 }
 // ==========================================

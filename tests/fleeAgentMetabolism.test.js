@@ -17,6 +17,7 @@ import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, spawnSnakeFoodShardAtCell, primeSnakeHeadVision, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
+import { overlapCircleBodies, resolveSnakeAgentPropContacts } from "./harness/snakeContactHarness.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 function stampWall(grid, col, row) {
     grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
@@ -44,7 +45,7 @@ describe("flee agent metabolism", () => {
         advanceAgentMetabolismHunger(metabolism, 500, 2);
         assert.ok(getAgentHunger(metabolism) < 0.5);
     });
-    it("refills hunger from shard pickup while seeking food", async () => {
+    it("refills hunger from shard pickup on head contact while seeking food", async () => {
         resetKineticConstraintIds(30);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
@@ -54,10 +55,14 @@ describe("flee agent metabolism", () => {
         registerAgentInstance(snakeGame, "flee_agent", instance);
         instance.start();
         setAgentHunger(instance.metabolism, 0.2);
-        spawnSnakeFoodShardAtCell(state, { col: 10, row: 10 }, { foodValue: 0.4 });
+        const food = spawnSnakeFoodShardAtCell(state, { col: 14, row: 10 }, { foodValue: 0.4 });
         primeSnakeHeadVision(state, pack.head, getSnakeGameConfig().shared.visionRange);
         instance.autosim.tick(16);
         assert.equal(instance.intent.getMode(), "seek_food");
+        overlapCircleBodies(pack.head, food);
+        pack.head.vx = 1;
+        food.vx = -1;
+        resolveSnakeAgentPropContacts(state, [pack.head, food]);
         assert.ok(getAgentHunger(instance.metabolism) >= 0.6);
     });
     it("seeks visible food when hungry", async () => {
@@ -76,7 +81,7 @@ describe("flee agent metabolism", () => {
         assert.equal(instance.intent.getMode(), "seek_food");
         assert.equal(instance.intent.getTargetId(), food.id);
     });
-    it("eats food once terminal homing reaches pickup range", async () => {
+    it("eats food on head contact after seeking food", async () => {
         resetKineticConstraintIds(36);
         const { state } = await createSnakeGameHarnessState();
         const { snakeGame } = wireSnakeTestGame(state);
@@ -95,11 +100,14 @@ describe("flee agent metabolism", () => {
         const eatRadius = resolveSnakeEatRadius(getSnakeGameConfig(), getCirclePropRadius(pack.head));
         pack.head.x = foodLive.x + eatRadius + 2;
         pack.head.y = foodLive.y;
-        instance.autosim.tick(16);
+        pack.head.vx = 1;
+        foodLive.vx = -1;
+        resolveSnakeAgentPropContacts(state, [pack.head, foodLive]);
         assert.ok(state.entityRegistry.getLive(food.id));
-        pack.head.x = foodLive.x + eatRadius - 0.5;
-        pack.head.y = foodLive.y;
-        instance.autosim.tick(16);
+        overlapCircleBodies(pack.head, foodLive);
+        pack.head.vx = 1;
+        foodLive.vx = -1;
+        resolveSnakeAgentPropContacts(state, [pack.head, foodLive]);
         assert.equal(state.entityRegistry.getLive(food.id), null);
         assert.ok(getAgentHunger(instance.metabolism) > 0.55);
     });

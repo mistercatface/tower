@@ -18,9 +18,6 @@ const SNAKE_INTENT = {
     fleeExploreFallback: false,
     publishEngagement: true,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true, session: true },
-    consumables: {
-        seek_food: { slot: "food", handler: "food", reachSteps: 0 },
-    },
 };
 const SQUID_INTENT = {
     reachSlots: { threat: { targetKey: "threat", mode: "flee" }, prey: { targetKey: "prey", mode: "seek_prey" }, food: { targetKey: "food", mode: "seek_food" } },
@@ -34,9 +31,6 @@ const SQUID_INTENT = {
     fleeExploreFallback: false,
     publishEngagement: false,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true },
-    consumables: {
-        seek_food: { slot: "food", handler: "food", reachSteps: 0 },
-    },
 };
 const FLEE_INTENT = {
     reachSlots: {
@@ -56,10 +50,6 @@ const FLEE_INTENT = {
     fleeExploreFallback: true,
     publishEngagement: false,
     decisionFields: {},
-    consumables: {
-        seek_food: { slot: "food", handler: "food", reachSteps: 0 },
-        seek_ammo: { slot: "ammo", handler: "ammo", reachSteps: 0 },
-    },
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {

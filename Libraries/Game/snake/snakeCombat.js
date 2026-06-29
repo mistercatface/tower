@@ -101,6 +101,10 @@ function tryResolveBrainRam(state, spatialFrame, contacts, i, instanceA, traitsA
     else instanceA.die(state, deathImpact);
     return true;
 }
+function tryResolveAgentCollectableContact(state, instance, prop) {
+    if (!prop || prop.isDead) return false;
+    return instance.collectContactProp(state, prop);
+}
 export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
     if (contacts.count === 0) return;
     const snakeGame = state.sandbox.snakeGame;
@@ -110,6 +114,12 @@ export function resolveSnakeCombatFromContacts(state, spatialFrame, contacts) {
         if (!pair) continue;
         const instanceA = instancesByMemberId.get(pair.bodyA.id);
         const instanceB = instancesByMemberId.get(pair.bodyB.id);
+        if (instanceA?.lifecycle === "alive" && !instanceB && pair.bodyA.id === instanceA.headId) {
+            if (tryResolveAgentCollectableContact(state, instanceA, pair.bodyB)) continue;
+        }
+        if (instanceB?.lifecycle === "alive" && !instanceA && pair.bodyB.id === instanceB.headId) {
+            if (tryResolveAgentCollectableContact(state, instanceB, pair.bodyA)) continue;
+        }
         if (!instanceA || !instanceB || instanceA.lifecycle !== "alive" || instanceB.lifecycle !== "alive" || instanceA === instanceB) continue;
         const traitsA = instanceA.combatTraits;
         const traitsB = instanceB.combatTraits;
