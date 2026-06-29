@@ -4,14 +4,13 @@ function makeEmptyRecords(kinds) {
     return records;
 }
 function makeRecord(kind, target, grid, ttlTicks) {
-    const cell = { col: grid.worldCol(target.x), row: grid.worldRow(target.y) };
-    return { kind, id: target.id ?? null, x: target.x, y: target.y, cell, ageTicks: 0, ttlTicks, confidence: 1 };
+    const cellIdx = grid.worldCol(target.x) + grid.worldRow(target.y) * grid.cols;
+    return { kind, id: target.id ?? null, x: target.x, y: target.y, cellIdx, ageTicks: 0, ttlTicks, confidence: 1 };
 }
 function refreshRecord(record, target, grid) {
     record.x = target.x;
     record.y = target.y;
-    record.cell.col = grid.worldCol(target.x);
-    record.cell.row = grid.worldRow(target.y);
+    record.cellIdx = grid.worldCol(target.x) + grid.worldRow(target.y) * grid.cols;
     record.ageTicks = 0;
     record.confidence = 1;
 }
@@ -23,7 +22,7 @@ function ageRecord(record) {
 }
 function snapshotRecord(record) {
     if (!record) return null;
-    return { kind: record.kind, id: record.id, cell: { ...record.cell }, ageTicks: record.ageTicks, ttlTicks: record.ttlTicks, confidence: record.confidence };
+    return { kind: record.kind, id: record.id, cellIdx: record.cellIdx, ageTicks: record.ageTicks, ttlTicks: record.ttlTicks, confidence: record.confidence };
 }
 export function targetFromMemoryRecord(record, state = null) {
     if (!record) return null;
