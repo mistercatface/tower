@@ -12,12 +12,12 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { createDirectGroundNavBehavior } from "../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/groundNav/groundNavIds.js";
-import { createGroundNavIntentAdapter, buildGroundNavIntentAdapterOptions, resolveSnakeExploreCell } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
+import { GroundNavIntentAdapter } from "../Libraries/Game/snake/GroundNavIntentAdapter.js";
 import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createAgentMetabolism } from "./harness/agentTestCompat.js";
 import { createBrain } from "./harness/agentTestCompat.js";
-import { createSpatialBrainSync } from "../Libraries/Game/snake/agentAutosim.js";
+import { createSpatialBrainSync } from "../Libraries/Game/snake/AgentInstance.js";
 import { FRAME_MS } from "./frameMs.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.js";
@@ -123,14 +123,14 @@ function createMockIntent(state, headId) {
     const shared = state.sandbox.snakeGame.config.shared;
     const brain = createBrain({ spatialMemoryCapacity: shared.spatialMemoryCapacity });
     const sync = createSpatialBrainSync(brain, { visionRange: instance.visionRange, navMemoryStepPenalty: shared.navMemoryStepPenalty, navMemoryStepFalloff: shared.navMemoryStepFalloff });
-    const intent = createGroundNavIntentAdapter(buildGroundNavIntentAdapterOptions({
+    const intent = new GroundNavIntentAdapter({
+        state,
         instance,
         brain,
         sync,
         headNav,
         agentCtx: { instance, session: state.sandbox.snakeGame, navWalkable },
-        rng: () => 0,
-    }));
+    });
     return { intent, headNav };
 }
 describe("snake FSM transitions", () => {

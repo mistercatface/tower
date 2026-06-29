@@ -6,15 +6,13 @@ import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
-import { setAgentHunger } from "./harness/agentTestCompat.js";
 import { buildAgentDecisionContextFor, scoreAgentIntentCandidateDetails, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
-import { resolveRangedWeapon } from "../Libraries/Game/snake/rangedCombat.js";
-import { createRangedCombatActionState } from "./harness/agentTestCompat.js";
+import { setAgentHunger, createRangedCombatActionState, resolveRangedWeapon } from "./harness/agentTestCompat.js";
 import { pickCombatStrafeCell } from "../Libraries/AI/steering/pickCombatStrafeCell.js";
 
 const CELL = 16;

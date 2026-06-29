@@ -4,18 +4,20 @@ import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
-import { AgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
-import { AgentMetabolism } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
 import { registerInertAgent } from "../../AI/agents/AgentProfiles.js";
 import { clearGroundRollDrive } from "../../Sandbox/kineticRollActuator.js";
 import { markSnakeSegmentsFracturable } from "./snakeSegmentFracture.js";
 import { AGENT_PROFILE, getAgentProfile } from "../../AI/agents/AgentProfiles.js";
 import { getAgentIdentity } from "../../AI/identity/agentIdentity.js";
+import { GroundNavIntentAdapter } from "./GroundNavIntentAdapter.js";
+import { ensureSnakePerceptionTick, maybeBeginSnakeAutosimTick, endSnakePerceptionFrame } from "./snakePerception.js";
+import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
+import { createSpatialCellMemory } from "../../AI/brain/brain.js";
 import { DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { applyAgentGameplay } from "./applyAgentGameplay.js";
-import { RangedCombatActionState, resolveRangedWeapon } from "./rangedCombat.js";
+import { RangedCombatActionState, resolveRangedWeapon } from "./GroundNavIntentAdapter.js";
 import { COMBAT_TRAIT_DEFAULTS, isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill } from "./agentCombatTraits.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { resolveRelationshipForInstances, bakeRelationshipRules } from "./agentRelationships.js";
@@ -322,7 +324,8 @@ export class AgentInstance {
         const seeker = this.head;
         if (Math.hypot(target.x - seeker.x, target.y - seeker.y) > this.eatRadius) return false;
         const grid = state.obstacleGrid;
-        this.brain.stampArrival(grid.worldCol(target.x), grid.worldRow(target.y));
+        const idx = grid.worldCol(target.x) + grid.worldRow(target.y) * grid.cols;
+        this.brain.stampArrival(idx);
         this.intent.clearTrackedGoal();
         this.headNav.clearDestination();
         removeSandboxWorldProp(state, target);
@@ -399,5 +402,186 @@ export class AgentInstance {
                 return true;
             }
         return false;
+    }
+}
+// --- Unified Agent Metabolism ---
+export class AgentMetabolism {
+    constructor(profile) {
+        this.hungerDrainMs = profile.metabolism?.hungerDrainMs ?? 30_000;
+        this.foodValue = profile.metabolism?.foodValue ?? 0.5;
+        this.growthCost = profile.metabolism?.growthCost ?? null;
+        this.starveShedIntervalMs = profile.metabolism?.starveShedIntervalMs ?? null;
+        this.hunger = profile.initialHunger ?? 1.0;
+        this.growth = 0;
+        this.starveMs = 0;
+    }
+    getHunger() {
+        return this.hunger;
+    }
+    setHunger(fraction) {
+        this.hunger = Math.max(0, Math.min(1, fraction));
+        this.starveMs = 0;
+    }
+    feed(value = null) {
+        const foodAmount = value ?? this.foodValue;
+        this.starveMs = 0;
+        this.hunger += foodAmount;
+        let growCount = 0;
+        if (this.hunger > 1.0) {
+            const excess = this.hunger - 1.0;
+            this.hunger = 1.0;
+            if (this.growthCost !== null) {
+                this.growth += excess;
+                while (this.growth >= this.growthCost) {
+                    this.growth -= this.growthCost;
+                    growCount++;
+                }
+            }
+        }
+        return growCount;
+    }
+    advanceHunger(dtMs, drainMultiplier = 1) {
+        this.hunger -= (dtMs * drainMultiplier) / this.hungerDrainMs;
+        if (this.hunger > 0) {
+            this.starveMs = 0;
+            return false;
+        }
+        this.hunger = 0;
+        if (this.starveShedIntervalMs !== null) this.starveMs += dtMs * drainMultiplier;
+        return true;
+    }
+}
+// --- Snake Scaling & Growth Helpers ---
+export function getSnakeChainRadius(state, headId) {
+    const head = state.entityRegistry.getLive(headId);
+    return getCirclePropRadius(head);
+}
+export function growSnakeChainAfterMeal(state, headId, profile) {
+    const segmentRadius = getSnakeChainRadius(state, headId);
+    const spacing = segmentRadius * 2 * (profile.linkSlack ?? 1);
+    return { segmentRadius, spacing, linkSlack: profile.linkSlack };
+}
+// --- Brain and Spatial Memory ---
+export class Brain {
+    constructor({ spatialMemoryCapacity = 64, cols = 64 } = {}) {
+        this.spatial = createSpatialCellMemory({ capacity: spatialMemoryCapacity, cols });
+    }
+    stampSeenCells(cells) {
+        this.spatial.stampCells(cells);
+    }
+    stampArrival(idx) {
+        this.spatial.stamp(idx);
+    }
+    clearMemory() {
+        this.spatial.clear();
+    }
+}
+export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty, falloff }, keysBuffer = null, costsBuffer = null) {
+    if (keysBuffer && costsBuffer) {
+        let count = 0;
+        spatial.forEachNewestFirstKey((key, _seq, rankFromNewest) => {
+            if (count < keysBuffer.length) {
+                keysBuffer[count] = key;
+                costsBuffer[count] = basePenalty * falloff ** rankFromNewest;
+                count++;
+            }
+        });
+        if (!count) return null;
+        return { keys: keysBuffer.subarray(0, count), costs: costsBuffer.subarray(0, count) };
+    }
+    const keys = [];
+    const costs = [];
+    spatial.forEachNewestFirstKey((key, _seq, rankFromNewest) => {
+        keys.push(key);
+        costs.push(basePenalty * falloff ** rankFromNewest);
+    });
+    if (!keys.length) return null;
+    return { keys: Int32Array.from(keys), costs: Float32Array.from(costs) };
+}
+export function createSpatialBrainSync(brain, { visionRange, navMemoryStepPenalty, navMemoryStepFalloff }) {
+    let lastPenaltyGeneration = -1;
+    let lastPenalty = null;
+    const capacity = brain.spatial.capacity;
+    const keysBuffer = new Int32Array(capacity);
+    const costsBuffer = new Float32Array(capacity);
+    return function syncSpatialBrain(agent, state) {
+        const frame = getObserverVisionFrame(state);
+        const vision = frame.ensureHeadVision(agent, visionRange);
+        brain.stampSeenCells(vision.cells);
+        const generation = brain.spatial.generation;
+        if (generation !== lastPenaltyGeneration) {
+            lastPenalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: navMemoryStepPenalty, falloff: navMemoryStepFalloff }, keysBuffer, costsBuffer);
+            lastPenaltyGeneration = generation;
+        }
+        agent.navStepPenalty = lastPenalty;
+    };
+}
+// --- Unified FSM Runner ---
+export class AgentAutosim {
+    constructor(state, instance) {
+        this.state = state;
+        this.instance = instance;
+        this.session = state.sandbox.snakeGame;
+        this.shared = this.session.config.shared;
+        this.entityRegistry = state.entityRegistry;
+        this.agentCtx = { instance, session: this.session, navWalkable: this.session.navWalkable };
+        this.profile = instance.profile;
+        this.brain = new Brain({ spatialMemoryCapacity: this.shared.spatialMemoryCapacity, cols: state.obstacleGrid?.cols ?? 64 });
+        this.sync = createSpatialBrainSync(this.brain, {
+            visionRange: instance.visionRange,
+            navMemoryStepPenalty: this.shared.navMemoryStepPenalty,
+            navMemoryStepFalloff: this.shared.navMemoryStepFalloff,
+        });
+        this.intent = new GroundNavIntentAdapter({ state, instance, brain: this.brain, sync: this.sync, headNav: instance.headNav, agentCtx: this.agentCtx });
+        instance.intent = this.intent;
+        instance.brain = this.brain;
+        this.active = false;
+        this.initialHunger = this.profile.initialHunger ?? 1;
+    }
+    start() {
+        this.active = true;
+        this.instance.sprinting = false;
+        this.instance.metabolism.setHunger(this.initialHunger);
+        this.intent.resetMode();
+        this.intent.resetMemory();
+    }
+    stop() {
+        this.active = false;
+        this.instance.sprinting = false;
+        this.intent.clear(this.instance.head, this.state);
+    }
+    isActive() {
+        return this.active;
+    }
+    getPathOverlay() {
+        return this.instance.headNav.getPathOverlay(this.instance.head);
+    }
+    tick(dtMs, admitted = true) {
+        if (!this.active) return;
+        const seeker = this.instance.head;
+        if (this.instance.lifecycle !== "alive") return;
+        if (!this.instance.isSteerable()) {
+            this.instance.die(this.state);
+            return;
+        }
+        const soloTick = !this.session._batchingPerception;
+        if (this.session._batchingPerception) ensureSnakePerceptionTick(this.state);
+        else maybeBeginSnakeAutosimTick(this.state);
+        let choice;
+        if (admitted) choice = this.intent.tick(seeker, this.state, dtMs);
+        this.instance.applySprintMovementIntent();
+        this.instance.headNav.tick(seeker, dtMs);
+        if (soloTick) endSnakePerceptionFrame(this.state);
+        let fedThisTick = false;
+        let foodTarget = null;
+        if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) foodTarget = choice.target;
+        else if (this.intent.getMode() === "seek_food" && this.intent.getTargetId() != null) foodTarget = this.entityRegistry.getLive(this.intent.getTargetId());
+        if (foodTarget) fedThisTick = this.instance.eatFoodTarget(this.state, foodTarget);
+        let ammoTarget = null;
+        if (choice?.mode === "seek_ammo" && choice.target && choice.target.type === "ammo_shard") ammoTarget = choice.target;
+        else if (this.intent.getMode() === "seek_ammo" && this.intent.getTargetId() != null) ammoTarget = this.entityRegistry.getLive(this.intent.getTargetId());
+        if (ammoTarget) this.instance.collectAmmoTarget(this.state, ammoTarget);
+        const drainMultiplier = this.instance.hungerDrainMultiplier();
+        if (!fedThisTick) this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
     }
 }

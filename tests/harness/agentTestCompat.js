@@ -1,12 +1,8 @@
-import { AgentMetabolism } from "../../Libraries/Game/snake/agentMetabolism.js";
-import { TargetMemory, targetFromMemoryRecord } from "../../Libraries/AI/memory/targetMemory.js";
-import { RangedCombatActionState } from "../../Libraries/Game/snake/rangedCombat.js";
-import { Brain, AgentAutosim, buildNavStepPenaltyFromSpatialMemory } from "../../Libraries/Game/snake/agentAutosim.js";
-import { AgentIntentMemory } from "../../Libraries/AI/memory/createAgentIntentMemory.js";
-import { ModePolicyLatch } from "../../Libraries/AI/agentIntent/AgentIntent.js";
+import { AgentMetabolism, Brain, AgentAutosim, buildNavStepPenaltyFromSpatialMemory, getSnakeChainRadius, growSnakeChainAfterMeal } from "../../Libraries/Game/snake/AgentInstance.js";
+import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentIntentMemory, ModePolicyLatch, resolveRangedWeapon } from "../../Libraries/Game/snake/GroundNavIntentAdapter.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
-export { targetFromMemoryRecord, buildNavStepPenaltyFromSpatialMemory };
+export { targetFromMemoryRecord, buildNavStepPenaltyFromSpatialMemory, resolveRangedWeapon, getSnakeChainRadius, growSnakeChainAfterMeal };
 
 // --- Agent Metabolism Legacy Wrappers ---
 export function createAgentMetabolism(profile) {

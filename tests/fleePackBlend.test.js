@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { pickFleeCell } from "../Libraries/AI/steering/pickFleeCell.js";
-import { resolvePackSteeringOptions } from "../Libraries/Game/snake/createGroundNavIntentAdapter.js";
+import { resolvePackSteeringOptions } from "../Libraries/Game/snake/GroundNavIntentAdapter.js";
 import { buildAgentDecisionFrameFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";

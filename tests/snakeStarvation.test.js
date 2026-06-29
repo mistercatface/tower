@@ -9,8 +9,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getOrderedChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getSnakeChainRadius } from "../Libraries/Game/snake/agentMetabolism.js";
-import { createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger } from "./harness/agentTestCompat.js";
+import { createAgentMetabolism, feedAgentMetabolism, getAgentHunger, setAgentHunger, getSnakeChainRadius } from "./harness/agentTestCompat.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { isSnakeFoodTarget } from "../Libraries/Game/snake/snakeFood.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";

@@ -14,7 +14,7 @@ import {
     scoreRiskAdjustedFlee,
 } from "../utility/utilityScoring.js";
 import { AGENT_PROFILE, getAgentProfile, isAgentEngaged, readAgentEngagement } from "./AgentProfiles.js";
-import { deriveRangedCombatStateInto } from "../../Game/snake/rangedCombat.js";
+import { deriveRangedCombatStateInto } from "../../Game/snake/GroundNavIntentAdapter.js";
 // === From bandFromThresholds.js ===
 /** @param {number | null | undefined} value @param {{ id: string, min: number }[]} bands highest `min` first */
 export function bandFromThresholds(value, bands) {
