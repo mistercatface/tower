@@ -940,9 +940,9 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             const cohesion = this.profile.factionCohesion ?? {};
             return { arrivalRadius: cohesion.arrivalRadius ?? (this.profileId === AGENT_PROFILE.snake ? 32 : 24), lockOnTarget: true, terminalHoming };
         }
+        if (mode === "seek_food" || mode === "seek_ammo") return { arrivalRadius: this.agentCtx.instance.eatRadius, lockOnTarget: true, terminalHoming };
         const huntArrival = Math.max(2, headRadius * 0.25);
         if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy" || mode === "shoot_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
-        if (target?.type !== "ammo_shard" && !isSnakeShardFood(target)) return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         return { arrivalRadius: this.agentCtx.instance.eatRadius, lockOnTarget: true, terminalHoming };
     }
     setFleeDestination(args) {

@@ -6,6 +6,7 @@ import { clearSnakeSteeringLeaseFromProp, AgentInstance } from "./AgentInstance.
 import { removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { FactionTargetRegistry } from "./snakePerception.js";
+import { kineticSpatial } from "../../../Systems/World/KineticSpatialFrame.js";
 export class AgentFrameOrchestrator {
     constructor(config) {
         this.config = config;
@@ -130,14 +131,14 @@ export function createAgentSpecies(profileId) {
         die(instance, state, deathImpact = null) {
             instance.lifecycle = "dead";
             instance.stopSteering();
-            if (instance.ammo > 0) spawnAmmoShards(state, instance.head, instance.ammo, deathImpact?.spatialFrame);
+            const spatialFrame = deathImpact?.spatialFrame ?? kineticSpatial;
+            if (instance.ammo > 0) spawnAmmoShards(state, instance.head, instance.ammo, spatialFrame);
             const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph();
             let resolvedMembers = connectedMembers;
             if (retireNavOnDeath) resolvedMembers = instance.retireAllSegments(state, connectedMembers);
             clearChainLinksForMembers(state, resolvedMembers);
             if (fracturableBeforeShatter) markSnakeSegmentsFracturable(state, connectedMembers);
-            const spatialFrame = deathImpact?.spatialFrame ?? null;
             shatterSnakeSegments(state, spatialFrame, resolvedMembers, deathImpact);
             if (removeNonStruckSegmentsOnDeath) removeNonStruckSegments(state, connectedMembers, deathImpact, spatialFrame);
             purgeInertAgentsForHead(snakeGame.registry, instance.headId);

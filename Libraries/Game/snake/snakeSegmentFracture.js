@@ -140,7 +140,7 @@ export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, co
                 const impact = resolveSegmentImpact(segment, radius, { worldX: hit.x, worldY: hit.y, impactForce: relSpeed, struckSegmentId: segment.id, spatialFrame }, i);
                 const geometries = fractureSnakeSegmentGeometry(segment, impact);
                 const foodValue = geometries.length ? growthCost / geometries.length : 0;
-                const shards = spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, null, (shard) => {
+                const shards = spawnShardPropsFromGeometry(state, segment, geometries, SNAKE_SHARD_PROP_ID, spatialFrame, (shard) => {
                     copyVisualOverride(segment, shard);
                     shard.snakeFoodValue = foodValue;
                     getPropCategoryIndex(state, "food").register(shard);

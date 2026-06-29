@@ -1,6 +1,7 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { IDENTITY_ROLL_QUAT } from "./rollingMotion.js";
 import { quantizeCardinalAngle } from "../Math/Angle.js";
+import { initWorldPropShape } from "./propStrategy.js";
 const pools = new Map();
 /**
  * Acquire a pooled WorldProp instance or create a new one.
@@ -46,6 +47,7 @@ export function acquireWorldProp(x, y, type, facing = null) {
         prop.faction = undefined;
         prop.shape = undefined;
         prop.footprintVertices = undefined;
+        initWorldPropShape(prop);
         // Reset physics / broadphase / neighbor state
         if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
         prop._kineticIslandPeers = null;
