@@ -33,30 +33,36 @@ export function targetFromMemoryRecord(record, state = null) {
     }
     return { id: record.id, x: record.x, y: record.y, memoryRecord: record };
 }
+export class TargetMemory {
+    constructor(kinds, ttlByKind) {
+        this.kinds = kinds;
+        this.ttlByKind = ttlByKind;
+        this.records = {};
+        for (const kind of kinds) this.records[kind] = null;
+    }
+    observe(kind, target, observer, grid) {
+        if (target) {
+            const id = target.id ?? null;
+            const existing = this.records[kind];
+            if (existing && existing.id === id) refreshRecord(existing, target, grid);
+            else this.records[kind] = makeRecord(kind, target, grid, this.ttlByKind[kind]);
+        } else this.records[kind] = ageRecord(this.records[kind]);
+    }
+    record(kind) {
+        return this.records[kind];
+    }
+    snapshot() {
+        const out = {};
+        for (const kind of this.kinds) out[kind] = snapshotRecord(this.records[kind]);
+        return out;
+    }
+    clear() {
+        for (const kind of this.kinds) this.records[kind] = null;
+    }
+    clearTarget(id) {
+        for (const kind of this.kinds) if (this.records[kind]?.id === id) this.records[kind] = null;
+    }
+}
 export function createTargetMemory(kinds, ttlByKind) {
-    const records = makeEmptyRecords(kinds);
-    return {
-        observe(kind, target, observer, grid) {
-            if (target) {
-                const id = target.id ?? null;
-                const existing = records[kind];
-                if (existing && existing.id === id) refreshRecord(existing, target, grid);
-                else records[kind] = makeRecord(kind, target, grid, ttlByKind[kind]);
-            } else records[kind] = ageRecord(records[kind]);
-        },
-        record(kind) {
-            return records[kind];
-        },
-        snapshot() {
-            const out = {};
-            for (const kind of kinds) out[kind] = snapshotRecord(records[kind]);
-            return out;
-        },
-        clear() {
-            for (const kind of kinds) records[kind] = null;
-        },
-        clearTarget(id) {
-            for (const kind of kinds) if (records[kind]?.id === id) records[kind] = null;
-        },
-    };
+    return new TargetMemory(kinds, ttlByKind);
 }

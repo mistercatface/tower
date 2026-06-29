@@ -4,54 +4,66 @@ import { getCirclePropRadius } from "../../Props/propScale.js";
  * Creates a unified metabolism state object for any agent.
  * Pre-caches relevant configuration values from the profile at instantiation time.
  */
-export function createAgentMetabolism(profile) {
-    const hungerDrainMs = profile.metabolism?.hungerDrainMs ?? 30_000;
-    const foodValue = profile.metabolism?.foodValue ?? 0.5;
-    const growthCost = profile.metabolism?.growthCost ?? null;
-    const starveShedIntervalMs = profile.metabolism?.starveShedIntervalMs ?? null;
-    return { hunger: profile.initialHunger ?? 1.0, growth: 0, starveMs: 0, hungerDrainMs, foodValue, growthCost, starveShedIntervalMs };
-}
-export function getAgentHunger(metabolism) {
-    return metabolism.hunger;
-}
-export function setAgentHunger(metabolism, fraction) {
-    metabolism.hunger = Math.max(0, Math.min(1, fraction));
-    metabolism.starveMs = 0;
-}
-/**
- * Feeds the agent metabolism.
- * Returns the number of segments to grow (if any).
- */
-export function feedAgentMetabolism(metabolism, value = null) {
-    const foodAmount = value ?? metabolism.foodValue;
-    metabolism.starveMs = 0;
-    metabolism.hunger += foodAmount;
-    let growCount = 0;
-    if (metabolism.hunger > 1.0) {
-        const excess = metabolism.hunger - 1.0;
-        metabolism.hunger = 1.0;
-        if (metabolism.growthCost !== null) {
-            metabolism.growth += excess;
-            while (metabolism.growth >= metabolism.growthCost) {
-                metabolism.growth -= metabolism.growthCost;
-                growCount++;
+export class AgentMetabolism {
+    constructor(profile) {
+        this.hungerDrainMs = profile.metabolism?.hungerDrainMs ?? 30_000;
+        this.foodValue = profile.metabolism?.foodValue ?? 0.5;
+        this.growthCost = profile.metabolism?.growthCost ?? null;
+        this.starveShedIntervalMs = profile.metabolism?.starveShedIntervalMs ?? null;
+        this.hunger = profile.initialHunger ?? 1.0;
+        this.growth = 0;
+        this.starveMs = 0;
+    }
+    getHunger() {
+        return this.hunger;
+    }
+    setHunger(fraction) {
+        this.hunger = Math.max(0, Math.min(1, fraction));
+        this.starveMs = 0;
+    }
+    feed(value = null) {
+        const foodAmount = value ?? this.foodValue;
+        this.starveMs = 0;
+        this.hunger += foodAmount;
+        let growCount = 0;
+        if (this.hunger > 1.0) {
+            const excess = this.hunger - 1.0;
+            this.hunger = 1.0;
+            if (this.growthCost !== null) {
+                this.growth += excess;
+                while (this.growth >= this.growthCost) {
+                    this.growth -= this.growthCost;
+                    growCount++;
+                }
             }
         }
+        return growCount;
     }
-    return growCount;
+    advanceHunger(dtMs, drainMultiplier = 1) {
+        this.hunger -= (dtMs * drainMultiplier) / this.hungerDrainMs;
+        if (this.hunger > 0) {
+            this.starveMs = 0;
+            return false;
+        }
+        this.hunger = 0;
+        if (this.starveShedIntervalMs !== null) this.starveMs += dtMs * drainMultiplier;
+        return true;
+    }
 }
-/**
- * Drains hunger for one tick. Returns true when hunger has hit zero (starving).
- */
+export function createAgentMetabolism(profile) {
+    return new AgentMetabolism(profile);
+}
+export function getAgentHunger(metabolism) {
+    return metabolism.getHunger();
+}
+export function setAgentHunger(metabolism, fraction) {
+    metabolism.setHunger(fraction);
+}
+export function feedAgentMetabolism(metabolism, value = null) {
+    return metabolism.feed(value);
+}
 export function advanceAgentMetabolismHunger(metabolism, dtMs, drainMultiplier = 1) {
-    metabolism.hunger -= (dtMs * drainMultiplier) / metabolism.hungerDrainMs;
-    if (metabolism.hunger > 0) {
-        metabolism.starveMs = 0;
-        return false;
-    }
-    metabolism.hunger = 0;
-    if (metabolism.starveShedIntervalMs !== null) metabolism.starveMs += dtMs * drainMultiplier;
-    return true;
+    return metabolism.advanceHunger(dtMs, drainMultiplier);
 }
 // --- Snake Scaling & Growth Helpers ---
 export function getSnakeChainRadius(state, headId) {

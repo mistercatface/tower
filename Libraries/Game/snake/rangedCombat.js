@@ -17,22 +17,43 @@ export function resolveRangedWeapon(instance, profile, visionRange = null) {
 export function hasRangedCombatCapability(instance, profile, visionRange = null) {
     return !!(resolveRangedWeapon(instance, profile, visionRange) || profile?.decision?.modes?.shoot_enemy);
 }
+export class RangedCombatActionState {
+    constructor() {
+        this.phase = "idle";
+        this.targetId = null;
+        this.timerMs = 0;
+        this.aimAngle = 0;
+        this.shotsFired = 0;
+        this.lostLosMs = 0;
+    }
+    reset() {
+        this.phase = "idle";
+        this.targetId = null;
+        this.timerMs = 0;
+        this.aimAngle = 0;
+        this.shotsFired = 0;
+        this.lostLosMs = 0;
+    }
+    isOnCooldown() {
+        return this.phase === "fire_delay" || this.phase === "reloading";
+    }
+    isBusy() {
+        return this.phase === "reacting" || this.phase === "fire_delay" || this.phase === "reloading";
+    }
+}
 export function createRangedCombatActionState() {
-    return { phase: "idle", targetId: null, timerMs: 0, aimAngle: 0, shotsFired: 0 };
+    return new RangedCombatActionState();
 }
 export function resetRangedCombatAction(action) {
-    if (!action) return;
-    action.phase = "idle";
-    action.targetId = null;
-    action.timerMs = 0;
-    action.aimAngle = 0;
-    action.shotsFired = 0;
+    if (action) action.reset();
 }
 export function rangedCombatActionOnCooldown(action) {
-    return action?.phase === "fire_delay" || action?.phase === "reloading";
+    if (!action) return false;
+    return typeof action.isOnCooldown === "function" ? action.isOnCooldown() : action.phase === "fire_delay" || action.phase === "reloading";
 }
 export function rangedCombatActionIsBusy(action) {
-    return action?.phase === "reacting" || action?.phase === "fire_delay" || action?.phase === "reloading";
+    if (!action) return false;
+    return typeof action.isBusy === "function" ? action.isBusy() : action.phase === "reacting" || action.phase === "fire_delay" || action.phase === "reloading";
 }
 export function deriveRangedCombatStateInto(out, ctx, input, profile) {
     const weapon = input.agentInstance?.resolvedWeapon ?? resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);

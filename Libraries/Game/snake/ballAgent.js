@@ -26,6 +26,14 @@ export function syncBallAgentFacingToTarget(head, target, dtMs, turnRadPerSec = 
 }
 export function syncBallAgentFacingAfterPhysics(instance, dtMs) {
     if (!instance || !isBallCombatTopology(instance.combatTraits)) return;
+    const decisionCtx = instance.intent?.getDecisionContext();
+    const combat = decisionCtx?.combatState;
+    const enemy = combat?.visibleEnemy ?? combat?.enemy;
+    const hasLos = combat?.hasLineOfSight;
+    if (enemy && hasLos && !enemy.isDead) {
+        syncBallAgentFacingToTarget(instance.head, enemy, dtMs, instance.aimTurnRadPerSec);
+        return;
+    }
     if (!shouldSyncBallAgentFacingToVelocity(instance.combatAction, instance.intent)) return;
     syncBallAgentFacingToVelocity(instance.head, dtMs, instance.aimTurnRadPerSec);
 }
