@@ -357,12 +357,22 @@ export class AgentInstance {
         this.ammo += ammoProp.ammoValue ?? 1;
         return true;
     }
-    tryConsumeTarget(state, mode, target) {
-        if (!target || target.isDead) return false;
-        switch (mode) {
-            case "seek_food":
+    canConsumeByReach(decisionCtx, spec) {
+        if (!decisionCtx || !spec) return false;
+        if (decisionCtx.routeStatus?.destReached) return true;
+        const reach = decisionCtx.reachSteps?.[spec.slot];
+        const maxReach = spec.reachSteps ?? 0;
+        if (!Number.isFinite(reach)) return false;
+        return reach <= maxReach;
+    }
+    tryConsumeCommittedTarget(state, mode, target, decisionCtx) {
+        const spec = this.profile.intent?.consumables?.[mode];
+        if (!spec || !target || target.isDead) return false;
+        if (!this.canConsumeByReach(decisionCtx, spec)) return false;
+        switch (spec.handler) {
+            case "food":
                 return this.eatFoodTarget(state, target);
-            case "seek_ammo":
+            case "ammo":
                 return this.collectAmmoTarget(state, target);
             default:
                 return false;
@@ -589,8 +599,9 @@ export class AgentAutosim {
         let fedThisTick = false;
         const mode = this.intent.getMode();
         const target = this.intent.context.target;
+        const decisionCtx = this.intent.getDecisionContext();
         if (target) {
-            const consumed = this.instance.tryConsumeTarget(this.state, mode, target);
+            const consumed = this.instance.tryConsumeCommittedTarget(this.state, mode, target, decisionCtx);
             if (consumed && mode === "seek_food") fedThisTick = true;
         }
         const drainMultiplier = this.instance.hungerDrainMultiplier();

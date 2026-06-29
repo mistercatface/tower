@@ -18,6 +18,9 @@ const SNAKE_INTENT = {
     fleeExploreFallback: false,
     publishEngagement: true,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true, session: true },
+    consumables: {
+        seek_food: { slot: "food", handler: "food", reachSteps: 0 },
+    },
 };
 const SQUID_INTENT = {
     reachSlots: { threat: { targetKey: "threat", mode: "flee" }, prey: { targetKey: "prey", mode: "seek_prey" }, food: { targetKey: "food", mode: "seek_food" } },
@@ -31,6 +34,9 @@ const SQUID_INTENT = {
     fleeExploreFallback: false,
     publishEngagement: false,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true },
+    consumables: {
+        seek_food: { slot: "food", handler: "food", reachSteps: 0 },
+    },
 };
 const FLEE_INTENT = {
     reachSlots: {
@@ -50,6 +56,10 @@ const FLEE_INTENT = {
     fleeExploreFallback: true,
     publishEngagement: false,
     decisionFields: {},
+    consumables: {
+        seek_food: { slot: "food", handler: "food", reachSteps: 0 },
+        seek_ammo: { slot: "ammo", handler: "ammo", reachSteps: 0 },
+    },
 };
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
@@ -230,6 +240,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 rules: [
                     { mode: "flee", rule: "severeOrLethalThreat", guards: ["minHunger"], want: true, reason: "escape" },
                     { mode: "seek_food", rule: "severeNonLethalThreat", guards: ["minHunger", "bandDesperate"], want: true, reason: "race" },
+                    { mode: "seek_ammo", rule: "severeNonLethalThreat", guards: ["minHunger"], want: true, reason: "resupply" },
                     { mode: "seek_enemy", rule: "always", want: true, reason: "attack" },
                 ],
             },
@@ -278,7 +289,7 @@ export const SNAKE_GAME_DEFAULTS = {
                     flee: { scorer: "riskAdjustedFlee", mods: ["outnumberedFlee"] },
                     shoot_enemy: { scorer: "rangedAttack", slot: "enemy", weightKey: "shoot_enemy", guards: ["noThreat"] },
                     seek_enemy: { scorer: "reachTarget", slot: "enemy", weightKey: "enemy", guards: ["noThreat", "canShootEnemy", "rangedEnemyTooClose"] },
-                    seek_ammo: { scorer: "ammoWithNeed", slot: "ammo", weightKey: "ammo", guards: ["noThreat"] },
+                    seek_ammo: { scorer: "ammoWithNeed", slot: "ammo", weightKey: "ammo" },
                     seek_food: { scorer: "foodWithHunger", slot: "food", guards: ["notSatisfied"] },
                     seek_ally: { scorer: "regroupAlly", slot: "ally", cohesion: "flee", guards: ["noThreat", "notDesperate", "allyCloseEnough"] },
                     explore: { scorer: "constant", weightKey: "explore" },
