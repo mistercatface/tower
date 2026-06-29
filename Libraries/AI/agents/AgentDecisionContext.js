@@ -225,6 +225,13 @@ const GUARDS = {
     notDesperate: (ctx) => ctx.hungerTier === "desperate",
     requiresLeadworthy: (ctx) => !ctx.allyState?.leadworthy,
     requiresSatisfied: (ctx) => ctx.hungerTier !== "satisfied",
+    allyCloseEnough: (ctx) => {
+        const idealStopDist = ctx.scoringEnv?.cohesion?.idealStopDist;
+        if (idealStopDist == null) return false;
+        const reach = ctx.reachSteps?.ally;
+        if (!Number.isFinite(reach)) return false;
+        return reach <= idealStopDist;
+    },
     preyTooFar: (ctx, modeDef) => {
         const slot = modeDef?.slot ?? "prey";
         const prey = ctx.known[slot];

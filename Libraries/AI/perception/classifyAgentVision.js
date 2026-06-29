@@ -52,10 +52,8 @@ export function classifyAgentVisionInto(out, state, seeker, options = {}) {
         let compareDistSq = distSq;
         if (committedTargetId !== null && head.id === committedTargetId) compareDistSq *= targetStickyFactor;
         const session = state.sandbox?.snakeGame;
-        if (relationship !== "ally") {
-            const registry = session.factionTargetRegistry;
-            if (registry.isClaimedByCloser(head.id, seeker.id, distSq)) compareDistSq *= 4.0;
-        }
+        const registry = session?.factionTargetRegistry;
+        if (registry?.isClaimedByCloser(head.id, seeker.id, distSq)) compareDistSq *= 4.0;
         if (relationship === "ally") {
             allyCount++;
             allyCentroidX += head.x;

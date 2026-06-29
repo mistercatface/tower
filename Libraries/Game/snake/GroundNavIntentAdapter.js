@@ -780,7 +780,7 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             explore: createExploreIntentState({ locomotion, resolveExploreCell: (seeker, gameState, memory, exploreRng) => this.resolveExploreCell(seeker, gameState, memory, exploreRng), brain }),
             flee: createFleeIntentState({ locomotion, setFleeDestination: (args) => this.setFleeDestination(args) }),
         };
-        const seekState = createSeekIntentState({ locomotion, seekArrivalRadius: (mode, agent, target) => this.seekArrivalRadius(mode, agent, target) });
+        const seekState = createSeekIntentState({ locomotion, seekArrivalRadius: (mode, agent, target, gameState) => this.seekArrivalRadius(mode, agent, target, gameState) });
         for (let i = 0; i < intent.seekModes.length; i++) {
             const mode = intent.seekModes[i];
             if (mode !== "shoot_enemy") states[mode] = seekState;
@@ -932,13 +932,15 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
     resolveExploreCell(seeker, gameState, memory, exploreRng) {
         return resolveSnakeExploreCell(seeker, gameState, memory, exploreRng, this.navWalkable, this.shared);
     }
-    seekArrivalRadius(mode, agent, target) {
+    seekArrivalRadius(mode, agent, target, gameState = null) {
         const huntMode = this.profile.intent?.huntMode ?? "seek_prey";
         const terminalHoming = this.shared.terminalHoming;
         const headRadius = getCirclePropRadius(this.agentCtx.instance.head);
         if (mode === "seek_ally") {
             const cohesion = this.profile.factionCohesion ?? {};
-            return { arrivalRadius: cohesion.arrivalRadius ?? (this.profileId === AGENT_PROFILE.snake ? 32 : 24), lockOnTarget: true, terminalHoming };
+            const cellSize = gameState?.obstacleGrid?.cellSize ?? 16;
+            const idealStopDist = cohesion.idealStopDist ?? 3;
+            return { arrivalRadius: idealStopDist * cellSize, lockOnTarget: false, terminalHoming: null };
         }
         if (mode === "seek_food" || mode === "seek_ammo") return { arrivalRadius: this.agentCtx.instance.eatRadius, lockOnTarget: true, terminalHoming };
         const huntArrival = Math.max(2, headRadius * 0.25);

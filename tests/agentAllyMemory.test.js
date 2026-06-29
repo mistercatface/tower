@@ -15,6 +15,7 @@ import { classifyAgentVisionInto } from "../Libraries/AI/perception/classifyAgen
 
 import { deriveSnakeEngagementState } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+import { GroundNavIntentAdapter } from "../Libraries/Game/snake/GroundNavIntentAdapter.js";
 
 function chainOptions(segmentCount) {
     const config = getSnakeGameConfig();
@@ -179,16 +180,30 @@ describe("emergent squad following and regrouping", () => {
         assert.equal(out.allyCount, 2, "Should still count all allies in the pack");
     });
 
-    it("regroupAlly scorer does not abort at close range", () => {
+    it("regroupAlly scorer blocks when within ideal stop distance", () => {
+        applySnakeGameConfig();
         const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
             visibleWorld: { threat: null, prey: null, food: null, ally: { id: "ally_1" }, allyCount: 1, allyCentroid: null },
-            reachSteps: { ally: 2 }, // 2 cells away (close range)
+            reachSteps: { ally: 2 },
             shared: getSnakeGameConfig().shared,
-            instance: { ammo: 10 }
+            instance: { ammo: 10 },
         });
 
         const score = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.flee, ctx);
-        assert.ok(score.seek_ally > -Infinity, "Should retain seek_ally score when close to teammate");
+        assert.equal(score.seek_ally, -Infinity);
+    });
+
+    it("regroupAlly scorer retains score when beyond ideal stop distance", () => {
+        applySnakeGameConfig();
+        const ctx = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, {
+            visibleWorld: { threat: null, prey: null, food: null, ally: { id: "ally_1" }, allyCount: 1, allyCentroid: null },
+            reachSteps: { ally: 6 },
+            shared: getSnakeGameConfig().shared,
+            instance: { ammo: 10 },
+        });
+
+        const score = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.flee, ctx);
+        assert.ok(score.seek_ally > -Infinity);
     });
 });
 
@@ -234,5 +249,62 @@ describe("generic target claiming", () => {
         });
 
         assert.equal(out.threat.id, "enemy_1", "Should still detect the enemy");
+    });
+
+    it("classifyAgentVisionInto deprioritizes claimed allies", () => {
+        const allyClaimedProp = { id: "ally_claimed", x: 10, y: 0 };
+        const allyFreeProp = { id: "ally_free", x: 15, y: 0 };
+        const state = {
+            entityRegistry: {
+                queryView: () => [allyClaimedProp, allyFreeProp],
+            },
+            nav: {
+                observerVisionFrame: {
+                    ensureHeadVision: () => ({
+                        cells: [0],
+                        cellSet: new Set([0]),
+                    }),
+                    navTopology: { grid: { cols: 64, worldCol: () => 0, worldRow: () => 0 } },
+                },
+            },
+            sandbox: {
+                snakeGame: {
+                    instancesByHeadId: new Map([
+                        ["seeker", { lifecycle: "alive", head: { id: "seeker", x: 0, y: 0 } }],
+                        ["ally_claimed", { lifecycle: "alive", head: allyClaimedProp }],
+                        ["ally_free", { lifecycle: "alive", head: allyFreeProp }],
+                    ]),
+                    factionTargetRegistry: {
+                        isClaimedByCloser: (targetId) => targetId === "ally_claimed",
+                    },
+                },
+            },
+        };
+
+        const seeker = { id: "seeker", x: 0, y: 0, visionRange: { range: 100 } };
+        const out = {};
+        classifyAgentVisionInto(out, state, seeker, {
+            resolveRelationship: () => "ally",
+            trackPrey: false,
+            visionRange: { range: 100 },
+        });
+
+        assert.equal(out.ally.id, "ally_free");
+        assert.equal(out.allyCount, 2);
+    });
+});
+
+describe("seek_ally locomotion spacing", () => {
+    it("seekArrivalRadius uses idealStopDist without lock-on", () => {
+        applySnakeGameConfig({ agentProfiles: { snake: { factionCohesion: { idealStopDist: 3 } } } });
+        const adapter = Object.create(GroundNavIntentAdapter.prototype);
+        adapter.profile = getSnakeGameConfig().agentProfiles.snake;
+        adapter.shared = getSnakeGameConfig().shared;
+        adapter.agentCtx = { instance: { head: { radius: 8 } } };
+        adapter.profileId = AGENT_PROFILE.snake;
+        const options = GroundNavIntentAdapter.prototype.seekArrivalRadius.call(adapter, "seek_ally", {}, {}, { obstacleGrid: { cellSize: 16 } });
+        assert.equal(options.lockOnTarget, false);
+        assert.equal(options.arrivalRadius, 48);
+        assert.equal(options.terminalHoming, null);
     });
 });
