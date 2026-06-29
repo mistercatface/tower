@@ -7,6 +7,7 @@ import { getCirclePropRadius } from "../../Props/propScale.js";
 import { buildCircleImpactShards, spawnShardPropsFromGeometry } from "../../Props/propFracture.js";
 import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 export const SNAKE_SHARD_PROP_ID = "snake_shard";
+export const AMMO_SHARD_PROP_ID = "ammo_shard";
 const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
 const MIN_SNAKE_SHARDS = 2;
 const MAX_SNAKE_SHARDS = 3;
@@ -155,3 +156,17 @@ export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, co
         }
     }
 }
+
+export function spawnAmmoShards(state, sourceProp, amount, spatialFrame) {
+    if (amount <= 0) return;
+    const shardCount = Math.min(amount, 5);
+    const ammoPerShard = Math.ceil(amount / shardCount);
+    const radius = getCirclePropRadius(sourceProp) ?? sourceProp.radius ?? 10;
+    const geometries = buildCircleImpactShards(radius, { x: 0, y: 0 }, 20, { minShards: shardCount, maxShards: shardCount });
+    spawnShardPropsFromGeometry(state, sourceProp, geometries, AMMO_SHARD_PROP_ID, spatialFrame, (shard) => {
+        shard.ammoValue = ammoPerShard;
+        shard.visualOverride = { color: 0x00ffff };
+        getPropCategoryIndex(state, "ammo").register(shard);
+    });
+}
+

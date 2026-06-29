@@ -58,6 +58,12 @@ export function createAgentAutosim(state, instance) {
             if (choice?.mode === "seek_food" && choice.target && isSnakeFoodTarget(choice.target)) foodTarget = choice.target;
             else if (intent.getMode() === "seek_food" && intent.getTargetId() != null) foodTarget = entityRegistry.getLive(intent.getTargetId());
             if (foodTarget) fedThisTick = instance.eatFoodTarget(state, foodTarget);
+            
+            let ammoTarget = null;
+            if (choice?.mode === "seek_ammo" && choice.target && choice.target.type === "ammo_shard") ammoTarget = choice.target;
+            else if (intent.getMode() === "seek_ammo" && intent.getTargetId() != null) ammoTarget = entityRegistry.getLive(intent.getTargetId());
+            if (ammoTarget) instance.collectAmmoTarget(state, ammoTarget);
+
             const drainMultiplier = instance.hungerDrainMultiplier();
             if (!fedThisTick) instance.tickMetabolism(state, dtMs, drainMultiplier);
         },

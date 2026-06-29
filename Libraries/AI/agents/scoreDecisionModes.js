@@ -64,6 +64,10 @@ const SCORERS = {
         return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
     },
     rangedAttack(ctx, modeDef, weights, pressure) {
+        // Guard: Abort if we have an active agent instance and it is out of ammo.
+        // We default to assuming they have ammo if no agentInstance is provided (for test compatibility).
+        const ammo = ctx.agentInstance != null ? ctx.agentInstance.ammo : 10;
+        if (ammo <= 0) return SCORE_ABSENT;
         const combat = ctx.combatState;
         // 1. Guard: Ensure the agent has an active weapon and is in an eligible combat state
         if (!combat?.canShoot && combat?.phase !== "reacting" && combat?.phase !== "fire_delay" && combat?.phase !== "reloading") return SCORE_ABSENT;
@@ -98,6 +102,15 @@ const SCORERS = {
         }
         // 5. Compute net score including pathfinding cell reach costs
         return netScoreDetail(value, combat.reachCells ?? ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
+    },
+    ammoWithNeed(ctx, modeDef, weights, pressure) {
+        if (!ctx.known[modeDef.slot]) return SCORE_ABSENT;
+        const ammo = ctx.agentInstance != null ? ctx.agentInstance.ammo : 10;
+        const desiredAmmo = pressure.desiredAmmo ?? 10;
+        const deficit = Math.max(0, 1 - ammo / desiredAmmo);
+        if (deficit === 0) return SCORE_ABSENT;
+        const value = (weights.ammo ?? 380) + (pressure.ammoNeedBonus ?? 200) * deficit;
+        return netScoreDetail(value, ctx.reachSteps[modeDef.slot], costPerCellForHunger(pressure, ctx.hungerTier));
     },
     regroupAlly(ctx, modeDef, weights, pressure, env) {
         const slot = modeDef.slot;

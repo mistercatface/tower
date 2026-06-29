@@ -66,9 +66,10 @@ export function deriveRangedCombatState(ctx, input, profile) {
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? rangedCombatActionOnCooldown(action) : false;
     const busy = action ? rangedCombatActionIsBusy(action) : false;
-    // 7. Shoot Eligibility: Can shoot if target is visible, in range, has LOS, and weapon is idle.
+    // 7. Shoot Eligibility: Can shoot if target is visible, in range, has LOS, weapon is idle, and we have ammo.
     // NOTE: We allow shooting at close range (no !tooClose guard) so close-quarters combat works properly.
-    const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle";
+    const hasAmmo = input.agentInstance ? input.agentInstance.ammo > 0 : (input.instance ? input.instance.ammo > 0 : true);
+    const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle" && hasAmmo;
     // 8. Asymmetric Back-Off / Flee logic:
     // We only back off if too close AND either:
     // a) We are reloading (defenseless).
@@ -197,16 +198,23 @@ function tickReaction(ctx, instance, action, weapon, dtMs) {
     const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0 && aimReadyForShot(ctx, agent, target, action, weapon)) {
-        const angle = action.aimAngle ?? agent.facing ?? 0;
-        fireBullet(ctx.state, instance, angle, weapon);
-        action.shotsFired = (action.shotsFired || 0) + 1;
-        const magSize = weapon.magazineSize ?? 3;
-        if (action.shotsFired < magSize) {
-            action.phase = "fire_delay";
-            action.timerMs = weapon.fireDelayMs ?? 150;
+        if (!instance || instance.ammo > 0) {
+            if (instance && instance.ammo > 0) {
+                instance.ammo--;
+            }
+            const angle = action.aimAngle ?? agent.facing ?? 0;
+            fireBullet(ctx.state, instance, angle, weapon);
+            action.shotsFired = (action.shotsFired || 0) + 1;
+            const magSize = weapon.magazineSize ?? 3;
+            if (action.shotsFired < magSize) {
+                action.phase = "fire_delay";
+                action.timerMs = weapon.fireDelayMs ?? 150;
+            } else {
+                action.phase = "reloading";
+                action.timerMs = weapon.reloadMs ?? 500;
+            }
         } else {
-            action.phase = "reloading";
-            action.timerMs = weapon.reloadMs ?? 500;
+            resetRangedCombatAction(action);
         }
     }
 }
@@ -218,16 +226,23 @@ function tickFireDelay(ctx, instance, action, weapon, dtMs) {
     const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
     if (action.timerMs <= 0 && aimReadyForShot(ctx, agent, target, action, weapon)) {
-        const angle = action.aimAngle ?? agent.facing ?? 0;
-        fireBullet(ctx.state, instance, angle, weapon);
-        action.shotsFired = (action.shotsFired || 0) + 1;
-        const magSize = weapon.magazineSize ?? 3;
-        if (action.shotsFired < magSize) {
-            action.phase = "fire_delay";
-            action.timerMs = weapon.fireDelayMs ?? 150;
+        if (!instance || instance.ammo > 0) {
+            if (instance && instance.ammo > 0) {
+                instance.ammo--;
+            }
+            const angle = action.aimAngle ?? agent.facing ?? 0;
+            fireBullet(ctx.state, instance, angle, weapon);
+            action.shotsFired = (action.shotsFired || 0) + 1;
+            const magSize = weapon.magazineSize ?? 3;
+            if (action.shotsFired < magSize) {
+                action.phase = "fire_delay";
+                action.timerMs = weapon.fireDelayMs ?? 150;
+            } else {
+                action.phase = "reloading";
+                action.timerMs = weapon.reloadMs ?? 500;
+            }
         } else {
-            action.phase = "reloading";
-            action.timerMs = weapon.reloadMs ?? 500;
+            resetRangedCombatAction(action);
         }
     }
 }

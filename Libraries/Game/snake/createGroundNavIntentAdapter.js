@@ -139,7 +139,10 @@ function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarge
     ctx.locomotion = locomotion;
     return ctx;
 }
-const ACCEPT_PREDICATES = { edibleFood: isEdibleSnakeFoodForSeeker };
+const ACCEPT_PREDICATES = {
+    edibleFood: isEdibleSnakeFoodForSeeker,
+    ammoShard: (seeker, prop) => prop.type === "ammo_shard" && !prop.isDead
+};
 const PACK_STEERING_SCRATCH = { packAnchor: { x: 0, y: 0 }, packBlend: 0, maxPackDistCells: 16 };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
@@ -199,6 +202,8 @@ function buildSnakeDecisionContextInto(decisionContext, decisionSpec, input, age
         shared: agentCtx.session.config.shared,
         foodFraction: getAgentHunger(instance.metabolism),
         combatStrafeMaxSpeed: instance.combatStrafeMaxSpeed ?? instance.walkMaxSpeed * 0.5,
+        agentInstance: instance,
+        instance: instance,
     };
     const fields = profile.intent.decisionFields ?? {};
     if (fields.seekerFaction) decisionInput.seekerFaction = agent.faction;

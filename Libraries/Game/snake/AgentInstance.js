@@ -40,6 +40,7 @@ export class AgentInstance {
         this.brain = null;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
+        this.ammo = profile.initialAmmo ?? 10;
         this.profile = profile;
         this.metabolism = createAgentMetabolism(profile);
         this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
@@ -328,6 +329,18 @@ export class AgentInstance {
         const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
         if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
         else feedAgentMetabolism(this.metabolism, foodValue);
+        return true;
+    }
+    collectAmmoTarget(state, ammoProp) {
+        const seeker = this.head;
+        if (ammoProp.type !== "ammo_shard" || ammoProp.isDead) return false;
+        if (Math.hypot(ammoProp.x - seeker.x, ammoProp.y - seeker.y) > this.eatRadius) return false;
+        const grid = state.obstacleGrid;
+        this.brain.stampArrival(grid.worldCol(ammoProp.x), grid.worldRow(ammoProp.y));
+        this.intent.clearTrackedGoal();
+        this.headNav.clearDestination();
+        removeSandboxWorldProp(state, ammoProp);
+        this.ammo += ammoProp.ammoValue ?? 1;
         return true;
     }
     severInertTail(state, tailIds) {

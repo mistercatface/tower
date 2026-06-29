@@ -97,6 +97,7 @@ export function createAgentDecisionContextFrame(profileId, schema = getAgentProf
         seekerFaction: null,
         seekerSegmentCount: null,
         combatState: null,
+        agentInstance: null,
     };
 }
 export function buildAgentDecisionFrameInto(ctx, spec, input) {
@@ -120,6 +121,7 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
         ctx.seekerSegmentCount = extra.seekerSegmentCount ?? null;
         ctx.engagementState = extra.engagementState ?? null;
     }
+    ctx.agentInstance = input.agentInstance ?? null;
     if (spec.deriveCombatState) {
         ctx.combatState = spec.deriveCombatState(ctx, input);
         applyRangedBackOffThreat(ctx, input);

@@ -21,6 +21,7 @@ import puzzle_belt_crate from "./puzzle_belt_crate/puzzle_belt_crate.asset.js";
 import corridor from "./corridor/corridor.asset.js";
 import snake_head from "./snake_head/snake_head.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
+import ammo_shard from "./ammo_shard/ammo_shard.asset.js";
 import poolBalls from "./poolBalls.js";
 import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
@@ -50,6 +51,7 @@ const catalog = {
     corridor,
     snake_head,
     snake_shard,
+    ammo_shard,
     cross_pinwheel,
     wall_voxel_chunk,
     wall_rail_chunk,
