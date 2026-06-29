@@ -21,6 +21,10 @@ export function resolveVisibleCategoryInVision(state, seeker, categoryIndex, acc
         const dy = prop.y - seeker.y;
         const d = dx * dx + dy * dy;
         if (d > rangeSq) continue;
+        if (state.sandbox?.snakeGame?.factionTargetRegistry) {
+            const registry = state.sandbox.snakeGame.factionTargetRegistry;
+            if (registry.isClaimedByCloser(prop.id, seeker.id, d)) continue;
+        }
         let compareDistSq = d;
         if (committedTargetId !== null && prop.id === committedTargetId) compareDistSq *= targetStickyFactor;
         if (compareDistSq >= bestDistSq) continue;

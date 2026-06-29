@@ -191,3 +191,48 @@ describe("emergent squad following and regrouping", () => {
         assert.ok(score.seek_ally > -Infinity, "Should retain seek_ally score when close to teammate");
     });
 });
+
+describe("generic target claiming", () => {
+    it("classifyAgentVisionInto applies soft discount to claimed enemies", () => {
+        const enemyProp = { id: "enemy_1", x: 20, y: 0 };
+        const state = {
+            entityRegistry: {
+                queryView: () => [enemyProp]
+            },
+            nav: {
+                observerVisionFrame: {
+                    ensureHeadVision: () => ({
+                        cells: [0],
+                        cellSet: new Set([0])
+                    }),
+                    navTopology: { grid: { cols: 64, worldCol: () => 0, worldRow: () => 0 } }
+                }
+            },
+            sandbox: {
+                snakeGame: {
+                    instancesByHeadId: new Map([
+                        ["seeker", { lifecycle: "alive", head: { id: "seeker", x: 0, y: 0 } }],
+                        ["enemy_1", { lifecycle: "alive", head: enemyProp }]
+                    ]),
+                    factionTargetRegistry: {
+                        isClaimedByCloser: (targetId, seekerId, distSq) => {
+                            return targetId === "enemy_1";
+                        }
+                    }
+                }
+            }
+        };
+
+        const seeker = { id: "seeker", x: 0, y: 0, visionRange: { range: 100 } };
+        const resolveRelationship = () => "threat";
+
+        const out = {};
+        classifyAgentVisionInto(out, state, seeker, {
+            resolveRelationship,
+            trackPrey: false,
+            visionRange: { range: 100 }
+        });
+
+        assert.equal(out.threat.id, "enemy_1", "Should still detect the enemy");
+    });
+});

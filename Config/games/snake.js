@@ -214,7 +214,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 ],
             },
             decisionWeights: { flee: 400, shoot_enemy: 460, enemy: 420, ammo: 380, food: 360, seek_ally: 280, explore: 100 },
-            factionCohesion: { arrivalRadius: 24, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
+            factionCohesion: { arrivalRadius: 48, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
             decisionPressure: {
                 foodHungerBonus: 280,
                 sprintFleeMinHunger: 0.1,
@@ -228,9 +228,23 @@ export const SNAKE_GAME_DEFAULTS = {
             decision: {
                 scoreOrder: ["flee", "shoot_enemy", "seek_enemy", "seek_ammo", "seek_food", "seek_ally", "explore"],
                 targetLost: { shoot_enemy: "enemy", seek_enemy: "enemy", seek_ammo: "ammo", seek_food: "food", seek_ally: "ally" },
-                remembered: [{ key: "threat" }, { key: "enemy", memoryKey: "prey" }, { key: "ammo" }, { key: "food" }, { key: "ally" }, { key: "allyCount", allyCount: 1 }, { key: "allyCentroid", constant: null }],
+                remembered: [
+                    { key: "threat" },
+                    { key: "enemy", memoryKey: "prey" },
+                    { key: "ammo" },
+                    { key: "food" },
+                    { key: "ally" },
+                    { key: "allyCount", allyCount: 1 },
+                    { key: "allyCentroid", constant: null },
+                ],
                 eventTargets: ["threat", "food", "ammo", "enemy", "ally"],
-                slots: { threat: {}, enemy: { visibleFrom: "prey", memoryKey: "prey", hideVisibleWhenMemory: true, known: "visibleOrRemembered" }, ammo: {}, food: {}, ally: { hideVisibleWhenMemory: true } },
+                slots: {
+                    threat: {},
+                    enemy: { visibleFrom: "prey", memoryKey: "prey", hideVisibleWhenMemory: true, known: "visibleOrRemembered" },
+                    ammo: {},
+                    food: {},
+                    ally: { hideVisibleWhenMemory: true },
+                },
                 fields: {
                     threatCount: { visible: { from: "threatCount", default: 0 }, known: { fromVisible: "threatCount", default: 0 } },
                     allyCount: {
@@ -249,10 +263,7 @@ export const SNAKE_GAME_DEFAULTS = {
                     explore: { scorer: "constant", weightKey: "explore" },
                 },
             },
-            visibleSources: {
-                food: { category: "food", accept: "edibleFood" },
-                ammo: { category: "ammo", accept: "ammoShard" }
-            },
+            visibleSources: { food: { category: "food", accept: "edibleFood" }, ammo: { category: "ammo", accept: "ammoShard" } },
             intent: FLEE_INTENT,
         },
         squid: {
