@@ -1,7 +1,7 @@
 import { spawnGunBulletProjectile } from "./gunAgent/gunBulletSystem.js";
 import { angleDelta, rotateAngleTowards } from "../../Math/Angle.js";
 import { AgentIntentFSM, createExploreIntentState, createFleeIntentState, createSeekIntentState } from "../../AI/agentIntent/AgentIntent.js";
-import { deriveSprintIntent, buildAgentDecisionContextInto, buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/AgentDecisionContext.js";
+import { deriveSprintIntentInto, buildAgentDecisionContextInto, buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/AgentDecisionContext.js";
 import { publishAgentEngagement } from "../../AI/agents/AgentProfiles.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
 import { pickCombatStrafeCell } from "../../AI/steering/pickCombatStrafeCell.js";
@@ -10,7 +10,6 @@ import { createFlowReachStaleCache } from "../../Navigation/flowReachStaleCache.
 import { pickExploreDestination } from "../../Navigation/steering/exploreSteering.js";
 import { createCellTargetLocomotion } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { perceiveAgentWorldInto, resolveVisibleCategoryInVision } from "../../AI/perception/agentWorldPerception.js";
-import { getConnectedBodyIds } from "../../Motion/kineticConstraintGraph.js";
 import { getCirclePropRadius } from "../../Props/propScale.js";
 import { pickWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
 import { colRowToIndex } from "../../Spatial/grid/GridUtils.js";
@@ -26,6 +25,47 @@ import { getObserverVisionFrame } from "../../Navigation/perception/observerVisi
 const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;
 const DEFAULT_WEAPON_MAX_RANGE = 128;
 const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
+export class AgentPolicy {
+    constructor() {
+        this.mode = null;
+        this.targetId = null;
+        this.reason = null;
+    }
+    set(mode, targetId = null, reason = null) {
+        this.mode = mode;
+        this.targetId = targetId;
+        this.reason = reason;
+        return this;
+    }
+    copyFrom(other) {
+        this.mode = other.mode;
+        this.targetId = other.targetId;
+        this.reason = other.reason;
+        return this;
+    }
+}
+class AgentDecisionInput {
+    constructor() {
+        this.visibleWorld = null;
+        this.memoryWorld = null;
+        this.committedTarget = null;
+        this.routeStatus = null;
+        this.reachSteps = null;
+        this.cellSize = 16;
+        this.shared = null;
+        this.foodFraction = 0;
+        this.combatStrafeMaxSpeed = 0;
+        this.instance = null;
+        this.seekerFaction = null;
+        this.seekerSegmentCount = null;
+        this.session = null;
+        this.agent = null;
+        this.state = null;
+        this.actionState = null;
+        this.equippedWeapon = null;
+        this.weaponVisionRange = 0;
+    }
+}
 // ==========================================
 // Target Memory Database
 // ==========================================
@@ -539,9 +579,14 @@ export class RangedCombatPolicyExtension {
             ctx.chosenIntent = resolved;
             ctx.chosenReason = resolved.reason ?? null;
             ctx.targetId = resolved.targetId ?? null;
-            ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, sprintConfig);
+            deriveSprintIntentInto(ctx.sprintIntent, resolved.mode, ctx, sprintConfig);
         }
-        ctx.policyLatch = { ...(ctx.policyLatch ?? {}), shoot: this.shootLatch.snapshot() };
+        if (!ctx.policyLatch) ctx.policyLatch = { flee: { mode: null, active: false, ticksRemaining: 0 }, shoot: { mode: null, active: false, ticksRemaining: 0 } };
+        const shootLatchState = ctx.policyLatch.shoot;
+        const shootLatch = this.shootLatch;
+        shootLatchState.mode = shootLatch.mode;
+        shootLatchState.active = shootLatch.active;
+        shootLatchState.ticksRemaining = shootLatch.ticksRemaining;
         return policyOut;
     }
 }
@@ -669,7 +714,6 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         const profileId = instance.profileId;
         const intent = profile.intent;
         const shared = agentCtx.session.config.shared;
-        const navWalkable = agentCtx.navWalkable;
         const visibleSourceResolvers = buildVisibleSourceResolvers(profile);
         const decisionSpec = buildAgentDecisionSpec(profileId, profile);
         const decisionContext = createAgentDecisionContextFrame(profileId, decisionSpec.decisionSchema);
@@ -702,8 +746,14 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         const reachSteps = {};
         for (let i = 0; i < reachSlotList.length; i++) reachSteps[reachSlotList[i].key] = null;
         const flowReachContext = { state: null, agent: null, staleCache, range: shared.decisionReachHorizon ?? 32, flowResult: { slot: null, steps: null, ready: false } };
-        const perceiveWorld = { decisionContext };
-        const policyScratch = { mode: null, targetId: null, reason: null };
+        const policyScratch = new AgentPolicy();
+        const policyIn = new AgentPolicy();
+        const decisionInput = new AgentDecisionInput();
+        // Zero-allocation latch & extension argument structures
+        const fleeLatchWorldWrapper = { decisionContext: null };
+        const fleeLatchArgs = { world: fleeLatchWorldWrapper, currentMode: null, policy: policyIn };
+        const extensionWorldWrapper = { decisionContext: null };
+        const policyExtensionInput = { world: extensionWorldWrapper, currentMode: null, sprintConfig: profile.sprint, policyIn: policyScratch, policyOut: policyScratch };
         const perceptionOptions = {
             readVisionFrame: requireSnakeVisionFrame,
             agentRange: shared.fleeRange ?? resolvedVision.range,
@@ -751,15 +801,19 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
                 flowReachContext.state = state;
                 flowReachContext.agent = agent;
                 buildFlowTargetStepsInto(reachSteps, memoryWorld, committed, routeStatus, reachSlotList, flowReachContext);
-                this.buildDecisionContext({ agent, state, visible, memoryWorld, committed, routeStatus, reachSteps });
+                this.buildDecisionContext(agent, state, visible, memoryWorld, committed, routeStatus, reachSteps);
                 if (intent.publishEngagement) publishAgentEngagement(state.sandbox.snakeGame, instance.headId, decisionContext.engagementState);
                 this._lastDecisionContext = decisionContext;
-                return perceiveWorld;
+                extensionWorldWrapper.decisionContext = decisionContext;
+                return extensionWorldWrapper;
             },
             pickPolicy: (world) => {
-                this.applyFleePolicyLatch(fleeLatch, world, policyScratch);
-                for (let i = 0; i < policyExtensions.length; i++)
-                    policyExtensions[i].apply({ world, currentMode: this.getMode(), sprintConfig: profile.sprint, policyIn: policyScratch, policyOut: policyScratch });
+                this.applyFleePolicyLatch(fleeLatch, policyScratch);
+                if (policyExtensions.length > 0) {
+                    extensionWorldWrapper.decisionContext = this._lastDecisionContext;
+                    policyExtensionInput.currentMode = this.getMode();
+                    for (let i = 0; i < policyExtensions.length; i++) policyExtensions[i].apply(policyExtensionInput);
+                }
                 return policyScratch;
             },
             transitionReason: transitionReason(intent.seekModes),
@@ -792,19 +846,23 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         this.locomotion = locomotion;
         this.intentMemory = intentMemory;
         this.intentContext = intentContext;
-        this.headId = instance.headId;
         this.sprintWanted = false;
         this._lastDecisionContext = decisionContext;
         this.profile = profile;
-        this.profileId = profileId;
-        this.shared = shared;
-        this.navWalkable = navWalkable;
         this.decisionSpec = decisionSpec;
-        this.resolveSegmentCount = () => (state && instance ? getConnectedBodyIds(state.kinetic, instance.headId).length : 0);
+        this.navWalkable = agentCtx.navWalkable;
+        this.shared = shared;
         this.intentConfig = intent;
+        this.resolveSegmentCount = () => instance.memberProps.length;
         this.fleeLatch = fleeLatch;
         this.policyExtensions = policyExtensions;
         this.arrivalStamper = arrivalStamper;
+        this.decisionInput = decisionInput;
+        this.policyIn = policyIn;
+        this.fleeLatchWorldWrapper = fleeLatchWorldWrapper;
+        this.fleeLatchArgs = fleeLatchArgs;
+        this.extensionWorldWrapper = extensionWorldWrapper;
+        this.policyExtensionInput = policyExtensionInput;
     }
     tick(agent, state, dtMs = 16) {
         this.intentContext.dtMs = dtMs;
@@ -941,40 +999,41 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         }
         return null;
     }
-    buildDecisionContext(input) {
-        const { agent, state, visible, memoryWorld, committed, routeStatus, reachSteps } = input;
+    buildDecisionContext(agent, state, visible, memoryWorld, committed, routeStatus, reachSteps) {
         const instance = this.agentCtx.instance;
         const profile = instance.profile;
         const fields = profile.intent.decisionFields ?? {};
         const hasRanged = !!(profile.weapon || hasRangedShootMode(profile));
-        const decisionInput = {
-            visibleWorld: visible,
-            memoryWorld,
-            committedTarget: committed,
-            routeStatus,
-            reachSteps,
-            cellSize: state.obstacleGrid.cellSize,
-            shared: this.shared,
-            foodFraction: instance.metabolism.getHunger(),
-            combatStrafeMaxSpeed: instance.combatStrafeMaxSpeed ?? instance.walkMaxSpeed * 0.5,
-            instance,
-            seekerFaction: fields.seekerFaction ? agent.faction : null,
-            seekerSegmentCount: fields.seekerSegmentCount ? this.resolveSegmentCount() : null,
-            session: fields.session ? state.sandbox.snakeGame : null,
-            agent: hasRanged ? agent : null,
-            state: hasRanged ? state : null,
-            actionState: hasRanged ? (instance.combatAction ?? null) : null,
-            equippedWeapon: hasRanged ? (instance.equippedWeapon ?? null) : null,
-            weaponVisionRange: hasRanged ? (instance.visionRange?.range ?? 0) : 0,
-        };
+        const decisionInput = this.decisionInput;
+        decisionInput.visibleWorld = visible;
+        decisionInput.memoryWorld = memoryWorld;
+        decisionInput.committedTarget = committed;
+        decisionInput.routeStatus = routeStatus;
+        decisionInput.reachSteps = reachSteps;
+        decisionInput.cellSize = state.obstacleGrid.cellSize;
+        decisionInput.shared = this.agentCtx.session.config.shared;
+        decisionInput.foodFraction = instance.metabolism.getHunger();
+        decisionInput.combatStrafeMaxSpeed = instance.combatStrafeMaxSpeed ?? instance.walkMaxSpeed * 0.5;
+        decisionInput.instance = instance;
+        decisionInput.seekerFaction = fields.seekerFaction ? agent.faction : null;
+        decisionInput.seekerSegmentCount = fields.seekerSegmentCount ? this.resolveSegmentCount() : null;
+        decisionInput.session = fields.session ? state.sandbox.snakeGame : null;
+        decisionInput.agent = hasRanged ? agent : null;
+        decisionInput.state = hasRanged ? state : null;
+        decisionInput.actionState = hasRanged ? (instance.combatAction ?? null) : null;
+        decisionInput.equippedWeapon = hasRanged ? (instance.equippedWeapon ?? null) : null;
+        decisionInput.weaponVisionRange = hasRanged ? (instance.visionRange?.range ?? 0) : 0;
         return buildAgentDecisionContextInto(this._lastDecisionContext, this.decisionSpec, decisionInput, { includeScoreDetails: false });
     }
-    applyFleePolicyLatch(fleeLatch, world, policyOut) {
-        const ctx = world.decisionContext;
+    applyFleePolicyLatch(fleeLatch, policyOut) {
+        const ctx = this._lastDecisionContext;
         const nextMode = ctx.chosenIntent?.mode ?? "explore";
         const targetId = ctx.chosenIntent?.targetId ?? null;
-        const policyIn = { mode: nextMode, targetId, reason: ctx.chosenReason ?? null };
-        const resolved = fleeLatch.apply(policyIn, { world, currentMode: this.getMode(), policy: policyIn });
+        const policyIn = this.policyIn;
+        policyIn.set(nextMode, targetId, ctx.chosenReason ?? null);
+        this.fleeLatchWorldWrapper.decisionContext = ctx;
+        this.fleeLatchArgs.currentMode = this.getMode();
+        const resolved = fleeLatch.apply(policyIn, this.fleeLatchArgs);
         policyOut.mode = resolved.mode;
         policyOut.targetId = resolved.targetId ?? null;
         policyOut.reason = resolved.reason ?? null;
@@ -982,9 +1041,13 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             ctx.chosenIntent = resolved;
             ctx.chosenReason = resolved.reason ?? null;
             ctx.targetId = resolved.targetId ?? null;
-            ctx.sprintIntent = deriveSprintIntent(resolved.mode, ctx, this.profile.sprint);
+            deriveSprintIntentInto(ctx.sprintIntent, resolved.mode, ctx, this.profile.sprint);
         }
-        ctx.policyLatch = { ...(ctx.policyLatch ?? {}), flee: fleeLatch.snapshot() };
+        if (!ctx.policyLatch) ctx.policyLatch = { flee: { mode: null, active: false, ticksRemaining: 0 }, shoot: { mode: null, active: false, ticksRemaining: 0 } };
+        const fleeLatchState = ctx.policyLatch.flee;
+        fleeLatchState.mode = fleeLatch.mode;
+        fleeLatchState.active = fleeLatch.active;
+        fleeLatchState.ticksRemaining = fleeLatch.ticksRemaining;
         return policyOut;
     }
 }

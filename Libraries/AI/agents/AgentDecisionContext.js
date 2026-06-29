@@ -179,19 +179,31 @@ function passesGuards(guards, ctx, sprintConfig) {
     }
     return null;
 }
-export function deriveSprintIntent(mode, ctx, sprintConfig) {
+export function deriveSprintIntentInto(out, mode, ctx, sprintConfig) {
     const rules = sprintConfig?.rules;
-    if (!rules?.length) return { want: false, reason: "none" };
+    if (!rules?.length) {
+        out.want = false;
+        out.reason = "none";
+        return out;
+    }
     for (let i = 0; i < rules.length; i++) {
         const row = rules[i];
         if (row.mode !== mode) continue;
         const blockedReason = passesGuards(row.guards, ctx, sprintConfig);
-        if (blockedReason) return { want: false, reason: blockedReason };
+        if (blockedReason) {
+            out.want = false;
+            out.reason = blockedReason;
+            return out;
+        }
         const ruleFn = SPRINT_RULES[row.rule];
         if (!ruleFn?.(ctx, sprintConfig)) continue;
-        return { want: row.want ?? true, reason: row.reason ?? "none" };
+        out.want = row.want ?? true;
+        out.reason = row.reason ?? "none";
+        return out;
     }
-    return { want: false, reason: "none" };
+    out.want = false;
+    out.reason = "none";
+    return out;
 }
 // === From scoreDecisionModes.js ===
 const GUARDS = {
@@ -513,8 +525,8 @@ export class AgentDecisionContext {
         this.chosenIntent = { mode: null, targetId: null, reason: null };
         this.chosenReason = null;
         this.targetId = null;
-        this.sprintIntent = null;
-        this.policyLatch = null;
+        this.sprintIntent = { want: false, reason: "none" };
+        this.policyLatch = { flee: { mode: null, active: false, ticksRemaining: 0 }, shoot: { mode: null, active: false, ticksRemaining: 0 } };
         this.engagementState = null;
         this.safetyState = null;
         this.recentFailures = [];
@@ -589,7 +601,7 @@ export class AgentDecisionContext {
             else pickAgentIntentPolicyInto(this.chosenIntent, this, this.candidateScores, spec);
         }
         spec.afterPick?.(this, this.chosenIntent, input);
-        this.sprintIntent = deriveSprintIntent(this.chosenIntent.mode, this, spec.sprintConfig);
+        deriveSprintIntentInto(this.sprintIntent, this.chosenIntent.mode, this, spec.sprintConfig);
         this.chosenReason = this.chosenIntent.reason ?? null;
         this.targetId = this.chosenIntent.targetId ?? null;
         return this;

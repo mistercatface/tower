@@ -3,10 +3,10 @@ import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { buildAgentDecisionContextFor, buildAgentDecisionFrameFor, pickAgentIntentPolicyFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
-import { deriveSprintIntent } from "../Libraries/AI/agents/AgentDecisionContext.js";
+
 import { deriveThreatState } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { bandFromThresholds } from "../Libraries/AI/agents/AgentDecisionContext.js";
-import { createModePolicyLatch } from "./harness/agentTestCompat.js";
+import { createModePolicyLatch, deriveSprintIntent } from "./harness/agentTestCompat.js";
 const TEST_HUNGER_BANDS = [
     { id: "satisfied", min: 0.66 },
     { id: "hungry", min: 0.33 },

@@ -15,6 +15,7 @@ import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentInt
 import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill, COMBAT_TRAIT_DEFAULTS, matchesBrainRamResolver } from "../../Libraries/Game/snake/snakeCombat.js";
 import { AgentFrameOrchestrator, createAgentSpecies, SNAKE_GAME_SPECIES, SnakeAgentSession } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../../Libraries/Props/propScale.js";
+import { deriveSprintIntentInto } from "../../Libraries/AI/agents/AgentDecisionContext.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
 export {
@@ -142,4 +143,9 @@ export function stopAllAgents(session) {
 
 export function spawnSpeciesBatch(session, state, speciesId, spawnCtxs) {
     return session.spawnBatch(state, speciesId, spawnCtxs);
+}
+
+export function deriveSprintIntent(mode, ctx, sprintConfig) {
+    const out = { want: false, reason: "none" };
+    return deriveSprintIntentInto(out, mode, ctx, sprintConfig);
 }
