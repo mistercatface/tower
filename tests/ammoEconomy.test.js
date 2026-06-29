@@ -12,6 +12,8 @@ import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { buildAgentDecisionContextFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
+import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 
 const CELL = 16;
 function ammoDecisionInput(input) {
@@ -125,6 +127,54 @@ describe("AI ammo economy system", () => {
         assert.ok(collected, "Should successfully collect the ammo shard");
         assert.equal(fleeInstance.ammo, 8, "Ammo should increase by the shard's value (3 + 5 = 8)");
         assert.ok(shard.isDead, "Shard prop should be marked dead after pickup");
+    });
+
+    it("collects a wide ammo shard whose body extends past eatRadius", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start();
+        fleeInstance.ammo = 0;
+
+        const shard = new WorldProp(fleePack.head.x, fleePack.head.y, "ammo_shard", 0);
+        shard.ammoValue = 4;
+        addWorldPropToState(state, shard);
+        getPropCategoryIndex(state, "ammo").register(shard);
+        shard.shape = new CircleShape(5);
+        const shardRadius = getCirclePropRadius(shard);
+        assert.equal(shardRadius, 5, "ammo shard should report its body radius");
+        shard.x = fleePack.head.x + fleeInstance.eatRadius + shardRadius - 0.5;
+
+        const collected = fleeInstance.collectAmmoTarget(state, shard);
+        assert.ok(collected, "Wide ammo shard touching the agent should be collected");
+        assert.equal(fleeInstance.ammo, 4);
+    });
+
+    it("does not collect an ammo shard that is not touching", async () => {
+        applySnakeGameConfig();
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+
+        const fleePack = spawnGameAgentChain(state, { col: 5, row: 5 }, "flee_agent");
+        const fleeInstance = new AgentInstance(state, { profileId: AGENT_PROFILE.flee, head: fleePack.head, spawnGroupId: fleePack.spawnGroupId });
+        registerAgentInstance(snakeGame, "flee_agent", fleeInstance);
+        fleeInstance.start();
+        fleeInstance.ammo = 0;
+
+        const shard = new WorldProp(fleePack.head.x, fleePack.head.y, "ammo_shard", 0);
+        shard.ammoValue = 4;
+        addWorldPropToState(state, shard);
+        getPropCategoryIndex(state, "ammo").register(shard);
+        shard.shape = new CircleShape(5);
+        shard.x = fleePack.head.x + fleeInstance.eatRadius + getCirclePropRadius(shard) + 6;
+
+        const collected = fleeInstance.collectAmmoTarget(state, shard);
+        assert.equal(collected, false, "Ammo shard out of reach should not be collected");
+        assert.equal(fleeInstance.ammo, 0);
     });
 
     it("increases seek_ammo utility score when ammo is low", async () => {

@@ -333,7 +333,8 @@ export class AgentInstance {
     }
     consumeTargetAndResetNavigation(state, target) {
         const seeker = this.head;
-        if (Math.hypot(target.x - seeker.x, target.y - seeker.y) > this.eatRadius) return false;
+        const targetRadius = getCirclePropRadius(target) ?? 0;
+        if (Math.hypot(target.x - seeker.x, target.y - seeker.y) > this.eatRadius + targetRadius) return false;
         const grid = state.obstacleGrid;
         const idx = grid.worldCol(target.x) + grid.worldRow(target.y) * grid.cols;
         this.brain.stampArrival(idx);
