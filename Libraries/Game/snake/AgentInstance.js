@@ -40,7 +40,8 @@ export class AgentInstance {
         this.brain = null;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
-        this.ammo = profile.initialAmmo ?? 10;
+        const hasWeapon = !!(profile.weapon || profile.decision?.modes?.shoot_enemy);
+        this.ammo = profile.initialAmmo ?? (hasWeapon ? 10 : 0);
         this.profile = profile;
         this.metabolism = createAgentMetabolism(profile);
         this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
@@ -317,29 +318,27 @@ export class AgentInstance {
             pending--;
         }
     }
-    eatFoodTarget(state, food) {
+    consumeTargetAndResetNavigation(state, target) {
         const seeker = this.head;
-        if (!canAgentEatSnakeFood(seeker, food) || !isSnakeFoodTarget(food)) return false;
-        if (Math.hypot(food.x - seeker.x, food.y - seeker.y) > this.eatRadius) return false;
+        if (Math.hypot(target.x - seeker.x, target.y - seeker.y) > this.eatRadius) return false;
         const grid = state.obstacleGrid;
-        this.brain.stampArrival(grid.worldCol(food.x), grid.worldRow(food.y));
+        this.brain.stampArrival(grid.worldCol(target.x), grid.worldRow(target.y));
         this.intent.clearTrackedGoal();
         this.headNav.clearDestination();
-        removeSandboxWorldProp(state, food);
+        removeSandboxWorldProp(state, target);
+        return true;
+    }
+    eatFoodTarget(state, food) {
+        if (!canAgentEatSnakeFood(this.head, food) || !isSnakeFoodTarget(food)) return false;
+        if (!this.consumeTargetAndResetNavigation(state, food)) return false;
         const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
         if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
         else feedAgentMetabolism(this.metabolism, foodValue);
         return true;
     }
     collectAmmoTarget(state, ammoProp) {
-        const seeker = this.head;
         if (ammoProp.type !== "ammo_shard" || ammoProp.isDead) return false;
-        if (Math.hypot(ammoProp.x - seeker.x, ammoProp.y - seeker.y) > this.eatRadius) return false;
-        const grid = state.obstacleGrid;
-        this.brain.stampArrival(grid.worldCol(ammoProp.x), grid.worldRow(ammoProp.y));
-        this.intent.clearTrackedGoal();
-        this.headNav.clearDestination();
-        removeSandboxWorldProp(state, ammoProp);
+        if (!this.consumeTargetAndResetNavigation(state, ammoProp)) return false;
         this.ammo += ammoProp.ammoValue ?? 1;
         return true;
     }

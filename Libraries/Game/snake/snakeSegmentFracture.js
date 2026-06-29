@@ -156,17 +156,16 @@ export function fractureRetiredSnakeSegmentsFromContacts(state, spatialFrame, co
         }
     }
 }
-
 export function spawnAmmoShards(state, sourceProp, amount, spatialFrame) {
     if (amount <= 0) return;
     const shardCount = Math.min(amount, 5);
-    const ammoPerShard = Math.ceil(amount / shardCount);
+    const baseAmmo = Math.floor(amount / shardCount);
+    const remainder = amount % shardCount;
     const radius = getCirclePropRadius(sourceProp) ?? sourceProp.radius ?? 10;
     const geometries = buildCircleImpactShards(radius, { x: 0, y: 0 }, 20, { minShards: shardCount, maxShards: shardCount });
-    spawnShardPropsFromGeometry(state, sourceProp, geometries, AMMO_SHARD_PROP_ID, spatialFrame, (shard) => {
-        shard.ammoValue = ammoPerShard;
+    spawnShardPropsFromGeometry(state, sourceProp, geometries, AMMO_SHARD_PROP_ID, spatialFrame, (shard, geom, index) => {
+        shard.ammoValue = baseAmmo + (index < remainder ? 1 : 0);
         shard.visualOverride = { color: 0x00ffff };
         getPropCategoryIndex(state, "ammo").register(shard);
     });
 }
-

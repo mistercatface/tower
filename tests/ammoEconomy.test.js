@@ -11,6 +11,7 @@ import { getObserverVisionFrame } from "../Libraries/Navigation/perception/obser
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
 import { buildAgentDecisionContextFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
 import { WorldProp } from "../Entities/WorldProp.js";
+import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 
 const CELL = 16;
 function ammoDecisionInput(input) {
@@ -70,6 +71,7 @@ describe("AI ammo economy system", () => {
         
         // Tick 4: Try to shoot but empty, should not shoot, and transition away
         fleeInstance.autosim.tick(150);
+        fleeInstance.autosim.tick(16);
         assert.notEqual(fleeInstance.intent.getMode(), "shoot_enemy", "Should transition away from shoot mode when empty");
     });
 
@@ -115,7 +117,7 @@ describe("AI ammo economy system", () => {
         // Spawn an ammo shard near the agent head
         const shard = new WorldProp(fleePack.head.x + 2, fleePack.head.y, "ammo_shard", 0);
         shard.ammoValue = 5;
-        state.entityRegistry.add(shard);
+        addWorldPropToState(state, shard);
         getPropCategoryIndex(state, "ammo").register(shard);
         
         // Call collection
