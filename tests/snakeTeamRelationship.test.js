@@ -8,7 +8,7 @@ import { resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRe
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 
 function chainOptions(segmentCount) {

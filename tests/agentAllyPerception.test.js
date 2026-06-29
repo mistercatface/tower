@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { publishAgentEngagement } from "../Libraries/AI/agents/agentEngagement.js";
+import { publishAgentEngagement } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, primeSnakeHeadVision, createWiredSnakeAutosim } from "./harness/snakeGameHarness.js";
 
 function chainOptions(segmentCount) {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import { bakeRelationshipRules, resolveRelationshipForInstances } from "../Libraries/Game/snake/agentRelationships.js";
 
 function instance(profileId, { faction = "a", segments = 3 } = {}) {

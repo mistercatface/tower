@@ -8,7 +8,7 @@ import { getCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { spawnPopulationInScene } from "../Libraries/Game/snake/spawnPopulationInScene.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";

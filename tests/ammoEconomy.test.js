@@ -4,12 +4,12 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snak
 import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { getObserverVisionFrame } from "../Libraries/Navigation/perception/observerVisionFrame.js";
 import { getPropCategoryIndex } from "../GameState/SandboxWorldState.js";
-import { buildAgentDecisionContextFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { buildAgentDecisionContextFor, scoreAgentIntentCandidates, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { addWorldPropToState } from "../GameState/EntityRegistry.js";
 

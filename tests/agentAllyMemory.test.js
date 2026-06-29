@@ -7,12 +7,12 @@ import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createAgentIntentMemory } from "../Libraries/AI/memory/createAgentIntentMemory.js";
-import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
-import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/agentEngagement.js";
+import { buildAgentDecisionContextFor, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
+import { publishAgentEngagement, readAgentEngagement, isAgentEngaged } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createSnakeAgentSession } from "../Libraries/Game/snake/snakeAgentSession.js";
-import { deriveSnakeEngagementState } from "../Libraries/AI/agents/gameDecisionContext.js";
+import { deriveSnakeEngagementState } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 
 function chainOptions(segmentCount) {

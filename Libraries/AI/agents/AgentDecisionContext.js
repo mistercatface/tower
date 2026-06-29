@@ -1,8 +1,10 @@
-import { pushTargetEvents, routeEventsInto, intentPolicy, policyReasonForTarget } from "../agentIntent/AgentIntent.js";
+import { pushTargetEvents, routeEventsInto, intentPolicy, intentPolicyInto, policyReasonForTarget } from "../agentIntent/AgentIntent.js";
 import {
     pickBestScoreKey,
+    pickBestScoreKeyInto,
     scoreCandidateNetsInto,
     scoreCandidateSet,
+    scoreCandidateSetInto,
     costPerCellForHunger,
     foodHungerScoreValue,
     netScoreDetail,
@@ -198,6 +200,33 @@ function blockedByGuards(ctx, guards, modeDef) {
     for (let i = 0; i < guards.length; i++) if (GUARDS[guards[i]]?.(ctx, modeDef)) return true;
     return false;
 }
+export function compileDecisionSchemaModes(schema) {
+    if (!schema || !schema.scoreOrder) return [];
+    const compiled = [];
+    for (let i = 0; i < schema.scoreOrder.length; i++) {
+        const mode = schema.scoreOrder[i];
+        const modeDef = schema.modes[mode];
+        if (!modeDef) continue;
+        const scorer = SCORERS[modeDef.scorer];
+        if (!scorer) throw new Error(`unknown decision scorer: ${modeDef.scorer}`);
+        const guards = modeDef.guards
+            ? modeDef.guards.map((g) => {
+                  const fn = GUARDS[g];
+                  if (!fn) throw new Error(`unknown decision guard: ${g}`);
+                  return fn;
+              })
+            : null;
+        const mods = modeDef.mods
+            ? modeDef.mods.map((m) => {
+                  const fn = MODS[m];
+                  if (!fn) throw new Error(`unknown decision modifier: ${m}`);
+                  return fn;
+              })
+            : null;
+        compiled.push({ mode, modeDef, scorer, guards, mods });
+    }
+    return compiled;
+}
 function regroupSizeFactor(segmentCount, cohesion) {
     const count = segmentCount ?? cohesion.referenceSegmentCount ?? 3;
     const ref = cohesion.referenceSegmentCount ?? 3;
@@ -336,6 +365,7 @@ const MODS = {
     },
 };
 function applyMods(detail, ctx, modeDef, weights, pressure, env) {
+    if (detail === SCORE_ABSENT) return SCORE_ABSENT;
     const mods = modeDef.mods;
     if (!mods) return detail;
     let out = detail;
@@ -348,10 +378,38 @@ function scoreMode(ctx, modeDef, weights, pressure, env) {
     if (!scoreFn) throw new Error(`unknown decision scorer: ${modeDef.scorer}`);
     return applyMods(scoreFn(ctx, modeDef, weights, pressure, env), ctx, modeDef, weights, pressure, env);
 }
+function scoreCompiledMode(ctx, compiled, weights, pressure, env) {
+    const modeDef = compiled.modeDef;
+    if (compiled.guards) for (let i = 0; i < compiled.guards.length; i++) if (compiled.guards[i](ctx, modeDef)) return SCORE_ABSENT;
+    let detail = compiled.scorer(ctx, modeDef, weights, pressure, env);
+    if (detail === SCORE_ABSENT) return SCORE_ABSENT;
+    if (compiled.mods) for (let i = 0; i < compiled.mods.length; i++) detail = compiled.mods[i](detail, ctx, modeDef, weights, pressure, env);
+    return detail;
+}
+export function scoreDecisionCompiledDetailsInto(out, ctx, spec, weights, pressure, env = {}) {
+    resetScoreDetailScratch();
+    const compiled = spec.compiledModes;
+    if (compiled)
+        for (let i = 0; i < compiled.length; i++) {
+            const entry = compiled[i];
+            out[entry.mode] = scoreCompiledMode(ctx, entry, weights, pressure, env);
+        }
+    else {
+        const schema = spec.decisionSchema;
+        for (let i = 0; i < schema.scoreOrder.length; i++) {
+            const mode = schema.scoreOrder[i];
+            out[mode] = scoreMode(ctx, schema.modes[mode], weights, pressure, env);
+        }
+    }
+    return out;
+}
 export function scoreDecisionCandidateDetails(ctx, schema, weights, pressure, env = {}) {
     resetScoreDetailScratch();
     const details = {};
-    for (const mode of schema.scoreOrder) details[mode] = scoreMode(ctx, schema.modes[mode], weights, pressure, env);
+    for (let i = 0; i < schema.scoreOrder.length; i++) {
+        const mode = schema.scoreOrder[i];
+        details[mode] = scoreMode(ctx, schema.modes[mode], weights, pressure, env);
+    }
     return details;
 }
 // === From buildAgentDecisionContext.js ===
@@ -409,6 +467,7 @@ export function createAgentDecisionContextFrame(profileId, schema = getAgentProf
     const remembered = {};
     const known = {};
     const candidateScores = {};
+    const candidateScoreDetails = {};
     for (const slotKey of Object.keys(schema.slots)) {
         visible[slotKey] = null;
         known[slotKey] = null;
@@ -418,12 +477,16 @@ export function createAgentDecisionContextFrame(profileId, schema = getAgentProf
         if (fieldDef.known != null) known[fieldKey] = fieldDef.known.default ?? null;
     }
     for (const slot of schema.remembered) remembered[slot.key] = slot.constant ?? null;
-    for (const mode of schema.scoreOrder) candidateScores[mode] = -Infinity;
+    for (const mode of schema.scoreOrder) {
+        candidateScores[mode] = -Infinity;
+        candidateScoreDetails[mode] = { value: 0, reach: null, cost: 0, net: 0 };
+    }
     return {
         visible,
         remembered,
         known,
         candidateScores,
+        candidateScoreDetails,
         events: [],
         threatState: null,
         threatScratch: { dist: 0, severity: 0, lethal: false },
@@ -434,11 +497,10 @@ export function createAgentDecisionContextFrame(profileId, schema = getAgentProf
         routeStatus: null,
         foodFraction: null,
         hungerTier: null,
-        chosenIntent: null,
+        chosenIntent: { mode: null, targetId: null, reason: null },
         chosenReason: null,
         targetId: null,
         sprintIntent: null,
-        candidateScoreDetails: null,
         policyLatch: null,
         engagementState: null,
         safetyState: null,
@@ -477,14 +539,18 @@ export function buildAgentDecisionFrameInto(ctx, spec, input) {
     }
     return ctx;
 }
-export function pickAgentIntentPolicy(ctx, scores, spec) {
+export function pickAgentIntentPolicyInto(out, ctx, scores, spec) {
     const schema = spec.decisionSchema;
     const mode = pickBestScoreKey(scores, schema.scoreOrder).chosenKey;
-    if (mode === "flee") return intentPolicy("flee", null, policyReasonForTarget(ctx, "threat"));
-    if (mode === "explore") return { mode: "explore", targetId: null };
+    if (mode === "flee") return intentPolicyInto(out, "flee", null, policyReasonForTarget(ctx, "threat"));
+    if (mode === "explore") return intentPolicyInto(out, "explore", null, null);
     const slotKey = schema.targetLost[mode];
-    if (!slotKey || !ctx.known[slotKey]) return { mode, targetId: null, reason: ctx.chosenReason ?? null };
-    return intentPolicy(mode, ctx.known[slotKey].id, policyReasonForTarget(ctx, slotKey));
+    if (!slotKey || !ctx.known[slotKey]) return intentPolicyInto(out, mode, null, ctx.chosenReason ?? null);
+    return intentPolicyInto(out, mode, ctx.known[slotKey].id, policyReasonForTarget(ctx, slotKey));
+}
+export function pickAgentIntentPolicy(ctx, scores, spec) {
+    const out = { mode: null, targetId: null, reason: null };
+    return pickAgentIntentPolicyInto(out, ctx, scores, spec);
 }
 export function buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDetails = false } = {}) {
     const schema = spec.decisionSchema;
@@ -494,17 +560,16 @@ export function buildAgentDecisionContextInto(ctx, spec, input, { includeScoreDe
     const weights = spec.weights;
     const pressure = spec.pressure;
     writeScoringEnvInto(ctx.scoringEnv, spec);
-    const details = scoreDecisionCandidateDetails(ctx, schema, weights, pressure, ctx.scoringEnv);
-    const pickPolicy = input.pickPolicy ?? ((frame, scores) => pickAgentIntentPolicy(frame, scores, spec));
+    scoreDecisionCompiledDetailsInto(ctx.candidateScoreDetails, ctx, spec, weights, pressure, ctx.scoringEnv);
+    const pickPolicy = input.pickPolicy;
     if (includeScoreDetails) {
-        const scored = scoreCandidateSet(details, schema.scoreOrder);
-        for (const key of schema.scoreOrder) ctx.candidateScores[key] = scored.candidateScores[key];
-        ctx.candidateScoreDetails = scored.candidateScoreDetails;
-        ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
+        scoreCandidateSetInto(ctx, ctx.candidateScoreDetails, schema.scoreOrder);
+        if (pickPolicy) ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
+        else pickAgentIntentPolicyInto(ctx.chosenIntent, ctx, ctx.candidateScores, spec);
     } else {
-        scoreCandidateNetsInto(ctx.candidateScores, details, schema.scoreOrder);
-        ctx.candidateScoreDetails = null;
-        ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
+        scoreCandidateNetsInto(ctx.candidateScores, ctx.candidateScoreDetails, schema.scoreOrder);
+        if (pickPolicy) ctx.chosenIntent = pickPolicy(ctx, ctx.candidateScores);
+        else pickAgentIntentPolicyInto(ctx.chosenIntent, ctx, ctx.candidateScores, spec);
     }
     spec.afterPick?.(ctx, ctx.chosenIntent, input);
     ctx.sprintIntent = deriveSprintIntent(ctx.chosenIntent.mode, ctx, spec.sprintConfig);
@@ -563,6 +628,7 @@ export function buildAgentDecisionSpec(profileId, profile = getAgentProfile(prof
         ...(DECISION_EXTENSIONS[profileId] ?? {}),
     };
     if (profile.weapon || profile.decision?.modes?.shoot_enemy) spec.deriveCombatState = (ctx, input) => deriveRangedCombatState(ctx, input, profile);
+    spec.compiledModes = compileDecisionSchemaModes(profile.decision);
     return spec;
 }
 export function buildAgentDecisionFrameFor(profileId, input) {

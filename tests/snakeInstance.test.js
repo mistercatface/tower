@@ -11,8 +11,8 @@ import { spawnSnakeChain, SNAKE_CHAIN_EXPORT_TYPE } from "../Libraries/Game/snak
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeSegmentSpacing } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../Libraries/Game/snake/species/index.js";
-import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI/agents/agentPopulationRegistry.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { createAgentPopulationRegistry, isAliveAgentHead } from "../Libraries/AI/agents/AgentProfiles.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
 import { steerRollToward, applyGroundRollDrive } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { createSnakeNavWalkable } from "./harness/snakeGameHarness.js";

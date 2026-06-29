@@ -41,28 +41,47 @@ export function scoreRiskAdjustedFlee(ctx, weights, pressure) {
     if (riskTolerance <= 0) return Infinity;
     return weights.flee * threat.severity * (1 - riskTolerance);
 }
-export function pickBestScoreKey(candidateScores, order) {
+const PICK_BEST_SCRATCH = { chosenKey: null, chosenScore: -Infinity };
+export function pickBestScoreKeyInto(out, candidateScores, order) {
     let chosenKey = order[0];
     let chosenScore = -Infinity;
-    for (const key of order) {
+    for (let i = 0; i < order.length; i++) {
+        const key = order[i];
         const score = candidateScores[key];
         if (score > chosenScore) {
             chosenKey = key;
             chosenScore = score;
         }
     }
-    return { chosenKey, chosenScore };
+    out.chosenKey = chosenKey;
+    out.chosenScore = chosenScore;
+    return out;
+}
+export function pickBestScoreKey(candidateScores, order) {
+    return pickBestScoreKeyInto(PICK_BEST_SCRATCH, candidateScores, order);
 }
 export function scoreCandidateNetsInto(out, candidateScoreDetails, order) {
-    for (const key of order) out[key] = candidateScoreDetails[key].net;
+    for (let i = 0; i < order.length; i++) {
+        const key = order[i];
+        const detail = candidateScoreDetails[key];
+        out[key] = detail ? detail.net : -Infinity;
+    }
     return pickBestScoreKey(out, order);
 }
-export function scoreCandidateSet(candidateScoreDetails, order) {
-    const candidateScores = {};
-    for (const key of order) {
+export function scoreCandidateSetInto(out, candidateScoreDetails, order) {
+    if (!out.candidateScores) out.candidateScores = {};
+    for (let i = 0; i < order.length; i++) {
+        const key = order[i];
         const detail = candidateScoreDetails[key];
-        candidateScores[key] = detail.net;
+        out.candidateScores[key] = detail ? detail.net : -Infinity;
     }
-    const { chosenKey, chosenScore } = pickBestScoreKey(candidateScores, order);
-    return { candidateScores, candidateScoreDetails, chosenKey, chosenScore };
+    const best = pickBestScoreKey(out.candidateScores, order);
+    out.candidateScoreDetails = candidateScoreDetails;
+    out.chosenKey = best.chosenKey;
+    out.chosenScore = best.chosenScore;
+    return out;
+}
+export function scoreCandidateSet(candidateScoreDetails, order) {
+    const out = { candidateScores: {}, candidateScoreDetails: null, chosenKey: null, chosenScore: -Infinity };
+    return scoreCandidateSetInto(out, candidateScoreDetails, order);
 }

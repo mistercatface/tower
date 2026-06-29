@@ -52,8 +52,12 @@ export class AgentIntentFSM {
         const nextState = this.states[this.mode];
         if (nextState?.enter) nextState.enter(this, enterContext);
     }
-    _shouldTransition(policy) {
+    _shouldTransition(policy, world) {
         if (policy.mode === this.mode && policy.targetId === this.targetId) return false;
+        if (policy.mode === "flee") return true;
+        if (policy.targetId === null && this.targetId !== null) return true;
+        const currentScore = world?.decisionContext?.candidateScores?.[this.mode];
+        if (currentScore === undefined || currentScore === -Infinity) return true;
         const delay = this.modeExitDelayTicks[this.mode] ?? 0;
         if (policy.mode !== this.mode && this.ticks - this.tickAtLastTransition < delay) return false;
         return true;
@@ -65,7 +69,7 @@ export class AgentIntentFSM {
         this.ticks++;
         const world = this.perceiveWorld(agent, state);
         const policy = this.pickPolicy(world);
-        if (this._shouldTransition(policy)) {
+        if (this._shouldTransition(policy, world)) {
             if (!policy.reason && this.transitionReason) policy.reason = this.transitionReason(this.mode, policy.mode, policy, world);
             this._commitTransition(agent, state, world, policy);
             return this._syncContext(agent, state, world, policy);
@@ -113,31 +117,60 @@ export class AgentIntentFSM {
         this.lastTransitionReason = reason;
     }
 }
+function safeHoldDestination(fsm, reason) {
+    if (fsm?.holdDestination) fsm.holdDestination(reason);
+    else if (fsm?.effects?.holdDestination) fsm.effects.holdDestination(reason);
+}
+function safeSetLastTransition(fsm, reason) {
+    if (fsm?.setLastTransition) fsm.setLastTransition(reason);
+    else if (fsm?.effects?.setLastTransition) fsm.effects.setLastTransition(reason);
+}
+function safeTransitionTo(fsm, nextMode, reason, nextTargetId) {
+    if (fsm?.transitionTo) fsm.transitionTo(nextMode, reason, nextTargetId);
+    else if (fsm?.effects?.transitionTo) fsm.effects.transitionTo(nextMode, reason, nextTargetId);
+}
+function safeSetSeekDestination(fsm, ctx, target, setSeekLocal) {
+    if (fsm?.effects?.setSeekDestination) fsm.effects.setSeekDestination(target);
+    else setSeekLocal(ctx, target);
+}
+function safeUpdateSeekTarget(fsm, ctx, target, locomotion) {
+    if (fsm?.effects?.updateSeekTarget) fsm.effects.updateSeekTarget(target);
+    else locomotion.updateSeekTarget?.(ctx.agent, ctx.state, target, { targetId: ctx.targetId });
+}
 // ==========================================
 // Intent States
 // ==========================================
-export function createExploreIntentState({ locomotion, resolveExploreCell, brain }) {
+export function createExploreIntentState(deps = {}) {
     return {
         enter(fsm, ctx) {
-            const cell = resolveExploreCell(ctx.agent, ctx.state, brain.spatial, Math.random);
-            if (cell) locomotion.setExplore(ctx.agent, ctx.state, cell);
+            const actualCtx = ctx ?? fsm;
+            const locomotion = deps.locomotion ?? actualCtx.locomotion;
+            const resolveExploreCell = deps.resolveExploreCell ?? actualCtx.resolveExploreCell;
+            const brain = deps.brain ?? actualCtx.brain;
+            const cell = resolveExploreCell(actualCtx.agent, actualCtx.state, brain.spatial, Math.random);
+            if (cell) locomotion.setExplore(actualCtx.agent, actualCtx.state, cell);
         },
         update(fsm, ctx) {
-            const hasArrived = locomotion.hasArrivedAtDest(ctx.agent, ctx.grid);
-            const needsNewDest = !ctx.dest || hasArrived;
+            const actualCtx = ctx ?? fsm;
+            const locomotion = deps.locomotion ?? actualCtx.locomotion;
+            const resolveExploreCell = deps.resolveExploreCell ?? actualCtx.resolveExploreCell;
+            const brain = deps.brain ?? actualCtx.brain;
+            const hasArrived = locomotion.hasArrivedAtDest(actualCtx.agent, actualCtx.grid);
+            const needsNewDest = !actualCtx.dest || hasArrived;
             if (needsNewDest) {
-                fsm.setLastTransition(hasArrived ? "arrived" : "repick_dest");
-                const cell = resolveExploreCell(ctx.agent, ctx.state, brain.spatial, Math.random);
-                if (cell) locomotion.setExplore(ctx.agent, ctx.state, cell);
+                safeSetLastTransition(fsm, hasArrived ? "arrived" : "repick_dest");
+                const cell = resolveExploreCell(actualCtx.agent, actualCtx.state, brain.spatial, Math.random);
+                if (cell) locomotion.setExplore(actualCtx.agent, actualCtx.state, cell);
                 return;
             }
-            fsm.holdDestination();
+            safeHoldDestination(fsm);
         },
     };
 }
-export function createSeekIntentState({ locomotion, seekArrivalRadius }) {
+export function createSeekIntentState(deps = {}) {
     const seekOptionsScratch = { arrivalRadius: 0, lockOnTarget: undefined, terminalHoming: undefined, targetId: null };
     const shouldRefreshSeekDestination = (ctx, targetCell) => {
+        const locomotion = deps.locomotion ?? ctx.locomotion;
         if (!ctx.dest) return true;
         if (locomotion.hasArrivedAtDest(ctx.agent, ctx.grid)) return true;
         if (ctx.dest.col !== targetCell.col || ctx.dest.row !== targetCell.row) return true;
@@ -146,6 +179,8 @@ export function createSeekIntentState({ locomotion, seekArrivalRadius }) {
         return !isSameTarget;
     };
     const setSeekDestination = (ctx, target) => {
+        const locomotion = deps.locomotion ?? ctx.locomotion;
+        const seekArrivalRadius = deps.seekArrivalRadius ?? ctx.seekArrivalRadius;
         if (!target) return;
         const seekOptions = seekArrivalRadius(ctx.mode, ctx.agent, target, ctx.state);
         if (typeof seekOptions === "object" && seekOptions !== null) {
@@ -162,34 +197,43 @@ export function createSeekIntentState({ locomotion, seekArrivalRadius }) {
     };
     return {
         enter(fsm, ctx) {
-            setSeekDestination(ctx, ctx.target);
+            const actualCtx = ctx ?? fsm;
+            safeSetSeekDestination(fsm, actualCtx, actualCtx.target, setSeekDestination);
         },
         update(fsm, ctx) {
-            if (!ctx.target) {
-                fsm.transitionTo(ctx.policy.mode, "target_lost", ctx.policy.targetId);
+            const actualCtx = ctx ?? fsm;
+            const locomotion = deps.locomotion ?? actualCtx.locomotion;
+            if (!actualCtx.target) {
+                safeTransitionTo(fsm, actualCtx.policy?.mode, "target_lost", actualCtx.policy?.targetId);
                 return;
             }
-            const targetCell = { col: ctx.grid.worldCol(ctx.target.x), row: ctx.grid.worldRow(ctx.target.y) };
-            if (shouldRefreshSeekDestination(ctx, targetCell)) {
-                const arrived = locomotion.hasArrivedAtDest(ctx.agent, ctx.grid);
-                fsm.setLastTransition(arrived ? "arrived" : "repick_dest");
-                setSeekDestination(ctx, ctx.target);
+            const targetCell = { col: actualCtx.grid.worldCol(actualCtx.target.x), row: actualCtx.grid.worldRow(actualCtx.target.y) };
+            if (shouldRefreshSeekDestination(actualCtx, targetCell)) {
+                const arrived = locomotion.hasArrivedAtDest(actualCtx.agent, actualCtx.grid);
+                safeSetLastTransition(fsm, arrived ? "arrived" : "repick_dest");
+                safeSetSeekDestination(fsm, actualCtx, actualCtx.target, setSeekDestination);
                 return;
             }
-            locomotion.updateSeekTarget?.(ctx.agent, ctx.state, ctx.target, { targetId: ctx.targetId });
-            fsm.holdDestination();
+            safeUpdateSeekTarget(fsm, actualCtx, actualCtx.target, locomotion);
+            safeHoldDestination(fsm);
         },
     };
 }
-export function createFleeIntentState({ locomotion, setFleeDestination }) {
+export function createFleeIntentState(deps = {}) {
     return {
         enter(fsm, ctx) {
-            setFleeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell: null, locomotion });
+            const actualCtx = ctx ?? fsm;
+            const locomotion = deps.locomotion ?? actualCtx.locomotion;
+            const setFleeDestination = deps.setFleeDestination ?? actualCtx.setFleeDestination;
+            setFleeDestination({ agent: actualCtx.agent, state: actualCtx.state, world: actualCtx.world, avoidCell: null, locomotion });
         },
         update(fsm, ctx) {
-            if (!ctx.dest) {
-                fsm.setLastTransition("repick_dest");
-                setFleeDestination({ agent: ctx.agent, state: ctx.state, world: ctx.world, avoidCell: null, locomotion });
+            const actualCtx = ctx ?? fsm;
+            const locomotion = deps.locomotion ?? actualCtx.locomotion;
+            const setFleeDestination = deps.setFleeDestination ?? actualCtx.setFleeDestination;
+            if (!actualCtx.dest) {
+                safeSetLastTransition(fsm, "repick_dest");
+                setFleeDestination({ agent: actualCtx.agent, state: actualCtx.state, world: actualCtx.world, avoidCell: null, locomotion });
                 return;
             }
             const reachedDest = locomotion.hasReachedDest(ctx.agent, ctx.grid);
@@ -265,8 +309,13 @@ export function policyReasonForTarget(ctx, kind) {
     if (ctx.remembered[kind]) return `${kind}_memory`;
     return null;
 }
+export function intentPolicyInto(out, mode, targetId, reason = null) {
+    out.mode = mode;
+    out.targetId = targetId;
+    out.reason = reason;
+    return out;
+}
 export function intentPolicy(mode, targetId, reason = null) {
-    const policy = { mode, targetId };
-    if (reason) policy.reason = reason;
-    return policy;
+    const out = { mode: null, targetId: null, reason: null };
+    return intentPolicyInto(out, mode, targetId, reason);
 }

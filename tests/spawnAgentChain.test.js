@@ -7,7 +7,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";

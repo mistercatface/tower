@@ -4,7 +4,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { wireSnakeTestGame, registerSnakeTestInstance, createWiredSnakeAutosim, createSnakeGameHarnessState } from "./harness/snakeGameHarness.js";
 import { appendFocusedAgentPathPreviewCommands } from "../Libraries/Game/snake/focusedAgentPathOverlays.js";

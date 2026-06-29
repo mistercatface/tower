@@ -5,14 +5,14 @@ import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js
 import { registerAgentInstance } from "../Libraries/Game/snake/snakeAgentSession.js";
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AgentInstance } from "../Libraries/Game/snake/AgentInstance.js";
-import { AGENT_PROFILE } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { setAgentHunger } from "../Libraries/Game/snake/agentMetabolism.js";
-import { buildAgentDecisionContextFor, scoreAgentIntentCandidateDetails, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/gameDecisionContext.js";
-import { deriveSprintIntent } from "../Libraries/AI/agents/deriveSprintIntent.js";
+import { buildAgentDecisionContextFor, scoreAgentIntentCandidateDetails, AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
+import { deriveSprintIntent } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { primeSnakeHeadVision, createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance } from "./harness/snakeGameHarness.js";
 import { getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createRangedCombatActionState, resolveRangedWeapon } from "../Libraries/Game/snake/rangedCombat.js";
 import { pickCombatStrafeCell } from "../Libraries/AI/steering/pickCombatStrafeCell.js";
 

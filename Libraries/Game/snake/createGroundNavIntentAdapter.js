@@ -451,6 +451,7 @@ export function createGroundNavIntentAdapter({
         getMode: () => intent.getMode(),
         getTargetId: () => intent.getTargetId(),
         clearTargetId: () => intent.clearTargetId(),
+        getLastTransitionReason: () => intent.getLastTransitionReason(),
         perceive: (agent, state) => intent.perceive(agent, state),
         transition: (agent, state) => intent.transition(agent, state),
         headId: agentCtx.instance.headId,

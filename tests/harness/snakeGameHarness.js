@@ -17,14 +17,14 @@ import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeChainSpawnOptions
 import { createAgentAutosim } from "../../Libraries/Game/snake/agentAutosim.js";
 import { applyAgentGameplay } from "../../Libraries/Game/snake/applyAgentGameplay.js";
 import { getAgentHunger, setAgentHunger } from "../../Libraries/Game/snake/agentMetabolism.js";
-import { AGENT_PROFILE } from "../../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE } from "../../Libraries/AI/agents/AgentProfiles.js";
 import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
 import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFracture.js";
 import { createWorkerNavigation } from "../../Libraries/Navigation/WorkerNavigationFactory.js";
 import { createNavWalkableAccess } from "../../Libraries/Procedural/Mazes/walkableCells.js";
 import { createSnakeAgentSession, registerAgentInstance } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { SNAKE_GAME_SPECIES } from "../../Libraries/Game/snake/species/index.js";
-import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/agentPopulationRegistry.js";
+import { createAgentPopulationRegistry } from "../../Libraries/AI/agents/AgentProfiles.js";
 import { FollowCamera } from "../../Libraries/Sandbox/FollowCamera.js";
 import { AgentInstance } from "../../Libraries/Game/snake/AgentInstance.js";
 import { beginSnakePerceptionFrame, requireSnakeVisionFrame } from "../../Libraries/Game/snake/snakePerception.js";

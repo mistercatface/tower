@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applySnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
-import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/agentProfile.js";
+import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import {
     COMBAT_TRAIT_DEFAULTS,
     isChainCombatTopology,
