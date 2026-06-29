@@ -316,7 +316,7 @@ export function deriveRangedCombatStateInto(out, ctx, input, profile) {
     const hasAmmo = input.agentInstance ? input.agentInstance.ammo > 0 : input.instance ? input.instance.ammo > 0 : true;
     const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle" && hasAmmo;
     const hasIdAdvantage = seeker && enemy && seeker.id != null && enemy.id != null ? seeker.id > enemy.id : false;
-    const shouldBackOffEnemy = !!visibleEnemy && tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage));
+    const shouldBackOffEnemy = !!visibleEnemy && ((tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage))) || !hasAmmo);
     if (!out)
         out = {
             enemy: null,
@@ -581,12 +581,7 @@ export class RangedCombatPolicyExtension {
             ctx.targetId = resolved.targetId ?? null;
             deriveSprintIntentInto(ctx.sprintIntent, resolved.mode, ctx, sprintConfig);
         }
-        if (!ctx.policyLatch) ctx.policyLatch = { flee: { mode: null, active: false, ticksRemaining: 0 }, shoot: { mode: null, active: false, ticksRemaining: 0 } };
-        const shootLatchState = ctx.policyLatch.shoot;
-        const shootLatch = this.shootLatch;
-        shootLatchState.mode = shootLatch.mode;
-        shootLatchState.active = shootLatch.active;
-        shootLatchState.ticksRemaining = shootLatch.ticksRemaining;
+        ctx.policyLatch.shoot.copyFrom(this.shootLatch);
         return policyOut;
     }
 }
@@ -1043,11 +1038,7 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             ctx.targetId = resolved.targetId ?? null;
             deriveSprintIntentInto(ctx.sprintIntent, resolved.mode, ctx, this.profile.sprint);
         }
-        if (!ctx.policyLatch) ctx.policyLatch = { flee: { mode: null, active: false, ticksRemaining: 0 }, shoot: { mode: null, active: false, ticksRemaining: 0 } };
-        const fleeLatchState = ctx.policyLatch.flee;
-        fleeLatchState.mode = fleeLatch.mode;
-        fleeLatchState.active = fleeLatch.active;
-        fleeLatchState.ticksRemaining = fleeLatch.ticksRemaining;
+        ctx.policyLatch.flee.copyFrom(fleeLatch);
         return policyOut;
     }
 }

@@ -162,4 +162,25 @@ describe("AI ammo economy system", () => {
         
         assert.ok(lowScores.seek_ammo > fullScores.seek_ammo, "Ammo utility score should increase when ammo is low");
     });
+
+    it("forces out-of-ammo agent to treat visible enemy as threat and flee", async () => {
+        applySnakeGameConfig();
+        const enemy = { id: "enemy", x: 80, y: 0, type: "snake_head", isDead: false };
+        const emptyInstance = { ammo: 0 };
+        const ctxEmpty = buildAgentDecisionContextFor(AGENT_DECISION_PROFILE.flee, ammoDecisionInput({
+            visibleWorld: { threat: null, prey: enemy, food: null, ally: null, allyCount: 0, threatCount: 0, ammo: null },
+            reachSteps: { threat: null, enemy: 5, ammo: null, food: null, ally: null },
+            foodFraction: 0.9,
+            agent: { vx: 0, vy: 0, x: 0, y: 0 },
+            state: { obstacleGrid: { cols: 64, worldCol: () => 0, worldRow: () => 0 }, nav: { observerVisionFrame: { ensureHeadVision: () => ({ cellSet: new Set([0]) }), isVisible: () => true } } },
+            actionState: null,
+            instance: emptyInstance,
+        }));
+        
+        const scores = scoreAgentIntentCandidates(AGENT_DECISION_PROFILE.flee, ctxEmpty);
+        
+        assert.ok(ctxEmpty.known.threat !== null, "Enemy should be treated as a threat when out of ammo");
+        assert.ok(scores.flee > scores.shoot_enemy, "Flee score should be higher than shoot_enemy score");
+        assert.ok(scores.flee > scores.seek_enemy, "Flee score should be higher than seek_enemy score");
+    });
 });

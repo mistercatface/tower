@@ -205,6 +205,19 @@ export function deriveSprintIntentInto(out, mode, ctx, sprintConfig) {
     out.reason = "none";
     return out;
 }
+export class PolicyLatchState {
+    constructor() {
+        this.mode = null;
+        this.active = false;
+        this.ticksRemaining = 0;
+    }
+    copyFrom(other) {
+        this.mode = other.mode;
+        this.active = other.active;
+        this.ticksRemaining = other.ticksRemaining;
+        return this;
+    }
+}
 // === From scoreDecisionModes.js ===
 const GUARDS = {
     notSatisfied: (ctx) => ctx.hungerTier === "satisfied",
@@ -526,7 +539,7 @@ export class AgentDecisionContext {
         this.chosenReason = null;
         this.targetId = null;
         this.sprintIntent = { want: false, reason: "none" };
-        this.policyLatch = { flee: { mode: null, active: false, ticksRemaining: 0 }, shoot: { mode: null, active: false, ticksRemaining: 0 } };
+        this.policyLatch = { flee: new PolicyLatchState(), shoot: new PolicyLatchState() };
         this.engagementState = null;
         this.safetyState = null;
         this.recentFailures = [];
