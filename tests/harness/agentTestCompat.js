@@ -1,9 +1,12 @@
 import { AgentMetabolism } from "../../Libraries/Game/snake/agentMetabolism.js";
 import { TargetMemory, targetFromMemoryRecord } from "../../Libraries/AI/memory/targetMemory.js";
 import { RangedCombatActionState } from "../../Libraries/Game/snake/rangedCombat.js";
+import { Brain, AgentAutosim, buildNavStepPenaltyFromSpatialMemory } from "../../Libraries/Game/snake/agentAutosim.js";
+import { AgentIntentMemory } from "../../Libraries/AI/memory/createAgentIntentMemory.js";
+import { ModePolicyLatch } from "../../Libraries/AI/agentIntent/AgentIntent.js";
 
 // Re-export targetFromMemoryRecord for tests that need it
-export { targetFromMemoryRecord };
+export { targetFromMemoryRecord, buildNavStepPenaltyFromSpatialMemory };
 
 // --- Agent Metabolism Legacy Wrappers ---
 export function createAgentMetabolism(profile) {
@@ -48,4 +51,20 @@ export function rangedCombatActionOnCooldown(action) {
 export function rangedCombatActionIsBusy(action) {
     if (!action) return false;
     return typeof action.isBusy === "function" ? action.isBusy() : (action.phase === "reacting" || action.phase === "fire_delay" || action.phase === "reloading");
+}
+
+export function createBrain(config) {
+    return new Brain(config);
+}
+
+export function createAgentAutosim(state, instance) {
+    return new AgentAutosim(state, instance);
+}
+
+export function createAgentIntentMemory(config) {
+    return new AgentIntentMemory(config);
+}
+
+export function createModePolicyLatch(config) {
+    return new ModePolicyLatch(config);
 }

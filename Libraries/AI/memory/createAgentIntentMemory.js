@@ -73,6 +73,3 @@ export class AgentIntentMemory {
         this.memory.clearTarget(id);
     }
 }
-export function createAgentIntentMemory(config) {
-    return new AgentIntentMemory(config);
-}

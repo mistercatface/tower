@@ -1,69 +1,75 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createSpatialCellMemory } from "../Libraries/AI/brain/brain.js";
-import { createBrain, buildNavStepPenaltyFromSpatialMemory } from "../Libraries/Game/snake/agentAutosim.js";
+import { createBrain, buildNavStepPenaltyFromSpatialMemory } from "./harness/agentTestCompat.js";
+
 describe("spatialCellMemory", () => {
     it("evicts oldest cells when capacity is exceeded", () => {
         const memory = createSpatialCellMemory({ capacity: 3 });
-        memory.stamp(1, 1);
-        memory.stamp(2, 2);
-        memory.stamp(3, 3);
+        memory.stamp(65);
+        memory.stamp(130);
+        memory.stamp(195);
         assert.equal(memory.size, 3);
-        memory.stamp(4, 4);
+        memory.stamp(260);
         assert.equal(memory.size, 3);
-        assert.ok(!memory.has(1, 1));
-        assert.ok(memory.has(2, 2));
-        assert.ok(memory.has(3, 3));
-        assert.ok(memory.has(4, 4));
+        assert.ok(!memory.has(65));
+        assert.ok(memory.has(130));
+        assert.ok(memory.has(195));
+        assert.ok(memory.has(260));
     });
+
     it("refreshes recency when a cell is stamped again", () => {
         const memory = createSpatialCellMemory({ capacity: 3 });
-        memory.stamp(1, 1);
-        memory.stamp(2, 2);
-        memory.stamp(3, 3);
-        memory.stamp(1, 1);
-        memory.stamp(4, 4);
-        assert.ok(memory.has(1, 1));
-        assert.ok(!memory.has(2, 2));
-        assert.ok(memory.has(3, 3));
-        assert.ok(memory.has(4, 4));
+        memory.stamp(65);
+        memory.stamp(130);
+        memory.stamp(195);
+        memory.stamp(65);
+        memory.stamp(260);
+        assert.ok(memory.has(65));
+        assert.ok(!memory.has(130));
+        assert.ok(memory.has(195));
+        assert.ok(memory.has(260));
     });
+
     it("iterates newest-first for recency-ordered reads", () => {
         const memory = createSpatialCellMemory({ capacity: 4 });
-        memory.stamp(1, 1);
-        memory.stamp(2, 2);
-        memory.stamp(1, 1);
+        memory.stamp(65);
+        memory.stamp(130);
+        memory.stamp(65);
         const order = [];
-        memory.forEachNewestFirst((col, row) => order.push(`${col},${row}`));
-        assert.deepEqual(order, ["1,1", "2,2"]);
+        memory.forEachNewestFirst((idx) => order.push(idx));
+        assert.deepEqual(order, [65, 130]);
     });
+
     it("getRecencyRankFromNewest orders oldest last", () => {
         const memory = createSpatialCellMemory({ capacity: 4 });
-        memory.stamp(1, 1);
-        memory.stamp(2, 2);
-        memory.stamp(3, 3);
-        assert.equal(memory.getRecencyRankFromNewest(3, 3), 0);
-        assert.equal(memory.getRecencyRankFromNewest(1, 1), 2);
-        assert.equal(memory.getRecencyRankFromNewest(9, 9), -1);
+        memory.stamp(65);
+        memory.stamp(130);
+        memory.stamp(195);
+        assert.equal(memory.getRecencyRankFromNewest(195), 0);
+        assert.equal(memory.getRecencyRankFromNewest(65), 2);
+        assert.equal(memory.getRecencyRankFromNewest(9 + 9 * 64), -1);
     });
 });
+
 describe("createBrain", () => {
     it("stamps seen cells and arrivals through spatial memory", () => {
         const brain = createBrain({ spatialMemoryCapacity: 2 });
-        brain.stampSeenCells([{ col: 5, row: 5 }]);
-        brain.stampArrival(6, 6);
-        assert.ok(brain.spatial.has(5, 5));
-        assert.ok(brain.spatial.has(6, 6));
-        brain.stampArrival(7, 7);
-        assert.ok(!brain.spatial.has(5, 5));
-        assert.ok(brain.spatial.has(6, 6));
-        assert.ok(brain.spatial.has(7, 7));
+        brain.stampSeenCells([5 + 5 * 64]);
+        brain.stampArrival(6 + 6 * 64);
+        assert.ok(brain.spatial.has(5 + 5 * 64));
+        assert.ok(brain.spatial.has(6 + 6 * 64));
+        brain.stampArrival(7 + 7 * 64);
+        assert.ok(!brain.spatial.has(5 + 5 * 64));
+        assert.ok(brain.spatial.has(6 + 6 * 64));
+        assert.ok(brain.spatial.has(7 + 7 * 64));
     });
+
     it("buildNavStepPenaltyFromSpatialMemory assigns higher cost to newer cells", () => {
         const brain = createBrain({ spatialMemoryCapacity: 4 });
-        brain.stampArrival(1, 1);
-        brain.stampArrival(2, 2);
-        brain.stampArrival(3, 3);
+        brain.stampArrival(65);
+        brain.stampArrival(130);
+        brain.stampArrival(195);
         const penalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: 10, falloff: 0.5 });
         assert.ok(penalty);
         assert.ok(penalty.costs[0] > penalty.costs[penalty.costs.length - 1]);

@@ -6,7 +6,7 @@ import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import { deriveSprintIntent } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { deriveThreatState } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { bandFromThresholds } from "../Libraries/AI/agents/AgentDecisionContext.js";
-import { createModePolicyLatch } from "../Libraries/AI/agentIntent/AgentIntent.js";
+import { createModePolicyLatch } from "./harness/agentTestCompat.js";
 const TEST_HUNGER_BANDS = [
     { id: "satisfied", min: 0.66 },
     { id: "hungry", min: 0.33 },

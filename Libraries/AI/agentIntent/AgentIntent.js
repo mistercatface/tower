@@ -169,11 +169,12 @@ export function createExploreIntentState(deps = {}) {
 }
 export function createSeekIntentState(deps = {}) {
     const seekOptionsScratch = { arrivalRadius: 0, lockOnTarget: undefined, terminalHoming: undefined, targetId: null };
-    const shouldRefreshSeekDestination = (ctx, targetCell) => {
+    const shouldRefreshSeekDestination = (ctx, targetIdx) => {
         const locomotion = deps.locomotion ?? ctx.locomotion;
         if (!ctx.dest) return true;
         if (locomotion.hasArrivedAtDest(ctx.agent, ctx.grid)) return true;
-        if (ctx.dest.col !== targetCell.col || ctx.dest.row !== targetCell.row) return true;
+        const destIdx = ctx.dest.col + ctx.dest.row * ctx.grid.cols;
+        if (destIdx !== targetIdx) return true;
         if (!ctx.dest.lockOnTarget || !ctx.dest.world) return false;
         const isSameTarget = ctx.dest.targetId != null && ctx.dest.targetId === ctx.target.id;
         return !isSameTarget;
@@ -207,8 +208,10 @@ export function createSeekIntentState(deps = {}) {
                 safeTransitionTo(fsm, actualCtx.policy?.mode, "target_lost", actualCtx.policy?.targetId);
                 return;
             }
-            const targetCell = { col: actualCtx.grid.worldCol(actualCtx.target.x), row: actualCtx.grid.worldRow(actualCtx.target.y) };
-            if (shouldRefreshSeekDestination(actualCtx, targetCell)) {
+            const targetCol = actualCtx.grid.worldCol(actualCtx.target.x);
+            const targetRow = actualCtx.grid.worldRow(actualCtx.target.y);
+            const targetIdx = targetCol + targetRow * actualCtx.grid.cols;
+            if (shouldRefreshSeekDestination(actualCtx, targetIdx)) {
                 const arrived = locomotion.hasArrivedAtDest(actualCtx.agent, actualCtx.grid);
                 safeSetLastTransition(fsm, arrived ? "arrived" : "repick_dest");
                 safeSetSeekDestination(fsm, actualCtx, actualCtx.target, setSeekDestination);
@@ -290,9 +293,6 @@ export class ModePolicyLatch {
     snapshot() {
         return { mode: this.mode, active: this.active, ticksRemaining: this.ticksRemaining };
     }
-}
-export function createModePolicyLatch(config) {
-    return new ModePolicyLatch(config);
 }
 // ==========================================
 // Target Events

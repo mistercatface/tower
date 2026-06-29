@@ -1,6 +1,6 @@
 import { spawnGunBulletProjectile } from "./gunAgent/gunBulletSystem.js";
 import { angleDelta, rotateAngleTowards } from "../../Math/Angle.js";
-import { createModePolicyLatch } from "../../AI/agentIntent/AgentIntent.js";
+import { ModePolicyLatch } from "../../AI/agentIntent/AgentIntent.js";
 import { deriveSprintIntent } from "../../AI/agents/AgentDecisionContext.js";
 import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./ballAgent.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
@@ -41,7 +41,6 @@ export class RangedCombatActionState {
         return this.phase === "reacting" || this.phase === "fire_delay" || this.phase === "reloading";
     }
 }
-
 export function deriveRangedCombatStateInto(out, ctx, input, profile) {
     const weapon = input.agentInstance?.resolvedWeapon ?? resolveRangedWeapon({ equippedWeapon: input.equippedWeapon }, profile, input.weaponVisionRange);
     if (!weapon) {
@@ -333,7 +332,7 @@ export function resetInstanceRangedCombatAction(instance) {
     if (instance.combatAction) instance.combatAction.reset();
 }
 export function createRangedCombatPolicyExtension() {
-    const shootLatch = createModePolicyLatch({
+    const shootLatch = new ModePolicyLatch({
         mode: "shoot_enemy",
         minTicks: 0,
         holdReason: "shoot_held",

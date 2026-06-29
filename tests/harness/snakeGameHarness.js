@@ -14,9 +14,8 @@ import { createHpaGroundNavBehavior } from "../../Libraries/Sandbox/groundNav/hp
 import { createCellTargetHpaNav } from "../../Libraries/Sandbox/groundNav/cellTargetHpaNav.js";
 import { DIRECT_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID } from "../../Libraries/Sandbox/groundNav/groundNavIds.js";
 import { applySnakeGameConfig, getSnakeGameConfig, resolveSnakeChainSpawnOptions, resolveSnakeSegmentSpacing } from "../../Libraries/Game/snake/snakeGameConfig.js";
-import { createAgentAutosim } from "../../Libraries/Game/snake/agentAutosim.js";
 import { applyAgentGameplay } from "../../Libraries/Game/snake/applyAgentGameplay.js";
-import { getAgentHunger, setAgentHunger } from "./agentTestCompat.js";
+import { getAgentHunger, setAgentHunger, createAgentAutosim } from "./agentTestCompat.js";
 import { AGENT_PROFILE } from "../../Libraries/AI/agents/AgentProfiles.js";
 import { resolveSnakeNavWalkableFloodSeedBounds } from "../../Libraries/Game/snake/snakeScene.js";
 import { SNAKE_SHARD_PROP_ID } from "../../Libraries/Game/snake/snakeSegmentFracture.js";

@@ -13,7 +13,7 @@ import { isAliveAgentHead } from "../Libraries/AI/agents/AgentProfiles.js";
 import { wireSnakeTestGame } from "./harness/snakeGameHarness.js";
 import { steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
-import { createAgentAutosim } from "../Libraries/Game/snake/agentAutosim.js";
+import { createAgentAutosim } from "./harness/agentTestCompat.js";
 
 function createTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

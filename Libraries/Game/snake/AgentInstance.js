@@ -4,7 +4,7 @@ import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
 import { createCellTargetHpaNav } from "../../Sandbox/groundNav/cellTargetHpaNav.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
-import { createAgentAutosim } from "./agentAutosim.js";
+import { AgentAutosim } from "./agentAutosim.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { AgentMetabolism } from "./agentMetabolism.js";
 import { clearSnakeSteeringLeaseFromProp } from "./snakeSteeringLease.js";
@@ -77,7 +77,7 @@ export class AgentInstance {
         this.entityMeta = getSandboxEntityMeta(state);
         this.headNav = createCellTargetHpaNav(state);
         this.syncMembersFromGraph();
-        this.autosim = createAgentAutosim(state, this);
+        this.autosim = new AgentAutosim(state, this);
     }
     get headId() {
         return this.head.id;

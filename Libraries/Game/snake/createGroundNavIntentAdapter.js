@@ -1,5 +1,5 @@
-import { AgentIntentFSM, createExploreIntentState, createFleeIntentState, createSeekIntentState, createModePolicyLatch } from "../../AI/agentIntent/AgentIntent.js";
-import { createAgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
+import { AgentIntentFSM, createExploreIntentState, createFleeIntentState, createSeekIntentState, ModePolicyLatch } from "../../AI/agentIntent/AgentIntent.js";
+import { AgentIntentMemory } from "../../AI/memory/createAgentIntentMemory.js";
 import { deriveSprintIntent, buildAgentDecisionContextInto, buildAgentDecisionSpec, createAgentDecisionContextFrame } from "../../AI/agents/AgentDecisionContext.js";
 import { publishAgentEngagement } from "../../AI/agents/AgentProfiles.js";
 import { pickFleeCell } from "../../AI/steering/pickFleeCell.js";
@@ -17,7 +17,6 @@ import { getPropCategoryIndex } from "../../../GameState/SandboxWorldState.js";
 import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { resolveRelationshipForInstances } from "./agentRelationships.js";
 import { isSnakeShardFood, isEdibleSnakeFoodForSeeker } from "./snakeFood.js";
-
 import { createRangedCombatPolicyExtension, createRangedShootIntentState, resetInstanceRangedCombatAction } from "./rangedCombat.js";
 import { requireSnakeVisionFrame } from "./snakePerception.js";
 function readAgentRouteStatusInto(out, locomotion, agent, state) {
@@ -34,26 +33,22 @@ function readAgentRouteStatusInto(out, locomotion, agent, state) {
     return out;
 }
 function createBrainArrivalStamper(brain) {
-    let lastArrivalCol = null;
-    let lastArrivalRow = null;
+    let lastArrivalIdx = null;
     return {
         stamp(agent, grid) {
-            const col = grid.worldCol(agent.x);
-            const row = grid.worldRow(agent.y);
-            if (col === lastArrivalCol && row === lastArrivalRow) return;
-            lastArrivalCol = col;
-            lastArrivalRow = row;
-            brain.stampArrival(col, row);
+            const idx = grid.worldCol(agent.x) + grid.worldRow(agent.y) * grid.cols;
+            if (idx === lastArrivalIdx) return;
+            lastArrivalIdx = idx;
+            brain.stampArrival(idx);
         },
         reset() {
-            lastArrivalCol = null;
-            lastArrivalRow = null;
+            lastArrivalIdx = null;
         },
     };
 }
 function createFleeIntentLatch(config) {
     const fleeHysteresis = config.fleeHysteresis;
-    return createModePolicyLatch({
+    return new ModePolicyLatch({
         mode: "flee",
         minTicks: fleeHysteresis.minTicks,
         holdReason: "flee_hysteresis",
@@ -351,7 +346,7 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
         } = options;
         const resolvedVision = visionRange ?? config.visionRange;
         const locomotion = createCellTargetLocomotion(headNav);
-        const intentMemory = createAgentIntentMemory(intentMemoryOptions);
+        const intentMemory = new AgentIntentMemory(intentMemoryOptions);
         const fleeLatch = createFleeIntentLatch(config);
         const arrivalStamper = createBrainArrivalStamper(brain);
         const staleCache = createFlowReachStaleCache();

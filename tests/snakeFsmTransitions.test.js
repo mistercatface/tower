@@ -16,7 +16,8 @@ import { createGroundNavIntentAdapter, buildGroundNavIntentAdapterOptions, resol
 import { AGENT_DECISION_PROFILE } from "../Libraries/AI/agents/AgentDecisionContext.js";
 import { getAgentProfile } from "../Libraries/AI/agents/AgentProfiles.js";
 import { createAgentMetabolism } from "./harness/agentTestCompat.js";
-import { createBrain, createSpatialBrainSync } from "../Libraries/Game/snake/agentAutosim.js";
+import { createBrain } from "./harness/agentTestCompat.js";
+import { createSpatialBrainSync } from "../Libraries/Game/snake/agentAutosim.js";
 import { FRAME_MS } from "./frameMs.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { applyAgentGameplay } from "../Libraries/Game/snake/applyAgentGameplay.js";

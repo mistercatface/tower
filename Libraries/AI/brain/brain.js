@@ -5,6 +5,7 @@ export class SpatialCellMemory {
         this.cols = cols;
         this.entries = new LruMap(capacity);
         this.stampSeq = 0;
+        this._keyBuffer = [];
     }
     get generation() {
         return this.stampSeq;
@@ -12,30 +13,20 @@ export class SpatialCellMemory {
     get size() {
         return this.entries.size;
     }
-    _keyFor(col, row) {
-        return col + row * this.cols;
-    }
-    stamp(col, row) {
-        const idx = typeof row === "number" ? this._keyFor(col, row) : col;
+    stamp(idx) {
         this.entries.set(idx, this.stampSeq++);
     }
     stampCells(cells) {
-        for (let i = 0; i < cells.length; i++) {
-            const cell = cells[i];
-            const idx = typeof cell === "number" ? cell : this._keyFor(cell.col, cell.row);
-            this.entries.set(idx, this.stampSeq++);
-        }
+        for (let i = 0; i < cells.length; i++) this.entries.set(cells[i], this.stampSeq++);
     }
-    has(col, row) {
-        const idx = typeof row === "number" ? this._keyFor(col, row) : col;
+    has(idx) {
         return this.entries.has(idx);
     }
-    getRecencyRankFromNewest(col, row) {
-        const target = typeof row === "number" ? this._keyFor(col, row) : col;
-        if (!this.entries.has(target)) return -1;
+    getRecencyRankFromNewest(targetIdx) {
+        if (!this.entries.has(targetIdx)) return -1;
         let rankFromOldest = 0;
         for (const key of this.entries.keys()) {
-            if (key === target) return this.entries.size - 1 - rankFromOldest;
+            if (key === targetIdx) return this.entries.size - 1 - rankFromOldest;
             rankFromOldest++;
         }
         return -1;
@@ -45,24 +36,16 @@ export class SpatialCellMemory {
         this.stampSeq = 0;
     }
     forEachNewestFirstKey(fn) {
-        const keys = [...this.entries.keys()];
-        for (let i = keys.length - 1; i >= 0; i--) fn(keys[i], this.entries.peek(keys[i]), keys.length - 1 - i);
+        const buf = this._keyBuffer;
+        buf.length = 0;
+        for (const key of this.entries.keys()) buf.push(key);
+        for (let i = buf.length - 1; i >= 0; i--) fn(buf[i], this.entries.peek(buf[i]), buf.length - 1 - i);
     }
     forEachNewestFirst(fn) {
-        const keys = [...this.entries.keys()];
-        for (let i = keys.length - 1; i >= 0; i--) {
-            const idx = keys[i];
-            const col = idx % this.cols;
-            const row = (idx / this.cols) | 0;
-            fn(col, row, this.entries.peek(idx), keys.length - 1 - i);
-        }
-    }
-    forEachOldestFirst(fn) {
-        for (const key of this.entries.keys()) {
-            const col = key % this.cols;
-            const row = (key / this.cols) | 0;
-            fn(col, row, this.entries.peek(key));
-        }
+        const buf = this._keyBuffer;
+        buf.length = 0;
+        for (const key of this.entries.keys()) buf.push(key);
+        for (let i = buf.length - 1; i >= 0; i--) fn(buf[i], this.entries.peek(buf[i]), buf.length - 1 - i);
     }
 }
 export function createSpatialCellMemory(config) {

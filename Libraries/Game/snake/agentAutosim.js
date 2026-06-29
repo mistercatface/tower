@@ -12,22 +12,31 @@ export class Brain {
     stampSeenCells(cells) {
         this.spatial.stampCells(cells);
     }
-    stampArrival(col, row) {
-        this.spatial.stamp(col, row);
+    stampArrival(idx) {
+        this.spatial.stamp(idx);
     }
     clearMemory() {
         this.spatial.clear();
     }
 }
-export function createBrain(config) {
-    return new Brain(config);
-}
-export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty, falloff }) {
+export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty, falloff }, keysBuffer = null, costsBuffer = null) {
+    if (keysBuffer && costsBuffer) {
+        let count = 0;
+        spatial.forEachNewestFirstKey((key, _seq, rankFromNewest) => {
+            if (count < keysBuffer.length) {
+                keysBuffer[count] = key;
+                costsBuffer[count] = basePenalty * (falloff ** rankFromNewest);
+                count++;
+            }
+        });
+        if (!count) return null;
+        return { keys: keysBuffer.subarray(0, count), costs: costsBuffer.subarray(0, count) };
+    }
     const keys = [];
     const costs = [];
     spatial.forEachNewestFirstKey((key, _seq, rankFromNewest) => {
         keys.push(key);
-        costs.push(basePenalty * falloff ** rankFromNewest);
+        costs.push(basePenalty * (falloff ** rankFromNewest));
     });
     if (!keys.length) return null;
     return { keys: Int32Array.from(keys), costs: Float32Array.from(costs) };
@@ -35,13 +44,16 @@ export function buildNavStepPenaltyFromSpatialMemory(spatial, { basePenalty, fal
 export function createSpatialBrainSync(brain, { visionRange, navMemoryStepPenalty, navMemoryStepFalloff }) {
     let lastPenaltyGeneration = -1;
     let lastPenalty = null;
+    const capacity = brain.spatial.capacity;
+    const keysBuffer = new Int32Array(capacity);
+    const costsBuffer = new Float32Array(capacity);
     return function syncSpatialBrain(agent, state) {
         const frame = getObserverVisionFrame(state);
         const vision = frame.ensureHeadVision(agent, visionRange);
         brain.stampSeenCells(vision.cells);
         const generation = brain.spatial.generation;
         if (generation !== lastPenaltyGeneration) {
-            lastPenalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: navMemoryStepPenalty, falloff: navMemoryStepFalloff });
+            lastPenalty = buildNavStepPenaltyFromSpatialMemory(brain.spatial, { basePenalty: navMemoryStepPenalty, falloff: navMemoryStepFalloff }, keysBuffer, costsBuffer);
             lastPenaltyGeneration = generation;
         }
         agent.navStepPenalty = lastPenalty;
@@ -56,7 +68,7 @@ export class AgentAutosim {
         this.entityRegistry = state.entityRegistry;
         this.agentCtx = { instance, session: this.session, navWalkable: this.session.navWalkable };
         this.profile = instance.profile;
-        this.brain = createBrain({ spatialMemoryCapacity: this.shared.spatialMemoryCapacity, cols: state.obstacleGrid?.cols ?? 64 });
+        this.brain = new Brain({ spatialMemoryCapacity: this.shared.spatialMemoryCapacity, cols: state.obstacleGrid?.cols ?? 64 });
         this.sync = createSpatialBrainSync(this.brain, {
             visionRange: instance.visionRange,
             navMemoryStepPenalty: this.shared.navMemoryStepPenalty,
@@ -114,7 +126,4 @@ export class AgentAutosim {
         const drainMultiplier = this.instance.hungerDrainMultiplier();
         if (!fedThisTick) this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
     }
-}
-export function createAgentAutosim(state, instance) {
-    return new AgentAutosim(state, instance);
 }
