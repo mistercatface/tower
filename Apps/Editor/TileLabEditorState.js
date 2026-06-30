@@ -8,7 +8,7 @@ export class TileLabEditorState {
         this.canvas = null;
         this.ctx = null;
         this.mapBoundsPreview = createLabMapBoundsPreview();
-        this.playConfig = { playAreaCols: 256, playAreaRows: 256 };
+        this.playConfig = { playAreaCols: 128, playAreaRows: 128 };
         this.cavernConfig = { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
         this.railConfig = { ...createDefaultMapGenBoundsConfig(), fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
         this.railMazeConfig = { ...createDefaultMapGenBoundsConfig(), wallHeightLevel: 1, edgeThickness: 1, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25, northReserveRows: 3 };
