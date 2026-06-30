@@ -1,4 +1,4 @@
-import { getConnectedBodyIds, getConnectedComponentPath, getLinearChainOrderedMembers } from "../../Motion/kineticConstraintGraph.js";
+import { getConnectedBodyIds, getConnectedComponentPath } from "../../Motion/kineticConstraintGraph.js";
 import { clearChainLinksForMembers, clearChainLinksForProp, removeChainLinkBetween } from "../../Sandbox/chainLinks.js";
 import { growChainSegment } from "../../Sandbox/spawnLinkedBallChain.js";
 import { removeSandboxWorldProp } from "../../Sandbox/sandboxPlacedSpawn.js";
@@ -153,7 +153,7 @@ export class AgentInstance {
         syncBallAgentFacingToVelocity(this.head, dtMs, this.aimTurnRadPerSec);
     }
     orderedMembers(state) {
-        return getLinearChainOrderedMembers(state.kinetic, this.headId);
+        return getConnectedComponentPath(state.kinetic, this.headId);
     }
     updatePressureDiagnostics(state) {
         if (!this.profile.species?.pressureDiagnostics) return;
