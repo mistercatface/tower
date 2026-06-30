@@ -16,11 +16,14 @@ export class CircleShape extends Shape {
         return this.radius;
     }
 }
+import { polygonSignedArea2D, reversePolygonWinding } from "../../Math/Poly2D.js";
 export class PolygonShape extends Shape {
     constructor(vertices) {
         super();
         this.type = "Polygon";
-        this.vertices = vertices instanceof Float32Array ? vertices : new Float32Array(vertices);
+        let verts = vertices instanceof Float32Array ? vertices : new Float32Array(vertices);
+        if (polygonSignedArea2D(verts) < 0) verts = reversePolygonWinding(verts);
+        this.vertices = verts;
         this.normals = this._computeNormals();
         this.boundingRadius = this._computeBoundingRadius();
     }

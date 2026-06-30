@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto, ensureFlatVerts } from "../Libraries/Math/Poly2D.js";
+import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
@@ -100,3 +100,26 @@ describe("Poly2D.ensureFlatVerts", () => {
         assert.equal(res[3], 4);
     });
 });
+describe("Poly2D.reversePolygonWinding", () => {
+    it("reverses winding order of flat coordinate array", () => {
+        const original = new Float32Array([0, 0, 10, 0, 10, 10, 0, 10]);
+        const reversed = reversePolygonWinding(original);
+        assert.deepEqual(Array.from(reversed), [0, 10, 10, 10, 10, 0, 0, 0]);
+    });
+});
+import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+describe("PolygonShape winding order enforcement", () => {
+    it("preserves counter-clockwise winding", () => {
+        const ccw = new Float32Array([0, 0, 10, 0, 10, 10, 0, 10]);
+        const shape = new PolygonShape(ccw);
+        assert.ok(polygonSignedArea2D(shape.vertices) > 0);
+        assert.deepEqual(Array.from(shape.vertices), [0, 0, 10, 0, 10, 10, 0, 10]);
+    });
+    it("reverses clockwise winding to counter-clockwise", () => {
+        const cw = new Float32Array([0, 0, 0, 10, 10, 10, 10, 0]);
+        const shape = new PolygonShape(cw);
+        assert.ok(polygonSignedArea2D(shape.vertices) > 0);
+        assert.deepEqual(Array.from(shape.vertices), [10, 0, 10, 10, 0, 10, 0, 0]);
+    });
+});
+

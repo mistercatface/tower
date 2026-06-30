@@ -256,3 +256,14 @@ export function scaleFlatVerts(flat, scale) {
 export function vertCount(flat) {
     return flat.length / 2;
 }
+export function reversePolygonWinding(vertices) {
+    const count = vertices.length / 2;
+    const reversed = new Float32Array(vertices.length);
+    for (let i = 0; i < count; i++) {
+        const src = i * 2;
+        const dest = (count - 1 - i) * 2;
+        reversed[dest] = vertices[src];
+        reversed[dest + 1] = vertices[src + 1];
+    }
+    return reversed;
+}

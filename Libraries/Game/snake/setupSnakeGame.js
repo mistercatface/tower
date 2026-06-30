@@ -152,6 +152,14 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         playbackHandlers,
         gameState: state,
         onVisualSettingChange: markLabViewDirty,
+        debugInspectControl: {
+            get() {
+                return state.editor.debugInspect;
+            },
+            set(enabled) {
+                state.editor.debugInspect = enabled;
+            },
+        },
     });
     state.followCamera.focus(defaultCameraTarget);
     state.followCamera.bindInput();

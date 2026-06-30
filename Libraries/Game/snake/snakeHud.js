@@ -19,6 +19,7 @@ export function mountSnakeHud({
     playbackHandlers = null,
     gameState = null,
     onVisualSettingChange = null,
+    debugInspectControl = null,
 } = {}) {
     const stage = document.querySelector("#gameStage");
     const root = document.createElement("div");
@@ -29,6 +30,7 @@ export function mountSnakeHud({
     if (onCycleCamera) toggles.push(hudToggleButton("Switch Camera", "data-snake-camera-toggle"));
     toggles.push(hudToggleButton("Overlay", "data-snake-overlay-toggle"));
     if (hpaDebugToggleControl) toggles.push(hudToggleButton("HPA Debug", "data-snake-hpa-debug-toggle"));
+    if (debugInspectControl) toggles.push(hudToggleButton("Debug Inspect", "data-snake-debug-inspect-toggle"));
     const shadowPanel = shadowSliderControl
         ? '<div class="snake-hud-panel snake-hud-slider-panel"><span class="snake-hud-label">Shadows</span><div class="snake-hud-slider-row"><input type="range" class="snake-hud-slider" data-snake-shadow-slider min="0" max="100" step="1" value="0" aria-label="Shadow darkness"><span class="snake-hud-slider-value" data-snake-shadow-value>Off</span></div></div>'
         : "";
@@ -41,6 +43,20 @@ export function mountSnakeHud({
         speedPanel +
         (toggles.length ? `<div class="snake-hud-toggles">${toggles.join("")}</div>` : "");
     stage.appendChild(root);
+    const debugPanel = document.createElement("div");
+    debugPanel.className = "snake-hud-panel snake-debug-panel";
+    debugPanel.style.display = "none";
+    debugPanel.style.flexDirection = "column";
+    debugPanel.style.gap = "4px";
+    debugPanel.style.marginTop = "8px";
+    debugPanel.style.backgroundColor = "rgba(0, 0, 0, 0.85)";
+    debugPanel.style.border = "1px solid #555";
+    debugPanel.style.borderRadius = "4px";
+    debugPanel.style.padding = "8px";
+    debugPanel.style.fontFamily = "monospace";
+    debugPanel.style.fontSize = "11px";
+    debugPanel.style.color = "#ccc";
+    root.appendChild(debugPanel);
     const nameEl = root.querySelector("[data-snake-name]");
     const renderModeToggleEl = renderModeControl ? root.querySelector("[data-snake-render-mode-toggle]") : null;
     const renderModeLabelEl = renderModeToggleEl?.querySelector(".snake-hud-value") ?? null;
@@ -50,6 +66,7 @@ export function mountSnakeHud({
     const cameraToggleEl = onCycleCamera ? root.querySelector("[data-snake-camera-toggle]") : null;
     const overlayToggleEl = root.querySelector("[data-snake-overlay-toggle]");
     const hpaDebugToggleEl = hpaDebugToggleControl ? root.querySelector("[data-snake-hpa-debug-toggle]") : null;
+    const debugInspectToggleEl = debugInspectControl ? root.querySelector("[data-snake-debug-inspect-toggle]") : null;
     if (cameraToggleEl && onCycleCamera) cameraToggleEl.addEventListener("click", onCycleCamera);
     function notifyVisualChange() {
         onVisualSettingChange?.();
@@ -148,6 +165,20 @@ export function mountSnakeHud({
         });
         syncHpaDebugToggle();
     }
+    function syncDebugInspectToggle() {
+        if (!debugInspectToggleEl || !debugInspectControl) return;
+        const enabled = debugInspectControl.get() === true;
+        debugInspectToggleEl.classList.toggle("is-on", enabled);
+        debugInspectToggleEl.setAttribute("aria-pressed", enabled ? "true" : "false");
+    }
+    if (debugInspectToggleEl && debugInspectControl) {
+        debugInspectToggleEl.addEventListener("click", () => {
+            debugInspectControl.set(!debugInspectControl.get());
+            syncDebugInspectToggle();
+            notifyVisualChange();
+        });
+        syncDebugInspectToggle();
+    }
     let lastName = undefined;
     return {
         update() {
@@ -160,6 +191,22 @@ export function mountSnakeHud({
             }
             zoomControlHandle?.refresh();
             if (gameState) speedControlHandle?.refresh(gameState);
+            if (debugInspectControl && debugInspectControl.get() && gameState.debugSelectedProp) {
+                const prop = gameState.debugSelectedProp;
+                debugPanel.style.display = "flex";
+                debugPanel.innerHTML = `
+                    <div style="font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 2px; color: #fff; margin-bottom: 4px;">Inspect: ${prop.type}</div>
+                    <div>Phys ID: ${prop._physId !== undefined ? prop._physId : "none"}</div>
+                    <div>Active Slot: ${prop._activeSlot !== undefined ? prop._activeSlot : "none"}</div>
+                    <div>Sleeping: ${prop.isSleeping ? "true" : "false"} (${prop._sleepFrames ?? 0}f)</div>
+                    <div>Vel: (${prop.vx?.toFixed(2) ?? 0}, ${prop.vy?.toFixed(2) ?? 0})</div>
+                    <div>Ang Vel: ${prop.angularVelocity?.toFixed(4) ?? 0}</div>
+                    <div>Shape: ${prop.shape?.type ?? "none"} (r: ${prop.radius?.toFixed(2) ?? 0})</div>
+                    ${prop.shape?.type === "Polygon" ? `<div>Verts: ${prop.shape.vertices.length / 2}</div>` : ""}
+                `;
+            } else {
+                debugPanel.style.display = "none";
+            }
         },
         destroy() {
             root.remove();

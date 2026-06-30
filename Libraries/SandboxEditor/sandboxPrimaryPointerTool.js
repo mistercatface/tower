@@ -38,9 +38,10 @@ export function createSandboxPrimaryPointerTools(
             const registry = state.entityRegistry;
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
+                if (state.editor?.debugInspect) state.debugSelectedProp = hit;
                 if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
                 const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
-                if (allowed.length > 0) {
+                if (allowed.length > 0 || state.editor?.debugInspect) {
                     if (e.ctrlKey || e.metaKey) {
                         togglePropInSelection(hit.id);
                         return "consume";
@@ -54,7 +55,7 @@ export function createSandboxPrimaryPointerTools(
                     return true;
                 }
                 return "consume";
-            }
+            } else if (state.editor?.debugInspect) state.debugSelectedProp = null;
             const groundMove = resolveGroundMove();
             if (groundMove) {
                 gestures.startGroundNav(groundMove, world, e);

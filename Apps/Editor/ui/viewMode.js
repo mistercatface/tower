@@ -26,6 +26,7 @@ export function applyLabViewChrome(state) {
     document.getElementById("showSelectionRingsInput").checked = state.editor.showSelectionRings;
     document.getElementById("showPropTileCellsInput").checked = state.editor.showPropTileCells;
     document.getElementById("showRoomNodesAlwaysInput").checked = state.editor.showRoomNodesAlways;
+    document.getElementById("debugInspectInput").checked = state.editor.debugInspect;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
 export function bindViewModeControls(state, onChange, onLayoutChange = null) {
@@ -49,6 +50,10 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
     });
     document.getElementById("showRoomNodesAlwaysInput").addEventListener("change", (e) => {
         state.editor.showRoomNodesAlways = /** @type {HTMLInputElement} */ (e.target).checked;
+    });
+    document.getElementById("debugInspectInput").addEventListener("change", (e) => {
+        state.editor.debugInspect = /** @type {HTMLInputElement} */ (e.target).checked;
+        onChange();
     });
     applyLabViewChrome(state);
 }

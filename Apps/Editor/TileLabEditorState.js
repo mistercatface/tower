@@ -18,5 +18,6 @@ export class TileLabEditorState {
         this.showSelectionRings = true;
         this.showPropTileCells = false;
         this.showRoomNodesAlways = false;
+        this.debugInspect = false;
     }
 }
