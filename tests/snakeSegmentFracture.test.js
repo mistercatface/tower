@@ -67,8 +67,7 @@ function spawnFastImpactBall(state, x, y, radius = 2) {
 }
 
 function assertSnakeShardCountForOneSegment(shards) {
-    assert.ok(shards.length >= 2);
-    assert.ok(shards.length <= 3);
+    assert.equal(shards.length, 4);
 }
 
 describe("snake segment fracture", () => {
@@ -182,7 +181,7 @@ describe("snake segment fracture", () => {
         instance.kill(state, null, { worldX: struck.x, worldY: struck.y, impactForce: 30, struckSegmentId: struck.id });
 
         const shards = snakeShards(state);
-        assert.ok(shards.length >= 2);
+        assert.equal(shards.length, 4);
         for (const shard of shards) {
             // Verify shard has been admitted to the spatial frame
             assert.notEqual(shard._physId, undefined);

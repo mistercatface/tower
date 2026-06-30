@@ -10,7 +10,7 @@ export const SNAKE_SHARD_PROP_ID = "snake_shard";
 export const AMMO_SHARD_PROP_ID = "ammo_shard";
 const FRACTURABLE_DEAD_SEGMENT_FLAG = "_snakeFracturableDeadSegment";
 const MIN_SNAKE_SHARDS = 2;
-const MAX_SNAKE_SHARDS = 3;
+const MAX_SNAKE_SHARDS = 6;
 const FALLBACK_IMPACT_FORCE = 26;
 function propFacing(prop) {
     return prop.facing ?? prop.angle ?? 0;
@@ -62,7 +62,7 @@ function resolveSegmentImpact(segment, radius, deathImpact, index) {
 export function fractureSnakeSegmentGeometry(segment, impact, random = Math.random) {
     const radius = getCirclePropRadius(segment) ?? segment.radius ?? 0;
     if (radius <= 0) return [];
-    return buildCircleImpactShards(radius, impact.localHit, impact.impactForce, { minShards: MIN_SNAKE_SHARDS, maxShards: MAX_SNAKE_SHARDS });
+    return buildCircleImpactShards(radius, { x: 0, y: 0 }, 0, { minShards: 4, maxShards: 4 });
 }
 export function spawnSnakeSegmentShards(state, segment, impact, spatialFrame = null, random = Math.random) {
     const geometries = fractureSnakeSegmentGeometry(segment, impact, random);

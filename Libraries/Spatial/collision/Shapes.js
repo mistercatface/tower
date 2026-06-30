@@ -22,6 +22,33 @@ export class PolygonShape extends Shape {
         super();
         this.type = "Polygon";
         let verts = vertices instanceof Float32Array ? vertices : new Float32Array(vertices);
+        const count = verts.length / 2;
+        if (count >= 3) {
+            const clean = [];
+            let lastX = NaN;
+            let lastY = NaN;
+            for (let i = 0; i < count; i++) {
+                const x = verts[i * 2];
+                const y = verts[i * 2 + 1];
+                if (i > 0) {
+                    const dx = x - lastX;
+                    const dy = y - lastY;
+                    if (dx * dx + dy * dy < 1e-8) continue;
+                }
+                clean.push(x, y);
+                lastX = x;
+                lastY = y;
+            }
+            if (clean.length >= 6) {
+                const dx = clean[clean.length - 2] - clean[0];
+                const dy = clean[clean.length - 1] - clean[1];
+                if (dx * dx + dy * dy < 1e-8) {
+                    clean.pop();
+                    clean.pop();
+                }
+            }
+            if (clean.length !== verts.length) verts = new Float32Array(clean);
+        }
         if (polygonSignedArea2D(verts) < 0) verts = reversePolygonWinding(verts);
         this.vertices = verts;
         this.normals = this._computeNormals();
