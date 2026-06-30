@@ -17,7 +17,7 @@ function applySpawnedChainGameplay(profile, chain) {
     }
 }
 function buildChainSpawnSpec(profile, config, options = {}) {
-    const leaderIndex = profile.leaderIndex ?? profile.armSegmentCount ?? 0;
+    const leaderIndex = profile.leaderIndex ?? 0;
     const segmentCount = options.segmentCount ?? profile.segmentCount ?? 1;
     const segmentRadius = options.segmentRadius ?? config.startRadius;
     const spacing = options.spacing ?? resolveSnakeSegmentSpacing(profile.linkSlack, segmentRadius);
@@ -38,7 +38,7 @@ function buildChainSpawnSpec(profile, config, options = {}) {
     };
     const headPropId = options.headPropId ?? profile.headPropId;
     const bodyPropId = options.bodyPropId ?? profile.bodyPropId;
-    const leaderPropId = options.leaderPropId ?? profile.leaderPropId ?? profile.brainPropId;
+    const leaderPropId = options.leaderPropId ?? profile.leaderPropId;
     if (leaderPropId) base.leaderPropId = leaderPropId;
     if (headPropId) base.headPropId = headPropId;
     if (bodyPropId) base.bodyPropId = bodyPropId;

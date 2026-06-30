@@ -26,22 +26,14 @@ describe("applyAgentGameplay", () => {
         applySnakeGameConfig();
     });
 
-    it("squid body applies segment friction and density from gameplay.body", () => {
-        applySnakeGameConfig();
-        const segment = mockProp({ isKinetic: true });
-        applyAgentGameplay(getAgentProfile(AGENT_PROFILE.squid).gameplay.body, segment);
-        assert.equal(segment.strategy.friction, 2.5);
-        assert.equal(segment.strategy.density, 0.001);
-    });
-
     it("applies distinct leader and body gameplay specs", () => {
         applySnakeGameConfig();
         const leader = mockProp();
         const body = mockProp({ isKinetic: true });
-        const profile = getAgentProfile(AGENT_PROFILE.squid);
+        const profile = getAgentProfile(AGENT_PROFILE.snake);
         applyAgentGameplay(profile.gameplay.leader, leader);
         applyAgentGameplay(profile.gameplay.body, body);
-        assert.equal(leader.strategy.groundNav.maxSpeed, 180);
-        assert.equal(body.strategy.friction, 2.5);
+        assert.equal(leader.strategy.groundNav.maxSpeed, 250);
+        assert.equal(body.strategy.friction, 2.25);
     });
 });

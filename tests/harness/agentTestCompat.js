@@ -12,7 +12,7 @@ import {
     copySnakeChainTintFromHead
 } from "../../Libraries/Game/snake/AgentInstance.js";
 import { TargetMemory, targetFromMemoryRecord, RangedCombatActionState, AgentIntentMemory, ModePolicyLatch, resolveRangedWeapon } from "../../Libraries/Game/snake/GroundNavIntentAdapter.js";
-import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill, COMBAT_TRAIT_DEFAULTS, matchesBrainRamResolver } from "../../Libraries/Game/snake/snakeCombat.js";
+import { isBallCombatTopology, isChainCombatTopology, shouldSkipPreyHeadRamKill, COMBAT_TRAIT_DEFAULTS } from "../../Libraries/Game/snake/snakeCombat.js";
 import { AgentFrameOrchestrator, createAgentSpecies, SNAKE_GAME_SPECIES, SnakeAgentSession } from "../../Libraries/Game/snake/snakeAgentSession.js";
 import { getCirclePropRadius } from "../../Libraries/Props/propScale.js";
 import { deriveSprintIntentInto } from "../../Libraries/AI/agents/AgentDecisionContext.js";
@@ -34,8 +34,7 @@ export {
     isBallCombatTopology,
     isChainCombatTopology,
     shouldSkipPreyHeadRamKill,
-    COMBAT_TRAIT_DEFAULTS,
-    matchesBrainRamResolver
+    COMBAT_TRAIT_DEFAULTS
 };
 
 export function syncBallAgentFacingAfterPhysics(instance, dtMs) {

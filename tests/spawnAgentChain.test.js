@@ -49,19 +49,7 @@ describe("spawnGameAgentChain", () => {
         assert.equal(meta.isChainHead(pack.head.id), true);
     });
 
-    it("squid spawns brain at leaderIndex 1 as chain head", () => {
-        applySnakeGameConfig();
-        resetKineticConstraintIds(9002);
-        const state = createTestState();
-        const meta = getSandboxEntityMeta(state);
-        const pack = spawnGameAgentChain(state, { col: 8, row: 8 }, "squid", { faction: "charlie" });
-        assert.equal(pack.members.length, 3);
-        assert.equal(pack.brainIndex, 1);
-        assert.equal(pack.brain.id, pack.members[1].id);
-        assert.equal(pack.leader.id, pack.brain.id);
-        assert.equal(meta.isChainHead(pack.brain.id), true);
-        assert.equal(meta.isChainHead(pack.members[0].id), false);
-    });
+
 
     it("snake profile uses leader at index 0", () => {
         applySnakeGameConfig({ agentProfiles: { snake: { segmentCount: 3 } } });

@@ -75,7 +75,7 @@ export function getConnectedComponentPath(session, endpointId) {
     cache.paths.set(endpointId, ordered);
     return ordered;
 }
-/** Full left-to-right order for a simple chain; works when `bodyId` is a middle link (e.g. squid brain). */
+/** Full left-to-right order for a simple chain; works when `bodyId` is a middle link. */
 export function getLinearChainOrderedMembers(session, bodyId) {
     const adjacency = getGraphCache(session).adjacency;
     const degree = adjacency.get(bodyId)?.length ?? 0;

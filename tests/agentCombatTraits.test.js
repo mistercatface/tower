@@ -5,7 +5,6 @@ import { AGENT_PROFILE, getAgentProfile } from "../Libraries/AI/agents/AgentProf
 import {
     COMBAT_TRAIT_DEFAULTS,
     isChainCombatTopology,
-    matchesBrainRamResolver,
     shouldSkipPreyHeadRamKill,
 } from "./harness/agentTestCompat.js";
 
@@ -31,21 +30,10 @@ describe("agentCombatTraits", () => {
         assert.equal(traits.fleeEscapeRam, true);
     });
 
-    it("squid uses squidVsSquid brain ram and arm prey immunity", () => {
-        applySnakeGameConfig();
-        const traits = combatTraits(AGENT_PROFILE.squid);
-        assert.equal(matchesBrainRamResolver(traits, "squidVsSquid"), true);
-        assert.equal(traits.victimOfFleeEscapeRam, false);
-        assert.equal(traits.preyHeadRamImmuneNonLeader, true);
-    });
-
-    it("shouldSkipPreyHeadRamKill covers leader draw and squid arm glance", () => {
+    it("shouldSkipPreyHeadRamKill covers leader draw", () => {
         applySnakeGameConfig();
         const snake = combatTraits(AGENT_PROFILE.snake);
-        const squid = combatTraits(AGENT_PROFILE.squid);
         assert.equal(shouldSkipPreyHeadRamKill(snake, snake, 10, 10), true);
-        assert.equal(shouldSkipPreyHeadRamKill(snake, squid, 99, 10), true);
-        assert.equal(shouldSkipPreyHeadRamKill(snake, squid, 10, 10), false);
-        assert.equal(shouldSkipPreyHeadRamKill(squid, squid, 10, 10), true);
+        assert.equal(shouldSkipPreyHeadRamKill(snake, snake, 99, 10), false);
     });
 });

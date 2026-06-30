@@ -18,29 +18,14 @@ describe("resolveRelationshipForInstances", () => {
     it("returns static relationship strings from profile table", () => {
         applySnakeGameConfig();
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.flee)), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake), instance(AGENT_PROFILE.squid)), "threat");
         const closeSq = 40 * 40;
         const farSq = 80 * 80;
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), closeSq), "threat");
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.snake), farSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.flee), instance(AGENT_PROFILE.squid)), "threat");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid)), "threat");
-    });
-
-    it("squid proximity relationships attack close and ignore or flee at distance", () => {
-        applySnakeGameConfig();
-        const closeSq = 40 * 40;
-        const farSq = 80 * 80;
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), closeSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.flee), farSq), "neutral");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.snake), closeSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), closeSq), "prey");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid), instance(AGENT_PROFILE.squid), farSq), "threat");
     });
 
     it("sizeBand same faction returns configured ally or neutral", () => {
         applySnakeGameConfig();
         assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.snake, { faction: "red", segments: 5 }), instance(AGENT_PROFILE.snake, { faction: "red", segments: 3 })), "ally");
-        assert.equal(resolveRelationshipForInstances(instance(AGENT_PROFILE.squid, { faction: "red" }), instance(AGENT_PROFILE.snake, { faction: "red" })), "neutral");
     });
 });
