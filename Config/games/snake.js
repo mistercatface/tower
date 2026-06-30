@@ -19,7 +19,6 @@ const SNAKE_INTENT = {
     publishEngagement: true,
     decisionFields: { seekerFaction: true, seekerSegmentCount: true, session: true },
 };
-
 const FLEE_INTENT = {
     reachSlots: {
         threat: { targetKey: "threat", mode: "flee" },
@@ -276,6 +275,5 @@ export const SNAKE_GAME_DEFAULTS = {
             visibleSources: { food: { category: "food", accept: "edibleFood" }, ammo: { category: "ammo", accept: "ammoShard" } },
             intent: FLEE_INTENT,
         },
-
     },
 };
