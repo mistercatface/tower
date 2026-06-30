@@ -54,7 +54,7 @@ function finalizeChainSpawn(chain, spec, forwardDir = null) {
 export function spawnGameAgentChain(state, anchorCell, profileId, options = {}) {
     const config = state.sandbox.snakeGame.config;
     const profile = getAgentProfile(profileId, config);
-    const spec = buildChainSpawnSpec(profile, config, options);
+    const spec = buildChainSpawnSpec(profile, config, { ...options, growDirX: options.growDirX ?? anchorCell.growDirX, growDirY: options.growDirY ?? anchorCell.growDirY });
     const chain = spawnAgentChain(state, anchorCell, spec);
     applySpawnedChainGameplay(profile, chain);
     return finalizeChainSpawn(chain, spec, options.forwardDir);

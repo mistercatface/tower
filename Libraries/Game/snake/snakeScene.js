@@ -12,6 +12,39 @@ import { applySnakeChainTint, resolveAgentTeamForFaction, resolveAgentTeamForInd
 import { AGENT_PROFILE } from "../../AI/agents/AgentProfiles.js";
 import { setAgentIdentity, pickRandomName } from "../../AI/identity/agentIdentity.js";
 export const SNAKE_CHAIN_EXPORT_TYPE = "snake_chain";
+const SNAKE_CHAIN_GROW_DIRS = [
+    { growDirX: -1, growDirY: 0 },
+    { growDirX: 1, growDirY: 0 },
+    { growDirX: 0, growDirY: -1 },
+    { growDirX: 0, growDirY: 1 },
+];
+function resolveSnakeChainGrowDirCandidates(preferredGrowDirX, preferredGrowDirY) {
+    const preferred = preferredGrowDirX != null && preferredGrowDirY != null;
+    if (!preferred) return SNAKE_CHAIN_GROW_DIRS;
+    const dirs = SNAKE_CHAIN_GROW_DIRS.slice();
+    dirs.sort((a, b) => {
+        const aPreferred = a.growDirX === preferredGrowDirX && a.growDirY === preferredGrowDirY;
+        const bPreferred = b.growDirX === preferredGrowDirX && b.growDirY === preferredGrowDirY;
+        if (aPreferred === bPreferred) return 0;
+        return aPreferred ? -1 : 1;
+    });
+    return dirs;
+}
+function pickSnakeChainGrowDir(navWalkable, grid, anchorCell, segmentCount, spacing, preferredGrowDirX, preferredGrowDirY, excludeIndices, rng = Math.random) {
+    const candidates = resolveSnakeChainGrowDirCandidates(preferredGrowDirX, preferredGrowDirY);
+    const valid = [];
+    for (let i = 0; i < candidates.length; i++) {
+        const dir = candidates[i];
+        if (isValidSnakeChainAnchorCell(navWalkable, grid, anchorCell, segmentCount, spacing, dir.growDirX, dir.growDirY, excludeIndices)) valid.push(dir);
+    }
+    if (!valid.length) return null;
+    return valid[Math.floor(rng() * valid.length)];
+}
+function resolveSnakeChainSpawnAnchor(navWalkable, grid, anchorCell, segmentCount, spacing, preferredGrowDirX, preferredGrowDirY, excludeIndices, rng = Math.random) {
+    const growDir = pickSnakeChainGrowDir(navWalkable, grid, anchorCell, segmentCount, spacing, preferredGrowDirX, preferredGrowDirY, excludeIndices, rng);
+    if (!growDir) return null;
+    return { col: anchorCell.col, row: anchorCell.row, growDirX: growDir.growDirX, growDirY: growDir.growDirY };
+}
 function buildEmptySandboxDoc(state) {
     const grid = state.obstacleGrid;
     return {
@@ -48,17 +81,18 @@ function isValidSnakeChainAnchorCell(navWalkable, grid, anchorCell, segmentCount
     }
     return true;
 }
-function pickSnakeChainSpawnCellNearestTo(spawnPool, navWalkable, state, targetCol, targetRow, segmentCount, spacing, growDirX, growDirY, excludeIndices) {
+function pickSnakeChainSpawnCellNearestTo(spawnPool, navWalkable, state, targetCol, targetRow, segmentCount, spacing, growDirX, growDirY, excludeIndices, rng = Math.random) {
     const grid = state.obstacleGrid;
     let best = null;
     let bestDist = Infinity;
     for (let i = 0; i < spawnPool.length; i++) {
         const cell = spawnPool[i];
-        if (!isValidSnakeChainAnchorCell(navWalkable, grid, cell, segmentCount, spacing, growDirX, growDirY, excludeIndices)) continue;
+        const anchor = resolveSnakeChainSpawnAnchor(navWalkable, grid, cell, segmentCount, spacing, growDirX, growDirY, excludeIndices, rng);
+        if (!anchor) continue;
         const dist = cellChebyshevDistance(targetCol, targetRow, cell.col, cell.row);
         if (dist < bestDist) {
             bestDist = dist;
-            best = cell;
+            best = anchor;
         }
     }
     if (!best) throw new Error("No walkable snake spawn cell near map center");
@@ -68,8 +102,8 @@ export function pickSnakeChainSpawnCell(spawnPool, navWalkable, state, segmentCo
     const grid = state.obstacleGrid;
     const valid = [];
     for (let i = 0; i < spawnPool.length; i++) {
-        const cell = spawnPool[i];
-        if (isValidSnakeChainAnchorCell(navWalkable, grid, cell, segmentCount, spacing, growDirX, growDirY, excludeIndices)) valid.push(cell);
+        const anchor = resolveSnakeChainSpawnAnchor(navWalkable, grid, spawnPool[i], segmentCount, spacing, growDirX, growDirY, excludeIndices, rng);
+        if (anchor) valid.push(anchor);
     }
     if (!valid.length) throw new Error("No walkable snake spawn cell with full chain clearance");
     return pickWalkableCell(valid, { cols: grid.cols, excludeIndices, rng });
@@ -160,11 +194,13 @@ export function resolveCenterSnakeSpawnAnchor(state, navWalkable, { segmentCount
 async function spawnSnakeCavernMap(state) {
     await generateSnakeSplitMap(state);
 }
-export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, faction = null, teamIndex = 0, rng = Math.random } = {}) {
+export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segmentCount, faction = null, teamIndex = 0, growDirX = null, growDirY = null, rng = Math.random } = {}) {
     const config = getSnakeGameConfig();
     const snake = config.agentProfiles.snake;
     const startRadius = config.startRadius;
     const resolvedSegmentCount = segmentCount ?? snake.segmentCount;
+    const resolvedGrowDirX = growDirX ?? anchorCell.growDirX ?? snake.growDirX;
+    const resolvedGrowDirY = growDirY ?? anchorCell.growDirY ?? snake.growDirY;
     const name = pickRandomName(rng);
     const team = faction == null ? resolveAgentTeamForIndex(snake, teamIndex) : resolveAgentTeamForFaction(snake, faction);
     const resolvedFaction = team.faction;
@@ -176,8 +212,8 @@ export function spawnSnakeChain(state, anchorCell, { excludeIndices = null, segm
         linkSlack: snake.linkSlack,
         ballType: snake.bodyPropId,
         headBallType: snake.headPropId,
-        growDirX: snake.growDirX,
-        growDirY: snake.growDirY,
+        growDirX: resolvedGrowDirX,
+        growDirY: resolvedGrowDirY,
         faction: resolvedFaction,
         exportType: SNAKE_CHAIN_EXPORT_TYPE,
     });

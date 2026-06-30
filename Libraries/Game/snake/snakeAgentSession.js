@@ -93,13 +93,12 @@ export class FleeAgentCalloutDirector {
         const candidates = [];
         if (phase === "reloading" && calloutState.combatPhase !== "reloading") candidates.push("reloading");
         if (hasVisibleEnemy && !calloutState.hadVisibleEnemy) candidates.push("enemy_spotted");
-        if (mode !== calloutState.mode) {
+        if (mode !== calloutState.mode)
             if (mode === "shoot_enemy" || mode === "seek_enemy") candidates.push("engaging");
             else if (mode === "seek_ally") candidates.push("following");
             else if (mode === "seek_ammo") candidates.push("getting_ammo");
             else if (mode === "seek_food") candidates.push("getting_food");
             else if (mode === "flee") candidates.push("falling_back");
-        }
         if (!candidates.length) return null;
         let best = candidates[0];
         let bestPriority = this.catalog.topicPriority(best);
@@ -217,7 +216,7 @@ export class SnakeAgentSession {
         for (const instance of aliveAgentInstances(this.registry)) {
             const admitted = this.orchestrator.shouldThink(instance, state, state.viewport);
             instance.autosim.tick(dtMs, admitted);
-            if (admitted) this.callouts.maybeEmit(state, instance);
+            //if (admitted) this.callouts.maybeEmit(state, instance);
         }
         this.orchestrator.endFrame();
     }
