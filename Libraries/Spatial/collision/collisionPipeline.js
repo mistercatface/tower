@@ -38,6 +38,7 @@ export function runCollisionPipeline(
             const prop = activeBodies[i];
             prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
             prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
+            prop._wallResolveHits = null;
         }
     let outerIterationsRun = 0;
     if (hasActiveBodies) {

@@ -192,8 +192,8 @@ function appendConstraintEntry(slab, item) {
     slab.type[idx] = item.entry.type ?? "distance";
     slab.bodyA[idx] = bodyA;
     slab.bodyB[idx] = bodyB;
-    slab.physIdA[idx] = bodyA._physId;
-    slab.physIdB[idx] = bodyB._physId;
+    slab.physIdA[idx] = bodyA._physId ?? -1;
+    slab.physIdB[idx] = bodyB._physId ?? -1;
     if (slab.type[idx] === "angle") {
         slab.static.referenceAngle[idx] = item.entry.referenceAngle ?? 0;
         slab.static.anchorAx[idx] = 0;

@@ -2,7 +2,7 @@ import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
 import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticTopology.js";
-import { getBroadphaseBounds } from "../../Libraries/Spatial/collision/entityBroadphase.js";
+import { getBroadphaseBounds, entityBroadphaseExtent } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import {
     appendActiveKineticBodySlabPhysId,
@@ -106,6 +106,15 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             this.populatedMembershipGen = world.entityRegistry.membershipGen;
             bumpKineticTopologyGeneration(world.kinetic);
         }
+    }
+    getWallCandidates(entity) {
+        if (entity._physId !== undefined && entity._physId !== -1) {
+            if (!this._obstacleGrid) return [];
+            const slabX = kineticDynamicSlab.x[entity._physId];
+            const slabY = kineticDynamicSlab.y[entity._physId];
+            return this._wallCandidatesNearWorld(slabX, slabY, entityBroadphaseExtent(entity));
+        }
+        return super.getWallCandidates(entity);
     }
     syncActiveKineticBodies() {
         const active = this._activeKineticBodies;
