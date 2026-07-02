@@ -182,38 +182,4 @@ describe("player flee agent", () => {
         assert.equal(playerPack.head.vx, 0);
         assert.equal(playerPack.head.vy, 0);
     });
-
-    it("does not aim or shoot if it has 0 ammo", async () => {
-        applySnakeGameConfig();
-        resetKineticConstraintIds(1);
-        const { state } = await createSnakeGameHarnessState();
-        const { snakeGame } = wireSnakeTestGame(state);
-        
-        const playerPack = spawnGameAgentChain(state, { col: 5, row: 5 }, AGENT_PROFILE.playerFlee);
-        const playerInstance = snakeGame.instancesByHeadId.get(playerPack.head.id);
-        playerInstance.start();
-        
-        playerPack.head.vx = 0;
-        playerPack.head.vy = 0;
-        playerPack.head.facing = 0;
-        playerInstance.ammo = 0; // 0 ammo!
-        
-        const snakePack = spawnSnakeChain(state, { col: 10, row: 5 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
-        registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
-        
-        state.nav.observerVisionFrame = {
-            ensureHeadVision: () => ({
-                cells: [{ col: 5, row: 5 }, { col: 10, row: 5 }],
-                cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 5 * state.obstacleGrid.cols]),
-            }),
-            isVisible: () => true,
-        };
-        
-        primeSnakeHeadVision(state, playerPack.head, getSnakeGameConfig().shared.visionRange);
-        
-        // Tick: should NOT transition to shoot_enemy because ammo is 0
-        playerInstance.autosim.tick(16);
-        assert.notEqual(playerInstance.intent.getMode(), "shoot_enemy");
-        assert.equal(snakeGame.activeGunBulletIds.length, 0);
-    });
 });

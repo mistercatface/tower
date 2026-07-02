@@ -1,7 +1,7 @@
 import { aliveAgentInstances, AGENT_PROFILE, getAgentProfile, registerAliveAgent, markAgentDead, purgeInertAgentsForHead } from "../../AI/agents/AgentProfiles.js";
 import { getSnakeGameConfig } from "./snakeGameConfig.js";
 import { clearChainLinksForMembers } from "../../Sandbox/chainLinks.js";
-import { markSnakeSegmentsFracturable, shatterSnakeSegments, spawnAmmoShards } from "./snakeSegmentFracture.js";
+import { markSnakeSegmentsFracturable, shatterSnakeSegments } from "./snakeSegmentFracture.js";
 import { clearSnakeSteeringLeaseFromProp, AgentInstance } from "./AgentInstance.js";
 import { removeWorldPropFromState } from "../../../GameState/EntityRegistry.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
@@ -96,7 +96,6 @@ export class FleeAgentCalloutDirector {
         if (mode !== calloutState.mode)
             if (mode === "shoot_enemy" || mode === "seek_enemy") candidates.push("engaging");
             else if (mode === "seek_ally") candidates.push("following");
-            else if (mode === "seek_ammo") candidates.push("getting_ammo");
             else if (mode === "seek_food") candidates.push("getting_food");
             else if (mode === "flee") candidates.push("falling_back");
         if (!candidates.length) return null;
@@ -277,7 +276,6 @@ export function createAgentSpecies(profileId) {
             instance.lifecycle = "dead";
             instance.stopSteering();
             const spatialFrame = deathImpact?.spatialFrame ?? kineticSpatial;
-            if (instance.ammo > 0) spawnAmmoShards(state, instance.head, instance.ammo, spatialFrame);
             const snakeGame = state.sandbox.snakeGame;
             const connectedMembers = instance.syncMembersFromGraph();
             let resolvedMembers = connectedMembers;

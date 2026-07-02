@@ -22,9 +22,7 @@ import { requireSnakeVisionFrame } from "./snakePerception.js";
 import { isAgentEngaged } from "../../AI/agents/AgentProfiles.js";
 import { syncBallAgentFacingToTarget, DEFAULT_BALL_FACING_TURN_RAD_PER_SEC } from "./AgentInstance.js";
 import { getObserverVisionFrame } from "../../Navigation/perception/observerVisionFrame.js";
-const DEFAULT_FIRE_AIM_TOLERANCE_RAD = 0.08;
-const DEFAULT_WEAPON_MAX_RANGE = 128;
-const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally", "ammo"];
+const INTENT_MEMORY_KINDS = ["threat", "prey", "food", "ally"];
 export class AgentPolicy {
     constructor() {
         this.mode = null;
@@ -151,25 +149,16 @@ function mergeAlly(visibleWorld, record, state, session, filterAllyForEngagement
     return allyIfEngaged(session, ally);
 }
 export class AgentIntentMemory {
-    constructor({
-        threatTtlTicks = 45,
-        preyTtlTicks = 90,
-        foodTtlTicks = 180,
-        allyTtlTicks = 60,
-        ammoTtlTicks = 180,
-        engagedPreyTtlTicks = null,
-        engagedThreatTtlTicks = null,
-        filterAllyForEngagement = false,
-    } = {}) {
+    constructor({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60, engagedPreyTtlTicks = null, engagedThreatTtlTicks = null, filterAllyForEngagement = false } = {}) {
         this.filterAllyForEngagement = filterAllyForEngagement;
         const finalEngagedPrey = engagedPreyTtlTicks ?? preyTtlTicks * 3;
         const finalEngagedThreat = engagedThreatTtlTicks ?? threatTtlTicks * 3;
         this.memory = new TargetMemory(
             INTENT_MEMORY_KINDS,
-            { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks, ammo: ammoTtlTicks },
+            { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks },
             { prey: finalEngagedPrey, threat: finalEngagedThreat },
         );
-        this.memorySource = { threat: false, prey: false, food: false, ally: false, ammo: false };
+        this.memorySource = { threat: false, prey: false, food: false, ally: false };
         this.world = { threat: null, prey: null, food: null, ally: null, ammo: null, allyCount: 0, allyCentroid: null, threatCount: 0, memorySource: this.memorySource };
     }
     update(seeker, state, visibleWorld, currentMode = null, currentTargetId = null) {
@@ -180,7 +169,6 @@ export class AgentIntentMemory {
         this.memory.observe("prey", visibleWorld.prey, seeker, grid, currentMode, currentTargetId);
         this.memory.observe("food", visibleWorld.food, seeker, grid, currentMode, currentTargetId);
         this.memory.observe("ally", ally, seeker, grid, currentMode, currentTargetId);
-        this.memory.observe("ammo", visibleWorld.ammo, seeker, grid, currentMode, currentTargetId);
     }
     enrichWorld(state, visibleWorld) {
         const session = state.sandbox?.snakeGame;
@@ -188,12 +176,10 @@ export class AgentIntentMemory {
         const prey = mergeTarget(visibleWorld, "prey", this.memory.record("prey"), state);
         const food = mergeTarget(visibleWorld, "food", this.memory.record("food"), state);
         const ally = mergeAlly(visibleWorld, this.memory.record("ally"), state, session, this.filterAllyForEngagement);
-        const ammo = mergeTarget(visibleWorld, "ammo", this.memory.record("ammo"), state);
         this.world.threat = threat;
         this.world.prey = prey;
         this.world.food = food;
         this.world.ally = ally;
-        this.world.ammo = ammo;
         this.world.threatCount = visibleWorld.threatCount ?? 0;
         this.world.allyCount = visibleWorld.ally ? (visibleWorld.allyCount ?? 1) : ally ? 1 : 0;
         this.world.allyCentroid = visibleWorld.ally ? (visibleWorld.allyCentroid ?? null) : null;
@@ -201,7 +187,6 @@ export class AgentIntentMemory {
         this.memorySource.prey = !visibleWorld.prey && !!prey;
         this.memorySource.food = !visibleWorld.food && !!food;
         this.memorySource.ally = !visibleWorld.ally && !!ally;
-        this.memorySource.ammo = !visibleWorld.ammo && !!ammo;
         return this.world;
     }
     getWorld() {
@@ -339,10 +324,9 @@ export function deriveRangedCombatStateInto(out, ctx, input, profile) {
     const phase = action?.phase ?? "idle";
     const onCooldown = action ? action.isOnCooldown() : false;
     const busy = action ? action.isBusy() : false;
-    const hasAmmo = input.agentInstance ? input.agentInstance.ammo > 0 : input.instance ? input.instance.ammo > 0 : true;
-    const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle" && hasAmmo;
+    const canShoot = !!visibleEnemy && los && inWeaponRange && phase === "idle";
     const hasIdAdvantage = seeker && enemy && seeker.id != null && enemy.id != null ? seeker.id > enemy.id : false;
-    const shouldBackOffEnemy = !!visibleEnemy && ((tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage))) || !hasAmmo);
+    const shouldBackOffEnemy = !!visibleEnemy && tooClose && (phase === "reloading" || (phase === "idle" && !hasIdAdvantage));
     if (!out)
         out = {
             enemy: null,
@@ -474,21 +458,19 @@ function tickAimAndFire(ctx, instance, action, weapon, dtMs) {
     action.timerMs = Math.max(0, action.timerMs - dtMs);
     const turnRadPerSec = getAimRotationSpeed(ctx, weapon);
     if (combatStateCanAimAtTarget(ctx, target)) action.aimAngle = syncBallAgentFacingToTarget(agent, target, dtMs, turnRadPerSec);
-    if (action.timerMs <= 0 && aimReadyForShot(ctx, agent, target, action, weapon))
-        if (!instance || instance.ammo > 0) {
-            if (instance && instance.ammo > 0) instance.ammo--;
-            const angle = action.aimAngle ?? agent.facing ?? 0;
-            fireBullet(ctx.state, instance, angle, weapon);
-            action.shotsFired = (action.shotsFired || 0) + 1;
-            const magSize = weapon.magazineSize ?? 3;
-            if (action.shotsFired < magSize) {
-                action.phase = "fire_delay";
-                action.timerMs = weapon.fireDelayMs ?? 150;
-            } else {
-                action.phase = "reloading";
-                action.timerMs = weapon.reloadMs ?? 500;
-            }
-        } else action.reset();
+    if (action.timerMs <= 0 && aimReadyForShot(ctx, agent, target, action, weapon)) {
+        const angle = action.aimAngle ?? agent.facing ?? 0;
+        fireBullet(ctx.state, instance, angle, weapon);
+        action.shotsFired = (action.shotsFired || 0) + 1;
+        const magSize = weapon.magazineSize ?? 3;
+        if (action.shotsFired < magSize) {
+            action.phase = "fire_delay";
+            action.timerMs = weapon.fireDelayMs ?? 150;
+        } else {
+            action.phase = "reloading";
+            action.timerMs = weapon.reloadMs ?? 500;
+        }
+    }
 }
 function tickReloading(ctx, action, weapon, dtMs) {
     const agent = ctx.agent;
@@ -671,10 +653,7 @@ function augmentCellTargetIntentContext(ctx, { locomotion, resolveCommittedTarge
 function isEdibleFood(prop, context) {
     return isEdibleSnakeFoodForSeeker(context, prop);
 }
-function isAmmoShard(prop, context) {
-    return prop.type === "ammo_shard" && !prop.isDead;
-}
-const ACCEPT_PREDICATES = { edibleFood: isEdibleFood, ammoShard: isAmmoShard };
+const ACCEPT_PREDICATES = { edibleFood: isEdibleFood };
 function buildVisibleSourceResolvers(profile) {
     if (!profile.visibleSources) return null;
     const resolvers = {};
@@ -964,7 +943,7 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             const idealStopDist = cohesion.idealStopDist ?? 3;
             return { arrivalRadius: idealStopDist * cellSize, lockOnTarget: false, terminalHoming: null };
         }
-        if (mode === "seek_food" || mode === "seek_ammo") return { arrivalRadius: this.agentCtx.instance.eatRadius, lockOnTarget: true, terminalHoming };
+        if (mode === "seek_food") return { arrivalRadius: this.agentCtx.instance.eatRadius, lockOnTarget: true, terminalHoming };
         const huntArrival = Math.max(2, headRadius * 0.25);
         if (mode === huntMode || mode === "seek_prey" || mode === "seek_enemy" || mode === "shoot_enemy") return { arrivalRadius: huntArrival, lockOnTarget: true, terminalHoming };
         return { arrivalRadius: this.agentCtx.instance.eatRadius, lockOnTarget: true, terminalHoming };

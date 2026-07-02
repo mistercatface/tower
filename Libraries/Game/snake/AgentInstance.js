@@ -40,8 +40,7 @@ export class AgentInstance {
         this.brain = null;
         this.equippedWeapon = null;
         const profile = getAgentProfile(profileId);
-        const hasWeapon = !!(profile.weapon || profile.decision?.modes?.shoot_enemy);
-        this.ammo = profile.initialAmmo ?? (hasWeapon ? 10 : 0);
+        this.ammo = Infinity;
         this.profile = profile;
         this.metabolism = new AgentMetabolism(profile);
         this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
@@ -341,7 +340,6 @@ export class AgentInstance {
     }
     collectContactProp(state, prop) {
         if (this.eatFoodTarget(state, prop)) return true;
-        if (this.collectAmmoTarget(state, prop)) return true;
         return false;
     }
     eatFoodTarget(state, food) {
@@ -350,13 +348,6 @@ export class AgentInstance {
         const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
         if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
         else this.metabolism.feed(foodValue);
-        return true;
-    }
-    collectAmmoTarget(state, ammoProp) {
-        if (ammoProp.type !== "ammo_shard" || ammoProp.isDead) return false;
-        if (!this.resolvedWeapon) return false;
-        this.removeCollectedProp(state, ammoProp);
-        this.ammo += ammoProp.ammoValue ?? 1;
         return true;
     }
     severInertTail(state, tailIds) {
