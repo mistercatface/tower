@@ -184,8 +184,18 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const physId = prop._physId;
     const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
+    const mainGeom = geometryFromChunkComponent(components[0], false);
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
+    prop.x = mainWorldPos.x;
+    prop.y = mainWorldPos.y;
+    if (physId !== undefined && physId !== -1) {
+        kineticDynamicSlab.x[physId] = mainWorldPos.x;
+        kineticDynamicSlab.y[physId] = mainWorldPos.y;
+    }
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
-    applyChunkGeometryToProp(prop, geometryFromChunkComponent(components[0], true));
+    applyChunkGeometryToProp(prop, mainGeom);
     return { debris, originX: wx, originY: wy, facing: prop.facing };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {

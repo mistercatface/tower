@@ -80,7 +80,10 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this.entityGrid.insert(prop);
         prop._neighborsFrameId = -1;
         this.frameId = (this.frameId + 1) | 0;
-        if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
+        if (prop.strategy?.isKinetic) {
+            this.activateKineticBody(prop);
+            writeKineticBodySlabSnapshot(prop);
+        }
         this.populatedMembershipGen = world.entityRegistry.membershipGen;
         bumpKineticTopologyGeneration(world.kinetic);
     }
@@ -100,7 +103,10 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);
             prop._neighborsFrameId = -1;
-            if (prop.strategy?.isKinetic) this.activateKineticBody(prop);
+            if (prop.strategy?.isKinetic) {
+                this.activateKineticBody(prop);
+                writeKineticBodySlabSnapshot(prop);
+            }
             anyAdmitted = true;
         }
         if (anyAdmitted) {

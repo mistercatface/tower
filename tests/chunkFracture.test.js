@@ -67,7 +67,7 @@ describe("chunk fracture", () => {
         const fragments = splitFootprintIntoComponents(prop, 0, 0, 20, true);
         assert.equal(fragments.length, prop.chunks.length);
     });
-    it("fracturePropOnImpact keeps parent position without centroid snap", () => {
+    it("fracturePropOnImpact shifts parent position to new centroid", () => {
         const prop = new WorldProp(100, 50, "crate", 0);
         prop._physId = 0;
         kineticDynamicSlab.x[0] = 100;
@@ -75,8 +75,8 @@ describe("chunk fracture", () => {
         applyPropBoxFootprint(prop, 16, 16);
         const fracture = fracturePropOnImpact(prop, 100, 50, 80);
         assert.ok(fracture);
-        assert.equal(prop.x, 100);
-        assert.equal(prop.y, 50);
+        assert.ok(Math.abs(prop.x - 102.666) < 0.01);
+        assert.ok(Math.abs(prop.y - 52.666) < 0.01);
     });
     it("mergeChunkCollisionRects covers concave L-shapes with multiple axis-aligned boxes", () => {
         const geom = bakeChunkOutline(localBoxOutline(16, 16));
