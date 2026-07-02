@@ -8,11 +8,11 @@ import { kineticDynamicSlab } from "./kineticBodySlab.js";
  */
 export function applyPositionCorrection(body, normalX, normalY, overlap) {
     if (body.strategy?.pinned) return;
-    const physId = body._physId;
-    if (physId !== undefined && physId !== -1) {
-        kineticDynamicSlab.x[physId] += normalX * overlap;
-        kineticDynamicSlab.y[physId] += normalY * overlap;
-    } else addXY(body, normalX * overlap, normalY * overlap);
+    addXY(body, normalX * overlap, normalY * overlap);
+}
+export function applySlabPositionCorrection(physId, normalX, normalY, overlap) {
+    kineticDynamicSlab.x[physId] += normalX * overlap;
+    kineticDynamicSlab.y[physId] += normalY * overlap;
 }
 /**
  * Mass-weighted separation of two overlapping bodies.

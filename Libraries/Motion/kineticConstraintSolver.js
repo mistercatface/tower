@@ -3,7 +3,7 @@ import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyM
 import { worldAnchorFromBody, worldAnchorFromSlab } from "./constraintAnchors.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
 import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
-import { applyPositionCorrection } from "../Spatial/collision/penetration.js";
+import { applyPositionCorrection, applySlabPositionCorrection } from "../Spatial/collision/penetration.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 import { kineticDynamicSlab, kineticStaticSlab, writeActiveKineticBodySlabPose, writebackKineticBodySlabPhysIds, separateAlongNormalSlab } from "../Spatial/collision/kineticBodySlab.js";
@@ -373,41 +373,50 @@ function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) 
         if (linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, seg)) out.push(seg);
     }
 }
-function shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, capsuleRadius, islandWalls, linkWallsOut) {
+function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWalls, linkWallsOut) {
+    const bodyA = slab.bodyA[i];
+    const bodyB = slab.bodyB[i];
     if (bodyA.isSleeping && bodyB.isSleeping) {
         linkWallsOut.length = 0;
         return false;
     }
     const dynSlab = kineticDynamicSlab;
-    const wa = worldAnchorFromSlab(bodyA, bodyA._physId, anchorAx, anchorAy, dynSlab, anchorAWorld);
-    const wb = worldAnchorFromSlab(bodyB, bodyB._physId, anchorBx, anchorBy, dynSlab, anchorBWorld);
+    const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
+    const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
     collectLinkOverlappingWalls(wa.x, wa.y, wb.x, wb.y, capsuleRadius, islandWalls, linkWallsOut);
     return linkWallsOut.length > 0;
 }
-function translateLinkAwayFromWall(bodyA, bodyB, normalX, normalY, overlap, pinnedA, pinnedB) {
+function translateLinkAwayFromSlabWall(physIdA, physIdB, normalX, normalY, overlap, pinnedA, pinnedB) {
     if (pinnedA && pinnedB) return;
     if (pinnedA) {
-        applyPositionCorrection(bodyB, normalX, normalY, overlap);
+        applySlabPositionCorrection(physIdB, normalX, normalY, overlap);
         return;
     }
     if (pinnedB) {
-        applyPositionCorrection(bodyA, normalX, normalY, overlap);
+        applySlabPositionCorrection(physIdA, normalX, normalY, overlap);
         return;
     }
-    applyPositionCorrection(bodyA, normalX, normalY, overlap);
-    applyPositionCorrection(bodyB, normalX, normalY, overlap);
+    applySlabPositionCorrection(physIdA, normalX, normalY, overlap);
+    applySlabPositionCorrection(physIdB, normalX, normalY, overlap);
 }
-function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, anchorBx, anchorBy, linkWalls, spatialFrame, pinnedA, pinnedB, capsuleRadius) {
+function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame) {
     if (!linkWalls.length) return;
+    const bodyA = slab.bodyA[i];
+    const bodyB = slab.bodyB[i];
+    const physIdA = slab.physIdA[i];
+    const physIdB = slab.physIdB[i];
+    const pinnedA = slab.static.pinnedA[i];
+    const pinnedB = slab.static.pinnedB[i];
+    const capsuleRadius = slab.static.capsuleRadius[i];
     const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
     const dynSlab = kineticDynamicSlab;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
-        const wa = worldAnchorFromSlab(bodyA, bodyA._physId, anchorAx, anchorAy, dynSlab, anchorAWorld);
-        const wb = worldAnchorFromSlab(bodyB, bodyB._physId, anchorBx, anchorBy, dynSlab, anchorBWorld);
+        const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
+        const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
         let best = null;
-        for (let i = 0; i < linkWalls.length; i++) {
-            const seg = linkWalls[i];
+        for (let j = 0; j < linkWalls.length; j++) {
+            const seg = linkWalls[j];
             if (!linkSegmentOverlapsWall(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg)) continue;
             const penetration = getLinkCapsuleSegmentPenetration(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg, { approachX, approachY });
             if (!penetration || penetration.overlap <= 0) continue;
@@ -420,7 +429,7 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
         if (!bodyB._wallResolveHits) bodyB._wallResolveHits = [];
         bodyA._wallResolveHits.push(hit);
         bodyB._wallResolveHits.push(hit);
-        translateLinkAwayFromWall(bodyA, bodyB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
+        translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
         spatialFrame.scheduleKineticActivation(bodyA);
@@ -448,35 +457,8 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
         for (let pass = 0; pass < 2; pass++)
             for (let i = start; i < start + count; i++) {
                 if (slab.type[i] === "angle") continue;
-                const bodyA = slab.bodyA[i];
-                const bodyB = slab.bodyB[i];
-                if (
-                    !shouldProjectLinkCapsuleAgainstWalls(
-                        bodyA,
-                        bodyB,
-                        slab.static.anchorAx[i],
-                        slab.static.anchorAy[i],
-                        slab.static.anchorBx[i],
-                        slab.static.anchorBy[i],
-                        slab.static.capsuleRadius[i],
-                        islandWalls,
-                        linkWalls,
-                    )
-                )
-                    continue;
-                projectDistanceLinkCapsuleAgainstWalls(
-                    bodyA,
-                    bodyB,
-                    slab.static.anchorAx[i],
-                    slab.static.anchorAy[i],
-                    slab.static.anchorBx[i],
-                    slab.static.anchorBy[i],
-                    linkWalls,
-                    spatialFrame,
-                    slab.static.pinnedA[i],
-                    slab.static.pinnedB[i],
-                    slab.static.capsuleRadius[i],
-                );
+                if (!shouldProjectLinkCapsuleAgainstWalls(slab, i, slab.static.capsuleRadius[i], islandWalls, linkWalls)) continue;
+                projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame);
             }
     }
 }

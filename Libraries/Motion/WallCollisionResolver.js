@@ -1,4 +1,4 @@
-import { resolveBodyAgainstWallSegments } from "../Spatial/collision/wallResolution.js";
+import { resolveBodyAgainstWallSegments, resolveSlabAgainstWallSegments } from "../Spatial/collision/wallResolution.js";
 import { wakeKineticBody } from "./kineticSleep.js";
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
@@ -24,13 +24,12 @@ export class WallCollisionResolver {
         const wp = entity.strategy?.wallPhysics;
         const parts = entity.getCollisionParts?.() ?? [entity.shape];
         let collided = hits.length > 0;
+        const physId = entity._physId;
+        const hasSlab = physId !== undefined && physId !== -1;
         for (let i = 0; i < parts.length; i++) {
-            const result = resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, {
-                restitution: wp?.restitution ?? 0.0,
-                friction: wp?.friction ?? 0.9,
-                preSpeed,
-                wallBreakConfig,
-            });
+            const result = hasSlab
+                ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig })
+                : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig });
             if (result.collided) collided = true;
             if (result.hits.length) hits.push(...result.hits);
         }
