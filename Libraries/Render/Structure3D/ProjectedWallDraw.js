@@ -17,16 +17,18 @@ const sFlatCapUv = new Float32Array(8);
 const sFlatCapSrc = new Float32Array(8);
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
 function getWallDrawMemo(grid, key) {
-    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== grid.wallGridRevision) {
+    const revision = `${grid.wallGridRevision}:${grid.surfaceMaterialRevision}`;
+    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== revision) {
         grid._wallDrawMemoCache = new Map();
-        grid._wallDrawMemoRevision = grid.wallGridRevision;
+        grid._wallDrawMemoRevision = revision;
     }
     return grid._wallDrawMemoCache.get(key);
 }
 function setWallDrawMemo(grid, key, value) {
-    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== grid.wallGridRevision) {
+    const revision = `${grid.wallGridRevision}:${grid.surfaceMaterialRevision}`;
+    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== revision) {
         grid._wallDrawMemoCache = new Map();
-        grid._wallDrawMemoRevision = grid.wallGridRevision;
+        grid._wallDrawMemoRevision = revision;
     }
     grid._wallDrawMemoCache.set(key, value);
 }
