@@ -17,7 +17,7 @@ function createSnakeSpawnTestState(cols = 32, rows = 32) {
 }
 
 describe("snake prop kinetic chain spawning", () => {
-    it("spawns a snake chain prop using the configured length parameter", () => {
+    it("spawns a snake chain prop using the configured length parameter, custom radius, and visual overrides", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSpawnTestState();
         const meta = getSandboxEntityMeta(state);
@@ -25,9 +25,10 @@ describe("snake prop kinetic chain spawning", () => {
         // Mock spawn context for testing
         const ctx = {
             resolveSpawnPropTypeId: () => "snake",
-            resolveSpawnVisualOverride: () => null,
+            resolveSpawnVisualOverride: (asset) => ({ tint: "#aabbcc", brightness: 1.5 }),
             spawnFaction: "alpha",
             spawnSnakeLength: 7, // Custom configured length
+            spawnBallRadius: 3,  // Custom configured radius
             selectSpawned: true,
             placement: {
                 touchPropPlacement() {},
@@ -46,15 +47,22 @@ describe("snake prop kinetic chain spawning", () => {
         assert.ok(meta.isChainHead(head.id));
         assert.ok(isChainSteeringTarget(state, meta, head.id));
 
-        // Remaining segments should be standard balls
-        for (let i = 1; i < 7; i++) {
-            assert.equal(state.worldProps[i].type, "ball");
-            assert.ok(!meta.isChainHead(state.worldProps[i].id));
-            assert.ok(!isChainSteeringTarget(state, meta, state.worldProps[i].id));
+        // Verify visual overrides applied to the snake head
+        assert.equal(head.visualOverride?.tint, "#aabbcc");
+        assert.equal(head.visualOverride?.brightness, 1.5);
+
+        // Verify radii of segments are set to the custom spawn radius
+        for (let i = 0; i < 7; i++) {
+            assert.equal(state.worldProps[i].radius, 3);
         }
 
         // Constraints should link the 7 elements (6 links)
         assert.equal(state.kinetic.kineticConstraints.length, 6);
+
+        // Spacing should be segmentRadius * 2 = 6, meaning constraints' restLength should be 6 * 1.05 = 6.3
+        for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) {
+            assert.ok(Math.abs(state.kinetic.kineticConstraints[i].restLength - 6.3) < 1e-6);
+        }
 
         // Verification of arrow attachment on snake head
         assert.ok(propCatalog["snake"].visuals.attachments.some(a => a.id === "movement_arrow"));

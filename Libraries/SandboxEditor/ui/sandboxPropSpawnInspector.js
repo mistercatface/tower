@@ -10,8 +10,9 @@ import {
 } from "../../Sandbox/sandboxCapabilities.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
-import { appendShapeFamilySpawnFields } from "./sandboxShapeFamilyUi.js";
+import { appendShapeFamilySpawnFields, appendCoatFields } from "./sandboxShapeFamilyUi.js";
 import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
+import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
@@ -130,6 +131,27 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
             max: 9,
             onChange: (length) => {
                 controller.setSpawnSnakeLength(length);
+            },
+        });
+        appendNumberField(body, "Radius", {
+            value: controller.getSpawnBallRadius(spawnAsset),
+            step: 1,
+            min: 1,
+            max: 4,
+            onChange: (radius) => {
+                controller.setSpawnBallRadius(Math.max(1, Math.min(4, radius)));
+            },
+        });
+        appendCoatFields(body, {
+            tint: controller.getSpawnVisualOverrideTint(spawnAsset),
+            brightness: controller.getSpawnVisualOverrideBrightness(),
+            onTintChange: (hex) => {
+                controller.setSpawnVisualOverrideTint(hex);
+                markLabViewDirty();
+            },
+            onBrightnessChange: (brightness) => {
+                controller.setSpawnVisualOverrideBrightness(brightness);
+                markLabViewDirty();
             },
         });
     } else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);

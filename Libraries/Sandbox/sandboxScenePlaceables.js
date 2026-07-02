@@ -7,6 +7,7 @@ import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
+import { setPropVisualBrightness, setPropVisualTint } from "../Color/visualOverride.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
@@ -66,15 +67,25 @@ const PLACEABLE = {
                 const grid = state.obstacleGrid;
                 const col = grid.worldCol(worldX);
                 const row = grid.worldRow(worldY);
-                const chain = spawnLinkedBallChain(state, { col, row }, {
-                    headBallType: "snake",
-                    ballType: "ball",
-                    segmentCount: ctx.spawnSnakeLength,
-                    faction: ctx.spawnFaction,
-                    spacing: 8,
-                    linkSlack: 1.05,
-                });
+                const chain = spawnLinkedBallChain(
+                    state,
+                    { col, row },
+                    {
+                        headBallType: "snake",
+                        ballType: "ball",
+                        segmentCount: ctx.spawnSnakeLength,
+                        segmentRadius: ctx.spawnBallRadius,
+                        faction: ctx.spawnFaction,
+                        spacing: ctx.spawnBallRadius * 2,
+                        linkSlack: 1.0,
+                    },
+                );
                 if (chain && chain.leader) {
+                    const visualOverride = ctx.resolveSpawnVisualOverride(propCatalog["snake"]);
+                    if (visualOverride) {
+                        if (visualOverride.tint) setPropVisualTint(chain.leader, visualOverride.tint);
+                        if (visualOverride.brightness != null) setPropVisualBrightness(chain.leader, visualOverride.brightness);
+                    }
                     ctx.placement.touchPropPlacement(chain.leader.id);
                     if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [chain.leader.id] });
                 }

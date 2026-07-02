@@ -11,7 +11,7 @@ function brightnessToPercent(brightness) {
 function percentToBrightness(percent) {
     return percent / 100;
 }
-function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
+export function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
     appendColorField(body, "Tint", { value: tint, onChange: onTintChange });
     appendNumberField(body, "Brightness %", {
         value: brightnessToPercent(brightness),
