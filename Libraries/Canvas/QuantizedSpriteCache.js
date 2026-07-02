@@ -236,8 +236,8 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
     const sprite = overlaySpriteCache.getOrBake(key, () => {
         const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
         const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
-        const anchorX = stageSpan / 2;
-        const anchorY = stageSpan / 2;
+        const anchorX = worldSpan / 2 + OVERLAY_STAGE_PADDING;
+        const anchorY = worldSpan / 2 + OVERLAY_STAGE_PADDING;
         const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const bakeCtx = canvas.getContext("2d");
         bakeCtx.save();
