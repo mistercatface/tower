@@ -134,8 +134,8 @@ export const SNAKE_GAME_DEFAULTS = {
                 { id: "hungry", min: 0.33 },
                 { id: "desperate", min: 0 },
             ],
-            decisionWeights: { flee: 400, prey: 300, food: 340, seek_ally: 220, explore: 100 },
-            factionCohesion: { arrivalRadius: 32, idealStopDist: 3, packBonus: 15, satisfiedBonus: 50, referenceSegmentCount: 3, maxSegmentScale: 10 },
+            decisionWeights: { flee: 400, prey: 300, food: 340, seek_ally: 120, explore: 240 },
+            factionCohesion: { arrivalRadius: 32, idealStopDist: 3, packBonus: 5, satisfiedBonus: 50, referenceSegmentCount: 3, maxSegmentScale: 10 },
             decisionPressure: {
                 foodHungerBonus: 300,
                 preyDesperationBonus: 250,
@@ -234,8 +234,8 @@ export const SNAKE_GAME_DEFAULTS = {
                     { mode: "seek_enemy", rule: "always", want: true, reason: "attack" },
                 ],
             },
-            decisionWeights: { flee: 400, shoot_enemy: 460, enemy: 420, ammo: 380, food: 360, seek_ally: 280, explore: 100 },
-            factionCohesion: { arrivalRadius: 48, idealStopDist: 2.5, packBonus: 20, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
+            decisionWeights: { flee: 400, shoot_enemy: 460, enemy: 420, ammo: 380, food: 360, seek_ally: 140, explore: 260 },
+            factionCohesion: { arrivalRadius: 48, idealStopDist: 2.5, packBonus: 8, satisfiedBonus: 60, fleePackBlend: 0.35, maxPackDistCells: 16 },
             decisionPressure: {
                 foodHungerBonus: 280,
                 sprintFleeMinHunger: 0.1,
