@@ -5,7 +5,8 @@ import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snak
 import { spawnGameAgentChain } from "../Libraries/Game/snake/spawnAgentChain.js";
 import { AGENT_PROFILE } from "../Libraries/AI/agents/AgentProfiles.js";
 import { getAgentIdentity } from "../Libraries/AI/identity/agentIdentity.js";
-import { createSnakeGameHarnessState, wireSnakeTestGame } from "./harness/snakeGameHarness.js";
+import { createSnakeGameHarnessState, wireSnakeTestGame, registerSnakeTestInstance, primeSnakeHeadVision } from "./harness/snakeGameHarness.js";
+import { spawnSnakeChain } from "../Libraries/Game/snake/snakeScene.js";
 import { resolveRelationshipForInstances } from "../Libraries/Game/snake/AgentInstance.js";
 import { setupSnakeGame } from "../Libraries/Game/snake/setupSnakeGame.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
@@ -128,5 +129,91 @@ describe("player flee agent", () => {
         
         // Focus second time (already focused) -> should return false
         assert.equal(state.followCamera.focusFromPropId(playerPack.head.id), false);
+    });
+
+    it("aims and shoots at target if has ammo and target is in sight, but does not move", async () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        
+        const playerPack = spawnGameAgentChain(state, { col: 5, row: 5 }, AGENT_PROFILE.playerFlee);
+        const playerInstance = snakeGame.instancesByHeadId.get(playerPack.head.id);
+        playerInstance.start();
+        
+        // Setup initial state: vx/vy/facing are 0, initial ammo is 10
+        playerPack.head.vx = 0;
+        playerPack.head.vy = 0;
+        playerPack.head.facing = 0;
+        playerInstance.ammo = 10;
+        
+        const snakePack = spawnSnakeChain(state, { col: 10, row: 5 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
+        
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: (seeker, range) => {
+                return {
+                    cells: [
+                        { col: 5, row: 5 },
+                        { col: 10, row: 5 },
+                    ],
+                    cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 5 * state.obstacleGrid.cols]),
+                };
+            },
+            isVisible: () => true,
+        };
+        
+        primeSnakeHeadVision(state, playerPack.head, getSnakeGameConfig().shared.visionRange);
+        
+        // Tick 1: should transition to shoot_enemy and start reacting
+        playerInstance.autosim.tick(16);
+        assert.equal(playerInstance.intent.getMode(), "shoot_enemy");
+        assert.equal(playerInstance.combatAction.phase, "reacting");
+        
+        // Since autonomous is false, velocity must remain completely untouched (0)
+        assert.equal(playerPack.head.vx, 0);
+        assert.equal(playerPack.head.vy, 0);
+        
+        // Tick past reactionMs (150ms) -> should shoot and spawn projectile bullet
+        playerInstance.autosim.tick(150);
+        assert.equal(snakeGame.activeGunBulletIds.length, 1);
+        
+        // Physical velocity must still be 0
+        assert.equal(playerPack.head.vx, 0);
+        assert.equal(playerPack.head.vy, 0);
+    });
+
+    it("does not aim or shoot if it has 0 ammo", async () => {
+        applySnakeGameConfig();
+        resetKineticConstraintIds(1);
+        const { state } = await createSnakeGameHarnessState();
+        const { snakeGame } = wireSnakeTestGame(state);
+        
+        const playerPack = spawnGameAgentChain(state, { col: 5, row: 5 }, AGENT_PROFILE.playerFlee);
+        const playerInstance = snakeGame.instancesByHeadId.get(playerPack.head.id);
+        playerInstance.start();
+        
+        playerPack.head.vx = 0;
+        playerPack.head.vy = 0;
+        playerPack.head.facing = 0;
+        playerInstance.ammo = 0; // 0 ammo!
+        
+        const snakePack = spawnSnakeChain(state, { col: 10, row: 5 }, { segmentCount: 3, spacing: 12, segmentRadius: 2, linkSlack: 0.1, faction: "alpha", exportType: "snake" });
+        registerSnakeTestInstance(state, snakeGame, { headId: snakePack.chain.head.id, spawnGroupId: snakePack.chain.spawnGroupId });
+        
+        state.nav.observerVisionFrame = {
+            ensureHeadVision: () => ({
+                cells: [{ col: 5, row: 5 }, { col: 10, row: 5 }],
+                cellSet: new Set([5 + 5 * state.obstacleGrid.cols, 10 + 5 * state.obstacleGrid.cols]),
+            }),
+            isVisible: () => true,
+        };
+        
+        primeSnakeHeadVision(state, playerPack.head, getSnakeGameConfig().shared.visionRange);
+        
+        // Tick: should NOT transition to shoot_enemy because ammo is 0
+        playerInstance.autosim.tick(16);
+        assert.notEqual(playerInstance.intent.getMode(), "shoot_enemy");
+        assert.equal(snakeGame.activeGunBulletIds.length, 0);
     });
 });

@@ -577,6 +577,9 @@ export class AgentAutosim {
             this.intent.tickCombatAction(dtMs);
             this.instance.applySprintMovementIntent();
             this.instance.headNav.tick(seeker, dtMs);
+        } else {
+            if (admitted) this.intent.tick(seeker, this.state, dtMs);
+            this.intent.tickCombatAction(dtMs);
         }
         if (soloTick) endSnakePerceptionFrame(this.state);
         const drainMultiplier = this.instance.hungerDrainMultiplier();
