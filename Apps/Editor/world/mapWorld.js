@@ -29,13 +29,7 @@ import {
     syncMapGenBoundsFromPlay,
     getMapGenBoundsConfig,
 } from "../../../Libraries/Sandbox/mapGenBounds.js";
-export const PLAY_AREA_CELL_OPTIONS = [64, 128, 256, 512, 1024];
 const CLEAR_CIRCLE_BOUNDS = createAabb();
-/** @param {number} cells */
-export function playAreaCellsToIndex(cells) {
-    const index = PLAY_AREA_CELL_OPTIONS.indexOf(cells);
-    return index >= 0 ? index : PLAY_AREA_CELL_OPTIONS.indexOf(256);
-}
 /** Tile Lab cold start: play area, nav worker sync, map overview + path-debug caches. */
 export async function initTileLabWorld(state) {
     await applyPlayAreaConfig(state);

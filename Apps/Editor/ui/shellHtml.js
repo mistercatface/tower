@@ -20,9 +20,6 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showPropTileCellsInput" type="checkbox"> Prop tile cells</label>
         <label class="check-inline"><input id="showRoomNodesAlwaysInput" type="checkbox"> Show nodes always</label>
         <span class="sep"></span>
-        <span id="playAreaColsToolbar"></span>
-        <span id="playAreaRowsToolbar"></span>
-        <span class="sep"></span>
         <button type="button" id="regenerateBtn">Redraw</button>
     </div>
     <div class="workspace">

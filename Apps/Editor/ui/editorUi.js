@@ -6,7 +6,7 @@ import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flu
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isShowLabPathDebug } from "./preview.js";
-import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi, mountPlayAreaToolbarControls, commitPlayAreaFromToolbar } from "./toolbar.js";
+import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
@@ -114,7 +114,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
         },
         () => computeMapColumnSlotMax(state),
     );
-    mountPlayAreaToolbarControls(state);
     void initTileLabWorld(state).then(() => {
         resizeCanvases(state);
         drawLabAndWaitForBakes();
@@ -126,7 +125,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
                 if (isShowLabPathDebug()) void ensureLabPathDebugCache(state);
             },
             onRedraw: () => {
-                commitPlayAreaFromToolbar(state);
                 pushEditorProfile(state);
                 fitLabStageToView(state);
                 drawLabAndWaitForBakes();
