@@ -193,9 +193,7 @@ export class AgentInstance {
         for (let i = 0; i < this.memberProps.length; i++) {
             const prop = this.memberProps[i];
             const segmentId = prop.id;
-            const bodyWallHits = prop._wallResolveHits ?? [];
-            const linkWallHits = prop._linkWallHits ?? [];
-            const allHits = [...bodyWallHits, ...linkWallHits];
+            const allHits = prop._wallResolveHits ?? [];
             let record = this.segmentWallPressures.get(segmentId);
             if (allHits.length > 0) {
                 let worstHit = allHits[0];

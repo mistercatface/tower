@@ -6,6 +6,7 @@ import { boxLocalFootprint } from "../../Math/Poly2D.js";
 import { applyPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
 import { kineticDynamicSlab, kineticStaticSlab } from "./kineticBodySlab.js";
 import { inverseMassFromBody } from "../../Motion/bodyMass.js";
+import { computeWallBreakStrength } from "../../Sandbox/gridWallDamage.js";
 import { dotXY } from "../../Math/Vec2.js";
 /** @param {object} body @param {object[]} candidates */
 export function kineticBodyOverlapsWallCandidates(body, candidates) {
@@ -108,10 +109,10 @@ export function ensureWallSegmentPolygonShape(segment) {
  * @param {{ x: number, y: number, radius?: number, vx?: number, vy?: number, _frameDispX?: number, _frameDispY?: number, _physId?: number }} body — mutated
  * @param {import("./Shapes.js").CircleShape | import("./Shapes.js").PolygonShape} shape
  * @param {object[]} segments
- * @param {{ restitution?: number, friction?: number, passes?: number }} [options]
+ * @param {{ restitution?: number, friction?: number, passes?: number, preSpeed?: number, wallBreakConfig?: { minBreakStrength: number, minStrikeSpeed: number, referenceMaxSpeed: number } | null }} [options]
  * @returns {{ collided: boolean, hits: WallHit[] }}
  */
-export function resolveBodyAgainstWallSegments(body, shape, segments, { restitution = 0, friction = 0.9, passes = 2 } = {}) {
+export function resolveBodyAgainstWallSegments(body, shape, segments, { restitution = 0, friction = 0.9, passes = 2, preSpeed = 0, wallBreakConfig = null } = {}) {
     const physId = body._physId;
     const hasSlab = physId !== undefined && physId !== -1;
     const dispX = body._frameDispX;
@@ -169,14 +170,24 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
         }
         if (!best) break;
         collided = true;
-        applyPositionCorrection(body, best.normalX, best.normalY, best.overlap);
         const bx = hasSlab ? kineticDynamicSlab.x[physId] : body.x;
         const by = hasSlab ? kineticDynamicSlab.y[physId] : body.y;
         const contact =
             shape.type === "Circle"
                 ? computeCircleWallContact({ x: bx, y: by }, best.normalX, best.normalY, shape.radius)
                 : computePolygonWallContact({ x: bx, y: by }, best.normalX, best.normalY, best.overlap, best.cx, best.cy);
-        const approachDot = applyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
+        const bvx = hasSlab ? kineticDynamicSlab.vx[physId] : (body.vx ?? 0);
+        const bvy = hasSlab ? kineticDynamicSlab.vy[physId] : (body.vy ?? 0);
+        const bw = hasSlab ? kineticDynamicSlab.w[physId] : (body.angularVelocity ?? 0);
+        const rx = contact.cx - bx;
+        const ry = contact.cy - by;
+        const approachDot = dotXY(bvx - bw * ry, bvy + bw * rx, best.normalX, best.normalY);
+        if (wallBreakConfig && preSpeed > 0 && computeWallBreakStrength(preSpeed, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength) {
+            hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
+            continue;
+        }
+        applyPositionCorrection(body, best.normalX, best.normalY, best.overlap);
+        applyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
         hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
     }
     return { collided, hits };

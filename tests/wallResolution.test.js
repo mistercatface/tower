@@ -92,4 +92,38 @@ describe("polygon wall resolution", () => {
         resolver.resolve(bar, { frameId: 2, getWallCandidates: () => [wall] });
         assert.equal(bar.isSleeping, false);
     });
+    it("breaking hit skips push-out when break strength passes threshold", () => {
+        const bar = bar16x8(5, 0);
+        bar.vx = -560;
+        bar.vy = 0;
+        const startX = bar.x;
+        const wall = mockWallSegment(-8, 0);
+        assert.ok(shapeOverlapsWall(bar, wall));
+        const wallBreakConfig = { minBreakStrength: 0.1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
+        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], {
+            restitution: bar.strategy.wallPhysics.restitution,
+            friction: bar.strategy.wallPhysics.friction,
+            preSpeed: 560,
+            wallBreakConfig,
+        });
+        assert.ok(collided);
+        assert.ok(hits.length >= 1);
+        assert.ok(Math.abs(bar.x - startX) < 0.01, "breaking hit should not push body out");
+        assert.ok(shapeOverlapsWall(bar, wall));
+    });
+    it("sub-threshold hit still pushes out overlapping body", () => {
+        const bar = bar16x8(5, 0);
+        bar.vx = -40;
+        bar.vy = 0;
+        const wall = mockWallSegment(-8, 0);
+        assert.ok(shapeOverlapsWall(bar, wall));
+        const wallBreakConfig = { minBreakStrength: 0.1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
+        resolveBodyAgainstWallSegments(bar, bar.shape, [wall], {
+            restitution: bar.strategy.wallPhysics.restitution,
+            friction: bar.strategy.wallPhysics.friction,
+            preSpeed: 40,
+            wallBreakConfig,
+        });
+        assert.ok(!shapeOverlapsWall(bar, wall));
+    });
 });

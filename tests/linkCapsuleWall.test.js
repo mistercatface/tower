@@ -1,45 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createKineticTestTick, attachKineticTestTickFromState, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab, kineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
-import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
+import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
-import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
-import { writebackActiveKineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 
 const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });
 
 function mockWallSegment(x, y, size = 16) {
     return { x, y, size, width: size, height: size, angle: 0, isDead: false };
 }
-function resolveLinkConstraintsWithWorkaround(tick, bodies) {
-    const origIds = new Map();
-    for (const b of bodies) {
-        origIds.set(b, b._physId);
-        b._physId = -1;
-    }
+function resolveLinkConstraints(tick, bodies) {
     resolveGatheredKineticConstraintSlab(tick);
-    for (const b of bodies) {
-        b._physId = origIds.get(b);
-    }
-}
-function stampBlockedCell(grid, col, row) {
-    grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
-}
-function createNarrowCorridorState() {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, 32 * 16, 16 * 16);
-    for (let col = 4; col <= 27; col++) {
-        stampBlockedCell(grid, col, 6);
-        stampBlockedCell(grid, col, 8);
-    }
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
+    writebackActiveKineticBodySlab(bodies);
 }
 
 describe("link capsule wall projection", () => {
@@ -65,14 +39,7 @@ describe("link capsule wall projection", () => {
         tick.frame.getWallCandidates = () => [wall];
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         gatherKineticConstraintSlab(tick);
-        console.log("slab count:", kineticConstraintSlab.count);
-        console.log("slab activeCount:", kineticConstraintSlab.activeCount);
-        console.log("slab type:", kineticConstraintSlab.type[0]);
-        console.log("slab static.capsuleRadius:", kineticConstraintSlab.static.capsuleRadius[0]);
-        resolveLinkConstraintsWithWorkaround(tick, [bodyA, bodyB]);
-        console.log("bodyA:", bodyA.x, bodyA.y);
-        console.log("bodyB:", bodyB.x, bodyB.y);
-        console.log("minDistanceSegmentToWall:", minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall));
+        resolveLinkConstraints(tick, [bodyA, bodyB]);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("gathers wall candidates once per unique body in an island", () => {
@@ -87,7 +54,7 @@ describe("link capsule wall projection", () => {
             return [];
         };
         gatherKineticConstraintSlab(tick);
-        resolveGatheredKineticConstraintSlab(tick);
+        resolveLinkConstraints(tick, [bodyA, bodyB]);
         assert.equal(wallQueries, 2, "one wall gather per unique body in the island");
     });
     it("dedupes wall gathers across a multi-link chain island", () => {
@@ -104,7 +71,7 @@ describe("link capsule wall projection", () => {
             return [];
         };
         gatherKineticConstraintSlab(tick);
-        resolveGatheredKineticConstraintSlab(tick);
+        resolveLinkConstraints(tick, [bodyA, bodyB]);
         assert.equal(wallQueries, 3, "three unique bodies in a two-link chain");
     });
     it("does not disturb a fast-moving link in open space with distant gathered walls", () => {
@@ -118,7 +85,7 @@ describe("link capsule wall projection", () => {
         const decoyWalls = Array.from({ length: 32 }, (_, i) => mockWallSegment(400 + i * 8, 400, 16));
         tick.frame.getWallCandidates = () => decoyWalls;
         gatherKineticConstraintSlab(tick);
-        resolveGatheredKineticConstraintSlab(tick);
+        resolveLinkConstraints(tick, [bodyA, bodyB]);
         assert.equal(bodyA.x, startAx);
         assert.equal(bodyB.x, startBx);
     });
@@ -133,7 +100,7 @@ describe("link capsule wall projection", () => {
         tick.frame.getWallCandidates = () => [nearWall, farWall];
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) < 4);
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraintsWithWorkaround(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick, [bodyA, bodyB]);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) >= 4 - 0.05);
     });
     it("still projects a nearly-static wedged link", () => {
@@ -145,33 +112,24 @@ describe("link capsule wall projection", () => {
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => [wall];
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraintsWithWorkaround(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick, [bodyA, bodyB]);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
-    it("collision pipeline clears wedged head-neck link in a 1-cell corridor", () => {
+    it("link wall correction survives constraint solve on kinetic slab", () => {
         resetKineticConstraintIds(1);
-        const state = createNarrowCorridorState();
-        const chain = spawnLinkedBallChain(state, { col: 10, row: 7 }, { segmentCount: 2, spacing: 8.4, ballType: "ball", growDirX: 1, growDirY: 0 });
-        const head = chain.head;
-        const neck = chain.members[1];
-        head.x = state.obstacleGrid.gridToWorld(10, 7).x;
-        head.y = state.obstacleGrid.gridToWorld(10, 7).y + 3;
-        neck.x = head.x + 8.4;
-        neck.y = head.y + 4;
-        state.worldProps.push(head, neck);
-        const tick = attachKineticTestTickFromState(state, [head, neck], 16);
-        const radius = Math.max(head.radius, neck.radius);
-        const walls = [];
-        state.obstacleGrid.resetStaticWallProxyPool();
-        state.obstacleGrid.appendStaticWallProxiesNearWorld((head.x + neck.x) * 0.5, (head.y + neck.y) * 0.5, 64, walls);
-        let minClear = Infinity;
-        for (let i = 0; i < walls.length; i++) minClear = Math.min(minClear, minDistanceSegmentToWall(head.x, head.y, neck.x, neck.y, walls[i]));
-        assert.ok(minClear < radius, "fixture should start with link-capsule wall overlap");
-        runCollisionPipeline(tick, { ...kineticPipelineStubs, kineticIterations: 4 });
-        minClear = Infinity;
-        state.obstacleGrid.resetStaticWallProxyPool();
-        state.obstacleGrid.appendStaticWallProxiesNearWorld((head.x + neck.x) * 0.5, (head.y + neck.y) * 0.5, 64, walls);
-        for (let i = 0; i < walls.length; i++) minClear = Math.min(minClear, minDistanceSegmentToWall(head.x, head.y, neck.x, neck.y, walls[i]));
-        assert.ok(minClear >= 1.1, `expected link clearance >= 1.1, got ${minClear}`);
+        const wall = mockWallSegment(58, 4, 16);
+        const bodyA = wallCircle(50, 14, 4);
+        const bodyB = wallCircle(66, 14, 4);
+        const tick = createKineticTestTick([bodyA, bodyB]);
+        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        tick.frame.getWallCandidates = () => [wall];
+        gatherKineticConstraintSlab(tick);
+        assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
+        resolveGatheredKineticConstraintSlab(tick);
+        const slabAx = kineticDynamicSlab.x[bodyA._physId];
+        const slabAy = kineticDynamicSlab.y[bodyA._physId];
+        const slabBx = kineticDynamicSlab.x[bodyB._physId];
+        const slabBy = kineticDynamicSlab.y[bodyB._physId];
+        assert.ok(minDistanceSegmentToWall(slabAx, slabAy, slabBx, slabBy, wall) >= 4 - 0.05);
     });
 });

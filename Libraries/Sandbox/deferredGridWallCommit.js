@@ -22,6 +22,7 @@ export function createDeferredGridWallCommit(state) {
                     pending.add(voxelIndices[i]);
                     changed = true;
                 }
+            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
             return changed;
         },
         clearRails(rails) {

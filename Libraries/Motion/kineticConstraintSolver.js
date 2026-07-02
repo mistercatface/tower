@@ -409,15 +409,15 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
             if (!linkSegmentOverlapsWall(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg)) continue;
             const penetration = getLinkCapsuleSegmentPenetration(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg, { approachX, approachY });
             if (!penetration || penetration.overlap <= 0) continue;
-            if (!best || penetration.overlap > best.overlap) best = penetration;
+            if (!best || penetration.overlap > best.overlap) best = { ...penetration, segment: seg };
         }
         if (!best) break;
         const approachDot = approachX * best.normalX + approachY * best.normalY;
         const hit = { approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, isLinkCapsule: true };
-        if (!bodyA._linkWallHits) bodyA._linkWallHits = [];
-        if (!bodyB._linkWallHits) bodyB._linkWallHits = [];
-        bodyA._linkWallHits.push(hit);
-        bodyB._linkWallHits.push(hit);
+        if (!bodyA._wallResolveHits) bodyA._wallResolveHits = [];
+        if (!bodyB._wallResolveHits) bodyB._wallResolveHits = [];
+        bodyA._wallResolveHits.push(hit);
+        bodyB._wallResolveHits.push(hit);
         translateLinkAwayFromWall(bodyA, bodyB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
@@ -432,8 +432,8 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
     const linkWalls = linkFilteredWallCandidates;
     const gatherMark = spatialFrame.frameId;
     for (let i = 0; i < slab.activeCount; i++) {
-        if (slab.bodyA[i]) slab.bodyA[i]._linkWallHits = null;
-        if (slab.bodyB[i]) slab.bodyB[i]._linkWallHits = null;
+        if (slab.bodyA[i]) slab.bodyA[i]._wallResolveHits = null;
+        if (slab.bodyB[i]) slab.bodyB[i]._wallResolveHits = null;
     }
     let currentGroupStart = 0;
     for (let g = 0; g < slab.groupCount; g++) {
@@ -712,7 +712,6 @@ export function resolveGatheredKineticConstraintSlab(tick) {
     collectActiveConstraintPhysIds(slab, constraintBridgePhysIds);
     writebackKineticBodySlabPhysIds(tick.frame, constraintBridgePhysIds);
     projectIslandLinkCapsulesAgainstWalls(tick);
-    syncConstraintSlabBodies(slab);
     solveKineticConstraintSlab(tick);
 }
 export function measureConstraintSlabMaxError() {

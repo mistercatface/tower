@@ -15,6 +15,7 @@ export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
 }
 export function resolveWallDamageTarget(grid, segment) {
+    if (!segment) return null;
     if (segment.passageEdge) return null;
     const col = segment.gridCol;
     const row = segment.gridRow;
@@ -46,7 +47,7 @@ export function createGridWallDamage(state, config) {
 export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
     const wallDamage = getGridWallDamageState(state);
     const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
-    const collided = wallResolver.resolve(entity, spatialFrame);
+    const collided = wallResolver.resolve(entity, spatialFrame, preSpeed, wallDamage?.config ?? null);
     if (!wallDamage || !entity._wallResolveHits?.length) return collided;
     // Store spatialFrame on wallDamage for use during flush/promotion
     wallDamage.spatialFrame = spatialFrame;

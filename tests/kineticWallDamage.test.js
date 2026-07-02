@@ -15,6 +15,8 @@ import { resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameC
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
+import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
+import { ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
 const WALL_DAMAGE = resolveSnakeWallDamageConfig();
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -223,6 +225,26 @@ describe("kinetic wall damage", () => {
         assert.ok(shards.length > 0);
         assert.ok(shards.every(s => s.height === 32));
         
+        terminateWorkerNavigation(state.nav);
+    });
+    it("breaking resolve plus flush keeps displacement bounded", async () => {
+        const state = await createWallDamageTestState();
+        state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampVoxel(state.obstacleGrid, 6, 6);
+        const ball = new WorldProp(6 * 16 + 2, 6 * 16 + 8, "ball", 0);
+        ball.vx = 560;
+        ball.vy = 0;
+        const candidates = [];
+        state.obstacleGrid.appendStaticWallProxiesNearWorld(ball.x, ball.y, ball.radius + 32, candidates);
+        assert.ok(candidates.length > 0);
+        const wall = candidates[0];
+        assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wall.x, wall.y, entityFacing(wall), ensureWallSegmentPolygonShape(wall)));
+        const startX = ball.x;
+        const spatialFrame = { frameId: 7, getWallCandidates: () => candidates, evictKineticProp() {} };
+        resolveKineticWallDamage(state, ball, spatialFrame, new WallCollisionResolver());
+        flushPendingWallDamage(state);
+        assert.ok(Math.abs(ball.x - startX) < 1, `expected bounded displacement, got ${ball.x - startX}`);
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(6, 6, state.obstacleGrid.cols)));
         terminateWorkerNavigation(state.nav);
     });
 });
