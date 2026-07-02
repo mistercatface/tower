@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createTargetMemory, targetFromMemoryRecord } from "./harness/agentTestCompat.js";
+import { TargetMemory, AgentIntentMemory } from "../Libraries/Game/snake/GroundNavIntentAdapter.js";
 const grid = {
     cellSize: 10,
     cols: 10,
@@ -48,5 +49,33 @@ describe("target memory", () => {
         const state = { entityRegistry: { getLive: () => ({ isDead: true }) } };
         assert.equal(targetFromMemoryRecord(record, state), null);
         assert.deepEqual(targetFromMemoryRecord(record), { id: 5, x: 10, y: 20, memoryRecord: record });
+    });
+    it("applies longer engaged TTL to committed target when observing it", () => {
+        const memory = new TargetMemory(["prey"], { prey: 2 }, { prey: 10 });
+        // Case 1: Target observed but NOT committed/engaged target -> uses base TTL
+        memory.observe("prey", { id: 5, x: 20, y: 10 }, { x: 0, y: 0 }, grid, "seek_prey", 999);
+        assert.equal(memory.record("prey").ttlTicks, 2);
+
+        // Case 2: Target observed and IS committed/engaged target -> uses engaged TTL
+        memory.observe("prey", { id: 5, x: 20, y: 10 }, { x: 0, y: 0 }, grid, "seek_prey", 5);
+        assert.equal(memory.record("prey").ttlTicks, 10);
+    });
+    it("AgentIntentMemory passes current mode and target ID through to target observation", () => {
+        const memory = new AgentIntentMemory({
+            preyTtlTicks: 5,
+            engagedPreyTtlTicks: 15
+        });
+        const state = { obstacleGrid: grid };
+        const seeker = { x: 0, y: 0 };
+        const prey = { id: 100, x: 30, y: 20 };
+        const visibleWorld = { threat: null, prey, food: null, ally: null, ammo: null };
+
+        // Observe with non-engaged mode/target
+        memory.update(seeker, state, visibleWorld, "explore", null);
+        assert.equal(memory.snapshot().prey.ttlTicks, 5);
+
+        // Observe with engaged mode/target
+        memory.update(seeker, state, visibleWorld, "seek_prey", 100);
+        assert.equal(memory.snapshot().prey.ttlTicks, 15);
     });
 });

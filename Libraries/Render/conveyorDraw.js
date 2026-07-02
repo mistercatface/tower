@@ -6,6 +6,8 @@ import { traceClosedFlatPolygon } from "../Canvas/CanvasPath.js";
 const sScratchQuad = new Float32Array(8);
 const sScratchChevron = new Float32Array(12);
 const sTemp = new Float32Array(2);
+const CONVEYOR_BELT_HEIGHT = 0;
+const CONVEYOR_RAIL_HEIGHT = 0;
 /** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
     const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride, chevronColors: chevronColorsOverride } = options;
@@ -41,24 +43,24 @@ export function createConveyorDraw(options = {}) {
             const beltProp = subProp(prop.x, prop.y, angle);
             drawBox(ctx, beltProp, viewport, {
                 halfSize: { x: hx, y: beltHalfW },
-                height: 2,
+                height: CONVEYOR_BELT_HEIGHT,
                 facing: angle,
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
                 lineWidth: 1.0 * lineScale,
             });
-            // 2. Draw the moving belt texture/arrows on the top face (z = 2)
+            // 2. Draw the moving belt texture/arrows on the top face (z = CONVEYOR_BELT_HEIGHT)
             function projectLocalFlat(out8, offset, lx, ly, lz) {
                 const r = rotateXY(lx, ly, cos, sin);
                 projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
             }
             ctx.save();
             ctx.beginPath();
-            projectLocalFlat(sScratchQuad, 0, -hx, -beltHalfW, 2);
-            projectLocalFlat(sScratchQuad, 2, hx, -beltHalfW, 2);
-            projectLocalFlat(sScratchQuad, 4, hx, beltHalfW, 2);
-            projectLocalFlat(sScratchQuad, 6, -hx, beltHalfW, 2);
+            projectLocalFlat(sScratchQuad, 0, -hx, -beltHalfW, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 2, hx, -beltHalfW, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 4, hx, beltHalfW, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 6, -hx, beltHalfW, CONVEYOR_BELT_HEIGHT);
             traceClosedFlatPolygon(ctx, sScratchQuad, 4);
             ctx.clip();
             const speed = 20; // speed of movement (units/sec)
@@ -71,8 +73,8 @@ export function createConveyorDraw(options = {}) {
             const numSlats = Math.ceil((hx * 2) / 4) + 2;
             for (let i = -2; i < numSlats; i++) {
                 const cx = -hx + ((timeSec * speed) % 4) + i * 4;
-                projectLocalFlat(sScratchQuad, 0, cx, -beltHalfW, 2);
-                projectLocalFlat(sScratchQuad, 2, cx, beltHalfW, 2);
+                projectLocalFlat(sScratchQuad, 0, cx, -beltHalfW, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchQuad, 2, cx, beltHalfW, CONVEYOR_BELT_HEIGHT);
                 ctx.beginPath();
                 ctx.moveTo(sScratchQuad[0], sScratchQuad[1]);
                 ctx.lineTo(sScratchQuad[2], sScratchQuad[3]);
@@ -85,25 +87,25 @@ export function createConveyorDraw(options = {}) {
             const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
             for (let i = -2; i < numChevrons; i++) {
                 const cx = -hx + offset + i * spacing;
-                projectLocalFlat(sScratchChevron, 0, cx + 1.5, 0, 2); // tip
-                projectLocalFlat(sScratchChevron, 2, cx - 1.2, 3.2, 2); // right wing tip
-                projectLocalFlat(sScratchChevron, 4, cx - 0.4, 3.2, 2); // right inner
-                projectLocalFlat(sScratchChevron, 6, cx + 0.8, 0, 2); // inner tip
-                projectLocalFlat(sScratchChevron, 8, cx - 0.4, -3.2, 2); // left inner
-                projectLocalFlat(sScratchChevron, 10, cx - 1.2, -3.2, 2); // left wing tip
+                projectLocalFlat(sScratchChevron, 0, cx + 1.5, 0, CONVEYOR_BELT_HEIGHT); // tip
+                projectLocalFlat(sScratchChevron, 2, cx - 1.2, 3.2, CONVEYOR_BELT_HEIGHT); // right wing tip
+                projectLocalFlat(sScratchChevron, 4, cx - 0.4, 3.2, CONVEYOR_BELT_HEIGHT); // right inner
+                projectLocalFlat(sScratchChevron, 6, cx + 0.8, 0, CONVEYOR_BELT_HEIGHT); // inner tip
+                projectLocalFlat(sScratchChevron, 8, cx - 0.4, -3.2, CONVEYOR_BELT_HEIGHT); // left inner
+                projectLocalFlat(sScratchChevron, 10, cx - 1.2, -3.2, CONVEYOR_BELT_HEIGHT); // left wing tip
                 ctx.beginPath();
                 traceClosedFlatPolygon(ctx, sScratchChevron, 6);
                 ctx.fill();
                 ctx.stroke();
             }
             ctx.restore();
-            // 3. Draw the side rails
+            // 3. Draw the side rails (flat)
             const leftOffset = -7.25;
             const left = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, 0, leftOffset, cos, sin);
             const leftRailProp = subProp(left.x, left.y, angle);
             drawBox(ctx, leftRailProp, viewport, {
                 halfSize: { x: hx, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 facing: angle,
                 faceColors: railColors,
                 topColors: railTopColors,
@@ -115,7 +117,7 @@ export function createConveyorDraw(options = {}) {
             const rightRailProp = subProp(right.x, right.y, angle);
             drawBox(ctx, rightRailProp, viewport, {
                 halfSize: { x: hx, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 facing: angle,
                 faceColors: railColors,
                 topColors: railTopColors,
@@ -148,7 +150,7 @@ export function createConveyorDraw(options = {}) {
                 type: "belt",
                 prop: prop_b1,
                 halfSize: { x: 7.25, y: 6.5 },
-                height: 2,
+                height: CONVEYOR_BELT_HEIGHT,
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
@@ -163,7 +165,7 @@ export function createConveyorDraw(options = {}) {
                 type: "belt",
                 prop: prop_b2,
                 halfSize: { x: 7.25, y: 6.5 },
-                height: 2,
+                height: CONVEYOR_BELT_HEIGHT,
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
@@ -178,7 +180,7 @@ export function createConveyorDraw(options = {}) {
                 type: "rail",
                 prop: prop_r1,
                 halfSize: { x: 8, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
@@ -193,7 +195,7 @@ export function createConveyorDraw(options = {}) {
                 type: "rail",
                 prop: prop_r2,
                 halfSize: { x: 8, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
@@ -208,7 +210,7 @@ export function createConveyorDraw(options = {}) {
                 type: "rail",
                 prop: prop_ri,
                 halfSize: { x: 0.75, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
@@ -224,7 +226,7 @@ export function createConveyorDraw(options = {}) {
                 type: "belt",
                 prop: prop_b1,
                 halfSize: { x: 7.25, y: 6.5 },
-                height: 2,
+                height: CONVEYOR_BELT_HEIGHT,
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
@@ -239,7 +241,7 @@ export function createConveyorDraw(options = {}) {
                 type: "belt",
                 prop: prop_b2,
                 halfSize: { x: 7.25, y: 6.5 },
-                height: 2,
+                height: CONVEYOR_BELT_HEIGHT,
                 faceColors: beltColors,
                 topColors: beltTopColors,
                 stroke: beltStroke,
@@ -254,7 +256,7 @@ export function createConveyorDraw(options = {}) {
                 type: "rail",
                 prop: prop_r1,
                 halfSize: { x: 8, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
@@ -269,7 +271,7 @@ export function createConveyorDraw(options = {}) {
                 type: "rail",
                 prop: prop_r2,
                 halfSize: { x: 8, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
@@ -284,7 +286,7 @@ export function createConveyorDraw(options = {}) {
                 type: "rail",
                 prop: prop_ri,
                 halfSize: { x: 0.75, y: 0.75 },
-                height: 3.5,
+                height: CONVEYOR_RAIL_HEIGHT,
                 faceColors: railColors,
                 topColors: railTopColors,
                 stroke: railStroke,
@@ -312,31 +314,31 @@ export function createConveyorDraw(options = {}) {
         ctx.beginPath();
         const steps = 8;
         if (isLeft) {
-            projectLocalFlat(sTemp, 0, -6.5, 8, 2);
+            projectLocalFlat(sTemp, 0, -6.5, 8, CONVEYOR_BELT_HEIGHT);
             ctx.moveTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, -6.5, -6.5, 2);
+            projectLocalFlat(sTemp, 0, -6.5, -6.5, CONVEYOR_BELT_HEIGHT);
             ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, -6.5, 2);
+            projectLocalFlat(sTemp, 0, 8, -6.5, CONVEYOR_BELT_HEIGHT);
             ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, 6.5, 2);
+            projectLocalFlat(sTemp, 0, 8, 6.5, CONVEYOR_BELT_HEIGHT);
             ctx.lineTo(sTemp[0], sTemp[1]);
             for (let i = 0; i <= steps; i++) {
                 const A = 1.5 * Math.PI - (i / steps) * (0.5 * Math.PI);
-                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), 8 + 1.5 * Math.sin(A), 2);
+                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), 8 + 1.5 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
                 ctx.lineTo(sTemp[0], sTemp[1]);
             }
         } else {
-            projectLocalFlat(sTemp, 0, -6.5, -8, 2);
+            projectLocalFlat(sTemp, 0, -6.5, -8, CONVEYOR_BELT_HEIGHT);
             ctx.moveTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, -6.5, 6.5, 2);
+            projectLocalFlat(sTemp, 0, -6.5, 6.5, CONVEYOR_BELT_HEIGHT);
             ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, 6.5, 2);
+            projectLocalFlat(sTemp, 0, 8, 6.5, CONVEYOR_BELT_HEIGHT);
             ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, -6.5, 2);
+            projectLocalFlat(sTemp, 0, 8, -6.5, CONVEYOR_BELT_HEIGHT);
             ctx.lineTo(sTemp[0], sTemp[1]);
             for (let i = 0; i <= steps; i++) {
                 const A = 0.5 * Math.PI + (i / steps) * (0.5 * Math.PI);
-                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), -8 + 1.5 * Math.sin(A), 2);
+                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), -8 + 1.5 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
                 ctx.lineTo(sTemp[0], sTemp[1]);
             }
         }
@@ -356,8 +358,8 @@ export function createConveyorDraw(options = {}) {
             const s = ((timeSec * speed) % 4) + i * 4;
             if (s < 0 || s > totalArcLength) continue;
             const A = startAngle + dir * (s / 8);
-            projectLocalFlat(sScratchQuad, 0, pivotX + 1.5 * Math.cos(A), pivotY + 1.5 * Math.sin(A), 2);
-            projectLocalFlat(sScratchQuad, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), 2);
+            projectLocalFlat(sScratchQuad, 0, pivotX + 1.5 * Math.cos(A), pivotY + 1.5 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
             ctx.beginPath();
             ctx.moveTo(sScratchQuad[0], sScratchQuad[1]);
             ctx.lineTo(sScratchQuad[2], sScratchQuad[3]);
@@ -377,12 +379,12 @@ export function createConveyorDraw(options = {}) {
             const wingAngle = A - dir * (1.2 / 8);
             const innerAngle = A - dir * (0.4 / 8);
             const innerTipAngle = A + dir * (0.8 / 8);
-            projectLocalFlat(sScratchChevron, 0, pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle), 2);
-            projectLocalFlat(sScratchChevron, 2, pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle), 2);
-            projectLocalFlat(sScratchChevron, 4, pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle), 2);
-            projectLocalFlat(sScratchChevron, 6, pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle), 2);
-            projectLocalFlat(sScratchChevron, 8, pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle), 2);
-            projectLocalFlat(sScratchChevron, 10, pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle), 2);
+            projectLocalFlat(sScratchChevron, 0, pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchChevron, 2, pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchChevron, 4, pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchChevron, 6, pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchChevron, 8, pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchChevron, 10, pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle), CONVEYOR_BELT_HEIGHT);
             ctx.beginPath();
             traceClosedFlatPolygon(ctx, sScratchChevron, 6);
             ctx.fill();

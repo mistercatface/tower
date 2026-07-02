@@ -95,20 +95,27 @@ export function targetFromMemoryRecord(record, state = null) {
     return { id: record.id, x: record.x, y: record.y, memoryRecord: record };
 }
 export class TargetMemory {
-    constructor(kinds, ttlByKind) {
+    constructor(kinds, ttlByKind, engagedTtlByKind = {}) {
         this.kinds = kinds;
         this.ttlByKind = ttlByKind;
+        this.engagedTtlByKind = engagedTtlByKind;
         this.records = {};
         for (const kind of kinds) this.records[kind] = null;
     }
-    observe(kind, target, observer, grid) {
+    observe(kind, target, observer, grid, currentMode = null, currentTargetId = null) {
         if (target) {
             const id = target.id ?? null;
             const existing = this.records[kind];
-            if (existing && existing.id === id) refreshRecord(existing, target, grid);
-            else {
+            const isEngaged = currentTargetId !== null && id === currentTargetId && (currentMode === "seek_prey" || currentMode === "seek_enemy" || currentMode === "flee");
+            const baseTtl = this.ttlByKind[kind];
+            const engagedTtl = this.engagedTtlByKind[kind] ?? baseTtl;
+            const ttl = isEngaged ? engagedTtl : baseTtl;
+            if (existing && existing.id === id) {
+                refreshRecord(existing, target, grid);
+                existing.ttlTicks = ttl;
+            } else {
                 const cellIdx = grid.worldCol(target.x) + grid.worldRow(target.y) * grid.cols;
-                this.records[kind] = { kind, id, x: target.x, y: target.y, cellIdx, ageTicks: 0, ttlTicks: this.ttlByKind[kind], confidence: 1 };
+                this.records[kind] = { kind, id, x: target.x, y: target.y, cellIdx, ageTicks: 0, ttlTicks: ttl, confidence: 1 };
             }
         } else this.records[kind] = ageRecord(this.records[kind]);
     }
@@ -144,21 +151,36 @@ function mergeAlly(visibleWorld, record, state, session, filterAllyForEngagement
     return allyIfEngaged(session, ally);
 }
 export class AgentIntentMemory {
-    constructor({ threatTtlTicks = 45, preyTtlTicks = 90, foodTtlTicks = 180, allyTtlTicks = 60, ammoTtlTicks = 180, filterAllyForEngagement = false } = {}) {
+    constructor({
+        threatTtlTicks = 45,
+        preyTtlTicks = 90,
+        foodTtlTicks = 180,
+        allyTtlTicks = 60,
+        ammoTtlTicks = 180,
+        engagedPreyTtlTicks = null,
+        engagedThreatTtlTicks = null,
+        filterAllyForEngagement = false,
+    } = {}) {
         this.filterAllyForEngagement = filterAllyForEngagement;
-        this.memory = new TargetMemory(INTENT_MEMORY_KINDS, { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks, ammo: ammoTtlTicks });
+        const finalEngagedPrey = engagedPreyTtlTicks ?? preyTtlTicks * 3;
+        const finalEngagedThreat = engagedThreatTtlTicks ?? threatTtlTicks * 3;
+        this.memory = new TargetMemory(
+            INTENT_MEMORY_KINDS,
+            { threat: threatTtlTicks, prey: preyTtlTicks, food: foodTtlTicks, ally: allyTtlTicks, ammo: ammoTtlTicks },
+            { prey: finalEngagedPrey, threat: finalEngagedThreat },
+        );
         this.memorySource = { threat: false, prey: false, food: false, ally: false, ammo: false };
         this.world = { threat: null, prey: null, food: null, ally: null, ammo: null, allyCount: 0, allyCentroid: null, threatCount: 0, memorySource: this.memorySource };
     }
-    update(seeker, state, visibleWorld) {
+    update(seeker, state, visibleWorld, currentMode = null, currentTargetId = null) {
         const grid = state.obstacleGrid;
         const session = state.sandbox?.snakeGame;
         const ally = this.filterAllyForEngagement ? allyIfEngaged(session, visibleWorld.ally) : visibleWorld.ally;
-        this.memory.observe("threat", visibleWorld.threat, seeker, grid);
-        this.memory.observe("prey", visibleWorld.prey, seeker, grid);
-        this.memory.observe("food", visibleWorld.food, seeker, grid);
-        this.memory.observe("ally", ally, seeker, grid);
-        this.memory.observe("ammo", visibleWorld.ammo, seeker, grid);
+        this.memory.observe("threat", visibleWorld.threat, seeker, grid, currentMode, currentTargetId);
+        this.memory.observe("prey", visibleWorld.prey, seeker, grid, currentMode, currentTargetId);
+        this.memory.observe("food", visibleWorld.food, seeker, grid, currentMode, currentTargetId);
+        this.memory.observe("ally", ally, seeker, grid, currentMode, currentTargetId);
+        this.memory.observe("ammo", visibleWorld.ammo, seeker, grid, currentMode, currentTargetId);
     }
     enrichWorld(state, visibleWorld) {
         const session = state.sandbox?.snakeGame;
@@ -794,7 +816,7 @@ export class GroundNavIntentAdapter extends AgentIntentFSM {
             perceiveWorld: (agent, state) => {
                 perceptionOptions.committedTargetId = this.getTargetId();
                 perceiveAgentWorldInto(visible, state, agent, visibleSourceResolvers, perceptionOptions);
-                intentMemory.update(agent, state, visible);
+                intentMemory.update(agent, state, visible, this.getMode(), this.getTargetId());
                 const memoryWorld = intentMemory.enrichWorld(state, visible);
                 committed.mode = this.getMode();
                 committed.targetId = this.getTargetId();
