@@ -182,7 +182,7 @@ export const SNAKE_GAME_DEFAULTS = {
             exportType: "flee_agent",
             topology: "single",
             useFactionTint: true,
-            populationCount: 96,
+            populationCount: 512,
             spawnSeedOffset: 9173,
             bodyPropId: "boid_triangle",
             segmentCount: 1,
