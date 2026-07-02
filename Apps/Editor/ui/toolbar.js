@@ -42,8 +42,11 @@ export function mountPlayAreaToolbarControls(state) {
 /** @param {import("../state.js").TileLabGameState} state */
 export function commitPlayAreaFromToolbar(state) {
     const { playConfig } = state.editor;
-    playConfig.playAreaCols = PLAY_AREA_CELL_OPTIONS[Number(playAreaToolbar.cols.input.value)];
-    playConfig.playAreaRows = PLAY_AREA_CELL_OPTIONS[Number(playAreaToolbar.rows.input.value)];
+    const nextCols = PLAY_AREA_CELL_OPTIONS[Number(playAreaToolbar.cols.input.value)];
+    const nextRows = PLAY_AREA_CELL_OPTIONS[Number(playAreaToolbar.rows.input.value)];
+    if (playConfig.playAreaCols === nextCols && playConfig.playAreaRows === nextRows) return;
+    playConfig.playAreaCols = nextCols;
+    playConfig.playAreaRows = nextRows;
     applyPlayAreaConfig(state);
 }
 /** @param {import("../state.js").TileLabGameState} state */

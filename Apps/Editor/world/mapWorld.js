@@ -156,7 +156,7 @@ export async function generateLabCaverns(state, { openBoundarySides = null, open
     }
     const cavernProfile = cavernConfig.surfaceProfileId || "tomatoGarden";
     applyMapGenSurfaceProfile(state, cavernConfig, cavernProfile);
-    await commitGridNavEdit(state, damageBounds);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
@@ -236,7 +236,7 @@ export async function generateLabRailDfsMaze(state, options = {}) {
     const damageBounds = unionCellBounds({ startCol, endCol, startRow, endRow }, northBounds);
     const railProfile = railConfig.surfaceProfileId || "poolTableFelt";
     applyMapGenSurfaceProfile(state, railConfig, railProfile);
-    await commitGridNavEdit(state, damageBounds);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
@@ -337,7 +337,7 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
     }
     const railProfile = railConfig.surfaceProfileId || "poolTableFelt";
     applyMapGenSurfaceProfile(state, railConfig, railProfile);
-    await commitGridNavEdit(state, damageBounds);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
@@ -397,8 +397,7 @@ export async function generateLabRailMaze(state, options = {}) {
     const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
     const railMazeProfile = config.surfaceProfileId || "cyberGrid";
     applyMapGenSurfaceProfile(state, config, railMazeProfile);
-    await commitGridNavEdit(state, damageBounds);
-    await commitGridNavEditUnion(state, damageBounds, beltBounds);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
