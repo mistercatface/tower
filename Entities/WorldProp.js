@@ -9,7 +9,7 @@ import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Moti
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
-import { quantizeCardinalAngle } from "../Libraries/Math/Angle.js";
+import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/Angle.js";
 import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
 import propCatalog from "../Assets/props/index.js";
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
@@ -65,9 +65,20 @@ export class WorldProp extends Entity {
         this.ageMs += dt;
         if (this._glassFractureCooldown > 0) this._glassFractureCooldown--;
         const asleep = this.isSleeping;
-        if (!asleep)
+        if (!asleep) {
             if (this.strategy.rolls) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
+
+            if (this.type === "boid_triangle") {
+                const speed = Math.hypot(this.vx, this.vy);
+                if (speed > 0.1) {
+                    const moveAngle = Math.atan2(this.vy, this.vx);
+                    const turnRadPerSec = Math.PI * 1.5;
+                    const maxStep = turnRadPerSec * (dt / 1000);
+                    this.facing = rotateAngleTowards(this.facing ?? moveAngle, moveAngle, maxStep);
+                }
+            }
+        }
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
 }

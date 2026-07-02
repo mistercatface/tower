@@ -71,29 +71,4 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
             controller.setPathVisual(value, selectedProp);
         },
     });
-    if (state.editor?.debugInspect) {
-        appendEditorSubhead(body, "Debug Inspection");
-        const appendDebugReadOnlyField = (parent, labelText, valueText) => {
-            const field = document.createElement("div");
-            field.className = "param-field";
-            const label = document.createElement("span");
-            label.textContent = labelText;
-            const valueSpan = document.createElement("span");
-            valueSpan.className = "param-value";
-            valueSpan.style.fontFamily = "monospace";
-            valueSpan.textContent = String(valueText);
-            field.append(label, valueSpan);
-            parent.appendChild(field);
-        };
-        appendDebugReadOnlyField(body, "Type", selectedProp.type);
-        appendDebugReadOnlyField(body, "Phys ID", selectedProp._physId !== undefined ? selectedProp._physId : "none");
-        appendDebugReadOnlyField(body, "Active Slot", selectedProp._activeSlot !== undefined ? selectedProp._activeSlot : "none");
-        appendDebugReadOnlyField(body, "Is Sleeping", selectedProp.isSleeping ? "true" : "false");
-        appendDebugReadOnlyField(body, "Sleep Frames", selectedProp._sleepFrames !== undefined ? selectedProp._sleepFrames : "none");
-        appendDebugReadOnlyField(body, "Velocity", `(${selectedProp.vx?.toFixed(2) ?? 0}, ${selectedProp.vy?.toFixed(2) ?? 0})`);
-        appendDebugReadOnlyField(body, "Ang Velocity", selectedProp.angularVelocity?.toFixed(4) ?? 0);
-        appendDebugReadOnlyField(body, "Shape Type", selectedProp.shape?.type ?? "none");
-        appendDebugReadOnlyField(body, "Radius", selectedProp.radius?.toFixed(2) ?? 0);
-        if (selectedProp.shape?.type === "Polygon") appendDebugReadOnlyField(body, "Vertices Count", selectedProp.shape.vertices.length / 2);
-    }
 }

@@ -1,6 +1,6 @@
 import { isResizableBoxSpawnAsset, isSingleWorldPropSpawnAsset } from "./sandboxCapabilities.js";
 import propCatalog from "../../Assets/props/index.js";
-export const SANDBOX_PRIMARY_PROP_IDS = ["ball", "snake_head", "flipper_left", "flipper_right"];
+export const SANDBOX_PRIMARY_PROP_IDS = ["ball", "flipper_left", "flipper_right"];
 export const DEFAULT_BALL_SPAWN_RADIUS = 4;
 export function orderSandboxPalettePropIds(propIds) {
     const available = new Set(propIds);

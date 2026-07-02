@@ -8,7 +8,6 @@ import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollD
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 import { cellChebyshevDistance } from "../../Navigation/steering/exploreSteering.js";
 import { hasLineOfSight } from "../../Spatial/query/lineOfSight.js";
-import { getSnakeGameConfig } from "../../Game/snake/snakeGameConfig.js";
 export function cellTargetHasArrivedAtDestCell(grid, col, row, destCol, destRow) {
     if (isFloorBeltCell(grid, destCol, destRow)) return col === destCol && row === destRow;
     return cellChebyshevDistance(col, row, destCol, destRow) <= 1;
@@ -22,40 +21,7 @@ export function shouldReleaseCellTargetHpaNav(prop, grid, destCol, destRow, dest
 function exactCellTargetHasArrived(prop, grid, destCol, destRow, destWorld, stopRadius) {
     return groundNavArrivedAtTarget(prop, destWorld, destCol, destRow, grid, stopRadius);
 }
-function applySnakeBodyPressureSteering(prop, dirX, dirY, config, state) {
-    const snakeGame = state.sandbox?.snakeGame;
-    const instance = snakeGame ? snakeGame.instancesByHeadId.get(prop.id) : null;
-    if (!instance || !instance.segmentWallPressures || instance.segmentWallPressures.size === 0) return { dirX, dirY, config };
-    const configGame = getSnakeGameConfig ? getSnakeGameConfig() : null;
-    const nudgeWeight = configGame?.bodyPressureNudgeWeight ?? 0.5;
-    const speedDamp = configGame?.bodyPressureSpeedDamp ?? 2.0;
-    let nudgeX = 0;
-    let nudgeY = 0;
-    let maxPressure = 0;
-    for (const record of instance.segmentWallPressures.values()) {
-        nudgeX += record.normalX * record.pressure;
-        nudgeY += record.normalY * record.pressure;
-        if (record.pressure > maxPressure) maxPressure = record.pressure;
-    }
-    let finalVx = dirX;
-    let finalVy = dirY;
-    const len = Math.hypot(nudgeX, nudgeY);
-    if (maxPressure > 0 && len > 0) {
-        const factor = Math.min(2.0, maxPressure) * nudgeWeight;
-        finalVx += (nudgeX / len) * factor;
-        finalVy += (nudgeY / len) * factor;
-        const finalLen = Math.hypot(finalVx, finalVy);
-        if (finalLen > 0) {
-            finalVx /= finalLen;
-            finalVy /= finalLen;
-        }
-    }
-    if (maxPressure > 0) {
-        const S = Math.max(0.1, 1.0 / (1.0 + maxPressure * speedDamp));
-        config = { ...config, maxSpeed: config.maxSpeed * S, accel: config.accel * S };
-    }
-    return { dirX: finalVx, dirY: finalVy, config };
-}
+
 export function createCellTargetLocomotion(headNav) {
     const hasArrivedAtDest = (agent, grid) => {
         const dest = headNav.getDestination();
@@ -223,8 +189,7 @@ export function createCellTargetHpaNav(state) {
         const dy = targetWorld.y - prop.y;
         const dist = Math.hypot(dx, dy);
         if (dist > 0) {
-            const adjusted = applySnakeBodyPressureSteering(prop, dx / dist, dy / dist, config, state);
-            steerRollToward(prop, adjusted.dirX, adjusted.dirY, adjusted.config, state);
+            steerRollToward(prop, dx / dist, dy / dist, config);
         }
     };
     const terminalHomingEnabled = () => terminalHoming?.enabled === true;
@@ -300,14 +265,14 @@ export function createCellTargetHpaNav(state) {
         else strandedFrames++;
         const giveUpFrames = state.nav.settings.stuckReplanFrames;
         if (strandedFrames >= giveUpFrames) {
-            decelerateRoll(prop, config, state);
+            decelerateRoll(prop, config);
             clearDestination();
             return;
         }
         const allowNavUpdate = status.hasRoute || status.replanPending || strandedFrames <= 1;
         if (!allowNavUpdate) {
             navPhase = "stranded";
-            decelerateRoll(prop, config, state);
+            decelerateRoll(prop, config);
             return;
         }
         const { vx, vy, steering, replanReason, beltWasOnBelt } = driveGroundNav({
@@ -336,11 +301,10 @@ export function createCellTargetHpaNav(state) {
                 steerDirectToTarget(prop, config);
                 return;
             }
-            decelerateRoll(prop, config, state);
+            decelerateRoll(prop, config);
             return;
         }
-        const adjusted = applySnakeBodyPressureSteering(prop, vx, vy, config, state);
-        steerRollToward(prop, adjusted.dirX, adjusted.dirY, adjusted.config, state);
+        steerRollToward(prop, vx, vy, config);
     };
     const getStatus = () => {
         const nav = hpaNav.navState;

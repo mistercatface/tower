@@ -2,7 +2,6 @@ import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { physicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { maySnakeHeadReceiveRoll } from "../Game/snake/AgentInstance.js";
 export function snapMoveTargetToCellCenter(grid, world) {
     const col = grid.worldCol(world.x);
     const row = grid.worldRow(world.y);
@@ -43,27 +42,16 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
-function snakeRollBlocked(world, prop) {
-    if (prop._snakeSteering && !world) return true;
-    if (!world) return false;
-    return !maySnakeHeadReceiveRoll(world, prop);
-}
-export function steerRollToward(prop, dirX, dirY, config, world = null) {
-    if (snakeRollBlocked(world, prop)) return;
-    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config, world);
+export function steerRollToward(prop, dirX, dirY, config) {
+    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
     wakeKineticBody(prop);
 }
-export function decelerateRoll(prop, config, world = null) {
-    if (snakeRollBlocked(world, prop)) return;
+export function decelerateRoll(prop, config) {
     prop._groundRollDrive = { kind: "brake", accel: config.accel };
     wakeKineticBody(prop);
 }
-export function applyGroundRollDrive(prop, dtSec, world = null) {
-    if (world && prop._groundRollDrive && !maySnakeHeadReceiveRoll(world, prop)) {
-        clearGroundRollDrive(prop);
-        return false;
-    }
+export function applyGroundRollDrive(prop, dtSec) {
     const drive = prop._groundRollDrive;
     if (!drive) return false;
     if (drive.kind === "brake") return applyRollBrake(prop, dtSec, drive.accel);

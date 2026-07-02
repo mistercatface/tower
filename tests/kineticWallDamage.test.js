@@ -1,7 +1,6 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SNAKE_KINETIC_MIN_STRIKE_SPEED } from "../Config/games/snake.js";
 import { applyPendingWallDamage, computeWallBreakStrength, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { isRailWallEdge } from "../Libraries/Spatial/grid/CellEdge.js";
@@ -11,13 +10,12 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { resolveSnakeWallDamageConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
-const WALL_DAMAGE = resolveSnakeWallDamageConfig();
+const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
@@ -39,7 +37,7 @@ function stampVoxel(grid, col, row, level = 1) {
 }
 describe("kinetic wall damage", () => {
     it("resolveSnakeWallDamageConfig shares kinetic floor and reference speed ceiling", () => {
-        assert.equal(WALL_DAMAGE.minStrikeSpeed, SNAKE_KINETIC_MIN_STRIKE_SPEED);
+        assert.equal(WALL_DAMAGE.minStrikeSpeed, 28);
         assert.equal(WALL_DAMAGE.referenceMaxSpeed, 560);
     });
     it("computeWallBreakStrength scales with speed and approach angle", () => {

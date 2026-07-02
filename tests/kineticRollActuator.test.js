@@ -19,11 +19,6 @@ function mockRollingProp(overrides = {}) {
 }
 
 describe("kineticRollActuator", () => {
-    it("steerRollToward ignores snake steering tombstone without world", () => {
-        const prop = mockRollingProp({ _snakeSteering: { headId: 1, epoch: 0 } });
-        steerRollToward(prop, 1, 0, { accel: 600, maxSpeed: 180 });
-        assert.equal(prop._groundRollDrive, undefined);
-    });
     it("steerRollToward stores thrust intent without mutating velocity", () => {
         const prop = mockRollingProp({ vx: 10, vy: 0 });
         steerRollToward(prop, 0, 1, { accel: 600, maxSpeed: 180 });

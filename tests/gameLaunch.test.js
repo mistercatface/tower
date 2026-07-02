@@ -10,7 +10,6 @@ describe("parseGameLaunchQuery", () => {
     });
     it("returns the game id from the query string", () => {
         assert.equal(parseGameLaunchQuery("?game=puzzle"), "puzzle");
-        assert.equal(parseGameLaunchQuery("?game=snake"), "snake");
     });
 });
 
@@ -20,13 +19,5 @@ describe("game launchers", () => {
         assert.equal(launcher.title, "Puzzle");
         assert.equal(launcher.hideEditor, true);
         assert.deepEqual(launcher.actions, ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"]);
-    });
-    it("registers snake with setup hook and fit viewport action", () => {
-        const launcher = GAME_LAUNCHERS.snake;
-        assert.equal(launcher.title, "Snake");
-        assert.equal(launcher.hideEditor, true);
-        assert.equal(launcher.portraitOnly, false);
-        assert.equal(typeof launcher.setup, "function");
-        assert.deepEqual(launcher.actions, ["fitPlayViewport"]);
     });
 });

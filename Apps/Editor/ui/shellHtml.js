@@ -19,7 +19,6 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox"> Selection rings</label>
         <label class="check-inline"><input id="showPropTileCellsInput" type="checkbox"> Prop tile cells</label>
         <label class="check-inline"><input id="showRoomNodesAlwaysInput" type="checkbox"> Show nodes always</label>
-        <label class="check-inline"><input id="debugInspectInput" type="checkbox"> Debug inspect</label>
         <span class="sep"></span>
         <span id="playAreaColsToolbar"></span>
         <span id="playAreaRowsToolbar"></span>

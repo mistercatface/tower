@@ -1,7 +1,6 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySnakeGameConfig, getSnakeGameConfig } from "../Libraries/Game/snake/snakeGameConfig.js";
 import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Libraries/Spatial/grid/FloorCell.js";
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
@@ -59,11 +58,11 @@ describe("rail maze corridor belts", () => {
         terminateWorkerNavigation(nav);
     });
     it("plans belt chains on snake split map samples", async () => {
-        applySnakeGameConfig();
-        const config = getSnakeGameConfig();
+        const cavern = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
+        const rail = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
         const seeds = [11, 42, 256, 1337];
         for (let i = 0; i < seeds.length; i++) {
-            const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
+            const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern, rail });
             const plan = planRailMazeCorridorBelts({
                 grid: preview.grid,
                 navTopology: preview.navTopology,
@@ -87,9 +86,9 @@ describe("rail maze corridor belts", () => {
         }
     });
     it("navWalkableIndex dense flags drive belt zone and global index round-trip", async () => {
-        applySnakeGameConfig();
-        const config = getSnakeGameConfig();
-        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
+        const cavern = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
+        const rail = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
+        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern, rail });
         const { navWalkableIndex, grid, navTopology, railConfig, layout } = preview;
         const zoneCells = collectRailMazeBeltZoneCells(grid, navTopology, railConfig, layout.northReserveRows, navWalkableIndex);
         assert.ok(zoneCells.length > 50);
@@ -116,9 +115,9 @@ describe("rail maze corridor belts", () => {
         }
     });
     it("rolls open vs railed belt kind per cell", async () => {
-        applySnakeGameConfig();
-        const config = getSnakeGameConfig();
-        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern: config.cavern, rail: config.rail });
+        const cavern = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
+        const rail = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
+        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern, rail });
         const baseArgs = {
             grid: preview.grid,
             navTopology: preview.navTopology,

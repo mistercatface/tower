@@ -49,14 +49,14 @@ describe("sandboxSceneSnapshot physics", () => {
             segmentCount: 4,
             spacing: 16,
             ballType: "ball",
-            headBallType: "snake_head",
+            headBallType: "flipper_left",
             growDirX: 1,
             growDirY: 0,
         });
         const snapshot = collectSandboxSceneSnapshot(state);
         assert.equal(snapshot.schemaVersion, SANDBOX_SCENE_SCHEMA_VERSION);
         assert.equal(snapshot.props.length, 4);
-        assert.equal(snapshot.props[0].type, "snake_head");
+        assert.equal(snapshot.props[0].type, "flipper_left");
         assert.equal(snapshot.kineticConstraints.length, 3);
         assert.equal(snapshot.chainHeadProp, 0);
     });
