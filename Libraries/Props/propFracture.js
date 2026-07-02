@@ -65,7 +65,7 @@ export function applyChunkGeometryToProp(prop, geometry) {
     prop.footprintVertices = geometry.footprintVertices;
     prop.footprintArea = geometry.footprintArea;
     prop.radius = geometry.boundingRadius;
-    prop.shape = geometry.collisionParts[0];
+    prop.shape = new PolygonShape(geometry.footprintVertices);
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
 }
