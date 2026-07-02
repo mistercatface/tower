@@ -188,16 +188,7 @@ export function clearSnakeRegionPaddingStrip(state, paddingCells) {
         boundsRows: padding,
     });
 }
-function clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, stripRows) {
-    const depth = Math.max(1, Math.round(stripRows));
-    const lastRow = Math.min(endRow, startRow + depth - 1);
-    for (let r = startRow; r <= lastRow; r++)
-        for (let c = startCol; c <= endCol; c++) {
-            grid.grid[c + r * grid.cols] = 0;
-            grid.clearCellEdges(c, r);
-        }
-    return { startCol, endCol, startRow, endRow: lastRow };
-}
+
 export async function generateLabRailDfsMaze(state, options = {}) {
     const { railConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
@@ -219,15 +210,12 @@ export async function generateLabRailDfsMaze(state, options = {}) {
             corridorWidthMin: options.corridorWidthMin,
             corridorWidthMax: options.corridorWidthMax,
             extraLinkRatio: options.extraLinkRatio,
-            northReserveRows: options.northReserveRows,
         },
         state.mapSeed,
     );
     stampGlobalRailWalls(state, rails, { commit: false });
-    const northRows = Math.max(1, Math.round(options.northReserveRows ?? 3));
-    const northBounds = clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, northRows);
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    const damageBounds = unionCellBounds({ startCol, endCol, startRow, endRow }, northBounds);
+    const damageBounds = { startCol, endCol, startRow, endRow };
     const railProfile = railConfig.surfaceProfileId || "poolTableFelt";
     applyMapGenSurfaceProfile(state, railConfig, railProfile);
     await commitGridNavEdit(state, null, { fullNavSync: true });
@@ -353,10 +341,9 @@ export async function generateLabRailMaze(state, options = {}) {
     const corridorWidthMin = options.corridorWidthMin ?? config.corridorWidthMin;
     const corridorWidthMax = options.corridorWidthMax ?? config.corridorWidthMax;
     const extraLinkRatio = options.extraLinkRatio ?? config.extraLinkRatio;
-    const northReserveRows = options.northReserveRows ?? config.northReserveRows;
     let rails = bakeRailMazeDfs(
         { originCol, originRow, cols, rows },
-        { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio, northReserveRows },
+        { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio },
         state.mapSeed,
     );
     if (config.boundsMode !== "rect")
@@ -370,12 +357,8 @@ export async function generateLabRailMaze(state, options = {}) {
             return inCell || inNeighbor;
         });
     stampGlobalRailWalls(state, rails, { commit: false });
-    const northRows = Math.max(0, Math.round(northReserveRows ?? 0));
-    let northBounds = null;
-    if (northRows > 0) northBounds = clearRailZoneNorthStrip(grid, startCol, endCol, startRow, endRow, northRows);
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     let damageBounds = { startCol, endCol, startRow, endRow };
-    if (northBounds) damageBounds = unionCellBounds(damageBounds, northBounds);
     if (config.boundsMode === "donut") {
         const innerR = getInnerRadiusCells(config) * cellSize;
         const center = getMapGenBoundsCenterWorld(config, cellSize);
@@ -387,8 +370,9 @@ export async function generateLabRailMaze(state, options = {}) {
     const centerRow = config.boundsMode === "rect" ? config.boundsRow + Math.floor(config.boundsRows / 2) : config.centerRow;
     const floodSeedBounds = options.floodSeedBounds ?? { boundsMode: "rect", boundsCol: centerCol, boundsRow: centerRow, boundsCols: 1, boundsRows: 1 };
     const navWalkableIndex = options.navWalkableIndex ?? getNavWalkableCellIndex(state, config, floodSeedBounds);
-    const beltPlan = planRailMazeCorridorBelts({ grid, navTopology: state.nav.topology, railConfig: config, northReserveRows: northRows, navWalkableIndex, mapSeed: state.mapSeed });
+    const beltPlan = planRailMazeCorridorBelts({ grid, navTopology: state.nav.topology, railConfig: config, navWalkableIndex, mapSeed: state.mapSeed });
     const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
+    const { bounds: beltRailBounds } = stampGlobalRailWalls(state, beltPlan.beltRails, { commit: false });
     const railMazeProfile = config.surfaceProfileId || "cyberGrid";
     applyMapGenSurfaceProfile(state, config, railMazeProfile);
     await commitGridNavEdit(state, null, { fullNavSync: true });

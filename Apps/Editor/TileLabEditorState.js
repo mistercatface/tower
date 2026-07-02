@@ -18,7 +18,6 @@ export class TileLabEditorState {
             corridorWidthMin: 1,
             corridorWidthMax: 2,
             extraLinkRatio: 0.25,
-            northReserveRows: 3,
             surfaceProfileId: "cyberGrid",
         };
         this.eraseConfig = createDefaultMapGenBoundsConfig();

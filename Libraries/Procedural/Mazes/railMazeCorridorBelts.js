@@ -3,7 +3,7 @@ import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBe
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutAbsCellIndex, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
-import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
+import { floorBeltEntryExitSides, floorBeltRailEdgeSides } from "../../Spatial/grid/FloorCell.js";
 import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { collectPathMouthExteriorIndices, filterNavBeltEndpointCandidatesIdx, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
@@ -46,9 +46,9 @@ function navWalkableNeighborsIdx(grid, navTopology, idx) {
     return out;
 }
 /** @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex */
-export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, northReserveRows, navWalkableIndex) {
+export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, navWalkableIndex) {
     const cellSize = grid.cellSize;
-    const beltStartGlobalRow = railConfig.boundsRow + Math.max(0, Math.round(northReserveRows));
+    const beltStartGlobalRow = railConfig.boundsRow;
     const cells = [];
     forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
         if (globalRow < beltStartGlobalRow) return;
@@ -61,22 +61,6 @@ export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, nort
     });
     return cells;
 }
-function collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows) {
-    /** @type {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} */
-    const protectedIndices = new Set();
-    const depth = Math.max(0, Math.round(northReserveRows));
-    if (depth <= 0) return protectedIndices;
-    const cellSize = grid.cellSize;
-    const reserveEndGlobalRow = railConfig.boundsRow + depth - 1;
-    forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
-        if (globalRow > reserveEndGlobalRow) return;
-        const col = grid.worldCol(globalCol * cellSize);
-        const row = grid.worldRow(globalRow * cellSize);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        protectedIndices.add(globalCellIdx(col, row, grid.cols));
-    });
-    return protectedIndices;
-}
 function degreeInZone(cells, neighborAtIdx, gridCols) {
     const memberSet = new Set();
     for (let i = 0; i < cells.length; i++) memberSet.add(colRowToIndex(cells[i].col, cells[i].row, gridCols));
@@ -87,21 +71,6 @@ function degreeInZone(cells, neighborAtIdx, gridCols) {
         degreeByIndex.set(idx, neighbors.length);
     }
     return degreeByIndex;
-}
-function collectNorthSeamMouthIndices(cells, northReserveRows, footprint, layout) {
-    /** @type {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} */
-    const mouths = new Set();
-    if (northReserveRows <= 0) return mouths;
-    let minGlobalRow = Infinity;
-    for (let i = 0; i < cells.length; i++) minGlobalRow = Math.min(minGlobalRow, cells[i].globalRow);
-    for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i];
-        if (cell.globalRow !== minGlobalRow) continue;
-        const idx = layoutAbsCellIndex(layout, cell.col, cell.row);
-        if (!footprint.has(idx)) continue;
-        mouths.add(idx);
-    }
-    return mouths;
 }
 function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
     let belts = floorBelts.slice();
@@ -169,7 +138,7 @@ function pickRandomEndInLengthBandIdx(startIdx, endpointIndices, occupiedGlobalI
     if (!candidates.length) return pickRandomFreeIdx(endpointIndices, occupiedGlobalIndices, rng);
     return candidates[Math.floor(rng() * candidates.length)];
 }
-function planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, navWalkableIndex, northReserveRows, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng }) {
+function planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, navWalkableIndex, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng }) {
     const globalLayout = gridCellLayout(grid);
     const cols = grid.cols;
     const endpointIndices = filterNavBeltEndpointCandidatesIdx(
@@ -179,7 +148,7 @@ function planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, 
     );
     const pathfinder = createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex);
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} */
-    const occupiedGlobalIndices = collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows);
+    const occupiedGlobalIndices = new Set();
     /** @type {{ c: number, r: number }[][]} */
     const paths = [];
     /** @type {number[]} */
@@ -210,50 +179,52 @@ export function planRailMazeCorridorBelts({
     grid,
     navTopology,
     railConfig,
-    northReserveRows,
     navWalkableIndex,
     corridorCount = DEFAULT_CORRIDOR_COUNT,
     corridorWidth = 1,
     pathLengthMin = DEFAULT_PATH_LENGTH_MIN,
     pathLengthMax = DEFAULT_PATH_LENGTH_MAX,
-    openBeltChance = DEFAULT_OPEN_BELT_CHANCE,
     mapSeed = 0,
     rng = null,
 }) {
     const globalLayout = gridCellLayout(grid);
-    const zoneCells = collectRailMazeBeltZoneCells(grid, navTopology, railConfig, northReserveRows, navWalkableIndex);
+    const zoneCells = collectRailMazeBeltZoneCells(grid, navTopology, railConfig, navWalkableIndex);
     const random = rng ?? createSeededRng((mapSeed ^ BELT_PLAN_SEED_SALT) >>> 0);
-    const { paths, widths } = planRandomNavCorridorPaths({
-        grid,
-        navTopology,
-        railConfig,
-        zoneCells,
-        navWalkableIndex,
-        northReserveRows,
-        corridorCount,
-        corridorWidth,
-        pathLengthMin,
-        pathLengthMax,
-        rng: random,
-    });
+    const { paths, widths } = planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, navWalkableIndex, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng: random });
     const neighborAtIdx = (idx) => navWalkableNeighborsIdx(grid, navTopology, idx);
     const degreeByIndex = degreeInZone(zoneCells, neighborAtIdx, grid.cols);
-    let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, globalLayout, { openBeltChance, rng: random });
-    const protectedIndices = collectNorthReserveProtectedIndices(grid, railConfig, northReserveRows);
-    if (protectedIndices.size) floorBelts = floorBelts.filter((belt) => !protectedIndices.has(belt.idx));
+    let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, globalLayout);
     const footprint = beltFootprintIndices(floorBelts, globalLayout);
-    const mouthExteriorIndices = new Set([...collectNorthSeamMouthIndices(zoneCells, northReserveRows, footprint, globalLayout), ...collectPathMouthExteriorIndices(paths, grid)]);
+    const mouthExteriorIndices = new Set(collectPathMouthExteriorIndices(paths, grid));
     const peeled = peelBrokenBelts(floorBelts, mouthExteriorIndices, globalLayout);
     floorBelts = peeled.floorBelts;
     const validation = peeled.validation;
-    return { floorBelts, paths, zoneCellCount: zoneCells.length, pathCount: paths.length, mouthExteriorIndices, validation, degreeByIndex };
+    // Generate beltRails on the lateral edges of each floor belt
+    const beltRails = [];
+    const globalCoordsByLocalIdx = new Map();
+    for (let i = 0; i < zoneCells.length; i++) {
+        const cell = zoneCells[i];
+        const idx = cell.col + cell.row * grid.cols;
+        globalCoordsByLocalIdx.set(idx, { globalCol: cell.globalCol, globalRow: cell.globalRow });
+    }
+    const cols = grid.cols;
+    const heightLevel = railConfig.wallHeightLevel ?? 1;
+    const thicknessLevel = railConfig.edgeThickness ?? 1;
+    for (let i = 0; i < floorBelts.length; i++) {
+        const belt = floorBelts[i];
+        const globalCoords = globalCoordsByLocalIdx.get(belt.idx);
+        if (!globalCoords) continue;
+        // Get the lateral rail sides for this belt kind and facing
+        const sides = floorBeltRailEdgeSides(belt.kind, belt.facingIndex);
+        for (let s = 0; s < sides.length; s++) beltRails.push({ col: globalCoords.globalCol, row: globalCoords.globalRow, side: sides[s], heightLevel, thicknessLevel });
+    }
+    return { floorBelts, paths, zoneCellCount: zoneCells.length, pathCount: paths.length, mouthExteriorIndices, validation, degreeByIndex, beltRails };
 }
 export function planRailMazeCorridorBeltsFromPreview(preview) {
     return planRailMazeCorridorBelts({
         grid: preview.grid,
         navTopology: preview.navTopology,
         railConfig: preview.railConfig,
-        northReserveRows: preview.layout.northReserveRows,
         navWalkableIndex: preview.navWalkableIndex,
         mapSeed: preview.layout.mapSeed,
     });

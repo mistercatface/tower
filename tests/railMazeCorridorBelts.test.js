@@ -1,16 +1,65 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Libraries/Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind, floorBeltRailEdgeSides } from "../Libraries/Spatial/grid/FloorCell.js";
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { collectCorridorPathPolylines } from "./collectCorridorPathPolylines.js";
-import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
 import { createNavRuntime, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { colRowToIndex, globalCellIdx } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
+import { getNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { stampGlobalRailWalls } from "../Libraries/Procedural/Mazes/stampRailWalls.js";
+import { commitGridNavEdit } from "../Libraries/Sandbox/gridNavEdit.js";
+
+async function setupTestGridAndNav(seed) {
+    const cellSize = gridSettings.cellSize;
+    const cols = 64;
+    const rows = 64;
+    const grid = new WorldObstacleGrid(cellSize);
+    grid.rebuildFixed((cols * cellSize) / 2, (rows * cellSize) / 2, cols * cellSize, rows * cellSize);
+    const nav = createNavRuntime(grid);
+
+    const railConfig = {
+        boundsMode: "rect",
+        boundsCol: 0,
+        boundsRow: 0,
+        boundsCols: cols,
+        boundsRows: rows,
+        wallHeightLevel: 1,
+        edgeThickness: 2,
+    };
+
+    const rails = bakeRailMazeDfs(
+        { originCol: 0, originRow: 0, cols, rows },
+        { railWallHeightLevel: 1, railWallThicknessLevel: 2, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
+        seed,
+    );
+
+    const state = {
+        obstacleGrid: grid,
+        nav,
+        sandbox: {},
+        editor: {},
+        worldSurfaces: {
+            settings: {
+                maxWallHeightLevel: 9,
+            }
+        }
+    };
+    stampGlobalRailWalls(state, rails, { commit: false });
+    await commitGridNavEdit(state, null, { invalidateSurfaces: false, fullNavSync: true });
+
+    const floodSeedBounds = { boundsMode: "rect", boundsCol: 32, boundsRow: 32, boundsCols: 1, boundsRows: 1 };
+    const walkableState = { obstacleGrid: grid, nav, sandbox: {}, editor: { cavernConfig: railConfig } };
+    const navWalkableIndex = getNavWalkableCellIndex(walkableState, railConfig, floodSeedBounds);
+
+    return { grid, nav, railConfig, navWalkableIndex };
+}
+
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
         const cells = [
@@ -40,6 +89,7 @@ describe("rail maze corridor belts", () => {
         const armLengths = paths.map((path) => path.length);
         assert.ok(armLengths.some((len) => len >= 2));
     });
+
     it("rejects belt paths whose mouths are rail-blocked", async () => {
         const grid = new WorldObstacleGrid(gridSettings.cellSize);
         grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
@@ -57,19 +107,17 @@ describe("rail maze corridor belts", () => {
         assert.equal(validateBeltPathMouthAccess(grid, nav.topology, path), true);
         terminateWorkerNavigation(nav);
     });
-    it("plans belt chains on snake split map samples", async () => {
-        const cavern = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
-        const rail = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
+
+    it("plans belt chains on maze layout samples", async () => {
         const seeds = [11, 42, 256, 1337];
         for (let i = 0; i < seeds.length; i++) {
-            const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: seeds[i], playAreaCols: 64, playAreaRows: 64, cavern, rail });
+            const { grid, nav, railConfig, navWalkableIndex } = await setupTestGridAndNav(seeds[i]);
             const plan = planRailMazeCorridorBelts({
-                grid: preview.grid,
-                navTopology: preview.navTopology,
-                railConfig: preview.railConfig,
-                northReserveRows: preview.layout.northReserveRows,
-                navWalkableIndex: preview.navWalkableIndex,
-                mapSeed: preview.layout.mapSeed,
+                grid,
+                navTopology: nav.topology,
+                railConfig,
+                navWalkableIndex,
+                mapSeed: seeds[i],
             });
             const expectedPaths = (seeds[i] === 256 || seeds[i] === 1337) ? 3 : (seeds[i] === 11 ? 5 : 8);
             assert.ok(plan.pathCount >= expectedPaths, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
@@ -83,14 +131,13 @@ describe("rail maze corridor belts", () => {
             for (let bi = 0; bi < plan.floorBelts.length; bi++) if (floorBeltElbowTurn(plan.floorBelts[bi].kind)) elbows++;
             assert.ok(elbows > 0, `seed ${seeds[i]}: no elbow belts`);
             assert.equal(plan.validation.ok, true, `seed ${seeds[i]}: ${plan.validation.error}`);
+            terminateWorkerNavigation(nav);
         }
     });
+
     it("navWalkableIndex dense flags drive belt zone and global index round-trip", async () => {
-        const cavern = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
-        const rail = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
-        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern, rail });
-        const { navWalkableIndex, grid, navTopology, railConfig, layout } = preview;
-        const zoneCells = collectRailMazeBeltZoneCells(grid, navTopology, railConfig, layout.northReserveRows, navWalkableIndex);
+        const { grid, nav, railConfig, navWalkableIndex } = await setupTestGridAndNav(42);
+        const zoneCells = collectRailMazeBeltZoneCells(grid, nav.topology, railConfig, navWalkableIndex);
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
             const { col, row } = zoneCells[i];
@@ -101,7 +148,7 @@ describe("rail maze corridor belts", () => {
             assert.equal(rtCol, col);
             assert.equal(rtRow, row);
         }
-        const plan = planRailMazeCorridorBelts({ grid, navTopology, railConfig, northReserveRows: layout.northReserveRows, navWalkableIndex, mapSeed: layout.mapSeed });
+        const plan = planRailMazeCorridorBelts({ grid, navTopology: nav.topology, railConfig, navWalkableIndex, mapSeed: 42 });
         assert.equal(plan.validation.ok, true);
         for (let bi = 0; bi < plan.floorBelts.length; bi++) {
             const belt = plan.floorBelts[bi];
@@ -113,27 +160,42 @@ describe("rail maze corridor belts", () => {
             assert.equal(rtCol, col);
             assert.equal(rtRow, row);
         }
+        terminateWorkerNavigation(nav);
     });
-    it("rolls open vs railed belt kind per cell", async () => {
-        const cavern = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9 };
-        const rail = { fillChance: 0.45, iterations: 3, wallHeightLevel: 9, edgeThickness: 2 };
-        const preview = await bakeSnakeSplitLayoutPreview({ mapSeed: 42, playAreaCols: 64, playAreaRows: 64, cavern, rail });
-        const baseArgs = {
-            grid: preview.grid,
-            navTopology: preview.navTopology,
-            railConfig: preview.railConfig,
-            northReserveRows: preview.layout.northReserveRows,
-            navWalkableIndex: preview.navWalkableIndex,
-            mapSeed: preview.layout.mapSeed,
-        };
-        const allRailed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0 });
-        for (let i = 0; i < allRailed.floorBelts.length; i++) assert.ok(isFloorBeltRailsKind(allRailed.floorBelts[i].kind));
-        const allOpen = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 1 });
-        for (let i = 0; i < allOpen.floorBelts.length; i++) assert.ok(!isFloorBeltRailsKind(allOpen.floorBelts[i].kind));
-        const mixed = planRailMazeCorridorBelts({ ...baseArgs, openBeltChance: 0.25 });
-        let openCount = 0;
-        for (let i = 0; i < mixed.floorBelts.length; i++) if (!isFloorBeltRailsKind(mixed.floorBelts[i].kind)) openCount++;
-        assert.ok(openCount > 0, "expected some open belts at 10% per cell");
-        assert.ok(openCount < mixed.floorBelts.length, "expected most belts to stay railed at 10% per cell");
+
+    it("generates always unrailed belts and computes beltRails on lateral edges", async () => {
+        const { grid, nav, railConfig, navWalkableIndex } = await setupTestGridAndNav(42);
+        const plan = planRailMazeCorridorBelts({
+            grid,
+            navTopology: nav.topology,
+            railConfig,
+            navWalkableIndex,
+            mapSeed: 42,
+        });
+
+        // 1. Assert all are unrailed (regular blue belts)
+        assert.ok(plan.floorBelts.length > 0);
+        for (let i = 0; i < plan.floorBelts.length; i++) {
+            assert.ok(!isFloorBeltRailsKind(plan.floorBelts[i].kind), `belt ${i} should be unrailed`);
+        }
+
+        // 2. Assert beltRails were correctly computed for lateral edges
+        assert.ok(plan.beltRails.length > 0);
+        const beltSet = new Set(plan.floorBelts.map(b => b.idx));
+
+        for (let i = 0; i < plan.beltRails.length; i++) {
+            const rWall = plan.beltRails[i];
+            const col = grid.worldCol(rWall.col * grid.cellSize);
+            const row = grid.worldRow(rWall.row * grid.cellSize);
+            const idx = col + row * grid.cols;
+
+            assert.ok(beltSet.has(idx), "rail wall must be on a belt cell");
+
+            const belt = plan.floorBelts.find(b => b.idx === idx);
+            const lateralSides = floorBeltRailEdgeSides(belt.kind, belt.facingIndex);
+            assert.ok(lateralSides.includes(rWall.side), `side ${rWall.side} must be one of the lateral sides: ${lateralSides}`);
+        }
+
+        terminateWorkerNavigation(nav);
     });
 });

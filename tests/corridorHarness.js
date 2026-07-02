@@ -82,7 +82,7 @@ export function assertLaneReachesRoomMouths(fixture, bundle, laneIndex, label = 
     assertBeltChains(corridorFootprint, beltsByCell, layout, label, mouthExteriorIndices);
 }
 function beltIsElbow(kind) {
-    return kind === 5 || kind === 6;
+    return kind === 2 || kind === 3 || kind === 5 || kind === 6;
 }
 export function assertLaneMouthBeltsEnterRooms(fixture, bundle, laneIndex, label = "lane") {
     const rooms = [fixture.roomA, fixture.roomB];
@@ -176,8 +176,6 @@ export function assertBundleLanes(fixture, bundle) {
     assertPathsDoNotOverlap(bundle.paths, bundle.corridorWidths, layout);
     for (let li = 0; li < bundle.paths.length; li++) {
         assertLaneMouthBeltsEnterRooms(fixture, bundle, li, `lane ${li}`);
-        if (bundle.corridorWidths[li] === 1) {
-            assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
-        }
+        if (bundle.corridorWidths[li] === 1) assertLaneReachesRoomMouths(fixture, bundle, li, `lane ${li}`);
     }
 }

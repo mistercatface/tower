@@ -178,7 +178,7 @@ function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated, genera
     const { cavernConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, cavernConfig, state, "Orange overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
-    const profileOptions = shippedSurfaceProfileIds().map(id => ({ value: id, label: id }));
+    const profileOptions = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
     appendSelectField(panel, "Surface profile", {
         value: cavernConfig.surfaceProfileId,
         options: profileOptions,
@@ -218,7 +218,7 @@ function buildRailGenEditor(panel, state, onPreviewChange, onGenerated, generate
     const { railConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, railConfig, state, "Purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
-    const profileOptions = shippedSurfaceProfileIds().map(id => ({ value: id, label: id }));
+    const profileOptions = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
     appendSelectField(panel, "Surface profile", {
         value: railConfig.surfaceProfileId,
         options: profileOptions,
@@ -252,7 +252,7 @@ function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, gene
     const { railMazeConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, railMazeConfig, state, "Light purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
-    const profileOptions = shippedSurfaceProfileIds().map(id => ({ value: id, label: id }));
+    const profileOptions = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
     appendSelectField(panel, "Surface profile", {
         value: railMazeConfig.surfaceProfileId,
         options: profileOptions,
@@ -294,11 +294,6 @@ function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, gene
             },
             (v) => `${Math.round(v * 100)}%`,
         ).element,
-    );
-    panel.appendChild(
-        new SliderControl("North reserve rows", 0, 8, 1, railMazeConfig.northReserveRows, (val) => {
-            railMazeConfig.northReserveRows = val;
-        }).element,
     );
     appendActionRow(
         panel,

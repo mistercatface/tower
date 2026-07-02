@@ -4,8 +4,7 @@ export function bakeRailMazeDfs(stampBounds, options, mapSeed) {
     const rows = stampBounds.rows;
     const originCol = stampBounds.originCol;
     const originRow = stampBounds.originRow;
-    const northReserve = Math.max(0, Math.round(options.northReserveRows ?? 3));
-    const activeRows = Math.max(2, rows - northReserve);
+    const activeRows = rows;
     const corridorWidthMin = Math.max(1, Math.round(options.corridorWidthMin ?? 1));
     const corridorWidthMax = Math.max(corridorWidthMin, Math.round(options.corridorWidthMax ?? 2));
     const extraLinkRatio = options.extraLinkRatio ?? 0.25;
@@ -59,12 +58,12 @@ export function bakeRailMazeDfs(stampBounds, options, mapSeed) {
     const pushWall = (c, r, side) => {
         walls.push({ col: c + originCol, row: r + originRow, side, heightLevel, thicknessLevel });
     };
-    for (let r = northReserve; r < rows; r++) {
-        const ly = Math.min(numY - 1, Math.floor((r - northReserve) / W_c));
+    for (let r = 0; r < rows; r++) {
+        const ly = Math.min(numY - 1, Math.floor(r / W_c));
         for (let c = 0; c < cols; c++) {
             const lx = Math.min(numX - 1, Math.floor(c / W_c));
-            if (r !== northReserve) {
-                const ly_up = Math.min(numY - 1, Math.floor((r - 1 - northReserve) / W_c));
+            if (r !== 0) {
+                const ly_up = Math.min(numY - 1, Math.floor((r - 1) / W_c));
                 if (ly_up < ly && horizontalWalls[lx][ly_up] === 1) pushWall(c, r, 0);
             }
             if (c === 0) pushWall(c, r, 3);

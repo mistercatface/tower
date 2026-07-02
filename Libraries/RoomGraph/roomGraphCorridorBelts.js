@@ -102,14 +102,13 @@ export function beltsForPathPolyline(path, width, roomFootprintMask, parentAncho
  * @param {WallHole[]} [parentAnchors]
  * @param {WallHole[]} [childAnchors]
  * @param {CellIndexLayout} layout
- */
-export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, parentAnchors, childAnchors, layout, { openBeltChance = 0, rng = Math.random } = {}) {
+ */ export function buildCorridorBeltsFromPaths(paths, corridorWidths, rooms, parentAnchors, childAnchors, layout) {
     const roomFootprintMask = buildRoomFootprintMaskForLayout(layout, rooms);
     const byCell = new Map();
     for (let pi = 0; pi < paths.length; pi++) {
         const laneBelts = beltsForPathPolyline(paths[pi], corridorWidths[pi], roomFootprintMask, parentAnchors?.[pi] ?? null, childAnchors?.[pi] ?? null, layout);
         for (const [key, belt] of laneBelts) {
-            const kind = openBeltChance > 0 && rng() < openBeltChance ? unrailedBeltKindFromRailed(belt.kind) : belt.kind;
+            const kind = unrailedBeltKindFromRailed(belt.kind);
             byCell.set(key, { ...belt, kind });
         }
     }
