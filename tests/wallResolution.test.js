@@ -109,6 +109,7 @@ describe("polygon wall resolution", () => {
         assert.ok(collided);
         assert.ok(hits.length >= 1);
         assert.ok(Math.abs(bar.x - startX) < 0.01, "breaking hit should not push body out");
+        assert.ok(bar.vx > -560, "breaking hit should apply bounce impulse to velocity");
         assert.ok(shapeOverlapsWall(bar, wall));
     });
     it("sub-threshold hit still pushes out overlapping body", () => {

@@ -184,7 +184,8 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
         const approachDot = dotXY(bvx - bw * ry, bvy + bw * rx, best.normalX, best.normalY);
         if (wallBreakConfig && preSpeed > 0 && computeWallBreakStrength(preSpeed, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength) {
             hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
-            continue;
+            applyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
+            break;
         }
         applyPositionCorrection(body, best.normalX, best.normalY, best.overlap);
         applyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });

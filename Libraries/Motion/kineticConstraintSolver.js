@@ -378,8 +378,9 @@ function shouldProjectLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy, 
         linkWallsOut.length = 0;
         return false;
     }
-    const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy, anchorAWorld);
-    const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy, anchorBWorld);
+    const dynSlab = kineticDynamicSlab;
+    const wa = worldAnchorFromSlab(bodyA, bodyA._physId, anchorAx, anchorAy, dynSlab, anchorAWorld);
+    const wb = worldAnchorFromSlab(bodyB, bodyB._physId, anchorBx, anchorBy, dynSlab, anchorBWorld);
     collectLinkOverlappingWalls(wa.x, wa.y, wb.x, wb.y, capsuleRadius, islandWalls, linkWallsOut);
     return linkWallsOut.length > 0;
 }
@@ -400,9 +401,10 @@ function projectDistanceLinkCapsuleAgainstWalls(bodyA, bodyB, anchorAx, anchorAy
     if (!linkWalls.length) return;
     const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
+    const dynSlab = kineticDynamicSlab;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
-        const wa = worldAnchorFromBody(bodyA, anchorAx, anchorAy, anchorAWorld);
-        const wb = worldAnchorFromBody(bodyB, anchorBx, anchorBy, anchorBWorld);
+        const wa = worldAnchorFromSlab(bodyA, bodyA._physId, anchorAx, anchorAy, dynSlab, anchorAWorld);
+        const wb = worldAnchorFromSlab(bodyB, bodyB._physId, anchorBx, anchorBy, dynSlab, anchorBWorld);
         let best = null;
         for (let i = 0; i < linkWalls.length; i++) {
             const seg = linkWalls[i];
@@ -701,6 +703,7 @@ function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
     }
     return false;
 }
+/** Collision substep: slab is authoritative pose; body synced only at pipeline boundaries. */
 export function resolveGatheredKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
     if (slab.count === 0) return;
@@ -709,8 +712,6 @@ export function resolveGatheredKineticConstraintSlab(tick) {
         if (slab.count === 0) return;
     }
     projectKineticConstraintSlab();
-    collectActiveConstraintPhysIds(slab, constraintBridgePhysIds);
-    writebackKineticBodySlabPhysIds(tick.frame, constraintBridgePhysIds);
     projectIslandLinkCapsulesAgainstWalls(tick);
     solveKineticConstraintSlab(tick);
 }
