@@ -149,7 +149,7 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
-            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, col, row, dc, dr);
+            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, idx, dc, dr);
             octileNeighbors[octileNeighborOffset(idx, i)] = open ? nIdx : -1;
         }
     });
