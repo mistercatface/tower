@@ -101,6 +101,7 @@ export class FollowCamera {
         if (this._pickResolverFn) {
             const resolved = this._pickResolverFn(propId);
             if (resolved) {
+                if (this.targetProp && this.targetProp.id === resolved.id) return false;
                 this.focus(resolved, true);
                 return true;
             }
@@ -109,6 +110,7 @@ export class FollowCamera {
             const candidates = this._candidateListFn();
             const isCandidate = candidates.some((c) => c && c.id === prop.id);
             if (isCandidate) {
+                if (this.targetProp && this.targetProp.id === prop.id) return false;
                 this.focus(prop, true);
                 return true;
             }

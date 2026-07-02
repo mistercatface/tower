@@ -38,6 +38,19 @@ const FLEE_INTENT = {
     publishEngagement: false,
     decisionFields: {},
 };
+const PLAYER_FLEE_INTENT = {
+    reachSlots: {},
+    committedSlots: [],
+    seekModes: ["explore"],
+    huntMode: null,
+    fleeHeldOn: null,
+    clearMemoryOnIntentClear: true,
+    filterAllyForEngagement: false,
+    fleePackBlend: false,
+    fleeExploreFallback: false,
+    publishEngagement: false,
+    decisionFields: {},
+};
 /** Snake autosim gameplay defaults — spacing/eat radius derived from prop radii at runtime. */
 export const SNAKE_GAME_DEFAULTS = {
     bodyPressureNudgeWeight: 0.5,
@@ -112,7 +125,7 @@ export const SNAKE_GAME_DEFAULTS = {
             metabolism: { hungerDrainMs: 30_000, foodValue: 0.5, growthCost: 1.0, starveShedIntervalMs: 10_000 },
             rivalBand: { maxSegmentGap: 2 },
             combat: { topology: "chain", canSplit: true, victimOfFleeEscapeRam: true, victimOfHeadStrikeRam: true, preyHeadRamImmuneLeader: true },
-            relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey" },
+            relationships: { snake: { type: "sizeBand", sameFaction: "ally" }, flee_agent: "prey", player_flee: "prey" },
             species: { retireNavOnDeath: true, pressureDiagnostics: true },
             gameplay: { leader: { maxSpeed: 250, accel: 200, friction: 2.0 }, body: { friction: 2.25, density: 0.001 } },
             scoringEnv: { effortFallback: true },
@@ -192,7 +205,7 @@ export const SNAKE_GAME_DEFAULTS = {
                 combatMovement: { strafeTiles: 3, repickTicks: 45, idealRangeFraction: 0.65, rangeBandCells: 2, speedFraction: 0.5, accelFraction: 0.6, orbitBias: 60 },
             },
             combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
-            relationships: { snake: { type: "proximity", near: "threat", far: "prey", range: 48 }, flee_agent: { type: "faction", same: "ally", different: "prey" } },
+            relationships: { snake: { type: "proximity", near: "threat", far: "prey", range: 48 }, flee_agent: { type: "faction", same: "ally", different: "prey" }, player_flee: "prey" },
             species: {},
             gameplay: { leader: { maxSpeed: 100, accel: 200 } },
             teams: [
@@ -274,6 +287,40 @@ export const SNAKE_GAME_DEFAULTS = {
             },
             visibleSources: { food: { category: "food", accept: "edibleFood" }, ammo: { category: "ammo", accept: "ammoShard" } },
             intent: FLEE_INTENT,
+        },
+        player_flee: {
+            exportType: "player_flee",
+            topology: "single",
+            useFactionTint: true,
+            populationCount: 1,
+            spawnSeedOffset: 9876,
+            bodyPropId: "player_flee",
+            segmentCount: 1,
+            leaderIndex: 0,
+            faction: "player_flee",
+            combat: { topology: "ball", fleeBallHeadRam: true, fleeEscapeRam: true },
+            relationships: {},
+            species: {},
+            gameplay: { leader: { maxSpeed: 100, accel: 200 } },
+            teams: [
+                { faction: "player_flee", color: "#808080" },
+            ],
+            initialHunger: 0.85,
+            metabolism: { hungerDrainMs: 90_000, foodValue: 0.35 },
+            autonomous: false,
+            decisionWeights: { explore: 100 },
+            decision: {
+                scoreOrder: ["explore"],
+                targetLost: {},
+                remembered: [],
+                eventTargets: [],
+                slots: {},
+                fields: {},
+                modes: {
+                    explore: { scorer: "constant", weightKey: "explore" },
+                },
+            },
+            intent: PLAYER_FLEE_INTENT,
         },
     },
 };

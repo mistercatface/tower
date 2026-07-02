@@ -44,7 +44,7 @@ function applySnakeRegionSurfaceProfiles(state, config) {
 }
 export async function setupSnakeGame(state, { playbackHandlers } = {}) {
     applySnakeGameConfig();
-    state.losShadowStrength = 0.77;
+    state.losShadowStrength = 1.0;
     const config = getSnakeGameConfig();
     const scene = await spawnSnakeCavernScene(state);
     const registry = createAgentPopulationRegistry();
@@ -76,9 +76,17 @@ export async function setupSnakeGame(state, { playbackHandlers } = {}) {
         const { species, spawnCtxs } = spawnPlan[i];
         session.spawnBatch(state, species, spawnCtxs);
     }
-    const fleeAgentHeads = [];
-    for (const instance of aliveAgentInstances(session.registry)) if (instance.profileId === AGENT_PROFILE.flee && instance.head && !instance.head.isDead) fleeAgentHeads.push(instance.head);
-    const defaultCameraTarget = fleeAgentHeads.length > 0 ? fleeAgentHeads[Math.floor(Math.random() * fleeAgentHeads.length)] : scene.snakes[0].chain.head;
+    let defaultCameraTarget = null;
+    for (const instance of aliveAgentInstances(session.registry))
+        if (instance.profileId === AGENT_PROFILE.playerFlee && instance.head && !instance.head.isDead) {
+            defaultCameraTarget = instance.head;
+            break;
+        }
+    if (!defaultCameraTarget) {
+        const fleeAgentHeads = [];
+        for (const instance of aliveAgentInstances(session.registry)) if (instance.profileId === AGENT_PROFILE.flee && instance.head && !instance.head.isDead) fleeAgentHeads.push(instance.head);
+        defaultCameraTarget = fleeAgentHeads.length > 0 ? fleeAgentHeads[Math.floor(Math.random() * fleeAgentHeads.length)] : scene.snakes[0].chain.head;
+    }
     setSandboxCameraTarget(state, defaultCameraTarget, true);
     state.viewport.snapTo(defaultCameraTarget.x, defaultCameraTarget.y);
     state.sandbox.gridWallDamage = createGridWallDamage(state, resolveSnakeWallDamageConfig(config.wallDamage));

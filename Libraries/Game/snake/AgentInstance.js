@@ -572,10 +572,12 @@ export class AgentAutosim {
         const soloTick = !this.session._batchingPerception;
         if (this.session._batchingPerception) ensureSnakePerceptionTick(this.state);
         else maybeBeginSnakeAutosimTick(this.state);
-        if (admitted) this.intent.tick(seeker, this.state, dtMs);
-        this.intent.tickCombatAction(dtMs);
-        this.instance.applySprintMovementIntent();
-        this.instance.headNav.tick(seeker, dtMs);
+        if (this.instance.profile.autonomous !== false) {
+            if (admitted) this.intent.tick(seeker, this.state, dtMs);
+            this.intent.tickCombatAction(dtMs);
+            this.instance.applySprintMovementIntent();
+            this.instance.headNav.tick(seeker, dtMs);
+        }
         if (soloTick) endSnakePerceptionFrame(this.state);
         const drainMultiplier = this.instance.hungerDrainMultiplier();
         this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
