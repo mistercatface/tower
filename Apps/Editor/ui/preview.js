@@ -53,9 +53,15 @@ export function setLabPathDebugEnabled(enabled) {
 export function markLabViewDirty() {
     labViewDirty = true;
 }
-export function mountLabDrawOptions() {
+function formatShadowStrengthLabel(strength) {
+    if (strength <= 0) return "Off";
+    return `${Math.round(strength * 100)}%`;
+}
+export function mountLabDrawOptions(state) {
     const vignetteInput = document.getElementById("showVignetteInput");
     const pathDebugInput = document.getElementById("showPathDebugInput");
+    const shadowSlider = document.getElementById("editorShadowSlider");
+    const shadowValue = document.getElementById("editorShadowValue");
     showLabVignette = vignetteInput.checked;
     showLabPathDebug = pathDebugInput.checked;
     vignetteInput.addEventListener("change", () => {
@@ -66,6 +72,18 @@ export function mountLabDrawOptions() {
         showLabPathDebug = pathDebugInput.checked;
         markLabViewDirty();
     });
+    if (shadowSlider && shadowValue) {
+        const initialStrength = state.losShadowStrength ?? 0.0;
+        shadowSlider.value = String(Math.round(initialStrength * 100));
+        shadowValue.textContent = formatShadowStrengthLabel(initialStrength);
+        shadowSlider.addEventListener("input", () => {
+            const val = Number(shadowSlider.value);
+            const strength = Math.max(0, Math.min(1, val / 100));
+            state.losShadowStrength = strength;
+            shadowValue.textContent = formatShadowStrengthLabel(strength);
+            markLabViewDirty();
+        });
+    }
 }
 export function isShowLabPathDebug() {
     return showLabPathDebug;

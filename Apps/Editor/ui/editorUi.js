@@ -83,7 +83,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     state.editor.ctx.imageSmoothingEnabled = false;
     const markLabViewDirty = mountLabFrameRefresh(canvas);
     labCanvasResizeHooks = { mark: markLabViewDirty, repaintMapOverview: scheduleMapOverviewRepaint };
-    mountLabDrawOptions();
+    mountLabDrawOptions(state);
     initPresetSelect(shippedSurfaceProfileIds());
     initProfileEditor({
         onChange: (options = {}) => {
