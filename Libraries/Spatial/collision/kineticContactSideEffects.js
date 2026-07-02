@@ -23,7 +23,7 @@ export function applyKineticContactSideEffects(tick, contacts) {
             hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
         }
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-        queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed);
+        queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed, nx, ny);
     }
     flushDeferredFractures(tick.world, tick.frame);
 }

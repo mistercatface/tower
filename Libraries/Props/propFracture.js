@@ -10,6 +10,7 @@ import { splitPoxels } from "./poxelFracture.js";
 import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts, chunkNeedsMinCellSubdivide, subdivideSingleChunkAtMinCell } from "./chunkFracture.js";
 import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon, wedgePolygonIntersection } from "./glassFracture.js";
 import { acquireWorldProp } from "./worldPropPool.js";
+import { clearChainLinksForProp } from "../Sandbox/chainLinks.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
 function isGlassFracture(prop) {
@@ -248,18 +249,68 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const localHitY = -dx * sin + dy * cos;
     return peelSolidFracture(prop, localHitX, localHitY, impactForce);
 }
+export function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
+    const physId = prop._physId;
+    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
+    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
+    const dx = worldHitX - wx;
+    const dy = worldHitY - wy;
+    const cos = Math.cos(prop.facing);
+    const sin = Math.sin(prop.facing);
+    const localHitX = dx * cos + dy * sin;
+    const localHitY = -dx * sin + dy * cos;
+    const debris = buildCircleImpactShards(prop.radius, { x: localHitX, y: localHitY }, impactForce);
+    if (debris.length === 0) return null;
+    return { debris, originX: wx, originY: wy, facing: prop.facing, impactLocal: { x: localHitX, y: localHitY }, impactForce };
+}
+export function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+    const cos = Math.cos(fracture.facing);
+    const sin = Math.sin(fracture.facing);
+    const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
+    const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
+    const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" ? "snake_shard" : sourceProp.type;
+    return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom, i) => {
+        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+        const dx = worldPos.x - impactWorld.x;
+        const dy = worldPos.y - impactWorld.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1e-6) {
+            frag.vx += (dx / dist) * burst;
+            frag.vy += (dy / dist) * burst;
+        }
+        frag.angularVelocity += (Math.random() - 0.5) * 0.4;
+        frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+    });
+}
 function evictFracturedProp(world, prop, spatialFrame) {
     removeWorldPropFromState(world, prop, spatialFrame);
 }
 const deferredFractures = [];
 let deferredFracturesCount = 0;
-export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
+export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed, nx = 0, ny = 0) {
     const { frame, world } = tick;
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         const other = i === 0 ? bodyB : bodyA;
         if (prop._physId === undefined) continue;
+        // Fracture snake segment or ball on impact >= 12
+        if ((prop.type === "snake" || prop.type === "ball") && force >= FRACTURE_IMPACT_THRESHOLD) {
+            if (prop._pendingEviction) continue;
+            const fracture = fractureCirclePropOnImpact(prop, hitX, hitY, force);
+            if (!fracture) continue;
+            prop._pendingEviction = true;
+            let item = deferredFractures[deferredFracturesCount];
+            if (!item) {
+                item = { type: "", prop: null, fracture: null };
+                deferredFractures[deferredFracturesCount] = item;
+            }
+            item.type = "circle";
+            item.prop = prop;
+            item.fracture = fracture;
+            deferredFracturesCount++;
+            return;
+        }
         if (!canFracturePropSplit(prop)) continue;
         if (prop._glassFractureCooldown > 0) continue;
         if (isGlassFracture(prop) && isGlassFracture(other)) continue;
@@ -293,6 +344,11 @@ export function flushDeferredFractures(world, spatialFrame) {
             if (item.type === "glass") {
                 evictFracturedProp(world, prop, spatialFrame);
                 const shards = spawnGlassShatterShards(world, prop, item.fracture, spatialFrame);
+                for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
+            } else if (item.type === "circle") {
+                clearChainLinksForProp(world, prop.id);
+                evictFracturedProp(world, prop, spatialFrame);
+                const shards = spawnCircleShatterShards(world, prop, item.fracture, spatialFrame);
                 for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
             } else {
                 wakeKineticBody(prop);
