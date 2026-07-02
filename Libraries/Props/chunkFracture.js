@@ -42,6 +42,23 @@ function rectFromChunk(chunk) {
     }
     return { x0, y0, x1, y1 };
 }
+function chunkRectSpan(chunk) {
+    const rect = rectFromChunk(chunk);
+    return { w: rect.x1 - rect.x0, h: rect.y1 - rect.y0 };
+}
+export function chunkNeedsMinCellSubdivide(chunk) {
+    const { w, h } = chunkRectSpan(chunk);
+    return w > CHUNK_MIN_CELL + RECT_MERGE_EPS || h > CHUNK_MIN_CELL + RECT_MERGE_EPS;
+}
+export function subdivideSingleChunkAtMinCell(chunk) {
+    const rect = rectFromChunk(chunk);
+    const hx = (rect.x1 - rect.x0) * 0.5;
+    const hy = (rect.y1 - rect.y0) * 0.5;
+    if (!chunkNeedsMinCellSubdivide(chunk)) return null;
+    const parts = rectGridPartsCeil(hx, hy, CHUNK_MIN_CELL);
+    if (parts.length <= 1) return null;
+    return buildChunkGeometryAtPropOrigin(parts.map((part) => ({ vertices: part.vertices })));
+}
 function mergeRectsHorizontally(rects) {
     const groups = new Map();
     for (let i = 0; i < rects.length; i++) {
@@ -162,6 +179,22 @@ function centerFlatVerts(flatVerts) {
 export function rectGridParts(hx, hy, cellSize) {
     const cols = Math.max(1, Math.round((hx * 2) / cellSize));
     const rows = Math.max(1, Math.round((hy * 2) / cellSize));
+    const cellW = (hx * 2) / cols;
+    const cellH = (hy * 2) / rows;
+    const parts = [];
+    for (let row = 0; row < rows; row++)
+        for (let col = 0; col < cols; col++) {
+            const x0 = -hx + col * cellW;
+            const y0 = -hy + row * cellH;
+            const x1 = x0 + cellW;
+            const y1 = y0 + cellH;
+            parts.push({ vertices: new Float32Array([x0, y0, x1, y0, x1, y1, x0, y1]) });
+        }
+    return parts;
+}
+function rectGridPartsCeil(hx, hy, maxCellSize) {
+    const cols = Math.max(1, Math.ceil((hx * 2) / maxCellSize));
+    const rows = Math.max(1, Math.ceil((hy * 2) / maxCellSize));
     const cellW = (hx * 2) / cols;
     const cellH = (hy * 2) / rows;
     const parts = [];

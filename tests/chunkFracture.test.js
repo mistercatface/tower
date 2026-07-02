@@ -2,9 +2,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { measureGlassShard } from "../Libraries/Props/glassFracture.js";
-import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/chunkFracture.js";
+import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/chunkFracture.js";
 import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
-import { fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
+import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
@@ -119,5 +119,45 @@ describe("chunk fracture", () => {
         const geom = bakeChunkOutline(localBoxOutline(64, 64));
         assert.ok(geom.chunks.length >= 16);
         assert.ok(geom.chunks.length <= 100);
+    });
+    it("single oversized chunk subdivides to min cell size on impact", () => {
+        const prop = new WorldProp(0, 0, "custom_box", 0);
+        prop._physId = 0;
+        kineticDynamicSlab.x[0] = 0;
+        kineticDynamicSlab.y[0] = 0;
+        applyPropBoxFootprint(prop, 64, 64);
+        while (prop.chunks.length > 1) {
+            const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+            if (!fracture) break;
+        }
+        assert.equal(prop.chunks.length, 1);
+        assert.ok(chunkNeedsMinCellSubdivide(prop.chunks[0]));
+        assert.ok(canFracturePropSplit(prop));
+        const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+        assert.ok(fracture);
+        assert.ok(prop.chunks.length > 1);
+        for (const chunk of prop.chunks) {
+            const v = chunk.vertices;
+            const w = Math.abs(v[2] - v[0]);
+            const h = Math.abs(v[5] - v[1]);
+            assert.ok(w <= 8.01);
+            assert.ok(h <= 8.01);
+        }
+    });
+    it("wide rectangle chunk keeps fracturing down to min cell squares", () => {
+        const prop = new WorldProp(0, 0, "custom_box", 0);
+        applyPropBoxFootprint(prop, 20, 5);
+        while (prop.chunks.length > 1) {
+            const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+            if (!fracture) break;
+        }
+        assert.equal(prop.chunks.length, 1);
+        assert.ok(chunkNeedsMinCellSubdivide(prop.chunks[0]));
+        assert.ok(canFracturePropSplit(prop));
+        const beforeArea = prop.footprintArea;
+        const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+        assert.ok(fracture);
+        assert.ok(fracture.debris.length > 0);
+        assert.ok(prop.footprintArea < beforeArea);
     });
 });

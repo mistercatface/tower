@@ -444,11 +444,18 @@ export function buildGeometryFromPartsAtOrigin(localParts) {
     const { signedArea } = polygonCentroid2D(footprintVertices, SHARED_CENTROID);
     return finalizeFootprintGeometry(footprintVertices, parts, signedArea, { cx: 0, cy: 0 });
 }
+function fractureNeighborRoll(localHitX, localHitY, impactForce, neighborIndex) {
+    let h = Math.imul(Math.floor(localHitX * 1000), 73856093);
+    h ^= Math.imul(Math.floor(localHitY * 1000), 19349663);
+    h ^= Math.imul(Math.floor(impactForce * 100), 83492791);
+    h ^= Math.imul(neighborIndex, 2654435761);
+    return ((h >>> 0) % 10000) / 10000;
+}
 export function splitPoxels(poxels, localHitX, localHitY, impactForce = 5) {
     if (!poxels || poxels.length <= 1) return [poxels];
     const damageRadius = impactForce * 0.05;
     const damageRadiusSq = damageRadius * damageRadius;
-    const chunkProb = Math.max(0.1, 1.0 - impactForce * 0.04);
+    const chunkProb = impactForce >= 12 ? Math.min(1, impactForce / 30) : Math.max(0.1, 1.0 - impactForce * 0.04);
     let hitIdx = 0;
     let minDistSq = Infinity;
     const hitSet = new Set();
@@ -506,7 +513,7 @@ export function splitPoxels(poxels, localHitX, localHitY, impactForce = 5) {
                 for (let j = 0; j < poxels[curr].neighbors.length; j++) {
                     const n = poxels[curr].neighbors[j];
                     if (hitSet.has(n) && !hitVisited.has(n))
-                        if (Math.random() < chunkProb) {
+                        if (fractureNeighborRoll(localHitX, localHitY, impactForce, n) < chunkProb) {
                             hitVisited.add(n);
                             q.push(n);
                         }

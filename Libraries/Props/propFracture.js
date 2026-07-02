@@ -7,7 +7,7 @@ import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
-import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts } from "./chunkFracture.js";
+import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts, chunkNeedsMinCellSubdivide, subdivideSingleChunkAtMinCell } from "./chunkFracture.js";
 import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon, wedgePolygonIntersection } from "./glassFracture.js";
 import { acquireWorldProp } from "./worldPropPool.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
@@ -38,8 +38,15 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
     if (!isChunkFracture(prop)) return false;
     const shape = prop.shape;
     const { x, y } = shape?.type === "Polygon" ? convexFootprintHalfExtents(shape.vertices) : { x: prop.radius, y: prop.radius };
-    if (x * 2 < minSize * 2 || y * 2 < minSize * 2) return false;
-    return Boolean(prop.chunks && prop.chunks.length > 1);
+    if (x * 2 < minSize || y * 2 < minSize) return false;
+    if (!prop.chunks?.length) return false;
+    if (prop.chunks.length > 1) return true;
+    return chunkNeedsMinCellSubdivide(prop.chunks[0]);
+}
+function ensureChunkFractureGrid(prop) {
+    if (prop.chunks?.length !== 1) return;
+    const geom = subdivideSingleChunkAtMinCell(prop.chunks[0]);
+    if (geom) applyChunkGeometryToProp(prop, geom);
 }
 function flatVertsFromShape(prop) {
     return prop.shape.vertices;
@@ -228,6 +235,7 @@ export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
+    ensureChunkFractureGrid(prop);
     if (!canFracturePropSplit(prop)) return null;
     const physId = prop._physId;
     const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
