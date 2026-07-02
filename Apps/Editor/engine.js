@@ -85,11 +85,7 @@ export function createEditorApp(options = {}) {
         document.head.appendChild(link);
     }
     installEditorDefaults(state);
-    state.sandbox.gridWallDamage = createGridWallDamage(state, {
-        minBreakStrength: 0.1,
-        referenceMaxSpeed: 560,
-        minStrikeSpeed: 28,
-    });
+    state.sandbox.gridWallDamage = createGridWallDamage(state, { minBreakStrength: 0.1, referenceMaxSpeed: 560, minStrikeSpeed: 28 });
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), {
         eventBus: events,
@@ -120,6 +116,7 @@ export function createEditorApp(options = {}) {
         state.appLaunch?.session?.tick(dt);
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
+        else kineticSpatial.begin(state);
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
         if (!gameMode) flushMapOverviewRepaint(state);
         requestAnimationFrame(loop);

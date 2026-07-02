@@ -7,7 +7,7 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     /** Peak travel per physics substep (px) — see Libraries/Motion/motionSubsteps.js */
     motionSubsteps: { maxStepPx: 4, maxSubsteps: 8 },
     /** Shared still/moving thresholds for sleep, contact resolve, and wall queries. */
-    kineticActivity: { movingSpeedSq: 0.25, rotatingSpeedRad: 0.1, neighborQueryPad: 15 },
+    kineticActivity: { movingSpeedSq: 0.25, rotatingSpeedRad: 0.1, neighborQueryPad: { minPad: 2, padScale: 0.5, maxPad: 15 } },
     kineticSleep: { frames: 30 },
     restitution: { rigidBody: 0.15, kineticPair: 0.4 },
     /** Coulomb pair friction when strategy has no pairFriction / wallPhysics.friction. */

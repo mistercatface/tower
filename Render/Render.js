@@ -2,7 +2,6 @@ import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
-import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 /**
  * @typedef {object} SimulationSceneHooks
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
@@ -67,7 +66,6 @@ export class Renderer {
         this.simulationPipeline = pipeline.map((p) => p.fn);
     }
     renderSimulationScene(state, viewport) {
-        kineticSpatial.begin(state);
         const surfaceSettings = gameWorldSurfaceSettings;
         viewport.configureDrawBounds(surfaceSettings.viewQueryPadPx, surfaceSettings.viewPaddingPx);
         this.ctx.save();

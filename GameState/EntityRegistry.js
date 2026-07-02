@@ -353,12 +353,6 @@ export class EntityRegistry {
             out.push(entry.ref);
             this._stampCandidateSeen(entry.ref.id, queryGen);
         }
-        for (const entry of this._entries.values()) {
-            if (!kindSet.has(entry.kind) || this._candidateWasSeen(entry.ref.id, queryGen)) continue;
-            const tileIdx = entry.ref._gridTileIdx;
-            if (tileIdx != null && tileIdx !== -1) continue;
-            out.push(entry.ref);
-        }
     }
     beginMembershipBatch() {
         this._batchDepth++;

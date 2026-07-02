@@ -1,45 +1,17 @@
 import { collisionSettings } from "../../Collision/collisionDefaults.js";
-import { distanceSqToSegment } from "../geometry/WallGeometry.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer } from "./kineticContactSolver.js";
 import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
-import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab, kineticDynamicSlab } from "./kineticBodySlab.js";
+import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
-import { SatCollision, SAT_RESULT, getEntityCollisionParts, entityFacing } from "./SatCollision.js";
-import { ensureWallSegmentPolygonShape } from "./wallResolution.js";
-/** @param {object} prop @param {object[]} wallCandidates */
-function kineticOverlapsWallSegment(prop, wallCandidates) {
-    const parts = getEntityCollisionParts(prop);
-    const physId = prop._physId;
-    const hasSlab = physId !== undefined && physId !== -1;
-    const px = hasSlab ? kineticDynamicSlab.x[physId] : prop.x;
-    const py = hasSlab ? kineticDynamicSlab.y[physId] : prop.y;
-    for (let p = 0; p < parts.length; p++) {
-        const shape = parts[p];
-        if (shape.type === "Circle") {
-            const radiusSq = shape.radius * shape.radius;
-            for (let i = 0; i < wallCandidates.length; i++) {
-                const seg = wallCandidates[i];
-                if (distanceSqToSegment(seg, px, py) <= radiusSq) return true;
-            }
-            continue;
-        }
-        for (let i = 0; i < wallCandidates.length; i++) {
-            const seg = wallCandidates[i];
-            const segShape = ensureWallSegmentPolygonShape(seg);
-            if (SatCollision.checkCollision(px, py, entityFacing(prop), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
-        }
-    }
-    return false;
-}
-function bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls) {
+import { shouldResolveKineticBodyAgainstWalls } from "./wallResolution.js";
+function resolveActiveBodyWalls(activeBodies, frame, resolveWalls) {
     for (let i = 0; i < activeBodies.length; i++) {
         const prop = activeBodies[i];
-        if (!prop.strategy?.isKinetic) continue;
         const wallCandidates = frame.getWallCandidates(prop);
-        if (!prop.needsWallCollision() && !kineticOverlapsWallSegment(prop, wallCandidates)) continue;
+        if (!shouldResolveKineticBodyAgainstWalls(prop, wallCandidates)) continue;
         resolveWalls(prop);
     }
 }
@@ -78,12 +50,13 @@ export function runCollisionPipeline(
             resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
             applyContactSideEffects(tick, kineticContactBuffer);
             resolveGatheredKineticConstraintSlab(tick);
-            bridgeActiveBodiesThroughLegacyWalls(activeBodies, frame, resolveWalls);
-            frame.flushScheduledKineticActivations(patchBodies);
-            clampActiveKineticBodySlabSpeed(1000);
             const maxError = measureConstraintSlabMaxError();
             const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
-            if (maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq) break;
+            const settled = maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq;
+            if (!settled || iter === 0) resolveActiveBodyWalls(activeBodies, frame, resolveWalls);
+            frame.flushScheduledKineticActivations(patchBodies);
+            clampActiveKineticBodySlabSpeed(1000);
+            if (settled) break;
         }
         writebackActiveKineticBodySlab(activeBodies);
         refreshActiveKineticBodySlabPose(activeBodies);

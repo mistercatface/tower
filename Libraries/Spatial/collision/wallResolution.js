@@ -1,30 +1,41 @@
-import { getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
+import { distanceSqToSegment, getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
 import { resolvePassageWallContact } from "../../Spatial/grid/passageWallContact.js";
-import { SatCollision, entityFacing, SAT_RESULT } from "./SatCollision.js";
+import { SatCollision, entityFacing, SAT_RESULT, getEntityCollisionParts } from "./SatCollision.js";
 import { PolygonShape } from "./Shapes.js";
 import { boxLocalFootprint } from "../../Math/Poly2D.js";
 import { applyPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
 import { kineticDynamicSlab, kineticStaticSlab } from "./kineticBodySlab.js";
 import { inverseMassFromBody } from "../../Motion/bodyMass.js";
 import { dotXY } from "../../Math/Vec2.js";
-/**
- * Impulse + friction against a static surface (wall). Mutates velocity in place.
- *
- * @param {{
- *   x: number, y: number,
- *   vx?: number, vy?: number,
- *   angularVelocity?: number,
- *   mass?: number, radius?: number,
- *   momentOfInertia?: number,
- *   _physId?: number,
- * }} body
- * @param {number} normalX — push-out normal (away from wall into free space)
- * @param {number} normalY
- * @param {number} cx — contact point world x
- * @param {number} cy
- * @param {{ restitution?: number, friction?: number }} [options]
- * @returns {number}
- */
+/** @param {object} body @param {object[]} candidates */
+export function kineticBodyOverlapsWallCandidates(body, candidates) {
+    if (!candidates.length) return false;
+    const parts = getEntityCollisionParts(body);
+    const physId = body._physId;
+    const hasSlab = physId !== undefined && physId !== -1;
+    const px = hasSlab ? kineticDynamicSlab.x[physId] : body.x;
+    const py = hasSlab ? kineticDynamicSlab.y[physId] : body.y;
+    for (let p = 0; p < parts.length; p++) {
+        const shape = parts[p];
+        if (shape.type === "Circle") {
+            const radiusSq = shape.radius * shape.radius;
+            for (let i = 0; i < candidates.length; i++) if (distanceSqToSegment(candidates[i], px, py) <= radiusSq) return true;
+            continue;
+        }
+        for (let i = 0; i < candidates.length; i++) {
+            const seg = candidates[i];
+            const segShape = ensureWallSegmentPolygonShape(seg);
+            if (SatCollision.checkCollision(px, py, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
+        }
+    }
+    return false;
+}
+/** @param {object} body @param {object[]} candidates */
+export function shouldResolveKineticBodyAgainstWalls(body, candidates) {
+    if (!body.strategy?.isKinetic) return false;
+    if (body.needsWallCollision?.()) return true;
+    return kineticBodyOverlapsWallCandidates(body, candidates);
+}
 export function applyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, { restitution = 0, friction = 0.9 } = {}) {
     const physId = body._physId;
     const hasSlab = physId !== undefined && physId !== -1;

@@ -17,14 +17,6 @@ function writeKineticBodySlabSnapshot(prop) {
     writeActiveKineticBodySlabPose(prop);
     writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
 }
-/**
- * Kinetic spatial frame — populates SpatialFrameCore from GameState.
- *
- * Lifecycle:
- *   const frame = kineticSpatial.begin(state);
- *   ... pass frame to systems ...
- *   // invalid after the next begin()
- */
 export class KineticSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {
         super(cellSize);

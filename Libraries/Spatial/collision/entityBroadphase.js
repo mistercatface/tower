@@ -16,8 +16,18 @@ import { getEntityCollisionParts } from "./SatCollision.js";
 function kineticActivity() {
     return collisionSettings.kineticActivity;
 }
-export function kineticNeighborQueryPad() {
-    return kineticActivity().neighborQueryPad;
+/** @param {number} extent */
+export function neighborQueryPadForExtent(extent) {
+    const pad = kineticActivity().neighborQueryPad;
+    return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
+}
+/** @param {object} entity */
+export function neighborQueryPadFor(entity) {
+    return neighborQueryPadForExtent(entityBroadphaseExtent(entity));
+}
+/** Bounds queries with no anchor entity — conservative upper pad. */
+export function maxNeighborQueryPad() {
+    return kineticActivity().neighborQueryPad.maxPad;
 }
 export function createBroadphaseSnapshot() {
     return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
