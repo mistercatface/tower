@@ -122,6 +122,16 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     }
     if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
         appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
-    else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
+    else if (spawnId === "snake") {
+        appendNumberField(body, "Length", {
+            value: controller.getSpawnSnakeLength(),
+            step: 1,
+            min: 3,
+            max: 9,
+            onChange: (length) => {
+                controller.setSpawnSnakeLength(length);
+            },
+        });
+    } else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }

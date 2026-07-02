@@ -260,6 +260,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setSpawnCrossLength: (len) => session.setSpawnCrossLength(len),
         getSpawnCrossThickness: () => session.getSpawnCrossThickness(),
         setSpawnCrossThickness: (thick) => session.setSpawnCrossThickness(thick),
+        getSpawnSnakeLength: () => session.getSpawnSnakeLength(),
+        setSpawnSnakeLength: (length) => session.setSpawnSnakeLength(length),
         getSpawnBallRadius: (asset) => session.getSpawnBallRadius(asset),
         setSpawnBallRadius: (radius) => session.setSpawnBallRadius(radius),
         getSpawnVisualOverrideTint: (asset) => session.getSpawnVisualOverrideTint(asset),

@@ -69,7 +69,7 @@ export class WorldProp extends Entity {
             if (this.strategy.rolls) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
 
-            if (this.type === "boid_triangle") {
+            if (this.type === "boid_triangle" || this.type === "snake") {
                 const speed = Math.hypot(this.vx, this.vy);
                 if (speed > 0.1) {
                     const moveAngle = Math.atan2(this.vy, this.vx);

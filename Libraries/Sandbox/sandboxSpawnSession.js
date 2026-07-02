@@ -22,6 +22,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
     let spawnBallRadius = null;
     let spawnVisualOverrideTint = null;
     let spawnVisualOverrideBrightness = 1;
+    let spawnSnakeLength = 5;
     const resolveSpawnVisualOverride = (asset) => {
         if (!isShapeFamilyAsset(asset)) return null;
         const tint = spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset);
@@ -42,6 +43,7 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
         spawnCrossLength,
         spawnCrossThickness,
+        spawnSnakeLength,
         pickSelection,
         notifyUi,
         placement,
@@ -119,6 +121,11 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         getSpawnCrossThickness: () => spawnCrossThickness,
         setSpawnCrossThickness: (thick) => {
             spawnCrossThickness = Math.max(2, Math.min(64, Math.round(thick)));
+            notifyUi();
+        },
+        getSpawnSnakeLength: () => spawnSnakeLength,
+        setSpawnSnakeLength: (len) => {
+            spawnSnakeLength = Math.max(3, Math.min(9, Math.round(len)));
             notifyUi();
         },
         resolveSpawnVisualOverride,

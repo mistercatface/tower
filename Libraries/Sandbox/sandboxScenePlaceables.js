@@ -6,6 +6,7 @@ import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
+import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
@@ -61,6 +62,24 @@ const PLACEABLE = {
         },
         spawnAt(state, worldX, worldY, asset, ctx) {
             const propTypeId = ctx.resolveSpawnPropTypeId();
+            if (propTypeId === "snake") {
+                const grid = state.obstacleGrid;
+                const col = grid.worldCol(worldX);
+                const row = grid.worldRow(worldY);
+                const chain = spawnLinkedBallChain(state, { col, row }, {
+                    headBallType: "snake",
+                    ballType: "ball",
+                    segmentCount: ctx.spawnSnakeLength,
+                    faction: ctx.spawnFaction,
+                    spacing: 8,
+                    linkSlack: 1.05,
+                });
+                if (chain && chain.leader) {
+                    ctx.placement.touchPropPlacement(chain.leader.id);
+                    if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [chain.leader.id] });
+                }
+                return chain != null;
+            }
             const placedAsset = propCatalog[propTypeId];
             const halfExtents = blockPresetUsesResizableFootprint(propTypeId) ? ctx.spawnBoxHalfExtents : undefined;
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
