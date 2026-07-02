@@ -7,7 +7,7 @@ import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
 import { applyKineticContactSideEffects } from "../../Libraries/Spatial/collision/kineticContactSideEffects.js";
-import { flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
+import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -85,6 +85,11 @@ export function createEditorApp(options = {}) {
         document.head.appendChild(link);
     }
     installEditorDefaults(state);
+    state.sandbox.gridWallDamage = createGridWallDamage(state, {
+        minBreakStrength: 0.1,
+        referenceMaxSpeed: 560,
+        minStrikeSpeed: 28,
+    });
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), {
         eventBus: events,
