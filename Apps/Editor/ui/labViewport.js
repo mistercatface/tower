@@ -17,7 +17,8 @@ function clampLabZoom(zoom) {
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function fitLabStageToView(state) {
-    fitTileLabStageZoom(state.viewport);
+    const range = Math.max(state.editor.playConfig.playAreaCols, state.editor.playConfig.playAreaRows) * 16;
+    fitTileLabStageZoom(state.viewport, 1, 2.5, range);
     zoomControl?.setZoom(state.viewport.zoom);
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playbackHandlers: import("../../../Libraries/Playback/speedControl.js").PlaybackHandlers }} options */

@@ -128,6 +128,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
             onRedraw: () => {
                 commitPlayAreaFromToolbar(state);
                 pushEditorProfile(state);
+                fitLabStageToView(state);
                 drawLabAndWaitForBakes();
             },
             onStageResize: () => resizeCanvases(state),

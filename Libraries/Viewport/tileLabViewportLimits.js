@@ -6,8 +6,8 @@ export const TILELAB_ZOOM_MAX = 2.5;
 export const GAME_MODE_ZOOM_MULTIPLIER = 1.75;
 export const GAME_MODE_ZOOM_MAX = 8;
 export const GAME_MODE_ZOOM_DEFAULT = 3;
-export function fitTileLabStageZoom(viewport, zoomMultiplier = 1, zoomMax = TILELAB_ZOOM_MAX) {
-    const baseZoom = getDefaultSimulationZoom(viewport.width, viewport.height, TILELAB_PREVIEW_RANGE, TILELAB_PREVIEW_RANGE);
+export function fitTileLabStageZoom(viewport, zoomMultiplier = 1, zoomMax = TILELAB_ZOOM_MAX, range = TILELAB_PREVIEW_RANGE) {
+    const baseZoom = getDefaultSimulationZoom(viewport.width, viewport.height, range, range);
     viewport.zoom = clampZoom(TILELAB_ZOOM_MIN, zoomMax, baseZoom * zoomMultiplier);
 }
 export function fitGameModeStageZoom(viewport, zoom = GAME_MODE_ZOOM_DEFAULT) {

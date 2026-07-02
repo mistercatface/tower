@@ -53,6 +53,7 @@ export async function applyPlayAreaConfig(state) {
     }
     ensureLabObstacleGridCoverage(state);
     await commitGridNavEdit(state, null, { fullNavSync: true });
+    applyEditorRegionSurfaceProfiles(state);
 }
 /** @param {import("../state.js").TileLabGameState} state @param {number} centerWorldX @param {number} centerWorldY @param {number} radiusWorld @returns {{ startCol: number, endCol: number, startRow: number, endRow: number } | null} */
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
@@ -154,6 +155,7 @@ export async function generateLabCaverns(state, { openBoundarySides = null, open
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     await commitGridNavEdit(state, damageBounds);
+    applyEditorRegionSurfaceProfiles(state);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
@@ -232,6 +234,7 @@ export async function generateLabRailDfsMaze(state, options = {}) {
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     const damageBounds = unionCellBounds({ startCol, endCol, startRow, endRow }, northBounds);
     await commitGridNavEdit(state, damageBounds);
+    applyEditorRegionSurfaceProfiles(state);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
@@ -327,6 +330,7 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
         if (cleared) damageBounds = unionCellBounds(damageBounds, cleared);
     }
     await commitGridNavEdit(state, damageBounds);
+    applyEditorRegionSurfaceProfiles(state);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
@@ -386,7 +390,62 @@ export async function generateLabRailMaze(state, options = {}) {
     const navWalkableIndex = options.navWalkableIndex ?? getNavWalkableCellIndex(state, config, floodSeedBounds);
     const beltPlan = planRailMazeCorridorBelts({ grid, navTopology: state.nav.topology, railConfig: config, northReserveRows: northRows, navWalkableIndex, mapSeed: state.mapSeed });
     const { bounds: beltBounds } = stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
+    await commitGridNavEdit(state, damageBounds);
     await commitGridNavEditUnion(state, damageBounds, beltBounds);
+    applyEditorRegionSurfaceProfiles(state);
     state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
+}
+
+export function applyEditorRegionSurfaceProfiles(state) {
+    const grid = state.obstacleGrid;
+    const settings = state.worldSurfaces.settings;
+    const cellsPerChunk = settings.cellsPerChunk;
+    const cellSize = grid.cellSize;
+    const chunkOf = (cell) => Math.floor(cell / cellsPerChunk);
+
+    grid.surfaceMaterials.chunkProfileIds.clear();
+    grid.surfaceMaterialRevision++;
+
+    const cavern = state.editor.cavernConfig;
+    const cavernExt = getMapGenBoundsStampExtent(cavern);
+    const cavernMinC = grid.worldCol(cavernExt.originCol * cellSize);
+    const cavernMinR = grid.worldRow(cavernExt.originRow * cellSize);
+    const cavernMaxC = cavernMinC + cavernExt.cols - 1;
+    const cavernMaxR = cavernMinR + cavernExt.rows - 1;
+    const cavernProfile = cavern.surfaceProfileId || "tomatoGarden";
+    grid.setChunkSurfaceProfileRange({
+        startCol: chunkOf(cavernMinC),
+        endCol: chunkOf(cavernMaxC),
+        startRow: chunkOf(cavernMinR),
+        endRow: chunkOf(cavernMaxR)
+    }, cavernProfile, cellsPerChunk);
+
+    const rail = state.editor.railConfig;
+    const railExt = getMapGenBoundsStampExtent(rail);
+    const railMinC = grid.worldCol(railExt.originCol * cellSize);
+    const railMinR = grid.worldRow(railExt.originRow * cellSize);
+    const railMaxC = railMinC + railExt.cols - 1;
+    const railMaxR = railMinR + railExt.rows - 1;
+    const railProfile = rail.surfaceProfileId || "poolTableFelt";
+    grid.setChunkSurfaceProfileRange({
+        startCol: chunkOf(railMinC),
+        endCol: chunkOf(railMaxC),
+        startRow: chunkOf(railMinR),
+        endRow: chunkOf(railMaxR)
+    }, railProfile, cellsPerChunk);
+
+    const railMaze = state.editor.railMazeConfig;
+    const railMazeExt = getMapGenBoundsStampExtent(railMaze);
+    const railMazeMinC = grid.worldCol(railMazeExt.originCol * cellSize);
+    const railMazeMinR = grid.worldRow(railMazeExt.originRow * cellSize);
+    const railMazeMaxC = railMazeMinC + railMazeExt.cols - 1;
+    const railMazeMaxR = railMazeMinR + railMazeExt.rows - 1;
+    const railMazeProfile = railMaze.surfaceProfileId || "cyberGrid";
+    grid.setChunkSurfaceProfileRange({
+        startCol: chunkOf(railMazeMinC),
+        endCol: chunkOf(railMazeMaxC),
+        startRow: chunkOf(railMazeMinR),
+        endRow: chunkOf(railMazeMaxR)
+    }, railMazeProfile, cellsPerChunk);
 }

@@ -3,6 +3,7 @@ import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay } from "./mapGenBo
 import { appendActionRow, appendEditorHint, appendSelectField } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
+import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 const BOUNDS_SHAPE_OPTIONS = [
     { value: "rect", label: "Rectangle" },
     { value: "circle", label: "Circle" },
@@ -177,6 +178,15 @@ function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated, genera
     const { cavernConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, cavernConfig, state, "Orange overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
+    const profileOptions = shippedSurfaceProfileIds().map(id => ({ value: id, label: id }));
+    appendSelectField(panel, "Surface profile", {
+        value: cavernConfig.surfaceProfileId,
+        options: profileOptions,
+        onChange: (value) => {
+            cavernConfig.surfaceProfileId = value;
+            onPreviewChange();
+        },
+    });
     appendMapGenRockSliders(panel, cavernConfig, maxWallHeightLevel);
     const seedLine = document.createElement("p");
     seedLine.className = "editor-hint";
@@ -208,6 +218,15 @@ function buildRailGenEditor(panel, state, onPreviewChange, onGenerated, generate
     const { railConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, railConfig, state, "Purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
+    const profileOptions = shippedSurfaceProfileIds().map(id => ({ value: id, label: id }));
+    appendSelectField(panel, "Surface profile", {
+        value: railConfig.surfaceProfileId,
+        options: profileOptions,
+        onChange: (value) => {
+            railConfig.surfaceProfileId = value;
+            onPreviewChange();
+        },
+    });
     appendMapGenRockSliders(panel, railConfig, maxWallHeightLevel);
     panel.appendChild(
         new SliderControl("Wall thickness", 1, 4, 1, railConfig.edgeThickness, (val) => {
@@ -233,6 +252,15 @@ function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, gene
     const { railMazeConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, railMazeConfig, state, "Light purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
+    const profileOptions = shippedSurfaceProfileIds().map(id => ({ value: id, label: id }));
+    appendSelectField(panel, "Surface profile", {
+        value: railMazeConfig.surfaceProfileId,
+        options: profileOptions,
+        onChange: (value) => {
+            railMazeConfig.surfaceProfileId = value;
+            onPreviewChange();
+        },
+    });
     panel.appendChild(
         new SliderControl("Wall thickness", 1, 4, 1, railMazeConfig.edgeThickness, (val) => {
             railMazeConfig.edgeThickness = val;

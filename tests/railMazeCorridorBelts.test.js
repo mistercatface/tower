@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind } from "../Libraries/Spatial/grid/FloorCell.js";
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
-import { collectCorridorPathPolylines } from "../Libraries/Procedural/Mazes/collectCorridorPathPolylines.js";
+import { collectCorridorPathPolylines } from "./collectCorridorPathPolylines.js";
 import { bakeSnakeSplitLayoutPreview } from "../Libraries/Procedural/Mazes/snakeSplitLayout.js";
 import { createNavRuntime, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";

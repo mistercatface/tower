@@ -1,10 +1,10 @@
-import { layoutAbsCellIndex, undirectedPairIndex } from "../../Spatial/grid/GridUtils.js";
+import { layoutAbsCellIndex, undirectedPairIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 function undirectedEdgeIndex(aCol, aRow, bCol, bRow, layout) {
     const a = layoutAbsCellIndex(layout, aCol, aRow);
     const b = layoutAbsCellIndex(layout, bCol, bRow);
     return undirectedPairIndex(a, b, layout.cellCount);
 }
-/** @param {{ col: number, row: number }[]} cells @param {(col: number, row: number) => { col: number, row: number }[]} neighborAt @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
+/** @param {{ col: number, row: number }[]} cells @param {(col: number, row: number) => { col: number, row: number }[]} neighborAt @param {import("../Libraries/Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function collectCorridorPathPolylines(cells, neighborAt, layout) {
     const members = cells.slice();
     const memberSet = new Set();
