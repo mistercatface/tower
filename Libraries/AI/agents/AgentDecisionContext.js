@@ -169,6 +169,10 @@ function guardBlocks(guardId, ctx, sprintConfig) {
         if (fraction < min) return "starving";
     }
     if (guardId === "bandDesperate" && ctx.hungerTier !== "desperate") return "none";
+    if (guardId === "hasStamina") {
+        const agent = ctx.agentInstance;
+        if (agent?.stamina && !agent.stamina.canSprint()) return "exhausted";
+    }
     return null;
 }
 function passesGuards(guards, ctx, sprintConfig) {

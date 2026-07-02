@@ -43,6 +43,7 @@ export class AgentInstance {
         this.ammo = Infinity;
         this.profile = profile;
         this.metabolism = new AgentMetabolism(profile);
+        this.stamina = profile.stamina ? new AgentStamina(profile) : null;
         this.baseTint = profile.useFactionTint ? (getAgentIdentity(this.headId)?.color ?? null) : null;
         this.bodyGameplay = profile.gameplay.body;
         this.walkMaxSpeed = profile.gameplay.leader.maxSpeed;
@@ -280,7 +281,10 @@ export class AgentInstance {
         return shed;
     }
     applySprintMovementIntent() {
-        this.sprinting = this.intent.sprintWanted && this.metabolism.hunger > 0;
+        let canSprint = true;
+        if (this.stamina) canSprint = this.stamina.canSprint();
+        else if (this.metabolism) canSprint = this.metabolism.hunger > 0;
+        this.sprinting = this.intent.sprintWanted && canSprint;
         const groundNav = this.head.strategy.groundNav;
         if (this.sprinting) {
             groundNav.maxSpeed = this.sprintMaxSpeed;
@@ -345,7 +349,7 @@ export class AgentInstance {
         this.removeCollectedProp(state, food);
         const foodValue = food.snakeFoodValue ?? this.profile.metabolism?.foodValue;
         if (this.profileId === AGENT_PROFILE.snake) this.feedAndGrow(state, foodValue);
-        else this.metabolism.feed(foodValue);
+        else if (this.metabolism) this.metabolism.feed(foodValue);
         return true;
     }
     severInertTail(state, tailIds) {
@@ -405,6 +409,34 @@ export class AgentInstance {
                 return true;
             }
         return false;
+    }
+}
+export class AgentStamina {
+    constructor(profile) {
+        this.capacity = profile.stamina?.capacity ?? 1.0;
+        this.regenRate = profile.stamina?.regenRate ?? 0.1;
+        this.drainRate = profile.stamina?.drainRate ?? 0.25;
+        this.current = this.capacity;
+        this.exhausted = false;
+    }
+    advanceStamina(dtMs, isSprinting) {
+        const dtSec = dtMs / 1000;
+        if (isSprinting && !this.exhausted) {
+            this.current -= this.drainRate * dtSec;
+            if (this.current <= 0) {
+                this.current = 0;
+                this.exhausted = true;
+            }
+        } else {
+            this.current += this.regenRate * dtSec;
+            if (this.current >= this.capacity) {
+                this.current = this.capacity;
+                this.exhausted = false;
+            }
+        }
+    }
+    canSprint() {
+        return !this.exhausted && this.current > 0;
     }
 }
 // --- Unified Agent Metabolism ---
@@ -535,7 +567,11 @@ export class AgentAutosim {
     start() {
         this.active = true;
         this.instance.sprinting = false;
-        this.instance.metabolism.setHunger(this.initialHunger);
+        if (this.instance.metabolism) this.instance.metabolism.setHunger(this.initialHunger);
+        if (this.instance.stamina) {
+            this.instance.stamina.current = this.instance.stamina.capacity;
+            this.instance.stamina.exhausted = false;
+        }
         this.intent.resetMode();
         this.intent.resetMemory();
     }
@@ -572,7 +608,8 @@ export class AgentAutosim {
         }
         if (soloTick) endSnakePerceptionFrame(this.state);
         const drainMultiplier = this.instance.hungerDrainMultiplier();
-        this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
+        if (this.instance.metabolism) this.instance.tickMetabolism(this.state, dtMs, drainMultiplier);
+        if (this.instance.stamina) this.instance.stamina.advanceStamina(dtMs, this.instance.sprinting);
     }
 }
 // ==========================================
