@@ -19,7 +19,7 @@ import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.j
 import { tickGameViewportNavigation } from "./ui/gameViewport.js";
 import { mountEditorUi, refreshEditorUi, resizeEditorLayout, flushEditorLayoutResize } from "./ui/editorUi.js";
 import { mountGameShell, resizeGameShell } from "./ui/mountGameShell.js";
-import { getGameLauncher } from "../../Libraries/Game/gameLaunch.js";
+import { GAME_LAUNCHERS } from "../../Libraries/Game/gameLaunch.js";
 import { drawLabFrame, shouldRenderLabFrame } from "./ui/preview.js";
 import { flushMapOverviewRepaint } from "./ui/mapOverview.js";
 /** @param {import("./state.js").TileLabGameState} state */
@@ -63,7 +63,8 @@ function runSimulationTick(state, dt) {
 }
 export function createEditorApp(options = {}) {
     const gameLaunchId = options.gameLaunchId ?? null;
-    const launcher = gameLaunchId ? getGameLauncher(gameLaunchId) : null;
+    const launcher = gameLaunchId ? GAME_LAUNCHERS[gameLaunchId] : null;
+    if (gameLaunchId && !launcher) throw new Error(`Unknown game launch id: ${gameLaunchId}`);
     const gameMode = launcher != null;
     const useGameShell = gameMode && launcher.hideEditor;
     const state = new TileLabGameState();

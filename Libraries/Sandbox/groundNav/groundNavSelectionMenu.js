@@ -10,6 +10,7 @@ export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
+        if (prop.alwaysExplore) continue;
         if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
         if (entityMeta && !isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         count++;
@@ -23,6 +24,7 @@ export function issueGroundNavToSelection(state, { propIds, behaviorId, world, b
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
+        if (prop.alwaysExplore) continue;
         if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
         if (!isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         entityMeta.setActiveBehaviorId(prop.id, behaviorId);

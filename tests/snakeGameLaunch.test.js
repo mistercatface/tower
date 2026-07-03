@@ -7,6 +7,7 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandboxCameraTarget.js";
+import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -93,5 +94,14 @@ describe("snake game launch actions", () => {
 
         // Verify Selection Lock
         assert.equal(state.editor.lockSelection, true);
+
+        // Verify Red Explore Boids
+        const redBoids = state.worldProps.filter(p => p.type === "boid_triangle" && p.alwaysExplore);
+        assert.equal(redBoids.length, 2);
+        for (const rb of redBoids) {
+            assert.equal(rb.visualOverride?.tint, "#ff3366");
+            const behaviorId = getSandboxEntityMeta(state).getActiveBehaviorId(rb.id);
+            assert.equal(behaviorId, "explore");
+        }
     });
 });

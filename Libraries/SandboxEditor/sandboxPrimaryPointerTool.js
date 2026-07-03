@@ -70,7 +70,7 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             if (hit) {
                 if (state.editor.lockSelection && !session.isSelected(hit.id)) return "consume";
                 if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
-                if (hit.type === "boid_triangle") {
+                if (hit.type === "boid_triangle" && !hit.alwaysExplore) {
                     const entityMeta = getSandboxEntityMeta(state);
                     const prevId = entityMeta.getActiveBehaviorId(hit.id);
                     if (prevId && prevId !== "dragLaunch") {
