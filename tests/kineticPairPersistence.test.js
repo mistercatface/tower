@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
-import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { satCheckCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
@@ -39,7 +39,7 @@ describe("kinetic pair persistence", () => {
             const tick = createKineticTestTick([bodyA, bodyB]);
             addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
             runCollisionPipeline(tick, kineticPipelineStubs);
-            snapshotActiveBroadphaseBounds(tick.frame._activeKineticBodies);
+            snapshotKineticBodySlab(tick.frame._activeKineticBodies);
             assert.ok(activeBodiesMatchKineticSlab(tick.frame._activeKineticBodies));
             assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations <= tick.world.kinetic.kineticSolverStats.maxIterations);
         });

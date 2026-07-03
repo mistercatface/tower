@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getBroadphaseBounds, snapshotActiveBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { getBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
@@ -29,12 +29,12 @@ describe("kinetic body slab", () => {
         assert.equal(pairBroadphaseOverlapSlab(0, 1), pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds));
     });
 
-    it("snapshotActiveBroadphaseBounds fills kinematic and broadphase columns", () => {
+    it("snapshotKineticBodySlab fills kinematic and broadphase columns", () => {
         const a = mockKineticCircle(1, 2, 5,);
         a._physId = 4;
         a.vx = 3;
         a.vy = -1;
-        snapshotActiveBroadphaseBounds([a]);
+        snapshotKineticBodySlab([a]);
         assert.equal(kineticDynamicSlab.vx[4], 3);
         assert.equal(kineticDynamicSlab.vy[4], -1);
         assert.equal(kineticDynamicSlab.r[4], 5);
@@ -59,11 +59,11 @@ describe("kinetic body slab", () => {
     it("activeBodiesMatchKineticSlab detects pose drift after unsynced move", () => {
         const a = mockKineticCircle(0, 0, 10);
         a._physId = 0;
-        snapshotActiveBroadphaseBounds([a]);
+        snapshotKineticBodySlab([a]);
         assert.ok(activeBodiesMatchKineticSlab([a]));
         a.x = 5;
         assert.equal(activeBodiesMatchKineticSlab([a]), false);
-        snapshotActiveBroadphaseBounds([a]);
+        snapshotKineticBodySlab([a]);
         assert.ok(activeBodiesMatchKineticSlab([a]));
     });
 });

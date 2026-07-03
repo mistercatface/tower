@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { satCheckCollision, checkEntityPairCollision, circleCircleContact, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
-import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
@@ -50,7 +50,7 @@ describe("kinetic narrow phase tiers", () => {
         const a = mockKineticCircle(0, 0, 10, 40, 0);
         const b = mockKineticCircle(15, 0, 10, -10, 0);
         const frame = setupKineticTestFrame([a, b]);
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 1);
         assert.equal(kineticPairBuffer.static.tier[0], KINETIC_PAIR_TIER.CIRCLE_CIRCLE);

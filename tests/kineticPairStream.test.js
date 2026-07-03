@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
 import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
-import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
@@ -38,7 +38,7 @@ describe("kinetic pair stream", () => {
         const b = mockKineticCircle(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
-        snapshotActiveBroadphaseBounds([a, b]);
+        snapshotKineticBodySlab([a, b]);
         assert.equal(pairBroadphaseOverlapSnapshotted(a, b), pairBroadphaseOverlap(a, b));
     });
     it("slab-backed pair policy matches live bounds overlap", () => {
@@ -46,7 +46,7 @@ describe("kinetic pair stream", () => {
         const mover = mockKineticCircle(18, 0, 10, 20, 0);
         rest._physId = 0;
         mover._physId = 1;
-        snapshotActiveBroadphaseBounds([rest, mover]);
+        snapshotKineticBodySlab([rest, mover]);
         assert.equal(
             allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSnapshotted(rest, mover)),
             allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlap(rest, mover)),
@@ -56,7 +56,7 @@ describe("kinetic pair stream", () => {
         const a = mockKineticCircle(0, 0, 10, 0, 0);
         const b = mockKineticCircle(18, 0, 10, 0, 0);
         const frame = setupKineticTestFrame([a, b]);
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 0);
     });
@@ -64,7 +64,7 @@ describe("kinetic pair stream", () => {
         const a = mockKineticCircle(0, 0, 10, 30, 0);
         const b = mockKineticCircle(18, 0, 10, 0, 0);
         const frame = setupKineticTestFrame([a, b]);
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 1);
         assert.equal(kineticPairBodyAt(frame, kineticPairBuffer.physIdA[0]).id, a.id);
@@ -75,7 +75,7 @@ describe("kinetic pair stream", () => {
         const center = mockKineticCircle(18, 0, 10, 25, 0);
         const right = mockKineticCircle(36, 0, 10, 0, 0);
         const frame = setupKineticTestFrame([left, center, right]);
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.deepEqual(pairKeys(kineticPairBuffer, frame), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
     });
@@ -94,11 +94,11 @@ describe("kinetic pair stream on proof props", () => {
         const top = new WorldProp(0, 14, "crate", 0);
         separatePairUntilClear(bottom, top);
         const frame = setupKineticTestFrame([bottom, top]);
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 0);
         top.vx = 12;
-        snapshotActiveBroadphaseBounds(frame._activeKineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 1);
     });

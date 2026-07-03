@@ -3,9 +3,7 @@ import { describe, it } from "node:test";
 globalThis.self = globalThis;
 describe("nav step penalty", () => {
     it("local A* routes around a heavily penalized cell", async () => {
-        const { FlatGridSearch } = await import("../Libraries/Pathfinding/AStar.js");
-        const { SearchState } = await import("../Libraries/Pathfinding/SearchState.js");
-        const { FlatGridView } = await import("../Libraries/Pathfinding/FlatGridView.js");
+        const { FlatGridSearch, SearchState, FlatGridView } = await import("../Libraries/Pathfinding/AStar.js");
         const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
         const { packCellKey } = await import("../Libraries/DataStructures/CellKey.js");
 

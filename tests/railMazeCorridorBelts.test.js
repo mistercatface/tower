@@ -8,7 +8,7 @@ import { collectCorridorPathPolylines } from "./collectCorridorPathPolylines.js"
 import { createNavRuntime, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
-import { colRowToIndex, globalCellIdx } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { getNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
@@ -141,7 +141,7 @@ describe("rail maze corridor belts", () => {
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
             const { col, row } = zoneCells[i];
-            const idx = globalCellIdx(col, row, grid.cols);
+            const idx = colRowToIndex(col, row, grid.cols);
             assert.ok(isNavWalkableAt(navWalkableIndex, idx));
             const rtRow = (idx / grid.cols) | 0;
             const rtCol = idx - (rtRow * grid.cols);
@@ -154,7 +154,7 @@ describe("rail maze corridor belts", () => {
             const belt = plan.floorBelts[bi];
             const col = belt.idx % grid.cols;
             const row = (belt.idx / grid.cols) | 0;
-            const idx = globalCellIdx(col, row, grid.cols);
+            const idx = colRowToIndex(col, row, grid.cols);
             const rtRow = (idx / grid.cols) | 0;
             const rtCol = idx - (rtRow * grid.cols);
             assert.equal(rtCol, col);

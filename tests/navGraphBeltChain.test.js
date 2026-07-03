@@ -5,8 +5,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
 import { commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { canStepPathIdx, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGraphGoalCellIdx, beltEntryNeighborAtIdx } from "../Libraries/Navigation/navGraph.js";
-import { snapNavGoalCell } from "../Libraries/Navigation/snapNavGoal.js";
+import { canStepPathIdx, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGoalCellIndex, beltEntryNeighborAtIdx } from "../Libraries/Navigation/navGraph.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { buildFullRegionGraph, packRegionGraphFlat } from "../Libraries/Pathfinding/hpaRegionGraph.js";
 
@@ -52,9 +51,7 @@ describe("navGraph belt chain", () => {
         grid.writeFloorCell(3 + 3 * grid.cols, FLOOR_CELL_KIND.Belt, 0);
         const graph = createNavGraphView(grid);
         const cols = grid.cols;
-        const snappedIdx = snapNavGraphGoalCellIdx(graph, colRowToIndex(0, 3, cols), colRowToIndex(3, 3, cols));
-        const snappedCell = snapNavGoalCell(grid, 0, 3, 3, 3);
-        assert.equal(snappedIdx, colRowToIndex(snappedCell.col, snappedCell.row, cols));
+        const snappedIdx = snapNavGoalCellIndex(grid, colRowToIndex(0, 3, cols), colRowToIndex(3, 3, cols));
         assert.equal(snappedIdx, colRowToIndex(2, 3, cols));
     });
 
@@ -130,11 +127,10 @@ describe("navGraph belt chain", () => {
         assert.ok(chainEntryIdx >= 0);
         const goalEntryIdx = beltEntryNeighborAtIdx(grid, colRowToIndex(4, 2, cols));
         assert.ok(goalEntryIdx >= 0);
-        const snappedFromOutside = snapNavGoalCell(grid, chainEntryIdx % cols, (chainEntryIdx / cols) | 0, 4, 2);
-        assert.equal(snappedFromOutside.col, goalEntryIdx % cols);
-        assert.equal(snappedFromOutside.row, (goalEntryIdx / cols) | 0);
-        const snappedAtEntry = snapNavGoalCell(grid, goalEntryIdx % cols, (goalEntryIdx / cols) | 0, 4, 2);
-        assert.deepEqual(snappedAtEntry, { col: 4, row: 2 });
+        const snappedFromOutside = snapNavGoalCellIndex(grid, chainEntryIdx, colRowToIndex(4, 2, cols));
+        assert.equal(snappedFromOutside, goalEntryIdx);
+        const snappedAtEntry = snapNavGoalCellIndex(grid, goalEntryIdx, colRowToIndex(4, 2, cols));
+        assert.equal(snappedAtEntry, colRowToIndex(4, 2, cols));
         assert.ok(canStepPathIdx(graph, [chainEntryIdx, colRowToIndex(2, 2, cols), colRowToIndex(3, 2, cols), colRowToIndex(4, 2, cols)]));
 
         await terminateWorkerNavigation(navigation);

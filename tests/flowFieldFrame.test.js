@@ -3,10 +3,10 @@ import { describe, it } from "node:test";
 import { createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame } from "../Libraries/Spatial/grid/GridCoords.js";
 import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx } from "../Libraries/Pathfinding/flowFieldWindow.js";
 import { FlowFieldWindow } from "../Libraries/Pathfinding/flowFieldWindow.js";
-import { FlowCacheManager } from "../Libraries/Pathfinding/flowCacheManager.js";
+import { FlowCacheManager } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { sampleFlowDirection } from "../Libraries/Pathfinding/sampleFlowDirection.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Pathfinding/neighborGridLayout.js";
-import { FlatGridView } from "../Libraries/Pathfinding/FlatGridView.js";
+import { FlatGridView } from "../Libraries/Pathfinding/AStar.js";
 import { bfsTypedIndices } from "../Libraries/DataStructures/gridBfs.js";
 
 function gridReachabilityBfs(grid, startIdx, targetIdx, blockedFn) {
