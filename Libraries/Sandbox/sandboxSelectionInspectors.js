@@ -1,11 +1,11 @@
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { forcefieldEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
+import { railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { formatRoomLinkCorridorLabel, formatRoomNodeLabel, getRoomLink, getRoomNode } from "../RoomGraph/index.js";
 import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
 import { normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
 import { createSeededRng } from "../Math/SeededRng.js";
-import { getForcefieldInfo, getRailWallInfo, getVoxelWallInfo } from "./gridWallEdit.js";
+import { getRailWallInfo, getVoxelWallInfo } from "./gridWallEdit.js";
 export function selectionFloorCell(sel) {
     return sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null;
 }
@@ -46,16 +46,6 @@ export function buildFloorBeltInspectorInfo(state, sel) {
     const facingIndex = grid.floorStore.facing[idx];
     return { col, row, kind, facingIndex, kindLabel: formatFloorBeltKindLabel(kind), facingLabel: formatFloorBeltFacingLabel(facingIndex) };
 }
-export function buildPassagePowerSourceInspectorInfo(state, sel) {
-    const cell = selectionFloorCell(sel);
-    if (!cell) return null;
-    const grid = state.obstacleGrid;
-    const { col, row } = cell;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    const idx = col + row * grid.cols;
-    if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return null;
-    return { col, row, defaultPowered: grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx) };
-}
 export function buildVoxelWallInspectorInfo(state, sel) {
     const cell = selectionVoxelCell(sel);
     if (!cell) return null;
@@ -71,13 +61,6 @@ export function buildRailWallInspectorInfo(state, sel) {
     const grid = state.obstacleGrid;
     const idx = edge.row * grid.cols + edge.col;
     return railWallEdgeAt(grid, idx, edge.side) ? getRailWallInfo(grid, idx, edge.side) : null;
-}
-export function buildForcefieldInspectorInfo(state, sel) {
-    const edge = selectionRailEdge(sel);
-    if (!edge) return null;
-    const grid = state.obstacleGrid;
-    const idx = edge.row * grid.cols + edge.col;
-    return forcefieldEdgeAt(grid, idx, edge.side) ? getForcefieldInfo(grid, idx, edge.side) : null;
 }
 export function buildRoomNodeInspectorInfo(state, sel) {
     const id = selectionRoomNodeId(sel);

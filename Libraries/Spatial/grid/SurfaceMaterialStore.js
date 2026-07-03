@@ -1,4 +1,4 @@
-import { cellEdgeSlotOffset } from "./cellEdgeSlots.js";
+import { cellEdgeSlotOffset } from "./CellEdgeStore.js";
 import { cellToChunkCoord, remapChunkCoord } from "./GridCoords.js";
 import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
 import { cellInRect, colRowToIndex } from "./GridUtils.js";

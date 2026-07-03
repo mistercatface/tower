@@ -1,9 +1,7 @@
 import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
 import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
-import { BELT_CRATE_PUZZLE_DEFAULT_AREA_COLS, BELT_CRATE_PUZZLE_DEFAULT_AREA_ROWS, stampBeltCratePuzzleAt } from "../RoomGraph/puzzleTemplateBeltCrate.js";
-import { canStampFloorBeltAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
+import { canStampFloorBeltAt } from "./floorOccupancy.js";
 import { applyFloorCellEdit } from "./gridNavEdit.js";
-import { listPlacedForcefields } from "./gridWallEdit.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
@@ -12,19 +10,9 @@ import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
 import propCatalog from "../../Assets/props/index.js";
-import {
-    isGridFloorBeltSpawnAsset,
-    isGridPassagePowerSourceSpawnAsset,
-    isPuzzleTemplateSpawnAsset,
-    isRoomLinkSpawnAsset,
-    isRoomNodeSpawnAsset,
-    isResizableBoxSpawnAsset,
-    resolveFloorBeltKindFromSpawnAsset,
-} from "./sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isRoomLinkSpawnAsset, isRoomNodeSpawnAsset, isResizableBoxSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
 import {
     buildFloorBeltInspectorInfo,
-    buildForcefieldInspectorInfo,
-    buildPassagePowerSourceInspectorInfo,
     buildRailWallInspectorInfo,
     buildRoomLinkInspectorInfo,
     buildRoomNodeInspectorInfo,
@@ -154,33 +142,6 @@ const PLACEABLE = {
             return items;
         },
     },
-    powerSource: {
-        matchesSpawnAsset: isGridPassagePowerSourceSpawnAsset,
-        spawnAt(state, worldX, worldY, asset, ctx) {
-            const grid = state.obstacleGrid;
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            if (!stampPassagePowerSourceAt(state, col, row, false)) return false;
-            ctx.placement.touchFloorPlacement(col, row);
-            ctx.pickSelection({ kind: "floor", col, row });
-            return true;
-        },
-        buildFromSelection(state, sel) {
-            return buildPassagePowerSourceInspectorInfo(state, sel);
-        },
-        listSceneItems({ placement, listPlacedPassagePowerSources }) {
-            const items = [];
-            for (const entry of listPlacedPassagePowerSources())
-                items.push(
-                    sceneItem(placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6), entry.label, {
-                        kind: "floor",
-                        col: entry.col,
-                        row: entry.row,
-                    }),
-                );
-            return items;
-        },
-    },
     voxel: {
         buildFromSelection(state, sel) {
             return buildVoxelWallInspectorInfo(state, sel);
@@ -217,24 +178,6 @@ const PLACEABLE = {
             return items;
         },
     },
-    forcefield: {
-        buildFromSelection(state, sel) {
-            return buildForcefieldInspectorInfo(state, sel);
-        },
-        listSceneItems({ state, placement }) {
-            const items = [];
-            for (const entry of listPlacedForcefields(state.obstacleGrid))
-                items.push(
-                    sceneItem(
-                        placement.placementSeq(placement.edgePlacementKey("forcefield", entry.col, entry.row, entry.side), 5e9 + entry.col + entry.row * 1e6 + entry.side),
-                        entry.label,
-                        { kind: "rail", col: entry.col, row: entry.row, side: entry.side },
-                        "wall:forcefield",
-                    ),
-                );
-            return items;
-        },
-    },
     roomNode: {
         matchesSpawnAsset: isRoomNodeSpawnAsset,
         spawnAt(state, worldX, worldY, asset, ctx) {
@@ -260,23 +203,6 @@ const PLACEABLE = {
             return items;
         },
     },
-    puzzleTemplate: {
-        matchesSpawnAsset: isPuzzleTemplateSpawnAsset,
-        spawnAt(state, worldX, worldY, asset, ctx) {
-            const grid = state.obstacleGrid;
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            const stamped = stampBeltCratePuzzleAt(state, col, row, ctx.spawnPuzzleAreaCols, ctx.spawnPuzzleAreaRows);
-            if (!stamped) return false;
-            ctx.placement.touchRoomNodePlacement(stamped.roomA.id);
-            ctx.placement.touchRoomNodePlacement(stamped.roomB.id);
-            ctx.placement.touchRoomNodePlacement(stamped.roomC.id);
-            for (let i = 0; i < stamped.links.length; i++) ctx.placement.touchRoomLinkCorridors(stamped.links[i]);
-            ctx.pickSelection({ kind: "roomNode", id: stamped.roomA.id });
-            ctx.notifyUi();
-            return true;
-        },
-    },
     roomLink: {
         matchesSpawnAsset: isRoomLinkSpawnAsset,
         spawnAt() {
@@ -300,20 +226,20 @@ const PLACEABLE = {
         },
     },
 };
-const SPAWN_ROWS = [PLACEABLE.floorBelt, PLACEABLE.powerSource, PLACEABLE.roomNode, PLACEABLE.puzzleTemplate, PLACEABLE.roomLink, PLACEABLE.prop];
+const SPAWN_ROWS = [PLACEABLE.floorBelt, PLACEABLE.roomNode, PLACEABLE.roomLink, PLACEABLE.prop];
 const FROM_SELECTION = {
     prop(state, sel, ctx) {
         if (sel.ids.size > 1) return inspectorResult("props", PLACEABLE.props.buildFromSelection(state, sel, ctx));
         return inspectorResult("prop", PLACEABLE.prop.buildFromSelection(state, sel, ctx));
     },
     floor(state, sel, ctx) {
-        return inspectorResult("floorBelt", PLACEABLE.floorBelt.buildFromSelection(state, sel, ctx)) ?? inspectorResult("powerSource", PLACEABLE.powerSource.buildFromSelection(state, sel, ctx));
+        return inspectorResult("floorBelt", PLACEABLE.floorBelt.buildFromSelection(state, sel, ctx));
     },
     voxel(state, sel, ctx) {
         return inspectorResult("voxel", PLACEABLE.voxel.buildFromSelection(state, sel, ctx));
     },
     rail(state, sel, ctx) {
-        return inspectorResult("forcefield", PLACEABLE.forcefield.buildFromSelection(state, sel, ctx)) ?? inspectorResult("rail", PLACEABLE.rail.buildFromSelection(state, sel, ctx));
+        return inspectorResult("rail", PLACEABLE.rail.buildFromSelection(state, sel, ctx));
     },
     roomNode(state, sel, ctx) {
         return inspectorResult("roomNode", PLACEABLE.roomNode.buildFromSelection(state, sel, ctx));
@@ -344,10 +270,8 @@ const DELETE_BY_SELECT_KIND = {
 const SCENE_LISTERS = [
     PLACEABLE.prop.listSceneItems,
     PLACEABLE.floorBelt.listSceneItems,
-    PLACEABLE.powerSource.listSceneItems,
     PLACEABLE.voxel.listSceneItems,
     PLACEABLE.rail.listSceneItems,
-    PLACEABLE.forcefield.listSceneItems,
     PLACEABLE.roomNode.listSceneItems,
     PLACEABLE.roomLink.listSceneItems,
 ];
@@ -369,7 +293,7 @@ export function wallPlaceInspector(inspector) {
     if (inspector?.kind === "voxel" || inspector?.kind === "rail") return inspector;
     return null;
 }
-export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "powerSource", "voxel", "rail", "forcefield", "roomNode", "roomLink"];
+export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail", "roomNode", "roomLink"];
 export function listPlacedSceneItems(ctx) {
     const items = [];
     for (let i = 0; i < SCENE_LISTERS.length; i++) items.push(...SCENE_LISTERS[i](ctx));

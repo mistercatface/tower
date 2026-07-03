@@ -1,7 +1,6 @@
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { forcefieldEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { appendGridEdgeOverlayCommand } from "./gridWallEdit.js";
 import { overlayAabb, overlayCachedSelectionRing, overlayGridCellHighlight } from "../Render/overlays/overlayCommands.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
@@ -44,10 +43,7 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
             }),
         );
     }
-    if (selectedRailEdge && grid)
-        if (forcefieldEdgeAt(grid, selectedRailEdge.col, selectedRailEdge.row, selectedRailEdge.side))
-            appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(192, 132, 252, 0.95)", lineWidth: 4, dash: [6, 4] });
-        else appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
+    if (selectedRailEdge && grid) appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
 }
 export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
     if (!marqueeRect) return;

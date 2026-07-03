@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { floorBeltFacingFromIndex, FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
-import { isRailWallEdge } from "../Libraries/Spatial/grid/CellEdge.js";
+import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { bakeNavTopologyLocal } from "../Libraries/Pathfinding/bakeNavTopology.js";
 import { navCanStep } from "../Libraries/Pathfinding/navTopologySab.js";

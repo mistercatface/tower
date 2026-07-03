@@ -8,8 +8,8 @@ import { releaseOffscreenCanvas } from "./offscreenCanvas.js";
  */
 export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
     const cache = new LruMap(maxItems, {
-        onEvict: (key, canvas) => {
-            releaseOffscreenCanvas(canvas);
+        onEvict: (key, entry) => {
+            releaseOffscreenCanvas(entry.canvas);
         },
     });
     return {
@@ -21,15 +21,15 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
         /**
          * @param {string} key
          * @param {OffscreenCanvas | HTMLCanvasElement} sourceCanvas
-         * @param {Record<string, unknown>} [meta] — copied onto the cached canvas (anchorX, anchorY, drawRatio, …)
+         * @param {Record<string, unknown>} [meta]
          */
         set(key, sourceCanvas, meta = {}) {
-            for (const [field, value] of Object.entries(meta)) sourceCanvas[field] = value;
-            cache.set(key, sourceCanvas);
-            return sourceCanvas;
+            const entry = { canvas: sourceCanvas, bakeScale: meta.bakeScale ?? 1, anchorX: meta.anchorX ?? 0, anchorY: meta.anchorY ?? 0, ...meta };
+            cache.set(key, entry);
+            return entry;
         },
         clear() {
-            for (const canvas of cache.values()) releaseOffscreenCanvas(canvas);
+            for (const entry of cache.values()) releaseOffscreenCanvas(entry.canvas);
             cache.clear();
         },
     };

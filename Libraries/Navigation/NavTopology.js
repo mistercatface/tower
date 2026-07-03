@@ -92,16 +92,7 @@ export class NavTopology {
         const arena = ensureLocalBakeArena(this.grid);
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
-        const simView = createNavSimView(
-            frame,
-            arena.gridFill,
-            arena.floorKind,
-            arena.floorFacing,
-            arena.edgeSlots,
-            this.grid.edgeStore.pool,
-            this.grid.edgeStore.passageEdgeCount,
-            arena.vertexPassability,
-        );
+        const simView = createNavSimView(frame, arena.gridFill, arena.floorKind, arena.floorFacing, arena.edgeSlots, this.grid.edgeStore.pool, arena.vertexPassability);
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
@@ -123,14 +114,7 @@ export class NavTopology {
     static packSnapshot(grid, idx = null) {
         const arena = ensureLocalBakeArena(grid);
         packNavTopologyFromGrid(grid, arena, idx);
-        return {
-            gridFill: arena.gridFill,
-            floorKind: arena.floorKind,
-            floorFacing: arena.floorFacing,
-            edgeSlots: arena.edgeSlots,
-            edgePool: grid.edgeStore.pool,
-            passageEdgeCount: grid.edgeStore.passageEdgeCount,
-        };
+        return { gridFill: arena.gridFill, floorKind: arena.floorKind, floorFacing: arena.floorFacing, edgeSlots: arena.edgeSlots, edgePool: grid.edgeStore.pool };
     }
     _localArena() {
         return localBakeArenas.get(this.grid) ?? null;

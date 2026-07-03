@@ -1,5 +1,5 @@
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { isRailWallEdge } from "../Spatial/grid/CellEdge.js";
+import { isRailWallEdge } from "../Spatial/grid/CellEdgeStore.js";
 import { cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCellTopology.js";
 import { createDeferredGridWallCommit } from "./deferredGridWallCommit.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";

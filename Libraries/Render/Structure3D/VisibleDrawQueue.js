@@ -1,5 +1,4 @@
 export const DRAW_KIND_PROP = 1;
-export const DRAW_KIND_FORCEFIELD = 2;
 export const DRAW_KIND_VOXEL = 3;
 export const DRAW_KIND_RAIL = 4;
 function parallelInsertionSort(kinds, baseIndices, depths, refs, start, end) {

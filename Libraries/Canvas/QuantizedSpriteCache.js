@@ -106,31 +106,32 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const bakeScale = sprite.bakeScale ?? 1;
     const anchorX = sprite.anchorX ?? 0;
     const anchorY = sprite.anchorY ?? 0;
-    const drawW = sprite.width / bakeScale;
-    const drawH = sprite.height / bakeScale;
+    const canvas = sprite.canvas ?? sprite;
+    const drawW = canvas.width / bakeScale;
+    const drawH = canvas.height / bakeScale;
     const drawX = modifier?.drawX ?? worldX;
     const drawY = modifier?.drawY ?? worldY;
     const scale = modifier?.scale ?? 1;
     // Fast path for 99% of sprites that have no modifier
     if (!modifier) {
-        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
         return;
     }
     if (modifier.clipCircle) {
         ctx.save();
         prepModifiedBlit(ctx, modifier);
-        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
         ctx.restore();
         return;
     }
     if (modifier.alpha != null) {
         const prevAlpha = ctx.globalAlpha;
         ctx.globalAlpha = prevAlpha * modifier.alpha;
-        ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
         ctx.globalAlpha = prevAlpha;
         return;
     }
-    ctx.drawImage(sprite, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+    ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
 }
 // ─── Radial elevation prop preset ────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
@@ -201,7 +202,7 @@ export function clearPropSpriteCache() {
     clearSpriteKeyIntern();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
-export const GRID_STAMP_RENDER_KEY = { ForcefieldEdge: "grid_forcefield_edge", FloorBelt: "grid_floor_belt", PassagePowerSource: "grid_passage_power_source" };
+export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt" };
 /** Render keys for baked sandbox/editor overlay glyphs. */
 export const OVERLAY_RENDER_KEY = {
     SelectionRing: "overlay_selection_ring",

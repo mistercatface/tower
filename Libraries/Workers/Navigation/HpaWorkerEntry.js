@@ -130,7 +130,6 @@ export class HpaTopologyArena {
         this.navArenaBound = false;
         this.sabEdgePool = null;
         this.edgePoolCount = 0;
-        this.passageEdgeCount = 0;
         this.cardinalOpen = null;
         this.vertexPassability = null;
         this.navCacheKey = "";
@@ -162,7 +161,6 @@ export class HpaTopologyArena {
         this.syncGridFrame(data.gridFrame);
         this.sabEdgePool = data.sabEdgePool;
         this.edgePoolCount = data.edgePoolCount;
-        this.passageEdgeCount = data.passageEdgeCount;
         const gridFill = new Uint8Array(data.sabGridFill);
         const floorKind = new Uint8Array(data.sabFloorKind);
         const floorFacing = new Uint8Array(data.sabFloorFacing);
@@ -170,13 +168,13 @@ export class HpaTopologyArena {
         this.cardinalOpen = new Uint8Array(data.sabCardinalOpen);
         this.vertexPassability = new Uint8Array(data.sabVertexPassability);
         const edgePool = bindNavEdgePoolFromSab(new Uint8Array(this.sabEdgePool), this.edgePoolCount);
-        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, this.passageEdgeCount, this.vertexPassability);
+        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, this.vertexPassability);
         this.navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);
         this.navView = createNavLocalView(this.requireGridFrame(), this.navTopology);
         this.navArenaBound = true;
     }
     syncNavSimEdgePool() {
-        bindNavSimEdgePool(this.navSimView, bindNavEdgePoolFromSab(new Uint8Array(this.sabEdgePool), this.edgePoolCount), this.passageEdgeCount);
+        bindNavSimEdgePool(this.navSimView, bindNavEdgePoolFromSab(new Uint8Array(this.sabEdgePool), this.edgePoolCount));
     }
     requireNavSimBake() {
         if (!this.navArenaBound || !this.navSimView) throw new Error("HPA worker nav arena not bound");
@@ -198,9 +196,8 @@ export class HpaTopologyArena {
         else {
             if (!this.navArenaBound) throw new Error("buildNavTopology requires bound nav arena");
             this.syncGridFrame(data.gridFrame);
-            if (data.edgePoolCount !== this.edgePoolCount || data.passageEdgeCount !== this.passageEdgeCount) {
+            if (data.edgePoolCount !== this.edgePoolCount) {
                 this.edgePoolCount = data.edgePoolCount;
-                this.passageEdgeCount = data.passageEdgeCount;
                 this.syncNavSimEdgePool();
             }
         }

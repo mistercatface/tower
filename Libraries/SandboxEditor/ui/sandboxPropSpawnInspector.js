@@ -1,13 +1,6 @@
 import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../RoomGraph/roomGraphCorridorTypes.js";
 import propCatalog from "../../../Assets/props/index.js";
-import {
-    isGridFloorBeltSpawnAsset,
-    isGridPassagePowerSourceSpawnAsset,
-    isRoomLinkSpawnAsset,
-    isRoomNodeSpawnAsset,
-    isPuzzleTemplateSpawnAsset,
-    isSingleWorldPropSpawnAsset,
-} from "../../Sandbox/sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isRoomLinkSpawnAsset, isRoomNodeSpawnAsset, isPuzzleTemplateSpawnAsset, isSingleWorldPropSpawnAsset } from "../../Sandbox/sandboxCapabilities.js";
 import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 import { appendShapeFamilySpawnFields, appendCoatFields } from "./sandboxShapeFamilyUi.js";
@@ -16,14 +9,7 @@ import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
-    if (
-        spawnAsset &&
-        !isGridFloorBeltSpawnAsset(spawnAsset) &&
-        !isGridPassagePowerSourceSpawnAsset(spawnAsset) &&
-        !isRoomNodeSpawnAsset(spawnAsset) &&
-        !isRoomLinkSpawnAsset(spawnAsset) &&
-        !isPuzzleTemplateSpawnAsset(spawnAsset)
-    )
+    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isRoomNodeSpawnAsset(spawnAsset) && !isRoomLinkSpawnAsset(spawnAsset) && !isPuzzleTemplateSpawnAsset(spawnAsset))
         appendFactionSelect(addRow, {
             value: controller.getSpawnFaction(),
             onChange: (faction) => {
@@ -121,9 +107,7 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
         appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
         return;
     }
-    if (isGridPassagePowerSourceSpawnAsset(spawnAsset))
-        appendEditorHint(body, "Add at camera stamps a power source on the grid. Enable Default energized in Selected, or wire a floor button to the source cell.");
-    else if (spawnId === "snake") {
+    if (spawnId === "snake") {
         appendNumberField(body, "Length", {
             value: controller.getSpawnSnakeLength(),
             step: 1,

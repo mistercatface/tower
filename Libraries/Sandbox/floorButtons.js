@@ -3,7 +3,6 @@ import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, tickButtonSpawnerLinks } from "./floorEffects.js";
-import { syncForcefieldButtonPower } from "./forcefieldPower.js";
 const POINTER_HIT_PADDING = 4;
 export function initFloorButtonProp(prop) {
     prop._occupants = new Set();
@@ -72,11 +71,7 @@ export function tickFloorButtons(state, spatialFrame) {
         buttons.push(prop);
         if (isMassButtonInputMode(prop.inputMode)) massButtons.push(prop);
     }
-    if (!buttons.length) {
-        syncForcefieldButtonPower(state);
-        return;
-    }
+    if (!buttons.length) return;
     if (massButtons.length) processFloorShapes(spatialFrame, massButtons, { onEnter() {}, onExit() {} });
     for (let i = 0; i < buttons.length; i++) tickFloorButton(state, buttons[i]);
-    syncForcefieldButtonPower(state);
 }

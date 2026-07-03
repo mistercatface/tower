@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createDeferredGridWallCommit } from "../Libraries/Sandbox/deferredGridWallCommit.js";
 import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
-import { isRailWallEdge } from "../Libraries/Spatial/grid/CellEdge.js";
+import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";

@@ -366,13 +366,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         removePropFromSelection: (id) => session.removePropFromSelection(id),
         listPlacedProps: () => session.listPlacedProps(),
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
-        stampPassagePowerSourceAtWorld: (worldX, worldY, defaultPowered) => session.stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered),
-        listPlacedPassagePowerSources: () => session.listPlacedPassagePowerSources(),
         rotateSelectedFloorBelt: (steps) => session.rotateSelectedFloorBelt(steps),
         moveSelectedFloorBeltTo: (col, row) => session.moveSelectedFloorBeltTo(col, row),
         setSelectedFloorBeltKind: (kind) => session.setSelectedFloorBeltKind(kind),
         deleteSelectedFloorCell: () => session.deleteSelectedFloorCell(),
-        setSelectedPassagePowerSourceDefaultPowered: (powered) => session.setSelectedPassagePowerSourceDefaultPowered(powered),
         getPlacePaletteKey: () => session.getPlacePaletteKey(),
         setPlacePaletteKey: (key) => {
             const prevKey = session.getPlacePaletteKey();
@@ -404,7 +401,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         setRailThicknessLevel: (level) => session.setRailThicknessLevel(level),
         listPlacedVoxelWalls: () => session.listPlacedVoxelWalls(),
         listPlacedRailWalls: () => session.listPlacedRailWalls(),
-        listPlacedForcefields: () => session.listPlacedForcefields(),
         listPlacedSceneItems: () => session.listPlacedSceneItems(),
         isSceneItemSelected: (item) => session.isSceneItemSelected(item),
         selectSceneItem: (item) => {
@@ -413,10 +409,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         deleteSceneItem: (item) => session.deleteSceneItem(item),
         seedPlacementOrderFromState: () => session.seedPlacementOrderFromState(),
-        getForcefieldStampMode: () => session.getForcefieldStampMode(),
-        setForcefieldStampMode: (mode) => session.setForcefieldStampMode(mode),
-        setSelectedForcefieldMode: (mode) => session.setSelectedForcefieldMode(mode),
-        setSelectedForcefieldAllowedSide: (side) => session.setSelectedForcefieldAllowedSide(side),
         stampWallAtCameraOrigin: () => session.stampWallAtCameraOrigin(),
         setSelectedVoxelWallHeight: (heightLevel) => session.setSelectedVoxelWallHeight(heightLevel),
         setSelectedRailWallProps: (heightLevel, thicknessLevel) => session.setSelectedRailWallProps(heightLevel, thicknessLevel),

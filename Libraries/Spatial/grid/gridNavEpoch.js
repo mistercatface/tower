@@ -37,7 +37,7 @@ export function bumpGridNavEpoch(grid, channel) {
 }
 /** Canonical live topology key — every staleness check derives from this. */
 export function gridNavCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}:${grid._passagePowerNavKey ?? ""}`;
+    return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}`;
 }
 /**
  * @param {import("../../Pathfinding/HpaPathWorker.js").HpaPathWorker} hpaPathWorker
@@ -47,11 +47,7 @@ export function isNavTopologyReady(hpaPathWorker, grid) {
     if (hpaPathWorker._navSyncPromise) return false;
     return gridNavCacheKey(grid) === hpaPathWorker._syncedNavCacheKey;
 }
-/** Passage edge (forcefield) sprite draw cache key. */
-export function passageEdgeDrawCacheKey(grid) {
-    return `${grid.wallGridRevision}:${grid._passagePowerNavKey ?? ""}`;
-}
-/** Floor belt / passage-power grid-stamp draw cache key. */
+/** Floor belt grid-stamp draw cache key. */
 export function floorOccupancyStampDrawCacheKey(grid) {
     return `${grid.floorNavEpoch}:${grid.cols}:${grid.rows}:${grid._floorStampDrawRevision ?? 0}`;
 }
@@ -61,8 +57,4 @@ export function bumpFloorOccupancyStampDrawRevision(grid) {
 }
 export function bumpSurfaceMaterialRevision(grid) {
     grid.surfaceMaterialRevision = ((grid.surfaceMaterialRevision ?? 0) + 1) | 0;
-}
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {string} key */
-export function setGridPassagePowerNavKey(grid, key) {
-    grid._passagePowerNavKey = key;
 }

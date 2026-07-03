@@ -5,7 +5,7 @@ import { drawCachedPropSprite } from "../Canvas/QuantizedSpriteCache.js";
 import { RAIL_BOX, VOXEL_FACE } from "../World/wallGridBake.js";
 import { drawFlatWallChunkProp } from "./Props3D/SolidDraw.js";
 import propCatalog from "../../Assets/props/index.js";
-import { VisibleDrawQueue, DRAW_KIND_PROP, DRAW_KIND_FORCEFIELD, DRAW_KIND_VOXEL, DRAW_KIND_RAIL } from "./Structure3D/VisibleDrawQueue.js";
+import { VisibleDrawQueue, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL } from "./Structure3D/VisibleDrawQueue.js";
 function drawProjectile(ctx, prop, viewport) {
     const length = 1.0;
     const width = 0.6;
@@ -51,7 +51,7 @@ function drawProjectile(ctx, prop, viewport) {
     ctx.fill();
     ctx.restore();
 }
-import { drawFloorOccupancyBelts, drawFloorOccupancyPowerSources, collectForcefieldEdgeDrawables, drawForcefieldEdgeProp } from "../Sandbox/gridStampDrawCache.js";
+import { drawFloorOccupancyBelts } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 const matchDebris = (p) => p.strategy?.renderMode === "debris";
@@ -106,7 +106,6 @@ export class WorldSceneRenderer {
     }
     drawFloorProps(ctx, state, viewport) {
         drawFloorOccupancyBelts(ctx, state, viewport);
-        drawFloorOccupancyPowerSources(ctx, state, viewport);
         const q = this.visibleDrawQueue;
         q.clear();
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, FLOOR_QUERY_OPTIONS);
@@ -130,10 +129,6 @@ export class WorldSceneRenderer {
         collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);
         collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);
     }
-    _appendVisibleForcefieldEdges(state, viewport) {
-        if (!state.obstacleGrid || !state.sandbox) return;
-        collectForcefieldEdgeDrawables(state.obstacleGrid, state, viewport, this.visibleDrawQueue);
-    }
     draw3DBuildings(ctx, state, viewport, options = {}) {
         const q = this.visibleDrawQueue;
         const face = this.wallFaceScratch;
@@ -150,7 +145,6 @@ export class WorldSceneRenderer {
         const skipWalls = options.skipWalls === true;
         const skipWallCaps = options.skipWallCaps === true;
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
-        this._appendVisibleForcefieldEdges(state, viewport);
         q.sort();
         const flatWallChunks = options.flatWallChunks === true;
         for (let i = 0; i < q.length; i++) {
@@ -158,7 +152,6 @@ export class WorldSceneRenderer {
             const baseIndex = q.baseIndices[i];
             const ref = q.refs[i];
             if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatWallChunks });
-            else if (kind === DRAW_KIND_FORCEFIELD) drawForcefieldEdgeProp(ctx, ref, viewport);
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);

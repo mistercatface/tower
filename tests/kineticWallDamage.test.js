@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyPendingWallDamage, computeWallBreakStrength, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
-import { isRailWallEdge } from "../Libraries/Spatial/grid/CellEdge.js";
+import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -13,7 +13,7 @@ import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
-import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
+import { satCheckCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState() {
@@ -237,7 +237,7 @@ describe("kinetic wall damage", () => {
         state.obstacleGrid.appendStaticWallProxiesNearWorld(ball.x, ball.y, ball.radius + 32, candidates);
         assert.ok(candidates.length > 0);
         const wall = candidates[0];
-        assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wall.x, wall.y, entityFacing(wall), ensureWallSegmentPolygonShape(wall)));
+        assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wall.x, wall.y, entityFacing(wall), ensureWallSegmentPolygonShape(wall)));
         const startX = ball.x;
         const spatialFrame = { frameId: 7, getWallCandidates: () => candidates, evictKineticProp() {} };
         resolveKineticWallDamage(state, ball, spatialFrame, new WallCollisionResolver());

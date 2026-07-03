@@ -3,11 +3,6 @@ import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../RoomGraph/roomGraphCorrid
 import { formatGridWallEdgeSideLabel } from "../../Sandbox/gridWallEdit.js";
 import { appendActionRow, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { SliderControl } from "../../UI/controls/SliderControl.js";
-const PASSAGE_MODE_OPTIONS = [
-    { value: "solid", label: "Solid — wall when powered" },
-    { value: "oneWay", label: "One-way — block against allowed side" },
-    { value: "tripwire", label: "Tripwire — sensor, never blocks" },
-];
 const EDGE_SIDE_OPTIONS = [
     { value: "0", label: formatGridWallEdgeSideLabel(0) },
     { value: "1", label: formatGridWallEdgeSideLabel(1) },
@@ -22,35 +17,6 @@ export function appendRailWallHeightSlider(body, state, heightLevel, onChange) {
 }
 export function appendRailWallThicknessSlider(body, controller, thicknessLevel, onChange) {
     body.appendChild(new SliderControl("Rail thickness", 1, MAX_RAIL_WALL_THICKNESS_LEVEL, 1, thicknessLevel, onChange).element);
-}
-export function appendPassageEditorFields(body, controller, selected, { stampDefaults = false } = {}) {
-    const mode = stampDefaults ? controller.getForcefieldStampMode() : selected.mode;
-    appendSelectField(body, "Mode", {
-        value: mode,
-        options: PASSAGE_MODE_OPTIONS,
-        onChange: (value) => {
-            if (stampDefaults) controller.setForcefieldStampMode(value);
-            else controller.setSelectedForcefieldMode(value);
-        },
-    });
-    if (mode === "oneWay" && !stampDefaults && selected)
-        appendSelectField(body, "Allowed side", {
-            value: String(selected.allowedSide ?? selected.side),
-            options: EDGE_SIDE_OPTIONS,
-            onChange: (value) => {
-                controller.setSelectedForcefieldAllowedSide(Number(value));
-            },
-        });
-}
-export function appendForcefieldSelectedInspector(body, controller, selectedForcefieldInfo, { promptReselect = false } = {}) {
-    appendEditorHint(
-        body,
-        promptReselect
-            ? `${selectedForcefieldInfo.modeLabel} · ${selectedForcefieldInfo.sideLabel}. Click a laser edge on the map to re-select.`
-            : `${selectedForcefieldInfo.modeLabel} forcefield · ${selectedForcefieldInfo.sideLabel}. Arms when connected to an energized power source.`,
-    );
-    appendPassageEditorFields(body, controller, selectedForcefieldInfo);
-    appendActionRow(body, [{ label: "Delete forcefield", onClick: () => controller.deleteSelectedWall() }]);
 }
 export function appendRoomLinkCorridorInspector(body, state, selectedRoomLink, controller) {
     const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
@@ -87,16 +53,14 @@ export function appendWallPlaceParams(body, state, controller, { wallStampMode, 
     const selectedRailInfo = inspector?.kind === "rail" ? inspector.data : null;
     appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
     appendActionRow(body, [{ label: "Add at camera", onClick: () => controller.stampWallAtCameraOrigin() }]);
-    if (wallStampMode !== "forcefield") {
-        const maxHeight = maxWallHeightLevel(state);
-        body.appendChild(
-            new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
-                controller.setWallHeightLevel(val);
-                if (selectedVoxelInfo) controller.setSelectedVoxelWallHeight(val);
-                else if (selectedRailInfo) controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
-            }).element,
-        );
-    }
+    const maxHeight = maxWallHeightLevel(state);
+    body.appendChild(
+        new SliderControl("Height", 1, maxHeight, 1, controller.getWallHeightLevel(), (val) => {
+            controller.setWallHeightLevel(val);
+            if (selectedVoxelInfo) controller.setSelectedVoxelWallHeight(val);
+            else if (selectedRailInfo) controller.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+        }).element,
+    );
     if (wallStampMode === "rail")
         body.appendChild(
             new SliderControl("Thickness", 1, 8, 1, controller.getRailThicknessLevel(), (val) => {
@@ -104,7 +68,6 @@ export function appendWallPlaceParams(body, state, controller, { wallStampMode, 
                 if (selectedRailInfo) controller.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
             }).element,
         );
-    if (wallStampMode === "forcefield") appendPassageEditorFields(body, controller, null, { stampDefaults: true });
 }
 export function appendWallSelectedInspector(body, state, controller, { voxel: selectedVoxelInfo, rail: selectedRailInfo } = {}) {
     if (selectedVoxelInfo) {

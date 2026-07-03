@@ -1,9 +1,7 @@
-import { EDGE_KIND, PASSAGE_MODE } from "./CellEdge.js";
+import { EDGE_KIND } from "./CellEdgeStore.js";
 export const NAV_EDGE_POOL_SAB_STRIDE = 24;
-const KIND_TO_BYTE = { [EDGE_KIND.RailWall]: 1, [EDGE_KIND.BeltRail]: 2, [EDGE_KIND.Forcefield]: 3 };
-const BYTE_TO_KIND = { 1: EDGE_KIND.RailWall, 2: EDGE_KIND.BeltRail, 3: EDGE_KIND.Forcefield };
-const MODE_TO_BYTE = { [PASSAGE_MODE.Solid]: 0, [PASSAGE_MODE.OneWay]: 1, [PASSAGE_MODE.Tripwire]: 2 };
-const BYTE_TO_MODE = { 0: PASSAGE_MODE.Solid, 1: PASSAGE_MODE.OneWay, 2: PASSAGE_MODE.Tripwire };
+const KIND_TO_BYTE = { [EDGE_KIND.RailWall]: 1, [EDGE_KIND.BeltRail]: 2 };
+const BYTE_TO_KIND = { 1: EDGE_KIND.RailWall, 2: EDGE_KIND.BeltRail };
 /** @param {number} refCount */
 export function navEdgePoolSabByteLength(refCount) {
     return Math.max(refCount * NAV_EDGE_POOL_SAB_STRIDE, NAV_EDGE_POOL_SAB_STRIDE);
@@ -26,11 +24,6 @@ function writeEdgeToSab(view, ref, edge) {
         view.setUint8(base + 8, edge.thicknessLevel ?? 1);
         return;
     }
-    if (edge.kind === EDGE_KIND.Forcefield) {
-        view.setUint8(base + 1, MODE_TO_BYTE[edge.mode] ?? 0);
-        view.setUint8(base + 2, edge.allowedSide ?? 0);
-        view.setUint8(base + 5, edge.powered === true ? 1 : 0);
-    }
 }
 /** Worker-owned pool objects — updated in place from SAB each nav sync. */
 const workerEdgePool = [];
@@ -46,9 +39,6 @@ export function bindNavEdgePoolFromSab(bytes, refCount) {
 function readEdgeFromSab(view, ref, out) {
     const base = ref * NAV_EDGE_POOL_SAB_STRIDE;
     const kindByte = view.getUint8(base + 0);
-    delete out.mode;
-    delete out.allowedSide;
-    delete out.powered;
     delete out.heightDelta;
     delete out.thicknessLevel;
     if (kindByte === 1) {
@@ -61,14 +51,7 @@ function readEdgeFromSab(view, ref, out) {
         out.kind = EDGE_KIND.BeltRail;
         return;
     }
-    if (kindByte !== 3) {
-        out.kind = EDGE_KIND.RailWall;
-        out.heightDelta = 0;
-        out.thicknessLevel = 1;
-        return;
-    }
-    out.kind = EDGE_KIND.Forcefield;
-    out.mode = BYTE_TO_MODE[view.getUint8(base + 1)] ?? PASSAGE_MODE.Solid;
-    out.allowedSide = view.getUint8(base + 2);
-    out.powered = view.getUint8(base + 5) === 1;
+    out.kind = EDGE_KIND.RailWall;
+    out.heightDelta = 0;
+    out.thicknessLevel = 1;
 }

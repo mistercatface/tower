@@ -3,10 +3,9 @@ import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { clearPrimaryBoundaryAt } from "./boundaryEdit.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { formatPassageModeLabel, isPassageLaserEdge, isRailWallEdge, parsePassageMode, PASSAGE_MODE, railWallCapLevel } from "../Spatial/grid/CellEdge.js";
-import { setBoundary, setPassageProfile, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
+import { isRailWallEdge, railWallCapLevel } from "../Spatial/grid/CellEdgeStore.js";
+import { setBoundary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 import { overlaySegment } from "../Render/overlays/overlayCommands.js";
@@ -192,26 +191,6 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
     if (isEmptyCellBounds(bounds)) return null;
     return bounds;
 }
-export function applyStampedForcefieldsFromGlobal(state, forcefields, cellSize) {
-    const grid = state.obstacleGrid;
-    const half = grid.cellHalfSize;
-    const bounds = emptyCellBounds();
-    const toLocal = (globalCol, globalRow) => {
-        const x = globalCol * cellSize + half;
-        const y = globalRow * cellSize + half;
-        return grid.worldToGrid(x, y);
-    };
-    for (let i = 0; i < forcefields.length; i++) {
-        const { col: globalCol, row: globalRow, side, mode, allowedSide } = forcefields[i];
-        const { col, row } = toLocal(globalCol, globalRow);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        clearPrimaryBoundaryAt(state, col, row, side);
-        if (!setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "passage", mode: parsePassageMode(mode), allowedSide: allowedSide ?? side, powered: false })) continue;
-        growCellBounds(bounds, col, row);
-    }
-    if (isEmptyCellBounds(bounds)) return null;
-    return bounds;
-}
 export function stampVoxelWallAt(state, idx, heightLevel) {
     const grid = state.obstacleGrid;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
@@ -251,58 +230,6 @@ export function clearRailWallAt(state, idx, side) {
     commitGridNavEdit(state, idx);
     return true;
 }
-export function stampForcefieldAt(state, idx, side, { mode = PASSAGE_MODE.Solid, allowedSide = side } = {}) {
-    const grid = state.obstacleGrid;
-    clearPrimaryBoundaryAt(state, idx, side);
-    if (!setBoundary(grid, idx, side, { kind: "passage", mode: parsePassageMode(mode), allowedSide, powered: false }, true)) return false;
-    syncPassagePowerNetwork(state);
-    return true;
-}
-export function setForcefieldProfileAt(state, idx, side, mode, allowedSide) {
-    const grid = state.obstacleGrid;
-    if (!setPassageProfile(grid, idx, side, mode, allowedSide)) return false;
-    syncPassagePowerNetwork(state);
-    return true;
-}
-export function clearForcefieldAt(state, idx, side) {
-    if (clearPrimaryBoundaryAt(state, idx, side, true) !== "passage") return false;
-    syncPassagePowerNetwork(state);
-    return true;
-}
-export function getForcefieldInfo(grid, idx, side) {
-    const boundary = getBoundary(grid, idx, side);
-    if (boundary.primary !== "passage") return null;
-    const mode = parsePassageMode(boundary.mode);
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return {
-        col,
-        row,
-        side,
-        mode,
-        allowedSide: boundary.allowedSide ?? side,
-        powered: boundary.powered === true,
-        sideLabel: formatGridWallEdgeSideLabel(side),
-        modeLabel: formatPassageModeLabel(mode),
-    };
-}
-export function listPlacedForcefields(grid) {
-    /** @type {{ col: number, row: number, side: number, label: string }[]} */
-    const placed = [];
-    let index = 0;
-    forEachCellEdge(
-        grid,
-        (col, row, side, edge) => {
-            const mode = parsePassageMode(edge.mode);
-            index++;
-            const sideLabel = formatGridWallEdgeSideLabel(side);
-            const modeTag = mode === PASSAGE_MODE.Solid ? "" : ` · ${formatPassageModeLabel(mode)}`;
-            placed.push({ col, row, side, label: `Forcefield #${index} · ${sideLabel}${modeTag}` });
-        },
-        { filter: isPassageLaserEdge },
-    );
-    return placed;
-}
 export function listPlacedVoxelWalls(grid) {
     /** @type {{ col: number, row: number, heightLevel: number, label: string }[]} */
     const placed = [];
@@ -332,7 +259,12 @@ export function listPlacedRailWalls(grid) {
             counts.set(key, index);
             placed.push({ col, row, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
         },
-        { filter: isRailWallEdge },
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        isRailWallEdge,
     );
     return placed;
 }

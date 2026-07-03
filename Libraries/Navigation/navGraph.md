@@ -46,7 +46,7 @@ Locomotion on belts: pathfinder owns direction along the chain; physics applies 
 All nav-affecting edits go through:
 
 - `writeNavFloorCell` — floor + auto `syncBeltCellToEdges` for railed kinds
-- `setNavEdge` — primary boundaries (rail wall, forcefield)
+- `setNavEdge` — primary boundaries (rail wall)
 - `commitGridNavEdit` / `commitGridNavEditUnion` — one worker resync
 
 Room graph bake, editor stamps, and snake map-gen call the same floor/edge helpers; no third belt-rail authoring path.

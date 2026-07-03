@@ -1,5 +1,5 @@
 import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
-import { cellEdgeSlotOffset } from "../Spatial/grid/cellEdgeSlots.js";
+import { cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
  * @param {import("./GridNavSnapshot.js").GridFrame} frame
@@ -10,9 +10,8 @@ import { cellEdgeSlotOffset } from "../Spatial/grid/cellEdgeSlots.js";
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, passageEdgeCount, vertexPassability) {
+export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, vertexPassability) {
     const edgeStore = {
-        passageEdgeCount,
         slots: edgeSlots,
         pool: edgePool,
         getIdx(idx, side) {
@@ -75,10 +74,9 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
     });
     return simView;
 }
-/** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool @param {number} passageEdgeCount */
-export function bindNavSimEdgePool(simView, edgePool, passageEdgeCount) {
+/** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool */
+export function bindNavSimEdgePool(simView, edgePool) {
     simView.edgeStore.pool = edgePool;
-    simView.edgeStore.passageEdgeCount = passageEdgeCount;
 }
 /** @param {ReturnType<typeof createNavSimView>} simView @param {import("./GridNavSnapshot.js").GridFrame} frame */
 export function bindNavSimGridFrame(simView, frame) {

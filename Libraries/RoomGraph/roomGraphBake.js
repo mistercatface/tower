@@ -16,7 +16,6 @@ import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType, isLockedRoomCorridorType } from "./roomGraphCorridorTypes.js";
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
-import { clearLockedRoomBakes, syncLockedRoomBakes } from "./roomGraphLockedRoom.js";
 import { corridorSearchBounds } from "../Pathfinding/Corridor/corridorWalkGrid.js";
 import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
@@ -128,8 +127,6 @@ function computeRoomGraphBake(layout) {
     const placedPathWidths = [];
     const corridorRailLists = [];
     const bakedBelts = [];
-    /** @type {import("./roomGraphLockedRoom.js").LockedLinkBakeInput[]} */
-    const lockedLinkBakes = [];
     for (let edgeIndex = 0; edgeIndex < graphEdges.length; edgeIndex++) {
         const { a, b, linkId } = graphEdges[edgeIndex];
         const link = linkById.get(linkId);
@@ -154,15 +151,6 @@ function computeRoomGraphBake(layout) {
             placedPaths.push(bundle.paths[pi]);
             placedPathWidths.push(bundle.corridorWidths[pi]);
         }
-        if (isLockedRoomCorridorType(corridorType)) {
-            /** @type {import("./roomGraphClosedRooms.js").RoomWallHole[]} */
-            const parentHoles = [];
-            for (let lane = 0; lane < bundle.parentHoleGroups.length; lane++) {
-                const group = bundle.parentHoleGroups[lane];
-                for (let hi = 0; hi < group.length; hi++) parentHoles.push(group[hi]);
-            }
-            lockedLinkBakes.push({ linkId: link.id, parentNodeId: link.a, parentHoles });
-        }
         if (isConveyorCorridorType(corridorType)) bakedBelts.push(...stampCorridorBundleBelts(bundle, rooms));
         if (!isOpenCorridorType(corridorType) && !isConveyorCorridorType(corridorType))
             corridorRailLists.push(stampCorridorBundleRails(bundle, rooms, closedRooms, originCol, originRow, link.railWallHeightLevel, link.railWallThicknessLevel));
@@ -170,7 +158,7 @@ function computeRoomGraphBake(layout) {
     const roomRails = railWallsForClosedRooms(closedRooms, originCol, originRow);
     const gapKeys = roomWallGapKeysWorld(closedRooms, originCol, originRow);
     const corridorRails = corridorRailLists.length ? omitRailWallsAtGapKeys(mergeRailWalls(corridorRailLists), gapKeys) : [];
-    return { rails: mergeRailWalls([roomRails, corridorRails]), belts: bakedBelts, closedRooms, lockedLinkBakes };
+    return { rails: mergeRailWalls([roomRails, corridorRails]), belts: bakedBelts, closedRooms };
 }
 /** Rebuild all room-graph-owned rail walls from `state.roomGraph`. */
 export function syncRoomGraphBake(state) {
@@ -180,7 +168,6 @@ export function syncRoomGraphBake(state) {
     setBakedFloorBelts(state, []);
     let layout = buildAuthoredBakeLayout(state);
     if (!layout.rooms.length) {
-        clearLockedRoomBakes(state);
         commitGridNavEdit(state, null, { fullNavSync: true });
         return;
     }
@@ -193,11 +180,9 @@ export function syncRoomGraphBake(state) {
     setBakedRails(state, stampedRails);
     setBakedFloorBelts(state, stampedBelts);
     commitGridNavEdit(state, null, { fullNavSync: true });
-    syncLockedRoomBakes(state, layout, bake.lockedLinkBakes);
 }
 /** @param {object} state */
 export function unbakeRoomGraph(state) {
-    clearLockedRoomBakes(state);
     clearRailWallsQuiet(state, listBakedRails(state));
     clearBakedFloorBeltsQuiet(state, listBakedFloorBelts(state));
     setBakedRails(state, []);

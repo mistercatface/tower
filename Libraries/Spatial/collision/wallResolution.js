@@ -1,6 +1,5 @@
 import { distanceSqToSegment, getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
-import { resolvePassageWallContact } from "../../Spatial/grid/passageWallContact.js";
-import { SatCollision, entityFacing, SAT_RESULT, getEntityCollisionParts } from "./SatCollision.js";
+import { satCheckCollision, entityFacing, SAT_RESULT, getEntityCollisionParts } from "./SatCollision.js";
 import { PolygonShape } from "./Shapes.js";
 import { boxLocalFootprint } from "../../Math/Poly2D.js";
 import { applyPositionCorrection, applySlabPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
@@ -23,7 +22,7 @@ export function kineticBodyOverlapsWallCandidates(body, candidates) {
         for (let i = 0; i < candidates.length; i++) {
             const seg = candidates[i];
             const segShape = ensureWallSegmentPolygonShape(seg);
-            if (SatCollision.checkCollision(px, py, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
+            if (satCheckCollision(px, py, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
         }
     }
     return false;
@@ -43,7 +42,7 @@ export function kineticSlabOverlapsWallCandidates(physId, body, candidates) {
         for (let i = 0; i < candidates.length; i++) {
             const seg = candidates[i];
             const segShape = ensureWallSegmentPolygonShape(seg);
-            if (SatCollision.checkCollision(px, py, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
+            if (satCheckCollision(px, py, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
         }
     }
     return false;
@@ -149,23 +148,6 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
     for (let pass = 0; pass < passes; pass++) {
         let best = null;
         for (const seg of segments) {
-            if (seg.passageEdge) {
-                const outcome = resolvePassageWallContact({
-                    entity: body,
-                    segment: seg,
-                    edge: seg.passageEdge,
-                    ownerCol: seg.gridCol,
-                    ownerRow: seg.gridRow,
-                    ownerSide: seg.gridSide,
-                    bodyRadius: radius,
-                    vx: body.vx ?? 0,
-                    vy: body.vy ?? 0,
-                    dispX,
-                    dispY,
-                    grid: seg._obstacleGrid,
-                });
-                if (outcome === "consumed" || outcome === "skip") continue;
-            }
             const maxDist = radius + seg.size * 0.75;
             const bx = body.x;
             const by = body.y;
@@ -180,7 +162,7 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
                 overlap = penetration.overlap;
             } else if (shape.type === "Polygon") {
                 const segShape = ensureWallSegmentPolygonShape(seg);
-                if (!SatCollision.checkCollision(bx, by, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
+                if (!satCheckCollision(bx, by, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
                 normalX = -SAT_RESULT[1];
                 normalY = -SAT_RESULT[2];
                 overlap = SAT_RESULT[0];
@@ -220,23 +202,6 @@ export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { 
     for (let pass = 0; pass < passes; pass++) {
         let best = null;
         for (const seg of segments) {
-            if (seg.passageEdge) {
-                const outcome = resolvePassageWallContact({
-                    entity: body,
-                    segment: seg,
-                    edge: seg.passageEdge,
-                    ownerCol: seg.gridCol,
-                    ownerRow: seg.gridRow,
-                    ownerSide: seg.gridSide,
-                    bodyRadius: radius,
-                    vx: kineticDynamicSlab.vx[physId],
-                    vy: kineticDynamicSlab.vy[physId],
-                    dispX,
-                    dispY,
-                    grid: seg._obstacleGrid,
-                });
-                if (outcome === "consumed" || outcome === "skip") continue;
-            }
             const maxDist = radius + seg.size * 0.75;
             const bx = kineticDynamicSlab.x[physId];
             const by = kineticDynamicSlab.y[physId];
@@ -251,7 +216,7 @@ export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { 
                 overlap = penetration.overlap;
             } else if (shape.type === "Polygon") {
                 const segShape = ensureWallSegmentPolygonShape(seg);
-                if (!SatCollision.checkCollision(bx, by, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
+                if (!satCheckCollision(bx, by, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
                 normalX = -SAT_RESULT[1];
                 normalY = -SAT_RESULT[2];
                 overlap = SAT_RESULT[0];

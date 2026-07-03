@@ -6,31 +6,24 @@ import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
-import { canStampFloorBeltAt, clearPassagePowerSourceAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, stampPassagePowerSourceAt } from "./floorOccupancy.js";
+import { canStampFloorBeltAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt } from "./floorOccupancy.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import propCatalog from "../../Assets/props/index.js";
 import {
-    clearForcefieldAt,
     clearRailWallAt,
     clearVoxelWallAt,
     ensureObstacleGridAtWorld,
-    getForcefieldInfo,
     getRailWallInfo,
     hitTestRailWallEdgeAtWorld,
-    listPlacedForcefields,
     listPlacedRailWalls,
     listPlacedVoxelWalls,
-    setForcefieldProfileAt,
     stampRailWallAt,
     setVoxelWallHeightAt,
-    stampForcefieldAt,
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
-import { PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
-import { cellIsStaticWall, forcefieldEdgeAt, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
+import { cellIsStaticWall, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { createSandboxSelection } from "./sandboxSelection.js";
 import { selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
@@ -43,7 +36,6 @@ export function createSandboxSession(state) {
     let wallStampMode = "voxel";
     let wallHeightLevel = 1;
     let railThicknessLevel = 4;
-    let forcefieldStampMode = PASSAGE_MODE.Solid;
     let selectionTagFilter = "all";
     let uiSync = null;
     function notifyUi() {
@@ -81,7 +73,7 @@ export function createSandboxSession(state) {
         const hadSelection = selection.getSelection() != null;
         const changed = placePaletteKey !== key;
         placePaletteKey = key;
-        if (key.startsWith("wall:")) wallStampMode = /** @type {'voxel' | 'rail' | 'forcefield'} */ (key.slice(5));
+        if (key.startsWith("wall:")) wallStampMode = /** @type {'voxel' | 'rail'} */ (key.slice(5));
         selection.clearSelection();
         if (changed || hadSelection) notifyUi();
     };
@@ -113,21 +105,6 @@ export function createSandboxSession(state) {
         }
         return placed;
     };
-    const listPlacedPassagePowerSources = () => {
-        const grid = state.obstacleGrid;
-        const placed = [];
-        let index = 0;
-        const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++) {
-            if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) continue;
-            index++;
-            const col = idx % grid.cols;
-            const row = (idx / grid.cols) | 0;
-            const defaultPowered = grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx);
-            placed.push({ col, row, defaultPowered, label: `Power source #${index}${defaultPowered ? " · default on" : ""}` });
-        }
-        return placed;
-    };
     const spawn = createSandboxSpawnSession(state, { getSpawnPropId: spawnPropIdFromPalette, pickSelection, notifyUi, placement });
     const roomGraph = createSandboxRoomGraphSession(state, {
         selection,
@@ -139,7 +116,6 @@ export function createSandboxSession(state) {
         setPlacePaletteKey,
         listPlacedProps,
         listPlacedFloorBelts,
-        listPlacedPassagePowerSources,
     });
     const removeProp = (prop) => removeSandboxWorldProp(state, prop);
     const listSelectedPropEntries = () => {
@@ -251,9 +227,7 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
             const idx = col + row * grid.cols;
-            if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) {
-                if (!clearPassagePowerSourceAt(state, col, row)) return false;
-            } else if (grid.floorStore.isBeltKindAtIdx(idx)) {
+            if (grid.floorStore.isBeltKindAtIdx(idx)) {
                 if (!clearFloorCellNavEdit(state, idx)) return false;
             } else if (!grid.clearFloorCell(idx)) return false;
             else markGridZoneSubscriptionsDirty(state);
@@ -261,22 +235,10 @@ export function createSandboxSession(state) {
             clearSelection();
             return true;
         },
-        setSelectedPassagePowerSourceDefaultPowered(powered) {
-            const floorCell = selectionFloorCell(sel());
-            if (!floorCell) return false;
-            const grid = state.obstacleGrid;
-            const { col, row } = floorCell;
-            const idx = col + row * grid.cols;
-            if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
-            grid.floorStore.setPassagePowerSourceAtIdx(idx, powered);
-            syncPassagePowerNetwork(state);
-            notifyUi();
-            return true;
-        },
-        getPlacePaletteKey: () => placePaletteKey,
         isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
         isMapGenPlaceMode: () => placePaletteKey.startsWith("gen:"),
         setPlacePaletteKey,
+        getPlacePaletteKey: () => placePaletteKey,
         getWallStampMode: () => wallStampMode,
         setWallStampMode(mode) {
             wallStampMode = mode;
@@ -292,50 +254,11 @@ export function createSandboxSession(state) {
             railThicknessLevel = level;
             notifyUi();
         },
-        getForcefieldStampMode: () => forcefieldStampMode,
-        setForcefieldStampMode(mode) {
-            forcefieldStampMode = mode;
-            notifyUi();
-        },
         listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
-        listPlacedForcefields: () => listPlacedForcefields(state.obstacleGrid),
-        setSelectedForcefieldMode(mode) {
-            const railEdge = selectionRailEdge(sel());
-            if (!railEdge) return false;
-            const { col, row, side } = railEdge;
-            const info = getForcefieldInfo(state.obstacleGrid, col + row * state.obstacleGrid.cols, side);
-            if (!info) return false;
-            const allowedSide = mode === PASSAGE_MODE.OneWay ? (info.mode === PASSAGE_MODE.OneWay ? (info.allowedSide ?? side) : side) : side;
-            if (!setForcefieldProfileAt(state, col, row, side, mode, allowedSide)) return false;
-            notifyUi();
-            return true;
-        },
-        setSelectedForcefieldAllowedSide(allowedSide) {
-            const railEdge = selectionRailEdge(sel());
-            if (!railEdge) return false;
-            const { col, row, side } = railEdge;
-            const info = getForcefieldInfo(state.obstacleGrid, col + row * state.obstacleGrid.cols, side);
-            if (!info || info.mode !== PASSAGE_MODE.OneWay) return false;
-            if (!setForcefieldProfileAt(state, col, row, side, PASSAGE_MODE.OneWay, allowedSide)) return false;
-            notifyUi();
-            return true;
-        },
         stampWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
             const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
-            if (wallStampMode === "forcefield") {
-                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit) return false;
-                if (forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) {
-                    pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
-                    return true;
-                }
-                if (!stampForcefieldAt(state, hit.col, hit.row, hit.side, { mode: forcefieldStampMode, allowedSide: hit.side })) return false;
-                placement.touchEdgePlacement("forcefield", hit.col, hit.row, hit.side);
-                pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
-                return true;
-            }
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
@@ -404,11 +327,8 @@ export function createSandboxSession(state) {
             if (railEdge) {
                 const grid = state.obstacleGrid;
                 const idx = railEdge.col + railEdge.row * grid.cols;
-                if (forcefieldEdgeAt(grid, idx, railEdge.side)) {
-                    if (!clearForcefieldAt(state, idx, railEdge.side)) return false;
-                    placement.forgetEdgePlacement("forcefield", railEdge.col, railEdge.row, railEdge.side);
-                } else if (!clearRailWallAt(state, idx, railEdge.side)) return false;
-                else placement.forgetEdgePlacement("rail", railEdge.col, railEdge.row, railEdge.side);
+                if (!clearRailWallAt(state, idx, railEdge.side)) return false;
+                placement.forgetEdgePlacement("rail", railEdge.col, railEdge.row, railEdge.side);
                 clearSelection();
                 return true;
             }
@@ -416,19 +336,13 @@ export function createSandboxSession(state) {
         },
         deleteWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
-            if (wallStampMode === "rail" || wallStampMode === "forcefield") {
+            if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
                 const idx = hit.col + hit.row * grid.cols;
-                if (wallStampMode === "forcefield") {
-                    if (!forcefieldEdgeAt(grid, idx, hit.side)) return false;
-                    if (!clearForcefieldAt(state, idx, hit.side)) return false;
-                    placement.forgetEdgePlacement("forcefield", hit.col, hit.row, hit.side);
-                } else {
-                    if (!railWallEdgeAt(grid, idx, hit.side)) return false;
-                    if (!clearRailWallAt(state, idx, hit.side)) return false;
-                    placement.forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
-                }
+                if (!railWallEdgeAt(grid, idx, hit.side)) return false;
+                if (!clearRailWallAt(state, idx, hit.side)) return false;
+                placement.forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
                 selection.dropDeletedWallSelection(hit.col, hit.row, hit.side);
                 notifyUi();
                 return true;
@@ -447,12 +361,6 @@ export function createSandboxSession(state) {
             const edgeHit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
             if (edgeHit) {
                 const { col, row, side } = edgeHit;
-                if (forcefieldEdgeAt(grid, col + row * grid.cols, side)) {
-                    placePaletteKey = "wall:forcefield";
-                    wallStampMode = "forcefield";
-                    pickSelection({ kind: "rail", col, row, side });
-                    return true;
-                }
                 if (railWallEdgeAt(grid, col + row * grid.cols, side)) {
                     placePaletteKey = "wall:rail";
                     wallStampMode = "rail";
@@ -470,12 +378,6 @@ export function createSandboxSession(state) {
         },
         pickWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
-            if (wallStampMode === "forcefield") {
-                const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
-                pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
-                return true;
-            }
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit || !railWallEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
@@ -486,14 +388,6 @@ export function createSandboxSession(state) {
             const row = grid.worldRow(worldY);
             if (!cellIsStaticWall(grid, col + row * grid.cols)) return false;
             pickSelection({ kind: "voxel", col, row });
-            return true;
-        },
-        /** Pick a stamped forcefield edge from the map (Props tab or any panel). */
-        pickForcefieldAtWorld(worldX, worldY) {
-            const grid = state.obstacleGrid;
-            const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-            if (!hit || !forcefieldEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
-            pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
             return true;
         },
         getSelectedProp: () => {
@@ -542,15 +436,6 @@ export function createSandboxSession(state) {
         filterPropSelectionToTag,
         listPlacedProps,
         listPlacedFloorBelts,
-        stampPassagePowerSourceAtWorld(worldX, worldY, defaultPowered = false) {
-            const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
-            if (!stampPassagePowerSourceAt(state, col, row, defaultPowered)) return false;
-            placement.touchFloorPlacement(col, row);
-            pickSelection({ kind: "floor", col, row });
-            notifyUi();
-            return true;
-        },
-        listPlacedPassagePowerSources,
         ...roomGraph,
         deleteSceneItem(item) {
             removeSceneItem(this, item, pickSelection);

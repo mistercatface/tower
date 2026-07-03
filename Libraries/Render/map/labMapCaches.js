@@ -1,7 +1,7 @@
 import { fillCircle, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
 import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
-import { isRailWallEdge } from "../../Spatial/grid/CellEdge.js";
+import { isRailWallEdge } from "../../Spatial/grid/CellEdgeStore.js";
 import { forEachCellEdge } from "../../Spatial/grid/gridCellTopology.js";
 import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
@@ -112,7 +112,12 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
             else if (side === 2) strokeAxisLineRgba(px, w, h, col * ppc, (row + 1) * ppc - 1, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
             else strokeAxisLineRgba(px, w, h, col * ppc, row * ppc, col * ppc, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
         },
-        { filter: isRailWallEdge, canonicalOnly: true },
+        true,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        isRailWallEdge,
     );
     ctx.putImageData(data, 0, 0);
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };

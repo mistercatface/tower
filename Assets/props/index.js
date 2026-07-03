@@ -18,7 +18,6 @@ import floor_belt_elbow_left_rails from "./floor_belt/floor_belt_elbow_left_rail
 import floor_belt_elbow_right_rails from "./floor_belt/floor_belt_elbow_right_rails.asset.js";
 import floor_power_source from "./floor_power_source/floor_power_source.asset.js";
 import room_node from "./room_node/room_node.asset.js";
-import puzzle_belt_crate from "./puzzle_belt_crate/puzzle_belt_crate.asset.js";
 import corridor from "./corridor/corridor.asset.js";
 import poolBalls from "./poolBalls.js";
 import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
@@ -47,7 +46,6 @@ const catalog = {
     floor_belt_elbow_right_rails,
     floor_power_source,
     room_node,
-    puzzle_belt_crate,
     corridor,
     cross_pinwheel,
     wall_voxel_chunk,

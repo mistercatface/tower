@@ -1,7 +1,4 @@
-import { isPassageTripwireEdge, PASSAGE_MODE } from "../Spatial/grid/CellEdge.js";
 import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
-import { isPassagePowered } from "../Spatial/grid/boundaryOccupancy.js";
-import { canonicalEdgeCellKey, forEachCellEdge } from "../Spatial/grid/gridCellTopology.js";
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions} GridZoneSubscriptions */
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneEvent} GridZoneEvent */
 /** @param {object} state */
@@ -12,21 +9,10 @@ export function markGridZoneSubscriptionsDirty(state) {
 export function buildGridZoneSubscriptions(grid) {
     /** @type {Set<number>} */
     const cells = new Set();
-    /** @type {Map<number, { idx: number, side: number, mode: string }>} */
-    const edges = new Map();
-    if (!grid.cols) return { cells, edges };
+    if (!grid.cols) return { cells };
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) if (grid.floorStore.isBeltKindAtIdx(idx)) cells.add(idx);
-    if (grid.edgeStore.passageEdgeCount > 0)
-        forEachCellEdge(
-            grid,
-            (col, row, side) => {
-                const idx = col + row * grid.cols;
-                edges.set(canonicalEdgeCellKey(grid, col, row, side), { idx, side, mode: PASSAGE_MODE.Tripwire });
-            },
-            { canonicalOnly: true, filter: isPassageTripwireEdge },
-        );
-    return { cells, edges };
+    return { cells };
 }
 /** @param {object} state */
 function ensureGridZoneSubscriptions(state) {
@@ -41,27 +27,19 @@ function onBeltCellZoneEvent(state, event, phase) {
     state.sandbox.beltZoneEvents.push({ at: state.gameTime, phase, idx: event.idx, entityId: event.entity.id });
     if (state.sandbox.beltZoneEvents.length > 32) state.sandbox.beltZoneEvents.shift();
 }
-/** @param {object} state @param {GridZoneEvent} event */
-function markTripwireTriggered(state, event) {
-    if (!isPassagePowered(state.obstacleGrid, event.idx, event.side)) return;
-    state.sandbox.tripwireTriggeredKeys.add(event.key);
-}
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame */
 export function tickGridZones(state, spatialFrame) {
     const subscriptions = ensureGridZoneSubscriptions(state);
-    state.sandbox.tripwireTriggeredKeys.clear();
-    if (!subscriptions.cells.size && !subscriptions.edges.size) return;
+    if (!subscriptions.cells.size) return;
     tickGridZoneMembership(spatialFrame, state.obstacleGrid, subscriptions, {
         onEnter(event) {
-            if (event.kind === "cell") onBeltCellZoneEvent(state, event, "enter");
-            else markTripwireTriggered(state, event);
+            onBeltCellZoneEvent(state, event, "enter");
         },
         onOn(event) {
-            if (event.kind === "cell") onBeltCellZoneEvent(state, event, "on");
-            else markTripwireTriggered(state, event);
+            onBeltCellZoneEvent(state, event, "on");
         },
         onExit(event) {
-            if (event.kind === "cell") onBeltCellZoneEvent(state, event, "exit");
+            onBeltCellZoneEvent(state, event, "exit");
         },
     });
 }

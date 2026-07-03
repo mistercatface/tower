@@ -1,7 +1,7 @@
 import { appendActionRow, appendEditorHint } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 export function mountSceneSnapshotPanel(container, controller) {
-    appendEditorHint(container, "Copy/paste sandbox layout: props, walls, belts, power sources, forcefields. Replace clears the current sandbox first.");
+    appendEditorHint(container, "Copy/paste sandbox layout: props, walls, belts, power sources. Replace clears the current sandbox first.");
     const startDemoBtn = document.createElement("button");
     startDemoBtn.type = "button";
     startDemoBtn.className = "secondary";

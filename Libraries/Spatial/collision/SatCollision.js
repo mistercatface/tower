@@ -215,7 +215,7 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
     let found = false;
     for (let i = 0; i < partsA.length; i++)
         for (let j = 0; j < partsB.length; j++)
-            if (SatCollision.checkCollision(xA, yA, entityFacing(bodyA), partsA[i], xB, yB, entityFacing(bodyB), partsB[j])) {
+            if (satCheckCollision(xA, yA, entityFacing(bodyA), partsA[i], xB, yB, entityFacing(bodyB), partsB[j])) {
                 const overlap = SAT_RESULT[0];
                 if (overlap > bestOverlap) {
                     bestOverlap = overlap;
@@ -232,224 +232,222 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
 export function checkEntityPairCollisionAt(bodyA, xA, yA, bodyB, xB, yB) {
     return checkEntityPairCollision(bodyA, bodyB, xA, yA, xB, yB);
 }
-export class SatCollision {
-    static checkCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
-        if (!shapeA || !shapeB) return false;
-        if (shapeA.type === "Circle" && shapeB.type === "Circle") return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
-        if (shapeA.type === "Polygon" && shapeB.type === "Polygon") return this._polygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB);
-        if (shapeA.type === "Circle" && shapeB.type === "Polygon") return this._circlePolygon(xA, yA, shapeA, xB, yB, angleB, shapeB);
-        if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
-            const res = this._circlePolygon(xB, yB, shapeB, xA, yA, angleA, shapeA);
-            if (res) {
-                SAT_RESULT[1] = -SAT_RESULT[1];
-                SAT_RESULT[2] = -SAT_RESULT[2];
-                const featA = SAT_RESULT[6];
-                SAT_RESULT[6] = SAT_RESULT[7];
-                SAT_RESULT[7] = featA;
-                const pointCount = SAT_RESULT[8];
-                for (let p = 0; p < pointCount; p++) {
-                    const offset = 9 + p * 4;
-                    const fA = SAT_RESULT[offset + 2];
-                    SAT_RESULT[offset + 2] = SAT_RESULT[offset + 3];
-                    SAT_RESULT[offset + 3] = fA;
-                }
-                return true;
+export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
+    if (!shapeA || !shapeB) return false;
+    if (shapeA.type === "Circle" && shapeB.type === "Circle") return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
+    if (shapeA.type === "Polygon" && shapeB.type === "Polygon") return satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB);
+    if (shapeA.type === "Circle" && shapeB.type === "Polygon") return satCirclePolygon(xA, yA, shapeA, xB, yB, angleB, shapeB);
+    if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
+        const res = satCirclePolygon(xB, yB, shapeB, xA, yA, angleA, shapeA);
+        if (res) {
+            SAT_RESULT[1] = -SAT_RESULT[1];
+            SAT_RESULT[2] = -SAT_RESULT[2];
+            const featA = SAT_RESULT[6];
+            SAT_RESULT[6] = SAT_RESULT[7];
+            SAT_RESULT[7] = featA;
+            const pointCount = SAT_RESULT[8];
+            for (let p = 0; p < pointCount; p++) {
+                const offset = 9 + p * 4;
+                const fA = SAT_RESULT[offset + 2];
+                SAT_RESULT[offset + 2] = SAT_RESULT[offset + 3];
+                SAT_RESULT[offset + 3] = fA;
             }
-            return false;
+            return true;
         }
         return false;
     }
-    static _polygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
-        let minOverlap = Infinity;
-        let minNormalX = 0;
-        let minNormalY = 0;
-        let refPolyIsA = true;
-        let refEdgeIndex = 0;
-        // Check shapeA axes
-        let cos = Math.cos(angleA);
-        let sin = Math.sin(angleA);
-        const normalsCountA = shapeA.normals.length;
-        for (let i = 0; i < normalsCountA; i += 2) {
-            const nx = shapeA.normals[i];
-            const ny = shapeA.normals[i + 1];
-            const rNx = nx * cos - ny * sin;
-            const rNy = nx * sin + ny * cos;
-            this._projectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
-            this._projectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
-            if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
-            const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-            if (overlap < minOverlap) {
-                minOverlap = overlap;
-                minNormalX = rNx;
-                minNormalY = rNy;
-                refPolyIsA = true;
-                refEdgeIndex = i / 2;
-            }
+    return false;
+}
+function satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
+    let minOverlap = Infinity;
+    let minNormalX = 0;
+    let minNormalY = 0;
+    let refPolyIsA = true;
+    let refEdgeIndex = 0;
+    // Check shapeA axes
+    let cos = Math.cos(angleA);
+    let sin = Math.sin(angleA);
+    const normalsCountA = shapeA.normals.length;
+    for (let i = 0; i < normalsCountA; i += 2) {
+        const nx = shapeA.normals[i];
+        const ny = shapeA.normals[i + 1];
+        const rNx = nx * cos - ny * sin;
+        const rNy = nx * sin + ny * cos;
+        satProjectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
+        satProjectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = rNx;
+            minNormalY = rNy;
+            refPolyIsA = true;
+            refEdgeIndex = i / 2;
         }
-        // Check shapeB axes
-        cos = Math.cos(angleB);
-        sin = Math.sin(angleB);
-        const normalsCountB = shapeB.normals.length;
-        for (let i = 0; i < normalsCountB; i += 2) {
-            const nx = shapeB.normals[i];
-            const ny = shapeB.normals[i + 1];
-            const rNx = nx * cos - ny * sin;
-            const rNy = nx * sin + ny * cos;
-            this._projectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
-            this._projectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
-            if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
-            const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-            if (overlap < minOverlap) {
-                minOverlap = overlap;
-                minNormalX = rNx;
-                minNormalY = rNy;
-                refPolyIsA = false;
-                refEdgeIndex = i / 2;
-            }
-        }
-        const dx = xB - xA;
-        const dy = yB - yA;
-        if (dx * minNormalX + dy * minNormalY < 0) {
-            minNormalX = -minNormalX;
-            minNormalY = -minNormalY;
-        }
-        const pointCount = buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, minNormalX, minNormalY, refPolyIsA, refEdgeIndex);
-        if (pointCount == null) {
-            const cosB = Math.cos(angleB);
-            const sinB = Math.sin(angleB);
-            posScratch.x = xB;
-            posScratch.y = yB;
-            const featureB = findExtremeVertexInto(contactB, shapeB.vertices, posScratch, cosB, sinB, minNormalX, minNormalY, false);
-            const cosA = Math.cos(angleA);
-            const sinA = Math.sin(angleA);
-            posScratch.x = xA;
-            posScratch.y = yA;
-            const featureA = findExtremeVertexInto(contactA, shapeA.vertices, posScratch, cosA, sinA, minNormalX, minNormalY, true);
-            const cx = (contactA.x + contactB.x) / 2;
-            const cy = (contactA.y + contactB.y) / 2;
-            SAT_RESULT[0] = minOverlap;
-            SAT_RESULT[1] = minNormalX;
-            SAT_RESULT[2] = minNormalY;
-            SAT_RESULT[3] = cx;
-            SAT_RESULT[4] = cy;
-            SAT_RESULT[5] = 0;
-            SAT_RESULT[6] = featureA;
-            SAT_RESULT[7] = featureB;
-            SAT_RESULT[8] = 1;
-            SAT_RESULT[9] = cx;
-            SAT_RESULT[10] = cy;
-            SAT_RESULT[11] = featureA;
-            SAT_RESULT[12] = featureB;
-            return true;
-        }
-        const first = manifoldPoints[0];
-        SAT_RESULT[0] = minOverlap;
-        SAT_RESULT[1] = minNormalX;
-        SAT_RESULT[2] = minNormalY;
-        SAT_RESULT[3] = first.cx;
-        SAT_RESULT[4] = first.cy;
-        SAT_RESULT[5] = 0;
-        SAT_RESULT[6] = first.featureA;
-        SAT_RESULT[7] = first.featureB;
-        SAT_RESULT[8] = pointCount;
-        for (let p = 0; p < pointCount; p++) {
-            const offset = 9 + p * 4;
-            const pt = manifoldPoints[p];
-            SAT_RESULT[offset + 0] = pt.cx;
-            SAT_RESULT[offset + 1] = pt.cy;
-            SAT_RESULT[offset + 2] = pt.featureA;
-            SAT_RESULT[offset + 3] = pt.featureB;
-        }
-        return true;
     }
-    static _circlePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, anglePoly, polyShape) {
-        if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
-        let minOverlap = Infinity;
-        let minNormalX = 0;
-        let minNormalY = 0;
-        const cosP = Math.cos(anglePoly);
-        const sinP = Math.sin(anglePoly);
-        const normalsCount = polyShape.normals.length;
-        for (let i = 0; i < normalsCount; i += 2) {
-            const nx = polyShape.normals[i];
-            const ny = polyShape.normals[i + 1];
-            const rNx = nx * cosP - ny * sinP;
-            const rNy = nx * sinP + ny * cosP;
-            this._projectCircle(PROJ_A, rNx, rNy, cxCircle, cyCircle, circleShape);
-            this._projectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, anglePoly);
-            if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
-            const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-            if (overlap < minOverlap) {
-                minOverlap = overlap;
-                minNormalX = rNx;
-                minNormalY = rNy;
-            }
+    // Check shapeB axes
+    cos = Math.cos(angleB);
+    sin = Math.sin(angleB);
+    const normalsCountB = shapeB.normals.length;
+    for (let i = 0; i < normalsCountB; i += 2) {
+        const nx = shapeB.normals[i];
+        const ny = shapeB.normals[i + 1];
+        const rNx = nx * cos - ny * sin;
+        const rNy = nx * sin + ny * cos;
+        satProjectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
+        satProjectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = rNx;
+            minNormalY = rNy;
+            refPolyIsA = false;
+            refEdgeIndex = i / 2;
         }
-        posScratch.x = pxPoly;
-        posScratch.y = pyPoly;
-        const featureB = findClosestWorldVertexInto(closestVertex, polyShape.vertices, posScratch, cosP, sinP, cxCircle, cyCircle);
-        const dx = closestVertex.x - cxCircle;
-        const dy = closestVertex.y - cyCircle;
-        if (dx !== 0 || dy !== 0) {
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const nX = dx / len;
-            const nY = dy / len;
-            this._projectCircle(PROJ_A, nX, nY, cxCircle, cyCircle, circleShape);
-            this._projectPolygon(PROJ_B, nX, nY, polyShape, pxPoly, pyPoly, anglePoly);
-            if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
-            const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-            if (overlap < minOverlap) {
-                minOverlap = overlap;
-                minNormalX = nX;
-                minNormalY = nY;
-            }
-        }
-        const cx = pxPoly - cxCircle;
-        const cy = pyPoly - cyCircle;
-        if (cx * minNormalX + cy * minNormalY < 0) {
-            minNormalX = -minNormalX;
-            minNormalY = -minNormalY;
-        }
-        const contactX = cxCircle + minNormalX * (circleShape.radius - minOverlap / 2);
-        const contactY = cyCircle + minNormalY * (circleShape.radius - minOverlap / 2);
+    }
+    const dx = xB - xA;
+    const dy = yB - yA;
+    if (dx * minNormalX + dy * minNormalY < 0) {
+        minNormalX = -minNormalX;
+        minNormalY = -minNormalY;
+    }
+    const pointCount = buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, minNormalX, minNormalY, refPolyIsA, refEdgeIndex);
+    if (pointCount == null) {
+        const cosB = Math.cos(angleB);
+        const sinB = Math.sin(angleB);
+        posScratch.x = xB;
+        posScratch.y = yB;
+        const featureB = findExtremeVertexInto(contactB, shapeB.vertices, posScratch, cosB, sinB, minNormalX, minNormalY, false);
+        const cosA = Math.cos(angleA);
+        const sinA = Math.sin(angleA);
+        posScratch.x = xA;
+        posScratch.y = yA;
+        const featureA = findExtremeVertexInto(contactA, shapeA.vertices, posScratch, cosA, sinA, minNormalX, minNormalY, true);
+        const cx = (contactA.x + contactB.x) / 2;
+        const cy = (contactA.y + contactB.y) / 2;
         SAT_RESULT[0] = minOverlap;
         SAT_RESULT[1] = minNormalX;
         SAT_RESULT[2] = minNormalY;
-        SAT_RESULT[3] = contactX;
-        SAT_RESULT[4] = contactY;
+        SAT_RESULT[3] = cx;
+        SAT_RESULT[4] = cy;
         SAT_RESULT[5] = 0;
-        SAT_RESULT[6] = 0;
+        SAT_RESULT[6] = featureA;
         SAT_RESULT[7] = featureB;
         SAT_RESULT[8] = 1;
-        SAT_RESULT[9] = contactX;
-        SAT_RESULT[10] = contactY;
-        SAT_RESULT[11] = 0;
+        SAT_RESULT[9] = cx;
+        SAT_RESULT[10] = cy;
+        SAT_RESULT[11] = featureA;
         SAT_RESULT[12] = featureB;
         return true;
     }
-    static _projectPolygon(out, axisX, axisY, shape, px, py, angle = 0) {
-        let min = Infinity;
-        let max = -Infinity;
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        const count = shape.vertices.length;
-        for (let i = 0; i < count; i += 2) {
-            const vx_local = shape.vertices[i];
-            const vy_local = shape.vertices[i + 1];
-            const rx = vx_local * cos - vy_local * sin;
-            const ry = vx_local * sin + vy_local * cos;
-            const vx = px + rx;
-            const vy = py + ry;
-            const projection = vx * axisX + vy * axisY;
-            if (projection < min) min = projection;
-            if (projection > max) max = projection;
+    const first = manifoldPoints[0];
+    SAT_RESULT[0] = minOverlap;
+    SAT_RESULT[1] = minNormalX;
+    SAT_RESULT[2] = minNormalY;
+    SAT_RESULT[3] = first.cx;
+    SAT_RESULT[4] = first.cy;
+    SAT_RESULT[5] = 0;
+    SAT_RESULT[6] = first.featureA;
+    SAT_RESULT[7] = first.featureB;
+    SAT_RESULT[8] = pointCount;
+    for (let p = 0; p < pointCount; p++) {
+        const offset = 9 + p * 4;
+        const pt = manifoldPoints[p];
+        SAT_RESULT[offset + 0] = pt.cx;
+        SAT_RESULT[offset + 1] = pt.cy;
+        SAT_RESULT[offset + 2] = pt.featureA;
+        SAT_RESULT[offset + 3] = pt.featureB;
+    }
+    return true;
+}
+function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, anglePoly, polyShape) {
+    if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
+    let minOverlap = Infinity;
+    let minNormalX = 0;
+    let minNormalY = 0;
+    const cosP = Math.cos(anglePoly);
+    const sinP = Math.sin(anglePoly);
+    const normalsCount = polyShape.normals.length;
+    for (let i = 0; i < normalsCount; i += 2) {
+        const nx = polyShape.normals[i];
+        const ny = polyShape.normals[i + 1];
+        const rNx = nx * cosP - ny * sinP;
+        const rNy = nx * sinP + ny * cosP;
+        satProjectCircle(PROJ_A, rNx, rNy, cxCircle, cyCircle, circleShape);
+        satProjectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, anglePoly);
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = rNx;
+            minNormalY = rNy;
         }
-        out[0] = min;
-        out[1] = max;
     }
-    static _projectCircle(out, axisX, axisY, cx, cy, shape) {
-        const projection = cx * axisX + cy * axisY;
-        out[0] = projection - shape.radius;
-        out[1] = projection + shape.radius;
+    posScratch.x = pxPoly;
+    posScratch.y = pyPoly;
+    const featureB = findClosestWorldVertexInto(closestVertex, polyShape.vertices, posScratch, cosP, sinP, cxCircle, cyCircle);
+    const dx = closestVertex.x - cxCircle;
+    const dy = closestVertex.y - cyCircle;
+    if (dx !== 0 || dy !== 0) {
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const nX = dx / len;
+        const nY = dy / len;
+        satProjectCircle(PROJ_A, nX, nY, cxCircle, cyCircle, circleShape);
+        satProjectPolygon(PROJ_B, nX, nY, polyShape, pxPoly, pyPoly, anglePoly);
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = nX;
+            minNormalY = nY;
+        }
     }
+    const cx = pxPoly - cxCircle;
+    const cy = pyPoly - cyCircle;
+    if (cx * minNormalX + cy * minNormalY < 0) {
+        minNormalX = -minNormalX;
+        minNormalY = -minNormalY;
+    }
+    const contactX = cxCircle + minNormalX * (circleShape.radius - minOverlap / 2);
+    const contactY = cyCircle + minNormalY * (circleShape.radius - minOverlap / 2);
+    SAT_RESULT[0] = minOverlap;
+    SAT_RESULT[1] = minNormalX;
+    SAT_RESULT[2] = minNormalY;
+    SAT_RESULT[3] = contactX;
+    SAT_RESULT[4] = contactY;
+    SAT_RESULT[5] = 0;
+    SAT_RESULT[6] = 0;
+    SAT_RESULT[7] = featureB;
+    SAT_RESULT[8] = 1;
+    SAT_RESULT[9] = contactX;
+    SAT_RESULT[10] = contactY;
+    SAT_RESULT[11] = 0;
+    SAT_RESULT[12] = featureB;
+    return true;
+}
+function satProjectPolygon(out, axisX, axisY, shape, px, py, angle = 0) {
+    let min = Infinity;
+    let max = -Infinity;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const count = shape.vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        const vx_local = shape.vertices[i];
+        const vy_local = shape.vertices[i + 1];
+        const rx = vx_local * cos - vy_local * sin;
+        const ry = vx_local * sin + vy_local * cos;
+        const vx = px + rx;
+        const vy = py + ry;
+        const projection = vx * axisX + vy * axisY;
+        if (projection < min) min = projection;
+        if (projection > max) max = projection;
+    }
+    out[0] = min;
+    out[1] = max;
+}
+function satProjectCircle(out, axisX, axisY, cx, cy, shape) {
+    const projection = cx * axisX + cy * axisY;
+    out[0] = projection - shape.radius;
+    out[1] = projection + shape.radius;
 }

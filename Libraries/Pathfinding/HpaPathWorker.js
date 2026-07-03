@@ -310,15 +310,7 @@ export class HpaPathWorker {
     }
     _navTopologySyncMessage(grid, cacheKey, rebindArena, damageBounds) {
         this._gridFrame = gridFrameFromGrid(grid);
-        const payload = {
-            type: "buildNavTopology",
-            navCacheKey: cacheKey,
-            gridFrame: this._gridFrame,
-            edgePoolCount: this._edgePoolSabRefs,
-            passageEdgeCount: grid.edgeStore.passageEdgeCount,
-            rebindArena,
-            damageBounds,
-        };
+        const payload = { type: "buildNavTopology", navCacheKey: cacheKey, gridFrame: this._gridFrame, edgePoolCount: this._edgePoolSabRefs, rebindArena, damageBounds };
         if (!rebindArena) return payload;
         return {
             ...payload,

@@ -5,7 +5,7 @@ import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kinet
 import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { SatCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
+import { satCheckCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
@@ -51,7 +51,7 @@ describe("kinetic pair persistence", () => {
             setCirclePropRadius(ball, 7);
             const wedge = new WorldProp(10, 0, "tri_wedge", 0);
             wedge.vx = -25;
-            assert.ok(SatCollision.checkCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
+            assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
             const tick = createKineticTestTick([ball, wedge]);
             runCollisionPipeline(tick, kineticPipelineStubs);
             wedge.vx = -25;

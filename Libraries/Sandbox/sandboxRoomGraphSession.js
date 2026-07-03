@@ -16,23 +16,12 @@ import {
     updateRoomLink,
     updateRoomNode,
 } from "../RoomGraph/index.js";
-import { listPlacedForcefields, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
+import { listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
 import { listPlacedSceneItems, matchesSceneItem, pickSceneItem } from "./sandboxScenePlaceables.js";
 import { selectionRoomLinkId, selectionRoomNodeId, resolveSelectedRoomNode } from "./sandboxSelectionInspectors.js";
 export function createSandboxRoomGraphSession(
     state,
-    {
-        selection,
-        pickSelection,
-        notifyUi,
-        placement,
-        clampAuthoredRailWallHeight,
-        clampAuthoredRailWallThickness,
-        setPlacePaletteKey,
-        listPlacedProps,
-        listPlacedFloorBelts,
-        listPlacedPassagePowerSources,
-    },
+    { selection, pickSelection, notifyUi, placement, clampAuthoredRailWallHeight, clampAuthoredRailWallThickness, setPlacePaletteKey, listPlacedProps, listPlacedFloorBelts },
 ) {
     const sel = () => selection.getSelection();
     return {
@@ -139,10 +128,8 @@ export function createSandboxRoomGraphSession(
             const props = listPlacedProps().sort((a, b) => a.id - b.id);
             for (let i = 0; i < props.length; i++) placement.touchPropPlacement(props[i].id);
             for (const entry of listPlacedFloorBelts()) placement.touchFloorPlacement(entry.col, entry.row);
-            for (const entry of listPlacedPassagePowerSources()) placement.touchFloorPlacement(entry.col, entry.row);
             for (const entry of listPlacedVoxelWalls(state.obstacleGrid)) placement.touchVoxelPlacement(entry.col, entry.row);
             for (const entry of listPlacedRailWalls(state.obstacleGrid)) placement.touchEdgePlacement("rail", entry.col, entry.row, entry.side);
-            for (const entry of listPlacedForcefields(state.obstacleGrid)) placement.touchEdgePlacement("forcefield", entry.col, entry.row, entry.side);
             for (const entry of this.listPlacedRoomNodes()) placement.touchRoomNodePlacement(entry.id);
             for (const entry of this.listPlacedRoomLinks()) placement.touchRoomLinkPlacement(entry.linkId, entry.corridorIndex);
         },
@@ -152,7 +139,6 @@ export function createSandboxRoomGraphSession(
                 placement,
                 listPlacedProps,
                 listPlacedFloorBelts,
-                listPlacedPassagePowerSources,
                 listPlacedRoomNodes: () => this.listPlacedRoomNodes(),
                 listPlacedRoomLinks: () => this.listPlacedRoomLinks(),
             });

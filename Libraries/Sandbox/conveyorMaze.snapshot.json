@@ -2607,7 +2607,7 @@
       "thicknessLevel": 1
     }
   ],
-  "forcefields": [],
+
   "portals": [],
   "floorBelts": [
     {
@@ -4201,7 +4201,7 @@
       "facingIndex": 0
     }
   ],
-  "powerSources": [],
+
   "props": [
     {
       "type": "blue_ball",

@@ -7,7 +7,6 @@ import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
-import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
 import { applyKineticAccelerationAlongAngle } from "../Motion/motionDynamics.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
@@ -43,7 +42,6 @@ export function canStampFloorOccupancyAt(state, col, row) {
     return true;
 }
 export const canStampFloorBeltAt = canStampFloorOccupancyAt;
-export const canStampPassagePowerSourceAt = canStampFloorOccupancyAt;
 export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, facingRadians) {
     let changed = false;
     forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
@@ -76,7 +74,6 @@ export function clearFloorOverlayAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     const idx = colRowToIndex(col, row, grid.cols);
-    if (grid.floorStore.isPassagePowerSourceAtIdx(idx)) return clearPassagePowerSourceAt(state, col, row);
     if (!grid.clearFloorCell(idx)) return false;
     markGridZoneSubscriptionsDirty(state);
     return true;
@@ -92,10 +89,6 @@ function listFloorStoreOccupancy(grid, testAtIdx, buildEntry) {
         items.push(buildEntry(grid, idx, globalCol, globalRow));
     }
     return items;
-}
-function notifyPassagePowerSourceLayoutChanged(state, grid) {
-    bumpFloorOccupancyStampDrawRevision(grid);
-    syncPassagePowerNetwork(state);
 }
 export function listPlacedFloorBeltsForSnapshot(grid) {
     return listFloorStoreOccupancy(
@@ -135,53 +128,6 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
     if (isEmptyCellBounds(bounds)) return null;
     markGridZoneSubscriptionsDirty(state);
-    bumpFloorOccupancyStampDrawRevision(grid);
-    return bounds;
-}
-export function stampPassagePowerSourceAt(state, col, row, defaultPowered = false) {
-    if (!canStampFloorOccupancyAt(state, col, row)) return false;
-    const grid = state.obstacleGrid;
-    const idx = colRowToIndex(col, row, grid.cols);
-    grid.floorStore.setPassagePowerSourceAtIdx(idx, defaultPowered);
-    notifyPassagePowerSourceLayoutChanged(state, grid);
-    return true;
-}
-export function clearPassagePowerSourceAt(state, col, row) {
-    const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    const idx = colRowToIndex(col, row, grid.cols);
-    if (!grid.floorStore.isPassagePowerSourceAtIdx(idx)) return false;
-    grid.floorStore.clearAtIdx(idx);
-    notifyPassagePowerSourceLayoutChanged(state, grid);
-    return true;
-}
-export function listPlacedPassagePowerSourcesForSnapshot(grid) {
-    return listFloorStoreOccupancy(
-        grid,
-        (grid, idx) => grid.floorStore.isPassagePowerSourceAtIdx(idx),
-        (grid, idx, globalCol, globalRow) => {
-            const entry = { col: globalCol, row: globalRow };
-            if (grid.floorStore.passagePowerSourceDefaultPoweredAtIdx(idx)) entry.defaultPowered = true;
-            return entry;
-        },
-    );
-}
-export function applyPassagePowerSourcesFromGlobal(state, powerSources, cellSize) {
-    const grid = state.obstacleGrid;
-    const half = grid.cellHalfSize;
-    const bounds = emptyCellBounds();
-    for (let i = 0; i < powerSources.length; i++) {
-        const { col: globalCol, row: globalRow, defaultPowered } = powerSources[i];
-        const col = grid.worldCol(globalCol * cellSize + half);
-        const row = grid.worldRow(globalRow * cellSize + half);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        if (grid.isBlocked(col, row)) continue;
-        if (grid.floorStore.isBeltKindAtIdx(colRowToIndex(col, row, grid.cols))) continue;
-        const idx = colRowToIndex(col, row, grid.cols);
-        grid.floorStore.setPassagePowerSourceAtIdx(idx, defaultPowered === true);
-        growCellBounds(bounds, col, row);
-    }
-    if (isEmptyCellBounds(bounds)) return null;
     bumpFloorOccupancyStampDrawRevision(grid);
     return bounds;
 }

@@ -1,4 +1,4 @@
-import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "../Spatial/grid/cellEdgeSlots.js";
+import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS, OCTILE_DIR_TO_IDX } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";

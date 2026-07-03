@@ -1,5 +1,4 @@
 import { appendPathOverlayCommands } from "../Render/overlays/pathOverlayCommands.js";
-import { appendPlacePreviewOverlayCommands, resolveSandboxPlacePreview } from "../Sandbox/drawSandboxPlacePreview.js";
 import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
 import { appendChainLinkWireOverlayCommands } from "../Sandbox/chainLinks.js";
 import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";
@@ -44,10 +43,6 @@ export function buildSandboxOverlayCommands({
         wireCursor: chainLinkWireTool.isActive() ? chainLinkWireTool.getCursor() : null,
     });
     if (state.editor.showRoomNodesAlways) appendKineticConstraintOverlayCommands(commands, state);
-    if (placePreviewWorld) {
-        const preview = resolveSandboxPlacePreview(state, session, placePreviewWorld.x, placePreviewWorld.y);
-        appendPlacePreviewOverlayCommands(commands, preview, state.obstacleGrid);
-    }
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));

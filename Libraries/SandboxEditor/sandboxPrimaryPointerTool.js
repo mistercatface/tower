@@ -115,7 +115,6 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
                 session.select({ kind: "floor", col, row });
                 return true;
             }
-            if (session.pickForcefieldAtWorld(world.x, world.y)) return true;
             return false;
         },
     };

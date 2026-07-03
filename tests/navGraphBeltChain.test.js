@@ -8,7 +8,7 @@ import { commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { canStepPathIdx, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGraphGoalCellIdx } from "../Libraries/Navigation/navGraph.js";
 import { snapNavGoalCell } from "../Libraries/Navigation/snapNavGoal.js";
-import { isBeltRailEdge } from "../Libraries/Spatial/grid/CellEdge.js";
+import { isBeltRailEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { buildFullRegionGraph, packRegionGraphFlat } from "../Libraries/Pathfinding/hpaRegionGraph.js";
 

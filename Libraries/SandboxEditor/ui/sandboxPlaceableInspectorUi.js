@@ -1,7 +1,7 @@
 import { PLACEABLE_INSPECTOR_KINDS } from "../../Sandbox/sandboxScenePlaceables.js";
-import { appendFloorBeltSelectedInspector, appendPowerSourceSelectedInspector } from "./sandboxFloorInspector.js";
+import { appendFloorBeltSelectedInspector } from "./sandboxFloorInspector.js";
 import { appendRoomNodeSelectedInspector } from "./sandboxRoomSelectedInspector.js";
-import { appendForcefieldSelectedInspector, appendRoomLinkCorridorInspector, appendWallSelectedInspector } from "./sandboxWallInspector.js";
+import { appendRoomLinkCorridorInspector, appendWallSelectedInspector } from "./sandboxWallInspector.js";
 import { appendSelectedPropInspector } from "./sandboxPropSelectedInspector.js";
 import { appendActionRow, appendEditorHint } from "../../UI/paramFields.js";
 const INSPECTOR_UI = {
@@ -16,17 +16,11 @@ const INSPECTOR_UI = {
     floorBelt(body, state, controller, data) {
         appendFloorBeltSelectedInspector(body, controller, data);
     },
-    powerSource(body, state, controller, data) {
-        appendPowerSourceSelectedInspector(body, controller, data);
-    },
     voxel(body, state, controller, data) {
         appendWallSelectedInspector(body, state, controller, { voxel: data });
     },
     rail(body, state, controller, data) {
         appendWallSelectedInspector(body, state, controller, { rail: data });
-    },
-    forcefield(body, state, controller, data) {
-        appendForcefieldSelectedInspector(body, controller, data, { promptReselect: !controller.isWallPlaceMode() });
     },
     roomNode(body, state, controller, data) {
         appendRoomNodeSelectedInspector(body, state, controller, data);

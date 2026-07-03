@@ -1,5 +1,5 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
-import { isBeltRailEdge, isForcefieldEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx, passageEdgeEmitsCollision } from "./CellEdge.js";
+import { isBeltRailEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx } from "./CellEdgeStore.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
 export function edgeNeighborIdx(idx, side, cols, rows) {
@@ -97,11 +97,6 @@ export function railWallEdgeAt(grid, idx, side) {
     if (!isRailWallEdge(edge)) return null;
     return edge;
 }
-export function forcefieldEdgeAt(grid, idx, side) {
-    const edge = edgeAt(grid, idx, side);
-    if (!isForcefieldEdge(edge)) return null;
-    return edge;
-}
 export function railWallEdgeShouldEmit(grid, idx, side) {
     if (!railWallEdgeAt(grid, idx, side)) return false;
     return edgeRailEmitOwner(grid, idx, side);
@@ -110,19 +105,12 @@ export function beltRailEdgeShouldEmit(grid, idx, side) {
     if (!beltRailEdgeAt(grid, idx, side)) return false;
     return edgeRailEmitOwner(grid, idx, side);
 }
-export function blockingPassageEdgeAt(grid, idx, side) {
-    if (!edgeRailEmitOwner(grid, idx, side)) return null;
-    const forcefield = forcefieldEdgeAt(grid, idx, side);
-    if (forcefield && passageEdgeEmitsCollision(forcefield)) return forcefield;
-    return null;
-}
 export function edgeRailCollisionShouldEmit(grid, idx, side) {
-    return beltRailEdgeShouldEmit(grid, idx, side) || railWallEdgeShouldEmit(grid, idx, side) || blockingPassageEdgeAt(grid, idx, side) != null;
+    return beltRailEdgeShouldEmit(grid, idx, side) || railWallEdgeShouldEmit(grid, idx, side);
 }
-export function edgeRailCollisionThicknessPx(grid, idx, side, defaultPassageThicknessLevel = 2) {
+export function edgeRailCollisionThicknessPx(grid, idx, side) {
     const railEdge = railWallEdgeAt(grid, idx, side);
     if (railEdge) return railWallThicknessPx(railEdge);
-    if (blockingPassageEdgeAt(grid, idx, side)) return railWallThicknessPx(createRailWallEdge(0, defaultPassageThicknessLevel));
     return 1;
 }
 export function neighborFillLevel(grid, idx, side) {
@@ -195,7 +183,7 @@ export function isCanonicalEdgeRepresentative(grid, col, row, side) {
     const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
     return packEdgeCellKey(globalCol, globalRow, side) === canonicalEdgeCellKey(grid, col, row, side);
 }
-export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter } = {}) {
+export function forEachCellEdge(grid, fn, canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter) {
     if (!grid.cols) return;
     const startCol = minCol ?? 0;
     const endCol = maxCol ?? grid.cols - 1;

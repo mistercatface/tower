@@ -22,9 +22,8 @@ export function sandboxTagFilterLabel(filterId) {
 const WALL_STAMP_OPTIONS = [
     { value: "voxel", label: "Voxel block" },
     { value: "rail", label: "Rail wall" },
-    { value: "forcefield", label: "Forcefield" },
 ];
-const WALL_PALETTE_SWATCHES = { voxel: "#78716c", rail: "#57534e", forcefield: "#0891b2" };
+const WALL_PALETTE_SWATCHES = { voxel: "#78716c", rail: "#57534e" };
 const MAP_GEN_PALETTE_OPTIONS = [
     { key: "gen:cavern", genKind: "cavern", label: "Cavern generation", swatch: "#ff9800", glyph: "Cv" },
     { key: "gen:rail", genKind: "rail", label: "Rail wall generation", swatch: "#e040fb", glyph: "Rw" },

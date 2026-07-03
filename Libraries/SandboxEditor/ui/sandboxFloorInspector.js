@@ -1,16 +1,5 @@
 import { listFloorBeltKindOptions } from "../../Sandbox/sandboxCapabilities.js";
 import { appendActionRow, appendAxisNumberFields, appendCheckboxField, appendEditorHint, appendSelectField } from "../../UI/paramFields.js";
-export function appendPowerSourceSelectedInspector(body, controller, selectedPowerSource) {
-    appendEditorHint(body, "Passage power source. Wire floor buttons to this cell; lasers arm through connected chains.");
-    appendCheckboxField(body, "Default energized", {
-        name: "powerSourceDefaultPowered",
-        checked: selectedPowerSource.defaultPowered,
-        onChange: (checked) => {
-            controller.setSelectedPassagePowerSourceDefaultPowered(checked);
-        },
-    });
-    appendActionRow(body, [{ label: "Delete power source", onClick: () => controller.deleteSelectedFloorCell() }]);
-}
 export function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
     appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, col/row, or rotation below. Move is blocked when the target has a wall or belt.`);
     appendSelectField(body, "Type", {

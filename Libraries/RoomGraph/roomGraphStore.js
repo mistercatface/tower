@@ -1,17 +1,17 @@
 import { clampLinkCorridorRanges, ensureLinkCorridorFields } from "./roomGraphLinkCorridor.js";
 import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel } from "./roomGraphClosedRooms.js";
-import { CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_OPEN, CORRIDOR_TYPE_LOCKED_ROOM, normalizeCorridorType, formatCorridorTypeLabel } from "./roomGraphCorridorTypes.js";
+import { CORRIDOR_TYPE_EMPTY, CORRIDOR_TYPE_OPEN, normalizeCorridorType, formatCorridorTypeLabel } from "./roomGraphCorridorTypes.js";
 /** @typedef {{ id: number, col: number, row: number, width: number, height: number, kind?: string, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomNode */
 /** @typedef {{ id: number, a: number, b: number, corridorType?: string, corridorCount?: number, corridorWidthMin?: number, corridorWidthMax?: number, seed?: number, railWallHeightLevel?: number, railWallThicknessLevel?: number }} RoomLink */
 /** @typedef {{ nodes: RoomNode[], links: RoomLink[], nextNodeId: number, nextLinkId: number, bakedRails?: { col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }[], bakedFloorBelts?: { col: number, row: number, kind: number, facingIndex: number }[] }} RoomGraphDoc */
 /** @param {object} state @returns {RoomGraphDoc} */
 export function getRoomGraph(state) {
-    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
+    if (!state.roomGraph) state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [] };
     return state.roomGraph;
 }
 /** @param {object} state */
 export function clearRoomGraph(state) {
-    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [], bakedLockedRooms: [] };
+    state.roomGraph = { nodes: [], links: [], nextNodeId: 0, nextLinkId: 0, bakedRails: [], bakedFloorBelts: [] };
 }
 /** @param {object} state @returns {RoomNode[]} */
 export function listRoomNodes(state) {
@@ -175,7 +175,6 @@ export function formatRoomLinkCorridorFlowNote(link) {
     const type = normalizeCorridorType(link.corridorType);
     if (type === CORRIDOR_TYPE_EMPTY) return "rail-walled passage";
     if (type === CORRIDOR_TYPE_OPEN) return "open passage";
-    if (type === CORRIDOR_TYPE_LOCKED_ROOM) return "locked exit puzzle";
     return "one-way belts";
 }
 /** @param {RoomLink} link @param {number} corridorIndex */
@@ -250,7 +249,6 @@ export function replaceRoomGraph(state, doc) {
         nextLinkId: doc.nextLinkId,
         bakedRails: [],
         bakedFloorBelts: [],
-        bakedLockedRooms: [],
     };
 }
 /** @param {object} state @returns {RoomGraphDoc} */

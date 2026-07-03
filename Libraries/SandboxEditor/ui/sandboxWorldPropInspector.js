@@ -80,7 +80,7 @@ export function appendChainLinkInspector(body, chain) {
  */
 export function appendButtonWireInspector(body, wire) {
     const links = wire.listLinks();
-    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers, spawners, or forcefields.");
+    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to flippers or spawners.");
     if (links.length)
         appendInstanceList(
             body,
