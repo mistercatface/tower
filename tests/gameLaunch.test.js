@@ -14,10 +14,10 @@ describe("parseGameLaunchQuery", () => {
 });
 
 describe("game launchers", () => {
-    it("registers snake with expected start actions", () => {
+    it("registers snake launcher configuration", () => {
         const launcher = GAME_LAUNCHERS.snake;
         assert.equal(launcher.title, "Snake");
         assert.equal(launcher.hideEditor, false);
-        assert.deepEqual(launcher.actions, ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull", "lockSelection"]);
+        assert.equal(launcher.actions, undefined);
     });
 });

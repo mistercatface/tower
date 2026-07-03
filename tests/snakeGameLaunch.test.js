@@ -5,7 +5,8 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { generateRailMazeAction, spawnBoidTriangleAction, focusBoidTriangleAction, setShadowsFullAction, lockSelectionAction } from "../Libraries/Game/gameLaunchActions.js";
+import { runGameLaunch } from "../Libraries/Game/runGameLaunch.js";
+import { GAME_LAUNCHERS } from "../Libraries/Game/gameLaunchers.js";
 import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 
 function createEditorTestState() {
@@ -56,6 +57,7 @@ function createEditorTestState() {
                 surfaceProfileId: "cyberGrid",
             },
             eraseConfig: createDefaultMapGenBoundsConfig(),
+            lockSelection: false,
         },
         nav: createNavRuntime(grid),
         mapSeed: 42,
@@ -65,36 +67,32 @@ function createEditorTestState() {
 describe("snake game launch actions", () => {
     it("generates a rail maze, spawns/focuses a boid, and sets shadows to 100%", async () => {
         const state = createEditorTestState();
-        const ctx = {};
+        state.appLaunch = { id: "snake", launcher: GAME_LAUNCHERS.snake };
 
-        // 1. Verify generateRailMazeAction
-        await generateRailMazeAction(state);
+        const ctx = await runGameLaunch(state, GAME_LAUNCHERS.snake);
+
+        // Verify Maze Config
         assert.equal(state.editor.railMazeConfig.edgeThickness, 4);
         assert.equal(state.editor.railMazeConfig.wallHeightLevel, 1);
         assert.equal(state.editor.railMazeConfig.surfaceProfileId, "poolTableFelt");
         
-        // 2. Verify spawnBoidTriangleAction
-        spawnBoidTriangleAction(state, ctx);
+        // Verify Boid
         assert.ok(ctx.boid);
         assert.equal(ctx.boid.type, "boid_triangle");
         assert.equal(ctx.boid.x, state.viewport.x);
         assert.equal(ctx.boid.y, state.viewport.y);
         assert.deepEqual(state.selectedIds, [ctx.boid.id]);
         
-        // 3. Verify focusBoidTriangleAction
-        focusBoidTriangleAction(state, ctx);
+        // Verify Focus
         assert.ok(isSandboxCameraTarget(state, ctx.boid));
         assert.equal(state.viewport.zoom, 2.0);
         assert.equal(state.viewport.x, ctx.boid.x);
         assert.equal(state.viewport.y, ctx.boid.y);
 
-        // 4. Verify setShadowsFullAction
-        setShadowsFullAction(state);
+        // Verify Shadows
         assert.equal(state.losShadowStrength, 1.0);
 
-        // 5. Verify lockSelectionAction
-        state.editor.lockSelection = false;
-        lockSelectionAction(state);
+        // Verify Selection Lock
         assert.equal(state.editor.lockSelection, true);
     });
 });
