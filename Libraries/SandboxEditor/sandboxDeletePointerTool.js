@@ -7,6 +7,7 @@ export function createSandboxDeletePointerTool(state, session) {
         isActive: () => true,
         onPointerDown(world, e) {
             if (e.button !== 2) return false;
+            if (state.editor.lockSelection) return true;
             if (session.getSelection()?.kind === "prop") return true;
             const registry = state.entityRegistry;
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
@@ -16,7 +17,7 @@ export function createSandboxDeletePointerTool(state, session) {
             }
             const grid = state.obstacleGrid;
             const col = grid.worldCol(world.x);
-    const row = grid.worldRow(world.y);
+            const row = grid.worldRow(world.y);
             const roomNode = pickRoomNodeAt(state, col, row);
             if (roomNode) {
                 session.select({ kind: "roomNode", id: roomNode.id });

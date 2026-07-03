@@ -176,17 +176,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
     const deletePointerTool = createSandboxDeletePointerTool(state, session);
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
-        entityMeta,
-        listSelectedBehaviors,
         stampPropBehavior,
         blocksPlacement,
         exitWireModes,
-        exitButtonWire: () => buttonWireTool.exit(),
         resolveBehavior,
         resolveGroundMove,
         gestures,
-        selectProp,
-        togglePropInSelection,
         issueGroundNavToSelected,
     });
     const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
@@ -478,6 +473,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             unbindContextMenu = bindCanvasContextMenu(getCanvas(), (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (state.editor.lockSelection) return;
                 if (session.isWallPlaceMode()) return;
                 const world = clientToWorld(e.clientX, e.clientY);
                 groundNavContextMenu.tryOpen(e.clientX, e.clientY, world);

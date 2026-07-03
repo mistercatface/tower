@@ -2,25 +2,13 @@ import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
 export function createSandboxPrimaryPointerTools(
     state,
     session,
     behaviors,
-    {
-        entityMeta,
-        listSelectedBehaviors,
-        stampPropBehavior,
-        blocksPlacement,
-        exitWireModes,
-        exitButtonWire,
-        resolveBehavior,
-        resolveGroundMove,
-        gestures,
-        selectProp,
-        togglePropInSelection,
-        issueGroundNavToSelected,
-    },
+    { stampPropBehavior, blocksPlacement, exitWireModes, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected },
 ) {
     let lastClickTime = 0;
     let lastClickX = 0;
@@ -48,8 +36,14 @@ export function createSandboxPrimaryPointerTools(
             if (e.button !== 0) return false;
             const now = e.timeStamp || Date.now();
             const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0);
-            if (isDoubleTap && lastSelectedBoidId && now - lastSelectedBoidTime < 500) {
-                selectProp(lastSelectedBoidId);
+            let targetBoidId = lastSelectedBoidId;
+            if (state.editor.lockSelection) {
+                const boid = state.worldProps.find((p) => p.type === "boid_triangle");
+                if (boid) targetBoidId = boid.id;
+            }
+            if (isDoubleTap && targetBoidId && (state.editor.lockSelection || now - lastSelectedBoidTime < 500)) {
+                exitWireModes();
+                session.select({ kind: "prop", ids: [targetBoidId] });
                 if (issueGroundNavToSelected("rollToCursorHpa", world)) {
                     lastClickTime = now;
                     lastClickX = world.x;
@@ -81,20 +75,23 @@ export function createSandboxPrimaryPointerTools(
                 if (state.editor.lockSelection && !session.isSelected(hit.id)) return "consume";
                 if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
                 if (hit.type === "boid_triangle") {
-                    const prevId = entityMeta().getActiveBehaviorId(hit.id);
+                    const entityMeta = getSandboxEntityMeta(state);
+                    const prevId = entityMeta.getActiveBehaviorId(hit.id);
                     if (prevId && prevId !== "dragLaunch") {
                         const prevBehavior = behaviors.find((b) => b.id === prevId);
                         if (prevBehavior?.clearMoveTarget) prevBehavior.clearMoveTarget(hit);
                     }
-                    entityMeta().setActiveBehaviorId(hit.id, "dragLaunch");
+                    entityMeta.setActiveBehaviorId(hit.id, "dragLaunch");
                 }
                 const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
                 if (allowed.length > 0) {
                     if (e.ctrlKey || e.metaKey) {
-                        togglePropInSelection(hit.id);
+                        exitWireModes();
+                        session.togglePropInSelection(hit.id);
                         return "consume";
                     }
-                    selectProp(hit.id);
+                    exitWireModes();
+                    session.select({ kind: "prop", ids: [hit.id] });
                 }
                 const prop = session.getSelectedProp();
                 const behavior = resolveBehavior();
@@ -115,7 +112,7 @@ export function createSandboxPrimaryPointerTools(
             const col = grid.worldCol(world.x);
             const row = grid.worldRow(world.y);
             if (session.pickRoomNodeAtWorld(world.x, world.y)) {
-                exitButtonWire();
+                exitWireModes();
                 return true;
             }
             if (grid.hasFloorOccupancy(col + row * grid.cols)) {
