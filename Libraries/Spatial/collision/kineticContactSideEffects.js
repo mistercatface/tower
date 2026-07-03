@@ -1,4 +1,4 @@
-import { queueFractureKineticContact, flushDeferredFractures } from "../../Props/propFracture.js";
+import { queueFractureKineticContact, flushDeferredFractures, queueCircleFracture, impactForceFromContact, FRACTURE_IMPACT_THRESHOLD } from "../../Props/propFracture.js";
 import { kineticPairBodyAt } from "./kineticPairStream.js";
 import { kineticDynamicSlab } from "./kineticBodySlab.js";
 import { KINETIC_PAIR_TIER } from "./kineticNarrowPhase.js";
@@ -23,6 +23,14 @@ export function applyKineticContactSideEffects(tick, contacts) {
             hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
         }
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+        // Gameplay combat effect: player boid shatters exploring red boids on high-force impact
+        const force = impactForceFromContact(relSpeed, bodyA.mass, bodyB.mass);
+        if (force >= FRACTURE_IMPACT_THRESHOLD)
+            for (let j = 0; j < 2; j++) {
+                const prop = j === 0 ? bodyA : bodyB;
+                const other = j === 0 ? bodyB : bodyA;
+                if (prop.type === "boid_triangle" && prop.alwaysExplore && other.type === "boid_triangle" && !other.alwaysExplore) queueCircleFracture(prop, hitX, hitY, force);
+            }
         queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relSpeed, nx, ny);
     }
     flushDeferredFractures(tick.world, tick.frame);

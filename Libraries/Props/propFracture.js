@@ -139,6 +139,7 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
         shard.vy = motion.vy;
         shard.angularVelocity = motion.w;
         shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+        if (sourceProp.visualOverride !== undefined) shard.visualOverride = { ...sourceProp.visualOverride };
         if (wallChunkProfileId !== undefined) {
             shard.wallChunkProfileId = wallChunkProfileId;
             shard.wallChunkHeightPx = wallChunkHeightPx;
@@ -271,7 +272,7 @@ export function spawnCircleShatterShards(world, sourceProp, fracture, spatialFra
     const sin = Math.sin(fracture.facing);
     const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
     const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
-    const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" ? "snake_shard" : sourceProp.type;
+    const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" || sourceProp.type === "boid_triangle" ? "snake_shard" : sourceProp.type;
     return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom, i) => {
         const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
         const dx = worldPos.x - impactWorld.x;
@@ -290,6 +291,22 @@ function evictFracturedProp(world, prop, spatialFrame) {
 }
 const deferredFractures = [];
 let deferredFracturesCount = 0;
+export function queueCircleFracture(prop, hitX, hitY, force) {
+    if (prop._pendingEviction) return false;
+    const fracture = fractureCirclePropOnImpact(prop, hitX, hitY, force);
+    if (!fracture) return false;
+    prop._pendingEviction = true;
+    let item = deferredFractures[deferredFracturesCount];
+    if (!item) {
+        item = { type: "circle", prop: null, fracture: null };
+        deferredFractures[deferredFracturesCount] = item;
+    }
+    item.type = "circle";
+    item.prop = prop;
+    item.fracture = fracture;
+    deferredFracturesCount++;
+    return true;
+}
 export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed, nx = 0, ny = 0) {
     const { frame, world } = tick;
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
@@ -298,22 +315,7 @@ export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, rela
         const other = i === 0 ? bodyB : bodyA;
         if (prop._physId === undefined) continue;
         // Fracture snake segment or ball on impact >= 12
-        if ((prop.type === "snake" || prop.type === "ball") && force >= FRACTURE_IMPACT_THRESHOLD) {
-            if (prop._pendingEviction) continue;
-            const fracture = fractureCirclePropOnImpact(prop, hitX, hitY, force);
-            if (!fracture) continue;
-            prop._pendingEviction = true;
-            let item = deferredFractures[deferredFracturesCount];
-            if (!item) {
-                item = { type: "", prop: null, fracture: null };
-                deferredFractures[deferredFracturesCount] = item;
-            }
-            item.type = "circle";
-            item.prop = prop;
-            item.fracture = fracture;
-            deferredFracturesCount++;
-            return;
-        }
+        if ((prop.type === "snake" || prop.type === "ball") && force >= FRACTURE_IMPACT_THRESHOLD) if (queueCircleFracture(prop, hitX, hitY, force)) return;
         if (!canFracturePropSplit(prop)) continue;
         if (prop._glassFractureCooldown > 0) continue;
         if (isGlassFracture(prop) && isGlassFracture(other)) continue;
