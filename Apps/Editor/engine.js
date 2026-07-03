@@ -6,7 +6,7 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
-import { applyKineticContactSideEffects } from "../../Libraries/Spatial/collision/kineticContactSideEffects.js";
+import { processKineticContactFractures } from "../../Libraries/Props/propFracture.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
@@ -33,7 +33,7 @@ function loadGameModeStylesheet() {
 }
 /** @param {import("./state.js").TileLabGameState} state */
 function simulationKineticHooks(state) {
-    const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? ((tick, contacts) => applyKineticContactSideEffects(tick, contacts));
+    const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? processKineticContactFractures;
     return {
         updateProp(prop, dt, frame) {
             prop.update(dt, state, frame);

@@ -1,4 +1,4 @@
-import { applyKineticContactSideEffects } from "../../Libraries/Spatial/collision/kineticContactSideEffects.js";
+import { processKineticContactFractures } from "../../Libraries/Props/propFracture.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "../../Libraries/Spatial/collision/kineticContactSolver.js";
 import { writebackActiveKineticBodySlab } from "../../Libraries/Spatial/collision/kineticBodySlab.js";
 
@@ -12,5 +12,5 @@ export function resolveKineticContactPass(tick) {
 /** Single-shot contact resolve plus fracture side effects (tests only). */
 export function resolveKineticContactPassWithEffects(tick) {
     resolveKineticContactPass(tick);
-    applyKineticContactSideEffects(tick, kineticContactBuffer);
+    processKineticContactFractures(tick, kineticContactBuffer);
 }

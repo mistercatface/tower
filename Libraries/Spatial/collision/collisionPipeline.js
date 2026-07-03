@@ -2,7 +2,6 @@ import { collisionSettings } from "../../Collision/collisionDefaults.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer } from "./kineticContactSolver.js";
-import { applyKineticContactSideEffects } from "./kineticContactSideEffects.js";
 import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
 import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab } from "./kineticBodySlab.js";
 import { persistedKineticPairBuffer } from "./kineticPairStream.js";
@@ -27,7 +26,7 @@ function resolveActiveBodyWalls(activeBodies, frame, resolveWalls) {
  */
 export function runCollisionPipeline(
     tick,
-    { resolveWalls, kineticIterations = collisionSettings.kineticIterations, applyContactSideEffects = (t, contacts) => applyKineticContactSideEffects(t, contacts) } = {},
+    { resolveWalls, kineticIterations = collisionSettings.kineticIterations, applyContactSideEffects } = {},
 ) {
     const frame = tick.frame;
     const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
@@ -49,7 +48,7 @@ export function runCollisionPipeline(
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
             resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
-            applyContactSideEffects(tick, kineticContactBuffer);
+            applyContactSideEffects?.(tick, kineticContactBuffer);
             resolveGatheredKineticConstraintSlab(tick);
             const maxError = measureConstraintSlabMaxError();
             const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);

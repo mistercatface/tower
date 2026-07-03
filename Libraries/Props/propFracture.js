@@ -4,6 +4,7 @@ import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D }
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
+import { kineticPairBodyAt, KINETIC_PAIR_TIER } from "../Spatial/collision/kineticPairStream.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { splitPoxels } from "./poxelFracture.js";
@@ -307,9 +308,8 @@ export function queueCircleFracture(prop, hitX, hitY, force) {
     deferredFracturesCount++;
     return true;
 }
-export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed, nx = 0, ny = 0) {
+export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
     const { frame, world } = tick;
-    const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         const other = i === 0 ? bodyB : bodyA;
@@ -374,6 +374,42 @@ export function flushDeferredFractures(world, spatialFrame) {
 }
 // TESTING ONLY FUNTION
 export function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
-    queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed);
+    const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
+    queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force);
+    flushDeferredFractures(tick.world, tick.frame);
+}
+
+export function processKineticContactFractures(tick, contacts) {
+    if (contacts.count === 0) return;
+    const slab = kineticDynamicSlab;
+    for (let i = 0; i < contacts.count; i++) {
+        const physIdA = contacts.physIdA[i];
+        const physIdB = contacts.physIdB[i];
+        const bodyA = kineticPairBodyAt(tick.frame, physIdA);
+        const bodyB = kineticPairBodyAt(tick.frame, physIdB);
+        const nx = contacts.dynamic.nx[i];
+        const ny = contacts.dynamic.ny[i];
+        let hitX;
+        let hitY;
+        if (contacts.static.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
+            hitX = slab.x[physIdA] - nx * slab.r[physIdA];
+            hitY = slab.y[physIdA] - ny * slab.r[physIdA];
+        } else {
+            hitX = slab.x[physIdA] + contacts.dynamic.rax[i];
+            hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
+        }
+        const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
+        const force = impactForceFromContact(relSpeed, bodyA.mass, bodyB.mass);
+        if (force >= FRACTURE_IMPACT_THRESHOLD) {
+            for (let j = 0; j < 2; j++) {
+                const prop = j === 0 ? bodyA : bodyB;
+                const other = j === 0 ? bodyB : bodyA;
+                if (prop.type === "boid_triangle" && prop.alwaysExplore && other.type === "boid_triangle" && !other.alwaysExplore) {
+                    queueCircleFracture(prop, hitX, hitY, force);
+                }
+            }
+        }
+        queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx, ny);
+    }
     flushDeferredFractures(tick.world, tick.frame);
 }
