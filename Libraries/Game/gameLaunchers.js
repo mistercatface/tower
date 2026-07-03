@@ -8,6 +8,7 @@
 /** @type {Record<string, GameLauncher>} */
 export const GAME_LAUNCHERS = {
     puzzle: { title: "Puzzle", hideEditor: true, portraitOnly: true, lockPortraitOrientation: true, actions: ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"] },
+    snake: { title: "Snake", hideEditor: false, actions: ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull"] },
 };
 /** @param {string} launchId */
 export function getGameLauncher(launchId) {

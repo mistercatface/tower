@@ -65,6 +65,7 @@ export function createEditorApp(options = {}) {
     const gameLaunchId = options.gameLaunchId ?? null;
     const launcher = gameLaunchId ? getGameLauncher(gameLaunchId) : null;
     const gameMode = launcher != null;
+    const useGameShell = gameMode && launcher.hideEditor;
     const state = new TileLabGameState();
     state.appLaunch = gameLaunchId ? { id: gameLaunchId, launcher } : null;
     state.entityLayers = [];
@@ -76,6 +77,10 @@ export function createEditorApp(options = {}) {
     if (gameMode) {
         document.body.classList.add("shell-game");
         loadGameModeStylesheet();
+        if (!launcher.hideEditor) {
+            document.body.classList.add("hide-sidebar");
+            state.editor.showMapOverview = false;
+        }
     }
     if (!document.getElementById("tilelab-css")) {
         const link = document.createElement("link");
@@ -108,9 +113,9 @@ export function createEditorApp(options = {}) {
         let dt = timestamp - state.lastTime;
         state.lastTime = timestamp;
         dt = Math.min(dt, 50);
-        if (!gameMode) flushEditorLayoutResize(state);
+        if (!useGameShell) flushEditorLayoutResize(state);
         state.scheduler.update(dt);
-        if (gameMode) tickGameViewportNavigation(dt);
+        if (useGameShell) tickGameViewportNavigation(dt);
         else tickLabViewportNavigation(dt);
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         state.appLaunch?.session?.tick(dt);
@@ -118,19 +123,19 @@ export function createEditorApp(options = {}) {
         if (!state.isPaused) runSimulationTick(state, dt);
         else kineticSpatial.begin(state);
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
-        if (!gameMode) flushMapOverviewRepaint(state);
+        if (!useGameShell) flushMapOverviewRepaint(state);
         requestAnimationFrame(loop);
     }
     events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
-    if (!gameMode) events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
+    if (!useGameShell) events.on(Events.UI_UPDATE, () => refreshEditorUi(state));
     window.addEventListener("resize", () => {
-        if (gameMode) resizeGameShell(state);
+        if (useGameShell) resizeGameShell(state);
         else resizeEditorLayout(state);
         state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
     });
-    if (gameMode) void mountGameShell(state, launcher, { playbackHandlers });
+    if (useGameShell) void mountGameShell(state, launcher, { playbackHandlers });
     else mountEditorUi(state, { playbackHandlers });
-    if (!gameMode) {
+    if (!useGameShell) {
         state.viewport.setCanvasSize(state.editor.canvas.width, state.editor.canvas.height);
         fitLabStageToView(state);
     }

@@ -20,4 +20,10 @@ describe("game launchers", () => {
         assert.equal(launcher.hideEditor, true);
         assert.deepEqual(launcher.actions, ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"]);
     });
+    it("registers snake with expected start actions", () => {
+        const launcher = GAME_LAUNCHERS.snake;
+        assert.equal(launcher.title, "Snake");
+        assert.equal(launcher.hideEditor, false);
+        assert.deepEqual(launcher.actions, ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull"]);
+    });
 });

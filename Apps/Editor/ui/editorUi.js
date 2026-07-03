@@ -13,12 +13,23 @@ import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
+import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
 let profileRefreshTimer = null;
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let mapCanvasResize = null;
 let layoutResizePending = false;
 /** @type {{ mark: () => void, repaintMapOverview: () => void } | null} */
 let labCanvasResizeHooks = null;
+
+export function fitEditorCanvasToStage(state) {
+    const stage = document.getElementById("mapStage");
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const canvas = state.editor.canvas;
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    state.viewport.setCanvasSize(rect.width, rect.height);
+}
 /** @param {import("../state.js").TileLabGameState} state */
 function computeMapColumnSlotMax(state) {
     const container = document.querySelector(".map-container");
@@ -51,10 +62,18 @@ function onMapCanvasResize(state, size) {
     labCanvasResizeHooks?.repaintMapOverview();
 }
 function resizeCanvases(state) {
-    layoutResizePending = true;
+    if (document.body.classList.contains("hide-sidebar")) {
+        fitEditorCanvasToStage(state);
+    } else {
+        layoutResizePending = true;
+    }
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function flushEditorLayoutResize(state) {
+    if (document.body.classList.contains("hide-sidebar")) {
+        fitEditorCanvasToStage(state);
+        return;
+    }
     if (!layoutResizePending) return;
     layoutResizePending = false;
     fitMapColumnCanvases(state);
@@ -114,8 +133,11 @@ export function mountEditorUi(state, { playbackHandlers }) {
         },
         () => computeMapColumnSlotMax(state),
     );
-    void initTileLabWorld(state).then(() => {
+    void initTileLabWorld(state).then(async () => {
         resizeCanvases(state);
+        if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) {
+            await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
+        }
         drawLabAndWaitForBakes();
     });
     mountTilelabSandbox(state);
@@ -136,15 +158,19 @@ export function mountEditorUi(state, { playbackHandlers }) {
     );
     syncWorldRenderModeUi(state);
     fitLabStageToView(state);
-    const { main } = EDITOR_CANVAS_DEFAULTS;
-    mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
-        host: document.getElementById("mapStage"),
-        initialSize: main.initialSize,
-        minSize: main.minSize,
-        maxSize: () => computeMapColumnSlotMax(state),
-        onResize: (size) => onMapCanvasResize(state, size),
-    });
-    initResizer("resizer", () => resizeCanvases(state));
+    if (document.body.classList.contains("hide-sidebar")) {
+        fitEditorCanvasToStage(state);
+    } else {
+        const { main } = EDITOR_CANVAS_DEFAULTS;
+        mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
+            host: document.getElementById("mapStage"),
+            initialSize: main.initialSize,
+            minSize: main.minSize,
+            maxSize: () => computeMapColumnSlotMax(state),
+            onResize: (size) => onMapCanvasResize(state, size),
+        });
+        initResizer("resizer", () => resizeCanvases(state));
+    }
     resizeCanvases(state);
     flushEditorLayoutResize(state);
     flushMapOverviewRepaint(state);

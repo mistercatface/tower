@@ -51,3 +51,6 @@ export function mountLabViewport(state, onViewChange, playbackHandlers) {
 export function refreshLabSpeed(state) {
     speedControl?.refresh(state);
 }
+export function syncLabViewportZoomUi(state) {
+    zoomControl?.setZoom(state.viewport.zoom);
+}
