@@ -16,17 +16,16 @@ export function createSandboxDeletePointerTool(state, session) {
                 return true;
             }
             const grid = state.obstacleGrid;
-            const col = grid.worldCol(world.x);
-            const row = grid.worldRow(world.y);
-            const roomNode = pickRoomNodeAt(state, col, row);
+            const idx = grid.worldToIdx(world.x, world.y);
+            const roomNode = pickRoomNodeAt(state, idx % grid.cols, (idx / grid.cols) | 0);
             if (roomNode) {
                 session.select({ kind: "roomNode", id: roomNode.id });
                 session.deleteSelectedRoomNode();
                 return true;
             }
-            if (clearFloorOverlayAt(state, col, row)) {
+            if (clearFloorOverlayAt(state, idx)) {
                 const sel = session.getSelection();
-                if (sel?.kind === "floor" && sel.col === col && sel.row === row) session.clearSelection();
+                if (sel?.kind === "floor" && sel.col === idx % grid.cols && sel.row === ((idx / grid.cols) | 0)) session.clearSelection();
                 session.sync();
                 return true;
             }

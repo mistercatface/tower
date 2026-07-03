@@ -1,5 +1,5 @@
 import { emptyCellBounds, growCellBoundsIdx } from "../DataStructures/CellRect.js";
-import { markGridZoneSubscriptionsDirty } from "../Sandbox/gridZoneTick.js";
+import { markGridZoneSubscriptionsDirty } from "../Sandbox/floorOccupancy.js";
 /** @typedef {{ idx: number, kind: number, facingIndex: number }} BakedFloorBelt */
 export function clearBakedFloorBeltsQuiet(state, belts) {
     if (!belts.length) return null;

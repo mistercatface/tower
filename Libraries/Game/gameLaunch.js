@@ -33,7 +33,7 @@ async function runSnakeLaunch(state, ctx) {
     const entityMeta = getSandboxEntityMeta(state);
     for (let i = 0; i < count; i++) {
         const redCell = pickNavWalkableCell(state, Math.random, boundsConfig);
-        const pos = redCell ? state.obstacleGrid.gridToWorld(redCell.col, redCell.row) : { x: x + (Math.random() - 0.5) * 128, y: y + (Math.random() - 0.5) * 128 };
+        const pos = redCell !== null && redCell !== undefined ? state.obstacleGrid.gridToWorldByIdx(redCell) : { x: x + (Math.random() - 0.5) * 128, y: y + (Math.random() - 0.5) * 128 };
         const redBoid = spawnPlacedSandboxProp(state, pos.x, pos.y, "boid_triangle", "bravo", 0, undefined, { tint: "#ff3366" });
         redBoid.alwaysExplore = true;
         entityMeta.setActiveBehaviorId(redBoid.id, "explore");

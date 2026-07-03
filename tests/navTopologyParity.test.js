@@ -5,7 +5,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
 import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
-import { bakeNavTopologyLocal } from "../Libraries/Pathfinding/bakeNavTopology.js";
+import { bakeNavTopologyLocal } from "../Libraries/Navigation/NavTopology.js";
 import { navCanStep } from "../Libraries/Pathfinding/navTopologySab.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 

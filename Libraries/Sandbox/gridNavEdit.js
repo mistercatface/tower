@@ -1,5 +1,5 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
-import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
+import { markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
 import { chunkRangeToCellBounds } from "../Spatial/grid/GridCoords.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 /**

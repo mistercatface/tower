@@ -2,11 +2,10 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { FLOOR_CELL_KIND, floorBeltElbowTurn, floorBeltRailEdgeSides } from "../Libraries/Spatial/grid/FloorCell.js";
-import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
-import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
+import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
+import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { collectCorridorPathPolylines } from "./collectCorridorPathPolylines.js";
 import { createNavRuntime, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
@@ -98,8 +97,8 @@ describe("rail maze corridor belts", () => {
         grid.stampCellEdge(2, 0, 2, 1, 1);
         await nav.syncTopology({ startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, grid);
         const path = [
-            { c: 2, r: 1 },
-            { c: 2, r: 2 },
+            colRowToIndex(2, 1, grid.cols),
+            colRowToIndex(2, 2, grid.cols),
         ];
         assert.equal(validateBeltPathMouthAccess(grid, nav.topology, path), false);
         grid.clearCellEdges(2, 0);

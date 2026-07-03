@@ -3,7 +3,7 @@ import { floorBeltEntryExitSides, isFloorBeltKind, beltEntryExitAtIdx, floorBelt
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
-import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
+import { bakeNavTopologyLocal } from "./NavTopology.js";
 /** @typedef {number} CellIdx */
 export function beltEntryNeighborAtIdx(grid, idx) {
     const sides = beltEntryExitAtIdx(grid, idx);

@@ -4,9 +4,8 @@ import { solveUniformCorridorBundle } from "../Libraries/Pathfinding/Corridor/co
 import { maxCorridorLanesBetweenNodes } from "../Libraries/Pathfinding/Corridor/corridorWallSlots.js";
 import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Libraries/Pathfinding/Corridor/corridorWalkGrid.js";
 import { createSeededRng } from "../Libraries/Math/SeededRng.js";
-import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole } from "../Libraries/RoomGraph/roomGraphCorridorBelts.js";
+import { buildCorridorBeltsFromPaths, collapsePathRevisits, corridorExteriorCellFromWallHole, DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Libraries/RoomGraph/roomGraphCorridorApply.js";
 import { assertBeltChains, beltMapFromFloorBelts } from "../Libraries/Procedural/Mazes/beltChainValidation.js";
-import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "../Libraries/RoomGraph/roomGraphCorridorRails.js";
 import { floorBeltEntryExitSides } from "../Libraries/Spatial/grid/FloorCell.js";
 import { layoutAbsCellIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 export function makeRoomRect(c0, r0, width, height) {

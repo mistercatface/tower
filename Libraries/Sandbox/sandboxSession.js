@@ -6,10 +6,9 @@ import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
-import { canStampFloorBeltAt, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt } from "./floorOccupancy.js";
+import { canStampFloorBeltAt, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
-import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import propCatalog from "../../Assets/props/index.js";
 import {
     clearRailWallAt,
@@ -187,24 +186,23 @@ export function createSandboxSession(state) {
             const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
-            const { col, row } = floorCell;
-            if (col === targetCol && row === targetRow) return true;
-            const idx = col + row * grid.cols;
+            const idx = floorCell.col + floorCell.row * grid.cols;
+            const targetIdx = targetCol + targetRow * grid.cols;
+            if (idx === targetIdx) return true;
             if (!grid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
                 return false;
             }
-            if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
+            if (!canStampFloorBeltAt(state, targetIdx)) return false;
             const kind = grid.floorStore.kind[idx];
             const facingIndex = grid.floorStore.facing[idx];
-            const targetIdx = targetCol + targetRow * grid.cols;
             grid.clearFloorCell(idx);
             if (!grid.writeFloorCell(targetIdx, kind, facingIndex)) {
                 grid.writeFloorCell(idx, kind, facingIndex);
                 return false;
             }
             commitGridNavEdit(state, idx);
-            commitGridNavEdit(state, targetCol + targetRow * grid.cols);
+            commitGridNavEdit(state, targetIdx);
             pickSelection({ kind: "floor", col: targetCol, row: targetRow });
             return true;
         },

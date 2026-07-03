@@ -11,8 +11,7 @@ import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage 
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
-import { tickFloorOccupancy } from "../../Libraries/Sandbox/floorOccupancy.js";
-import { tickGridZones } from "../../Libraries/Sandbox/gridZoneTick.js";
+import { tickFloorOccupancy, tickGridZones } from "../../Libraries/Sandbox/floorOccupancy.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";

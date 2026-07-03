@@ -139,3 +139,10 @@ export function syncMapGenBoundsFromPlay(viewport, playConfig, config, cellSize,
     if (syncSizeFromPlay) syncMapGenBoundsSizeFromPlayArea(playConfig, config);
     if (center) centerMapGenBoundsOnViewport(viewport, config, cellSize);
 }
+export function isIdxInMapGenBounds(config, grid, idx) {
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
+    const globalCol = ((grid.minX / grid.cellSize) | 0) + col;
+    const globalRow = ((grid.minY / grid.cellSize) | 0) + row;
+    return isGlobalCellInMapGenBounds(config, globalCol, globalRow);
+}

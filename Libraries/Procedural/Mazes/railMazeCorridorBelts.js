@@ -1,13 +1,14 @@
 import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLanePath.js";
-import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBelts.js";
+import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorApply.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides } from "../../Spatial/grid/FloorCell.js";
-import { isNavWalkableAt } from "./navWalkableIndex.js";
+import { isNavWalkableAt } from "./walkableCells.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
-import { collectPathMouthExteriorIndices, filterNavBeltEndpointCandidatesIdx, validateBeltPathMouthAccess } from "./railMazeBeltEndpoints.js";
+import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
+import { gridSideFromCellIdxToNeighborIdx } from "../../Spatial/grid/FloorCell.js";
 import { createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "./railMazeNavCorridorPath.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 const DEFAULT_CORRIDOR_COUNT = 150;
@@ -206,4 +207,71 @@ export function planRailMazeCorridorBeltsFromPreview(preview) {
         navWalkableIndex: preview.navWalkableIndex,
         mapSeed: preview.layout.mapSeed,
     });
+}
+export function hasOpenBeltMouthSideIdx(grid, navTopology, idx) {
+    const cols = grid.cols;
+    const rows = grid.rows;
+    if (grid.isBlockedIdx(idx)) return false;
+    const navGraph = createNavGraphViewFromTopology(navTopology);
+    let open = false;
+    forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+        if (open) return;
+        if (!grid.isBlockedIdx(nIdx) && navGraph.canStepIdx(nIdx, idx) && navGraph.canStepIdx(idx, nIdx)) open = true;
+    });
+    return open;
+}
+export function filterNavBeltEndpointCandidatesIdx(grid, navTopology, cellIndices) {
+    const out = [];
+    for (let i = 0; i < cellIndices.length; i++) {
+        const idx = cellIndices[i];
+        if (hasOpenBeltMouthSideIdx(grid, navTopology, idx)) out.push(idx);
+    }
+    return out;
+}
+export function beltPathMouthExteriorCells(path, cols, rows) {
+    const startIdx = path[0];
+    const secondIdx = path[1];
+    const endIdx = path[path.length - 1];
+    const prevIdx = path[path.length - 2];
+    const startFlowSide = gridSideFromCellIdxToNeighborIdx(startIdx, secondIdx, cols);
+    const startEntrySide = edgeMirrorSide(startFlowSide);
+    const entryExteriorIdx = edgeNeighborIdx(startIdx, startEntrySide, cols, rows);
+    const endEntrySide = gridSideFromCellIdxToNeighborIdx(endIdx, prevIdx, cols);
+    const endExitSide = edgeMirrorSide(endEntrySide);
+    const exitExteriorIdx = edgeNeighborIdx(endIdx, endExitSide, cols, rows);
+    return { entryExteriorIdx, exitExteriorIdx };
+}
+export function validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlobalIndices = new Set()) {
+    if (path.length < 2) return false;
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const startIdx = path[0];
+    const endIdx = path[path.length - 1];
+    const { entryExteriorIdx, exitExteriorIdx } = beltPathMouthExteriorCells(path, cols, rows);
+    if (entryExteriorIdx === -1 || exitExteriorIdx === -1) return false;
+    if (grid.isBlockedIdx(entryExteriorIdx)) return false;
+    if (grid.isBlockedIdx(exitExteriorIdx)) return false;
+    if (occupiedGlobalIndices.has(entryExteriorIdx)) return false;
+    if (occupiedGlobalIndices.has(exitExteriorIdx)) return false;
+    const navGraph = createNavGraphViewFromTopology(navTopology);
+    if (!navGraph.canStepIdx(entryExteriorIdx, startIdx)) return false;
+    if (!navGraph.canStepIdx(endIdx, exitExteriorIdx)) return false;
+    return true;
+}
+export function collectPathMouthExteriorIndices(paths, grid) {
+    const cols = grid.cols;
+    const rows = grid.rows;
+    const mouths = new Set();
+    for (let i = 0; i < paths.length; i++) {
+        const path = paths[i];
+        if (path.length < 2) continue;
+        const startIdx = path[0];
+        const endIdx = path[path.length - 1];
+        mouths.add(startIdx);
+        mouths.add(endIdx);
+        const { entryExteriorIdx, exitExteriorIdx } = beltPathMouthExteriorCells(path, cols, rows);
+        if (entryExteriorIdx !== -1) mouths.add(entryExteriorIdx);
+        if (exitExteriorIdx !== -1) mouths.add(exitExteriorIdx);
+    }
+    return mouths;
 }

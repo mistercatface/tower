@@ -12,9 +12,8 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavig
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
-import { pickNavWalkableCell, patchNavWalkableCellIndex, collectNavWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { pickNavWalkableCell, patchNavWalkableCellIndex, collectNavWalkableCells, isNavWalkableCell, floodConnectedNavWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { isGlobalCellInMapGenBounds, getMapGenBoundsStampExtent } from "../Libraries/Sandbox/mapGenBounds.js";
-import { isNavWalkableCell, floodConnectedNavWalkableCells } from "../Libraries/Spatial/grid/navWalkableCell.js";
 
 async function createEditorTestState() {
     globalThis.window = {

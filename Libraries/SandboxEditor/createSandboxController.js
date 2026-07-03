@@ -14,7 +14,6 @@ import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
 import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
-import { spawnSandboxStartScene } from "../../Apps/Editor/world/sandboxStartScene.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors, isRoomLinkSpawnAsset } from "../Sandbox/sandboxCapabilities.js";
@@ -417,15 +416,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         exportSceneSnapshot: () => JSON.stringify(collectSandboxSceneSnapshot(state), null, 2),
         importSceneSnapshot(json) {
             applySandboxSceneSnapshot(state, parseSandboxSceneSnapshot(json));
-            cameraCycler.clear();
-            resetBehaviors();
-            exitWireModes();
-            session.clearSelection();
-            session.seedPlacementOrderFromState();
-            session.sync();
-        },
-        async loadStartScene() {
-            await spawnSandboxStartScene(state);
             cameraCycler.clear();
             resetBehaviors();
             exitWireModes();

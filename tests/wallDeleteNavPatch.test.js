@@ -2,8 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
-import { createDeferredGridWallCommit } from "../Libraries/Sandbox/deferredGridWallCommit.js";
-import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
+import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit } from "../Libraries/Sandbox/gridWallEdit.js";
 import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -112,16 +111,17 @@ describe("wall delete nav patch (4a)", () => {
         const state = await createWallDeleteTestState();
         collectNavWalkableCells(state);
         const picked = pickNavWalkableCell(state, () => 0);
-        assert.ok(picked);
-        stampVoxelQuiet(state, picked.col, picked.row);
-        const idx = colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols);
+        assert.ok(picked !== null && picked !== undefined);
+        const idx = picked;
+        const cols = state.obstacleGrid.cols;
+        stampVoxelQuiet(state, idx % cols, (idx / cols) | 0);
         await state.nav.commitEdit(idx);
-        assert.ok(!isNavWalkableCellAt(state, picked.col, picked.row));
+        assert.ok(!isNavWalkableCellAt(state, idx));
         state.resetNotifyCount();
         clearVoxelWallsQuiet(state, [idx]);
         await state.nav.commitEdit(idx);
         assert.equal(state.notifyCount, 1);
-        assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
+        assert.ok(isNavWalkableCellAt(state, idx));
         terminateWorkerNavigation(state.nav);
     });
     it("rail delete restores canStep through the cleared edge", async () => {
@@ -147,16 +147,16 @@ describe("wall delete nav patch (4a)", () => {
         const grid = state.obstacleGrid;
         collectNavWalkableCells(state);
         const blocked = pickNavWalkableCell(state, () => 0);
-        assert.ok(blocked);
-        stampVoxelQuiet(state, blocked.col, blocked.row);
+        assert.ok(blocked !== null && blocked !== undefined);
+        const idxBlocked = blocked;
+        stampVoxelQuiet(state, idxBlocked % grid.cols, (idxBlocked / grid.cols) | 0);
         stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 1, heightLevel: 1, thicknessLevel: 1 }]);
-        const idxBlocked = colRowToIndex(blocked.col, blocked.row, grid.cols);
         const idxRail = colRowToIndex(5, 5, grid.cols);
         const idxNext = colRowToIndex(6, 5, grid.cols);
         await state.nav.commitEdit(idxBlocked);
         grid.gridTopologyEpoch++;
         await state.nav.commitEdit(idxRail);
-        assert.ok(!isNavWalkableCellAt(state, blocked.col, blocked.row));
+        assert.ok(!isNavWalkableCellAt(state, idxBlocked));
         assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), false);
         state.resetNotifyCount();
         const bounds = clearGridWallsBatch(state, {
@@ -165,7 +165,7 @@ describe("wall delete nav patch (4a)", () => {
         });
         await state.nav.awaitWorkerNavReady();
         assert.equal(state.notifyCount, 2); // since we commit each cleared wall index (voxel index and rail index)
-        assert.ok(isNavWalkableCellAt(state, blocked.col, blocked.row));
+        assert.ok(isNavWalkableCellAt(state, idxBlocked));
         assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), true);
         assert.ok(bounds);
         terminateWorkerNavigation(state.nav);

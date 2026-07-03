@@ -33,9 +33,6 @@ export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
 export function boundaryBlocksStep(grid, idx, side) {
     return isRailWallEdge(grid.edgeStore.getIdx(idx, side));
 }
-function oppositeSide(side) {
-    return side < 0 ? -1 : edgeMirrorSide(side);
-}
 function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     const cols = grid.cols;
     const stepSide = gridSideFromCellIdxToNeighborIdx(fromIdx, toIdx, cols);
@@ -44,7 +41,7 @@ function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     if (!fromBelt && !toBelt) return false;
     if (stepSide < 0) return true;
     if (fromBelt && stepSide !== fromBelt.exitSide) return true;
-    if (toBelt && oppositeSide(stepSide) === toBelt.exitSide) return true;
+    if (toBelt && edgeMirrorSide(stepSide) === toBelt.exitSide) return true;
     return false;
 }
 /** Directional step blocking: belt entry rules + rail-wall edges. */

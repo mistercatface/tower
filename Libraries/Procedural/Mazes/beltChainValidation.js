@@ -1,9 +1,6 @@
 import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
 import { CARDINAL_OFFSETS, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
-function oppositeSide(side) {
-    return edgeMirrorSide(side);
-}
 /** @param {{ idx: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function beltFootprintIndices(belts, layout) {
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} */
@@ -47,7 +44,7 @@ export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExt
         if (entryInFootprint) {
             const entryBelt = beltsByCell.get(entryIdx);
             const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
-            if (entryExit !== oppositeSide(entrySide))
+            if (entryExit !== edgeMirrorSide(entrySide))
                 throw new Error(
                     `${label}: belt chain break ${formatLayoutCellForError(entryIdx, layout)} -> ${formatLayoutCellForError(idx, layout)} (entry side ${entrySide}, upstream exit ${entryExit})`,
                 );
@@ -55,7 +52,7 @@ export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExt
         if (exitInFootprint) {
             const exitBelt = beltsByCell.get(exitIdx);
             const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
-            if (exitEntry !== oppositeSide(exitSide))
+            if (exitEntry !== edgeMirrorSide(exitSide))
                 throw new Error(
                     `${label}: belt chain break ${formatLayoutCellForError(idx, layout)} -> ${formatLayoutCellForError(exitIdx, layout)} (exit side ${exitSide}, downstream entry ${exitEntry})`,
                 );

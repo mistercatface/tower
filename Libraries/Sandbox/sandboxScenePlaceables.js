@@ -1,8 +1,7 @@
 import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
 import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
-import { canStampFloorBeltAt } from "./floorOccupancy.js";
+import { canStampFloorBeltAt, markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
 import { applyFloorCellEdit } from "./gridNavEdit.js";
-import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
 import { setPropVisualBrightness, setPropVisualTint } from "../Color/visualOverride.js";
@@ -117,11 +116,12 @@ const PLACEABLE = {
         matchesSpawnAsset: isGridFloorBeltSpawnAsset,
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            if (!canStampFloorBeltAt(state, col, row)) return false;
+            const idx = grid.worldToIdx(worldX, worldY);
+            if (!canStampFloorBeltAt(state, idx)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
-            if (!applyFloorCellEdit(state, col + row * grid.cols, kind, 0)) return false;
+            if (!applyFloorCellEdit(state, idx, kind, 0)) return false;
+            const row = (idx / grid.cols) | 0;
+            const col = idx - row * grid.cols;
             ctx.placement.touchFloorPlacement(col, row);
             ctx.pickSelection({ kind: "floor", col, row });
             return true;

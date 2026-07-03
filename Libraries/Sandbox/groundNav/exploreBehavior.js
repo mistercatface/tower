@@ -9,9 +9,8 @@ import { isEntityOnFloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { EXPLORE_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
-import { pickNavWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
-import { isGlobalCellInMapGenBounds, getMapGenBoundsStampExtent } from "../mapGenBounds.js";
-import { isNavWalkableCell } from "../../Spatial/grid/navWalkableCell.js";
+import { pickNavWalkableCell, isNavWalkableCell, collectNavWalkableCells } from "../../Procedural/Mazes/walkableCells.js";
+import { isIdxInMapGenBounds } from "../mapGenBounds.js";
 /** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createExploreBehavior(state) {
     const propRuns = new Map();
@@ -49,15 +48,9 @@ export function createExploreBehavior(state) {
     };
     const getActiveBoundsConfigForProp = (prop) => {
         const grid = state.obstacleGrid;
-        const col = grid.worldCol(prop.x);
-        const row = grid.worldRow(prop.y);
-        const cellSize = grid.cellSize;
-        const x = grid.gridCenterX(col);
-        const y = grid.gridCenterY(row);
-        const globalCol = Math.round(x / cellSize);
-        const globalRow = Math.round(y / cellSize);
-        if (state.editor.railMazeConfig && isGlobalCellInMapGenBounds(state.editor.railMazeConfig, globalCol, globalRow)) return state.editor.railMazeConfig;
-        if (state.editor.railConfig && isGlobalCellInMapGenBounds(state.editor.railConfig, globalCol, globalRow)) return state.editor.railConfig;
+        const idx = grid.worldToIdx(prop.x, prop.y);
+        if (state.editor.railMazeConfig && isIdxInMapGenBounds(state.editor.railMazeConfig, grid, idx)) return state.editor.railMazeConfig;
+        if (state.editor.railConfig && isIdxInMapGenBounds(state.editor.railConfig, grid, idx)) return state.editor.railConfig;
         return state.editor.cavernConfig;
     };
     const pickNewTarget = (prop, run) => {
@@ -65,31 +58,13 @@ export function createExploreBehavior(state) {
         const boundsConfig = getActiveBoundsConfigForProp(prop);
         // Attempt to find a nav-walkable cell inside the active bounds config
         let cell = pickNavWalkableCell(state, run.rng, boundsConfig);
-        if (!cell) {
+        if (cell === null || cell === undefined) {
             // Fallback: search within active bounds config extent for cells that are nav-walkable
-            const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(boundsConfig);
-            const gridCols = grid.cols;
-            const gridRows = grid.rows;
-            const cellSize = grid.cellSize;
-            const navTopology = state.nav.topology;
-            const candidates = [];
-            for (let lr = 0; lr < rows; lr++)
-                for (let lc = 0; lc < cols; lc++) {
-                    const gc = originCol + lc;
-                    const gr = originRow + lr;
-                    if (isGlobalCellInMapGenBounds(boundsConfig, gc, gr)) {
-                        const col = grid.worldCol(gc * cellSize);
-                        const row = grid.worldRow(gr * cellSize);
-                        if (col >= 0 && col < gridCols && row >= 0 && row < gridRows) {
-                            const idx = col + row * gridCols;
-                            if (!grid.isBlockedIdx(idx) && isNavWalkableCell(grid, navTopology, idx)) candidates.push({ col, row });
-                        }
-                    }
-                }
+            const candidates = collectNavWalkableCells(state, boundsConfig);
             if (candidates.length > 0) cell = candidates[Math.floor(run.rng() * candidates.length)];
         }
-        if (cell) {
-            const worldPos = grid.gridToWorld(cell.col, cell.row);
+        if (cell !== null && cell !== undefined) {
+            const worldPos = grid.gridToWorldByIdx(cell);
             applyMoveTarget(run, worldPos, true);
         } else {
             // No free cells anywhere, stop driving

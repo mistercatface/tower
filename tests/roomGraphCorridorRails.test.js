@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { layoutLocalCellIndex, createCellIndexLayout } from "../Libraries/Spatial/grid/GridUtils.js";
-import { railWallsFromFloorMask } from "../Libraries/RoomGraph/roomGraphCorridorRails.js";
+import { railWallsFromFloorMask } from "../Libraries/RoomGraph/roomGraphCorridorApply.js";
 
 describe("room graph corridor rails", () => {
     it("builds rail walls from offset floor mask without internal shared edges", () => {

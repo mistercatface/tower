@@ -2,27 +2,11 @@ import { appendActionRow, appendEditorHint } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 export function mountSceneSnapshotPanel(container, controller) {
     appendEditorHint(container, "Copy/paste sandbox layout: props, walls, belts, power sources. Replace clears the current sandbox first.");
-    const startDemoBtn = document.createElement("button");
-    startDemoBtn.type = "button";
-    startDemoBtn.className = "secondary";
-    startDemoBtn.textContent = "Load start demo";
     const textarea = document.createElement("textarea");
     textarea.className = "editor-export-area";
     setFormFieldName(textarea, "sceneJsonExport");
     textarea.rows = 10;
     textarea.spellcheck = false;
-    startDemoBtn.addEventListener("click", async () => {
-        if (!window.confirm("Replace the current sandbox with the cavern stress demo?")) return;
-        startDemoBtn.disabled = true;
-        try {
-            await controller.loadStartScene();
-            textarea.value = controller.exportSceneSnapshot();
-            controller.sync();
-        } finally {
-            startDemoBtn.disabled = false;
-        }
-    });
-    container.appendChild(startDemoBtn);
     container.appendChild(textarea);
     appendActionRow(container, [
         {

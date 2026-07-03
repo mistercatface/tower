@@ -5,7 +5,7 @@ import { HpaAbstractGraph } from "../../Pathfinding/hpaReplanPrep.js";
 import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
-import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
+import { bakeNavTopologyIntoArena } from "../../Navigation/NavTopology.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../DataStructures/CellKey.js";
 export function createNavStepPenaltyLookup(cols, keys, costs) {

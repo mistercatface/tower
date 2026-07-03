@@ -16,10 +16,6 @@ export function resolveRailWallThicknessLevel(value) {
 /** @typedef {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }} RailWall */
 /** @typedef {{ c: number, r: number, side: number }} RoomWallHole */
 /** @typedef {{ node: GraphNode, gaps: Set<number>, holes: RoomWallHole[] }} ClosedRoom */
-/** @param {number} c @param {number} r @param {number} side */
-export function roomWallEdgeKey(c, r, side) {
-    return packEdgeCellKey(c, r, side);
-}
 /** @param {{ nodes: GraphNode[] }} nodeGraph */
 export function buildRoomsFromNodeGraph(nodeGraph) {
     return nodeGraph.nodes.map((node) => ({ node, gaps: new Set(), holes: [] }));
@@ -30,7 +26,7 @@ export function railWallsForClosedRect(node, originCol, originRow, gaps = new Se
     const walls = [];
     /** @param {number} c @param {number} r @param {number} side */
     const push = (c, r, side) => {
-        if (gaps.has(roomWallEdgeKey(c, r, side))) return;
+        if (gaps.has(packEdgeCellKey(c, r, side))) return;
         walls.push({
             col: c + originCol,
             row: r + originRow,
@@ -111,7 +107,7 @@ export function applyCorridorHoleGroups(closedRoom, holeGroups) {
         const group = holeGroups[lane];
         for (let i = 0; i < group.length; i++) {
             const hole = group[i];
-            closedRoom.gaps.add(roomWallEdgeKey(hole.c, hole.r, hole.side));
+            closedRoom.gaps.add(packEdgeCellKey(hole.c, hole.r, hole.side));
             closedRoom.holes.push(hole);
         }
     }

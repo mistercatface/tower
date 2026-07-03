@@ -4,10 +4,12 @@ import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
-import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { applyKineticAccelerationAlongAngle } from "../Motion/motionDynamics.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
+/** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions} GridZoneSubscriptions */
+/** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneEvent} GridZoneEvent */
 export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
     const col = grid.worldCol(worldX);
@@ -27,9 +29,8 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
     commitGridNavEdit(state, idx);
     return true;
 }
-export function canStampFloorBeltAt(state, colOrIdx, row = null) {
+export function canStampFloorBeltAt(state, idx) {
     const grid = state.obstacleGrid;
-    const idx = row !== null ? colOrIdx + row * grid.cols : colOrIdx;
     if (idx < 0 || idx >= grid.cols * grid.rows) return false;
     const r = (idx / grid.cols) | 0;
     const c = idx - r * grid.cols;
@@ -59,9 +60,8 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         applyKineticAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
 }
-export function clearFloorOverlayAt(state, colOrIdx, row = null) {
+export function clearFloorOverlayAt(state, idx) {
     const grid = state.obstacleGrid;
-    const idx = row !== null ? colOrIdx + row * grid.cols : colOrIdx;
     if (idx < 0 || idx >= grid.cols * grid.rows) return false;
     if (!grid.clearFloorCell(idx)) return false;
     markGridZoneSubscriptionsDirty(state);
@@ -111,4 +111,41 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     markGridZoneSubscriptionsDirty(state);
     bumpFloorOccupancyStampDrawRevision(grid);
     return bounds;
+}
+export function markGridZoneSubscriptionsDirty(state) {
+    state.sandbox.gridZoneSubscriptionsDirty = true;
+}
+export function buildGridZoneSubscriptions(grid) {
+    /** @type {Set<number>} */
+    const cells = new Set();
+    if (!grid.cols) return { cells };
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) if (grid.floorStore.hasAnyAtIdx(idx)) cells.add(idx);
+    return { cells };
+}
+function ensureGridZoneSubscriptions(state) {
+    if (!state.sandbox.gridZoneSubscriptionsDirty && state.sandbox.gridZoneSubscriptions) return state.sandbox.gridZoneSubscriptions;
+    state.sandbox.gridZoneSubscriptions = buildGridZoneSubscriptions(state.obstacleGrid);
+    state.sandbox.gridZoneSubscriptionsDirty = false;
+    return state.sandbox.gridZoneSubscriptions;
+}
+function onBeltCellZoneEvent(state, event, phase) {
+    if (phase === "on") return;
+    state.sandbox.beltZoneEvents.push({ at: state.gameTime, phase, idx: event.idx, entityId: event.entity.id });
+    if (state.sandbox.beltZoneEvents.length > 32) state.sandbox.beltZoneEvents.shift();
+}
+export function tickGridZones(state, spatialFrame) {
+    const subscriptions = ensureGridZoneSubscriptions(state);
+    if (!subscriptions.cells.size) return;
+    tickGridZoneMembership(spatialFrame, state.obstacleGrid, subscriptions, {
+        onEnter(event) {
+            onBeltCellZoneEvent(state, event, "enter");
+        },
+        onOn(event) {
+            onBeltCellZoneEvent(state, event, "on");
+        },
+        onExit(event) {
+            onBeltCellZoneEvent(state, event, "exit");
+        },
+    });
 }

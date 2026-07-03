@@ -1,11 +1,10 @@
 import { cellBoundsAt, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
-import { clearPrimaryBoundaryAt } from "./boundaryEdit.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isRailWallEdge, railWallCapLevel } from "../Spatial/grid/CellEdgeStore.js";
-import { setBoundary } from "../Spatial/grid/boundaryOccupancy.js";
+import { setBoundary, clearBoundaryPrimary, boundaryBlocksStep } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 import { overlaySegment } from "../Render/overlays/overlayCommands.js";
@@ -283,4 +282,57 @@ export function getRailWallInfo(grid, idx, side) {
 export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {
     cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
     out.push(overlaySegment(EDGE_P1.x, EDGE_P1.y, EDGE_P2.x, EDGE_P2.y, { stroke, lineWidth, dash: dash ?? undefined }));
+}
+export function clearPrimaryBoundaryAt(state, idx, side, bumpRevision = false) {
+    const grid = state.obstacleGrid;
+    if (!boundaryBlocksStep(grid, idx, side)) return false;
+    clearBoundaryPrimary(grid, idx, side, bumpRevision);
+    return true;
+}
+export function createDeferredGridWallCommit(state) {
+    const pending = new Set();
+    return {
+        get hasPending() {
+            return pending.size > 0;
+        },
+        clearVoxel(idx) {
+            if (!clearVoxelWallQuiet(state, idx)) return false;
+            pending.add(idx);
+            return true;
+        },
+        clearVoxels(voxelIndices) {
+            let changed = false;
+            for (let i = 0; i < voxelIndices.length; i++)
+                if (clearVoxelWallQuiet(state, voxelIndices[i])) {
+                    pending.add(voxelIndices[i]);
+                    changed = true;
+                }
+            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+            return changed;
+        },
+        clearRails(rails) {
+            let changed = false;
+            for (let i = 0; i < rails.length; i++) {
+                const { idx, side } = rails[i];
+                if (clearPrimaryBoundaryAt(state, idx, side)) {
+                    pending.add(idx);
+                    changed = true;
+                }
+            }
+            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+            return changed;
+        },
+        clearWalls({ voxels = [], rails = [] } = {}) {
+            let changed = false;
+            if (this.clearVoxels(voxels)) changed = true;
+            if (this.clearRails(rails)) changed = true;
+            return changed;
+        },
+        flush() {
+            if (!pending.size) return false;
+            for (const idx of pending) commitGridNavEdit(state, idx);
+            pending.clear();
+            return true;
+        },
+    };
 }

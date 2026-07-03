@@ -15,9 +15,8 @@ import { getRoomGraph, listRoomLinks, listRoomNodes } from "./roomGraphStore.js"
 import { resolveLinkCorridorRoll } from "./roomGraphLinkCorridor.js";
 import { normalizeCorridorType, isConveyorCorridorType, isOpenCorridorType, isLockedRoomCorridorType } from "./roomGraphCorridorTypes.js";
 import { clearBakedFloorBeltsQuiet, stampBakedFloorBeltsQuiet } from "./roomGraphFloorBelts.js";
-import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails } from "./roomGraphCorridorApply.js";
+import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle, stampCorridorBundleBelts, stampCorridorBundleRails, DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorApply.js";
 import { corridorSearchBounds } from "../Pathfinding/Corridor/corridorWalkGrid.js";
-import { DEFAULT_CORRIDOR_EGRESS_CELLS } from "./roomGraphCorridorRails.js";
 /** @typedef {{ col: number, row: number, side: number, heightLevel?: number, thicknessLevel?: number }} BakedRail */
 /** @typedef {{ id: number, c0: number, c1: number, r0: number, r1: number, centerC: number, centerR: number, width: number, height: number }} AuthoredGraphNode */
 /** @param {import("./roomGraphStore.js").RoomNode} node */
