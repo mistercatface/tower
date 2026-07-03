@@ -8,7 +8,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { clearWorldPropPools, getWorldPropPoolSize } from "../Libraries/Props/worldPropPool.js";
-import { spawnGlassShatterShards, tryFractureKineticContact, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/propFracture.js";
+import { spawnGlassShatterShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/propFracture.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { fracturePropOnImpact } from "../Libraries/Props/propFracture.js";
 

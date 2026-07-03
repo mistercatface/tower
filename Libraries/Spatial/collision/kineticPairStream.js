@@ -1,4 +1,4 @@
-import { collisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Motion/collisionDefaults.js";
 import { allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./entityBroadphase.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
@@ -11,7 +11,7 @@ export function classifyKineticPairTier(bodyA, bodyB) {
     return KINETIC_PAIR_TIER.POLY_POLY;
 }
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";
-import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
+import { kineticPairTopologyStale } from "../../Motion/kineticConstraints.js";
 import { MAX_ENTITIES as MAX_KINETIC_PAIRS, MAX_ENTITIES as MAX_PHYS_BODIES } from "../../../Core/engineLimits.js";
 const PAIR_BODY_KEY_SCALE = 1_000_000;
 export const kineticPairBuffer = {

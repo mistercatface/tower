@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/propStrategy.js";
-import { resolveBodyRadius } from "../Libraries/Motion/bodyDefaults.js";
+import { resolveBodyRadius } from "../Libraries/Motion/physicsDefaults.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPrimitive.js";
 import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";

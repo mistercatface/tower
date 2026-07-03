@@ -1,4 +1,4 @@
-import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
+import { resolveBodyRadius } from "../../Motion/physicsDefaults.js";
 import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
 import { projectPropVertexScalarsInto } from "../Props3D/propMesh.js";
 import { tessellateSphereCapQuadsFlat, tessellateSphereQuadsFlat } from "./sphereSurface.js";

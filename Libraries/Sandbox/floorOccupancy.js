@@ -8,7 +8,7 @@ import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { syncPassagePowerNetwork } from "./passagePowerNetwork.js";
-import { applyKineticAccelerationAlongAngle } from "../Motion/applyAcceleration.js";
+import { applyKineticAccelerationAlongAngle } from "../Motion/motionDynamics.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
 export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {

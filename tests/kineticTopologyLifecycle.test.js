@@ -4,7 +4,7 @@ import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Motion/kineticIslands.js";
-import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Motion/kineticTopology.js";
+import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Motion/kineticConstraints.js";
 import { kineticPairBodiesAt } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";

@@ -4,7 +4,7 @@ import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { bakeKineticIslandPlan, islandRootByPhysId, shareKineticIsland } from "../Libraries/Motion/kineticIslands.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Motion/collisionDefaults.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPipelineStubs } from "./harness/kineticTickHarness.js";

@@ -1,5 +1,5 @@
 import { resolveVisualOverridePanels, resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
-import { resolveBodyRadius } from "../../Motion/bodyDefaults.js";
+import { resolveBodyRadius } from "../../Motion/physicsDefaults.js";
 import { drawSphere } from "../../Render/Props3D/sphere.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Motion/collisionDefaults.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";

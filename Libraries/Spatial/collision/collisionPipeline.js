@@ -1,4 +1,4 @@
-import { collisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Motion/collisionDefaults.js";
 import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab } from "../../Motion/kineticConstraintSolver.js";
 import { maxActiveKineticSpeedSq } from "../../Motion/motionSubsteps.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer } from "./kineticContactSolver.js";

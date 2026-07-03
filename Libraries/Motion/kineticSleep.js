@@ -1,4 +1,4 @@
-import { collisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "./collisionDefaults.js";
 import { createAabb, emptyAabbInto, growAabbFromCenterInto } from "../Math/Aabb2D.js";
 import { entityBroadphaseExtent, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "../Spatial/collision/entityBroadphase.js";
 import { shareKineticIsland } from "./kineticIslands.js";

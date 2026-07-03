@@ -396,12 +396,6 @@ export function flushDeferredFractures(world, spatialFrame) {
         deferredFracturesCount = 0;
     }
 }
-// TESTING ONLY FUNTION
-export function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
-    const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
-    queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force);
-    flushDeferredFractures(tick.world, tick.frame);
-}
 
 export function processKineticContactFractures(tick, contacts) {
     if (contacts.count === 0) return;

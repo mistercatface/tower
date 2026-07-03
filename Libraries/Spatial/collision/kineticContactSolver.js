@@ -1,4 +1,4 @@
-import { collisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Motion/collisionDefaults.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import {
     gatherKineticCandidatePairs,
@@ -12,8 +12,7 @@ import {
     kineticContactBodiesAt,
     KINETIC_PAIR_TIER,
 } from "./kineticPairStream.js";
-import { kineticPairTopologyStale } from "../../Motion/kineticTopology.js";
-import { stampKineticPairGatherTopology } from "../../Motion/kineticTopology.js";
+import { kineticPairTopologyStale, stampKineticPairGatherTopology } from "../../Motion/kineticConstraints.js";
 import { refreshActiveKineticBodySlabPose } from "./entityBroadphase.js";
 import { kineticDynamicSlab, kineticStaticSlab, separateAlongNormalSlab, separateCoincidentCircleSlab } from "./kineticBodySlab.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";

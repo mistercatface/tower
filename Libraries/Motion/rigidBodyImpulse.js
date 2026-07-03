@@ -1,4 +1,4 @@
-import { collisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "./collisionDefaults.js";
 import { dotXY } from "../Math/Vec2.js";
 /**
  * Two-body impulse exchange at a SAT contact (kinetic prop pairs).

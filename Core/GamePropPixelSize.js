@@ -1,5 +1,5 @@
 import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
-import { LIBRARY_DEFAULT_BAKE_PIXEL_SIZE } from "../Libraries/Motion/bodyDefaults.js";
+import { LIBRARY_DEFAULT_BAKE_PIXEL_SIZE } from "../Libraries/Motion/physicsDefaults.js";
 /**
  * Internal bake diameter for radial-elevation props. Target `propPixelSize` applies to small props;
  * larger props automatically bake at full world diameter so nothing is upscaled on blit.

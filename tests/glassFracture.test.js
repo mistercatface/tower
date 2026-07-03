@@ -2,7 +2,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, tryFractureKineticContact, spawnGlassShatterShards, flushDeferredFractures, processKineticContactFractures } from "../Libraries/Props/propFracture.js";
+import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, spawnGlassShatterShards, flushDeferredFractures, processKineticContactFractures, impactForceFromContact, queueFractureKineticContact } from "../Libraries/Props/propFracture.js";
+function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
+    const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
+    queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force);
+    flushDeferredFractures(tick.world, tick.frame);
+}
 import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT, measureGlassShard, minShardAreaForPolygon, shatterGlassFootprint, shatterGlassPolygon } from "../Libraries/Props/glassFracture.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";

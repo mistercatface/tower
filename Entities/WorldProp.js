@@ -1,5 +1,5 @@
 import { Entity } from "./Entity.js";
-import { applyVelocityDamping } from "../Libraries/Motion/applyDamping.js";
+import { applyVelocityDamping } from "../Libraries/Motion/motionDynamics.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";

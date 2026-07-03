@@ -1,4 +1,4 @@
-import { collisionSettings } from "../../Collision/collisionDefaults.js";
+import { collisionSettings } from "../../Motion/collisionDefaults.js";
 import { computeCompoundLocalBounds } from "../../Math/Poly2D.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";

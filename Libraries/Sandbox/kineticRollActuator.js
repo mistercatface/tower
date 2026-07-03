@@ -1,4 +1,4 @@
-import { applyKineticAcceleration } from "../Motion/applyAcceleration.js";
+import { applyKineticAcceleration } from "../Motion/motionDynamics.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { physicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";

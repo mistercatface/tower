@@ -1,4 +1,4 @@
-import { collisionSettings } from "../Collision/collisionDefaults.js";
+import { collisionSettings } from "./collisionDefaults.js";
 import { runCollisionPipeline } from "../Spatial/collision/collisionPipeline.js";
 import { advanceKineticSleepIslands, wakeKineticBody } from "./kineticSleep.js";
 import { ensureKineticIslandPlan } from "./kineticIslands.js";

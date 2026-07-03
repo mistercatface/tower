@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Collision/collisionDefaults.js";
+import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Motion/collisionDefaults.js";
 import { withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 
 describe("collision defaults", () => {

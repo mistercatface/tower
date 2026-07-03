@@ -1,4 +1,4 @@
-import { applyVelocityDamping } from "../Motion/applyDamping.js";
+import { applyVelocityDamping } from "../Motion/motionDynamics.js";
 import { lengthXY } from "../Math/Vec2.js";
 import { absorbCollisionRollImpulse, integrateRollOrientation } from "./rollingMotion.js";
 function resolveRollingFriction(strategy, body) {

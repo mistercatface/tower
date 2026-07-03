@@ -1,4 +1,4 @@
-import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
+import { resolveBodyRadius } from "../Motion/physicsDefaults.js";
 import { applyRigidBodyImpulse } from "../Motion/rigidBodyImpulse.js";
 import { massFromBody } from "../Motion/bodyMass.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";

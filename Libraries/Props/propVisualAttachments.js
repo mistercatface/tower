@@ -2,7 +2,7 @@ import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { quantizeAngle } from "../Math/Angle.js";
 import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
 import { rotateXY } from "../Math/Poly2D.js";
-import { resolveBodyRadius } from "../Motion/bodyDefaults.js";
+import { resolveBodyRadius } from "../Motion/physicsDefaults.js";
 import { buildWorldPropStrategyFromAsset, initWorldPropShape, propFootprintHalfExtents, resolvePropQuantizeSteps } from "./propStrategy.js";
 import propCatalog from "../../Assets/props/index.js";
 /**
