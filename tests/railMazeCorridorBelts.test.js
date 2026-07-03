@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, floorBeltElbowTurn, isFloorBeltRailsKind, floorBeltRailEdgeSides } from "../Libraries/Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND, floorBeltElbowTurn, floorBeltRailEdgeSides } from "../Libraries/Spatial/grid/FloorCell.js";
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { collectCorridorPathPolylines } from "./collectCorridorPathPolylines.js";
@@ -175,9 +175,6 @@ describe("rail maze corridor belts", () => {
 
         // 1. Assert all are unrailed (regular blue belts)
         assert.ok(plan.floorBelts.length > 0);
-        for (let i = 0; i < plan.floorBelts.length; i++) {
-            assert.ok(!isFloorBeltRailsKind(plan.floorBelts[i].kind), `belt ${i} should be unrailed`);
-        }
 
         // 2. Assert beltRails were correctly computed for lateral edges
         assert.ok(plan.beltRails.length > 0);

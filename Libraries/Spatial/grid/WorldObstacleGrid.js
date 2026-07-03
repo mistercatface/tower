@@ -4,8 +4,8 @@ import { cellEdgeEndpoints, edgeRailCollisionShouldEmit, edgeRailCollisionThickn
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
-import { floorBeltFacingToIndex, isFloorBeltKind, isFloorBeltRailsKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom, reconcileBeltBoundaries, clearBeltBoundariesForCell } from "./boundaryOccupancy.js";
+import { floorBeltFacingToIndex, isFloorBeltKind, FLOOR_CELL_KIND } from "./FloorCell.js";
+import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsAtOriginIdxInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
@@ -360,26 +360,14 @@ export class WorldObstacleGrid {
     edgeBlocksStep(idx, side) {
         return boundaryBlocksStep(this, idx, side);
     }
-    syncFloorBeltRailEdges(idx, kind, facingIndex) {
-        reconcileBeltBoundaries(this, idx, kind, facingIndex);
-    }
-    clearFloorBeltRailEdges(idx, kind, facingIndex) {
-        clearBeltBoundariesForCell(this, idx, kind, facingIndex);
-    }
     writeFloorCell(idx, kind, facingRadians) {
         if (this.isBlockedIdx(idx)) return false;
         const prevKind = this.floorStore.kind[idx];
         const prevFacing = this.floorStore.facing[idx];
-        if (isFloorBeltRailsKind(prevKind)) this.clearFloorBeltRailEdges(idx, prevKind, prevFacing);
         const facingIndex = floorBeltFacingToIndex(facingRadians);
         this.floorStore.setAtIdx(idx, kind, facingIndex);
-        let edgeChanged = false;
-        if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
-        if (isFloorBeltRailsKind(kind)) this.syncFloorBeltRailEdges(idx, kind, facingIndex);
-        const floorNavChanged =
-            (isFloorBeltKind(prevKind) || isFloorBeltKind(kind) || isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
+        const floorNavChanged = (isFloorBeltKind(prevKind) || isFloorBeltKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
-        if (edgeChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
@@ -398,25 +386,14 @@ export class WorldObstacleGrid {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
         if (!this.floorStore.hasAnyAtIdx(idx)) return false;
         const kind = this.floorStore.kind[idx];
-        const facingIndex = this.floorStore.facing[idx];
-        if (isFloorBeltRailsKind(kind)) {
-            this.clearFloorBeltRailEdges(idx, kind, facingIndex);
-            bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
-        }
-        if (isFloorBeltKind(kind) || isFloorBeltRailsKind(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        if (isFloorBeltKind(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         this.floorStore.clearAtIdx(idx);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     clearAllFloorCells() {
         const size = this.cols * this.rows;
-        for (let idx = 0; idx < size; idx++) {
-            const kind = this.floorStore.kind[idx];
-            if (!isFloorBeltRailsKind(kind)) continue;
-            this.clearFloorBeltRailEdges(idx, kind, this.floorStore.facing[idx]);
-        }
         this.floorStore.reset(size);
-        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         bumpFloorOccupancyStampDrawRevision(this);
     }
     worldCol(x) {

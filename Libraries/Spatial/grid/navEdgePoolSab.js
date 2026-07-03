@@ -1,7 +1,7 @@
 import { EDGE_KIND } from "./CellEdgeStore.js";
 export const NAV_EDGE_POOL_SAB_STRIDE = 24;
-const KIND_TO_BYTE = { [EDGE_KIND.RailWall]: 1, [EDGE_KIND.BeltRail]: 2 };
-const BYTE_TO_KIND = { 1: EDGE_KIND.RailWall, 2: EDGE_KIND.BeltRail };
+const KIND_TO_BYTE = { [EDGE_KIND.RailWall]: 1 };
+const BYTE_TO_KIND = { 1: EDGE_KIND.RailWall };
 /** @param {number} refCount */
 export function navEdgePoolSabByteLength(refCount) {
     return Math.max(refCount * NAV_EDGE_POOL_SAB_STRIDE, NAV_EDGE_POOL_SAB_STRIDE);
@@ -45,10 +45,6 @@ function readEdgeFromSab(view, ref, out) {
         out.kind = EDGE_KIND.RailWall;
         out.heightDelta = view.getInt16(base + 6, true);
         out.thicknessLevel = view.getUint8(base + 8) || 1;
-        return;
-    }
-    if (kindByte === 2) {
-        out.kind = EDGE_KIND.BeltRail;
         return;
     }
     out.kind = EDGE_KIND.RailWall;

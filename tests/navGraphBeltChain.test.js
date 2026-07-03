@@ -8,7 +8,6 @@ import { commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
 import { canStepPathIdx, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGraphGoalCellIdx } from "../Libraries/Navigation/navGraph.js";
 import { snapNavGoalCell } from "../Libraries/Navigation/snapNavGoal.js";
-import { isBeltRailEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { buildFullRegionGraph, packRegionGraphFlat } from "../Libraries/Pathfinding/hpaRegionGraph.js";
 
@@ -26,15 +25,12 @@ function packedRegionHasEdge(packed, fromRegion, toRegion) {
 }
 
 describe("navGraph belt chain", () => {
-    it("writeNavFloorCell syncs belt rails and local bake blocks wrong-way steps", () => {
+    it("writeNavFloorCell local bake blocks wrong-way steps and allows side entry", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 10 * 16, 10 * 16);
-        writeNavFloorCell(grid, 2 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 3 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 4 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-
-        assert.ok(isBeltRailEdge(grid.edgeStore.getIdx(colRowToIndex(2, 2, grid.cols), 0)));
-        assert.ok(isBeltRailEdge(grid.edgeStore.getIdx(colRowToIndex(2, 2, grid.cols), 2)));
+        writeNavFloorCell(grid, 2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 3 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 4 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
 
         const graph = createNavGraphViewWithLocalBake(grid);
         const cols = grid.cols;
@@ -47,6 +43,8 @@ describe("navGraph belt chain", () => {
         assert.equal(graph.canStepIdx(colRowToIndex(2, 2, cols), colRowToIndex(3, 2, cols)), true);
         assert.equal(graph.canStepIdx(colRowToIndex(3, 2, cols), colRowToIndex(2, 2, cols)), false);
         assert.equal(graph.canStepIdx(colRowToIndex(2, 2, cols), colRowToIndex(2, 3, cols)), false);
+        // Side entry is allowed:
+        assert.equal(graph.canStepIdx(colRowToIndex(2, 3, cols), colRowToIndex(2, 2, cols)), true);
     });
 
     it("snapNavGoal routes through belt entry via navGraph", () => {
@@ -109,9 +107,9 @@ describe("navGraph belt chain", () => {
         const navigation = await createWorkerNavigation(grid);
         state.nav = navigation;
 
-        writeNavFloorCell(grid, 2 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 3 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
-        writeNavFloorCell(grid, 4 + 2 * grid.cols, FLOOR_CELL_KIND.BeltRails, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 3 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        writeNavFloorCell(grid, 4 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
 
         await commitGridNavEditUnion(state, 26, 27, 28);
         await navigation.awaitWorkerNavReady();

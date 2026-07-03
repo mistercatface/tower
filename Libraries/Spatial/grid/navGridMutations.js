@@ -1,5 +1,5 @@
 import { cellBoundsAt, unionCellBounds } from "../../DataStructures/CellRect.js";
-import { setBoundary, reconcileBeltBoundaries, clearBeltBoundariesForCell } from "./boundaryOccupancy.js";
+import { setBoundary } from "./boundaryOccupancy.js";
 import { colRowToIndex } from "./GridUtils.js";
 /** @typedef {import("./boundaryOccupancy.js").BoundaryPrimarySpec} NavEdgeSpec */
 /**

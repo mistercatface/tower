@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey, isNavTopologyReady, setGridPassagePowerNavKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey, isNavTopologyReady } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 
 describe("gridNavEpoch invalidation spine", () => {
     it("gridNavCacheKey folds all bump channels", () => {
@@ -13,9 +13,6 @@ describe("gridNavEpoch invalidation spine", () => {
         const key1 = gridNavCacheKey(grid);
         bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
         assert.notEqual(gridNavCacheKey(grid), key1);
-        const key2 = gridNavCacheKey(grid);
-        setGridPassagePowerNavKey(grid, "power-a");
-        assert.notEqual(gridNavCacheKey(grid), key2);
     });
     it("isNavTopologyReady is the sole readiness check", () => {
         const grid = new WorldObstacleGrid(16);

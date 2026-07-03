@@ -1,5 +1,5 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
-import { isBeltRailEdge, isRailWallEdge, createRailWallEdge, railWallThicknessPx } from "./CellEdgeStore.js";
+import { isRailWallEdge, createRailWallEdge, railWallThicknessPx } from "./CellEdgeStore.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
 export function edgeNeighborIdx(idx, side, cols, rows) {
@@ -87,11 +87,6 @@ export function edgeAt(grid, idx, side) {
     if (idx < 0 || idx >= grid.cols * grid.rows) return null;
     return grid.edgeStore.getIdx(idx, side);
 }
-export function beltRailEdgeAt(grid, idx, side) {
-    const edge = edgeAt(grid, idx, side);
-    if (!isBeltRailEdge(edge)) return null;
-    return edge;
-}
 export function railWallEdgeAt(grid, idx, side) {
     const edge = edgeAt(grid, idx, side);
     if (!isRailWallEdge(edge)) return null;
@@ -101,12 +96,8 @@ export function railWallEdgeShouldEmit(grid, idx, side) {
     if (!railWallEdgeAt(grid, idx, side)) return false;
     return edgeRailEmitOwner(grid, idx, side);
 }
-export function beltRailEdgeShouldEmit(grid, idx, side) {
-    if (!beltRailEdgeAt(grid, idx, side)) return false;
-    return edgeRailEmitOwner(grid, idx, side);
-}
 export function edgeRailCollisionShouldEmit(grid, idx, side) {
-    return beltRailEdgeShouldEmit(grid, idx, side) || railWallEdgeShouldEmit(grid, idx, side);
+    return railWallEdgeShouldEmit(grid, idx, side);
 }
 export function edgeRailCollisionThicknessPx(grid, idx, side) {
     const railEdge = railWallEdgeAt(grid, idx, side);

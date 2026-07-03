@@ -1,21 +1,15 @@
 import { cellInRect, gridSideOutwardVector } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { neighborFillLevel, edgeNeighborIdx, edgeMirrorSide } from "./gridCellTopology.js";
-export const EDGE_KIND = { RailWall: "railWall", Conveyor: "conveyor", BeltRail: "beltRail" };
+export const EDGE_KIND = { RailWall: "railWall" };
 export function createRailWallEdge(heightDelta, thicknessLevel) {
     return { kind: EDGE_KIND.RailWall, heightDelta, thicknessLevel };
-}
-export function createBeltRailEdge() {
-    return { kind: EDGE_KIND.BeltRail };
 }
 export function isRailWallEdge(edge) {
     return edge?.kind === EDGE_KIND.RailWall;
 }
-export function isBeltRailEdge(edge) {
-    return edge?.kind === EDGE_KIND.BeltRail;
-}
 export function edgeBlocksCrossing(edge) {
-    return isRailWallEdge(edge) || isBeltRailEdge(edge);
+    return isRailWallEdge(edge);
 }
 export function railWallCapLevel(edge, neighborFillLevel) {
     return neighborFillLevel + edge.heightDelta;

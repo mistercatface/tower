@@ -1,7 +1,7 @@
 import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { floorBeltFacingFromIndex, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { floorBeltFacingFromIndex, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { stepCardinalFacing } from "../Math/Angle.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
@@ -100,7 +100,6 @@ export function listPlacedFloorBeltsForSnapshot(grid) {
 export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
     const grid = state.obstacleGrid;
     const half = grid.cellHalfSize;
-    let edgeChanged = false;
     const bounds = emptyCellBounds();
     let floorNavChanged = false;
     for (let i = 0; i < floorBelts.length; i++) {
@@ -113,18 +112,11 @@ export function applyFloorBeltsFromGlobal(state, floorBelts, cellSize) {
         const idx = colRowToIndex(col, row, grid.cols);
         const prevKind = grid.floorStore.kind[idx];
         const prevFacing = grid.floorStore.facing[idx];
-        if (isFloorBeltRailsKind(prevKind)) {
-            grid.clearFloorBeltRailEdges(col, row, prevKind, prevFacing);
-            edgeChanged = true;
-        }
         const facing = ((facingIndex % 4) + 4) % 4;
         if (prevKind !== kind || prevFacing !== facing) floorNavChanged = true;
         grid.floorStore.setAtIdx(idx, kind, facing);
-        if (isFloorBeltRailsKind(prevKind) || isFloorBeltRailsKind(kind)) edgeChanged = true;
-        if (isFloorBeltRailsKind(kind)) grid.syncFloorBeltRailEdges(col, row, kind, facing);
         growCellBounds(bounds, col, row);
     }
-    if (edgeChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
     if (isEmptyCellBounds(bounds)) return null;
     markGridZoneSubscriptionsDirty(state);

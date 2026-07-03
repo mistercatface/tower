@@ -1,15 +1,14 @@
-import { createBeltRailEdge, EDGE_KIND, edgeBlocksCrossing, isBeltRailEdge, isRailWallEdge } from "./CellEdgeStore.js";
+import { EDGE_KIND, edgeBlocksCrossing, isRailWallEdge } from "./CellEdgeStore.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
-import { floorBeltEntryExitSides, floorBeltRailEdgeSides, isFloorBeltKind, isFloorBeltRailsKind } from "./FloorCell.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
+import { isFloorBeltKind, floorBeltEntryExitSides } from "./FloorCell.js";
 import { diagonalStepOpen } from "./vertexPassability.js";
 /** @typedef {{ kind: "railWall", capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {RailWallBoundarySpec} BoundaryPrimarySpec */
 export function getBoundary(grid, idx, side) {
     const edge = grid.edgeStore.getIdx(idx, side);
     if (isRailWallEdge(edge)) return { primary: "railWall", edge, beltRail: false };
-    if (isBeltRailEdge(edge)) return { primary: null, edge: null, beltRail: true };
     return { primary: null, edge: null, beltRail: false };
 }
 /**
@@ -51,11 +50,6 @@ export function clearBoundaryAtSide(grid, idx, side, bumpRevision = false) {
     const edge = grid.edgeStore.getIdx(idx, side);
     if (!edge) return false;
     if (isRailWallEdge(edge)) return clearBoundaryPrimary(grid, idx, side, bumpRevision);
-    if (isBeltRailEdge(edge)) {
-        clearDerivedBeltRail(grid, idx, side);
-        if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        return true;
-    }
     return false;
 }
 export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
@@ -63,35 +57,6 @@ export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
     for (let side = 0; side < 4; side++) if (clearBoundaryAtSide(grid, idx, side, bumpRevision)) changed = true;
     if (changed && bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return changed;
-}
-function writeDerivedBeltRail(grid, idx, side) {
-    const edge = grid.edgeStore.getIdx(idx, side);
-    if (isRailWallEdge(edge) || isBeltRailEdge(edge)) return false;
-    const cols = grid.cols;
-    const rows = grid.rows;
-    grid.edgeStore.writeMirrored(idx, side, cols, rows, createBeltRailEdge());
-    return true;
-}
-function clearDerivedBeltRail(grid, idx, side) {
-    const edge = grid.edgeStore.getIdx(idx, side);
-    if (!isBeltRailEdge(edge)) return;
-    const cols = grid.cols;
-    const rows = grid.rows;
-    grid.edgeStore.clearMirrored(idx, side, cols, rows);
-}
-/**
- * Sync lateral beltRail edges after floorStore change. Never overwrites primary boundary.
- */
-export function reconcileBeltBoundaries(grid, idx, kind, facingIndex) {
-    if (!isFloorBeltRailsKind(kind)) return false;
-    const sides = floorBeltRailEdgeSides(kind, facingIndex);
-    let changed = false;
-    for (let i = 0; i < sides.length; i++) if (writeDerivedBeltRail(grid, idx, sides[i])) changed = true;
-    return changed;
-}
-export function clearBeltBoundariesForCell(grid, idx, kind, facingIndex) {
-    const sides = floorBeltRailEdgeSides(kind, facingIndex);
-    for (let i = 0; i < sides.length; i++) clearDerivedBeltRail(grid, idx, sides[i]);
 }
 export function boundaryBlocksStep(grid, idx, side) {
     const edge = grid.edgeStore.getIdx(idx, side);

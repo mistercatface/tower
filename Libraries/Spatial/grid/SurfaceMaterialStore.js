@@ -41,15 +41,15 @@ export class SurfaceMaterialStore {
             this.cellProfileIds.set(nc + nr * newCols, profileId);
         }
         for (const [slot, profileId] of snapshot.edgeProfileIds) {
-            const expIdx = (slot / 2) | 0;
-            const side_type = slot % 2;
-            const col = expIdx % (oldCols + 1);
-            const row = (expIdx / (oldCols + 1)) | 0;
+            const idx = slot >> 2;
+            const side = slot & 3;
+            const col = idx % oldCols;
+            const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (nc < 0 || nc > newCols || nr < 0 || nr > newRows) continue;
-            const newOffset = (nc + nr * (newCols + 1)) * 2 + side_type;
-            this.edgeProfileIds.set(newOffset, profileId);
+            if (nc < 0 || nc >= newCols || nr < 0 || nr >= newRows) continue;
+            const newIdx = nc + nr * newCols;
+            this.edgeProfileIds.set((newIdx << 2) + side, profileId);
         }
         if (snapshot.chunkProfileIds.size > 0 && (!cellsPerChunk || cellsPerChunk <= 0)) throw new Error("Surface material chunk remap requires cellsPerChunk");
         for (const [key, profileId] of snapshot.chunkProfileIds) {

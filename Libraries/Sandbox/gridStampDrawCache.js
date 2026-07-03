@@ -1,25 +1,14 @@
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
-import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind, isFloorBeltRailsKind } from "../Spatial/grid/FloorCell.js";
+import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { floorOccupancyStampDrawCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
-const RAILED_BELT_RAIL_COLORS = { shadow: "#450A0A", mid: "#7F1D1D", highlight: "#991B1B" };
-const RAILED_BELT_RAIL_TOP_COLORS = { light: "#EF4444", mid: "#B91C1C", dark: "#7F1D1D" };
-const RAILED_BELT_RAIL_STROKE = "#3F0707";
-const RAILED_BELT_CHEVRON_COLORS = { fill: "#EF4444", stroke: "#7F1D1D" };
-const railDrawOpts = { railColors: RAILED_BELT_RAIL_COLORS, railTopColors: RAILED_BELT_RAIL_TOP_COLORS, railStroke: RAILED_BELT_RAIL_STROKE, chevronColors: RAILED_BELT_CHEVRON_COLORS };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
-const beltRailsDrawByTurn = {
-    straight: createConveyorDraw(railDrawOpts),
-    left: createConveyorDraw({ turnDirection: "left", ...railDrawOpts }),
-    right: createConveyorDraw({ turnDirection: "right", ...railDrawOpts }),
-};
 function beltDrawForKind(kind) {
     const turn = floorBeltElbowTurn(kind);
-    const table = isFloorBeltRailsKind(kind) ? beltRailsDrawByTurn : beltDrawByTurn;
-    if (turn === "left") return table.left;
-    if (turn === "right") return table.right;
-    return table.straight;
+    if (turn === "left") return beltDrawByTurn.left;
+    if (turn === "right") return beltDrawByTurn.right;
+    return beltDrawByTurn.straight;
 }
 const floorBeltStampProxyProto = {
     ageMs: 0,
