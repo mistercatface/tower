@@ -157,7 +157,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         const sel = session.getSelection();
         if (sel?.kind !== "prop") return null;
         const prop = resolveGroundNavSteeringProp(state, entityMeta(), selectionPropIds(sel));
-        if (!prop) return null;
+        if (!prop || prop.type === "boid_triangle") return null;
         const allowed = listSelectedBehaviors(prop);
         const behavior = behaviorById.get(clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed)) ?? null;
         if (!behavior?.setMoveTarget || !allowed.includes(behavior.id)) return null;
@@ -187,6 +187,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         gestures,
         selectProp,
         togglePropInSelection,
+        issueGroundNavToSelected,
     });
     const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, chainLinkWireTool, corridorLinkWireTool, interactTool, gestureTool, marqueeTool], {

@@ -7,8 +7,26 @@ export function createSandboxPrimaryPointerTools(
     state,
     session,
     behaviors,
-    { entityMeta, listSelectedBehaviors, stampPropBehavior, blocksPlacement, exitWireModes, exitButtonWire, resolveBehavior, resolveGroundMove, gestures, selectProp, togglePropInSelection },
+    {
+        entityMeta,
+        listSelectedBehaviors,
+        stampPropBehavior,
+        blocksPlacement,
+        exitWireModes,
+        exitButtonWire,
+        resolveBehavior,
+        resolveGroundMove,
+        gestures,
+        selectProp,
+        togglePropInSelection,
+        issueGroundNavToSelected,
+    },
 ) {
+    let lastClickTime = 0;
+    let lastClickX = 0;
+    let lastClickY = 0;
+    let lastSelectedBoidId = null;
+    let lastSelectedBoidTime = 0;
     const tryPlaceSpawnAtWorld = (world, options = {}) => {
         if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
         if (!session.spawnAt(world.x, world.y, options)) return false;
@@ -28,6 +46,28 @@ export function createSandboxPrimaryPointerTools(
         isActive: () => true,
         onPointerDown(world, e) {
             if (e.button !== 0) return false;
+            const now = e.timeStamp || Date.now();
+            const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0);
+            if (isDoubleTap && lastSelectedBoidId && now - lastSelectedBoidTime < 500) {
+                selectProp(lastSelectedBoidId);
+                if (issueGroundNavToSelected("rollToCursorHpa", world)) {
+                    lastClickTime = now;
+                    lastClickX = world.x;
+                    lastClickY = world.y;
+                    return true;
+                }
+            }
+            const selectedPropBeforeClick = session.getSelectedProp();
+            if (selectedPropBeforeClick && selectedPropBeforeClick.type === "boid_triangle") {
+                lastSelectedBoidId = selectedPropBeforeClick.id;
+                lastSelectedBoidTime = now;
+            } else {
+                lastSelectedBoidId = null;
+                lastSelectedBoidTime = 0;
+            }
+            lastClickTime = now;
+            lastClickX = world.x;
+            lastClickY = world.y;
             const floorButton = hitTestFloorButton(state, world.x, world.y);
             if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
                 session.sync();
@@ -39,6 +79,14 @@ export function createSandboxPrimaryPointerTools(
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
                 if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
+                if (hit.type === "boid_triangle") {
+                    const prevId = entityMeta().getActiveBehaviorId(hit.id);
+                    if (prevId && prevId !== "dragLaunch") {
+                        const prevBehavior = behaviors.find((b) => b.id === prevId);
+                        if (prevBehavior?.clearMoveTarget) prevBehavior.clearMoveTarget(hit);
+                    }
+                    entityMeta().setActiveBehaviorId(hit.id, "dragLaunch");
+                }
                 const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
                 if (allowed.length > 0) {
                     if (e.ctrlKey || e.metaKey) {

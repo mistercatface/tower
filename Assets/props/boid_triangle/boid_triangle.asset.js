@@ -2,7 +2,7 @@ import { NEUTRAL_SPHERE_VISUALS } from "../shared/neutralCoats.js";
 export default {
     id: "boid_triangle",
     primitive: "sphere",
-    sandbox: { tags: ["shapes", "nav"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 25, maxPower: 500 }, spawnLabel: "Boid triangle" },
+    sandbox: { tags: ["shapes", "nav"], behaviors: ["dragLaunch", "rollToCursorHpa"], dragLaunch: { minPower: 25, maxPower: 500 }, spawnLabel: "Boid triangle" },
     physics: { radius: 4, isKinetic: true, rolls: true, canChain: true, density: 0.007958, friction: 4, wallPhysics: { restitution: 0.35, friction: 0.4 }, quantizeSteps: { facing: 64 } },
     visuals: {
         ...NEUTRAL_SPHERE_VISUALS,
