@@ -52,15 +52,3 @@ export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
 export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
     return entityRegistry.queryView({ bounds: viewport.bounds(tier), kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }
-export function appendPropTileCellOverlayCommands(out, { show, grid, entityRegistry, viewport, spatialFrame }) {
-    if (!show) return;
-    const props = queryPropsInView(entityRegistry, viewport, spatialFrame, { filterId: "propTile" });
-    for (let i = 0; i < props.length; i++) {
-        const prop = props[i];
-        const col = grid.worldCol(prop.x);
-        const row = grid.worldRow(prop.y);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        cellBoundsAtOriginInto(PROP_TILE_CELL_BOUNDS, grid.minX, grid.minY, col, row, grid.cellSize);
-        out.push(overlayGridCellHighlight(PROP_TILE_CELL_BOUNDS, grid.cellSize, "propTile", { fill: "rgba(160, 255, 120, 0.1)", stroke: "rgba(160, 255, 120, 0.5)", lineWidth: 1 }));
-    }
-}

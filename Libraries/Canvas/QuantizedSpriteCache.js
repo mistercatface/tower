@@ -49,6 +49,7 @@ const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex, buildRollOrientKey };
  */
 function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
     const baked = createBakedSpriteCache({ maxItems });
+    const initialMaxItems = maxItems;
     const telemetry = { requests: 0, misses: 0, evictions: 0 };
     const originalOnEvict = baked.cache.onEvict;
     baked.cache.onEvict = (key, value) => {
@@ -73,14 +74,18 @@ function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
             this.telemetry.requests++;
             const cached = baked.get(key);
             if (!cached) this.telemetry.misses++;
-            // Evaluate cache pressure periodically — grow the LRU if evictions are
-            // occurring while requests are still flowing (indicates thrashing).
+            // Evaluate cache pressure every 2000 requests.
+            // Grow the LRU only when the miss rate is high (>20%) AND we are still
+            // evicting entries — that combination reliably indicates the working set
+            // is genuinely larger than the current capacity.
+            // Hard cap at 4× the initial size so a pathological working set cannot
+            // exhaust GPU memory with unbounded ImageBitmap accumulation.
             if (this.telemetry.requests >= 2000) {
-                if (this.telemetry.evictions > 0) {
-                    // Use cache.size as a live proxy for the working set.
-                    const workingSet = baked.cache.size;
-                    if (workingSet > baked.cache.maxSize * 0.8) {
-                        baked.cache.maxSize = Math.max(baked.cache.maxSize, Math.ceil(workingSet * 1.5));
+                const missRate = this.telemetry.misses / this.telemetry.requests;
+                if (this.telemetry.evictions > 0 && missRate > 0.2) {
+                    const cap = initialMaxItems * 4;
+                    if (baked.cache.maxSize < cap) {
+                        baked.cache.maxSize = Math.min(cap, Math.ceil(baked.cache.maxSize * 1.5));
                         this.maxItems = baked.cache.maxSize;
                     }
                 }

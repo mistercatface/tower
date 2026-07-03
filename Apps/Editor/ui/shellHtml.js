@@ -17,8 +17,6 @@ export const TILELAB_UI_HTML = `
         <label class="check-inline"><span>Shadows</span><input type="range" id="editorShadowSlider" min="0" max="100" step="1" value="0"><span class="hint-inline" id="editorShadowValue">Off</span></label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox"> Selection rings</label>
-        <label class="check-inline"><input id="showPropTileCellsInput" type="checkbox"> Prop tile cells</label>
-        <label class="check-inline"><input id="showRoomNodesAlwaysInput" type="checkbox"> Show nodes always</label>
         <span class="sep"></span>
         <button type="button" id="regenerateBtn">Redraw</button>
     </div>

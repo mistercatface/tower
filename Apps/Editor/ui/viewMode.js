@@ -24,8 +24,6 @@ export function applyLabViewChrome(state) {
     if (activeInput) /** @type {HTMLInputElement} */ (activeInput).checked = true;
     document.getElementById("showMapOverviewInput").checked = state.editor.showMapOverview;
     document.getElementById("showSelectionRingsInput").checked = state.editor.showSelectionRings;
-    document.getElementById("showPropTileCellsInput").checked = state.editor.showPropTileCells;
-    document.getElementById("showRoomNodesAlwaysInput").checked = state.editor.showRoomNodesAlways;
 }
 /** @param {import("../state.js").TileLabGameState} state @param {() => void} onChange @param {(() => void) | null} [onLayoutChange] */
 export function bindViewModeControls(state, onChange, onLayoutChange = null) {
@@ -43,12 +41,6 @@ export function bindViewModeControls(state, onChange, onLayoutChange = null) {
     });
     document.getElementById("showSelectionRingsInput").addEventListener("change", (e) => {
         state.editor.showSelectionRings = /** @type {HTMLInputElement} */ (e.target).checked;
-    });
-    document.getElementById("showPropTileCellsInput").addEventListener("change", (e) => {
-        state.editor.showPropTileCells = /** @type {HTMLInputElement} */ (e.target).checked;
-    });
-    document.getElementById("showRoomNodesAlwaysInput").addEventListener("change", (e) => {
-        state.editor.showRoomNodesAlways = /** @type {HTMLInputElement} */ (e.target).checked;
     });
     applyLabViewChrome(state);
 }

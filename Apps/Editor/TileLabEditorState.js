@@ -24,8 +24,6 @@ export class TileLabEditorState {
         this.sidebarPanel = "sandbox";
         this.showMapOverview = true;
         this.showSelectionRings = false;
-        this.showPropTileCells = false;
-        this.showRoomNodesAlways = false;
         this.lockSelection = false;
     }
 }

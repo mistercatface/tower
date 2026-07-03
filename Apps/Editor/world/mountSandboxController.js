@@ -25,11 +25,8 @@ function createSandboxBehaviors(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playMode?: boolean }} [options] */
 export function mountSandboxController(state, { playMode = false } = {}) {
-    if (playMode) {
-        state.editor.showSelectionRings = false;
-        state.editor.showPropTileCells = false;
-        state.editor.showRoomNodesAlways = false;
-    } else
+    if (playMode) state.editor.showSelectionRings = false;
+    else
         state.sandbox.simulationFrameHooks = {
             beforePhysics() {
                 state.nav.session.beginFrame();

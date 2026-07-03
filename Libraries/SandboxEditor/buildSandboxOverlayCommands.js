@@ -2,7 +2,7 @@ import { appendPathOverlayCommands } from "../Render/overlays/pathOverlayCommand
 import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
 import { appendChainLinkWireOverlayCommands } from "../Sandbox/chainLinks.js";
 import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";
-import { appendMarqueeOverlayCommands, appendPropTileCellOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
+import { appendMarqueeOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isChainSteeringTarget } from "../Sandbox/chainLinks.js";
@@ -32,7 +32,6 @@ export function buildSandboxOverlayCommands({
         wireFromPropId: chainLinkWireTool.isActive() ? chainLinkWireTool.getFromPropId() : null,
         wireCursor: chainLinkWireTool.isActive() ? chainLinkWireTool.getCursor() : null,
     });
-    if (state.editor.showRoomNodesAlways) appendKineticConstraintOverlayCommands(commands, state);
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
@@ -58,7 +57,6 @@ export function buildSandboxOverlayCommands({
         selectedRailEdge: sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null,
         grid: state.obstacleGrid,
     });
-    appendPropTileCellOverlayCommands(commands, { show: state.editor.showPropTileCells, grid: state.obstacleGrid, entityRegistry: state.entityRegistry, viewport, spatialFrame });
     appendMarqueeOverlayCommands(commands, { marqueeRect });
     state.appLaunch?.session?.appendOverlayCommands?.(commands, state, sel);
     const behavior = resolveBehavior();
