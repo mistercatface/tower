@@ -17,6 +17,13 @@ if (typeof globalThis.OffscreenCanvas === "undefined") {
         }
     };
 }
+if (typeof globalThis.createImageBitmap === "undefined") {
+    globalThis.createImageBitmap = async (source) => ({
+        width: source.width ?? 0,
+        height: source.height ?? 0,
+        close() {},
+    });
+}
 
 after(async () => {
     await Promise.race([
