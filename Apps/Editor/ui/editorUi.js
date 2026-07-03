@@ -20,15 +20,16 @@ let mapCanvasResize = null;
 let layoutResizePending = false;
 /** @type {{ mark: () => void, repaintMapOverview: () => void } | null} */
 let labCanvasResizeHooks = null;
-
 export function fitEditorCanvasToStage(state) {
     const stage = document.getElementById("mapStage");
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
     const canvas = state.editor.canvas;
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    state.viewport.setCanvasSize(rect.width, rect.height);
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        state.viewport.setCanvasSize(rect.width, rect.height);
+    }
 }
 /** @param {import("../state.js").TileLabGameState} state */
 function computeMapColumnSlotMax(state) {
@@ -62,20 +63,16 @@ function onMapCanvasResize(state, size) {
     labCanvasResizeHooks?.repaintMapOverview();
 }
 function resizeCanvases(state) {
-    if (document.body.classList.contains("hide-sidebar")) {
-        fitEditorCanvasToStage(state);
-    } else {
-        layoutResizePending = true;
-    }
+    layoutResizePending = true;
 }
 /** @param {import("../state.js").TileLabGameState} state */
 export function flushEditorLayoutResize(state) {
+    if (!layoutResizePending) return;
+    layoutResizePending = false;
     if (document.body.classList.contains("hide-sidebar")) {
         fitEditorCanvasToStage(state);
         return;
     }
-    if (!layoutResizePending) return;
-    layoutResizePending = false;
     fitMapColumnCanvases(state);
     if (!mapCanvasResize) onMapCanvasResize(state, state.editor.canvas.width);
     requestMapOverviewRepaint();
@@ -135,9 +132,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     );
     void initTileLabWorld(state).then(async () => {
         resizeCanvases(state);
-        if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) {
-            await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
-        }
+        if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
         drawLabAndWaitForBakes();
     });
     mountTilelabSandbox(state);
@@ -158,9 +153,8 @@ export function mountEditorUi(state, { playbackHandlers }) {
     );
     syncWorldRenderModeUi(state);
     fitLabStageToView(state);
-    if (document.body.classList.contains("hide-sidebar")) {
-        fitEditorCanvasToStage(state);
-    } else {
+    if (document.body.classList.contains("hide-sidebar")) fitEditorCanvasToStage(state);
+    else {
         const { main } = EDITOR_CANVAS_DEFAULTS;
         mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
             host: document.getElementById("mapStage"),
