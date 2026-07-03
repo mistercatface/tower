@@ -1,13 +1,14 @@
 import { collisionSettings } from "../../Motion/physicsDefaults.js";
 import { allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./entityBroadphase.js";
 import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./kineticBodySlab.js";
+import { SHAPE_TYPE_ID } from "./Shapes.js";
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
 export function classifyKineticPairTier(bodyA, bodyB) {
     if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_TIER.COMPOUND;
     const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
     const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
-    if (shapeA?.type === "Circle" && shapeB?.type === "Circle") return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
-    if (shapeA?.type === "Circle" || shapeB?.type === "Circle") return KINETIC_PAIR_TIER.CIRCLE_POLY;
+    if (shapeA?.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB?.shapeTypeId === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
+    if (shapeA?.shapeTypeId === SHAPE_TYPE_ID.Circle || shapeB?.shapeTypeId === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_POLY;
     return KINETIC_PAIR_TIER.POLY_POLY;
 }
 import { shareKineticIsland } from "../../Motion/kineticIslands.js";

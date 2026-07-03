@@ -1,7 +1,6 @@
 /** @typedef {{ c0: number, c1: number, r0: number, r1: number }} RoomRect */
 /** @typedef {{ originCol: number, originRow: number, cols: number, rows: number }} CorridorSearchBounds */
 import { createCellIndexLayout, layoutCellRows, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
-import { collectCorridorPathPointCells } from "./corridorFootprint.js";
 /** @param {RoomRect[]} rooms @param {number} [pad] */
 export function corridorSearchBounds(rooms, pad = 12) {
     let c0 = Infinity;

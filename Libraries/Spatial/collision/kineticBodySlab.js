@@ -1,4 +1,4 @@
-import { createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
+import { createBroadphaseBounds, pairBroadphaseBoundsOverlap, BROADPHASE_KIND } from "./Broadphase.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../../Motion/bodyMass.js";
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
@@ -32,7 +32,7 @@ const SLAB_SCRATCH_A = createBroadphaseBounds();
 const SLAB_SCRATCH_B = createBroadphaseBounds();
 export function writeBroadphaseFromBounds(physId, bounds) {
     const slab = kineticDynamicSlab;
-    if (bounds.kind === "circle") {
+    if (bounds.kind === BROADPHASE_KIND.Circle) {
         slab.bpKind[physId] = BP_KIND_CIRCLE;
         slab.r[physId] = bounds.r;
         return;
@@ -175,11 +175,11 @@ function readSlabIntoBounds(physId, out) {
     out.cx = slab.x[physId];
     out.cy = slab.y[physId];
     if (slab.bpKind[physId] === BP_KIND_CIRCLE) {
-        out.kind = "circle";
+        out.kind = BROADPHASE_KIND.Circle;
         out.r = slab.r[physId];
         return out;
     }
-    out.kind = "obb";
+    out.kind = BROADPHASE_KIND.Obb;
     out.hx = slab.hx[physId];
     out.hy = slab.hy[physId];
     out.cos = slab.cos[physId];

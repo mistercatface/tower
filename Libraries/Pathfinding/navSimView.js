@@ -28,8 +28,8 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
         floorStore: {
             kind: floorKind,
             facing: floorFacing,
-            isBeltKindAtIdx(idx) {
-                return isFloorBeltKind(floorKind[idx]);
+            hasAnyAtIdx(idx) {
+                return floorKind[idx] !== 0;
             },
         },
         isBlocked(col, row) {

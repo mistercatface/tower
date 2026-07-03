@@ -7,7 +7,6 @@ export {
     corridorPathsToOccupiedCellIndices,
     corridorPathsToOccupiedCellIndicesUniform,
     corridorPerpendicularOffsets,
-    collectCorridorPathPointCells,
 } from "./corridorFootprint.js";
 export {
     listFacingWallSlots,

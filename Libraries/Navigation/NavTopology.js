@@ -19,7 +19,7 @@ export class NavTopology {
     constructor(grid, { worker = null } = {}) {
         this.grid = grid;
         /** @type {HpaPathWorker | null} */
-        this._worker = worker ?? null;
+        this._worker = worker;
         /** @type {import("../Pathfinding/GridNavSnapshot.js").GridFrame | null} */
         this._frame = null;
         /** @type {import("../Pathfinding/navTopologySab.js").NavTopology | null} */
@@ -68,17 +68,14 @@ export class NavTopology {
     }
     /** Octile CSR step — movement, HPA, flow. */
     canStep(fromIdx, toIdx) {
+        if (!this.isReady()) return false;
         const frame = this.frame;
         const topology = this.topology;
-        if (!frame || !topology) return false;
-        return navCanStep(frame, topology, fromIdx, toIdx);
-    }
-    /** Cardinal / vertex step — belt mouths, map-gen heuristics. */
-    canStepCardinal(fromIdx, toIdx) {
+        if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);
         const cardinalOpen = this.navCardinalOpen;
         const vertexPassability = this.vertexPassability;
-        if (!cardinalOpen || !vertexPassability) return false;
-        return !boundaryBlocksStepFrom(this.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
+        if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
+        return false;
     }
     /**
      * In-process bake using the same functions as the worker (authoring / map-gen).

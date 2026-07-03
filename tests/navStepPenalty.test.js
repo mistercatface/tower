@@ -11,7 +11,7 @@ describe("nav step penalty", () => {
         const rows = 3;
         const navGraph = { canStep: () => true };
         const searchState = new SearchState(cols * rows);
-        const penalty = createNavStepPenaltyLookup(cols, [packCellKey(2, 1)], [100]);
+        const penalty = createNavStepPenaltyLookup(cols, [2 + 1 * cols], [100]);
         const gridView = new FlatGridView(cols, rows, { blocked: null, canStep: () => true });
         const search = new FlatGridSearch(searchState, penalty);
         search.grid = gridView;

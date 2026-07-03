@@ -1,6 +1,8 @@
+export const SHAPE_TYPE_ID = { Circle: 1, Polygon: 2 };
 export class Shape {
     constructor() {
         this.type = "Shape";
+        this.shapeTypeId = 0;
     }
     getBoundingRadius() {
         return 0;
@@ -10,6 +12,7 @@ export class CircleShape extends Shape {
     constructor(radius) {
         super();
         this.type = "Circle";
+        this.shapeTypeId = SHAPE_TYPE_ID.Circle;
         this.radius = radius;
     }
     getBoundingRadius() {
@@ -21,6 +24,7 @@ export class PolygonShape extends Shape {
     constructor(vertices) {
         super();
         this.type = "Polygon";
+        this.shapeTypeId = SHAPE_TYPE_ID.Polygon;
         let verts = vertices instanceof Float32Array ? vertices : new Float32Array(vertices);
         const count = verts.length / 2;
         if (count >= 3) {

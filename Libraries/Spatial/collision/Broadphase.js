@@ -1,9 +1,10 @@
-import { normalizeXY } from "../../Math/Vec2.js";
 import { computeCompoundLocalBounds, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
-/** @typedef {{ kind: "circle", cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
+import { SHAPE_TYPE_ID } from "./Shapes.js";
+export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
+/** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
 /** @returns {BroadphaseBounds} */
 export function createBroadphaseBounds() {
-    return { kind: "circle", cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
+    return { kind: BROADPHASE_KIND.Circle, cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
 }
 function intervalsSeparatedObbObb(ax, ay, a, b) {
     const ca = a.cx * ax + a.cy * ay;
@@ -31,8 +32,8 @@ function circleObbOverlap(circle, obb) {
     if (intervalsSeparatedCircleObb(-obb.sin, obb.cos, circle, obb)) return false;
     const dx = circle.cx - obb.cx;
     const dy = circle.cy - obb.cy;
-    const { nx, ny, len } = normalizeXY(dx, dy);
-    if (len > 1e-6) if (intervalsSeparatedCircleObb(nx, ny, circle, obb)) return false;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len > 1e-6) if (intervalsSeparatedCircleObb(dx / len, dy / len, circle, obb)) return false;
     return true;
 }
 const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -45,7 +46,7 @@ export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle
     const localCy = (bounds.minY + bounds.maxY) * 0.5;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    out.kind = "obb";
+    out.kind = BROADPHASE_KIND.Obb;
     out.cx = cx + localCx * cos - localCy * sin;
     out.cy = cy + localCx * sin + localCy * cos;
     out.cos = cos;
@@ -55,15 +56,15 @@ export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle
     return out;
 }
 export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
-    if (shape.type === "Circle") {
-        out.kind = "circle";
+    if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+        out.kind = BROADPHASE_KIND.Circle;
         out.cx = cx;
         out.cy = cy;
         out.r = shape.radius;
         return out;
     }
-    if (shape.type === "Polygon") {
-        out.kind = "obb";
+    if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
+        out.kind = BROADPHASE_KIND.Obb;
         out.cx = cx;
         out.cy = cy;
         out.cos = Math.cos(angle);
@@ -73,7 +74,7 @@ export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
         out.hy = span.y;
         return out;
     }
-    out.kind = "circle";
+    out.kind = BROADPHASE_KIND.Circle;
     out.cx = cx;
     out.cy = cy;
     out.r = shape.radius || 0;
@@ -83,14 +84,14 @@ export function broadphaseBoundsFromShape(shape, cx, cy, angle = 0) {
     return broadphaseBoundsFromShapeInto(createBroadphaseBounds(), shape, cx, cy, angle);
 }
 export function pairBroadphaseBoundsOverlap(a, b) {
-    if (a.kind === "circle" && b.kind === "circle") {
+    if (a.kind === BROADPHASE_KIND.Circle && b.kind === BROADPHASE_KIND.Circle) {
         const dx = a.cx - b.cx;
         const dy = a.cy - b.cy;
         const radii = a.r + b.r;
         return dx * dx + dy * dy < radii * radii;
     }
-    if (a.kind === "circle" && b.kind === "obb") return circleObbOverlap(a, b);
-    if (a.kind === "obb" && b.kind === "circle") return circleObbOverlap(b, a);
-    if (a.kind === "obb" && b.kind === "obb") return obbObbOverlap(a, b);
+    if (a.kind === BROADPHASE_KIND.Circle && b.kind === BROADPHASE_KIND.Obb) return circleObbOverlap(a, b);
+    if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Circle) return circleObbOverlap(b, a);
+    if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Obb) return obbObbOverlap(a, b);
     return false;
 }

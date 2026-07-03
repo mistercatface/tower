@@ -8,8 +8,14 @@ export function snapMoveTargetToCellCenter(grid, world) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
     return { world: grid.gridToWorld(col, row), col, row };
 }
-export function getKineticRollConfig(prop, overrides = {}) {
-    return { ...physicsSettings.groundNavRoll, ...prop.strategy.groundNav, ...overrides };
+export function getKineticRollConfig(prop, overrides = null) {
+    let base = prop._cachedRollBaseConfig;
+    if (!base) {
+        base = { ...physicsSettings.groundNavRoll, ...prop.strategy?.groundNav };
+        prop._cachedRollBaseConfig = base;
+    }
+    if (overrides && Object.keys(overrides).length > 0) return { ...base, ...overrides };
+    return base;
 }
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;

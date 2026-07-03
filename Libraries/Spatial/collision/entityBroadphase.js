@@ -2,7 +2,7 @@ import { collisionSettings } from "../../Motion/physicsDefaults.js";
 import { computeCompoundLocalBounds } from "../../Math/Poly2D.js";
 import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
-import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap } from "./Broadphase.js";
+import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap, BROADPHASE_KIND } from "./Broadphase.js";
 import {
     BP_KIND_CIRCLE,
     kineticDynamicSlab,
@@ -50,7 +50,7 @@ export function invalidateBroadphaseBounds(entity) {
 const ENTITY_AABB_SCRATCH = createAabb();
 export function entityBroadphaseAabbInto(out, entity) {
     const bb = getBroadphaseBounds(entity);
-    if (bb.kind === "circle") {
+    if (bb.kind === BROADPHASE_KIND.Circle) {
         out.minX = bb.cx - bb.r;
         out.minY = bb.cy - bb.r;
         out.maxX = bb.cx + bb.r;
@@ -112,7 +112,7 @@ export function getBroadphaseBounds(entity) {
 }
 export function entityBroadphaseExtent(entity) {
     const bounds = getBroadphaseBounds(entity);
-    if (bounds.kind === "circle") return bounds.r;
+    if (bounds.kind === BROADPHASE_KIND.Circle) return bounds.r;
     return lengthXY(bounds.hx, bounds.hy);
 }
 export function isMovingEntity(entity) {

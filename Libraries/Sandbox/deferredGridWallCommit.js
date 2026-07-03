@@ -29,7 +29,7 @@ export function createDeferredGridWallCommit(state) {
             let changed = false;
             for (let i = 0; i < rails.length; i++) {
                 const { idx, side } = rails[i];
-                if (clearPrimaryBoundaryAt(state, idx, side) === "railWall") {
+                if (clearPrimaryBoundaryAt(state, idx, side)) {
                     pending.add(idx);
                     changed = true;
                 }

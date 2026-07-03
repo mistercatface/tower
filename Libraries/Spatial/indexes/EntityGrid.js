@@ -4,6 +4,10 @@ import { entityBroadphaseExtent, maxNeighborQueryPad, neighborQueryPadFor } from
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 import { MAX_ENTITIES } from "../../../Core/engineLimits.js";
+let CURRENT_COLLECT_OUT = null;
+const COLLECT_NEARBY_PUSH = (other) => {
+    CURRENT_COLLECT_OUT.push(other);
+};
 export class EntityGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
@@ -150,9 +154,9 @@ export class EntityGrid {
         this.queryGen++;
         const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + neighborQueryPadFor(entity);
         centerReachAabbInto(this.queryBoundsScratch, entity.x, entity.y, searchRadius);
-        this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, (other) => {
-            out.push(other);
-        });
+        CURRENT_COLLECT_OUT = out;
+        this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, COLLECT_NEARBY_PUSH);
+        CURRENT_COLLECT_OUT = null;
         return out;
     }
 }

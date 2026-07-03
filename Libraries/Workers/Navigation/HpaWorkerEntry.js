@@ -9,23 +9,14 @@ import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../DataStructures/CellKey.js";
 export function createNavStepPenaltyLookup(cols, keys, costs) {
-    if (!keys.length) return null;
+    if (!keys || !keys.length) return null;
     let maxIdx = 0;
     for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
-        const col = key % KEY_STRIDE;
-        const row = (key / KEY_STRIDE) | 0;
-        const idx = row * cols + col;
+        const idx = keys[i];
         if (idx > maxIdx) maxIdx = idx;
     }
     const costArray = new Uint8Array(maxIdx + 1);
-    for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
-        const col = key % KEY_STRIDE;
-        const row = (key / KEY_STRIDE) | 0;
-        const idx = row * cols + col;
-        costArray[idx] = costs[i];
-    }
+    for (let i = 0; i < keys.length; i++) costArray[keys[i]] = costs[i];
     return {
         extraCost(idx) {
             return idx < costArray.length ? costArray[idx] : 0;

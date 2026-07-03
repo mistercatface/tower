@@ -24,9 +24,13 @@ function globalCellForGridCell(grid, col, row) {
 }
 export function filterWalkableCellsInBounds(cells, grid, boundsConfig) {
     const filtered = [];
+    const cols = grid.cols;
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        const { globalCol, globalRow } = globalCellForGridCell(grid, cell.col, cell.row);
+        const idx = typeof cell === "number" ? cell : cell.col + cell.row * cols;
+        const row = (idx / cols) | 0;
+        const col = idx - row * cols;
+        const { globalCol, globalRow } = globalCellForGridCell(grid, col, row);
         if (isGlobalCellInMapGenBounds(boundsConfig, globalCol, globalRow)) filtered.push(cell);
     }
     return filtered;
@@ -42,7 +46,8 @@ export function collectWalkableCells(state, boundsConfig = state.editor.cavernCo
         const col = grid.worldCol(globalCol * cellSize);
         const row = grid.worldRow(globalRow * cellSize);
         if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        if (grid.isBlocked(col, row)) return;
+        const idx = col + row * grid.cols;
+        if (grid.isBlockedIdx(idx)) return;
         open.push({ col, row });
     });
     state.sandbox._walkableCellsCache = { epoch, boundsConfig, cells: open };
@@ -53,14 +58,15 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
     const navTopology = state.nav.topology;
     const boundsConfig = cache.boundsConfig;
     const { cols } = grid;
-    cache.candidates = cache.candidates.filter((cell) => {
-        if (cell.col < patchBounds.startCol || cell.col > patchBounds.endCol || cell.row < patchBounds.startRow || cell.row > patchBounds.endRow) return true;
-        const idx = cell.col + cell.row * cols;
+    cache.candidates = cache.candidates.filter((idx) => {
+        const row = (idx / cols) | 0;
+        const col = idx - row * cols;
+        if (col < patchBounds.startCol || col > patchBounds.endCol || row < patchBounds.startRow || row > patchBounds.endRow) return true;
         const walkable = isNavWalkableCell(grid, navTopology, idx);
         cache.candidateMask[idx] = walkable ? 1 : 0;
         return walkable;
     });
-    const seen = new Set(cache.candidates.map((cell) => cell.col + cell.row * cols));
+    const seen = new Set(cache.candidates);
     forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (col, row) => {
         const { globalCol, globalRow } = globalCellForGridCell(grid, col, row);
         const idx = col + row * cols;
@@ -74,7 +80,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
             return;
         }
         cache.candidateMask[idx] = 1;
-        cache.candidates.push({ col, row });
+        cache.candidates.push(idx);
         seen.add(idx);
     });
 }
@@ -82,10 +88,7 @@ function writeNavWalkableFlagsInRect(flags, cols, cells, patchBounds) {
     forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (_col, _row, idx) => {
         flags[idx] = 0;
     });
-    for (let i = 0; i < cells.length; i++) {
-        const { col, row } = cells[i];
-        flags[colRowToIndex(col, row, cols)] = 1;
-    }
+    for (let i = 0; i < cells.length; i++) flags[cells[i]] = 1;
 }
 function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const grid = state.obstacleGrid;
@@ -130,7 +133,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
         if (!isNavWalkableCell(grid, navTopology, idx)) return;
         if (seen[idx]) return;
         seen[idx] = 1;
-        candidates.push({ col, row });
+        candidates.push(idx);
     });
     let seedCells = candidates;
     if (floodSeedBounds) {
@@ -185,7 +188,7 @@ export function isNavWalkableCellAt(state, col, row, boundsConfig = state.editor
  * When damageBounds is set, only re-evaluates walkability and flood connectivity around the edit.
  * No-op when no snake/nav bounds cache exists yet.
  * @param {object} state
- * @param {import("../../DataStructures/CellRect.js").CellBounds | null} [damageBounds]
+ * @param {number | null} idx
  */
 export function patchNavWalkableCellIndex(state, idx = null) {
     const cache = state.sandbox._navWalkableCellsCache;
@@ -194,9 +197,20 @@ export function patchNavWalkableCellIndex(state, idx = null) {
     return patchNavWalkableCellIndexRegion(state, cache, idx);
 }
 export function pickWalkableCell(openCells, cols, excludeIndices = null, rng = Math.random) {
-    const candidates = excludeIndices ? openCells.filter((cell) => !excludeIndices.has(cellIndex(cell.col, cell.row, cols))) : openCells;
+    const candidates = excludeIndices
+        ? openCells.filter((cell) => {
+              const idx = typeof cell === "number" ? cell : cell.col + cell.row * cols;
+              return !excludeIndices.has(idx);
+          })
+        : openCells;
     if (!candidates.length) return null;
-    return candidates[Math.floor(rng() * candidates.length)];
+    const picked = candidates[Math.floor(rng() * candidates.length)];
+    if (typeof picked === "number") {
+        const row = (picked / cols) | 0;
+        const col = picked - row * cols;
+        return { col, row };
+    }
+    return picked;
 }
 export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null, filterBoundsConfig = null) {
     let cells = getNavWalkableCells(state, boundsConfig, floodSeedBounds);

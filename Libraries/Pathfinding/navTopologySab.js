@@ -104,7 +104,7 @@ export function expandNavTopologyBakeBounds(bounds, cols, rows, padding = 1) {
     return padCellBoundsToGrid(bounds, cols, rows, padding);
 }
 export function packNavTopologyFromGrid(grid, arena, idx = null) {
-    const cols = grid.cols;
+    const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
         arena.gridFill.set(grid.grid);
         arena.floorKind.set(grid.floorStore.kind);
@@ -112,12 +112,24 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
         arena.edgeSlots.set(grid.edgeStore.slots);
         return;
     }
-    arena.gridFill[idx] = grid.grid[idx];
-    arena.floorKind[idx] = grid.floorStore.kind[idx];
-    arena.floorFacing[idx] = grid.floorStore.facing[idx];
-    for (let side = 0; side < 4; side++) {
-        const offset = cellEdgeSlotOffset(idx, side);
-        arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
+    if (isBounds)
+        forEachDenseCellInBounds(idx, grid.cols, (col, row, cellIdx) => {
+            arena.gridFill[cellIdx] = grid.grid[cellIdx];
+            arena.floorKind[cellIdx] = grid.floorStore.kind[cellIdx];
+            arena.floorFacing[cellIdx] = grid.floorStore.facing[cellIdx];
+            for (let side = 0; side < 4; side++) {
+                const offset = cellEdgeSlotOffset(cellIdx, side);
+                arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
+            }
+        });
+    else {
+        arena.gridFill[idx] = grid.grid[idx];
+        arena.floorKind[idx] = grid.floorStore.kind[idx];
+        arena.floorFacing[idx] = grid.floorStore.facing[idx];
+        for (let side = 0; side < 4; side++) {
+            const offset = cellEdgeSlotOffset(idx, side);
+            arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
+        }
     }
 }
 /** @param {Uint8Array} gridFill @param {Uint8Array} blocked @param {number} cols @param {number | null} idx */

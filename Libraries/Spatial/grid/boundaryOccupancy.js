@@ -1,12 +1,8 @@
 import { isRailWallEdge, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
-import { neighborFillLevel } from "./gridCellTopology.js";
-import { beltEntryExitAtIdx } from "./FloorCell.js";
-import { colRowToIndex } from "./GridUtils.js";
-/** True when a rail-wall edge occupies this cell side. */
-export function getBoundary(grid, idx, side) {
-    return isRailWallEdge(grid.edgeStore.getIdx(idx, side));
-}
+import { neighborFillLevel, edgeMirrorSide } from "./gridCellTopology.js";
+import { beltEntryExitAtIdx, gridSideFromCellIdxToNeighborIdx } from "./FloorCell.js";
+import { colRowToIndex, forEachCardinalNeighborIdx } from "./GridUtils.js";
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
@@ -37,20 +33,12 @@ export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
 export function boundaryBlocksStep(grid, idx, side) {
     return isRailWallEdge(grid.edgeStore.getIdx(idx, side));
 }
-function cardinalStepSide(cols, fromIdx, toIdx) {
-    const diff = toIdx - fromIdx;
-    if (diff === 1) return 1;
-    if (diff === -1) return 3;
-    if (diff === cols) return 2;
-    if (diff === -cols) return 0;
-    return -1;
-}
 function oppositeSide(side) {
-    return side < 0 ? -1 : (side + 2) % 4;
+    return side < 0 ? -1 : edgeMirrorSide(side);
 }
 function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     const cols = grid.cols;
-    const stepSide = cardinalStepSide(cols, fromIdx, toIdx);
+    const stepSide = gridSideFromCellIdxToNeighborIdx(fromIdx, toIdx, cols);
     const fromBelt = beltEntryExitAtIdx(grid, fromIdx);
     const toBelt = beltEntryExitAtIdx(grid, toIdx);
     if (!fromBelt && !toBelt) return false;
@@ -125,26 +113,15 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
                 continue;
             }
             let mask = 0;
-            // East
-            if (col < cols - 1) {
-                const nIdx = idx + 1;
-                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 1;
-            }
-            // South
-            if (row < rows - 1) {
-                const nIdx = idx + cols;
-                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 2;
-            }
-            // West
-            if (col > 0) {
-                const nIdx = idx - 1;
-                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 4;
-            }
-            // North
-            if (row > 0) {
-                const nIdx = idx - cols;
-                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 8;
-            }
+            forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) {
+                    const diff = nIdx - idx;
+                    if (diff === 1) mask |= 1;
+                    else if (diff === cols) mask |= 2;
+                    else if (diff === -1) mask |= 4;
+                    else if (diff === -cols) mask |= 8;
+                }
+            });
             cardinalOpen[idx] = mask;
         }
 }

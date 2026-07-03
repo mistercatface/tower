@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { findSabPathProgressIdx, computeSabPathSteering } from "../Libraries/Pathfinding/hpaPathSlot.js";
 async function createGridWithNav() {
     const grid = new WorldObstacleGrid(16);

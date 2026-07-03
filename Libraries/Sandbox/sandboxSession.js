@@ -94,7 +94,7 @@ export function createSandboxSession(state) {
         const placed = [];
         const size = grid.cols * grid.rows;
         for (let idx = 0; idx < size; idx++) {
-            if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
+            if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
             const kind = grid.floorStore.kind[idx];
             const col = idx % grid.cols;
             const row = (idx / grid.cols) | 0;
@@ -165,19 +165,22 @@ export function createSandboxSession(state) {
             if (!floorCell) return false;
             const { col, row } = floorCell;
             const idx = col + row * state.obstacleGrid.cols;
-            if (!state.obstacleGrid.floorStore.isBeltKindAtIdx(idx)) {
+            if (!state.obstacleGrid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
                 return false;
             }
-            if (!rotateGridOccupantAt(state, { col, row }, steps)) return false;
+            if (!rotateGridOccupantAt(state, idx, steps)) return false;
             notifyUi();
             return true;
         },
         rotateHoveredGridOccupantAtWorld(worldX, worldY, steps = 1) {
-            const occupant = pickRotatableGridOccupantAtWorld(state, worldX, worldY);
-            if (!occupant) return false;
-            if (!rotateGridOccupantAt(state, occupant, steps)) return false;
-            pickSelection({ kind: "floor", col: occupant.col, row: occupant.row });
+            const occupantIdx = pickRotatableGridOccupantAtWorld(state, worldX, worldY);
+            if (occupantIdx === -1) return false;
+            if (!rotateGridOccupantAt(state, occupantIdx, steps)) return false;
+            const cols = state.obstacleGrid.cols;
+            const row = (occupantIdx / cols) | 0;
+            const col = occupantIdx - row * cols;
+            pickSelection({ kind: "floor", col, row });
             return true;
         },
         moveSelectedFloorBeltTo(targetCol, targetRow) {
@@ -187,7 +190,7 @@ export function createSandboxSession(state) {
             const { col, row } = floorCell;
             if (col === targetCol && row === targetRow) return true;
             const idx = col + row * grid.cols;
-            if (!grid.floorStore.isBeltKindAtIdx(idx)) {
+            if (!grid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
                 return false;
             }
@@ -211,7 +214,7 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
             const idx = col + row * grid.cols;
-            if (!grid.floorStore.isBeltKindAtIdx(idx)) {
+            if (!grid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
                 return false;
             }
@@ -226,7 +229,7 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             const { col, row } = floorCell;
             const idx = col + row * grid.cols;
-            if (grid.floorStore.isBeltKindAtIdx(idx)) {
+            if (grid.floorStore.hasAnyAtIdx(idx)) {
                 if (!clearFloorCellNavEdit(state, idx)) return false;
             } else if (!grid.clearFloorCell(idx)) return false;
             else markGridZoneSubscriptionsDirty(state);

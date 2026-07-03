@@ -1,6 +1,6 @@
-import { collectCorridorPathPointCells, collectCorridorPathPointIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
+import { collectCorridorPathPointIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
-import { createCellIndexLayout, layoutAbsCellIndex, layoutAbsToLocalCell, layoutContainsAbsCell, layoutLocalCellIndex, layoutLocalToAbsCell } from "../Spatial/grid/GridUtils.js";
+import { createCellIndexLayout, layoutAbsCellIndex, layoutLocalCellIndex, layoutLocalToAbsCell } from "../Spatial/grid/GridUtils.js";
 import {
     DEFAULT_RAIL_WALL_HEIGHT_LEVEL,
     DEFAULT_RAIL_WALL_THICKNESS_LEVEL,
@@ -9,6 +9,7 @@ import {
     resolveRailWallThicknessLevel,
     roomWallGapKeysWorld,
 } from "./roomGraphClosedRooms.js";
+import { packEdgeCellKey } from "../DataStructures/CellKey.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
 /** @typedef {import("./roomGraphClosedRooms.js").RailWall} RailWall */
@@ -16,11 +17,11 @@ import {
 export const DEFAULT_CORRIDOR_EGRESS_CELLS = 2;
 /** @param {RailWall} wall */
 function railWallEdgeKey(wall) {
-    return `${wall.col},${wall.row},${wall.side}`;
+    return packEdgeCellKey(wall.col, wall.row, wall.side);
 }
 /** @param {RailWall[]} rails */
 function dedupeRailWallsByEdge(rails) {
-    /** @type {Set<string>} */
+    /** @type {Set<number>} */
     const seen = new Set();
     /** @type {RailWall[]} */
     const out = [];
@@ -33,34 +34,21 @@ function dedupeRailWallsByEdge(rails) {
     }
     return out;
 }
-/** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {Cell[]} path @param {number} corridorWidth @param {Uint8Array} roomFootprintMask */
+/** @param {Uint8Array} mask @param {{ originCol: number, originRow: number, cols: number, rows: number }} bounds @param {number[]} path @param {number} corridorWidth @param {Uint8Array} roomFootprintMask */
 function stampCorridorTubeLocal(mask, bounds, path, corridorWidth, roomFootprintMask) {
     const layout = createCellIndexLayout(bounds.originCol, bounds.originRow, bounds.cols, bounds.rows);
-    for (let i = 0; i < path.length; i++)
-        if (typeof path[i] === "number") {
-            const pIdx = path[i];
-            const prevIdx = i > 0 ? path[i - 1] : undefined;
-            const nextIdx = i + 1 < path.length ? path[i + 1] : undefined;
-            const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, corridorWidth, false, i, path.length, layout);
-            for (let ci = 0; ci < cells.length; ci++) {
-                const idx = cells[ci];
-                if (idx < 0 || idx >= layout.cellCount) continue;
-                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
-                mask[idx] = 1;
-            }
-        } else {
-            const p = path[i];
-            const prev = i > 0 ? path[i - 1] : undefined;
-            const next = i + 1 < path.length ? path[i + 1] : undefined;
-            const cells = collectCorridorPathPointCells(p, prev, next, corridorWidth, false, i, path.length, layout);
-            for (let ci = 0; ci < cells.length; ci++) {
-                if (!layoutContainsAbsCell(layout, cells[ci].c, cells[ci].r)) continue;
-                const idx = layoutAbsCellIndex(layout, cells[ci].c, cells[ci].r);
-                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
-                const local = layoutAbsToLocalCell(layout, cells[ci].c, cells[ci].r);
-                mask[layoutLocalCellIndex(layout, local.col, local.row)] = 1;
-            }
+    for (let i = 0; i < path.length; i++) {
+        const pIdx = path[i];
+        const prevIdx = i > 0 ? path[i - 1] : undefined;
+        const nextIdx = i + 1 < path.length ? path[i + 1] : undefined;
+        const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, corridorWidth, false, i, path.length, layout);
+        for (let ci = 0; ci < cells.length; ci++) {
+            const idx = cells[ci];
+            if (idx < 0 || idx >= layout.cellCount) continue;
+            if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
+            mask[idx] = 1;
         }
+    }
 }
 /** @param {Uint8Array} mask @param {number} cols @param {number} rows @param {number} originCol @param {number} originRow @param {number} heightLevel @param {number} thicknessLevel */
 export function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, heightLevel, thicknessLevel) {
@@ -82,7 +70,7 @@ export function railWallsFromFloorMask(mask, cols, rows, originCol, originRow, h
         }
     return walls;
 }
-/** @param {Cell[][]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<string>} gapKeysWorld @param {Uint8Array} roomFootprintMask @param {number} heightLevel @param {number} thicknessLevel */
+/** @param {Cell[][]} paths @param {{ originCol: number, originRow: number, cols: number, rows: number }} stampBounds @param {number | number[]} corridorWidths @param {Set<number>} gapKeysWorld @param {Uint8Array} roomFootprintMask @param {number} heightLevel @param {number} thicknessLevel */
 function corridorRailWallsForPaths(paths, stampBounds, corridorWidths, gapKeysWorld, roomFootprintMask, heightLevel, thicknessLevel) {
     /** @type {RailWall[]} */
     const rails = [];

@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
 import { commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { canStepPathIdx, createNavGraphView, createNavGraphViewWithLocalBake, validateBeltChain, snapNavGoalCellIndex, beltEntryNeighborAtIdx } from "../Libraries/Navigation/navGraph.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { buildFullRegionGraph, packRegionGraphFlat } from "../Libraries/Pathfinding/hpaRegionGraph.js";

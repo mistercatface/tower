@@ -1,7 +1,7 @@
-import { HPA_WORKER_URL } from "../../Render/WorldSurfaceBootstrap.js";
-import { HpaPathWorker } from "../Pathfinding/HpaPathWorker.js";
-import { HpaPathSession } from "../Pathfinding/HpaPathSession.js";
-import { NavRuntime } from "./NavRuntime.js";
+import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
+import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
+import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
+import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
 const mockFlowFieldGrid = { invalidateNavTopology() {} };
 /** @type {Set<NavRuntime> | null} */
 let testNavigations = null;
@@ -9,8 +9,8 @@ export function enableTestNavigationTracking() {
     if (!testNavigations) testNavigations = new Set();
 }
 /**
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {{ flowFieldGrid?: import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid | { invalidateNavTopology(): void }, settings?: object }} [options]
+ * @param {import("../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
+ * @param {{ flowFieldGrid?: import("../Libraries/Pathfinding/FlowFieldGrid.js").FlowFieldGrid | { invalidateNavTopology(): void }, settings?: object }} [options]
  */
 export function createNavRuntime(obstacleGrid, { flowFieldGrid = mockFlowFieldGrid, settings = {} } = {}) {
     const worker = new HpaPathWorker(HPA_WORKER_URL, obstacleGrid);
@@ -19,7 +19,7 @@ export function createNavRuntime(obstacleGrid, { flowFieldGrid = mockFlowFieldGr
     testNavigations?.add(runtime);
     return runtime;
 }
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
+/** @param {import("../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {import("../Libraries/DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
 export async function createWorkerNavigation(obstacleGrid, damageBounds = null) {
     const runtime = createNavRuntime(obstacleGrid);
     await runtime.commitEdit(damageBounds, { fullNavSync: damageBounds == null });
@@ -37,5 +37,5 @@ export async function terminateAllWorkerNavigations() {
     testNavigations.clear();
     await Promise.allSettled(pending);
 }
-export { NavRuntime, resolveNavRuntime } from "./NavRuntime.js";
-export { NavTopology } from "./NavTopology.js";
+export { NavRuntime, resolveNavRuntime } from "../Libraries/Navigation/NavRuntime.js";
+export { NavTopology } from "../Libraries/Navigation/NavTopology.js";

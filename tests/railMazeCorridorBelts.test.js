@@ -5,7 +5,7 @@ import { FLOOR_CELL_KIND, floorBeltElbowTurn, floorBeltRailEdgeSides } from "../
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
 import { collectCorridorPathPolylines } from "./collectCorridorPathPolylines.js";
-import { createNavRuntime, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createNavRuntime, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeBeltEndpoints.js";
 import { gridSettings } from "../Config/world.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";

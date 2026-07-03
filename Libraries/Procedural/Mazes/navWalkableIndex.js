@@ -14,13 +14,17 @@ export function countNavWalkableFlags(flags) {
 export function writeNavWalkableFlags(flags, cols, cells) {
     flags.fill(0);
     for (let i = 0; i < cells.length; i++) {
-        const { col, row } = cells[i];
-        flags[col + row * cols] = 1;
+        const cell = cells[i];
+        if (typeof cell === "number") flags[cell] = 1;
+        else {
+            const { col, row } = cell;
+            flags[col + row * cols] = 1;
+        }
     }
 }
 /**
  * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {{ col: number, row: number }[]} cells
+ * @param {({ col: number, row: number }|number)[]} cells
  * @param {Uint8Array | null} [reuse]
  */
 export function createNavWalkableCandidateMask(grid, cells, reuse = null) {
@@ -30,8 +34,12 @@ export function createNavWalkableCandidateMask(grid, cells, reuse = null) {
     const mask = reuse && reuse.length === size ? reuse : new Uint8Array(size);
     mask.fill(0);
     for (let i = 0; i < cells.length; i++) {
-        const { col, row } = cells[i];
-        if (col >= 0 && col < cols && row >= 0 && row < rows) mask[col + row * cols] = 1;
+        const cell = cells[i];
+        if (typeof cell === "number") mask[cell] = 1;
+        else {
+            const { col, row } = cell;
+            if (col >= 0 && col < cols && row >= 0 && row < rows) mask[col + row * cols] = 1;
+        }
     }
     return mask;
 }

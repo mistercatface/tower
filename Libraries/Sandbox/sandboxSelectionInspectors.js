@@ -41,7 +41,7 @@ export function buildFloorBeltInspectorInfo(state, sel) {
     const { col, row } = cell;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const idx = col + row * grid.cols;
-    if (!grid.floorStore.isBeltKindAtIdx(idx)) return null;
+    if (!grid.floorStore.hasAnyAtIdx(idx)) return null;
     const kind = grid.floorStore.kind[idx];
     const facingIndex = grid.floorStore.facing[idx];
     return { col, row, kind, facingIndex, kindLabel: formatFloorBeltKindLabel(kind), facingLabel: formatFloorBeltFacingLabel(facingIndex) };

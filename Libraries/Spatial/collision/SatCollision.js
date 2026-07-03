@@ -1,3 +1,4 @@
+import { SHAPE_TYPE_ID } from "./Shapes.js";
 import { findClosestWorldVertexInto, findExtremeVertexInto, rotateXY, rotateXYInto, transformPoint2DInto } from "../../Math/Poly2D.js";
 import { dotXY } from "../../Math/Vec2.js";
 import { COINCIDENT_CIRCLE_EPS } from "./penetration.js";
@@ -234,10 +235,10 @@ export function checkEntityPairCollisionAt(bodyA, xA, yA, bodyB, xB, yB) {
 }
 export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     if (!shapeA || !shapeB) return false;
-    if (shapeA.type === "Circle" && shapeB.type === "Circle") return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
-    if (shapeA.type === "Polygon" && shapeB.type === "Polygon") return satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB);
-    if (shapeA.type === "Circle" && shapeB.type === "Polygon") return satCirclePolygon(xA, yA, shapeA, xB, yB, angleB, shapeB);
-    if (shapeA.type === "Polygon" && shapeB.type === "Circle") {
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satCirclePolygon(xA, yA, shapeA, xB, yB, angleB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) {
         const res = satCirclePolygon(xB, yB, shapeB, xA, yA, angleA, shapeA);
         if (res) {
             SAT_RESULT[1] = -SAT_RESULT[1];

@@ -93,8 +93,7 @@ export function railWallEdgeShouldEmit(grid, idx, side) {
 }
 export function edgeRailCollisionThicknessPx(grid, idx, side) {
     const railEdge = railWallEdgeAt(grid, idx, side);
-    if (railEdge) return railWallThicknessPx(railEdge);
-    return 1;
+    return railWallThicknessPx(railEdge);
 }
 export function neighborFillLevel(grid, idx, side) {
     const nIdx = edgeNeighborIdx(idx, side, grid.cols, grid.rows);

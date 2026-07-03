@@ -47,7 +47,7 @@ export class FlatGridView {
     }
 }
 function preparedSearchState(searchState) {
-    return typeof searchState.prepare === "function" ? searchState.prepare() : searchState;
+    return searchState.prepare();
 }
 function reconstructIndexPathInto(cameFrom, targetIdx, outPath) {
     let count = 0;
@@ -64,6 +64,7 @@ function reconstructIndexPathInto(cameFrom, targetIdx, outPath) {
     return count;
 }
 const globalOpenSet = new IdxMinHeap();
+const SEARCH_MODE = { AStar: 1, Dijkstra: 2, Greedy: 3 };
 export class FlatGridSearch {
     constructor(searchState, stepPenaltyLookup = null) {
         this.searchState = searchState;
@@ -75,6 +76,8 @@ export class FlatGridSearch {
         this._cardinalDidx = null;
         this._octileDidx = null;
         this._lastCols = 0;
+        this.manhattanHeuristic = (i0, i1) => this.manhattanDistance(i0, i1);
+        this.octileHeuristic = (i0, i1) => this.octileDistance(i0, i1);
     }
     get grid() {
         return this._grid;
@@ -100,16 +103,16 @@ export class FlatGridSearch {
         return octileDistanceIdx(idx0, idx1, this.cols);
     }
     cardinal(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, (i0, i1) => this.manhattanDistance(i0, i1), "astar", "astar", false, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, this.manhattanHeuristic, SEARCH_MODE.AStar, SEARCH_MODE.AStar, false, outPath);
     }
     local(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, (i0, i1) => this.octileDistance(i0, i1), "astar", "astar", true, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, SEARCH_MODE.AStar, SEARCH_MODE.AStar, true, outPath);
     }
     dijkstra(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, (i0, i1) => this.octileDistance(i0, i1), "dijkstra", "dijkstra", true, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, SEARCH_MODE.Dijkstra, SEARCH_MODE.Dijkstra, true, outPath);
     }
     greedy(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, (i0, i1) => this.octileDistance(i0, i1), "greedy", null, true, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, SEARCH_MODE.Greedy, 0, true, outPath);
     }
     runGrid(startIdx, targetIdx, maxPathLen, maxDirs, heuristic, priority, stale, stepPenalty, outPath) {
         if (startIdx === targetIdx) {
@@ -172,14 +175,14 @@ export class FlatGridSearch {
         return 0;
     }
     priorityFor(priority, tentativeG, idx, targetIdx, heuristic) {
-        if (priority === "dijkstra") return tentativeG;
+        if (priority === SEARCH_MODE.Dijkstra) return tentativeG;
         const h = heuristic(idx, targetIdx);
-        if (priority === "greedy") return h;
+        if (priority === SEARCH_MODE.Greedy) return h;
         return tentativeG + h;
     }
     isStaleQueueEntry(currF, currentG, idx, targetIdx, heuristic, stale) {
-        if (stale === "dijkstra") return currF > currentG + STALE_F_EPSILON;
-        if (stale === "astar") return currF > currentG + heuristic(idx, targetIdx) + STALE_F_EPSILON;
+        if (stale === SEARCH_MODE.Dijkstra) return currF > currentG + STALE_F_EPSILON;
+        if (stale === SEARCH_MODE.AStar) return currF > currentG + heuristic(idx, targetIdx) + STALE_F_EPSILON;
         return false;
     }
 }

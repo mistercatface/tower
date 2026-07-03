@@ -413,11 +413,7 @@ export class WorldObstacleGrid {
     }
     canStep(fromIdx, toIdx, navTopology = null) {
         if (!navTopology) return false;
-        if (typeof navTopology.canStep === "function") return navTopology.canStep(fromIdx, toIdx);
-        const cardinalOpen = navTopology.navCardinalOpen ?? navTopology.cardinalOpen;
-        const vertexPassability = navTopology.vertexPassability;
-        if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, fromIdx, toIdx);
-        return false;
+        return navTopology.canStep(fromIdx, toIdx);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

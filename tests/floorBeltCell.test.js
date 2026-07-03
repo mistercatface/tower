@@ -10,8 +10,8 @@ describe("floor belt on/off cell", () => {
         grid.writeFloorCell(2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, 0);
         const beltWorld = grid.gridToWorld(2, 2);
         const offWorld = grid.gridToWorld(0, 0);
-        assert.equal(isFloorBeltCell(grid, 2, 2), true);
-        assert.equal(isFloorBeltCell(grid, 0, 0), false);
+        assert.equal(isFloorBeltCell(grid, 2 + 2 * grid.cols), true);
+        assert.equal(isFloorBeltCell(grid, 0), false);
         assert.equal(isEntityOnFloorBelt(grid, beltWorld.x, beltWorld.y), true);
         assert.equal(isEntityOnFloorBelt(grid, offWorld.x, offWorld.y), false);
     });

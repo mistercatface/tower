@@ -2,7 +2,8 @@ import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLa
 import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBelts.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
+import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides } from "../../Spatial/grid/FloorCell.js";
 import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
@@ -22,27 +23,10 @@ function pathLengthInBand(path, minLen, maxLen) {
     return path.length >= minLen && path.length <= maxLen;
 }
 function navWalkableNeighborsIdx(grid, navTopology, idx) {
-    const cols = grid.cols;
-    const rows = grid.rows;
-    const c = idx % cols;
-    const r = (idx / cols) | 0;
     const out = [];
-    if (c > 0) {
-        const nIdx = idx - 1;
+    forEachCardinalNeighborIdx(idx, grid.cols, grid.rows, (nIdx) => {
         if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
-    }
-    if (c + 1 < cols) {
-        const nIdx = idx + 1;
-        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
-    }
-    if (r > 0) {
-        const nIdx = idx - cols;
-        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
-    }
-    if (r + 1 < rows) {
-        const nIdx = idx + cols;
-        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
-    }
+    });
     return out;
 }
 /** @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex */
@@ -75,13 +59,7 @@ function degreeInZone(cells, neighborAtIdx, gridCols) {
 function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
     let belts = floorBelts.slice();
     const stride = layout.strideCols;
-    const stepSide = (idx, side) => {
-        if (side === 0) return idx - stride;
-        if (side === 1) return idx + 1;
-        if (side === 2) return idx + stride;
-        if (side === 3) return idx - 1;
-        return idx;
-    };
+    const rows = layout.cellCount / stride;
     for (let pass = 0; pass < belts.length + 4; pass++) {
         const validation = tryValidateBeltChains(belts, layout, mouthExteriorIndices);
         if (validation.ok) return { floorBelts: belts, validation };
@@ -91,20 +69,20 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
         for (const idx of footprint) {
             const belt = byCell.get(idx);
             const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
-            const entryIdx = stepSide(belt.idx, entrySide);
-            const exitIdx = stepSide(belt.idx, exitSide);
+            const entryIdx = edgeNeighborIdx(belt.idx, entrySide, stride, rows);
+            const exitIdx = edgeNeighborIdx(belt.idx, exitSide, stride, rows);
             const entryInFootprint = footprint.has(entryIdx);
             const exitInFootprint = footprint.has(exitIdx);
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
             if (entryInFootprint) {
                 const entryBelt = byCell.get(entryIdx);
                 const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
-                if (entryExit !== (entrySide + 2) % 4) removeIndices.add(idx);
+                if (entryExit !== edgeMirrorSide(entrySide)) removeIndices.add(idx);
             }
             if (exitInFootprint) {
                 const exitBelt = byCell.get(exitIdx);
                 const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
-                if (exitEntry !== (exitSide + 2) % 4) removeIndices.add(idx);
+                if (exitEntry !== edgeMirrorSide(exitSide)) removeIndices.add(idx);
             }
         }
         if (removeIndices.size === 0) return { floorBelts: belts, validation };

@@ -7,7 +7,7 @@ import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { bakeNavTopologyLocal } from "../Libraries/Pathfinding/bakeNavTopology.js";
 import { navCanStep } from "../Libraries/Pathfinding/navTopologySab.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 
 function sampleStepPairs(cols, rows) {
     /** @type {{ fromIdx: number, toIdx: number }[]} */

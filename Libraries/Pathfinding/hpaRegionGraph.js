@@ -70,10 +70,7 @@ export class HpaRegionGraph {
         return this.nodesMap[nodeIdx] ?? null;
     }
     removeRegion(node) {
-        if (!node) {
-            console.log("what the FUCK");
-            return;
-        }
+        if (!node) throw new Error("removeRegion: node must be defined");
         for (let i = 0; i < node.cells.length; i++) this.cellToNode[node.cells[i]] = -1;
         delete this.nodesMap[node.id];
         this.removeInboundEdges(node.id);

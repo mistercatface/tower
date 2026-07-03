@@ -8,7 +8,7 @@ import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { collectNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickNavWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 async function createWallDeleteTestState() {

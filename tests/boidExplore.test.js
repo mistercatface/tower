@@ -8,7 +8,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { createExploreBehavior } from "../Libraries/Sandbox/groundNav/exploreBehavior.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";

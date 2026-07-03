@@ -1,7 +1,7 @@
 import { after } from "node:test";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { installNodeWorkerShim, terminateAllTrackedWorkers } from "./harness/installNodeWorkerShim.js";
-import { terminateAllWorkerNavigations, enableTestNavigationTracking } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { terminateAllWorkerNavigations, enableTestNavigationTracking } from "./WorkerNavigationFactory.js";
 
 installNodeWorkerShim();
 enableTestNavigationTracking();

@@ -5,7 +5,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { buildReplanParams, HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 async function replanParams(grid) {
     const navigation = await createWorkerNavigation(grid);
     const request = buildReplanParams(grid, 40, 40, 120, 120, navigation, null);

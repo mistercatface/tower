@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
-import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";

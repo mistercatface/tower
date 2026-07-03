@@ -1,6 +1,7 @@
-import { snapNavGoalWorld } from "../../Navigation/navGraph.js";
+import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
+const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 /**
  * @param {object} prop
  * @param {{ x: number, y: number }} targetWorld
@@ -11,7 +12,7 @@ import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCe
  */
 export function groundNavArrivedAtTarget(prop, targetWorld, targetCellCol, targetCellRow, grid, stopRadius) {
     const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
-    const targetOnBelt = targetCellCol != null && targetCellRow != null && isFloorBeltCell(grid, targetCellCol, targetCellRow);
+    const targetOnBelt = targetCellCol != null && targetCellRow != null && isFloorBeltCell(grid, targetCellCol + targetCellRow * grid.cols);
     const dist = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
     return dist <= stopRadius && (!targetOnBelt || onBelt);
 }
@@ -40,19 +41,19 @@ export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
  * }} opts
  * @returns {{ vx: number, vy: number, steering: object | null, replanReason: string | null, beltWasOnBelt: boolean }}
  */
-export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, beltHandoffCooldown = null, state, dtMs, pathSettings }) {
+export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, beltHandoffCooldown, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
     if (isEntityOnFloorBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
-    const steerTarget = snapNavGoalWorld(grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
+    const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
     if (beltWasOnBelt) {
-        const cooldownFrames = beltHandoffCooldown?.frames ?? 0;
+        const cooldownFrames = beltHandoffCooldown.frames;
         if (cooldownFrames > 0) {
             beltHandoffCooldown.frames = cooldownFrames - 1;
             return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: false };
         }
         nav.reset(state);
         nav.replan(prop, steerTarget.x, steerTarget.y, state);
-        if (beltHandoffCooldown) beltHandoffCooldown.frames = state.nav.settings.stuckReplanFrames;
+        beltHandoffCooldown.frames = state.nav.settings.stuckReplanFrames;
         return { vx: 0, vy: 0, steering: null, replanReason: "beltHandoff", beltWasOnBelt: false };
     }
     const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings);

@@ -11,7 +11,7 @@ Walls block collision first; the worker bakes collision + floor direction + edge
 
 ## Directed goals (belts)
 
-`snapNavGoal.js` — `snapNavGoalCell` (HPA endpoints) and `snapNavGoalWorld` (locomotion steer targets).
+`navGraph.js` — `snapNavGoalCell` (HPA endpoints) and `snapNavGoalWorld` (locomotion steer targets).
 
 ## Edits → worker sync
 

@@ -24,8 +24,8 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
             return grid.grid[idx] !== 0;
         },
         canStepIdx(fromIdx, toIdx) {
+            if (topologyRef) return topologyRef.canStep(fromIdx, toIdx);
             if (this.cardinalOpen && this.vertexPassability) return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromIdx, toIdx);
-            if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);
             return false;
         },
     };
@@ -43,23 +43,44 @@ export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
  *
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  */
-export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
+export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) {
     const cols = grid.cols;
     const rows = grid.rows;
     const fromCol = grid.worldCol(fromX);
     const fromRow = grid.worldRow(fromY);
     const targetCol = grid.worldCol(targetX);
     const targetRow = grid.worldRow(targetY);
-    if (!cellInRect(targetCol, targetRow, cols, rows)) return { x: targetX, y: targetY };
+    if (!cellInRect(targetCol, targetRow, cols, rows)) {
+        out.x = targetX;
+        out.y = targetY;
+        return out;
+    }
     const fromIdx = fromCol + fromRow * cols;
     const targetIdx = targetCol + targetRow * cols;
     const snappedIdx = snapNavGoalCellIndex(grid, fromIdx, targetIdx);
-    if (snappedIdx !== targetIdx) return { x: grid.gridCenterXByIdx(snappedIdx), y: grid.gridCenterYByIdx(snappedIdx) };
-    if (!isFloorBeltKind(grid.floorStore.kind[targetIdx])) return { x: targetX, y: targetY };
-    if (fromIdx === targetIdx) return { x: targetX, y: targetY };
+    if (snappedIdx !== targetIdx) {
+        out.x = grid.gridCenterXByIdx(snappedIdx);
+        out.y = grid.gridCenterYByIdx(snappedIdx);
+        return out;
+    }
+    if (!isFloorBeltKind(grid.floorStore.kind[targetIdx]) || fromIdx === targetIdx) {
+        out.x = targetX;
+        out.y = targetY;
+        return out;
+    }
     const sides = beltEntryExitAtIdx(grid, targetIdx);
-    if (!sides) return { x: targetX, y: targetY };
-    return floorBeltEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
+    if (!sides) {
+        out.x = targetX;
+        out.y = targetY;
+        return out;
+    }
+    const pt = floorBeltEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
+    out.x = pt.x;
+    out.y = pt.y;
+    return out;
+}
+export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
+    return snapNavGoalWorldInto({ x: 0, y: 0 }, grid, fromX, fromY, targetX, targetY);
 }
 /** @param {number[]} cellIndices */
 export function validateBeltChain(graph, cellIndices) {

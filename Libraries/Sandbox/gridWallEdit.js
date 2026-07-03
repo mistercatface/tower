@@ -47,7 +47,7 @@ export function clearRailWallsQuiet(state, rails) {
     let changed = false;
     for (let i = 0; i < rails.length; i++) {
         const { idx, side } = rails[i];
-        if (clearPrimaryBoundaryAt(state, idx, side) !== "railWall") continue;
+        if (!clearPrimaryBoundaryAt(state, idx, side)) continue;
         changed = true;
         growCellBoundsIdx(bounds, idx, grid.cols);
     }
@@ -68,7 +68,7 @@ export function stampRailWallsQuiet(state, railWalls) {
         clearPrimaryBoundaryAt(state, col, row, side);
         const heightLevel = clampStampWallHeightLevel(wall.heightLevel ?? 1, settings);
         const thicknessLevel = wall.thicknessLevel ?? 1;
-        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { capHeightLevel: heightLevel, thicknessLevel });
         stamped.push({ col, row, side, heightLevel, thicknessLevel });
         growCellBounds(bounds, col, row);
     }
@@ -185,7 +185,7 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
         const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
         const { col, row } = toLocal(globalCol, globalRow);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { kind: "railWall", capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
+        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
         growCellBounds(bounds, col, row);
     }
     if (isEmptyCellBounds(bounds)) return null;
@@ -221,12 +221,12 @@ export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     const grid = state.obstacleGrid;
     clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
-    setBoundary(grid, idx, side, { kind: "railWall", capHeightLevel: level, thicknessLevel }, true);
+    setBoundary(grid, idx, side, { capHeightLevel: level, thicknessLevel }, true);
     commitGridNavEdit(state, idx);
     return true;
 }
 export function clearRailWallAt(state, idx, side) {
-    if (clearPrimaryBoundaryAt(state, idx, side, true) !== "railWall") return false;
+    if (!clearPrimaryBoundaryAt(state, idx, side, true)) return false;
     commitGridNavEdit(state, idx);
     return true;
 }

@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { collectWalkableCells, collectNavWalkableCells, createNavWalkableAccess, getNavWalkableCellIndex, getNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, pickRandomWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/navWalkableIndex.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { isNavWalkableCell } from "../Libraries/Spatial/grid/navWalkableCell.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";

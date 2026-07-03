@@ -12,27 +12,30 @@ export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
     const col = grid.worldCol(worldX);
     const row = grid.worldRow(worldY);
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
+    if (!cellInRect(col, row, grid.cols, grid.rows)) return -1;
     const idx = col + row * grid.cols;
-    if (grid.floorStore.isBeltKindAtIdx(idx)) return { col, row };
-    return null;
+    if (grid.floorStore.hasAnyAtIdx(idx)) return idx;
+    return -1;
 }
 export function rotateGridOccupantAt(state, occupant, steps = 1) {
     const grid = state.obstacleGrid;
-    const idx = occupant.col + occupant.row * grid.cols;
-    if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
+    const idx = typeof occupant === "number" ? occupant : occupant.col + occupant.row * grid.cols;
+    if (!grid.floorStore.hasAnyAtIdx(idx)) return false;
     const beltKind = grid.floorStore.kind[idx];
     const facingIndex = (((grid.floorStore.facing[idx] + steps) % 4) + 4) % 4;
     grid.writeFloorCell(idx, beltKind, facingIndex);
     commitGridNavEdit(state, idx);
     return true;
 }
-export function canStampFloorBeltAt(state, col, row) {
+export function canStampFloorBeltAt(state, colOrIdx, row = null) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    if (grid.isBlocked(col, row)) return false;
-    if (grid.hasFloorOccupancy(col + row * grid.cols)) return false;
-    if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return false;
+    const idx = row !== null ? colOrIdx + row * grid.cols : colOrIdx;
+    if (idx < 0 || idx >= grid.cols * grid.rows) return false;
+    const r = (idx / grid.cols) | 0;
+    const c = idx - r * grid.cols;
+    if (grid.isBlockedIdx(idx)) return false;
+    if (grid.hasFloorOccupancy(idx)) return false;
+    if (findGridAnchoredFloorPropAtCell(state.worldProps, c, r)) return false;
     return true;
 }
 /** Cell lookup + acceleration once per frame before kinetic physics substeps. */
@@ -49,17 +52,17 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         const row = grid.worldRow(entity.y);
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
         const idx = col + row * grid.cols;
-        if (!grid.floorStore.isBeltKindAtIdx(idx)) continue;
+        if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
         const kind = grid.floorStore.kind[idx];
         const facingIndex = grid.floorStore.facing[idx];
         const beltAngle = floorBeltFacingFromIndex(facingIndex);
         applyKineticAccelerationAlongAngle(entity, beltAngle, force, dtSec);
     }
 }
-export function clearFloorOverlayAt(state, col, row) {
+export function clearFloorOverlayAt(state, colOrIdx, row = null) {
     const grid = state.obstacleGrid;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    const idx = colRowToIndex(col, row, grid.cols);
+    const idx = row !== null ? colOrIdx + row * grid.cols : colOrIdx;
+    if (idx < 0 || idx >= grid.cols * grid.rows) return false;
     if (!grid.clearFloorCell(idx)) return false;
     markGridZoneSubscriptionsDirty(state);
     return true;
@@ -79,7 +82,7 @@ function listFloorStoreOccupancy(grid, testAtIdx, buildEntry) {
 export function listPlacedFloorBeltsForSnapshot(grid) {
     return listFloorStoreOccupancy(
         grid,
-        (grid, idx) => grid.floorStore.isBeltKindAtIdx(idx),
+        (grid, idx) => grid.floorStore.hasAnyAtIdx(idx),
         (grid, idx, globalCol, globalRow) => ({ col: globalCol, row: globalRow, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] }),
     );
 }

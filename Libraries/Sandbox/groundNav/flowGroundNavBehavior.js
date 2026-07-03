@@ -1,11 +1,12 @@
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { sampleFlowDirectionInto } from "../../Pathfinding/sampleFlowDirection.js";
-import { snapNavGoalWorld } from "../../Navigation/navGraph.js";
+import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 import { agentPose } from "../../Agent/index.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 const FLOW_OVERLAY_DIR_SCRATCH = { x: 0, y: 0 };
 const FLOW_DIR_SCRATCH = { x: 0, y: 0 };
+const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     if (!flowField) return null;
@@ -32,7 +33,7 @@ export function createFlowGroundNavBehavior(state) {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
         run.targetWorld = snapped.world;
     };
-    const resolveSteerTarget = (run, prop) => snapNavGoalWorld(state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+    const resolveSteerTarget = (run, prop) => snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
     const syncFlowWindow = (prop, steerTarget) => {
         state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.nav.settings.recenterThreshold);
     };

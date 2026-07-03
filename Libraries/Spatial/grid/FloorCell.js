@@ -75,7 +75,7 @@ export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
     if (diff === -1) return 3;
     if (diff === cols) return 2;
     if (diff === -cols) return 0;
-    throw new Error(`gridSideFromCellIdxToNeighborIdx: non-cardinal step index diff ${diff} with cols ${cols}`);
+    return -1;
 }
 const BELT_KIND_RESOLVE_ORDER = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
 /** @param {number} entrySide @param {number} exitSide */
@@ -111,15 +111,15 @@ export function beltEntryExitAtIdx(grid, idx) {
     return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
-export function isFloorBeltCell(grid, col, row) {
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
-    return grid.floorStore.isBeltKindAtIdx(col + row * grid.cols);
+export function isFloorBeltCell(grid, idx) {
+    if (idx < 0 || idx >= grid.cols * grid.rows) return false;
+    return grid.floorStore.hasAnyAtIdx(idx);
 }
 /** Body center cell is a belt cell — same rule as tickFloorOccupancy. */
 export function isEntityOnFloorBelt(grid, x, y) {
     const col = grid.worldCol(x);
     const row = grid.worldRow(y);
-    return isFloorBeltCell(grid, col, row);
+    return isFloorBeltCell(grid, col + row * grid.cols);
 }
 /** Structure-of-arrays store for floor occupancy (belt kind + cardinal facing) per cell. */
 export class FloorCellStore {
@@ -151,9 +151,6 @@ export class FloorCellStore {
     }
     hasAnyAtIdx(idx) {
         return this.kind[idx] !== FLOOR_CELL_KIND.None;
-    }
-    isBeltKindAtIdx(idx) {
-        return isFloorBeltKind(this.kind[idx]);
     }
     setAtIdx(idx, kind, facingIndex) {
         this.kind[idx] = kind;

@@ -11,7 +11,7 @@ export function buildGridZoneSubscriptions(grid) {
     const cells = new Set();
     if (!grid.cols) return { cells };
     const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) if (grid.floorStore.isBeltKindAtIdx(idx)) cells.add(idx);
+    for (let idx = 0; idx < size; idx++) if (grid.floorStore.hasAnyAtIdx(idx)) cells.add(idx);
     return { cells };
 }
 /** @param {object} state */

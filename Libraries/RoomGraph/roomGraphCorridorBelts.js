@@ -1,14 +1,15 @@
-import { collectCorridorPathPointCells, collectCorridorPathPointIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
+import { collectCorridorPathPointIndices } from "../Pathfinding/Corridor/corridorFootprint.js";
 import { buildRoomFootprintMaskForLayout, cellInsideAnyRoom } from "../Pathfinding/Corridor/corridorWalkGrid.js";
-import { gridSideFromCellToNeighbor, gridSideFromCellIdxToNeighborIdx, resolveBeltKindFromSides } from "../Spatial/grid/FloorCell.js";
-import { gridSideNeighborCell, layoutAbsCellIndex } from "../Spatial/grid/GridUtils.js";
+import { gridSideFromCellIdxToNeighborIdx, resolveBeltKindFromSides } from "../Spatial/grid/FloorCell.js";
+import { layoutAbsCellIndex, gridSideNeighborCell } from "../Spatial/grid/GridUtils.js";
 /** @typedef {import("./roomGraphClosedRooms.js").Cell} Cell */
 /** @typedef {import("./roomGraphClosedRooms.js").GraphNode} GraphNode */
 /** @typedef {{ col: number, row: number, kind: number, facingIndex: number }} BakedFloorBelt */
 /** @typedef {{ c: number, r: number, side: number }} WallHole */
 /** @typedef {import("../Spatial/grid/GridUtils.js").CellIndexLayout} CellIndexLayout */
+import { edgeMirrorSide } from "../Spatial/grid/gridCellTopology.js";
 function oppositeSide(side) {
-    return (side + 2) % 4;
+    return edgeMirrorSide(side);
 }
 /** @param {WallHole} hole */
 export function roomInteriorCellFromWallHole(hole) {
@@ -20,77 +21,49 @@ export function corridorExteriorCellFromWallHole(hole) {
     const n = gridSideNeighborCell(hole.c, hole.r, hole.side);
     return { c: n.col, r: n.row };
 }
-/** @param {Cell[]|number[]} path @param {CellIndexLayout} layout */
+/** @param {number[]} path @param {CellIndexLayout} layout */
 export function collapsePathRevisits(path, layout) {
     const out = [];
     const indexByKey = new Map();
     for (let i = 0; i < path.length; i++) {
-        const p = path[i];
-        const key = typeof p === "number" ? p : layoutAbsCellIndex(layout, p.c, p.r);
-        if (indexByKey.has(key)) out.length = indexByKey.get(key);
-        indexByKey.set(key, out.length);
-        out.push(p);
+        const pIdx = path[i];
+        if (indexByKey.has(pIdx)) out.length = indexByKey.get(pIdx);
+        indexByKey.set(pIdx, out.length);
+        out.push(pIdx);
     }
     return out;
 }
-/** @param {Cell[]|number[]} path @param {number} width @param {Uint8Array} roomFootprintMask @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @param {CellIndexLayout} layout @returns {Map<number, BakedFloorBelt>} */
+/** @param {number[]} path @param {number} width @param {Uint8Array} roomFootprintMask @param {WallHole | null} parentAnchor @param {WallHole | null} childAnchor @param {CellIndexLayout} layout @returns {Map<number, BakedFloorBelt>} */
 export function beltsForPathPolyline(path, width, roomFootprintMask, parentAnchor, childAnchor, layout) {
     const collapsed = collapsePathRevisits(path, layout);
     const byCell = new Map();
     const stride = layout.strideCols;
-    for (let i = 0; i < collapsed.length; i++)
-        if (typeof collapsed[i] === "number") {
-            const pIdx = collapsed[i];
-            const prevIdx = i > 0 ? collapsed[i - 1] : undefined;
-            const nextIdx = i < collapsed.length - 1 ? collapsed[i + 1] : undefined;
-            if (prevIdx !== undefined && pIdx === prevIdx) continue;
-            const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, width, false, i, collapsed.length, layout);
-            let spec;
-            if (prevIdx !== undefined && nextIdx !== undefined) {
-                const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
-                const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
-                spec = resolveBeltKindFromSides(entrySide, exitSide);
-            } else if (nextIdx !== undefined) {
-                const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
-                const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
-                spec = resolveBeltKindFromSides(entrySide, exitSide);
-            } else if (prevIdx !== undefined) {
-                const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
-                const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
-                spec = resolveBeltKindFromSides(entrySide, exitSide);
-            } else spec = resolveBeltKindFromSides(3, 1);
-            for (let ci = 0; ci < cells.length; ci++) {
-                const idx = cells[ci];
-                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
-                byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
-            }
-        } else {
-            const p = collapsed[i];
-            const prev = i > 0 ? collapsed[i - 1] : null;
-            const next = i < collapsed.length - 1 ? collapsed[i + 1] : null;
-            if (prev && p.c === prev.c && p.r === prev.r) continue;
-            const cells = collectCorridorPathPointCells(p, prev, next, width, false, i, collapsed.length, layout);
-            let spec;
-            if (prev && next) {
-                const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
-                const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
-                spec = resolveBeltKindFromSides(entrySide, exitSide);
-            } else if (next) {
-                const exitSide = gridSideFromCellToNeighbor(p.c, p.r, next.c, next.r);
-                const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : (exitSide + 2) % 4;
-                spec = resolveBeltKindFromSides(entrySide, exitSide);
-            } else if (prev) {
-                const entrySide = gridSideFromCellToNeighbor(p.c, p.r, prev.c, prev.r);
-                const exitSide = childAnchor ? oppositeSide(childAnchor.side) : (entrySide + 2) % 4;
-                spec = resolveBeltKindFromSides(entrySide, exitSide);
-            } else spec = resolveBeltKindFromSides(3, 1);
-            for (let ci = 0; ci < cells.length; ci++) {
-                const cell = cells[ci];
-                const idx = layoutAbsCellIndex(layout, cell.c, cell.r);
-                if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
-                byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
-            }
+    for (let i = 0; i < collapsed.length; i++) {
+        const pIdx = collapsed[i];
+        const prevIdx = i > 0 ? collapsed[i - 1] : undefined;
+        const nextIdx = i < collapsed.length - 1 ? collapsed[i + 1] : undefined;
+        if (prevIdx !== undefined && pIdx === prevIdx) continue;
+        const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, width, false, i, collapsed.length, layout);
+        let spec;
+        if (prevIdx !== undefined && nextIdx !== undefined) {
+            const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
+            const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
+            spec = resolveBeltKindFromSides(entrySide, exitSide);
+        } else if (nextIdx !== undefined) {
+            const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
+            const entrySide = parentAnchor ? oppositeSide(parentAnchor.side) : oppositeSide(exitSide);
+            spec = resolveBeltKindFromSides(entrySide, exitSide);
+        } else if (prevIdx !== undefined) {
+            const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
+            const exitSide = childAnchor ? oppositeSide(childAnchor.side) : oppositeSide(entrySide);
+            spec = resolveBeltKindFromSides(entrySide, exitSide);
+        } else spec = resolveBeltKindFromSides(3, 1);
+        for (let ci = 0; ci < cells.length; ci++) {
+            const idx = cells[ci];
+            if (cellInsideAnyRoom(roomFootprintMask, idx)) continue;
+            byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });
         }
+    }
     return byCell;
 }
 /**

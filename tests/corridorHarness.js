@@ -44,8 +44,9 @@ export function solveTwoRoomBundle(fixture, corridorCount, corridorWidth, seed) 
 export function maxLanesForFixture(fixture, corridorWidth) {
     return maxCorridorLanesBetweenNodes(fixture.roomA, fixture.roomB, corridorWidth);
 }
+import { edgeMirrorSide } from "../Libraries/Spatial/grid/gridCellTopology.js";
 function oppositeSide(side) {
-    return (side + 2) % 4;
+    return edgeMirrorSide(side);
 }
 function fixtureLayout(fixture) {
     return corridorSearchLayout(corridorSearchBounds([fixture.roomA, fixture.roomB], 12));
