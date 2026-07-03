@@ -6,7 +6,7 @@ import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
-import { canStampFloorBeltAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt } from "./floorOccupancy.js";
+import { canStampFloorBeltAt, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt } from "./floorOccupancy.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
@@ -169,7 +169,7 @@ export function createSandboxSession(state) {
                 clearSelection();
                 return false;
             }
-            if (!rotateGridOccupantAt(state, { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt }, steps)) return false;
+            if (!rotateGridOccupantAt(state, { col, row }, steps)) return false;
             notifyUi();
             return true;
         },

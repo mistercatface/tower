@@ -1,4 +1,4 @@
-import { FlatAbstractGraphSearch, FlatGridSearch } from "../../Pathfinding/AStar.js";
+import { FlatAbstractGraphSearch, FlatGridSearch, SearchState } from "../../Pathfinding/AStar.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
 import { HpaAbstractGraph } from "../../Pathfinding/hpaReplanPrep.js";
@@ -7,7 +7,6 @@ import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } 
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyIntoArena } from "../../Pathfinding/bakeNavTopology.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
-import { SearchState } from "../../Pathfinding/SearchState.js";
 import { packCellKey, KEY_STRIDE } from "../../DataStructures/CellKey.js";
 export function createNavStepPenaltyLookup(cols, keys, costs) {
     if (!keys.length) return null;

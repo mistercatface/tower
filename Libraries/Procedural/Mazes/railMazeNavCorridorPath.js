@@ -1,6 +1,4 @@
-import { FlatGridSearch } from "../../Pathfinding/AStar.js";
-import { SearchState } from "../../Pathfinding/SearchState.js";
-import { FlatGridView } from "../../Pathfinding/FlatGridView.js";
+import { FlatGridSearch, SearchState, FlatGridView } from "../../Pathfinding/AStar.js";
 import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
 import { colRowToIndex, gridCellLayout } from "../../Spatial/grid/GridUtils.js";

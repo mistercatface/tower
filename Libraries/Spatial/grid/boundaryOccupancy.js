@@ -3,10 +3,9 @@ import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
 import { beltEntryExitAtIdx } from "./FloorCell.js";
 import { colRowToIndex } from "./GridUtils.js";
-/** @typedef {{ capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
-/** @typedef {RailWallBoundarySpec} BoundaryPrimarySpec */
+/** True when a rail-wall edge occupies this cell side. */
 export function getBoundary(grid, idx, side) {
-    return { primary: isRailWallEdge(grid.edgeStore.getIdx(idx, side)) ? "railWall" : null };
+    return isRailWallEdge(grid.edgeStore.getIdx(idx, side));
 }
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;

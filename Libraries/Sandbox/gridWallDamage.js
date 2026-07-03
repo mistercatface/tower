@@ -10,7 +10,7 @@ import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
 import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";
-/** @typedef {{ kind: "voxel", col: number, row: number } | { kind: "rail", col: number, row: number, side: number }} WallDamageTarget */
+/** @typedef {{ kind: "voxel", idx: number } | { kind: "rail", idx: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
 }

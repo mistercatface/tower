@@ -307,7 +307,7 @@ export class WorldObstacleGrid {
         return gridBounds;
     }
     stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel }, true);
+        setBoundary(this, colRowToIndex(col, row, this.cols), side, { capHeightLevel, thicknessLevel }, true);
     }
     clearCellEdges(col, row) {
         clearAllBoundariesAtCell(this, colRowToIndex(col, row, this.cols), false);

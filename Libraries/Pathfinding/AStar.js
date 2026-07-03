@@ -1,6 +1,51 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS, manhattanDistanceIdx, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 const STALE_F_EPSILON = 1e-4;
+export class SearchState {
+    constructor(size) {
+        this.gScore = new Float32Array(size);
+        this.cameFrom = new Int32Array(size);
+        this.visited = new Int32Array(size);
+        this.runId = 0;
+    }
+    prepare() {
+        this.runId++;
+        return this;
+    }
+    resize(size) {
+        if (this.gScore.length !== size) {
+            this.gScore = new Float32Array(size);
+            this.cameFrom = new Int32Array(size);
+            this.visited = new Int32Array(size);
+            this.runId = 0;
+        }
+    }
+}
+export class FlatGridView {
+    constructor(cols, rows, { blocked = null, neighborLayout = null, flowToNavIdx = null, canStep = null } = {}) {
+        this.cols = cols;
+        this.rows = rows;
+        this.cellCount = cols * rows;
+        this.blocked = blocked;
+        this.neighborLayout = neighborLayout;
+        this.flowToNavIdx = flowToNavIdx;
+        this._canStep = canStep;
+    }
+    idx(col, row) {
+        return row * this.cols + col;
+    }
+    contains(col, row) {
+        return col >= 0 && col < this.cols && row >= 0 && row < this.rows;
+    }
+    canStep(idx0, idx1) {
+        if (idx0 < 0 || idx0 >= this.cellCount || idx1 < 0 || idx1 >= this.cellCount) return false;
+        const cols = this.cols;
+        if (Math.abs((idx0 % cols) - (idx1 % cols)) > 1) return false; // Boundary horizontal wrap check
+        if (this._canStep) return this._canStep(idx0, idx1);
+        if (this.blocked) return !this.blocked[idx1];
+        return true;
+    }
+}
 function preparedSearchState(searchState) {
     return typeof searchState.prepare === "function" ? searchState.prepare() : searchState;
 }

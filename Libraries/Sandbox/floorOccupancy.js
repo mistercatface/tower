@@ -8,29 +8,24 @@ import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { applyKineticAccelerationAlongAngle } from "../Motion/motionDynamics.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
-export const GRID_ROTATABLE_OCCUPANT = { FloorBelt: "floorBelt" };
 export function pickRotatableGridOccupantAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
     const col = grid.worldCol(worldX);
     const row = grid.worldRow(worldY);
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
     const idx = col + row * grid.cols;
-    if (grid.floorStore.isBeltKindAtIdx(idx)) return { col, row, kind: GRID_ROTATABLE_OCCUPANT.FloorBelt };
+    if (grid.floorStore.isBeltKindAtIdx(idx)) return { col, row };
     return null;
 }
 export function rotateGridOccupantAt(state, occupant, steps = 1) {
     const grid = state.obstacleGrid;
-    const { col, row, kind } = occupant;
-    const idx = col + row * grid.cols;
-    if (kind === GRID_ROTATABLE_OCCUPANT.FloorBelt) {
-        if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
-        const beltKind = grid.floorStore.kind[idx];
-        const facingIndex = (((grid.floorStore.facing[idx] + steps) % 4) + 4) % 4;
-        grid.writeFloorCell(idx, beltKind, facingIndex);
-        commitGridNavEdit(state, idx);
-        return true;
-    }
-    throw new Error(`Unknown rotatable grid occupant kind: ${kind}`);
+    const idx = occupant.col + occupant.row * grid.cols;
+    if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
+    const beltKind = grid.floorStore.kind[idx];
+    const facingIndex = (((grid.floorStore.facing[idx] + steps) % 4) + 4) % 4;
+    grid.writeFloorCell(idx, beltKind, facingIndex);
+    commitGridNavEdit(state, idx);
+    return true;
 }
 export function canStampFloorBeltAt(state, col, row) {
     const grid = state.obstacleGrid;
