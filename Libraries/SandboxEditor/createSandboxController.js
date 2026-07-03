@@ -25,7 +25,7 @@ import { FollowCamera } from "../Sandbox/FollowCamera.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { removeKineticConstraint } from "../Motion/kineticConstraints.js";
 import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Sandbox/chainLinks.js";
-import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/input/issueGroundNavToSelection.js";
+import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/groundNavSelectionMenu.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import propCatalog from "../../Assets/props/index.js";
 /**
@@ -37,6 +37,7 @@ import propCatalog from "../../Assets/props/index.js";
  * }} options
  */
 export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {
+    state.sandbox.behaviors = behaviors;
     const session = createSandboxSession(state);
     const cameraCycler = new FollowCamera(state);
     cameraCycler.registerCandidateList(() => session.listPlacedProps());
@@ -58,14 +59,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (allowed.length === 0) return id;
         return allowed.includes(id) ? id : allowed[0];
     };
-    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), behaviors, state, null);
+    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), state, null);
     const clampSpawnBehavior = () => {
         spawnBehaviorId = clampBehaviorId(spawnBehaviorId, listSpawnBehaviors());
     };
     /** @param {object | null | undefined} prop */
     const listSelectedBehaviors = (prop = session.getSelectedProp()) => {
         if (!prop) return [];
-        return resolveSandboxBehaviors(propCatalog[prop.type], behaviors, state, prop);
+        return resolveSandboxBehaviors(propCatalog[prop.type], state, prop);
     };
     /** @param {object} prop */
     const getPropBehaviorId = (prop) => {
@@ -175,7 +176,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
     const deletePointerTool = createSandboxDeletePointerTool(state, session);
-    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, behaviors, {
+    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, {
         stampPropBehavior,
         blocksPlacement,
         exitWireModes,

@@ -6,6 +6,7 @@ import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flip
 import { createDirectGroundNavBehavior } from "../../../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
 import { createFlowGroundNavBehavior } from "../../../Libraries/Sandbox/groundNav/flowGroundNavBehavior.js";
 import { createHpaGroundNavBehavior } from "../../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
+import { createExploreBehavior } from "../../../Libraries/Sandbox/groundNav/exploreBehavior.js";
 import { createSpawnerBehavior } from "../../../Libraries/Sandbox/behaviors/spawnerBehavior.js";
 import { createDragLaunchBehavior, createDragLaunchWaitBehavior } from "../../../Libraries/Sandbox/dragLaunch.js";
 function createSandboxBehaviors(state) {
@@ -19,6 +20,7 @@ function createSandboxBehaviors(state) {
         createDirectGroundNavBehavior(state),
         createHpaGroundNavBehavior(state),
         createFlowGroundNavBehavior(state),
+        createExploreBehavior(state),
     ];
 }
 /** @param {import("../state.js").TileLabGameState} state @param {{ playMode?: boolean }} [options] */

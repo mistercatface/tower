@@ -1,6 +1,5 @@
 import { createContextMenu } from "../UI/contextMenu.js";
-import { buildGroundNavSelectionMenuActions } from "../Sandbox/groundNav/groundNavSelectionMenu.js";
-import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/input/issueGroundNavToSelection.js";
+import { buildGroundNavSelectionMenuActions, countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/groundNavSelectionMenu.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 export function createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued }) {
     const menu = createContextMenu();

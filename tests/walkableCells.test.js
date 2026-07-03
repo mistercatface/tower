@@ -70,7 +70,7 @@ describe("walkableCells", () => {
         const index = getNavWalkableCellIndex(state, config);
         assert.ok(index.flags instanceof Uint8Array);
         assert.equal(index.flags.length, state.obstacleGrid.cols * state.obstacleGrid.rows);
-        const picked = pickNavWalkableCell(state, { rng: () => 0 });
+        const picked = pickNavWalkableCell(state, () => 0);
         assert.ok(isNavWalkableAt(index, picked.col + picked.row * index.cols));
         terminateWorkerNavigation(state.nav);
     });
@@ -83,7 +83,7 @@ describe("walkableCells", () => {
         const state = await createWalkableCellsTestState(config);
         state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
         collectNavWalkableCells(state);
-        const picked = pickNavWalkableCell(state, { rng: () => 0 });
+        const picked = pickNavWalkableCell(state, () => 0);
         assert.ok(picked);
         const idx = colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols);
         state.obstacleGrid.grid[idx] = 1;
@@ -99,7 +99,7 @@ describe("walkableCells", () => {
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
         collectNavWalkableCells(state);
-        const picked = pickNavWalkableCell(state, { rng: () => 0 });
+        const picked = pickNavWalkableCell(state, () => 0);
         assert.ok(picked);
         assert.ok(isNavWalkableCellAt(state, picked.col, picked.row));
         assert.ok(isNavWalkableCell(state.obstacleGrid, state.nav.topology, picked.col + picked.row * state.obstacleGrid.cols));
@@ -114,7 +114,7 @@ describe("walkableCells", () => {
         const state = await createWalkableCellsTestState(config);
         const access = createNavWalkableAccess(state, config);
         access.rebake();
-        const picked = access.pick({ rng: () => 0 });
+        const picked = access.pick(() => 0);
         assert.ok(picked);
         assert.ok(access.has(picked.col, picked.row));
         terminateWorkerNavigation(state.nav);
@@ -126,7 +126,7 @@ describe("walkableCells", () => {
             { col: 3, row: 3 },
         ];
         const excludeIndices = new Set([colRowToIndex(2, 2, 8)]);
-        const picked = pickWalkableCell(cells, { cols: 8, excludeIndices, rng: () => 0.9 });
+        const picked = pickWalkableCell(cells, 8, excludeIndices, () => 0.9);
         assert.equal(picked.col, 3);
         assert.equal(picked.row, 3);
     });
@@ -139,7 +139,7 @@ describe("walkableCells", () => {
         const state = await createWalkableCellsTestState(config);
         const open = collectWalkableCells(state);
         const excludeIndices = new Set(open.map((cell) => colRowToIndex(cell.col, cell.row, state.obstacleGrid.cols)));
-        assert.equal(pickRandomWalkableCell(state, { excludeIndices }), null);
+        assert.equal(pickRandomWalkableCell(state, config, excludeIndices), null);
         terminateWorkerNavigation(state.nav);
     });
 });

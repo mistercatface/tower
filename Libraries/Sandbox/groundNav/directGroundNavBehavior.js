@@ -1,5 +1,5 @@
 import { decelerateRoll, getKineticRollConfig, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { DIRECT_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 export function createDirectGroundNavBehavior(state) {
     const propRuns = new Map();
     const getRun = (prop) => {

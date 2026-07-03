@@ -4,12 +4,8 @@ import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorBut
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
-export function createSandboxPrimaryPointerTools(
-    state,
-    session,
-    behaviors,
-    { stampPropBehavior, blocksPlacement, exitWireModes, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected },
-) {
+export function createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, exitWireModes, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
+    const behaviors = state.sandbox.behaviors ?? [];
     let lastClickTime = 0;
     let lastClickX = 0;
     let lastClickY = 0;
@@ -83,7 +79,7 @@ export function createSandboxPrimaryPointerTools(
                     }
                     entityMeta.setActiveBehaviorId(hit.id, "dragLaunch");
                 }
-                const allowed = resolveSandboxBehaviors(propCatalog[hit.type], behaviors, state, hit);
+                const allowed = resolveSandboxBehaviors(propCatalog[hit.type], state, hit);
                 if (allowed.length > 0) {
                     if (e.ctrlKey || e.metaKey) {
                         exitWireModes();

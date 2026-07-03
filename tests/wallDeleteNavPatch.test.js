@@ -111,7 +111,7 @@ describe("wall delete nav patch (4a)", () => {
     it("voxel delete updates nav-walkable flags in the damaged region", async () => {
         const state = await createWallDeleteTestState();
         collectNavWalkableCells(state);
-        const picked = pickNavWalkableCell(state, { rng: () => 0 });
+        const picked = pickNavWalkableCell(state, () => 0);
         assert.ok(picked);
         stampVoxelQuiet(state, picked.col, picked.row);
         const idx = colRowToIndex(picked.col, picked.row, state.obstacleGrid.cols);
@@ -146,7 +146,7 @@ describe("wall delete nav patch (4a)", () => {
         const state = await createWallDeleteTestState();
         const grid = state.obstacleGrid;
         collectNavWalkableCells(state);
-        const blocked = pickNavWalkableCell(state, { rng: () => 0 });
+        const blocked = pickNavWalkableCell(state, () => 0);
         assert.ok(blocked);
         stampVoxelQuiet(state, blocked.col, blocked.row);
         stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 1, heightLevel: 1, thicknessLevel: 1 }]);

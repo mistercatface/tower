@@ -1,6 +1,17 @@
-import { DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, GROUND_NAV_BEHAVIOR_IDS, HPA_GROUND_NAV_BEHAVIOR_ID } from "./groundNav/groundNavIds.js";
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
+
+export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
+export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
+export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
+export const EXPLORE_BEHAVIOR_ID = "explore";
+export const GROUND_NAV_BEHAVIOR_IDS = new Set([
+    DIRECT_GROUND_NAV_BEHAVIOR_ID,
+    FLOW_GROUND_NAV_BEHAVIOR_ID,
+    HPA_GROUND_NAV_BEHAVIOR_ID,
+    EXPLORE_BEHAVIOR_ID,
+]);
+
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -11,6 +22,7 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)",
     [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)",
     [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)",
+    [EXPLORE_BEHAVIOR_ID]: "Explore",
 };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
@@ -65,7 +77,6 @@ export function isSingleWorldPropSpawnAsset(asset) {
         !isPoolRackSpawnAsset(asset)
     );
 }
-
 export function resolveFloorBeltKindFromSpawnAsset(asset) {
     const kind = asset?.sandbox?.floorBeltKind;
     if (kind === "elbowLeft") return FLOOR_CELL_KIND.BeltElbowLeft;
@@ -86,8 +97,9 @@ const FLOOR_BELT_KINDS = [
 export function listFloorBeltKindOptions() {
     return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: formatFloorBeltKindLabel(kind) }));
 }
-export function resolveSandboxBehaviors(asset, registeredBehaviors, state, prop = null) {
-    const byId = new Map(registeredBehaviors.map((behavior) => [behavior.id, behavior]));
+export function resolveSandboxBehaviors(asset, state, prop = null) {
+    const behaviors = state.sandbox?.behaviors ?? [];
+    const byId = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
     const behaviorOverrides = prop ? getSandboxEntityMeta(state).getBehaviorOverrides(prop.id) : null;
     if (behaviorOverrides) {
         const stamped = [];

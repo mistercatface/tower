@@ -1,9 +1,10 @@
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
 import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
-import { driveFlowGroundNav } from "./driveFlowGroundNav.js";
+import { agentPose } from "../../Agent/index.js";
+import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "./groundNavIds.js";
+import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 export function createFlowGroundNavBehavior(state) {
     const propRuns = new Map();
     const getRun = (prop) => {
@@ -44,9 +45,9 @@ export function createFlowGroundNavBehavior(state) {
             clearRunTarget(run);
             return;
         }
-        const { vx, vy, steering } = driveFlowGroundNav({ prop, targetWorld: steerTarget, flowFieldGrid });
+        const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);
         if (!steering) return;
-        steerRollToward(prop, vx, vy, config);
+        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
     };
     return {
         id: FLOW_GROUND_NAV_BEHAVIOR_ID,

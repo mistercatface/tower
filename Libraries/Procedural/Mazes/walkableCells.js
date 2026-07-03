@@ -193,17 +193,17 @@ export function patchNavWalkableCellIndex(state, idx = null) {
     if (idx === null || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
     return patchNavWalkableCellIndexRegion(state, cache, idx);
 }
-export function pickWalkableCell(openCells, { cols, excludeIndices = null, rng = Math.random } = {}) {
+export function pickWalkableCell(openCells, cols, excludeIndices = null, rng = Math.random) {
     const candidates = excludeIndices ? openCells.filter((cell) => !excludeIndices.has(cellIndex(cell.col, cell.row, cols))) : openCells;
     if (!candidates.length) return null;
     return candidates[Math.floor(rng() * candidates.length)];
 }
-export function pickNavWalkableCell(state, { boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null, filterBoundsConfig = null, rng = Math.random } = {}) {
+export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null, filterBoundsConfig = null) {
     let cells = getNavWalkableCells(state, boundsConfig, floodSeedBounds);
     if (filterBoundsConfig) cells = filterWalkableCellsInBounds(cells, state.obstacleGrid, filterBoundsConfig);
-    return pickWalkableCell(cells, { cols: state.obstacleGrid.cols, excludeIndices, rng });
+    return pickWalkableCell(cells, state.obstacleGrid.cols, excludeIndices, rng);
 }
-export function createNavWalkableAccess(state, boundsConfig, { floodSeedBounds = null } = {}) {
+export function createNavWalkableAccess(state, boundsConfig, floodSeedBounds = null) {
     let live = null;
     const isLive = () => {
         if (!live) return false;
@@ -227,15 +227,15 @@ export function createNavWalkableAccess(state, boundsConfig, { floodSeedBounds =
             if (!cellInRect(col, row, index.cols, index.rows)) return false;
             return isNavWalkableAt(index, col + row * index.cols);
         },
-        pick({ excludeIndices = null, filterBoundsConfig = null, rng = Math.random } = {}) {
-            return pickNavWalkableCell(state, { boundsConfig, floodSeedBounds, excludeIndices, filterBoundsConfig, rng });
+        pick(rng = Math.random, excludeIndices = null, filterBoundsConfig = null) {
+            return pickNavWalkableCell(state, rng, boundsConfig, floodSeedBounds, excludeIndices, filterBoundsConfig);
         },
         filterInBounds(filterBoundsConfig) {
             return filterWalkableCellsInBounds(this.cells(), state.obstacleGrid, filterBoundsConfig);
         },
     };
 }
-export function pickRandomWalkableCell(state, { excludeIndices = null, boundsConfig = state.editor.cavernConfig, rng = Math.random } = {}) {
+export function pickRandomWalkableCell(state, boundsConfig = state.editor.cavernConfig, excludeIndices = null, rng = Math.random) {
     const openCells = collectWalkableCells(state, boundsConfig);
-    return pickWalkableCell(openCells, { cols: state.obstacleGrid.cols, excludeIndices, rng });
+    return pickWalkableCell(openCells, state.obstacleGrid.cols, excludeIndices, rng);
 }
