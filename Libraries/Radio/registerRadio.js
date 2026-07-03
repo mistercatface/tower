@@ -1,7 +1,7 @@
 /**
  * Wire a radio controller + view to an event bus.
  *
- * @param {import("../Events/EventBus.js").EventBus} eventBus
+ * @param {import("../Events/index.js").EventBus} eventBus
  * @param {ReturnType<import("./RadioController.js").createRadioController>} controller
  * @param {ReturnType<import("./RadioDialogView.js").createRadioDialogView>} view
  * @param {{

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseGameLaunchQuery } from "../Libraries/Game/parseGameLaunchQuery.js";
-import { GAME_LAUNCHERS } from "../Libraries/Game/gameLaunchers.js";
+import { parseGameLaunchQuery, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 
 describe("parseGameLaunchQuery", () => {
     it("returns null when game param is absent", () => {

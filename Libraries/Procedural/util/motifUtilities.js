@@ -1,4 +1,4 @@
-import { clampByte } from "../../Color/hex.js";
+import { clampByte } from "../../Color/colorMath.js";
 export function sampleCoords(sample, coordinateSpace) {
     if (coordinateSpace === "warped") return { x: sample.lookupX, y: sample.lookupY };
     return { x: sample.evalX, y: sample.evalY };

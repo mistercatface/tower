@@ -1,4 +1,4 @@
-import { clampByte } from "../../../Color/hex.js";
+import { clampByte } from "../../../Color/colorMath.js";
 function rgbToHsv(r, g, b) {
     r /= 255;
     g /= 255;

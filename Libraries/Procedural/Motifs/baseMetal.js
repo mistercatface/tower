@@ -1,4 +1,4 @@
-import { clampByte } from "../../Color/hex.js";
+import { clampByte } from "../../Color/colorMath.js";
 function structureCoords(sample, structure) {
     const freqX = structure.frequencyX ?? structure.frequency;
     const freqY = structure.frequencyY ?? structure.frequency;

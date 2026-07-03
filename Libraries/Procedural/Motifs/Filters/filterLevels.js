@@ -1,4 +1,4 @@
-import { clampByte } from "../../../Color/hex.js";
+import { clampByte } from "../../../Color/colorMath.js";
 import { BLEND_OPTIONS } from "../../util/blend.js";
 export const filterLevelsMotif = {
     metadata: {

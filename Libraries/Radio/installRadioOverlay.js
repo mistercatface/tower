@@ -42,7 +42,7 @@ function mountRadioDialogDom(host) {
  *
  * @param {HTMLElement} host — typically `#gameWrapper`
  * @param {{
- *   eventBus: import("../Events/EventBus.js").EventBus,
+ *   eventBus: import("../Events/index.js").EventBus,
  *   requestPause: (reason: string) => void,
  *   requestResume: (reason: string) => void,
  *   content: { conversations: Record<string, object>, speakers: Record<string, object>, mainCharacterId: string },

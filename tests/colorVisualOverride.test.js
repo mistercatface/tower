@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { assetHasTintableColors, resolveVisualOverrideColorTree, resolveVisualOverridePanels, setPropVisualTint, visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
-import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Libraries/Color/tintPresets.js";
+import { assetHasTintableColors, resolveVisualOverrideColorTree, resolveVisualOverridePanels, setPropVisualTint, visualOverrideCacheKey, PUZZLE_TEMPLATE_BALL_TINTS } from "../Libraries/Color/visualOverride.js";
 import propCatalog from "../Assets/props/index.js";
 describe("Color visualOverride", () => {
     it("shifts sphere panel hues toward a target tint hex", () => {

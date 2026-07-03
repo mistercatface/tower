@@ -1,5 +1,5 @@
 import { applySandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../../../Libraries/Sandbox/sandboxSceneSnapshot.js";
-import { PIPE_SPAWNER_BALL_TINT } from "../../../Libraries/Color/tintPresets.js";
+import { PIPE_SPAWNER_BALL_TINT } from "../../../Libraries/Color/visualOverride.js";
 import { spawnPlacedSandboxProp } from "../../../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { addDistanceConstraint } from "../../../Libraries/Motion/kineticConstraints.js";
 import { setChainHead } from "../../../Libraries/Sandbox/chainLinks.js";

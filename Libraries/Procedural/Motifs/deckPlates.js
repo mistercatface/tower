@@ -1,4 +1,4 @@
-import { clampByte } from "../../Color/hex.js";
+import { clampByte } from "../../Color/colorMath.js";
 import { applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 function plateMetrics(sample, config) {
     const cell = config.cellWorldSize;

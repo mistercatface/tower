@@ -501,6 +501,10 @@ export function createSandboxSession(state) {
             const id = selectionPrimaryPropId(sel(), (id) => registry().getLive(id));
             return id == null ? null : registry().getLive(id);
         },
+        isSelected(id) {
+            const current = sel();
+            return current?.kind === "prop" && current.ids.has(id);
+        },
         pruneSelection,
         deleteProp(prop) {
             if (!prop) return;

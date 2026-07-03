@@ -1,6 +1,6 @@
 import { SelectControl } from "./controls/SelectControl.js";
 import { setFormFieldName } from "./Component.js";
-import { normalizePickerHex } from "../Color/hex.js";
+import { normalizePickerHex } from "../Color/colorMath.js";
 /** @param {HTMLElement} parent @param {string} text @param {{ tag?: keyof HTMLElementTagNameMap }} [opts] */
 export function appendEditorSubhead(parent, text, { tag = "div" } = {}) {
     const head = document.createElement(tag);

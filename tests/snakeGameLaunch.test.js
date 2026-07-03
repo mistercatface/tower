@@ -5,8 +5,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { runGameLaunch } from "../Libraries/Game/runGameLaunch.js";
-import { GAME_LAUNCHERS } from "../Libraries/Game/gameLaunchers.js";
+import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 
 function createEditorTestState() {

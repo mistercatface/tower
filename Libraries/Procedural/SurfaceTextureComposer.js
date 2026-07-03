@@ -1,4 +1,4 @@
-import { clampByte } from "../Color/hex.js";
+import { clampByte } from "../Color/colorMath.js";
 import { blendMotifRgb } from "./util/blend.js";
 import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";

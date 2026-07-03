@@ -1,4 +1,4 @@
-import { clampByte } from "../../Color/hex.js";
+import { clampByte } from "../../Color/colorMath.js";
 export const BLEND_OPTIONS = ["replace", "add", "multiply", "screen", "overlay", "hard-light", "soft-light", "color-dodge", "color-burn", "difference"];
 /**
  * Blend motif layer into `out` without allocating a result object.

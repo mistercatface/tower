@@ -2,7 +2,7 @@ import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
 import { initTileLabWorld } from "../world/mapWorld.js";
 import { mountGameSandbox } from "../world/gameSandbox.js";
 import { fitPlayStageZoom } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
-import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
+import { runGameLaunch } from "../../../Libraries/Game/gameLaunch.js";
 import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled } from "./preview.js";
 import { seedRuntimeLabProfile } from "./profile/ProfileEditor.js";
 import { fitGameCanvasToStage, mountGameViewport } from "./gameViewport.js";

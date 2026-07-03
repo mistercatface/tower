@@ -1,7 +1,7 @@
 import { forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { createSeededRng } from "../Math/SeededRng.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Color/tintPresets.js";
+import { PUZZLE_TEMPLATE_BALL_TINTS } from "../Color/visualOverride.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { buildRoomsFromNodeGraph } from "./roomGraphClosedRooms.js";
 import { applyCorridorBundleToRooms, solveAuthoredLinkCorridorBundle } from "./roomGraphCorridorApply.js";

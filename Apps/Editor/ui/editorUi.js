@@ -13,7 +13,7 @@ import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
-import { runGameLaunch } from "../../../Libraries/Game/runGameLaunch.js";
+import { runGameLaunch } from "../../../Libraries/Game/gameLaunch.js";
 let profileRefreshTimer = null;
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let mapCanvasResize = null;

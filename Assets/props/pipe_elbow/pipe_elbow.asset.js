@@ -1,5 +1,5 @@
 import { getPipeElbowOutletWorld, getPipeElbowSpriteCacheKey, syncPipeElbowCollisionShape } from "../../../Libraries/Props/pipeElbowGeometry.js";
-import { PIPE_SPAWNER_BALL_TINT } from "../../../Libraries/Color/tintPresets.js";
+import { PIPE_SPAWNER_BALL_TINT } from "../../../Libraries/Color/visualOverride.js";
 export default {
     id: "pipe_elbow",
     primitive: "pipeElbow",

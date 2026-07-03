@@ -1,6 +1,4 @@
-import { scaleColorTreeBrightness, scaleHexBrightness } from "./brightness.js";
-import { collectHexColors, shiftColorTreeToTintHex, shiftPaletteToTintHex } from "./hueShift.js";
-import { hueToPickerHex, normalizeHue } from "./hex.js";
+import { scaleColorTreeBrightness, scaleHexBrightness, collectHexColors, shiftColorTreeToTintHex, shiftPaletteToTintHex, hueToPickerHex, normalizeHue } from "./colorMath.js";
 export function stampPropVisualOverride(prop, override) {
     prop.visualOverride = { ...override };
 }
@@ -75,3 +73,6 @@ export function serializeVisualOverride(prop) {
     if (prop.visualOverride.brightness != null && prop.visualOverride.brightness !== 1) out.brightness = prop.visualOverride.brightness;
     return Object.keys(out).length ? out : null;
 }
+
+export const PUZZLE_TEMPLATE_BALL_TINTS = { roomA: "#42A5F5", roomB: "#FF9800" };
+export const PIPE_SPAWNER_BALL_TINT = "#42A5F5";

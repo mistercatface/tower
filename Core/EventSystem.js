@@ -1,4 +1,4 @@
-import { EventBus } from "../Libraries/Events/EventBus.js";
+import { EventBus } from "../Libraries/Events/index.js";
 import { Events } from "./EventNames.js";
 export const events = new EventBus();
 export function requestUiUpdate() {
