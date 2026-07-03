@@ -23,3 +23,6 @@ Libraries/Deprecated/
 !.cursor/.gitignore
 !.cursor/rules/
 !.cursor/rules/**
+
+# google drive backup
+.tmp.driveupload/
