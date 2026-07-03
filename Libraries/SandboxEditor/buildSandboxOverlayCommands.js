@@ -3,7 +3,6 @@ import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
 import { appendChainLinkWireOverlayCommands } from "../Sandbox/chainLinks.js";
 import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";
 import { appendMarqueeOverlayCommands, appendPropTileCellOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
-import { appendRoomGraphOverlayCommands } from "../RoomGraph/roomGraphOverlayCommands.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
 import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isChainSteeringTarget } from "../Sandbox/chainLinks.js";
@@ -19,21 +18,12 @@ export function buildSandboxOverlayCommands({
     getPropBehaviorId,
     buttonWireTool,
     chainLinkWireTool,
-    corridorLinkWireTool,
     resolveBehavior,
     selectedProp,
 }) {
     const commands = [];
     const viewport = state.viewport;
     const sel = session.getSelection();
-    appendRoomGraphOverlayCommands(commands, state, state.obstacleGrid, {
-        selectedNodeId: sel?.kind === "roomNode" ? sel.id : sel?.kind === "roomLink" ? sel.nodeId : null,
-        selectedLinkId: sel?.kind === "roomLink" ? sel.linkId : null,
-        wireFromNodeId: corridorLinkWireTool.getFromNodeId(),
-        wireCursor: corridorLinkWireTool.getCursor(),
-        showRoomNodesAlways: state.editor.showRoomNodesAlways,
-        wireModeActive: corridorLinkWireTool.isActive(),
-    });
     appendButtonWireOverlayCommands(commands, state, {
         wireFromPropId: buttonWireTool.isActive() ? (session.getSelectedProp()?.id ?? null) : null,
         wireCursor: buttonWireTool.isActive() ? buttonWireTool.getCursor() : null,

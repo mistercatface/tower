@@ -1,5 +1,5 @@
 import { FlatGridSearch, SearchState, FlatGridView } from "../../Pathfinding/AStar.js";
-import { corridorPathHitsOccupied } from "../../Pathfinding/Corridor/corridorFootprint.js";
+import { corridorPathHitsOccupied } from "./railMazeCorridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
 import { colRowToIndex, gridCellLayout } from "../../Spatial/grid/GridUtils.js";
 const FULL_FOOTPRINT = { interiorOnly: false };

@@ -2,7 +2,6 @@ import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.j
 import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
 import { applyFloorBeltsFromGlobal, listPlacedFloorBeltsForSnapshot } from "./floorOccupancy.js";
-import { applyRoomGraphFromSnapshot, clearRoomGraph, collectRoomGraphForSnapshot, syncRoomGraphBake, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
@@ -57,7 +56,6 @@ export function collectSandboxSceneSnapshot(state) {
         props,
         kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),
         chainHeadProp,
-        roomGraph: collectRoomGraphForSnapshot(state, grid),
     };
 }
 /** @param {unknown} raw */
@@ -85,11 +83,6 @@ function expandGridForSnapshot(state, doc) {
         includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
     }
     for (let i = 0; i < doc.props.length; i++) includeWorldPoint(doc.props[i].x, doc.props[i].y);
-    for (let i = 0; i < doc.roomGraph.nodes.length; i++) {
-        const node = doc.roomGraph.nodes[i];
-        includeWorldPoint(node.col * cellSize + cellHalfSize, node.row * cellSize + cellHalfSize);
-        includeWorldPoint((node.col + node.width - 1) * cellSize + cellHalfSize, (node.row + node.height - 1) * cellSize + cellHalfSize);
-    }
     if (isEmptyAabb(bounds)) return;
     state.obstacleGrid.expandToCoverAabb(bounds);
 }
@@ -100,8 +93,6 @@ function clearSandboxSceneContent(state) {
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
     getSandboxEntityMeta(state).clear();
-    unbakeRoomGraph(state);
-    clearRoomGraph(state);
     clearGridStampDrawCaches(state);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
@@ -144,7 +135,5 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     const grid = state.obstacleGrid;
     if (wallBounds) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     await commitGridNavEdit(state, null, { fullNavSync: true });
-    applyRoomGraphFromSnapshot(state, doc.roomGraph, cellSize);
-    syncRoomGraphBake(state);
     spawnSnapshotProps(state, doc);
 }

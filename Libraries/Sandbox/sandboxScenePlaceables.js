@@ -1,5 +1,4 @@
 import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
-import { expandGridForRoomNodeFootprint, stampRoomNodeAt, syncRoomGraphBake } from "../RoomGraph/index.js";
 import { canStampFloorBeltAt, markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
 import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
@@ -9,41 +8,37 @@ import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
 import propCatalog from "../../Assets/props/index.js";
-import { isGridFloorBeltSpawnAsset, isRoomLinkSpawnAsset, isRoomNodeSpawnAsset, isResizableBoxSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
-import {
-    buildFloorBeltInspectorInfo,
-    buildRailWallInspectorInfo,
-    buildRoomLinkInspectorInfo,
-    buildRoomNodeInspectorInfo,
-    buildVoxelWallInspectorInfo,
-    selectionPrimaryPropId,
-    selectionPropIds,
-} from "./sandboxSelectionInspectors.js";
-/** @typedef {{ seq: number, label: string, select: { kind: string }, paletteKey?: string }} SandboxSceneItem */
-/** @typedef {{ kind: string, data: unknown }} SandboxSelectionInspector */
-function inspectorResult(kind, data) {
-    return data == null ? null : { kind, data };
-}
-function sceneItem(seq, label, select, paletteKey) {
-    const item = { seq, label, select };
-    if (paletteKey != null) item.paletteKey = paletteKey;
-    return item;
+import { isGridFloorBeltSpawnAsset, isResizableBoxSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
+import { formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
+import { buildFloorBeltInspectorInfo, buildRailWallInspectorInfo, buildVoxelWallInspectorInfo } from "./sandboxSelectionInspectors.js";
+function sceneItem(seq, label, select, category = "") {
+    return { seq, label, select, category };
 }
 function selectionMatchesSelect(selection, select) {
     if (!selection) return false;
-    if (select.kind === "prop") return selection.kind === "prop" && selection.ids.has(select.ids[0]);
-    if (select.kind === "floor") return selection.kind === "floor" && selection.col === select.col && selection.row === select.row;
-    if (select.kind === "voxel") return selection.kind === "voxel" && selection.col === select.col && selection.row === select.row;
-    if (select.kind === "rail") return selection.kind === "rail" && selection.col === select.col && selection.row === select.row && selection.side === select.side;
-    if (select.kind === "roomNode") return selection.kind === "roomNode" && selection.id === select.id;
-    if (select.kind === "roomLink") return selection.kind === "roomLink" && selection.linkId === select.linkId && selection.corridorIndex === (select.corridorIndex ?? 0);
+    if (selection.kind !== select.kind) return false;
+    if (selection.kind === "prop") {
+        if (selection.ids.size !== select.ids.length) return false;
+        for (let i = 0; i < select.ids.length; i++) if (!selection.ids.has(select.ids[i])) return false;
+        return true;
+    }
+    if (selection.kind === "floor" || selection.kind === "voxel") return selection.col === select.col && selection.row === select.row;
+    if (selection.kind === "rail") return selection.col === select.col && selection.row === select.row && selection.side === select.side;
     return false;
 }
-function deleteWallSceneItem(session, item, pickSelection) {
-    pickSelection(item.select);
-    session.deleteSelectedWall();
+function inspectorResult(kind, data) {
+    return data == null ? null : { kind, data };
 }
-const PLACEABLE = {
+function deleteWallSceneItem(session, item) {
+    const edge = item.select;
+    session.deleteWallAt(edge.col, edge.row, edge.side);
+}
+export const PLACEABLE = {
+    props: {
+        buildFromSelection(state, sel) {
+            return sel.ids.size > 1 ? { ids: [...sel.ids] } : null;
+        },
+    },
     prop: {
         matchesSpawnAsset() {
             return true;
@@ -89,27 +84,61 @@ const PLACEABLE = {
             }
             return spawned != null;
         },
-        buildFromSelection(state, sel, ctx) {
-            const id = selectionPrimaryPropId(sel, ctx.getLiveProp);
-            return id == null ? null : ctx.getLiveProp(id);
+        buildFromSelection(state, sel, { getLiveProp }) {
+            if (sel.ids.size !== 1) return null;
+            const id = [...sel.ids][0];
+            return getLiveProp(id);
+        },
+        mutate(state, sel, patch, { getLiveProp, notifyUi }) {
+            let changed = false;
+            for (const id of sel.ids) {
+                const prop = getLiveProp(id);
+                if (!prop) continue;
+                const asset = propCatalog[prop.spawnTypeId];
+                if (!asset) continue;
+                if (patch.faction !== undefined && prop.faction !== patch.faction) {
+                    prop.faction = patch.faction;
+                    changed = true;
+                }
+                if (patch.visualTint !== undefined) {
+                    setPropVisualTint(prop, patch.visualTint);
+                    changed = true;
+                }
+                if (patch.visualBrightness !== undefined) {
+                    setPropVisualBrightness(prop, patch.visualBrightness);
+                    changed = true;
+                }
+                if (patch.ballRadius !== undefined && isBallFamilyAsset(asset)) {
+                    setCirclePropRadius(prop, patch.ballRadius);
+                    changed = true;
+                }
+                if ((patch.boxWidth !== undefined || patch.boxHeight !== undefined) && blockPresetUsesResizableFootprint(asset)) {
+                    const w = patch.boxWidth ?? prop.shape.halfExtents.x * 2;
+                    const h = patch.boxHeight ?? prop.shape.halfExtents.y * 2;
+                    state.kinetic.setBoxShapeHalfExtents(prop, w / 2, h / 2);
+                    changed = true;
+                }
+                if ((patch.crossLength !== undefined || patch.crossThickness !== undefined) && asset.id === "cross_pinwheel") {
+                    const len = patch.crossLength ?? prop.shape.length;
+                    const thick = patch.crossThickness ?? prop.shape.thickness;
+                    applyCrossPinwheelFootprint(prop, len, thick);
+                    changed = true;
+                }
+            }
+            if (changed) notifyUi();
+            return changed;
         },
         listSceneItems({ placement, listPlacedProps }) {
             const items = [];
-            for (const entry of listPlacedProps())
-                items.push(
-                    sceneItem(
-                        placement.placementSeq(placement.propPlacementKey(entry.id), entry.id),
-                        `${entry.label} · ${formatSandboxFactionLabel(entry.faction)}`,
-                        { kind: "prop", ids: [entry.id] },
-                        `prop:${entry.type}`,
-                    ),
-                );
+            const props = listPlacedProps();
+            for (let i = 0; i < props.length; i++) {
+                const prop = props[i];
+                const asset = propCatalog[prop.spawnTypeId ?? prop.type];
+                if (!asset) continue;
+                const label = `${prop.label ?? asset.label} · ${formatSandboxFactionLabel(prop.faction)}`;
+                items.push(sceneItem(placement.placementSeq(placement.propPlacementKey(prop.id), prop.id), label, { kind: "prop", ids: [prop.id] }, `prop:${prop.spawnTypeId ?? prop.type}`));
+            }
             return items;
-        },
-    },
-    props: {
-        buildFromSelection(state, sel) {
-            return sel.ids.size > 1 ? { ids: selectionPropIds(sel) } : null;
         },
     },
     floorBelt: {
@@ -133,16 +162,23 @@ const PLACEABLE = {
             const items = [];
             for (const entry of listPlacedFloorBelts())
                 items.push(
-                    sceneItem(placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 1e9 + entry.col + entry.row * 1e6), entry.label, {
-                        kind: "floor",
-                        col: entry.col,
-                        row: entry.row,
-                    }),
+                    sceneItem(
+                        placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6),
+                        `Floor belt · (${entry.col},${entry.row}) · ${formatFloorBeltKindLabel(entry.kind)}`,
+                        { kind: "floor", col: entry.col, row: entry.row },
+                        "floor",
+                    ),
                 );
             return items;
         },
     },
     voxel: {
+        matchesSpawnAsset(asset) {
+            return asset.category === "block" && !isResizableBoxSpawnAsset(asset);
+        },
+        spawnAt() {
+            return false;
+        },
         buildFromSelection(state, sel) {
             return buildVoxelWallInspectorInfo(state, sel);
         },
@@ -178,55 +214,8 @@ const PLACEABLE = {
             return items;
         },
     },
-    roomNode: {
-        matchesSpawnAsset: isRoomNodeSpawnAsset,
-        spawnAt(state, worldX, worldY, asset, ctx) {
-            const grid = state.obstacleGrid;
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            expandGridForRoomNodeFootprint(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows);
-            const node = stampRoomNodeAt(state, col, row, ctx.spawnRoomNodeCols, ctx.spawnRoomNodeRows);
-            if (!node) return false;
-            ctx.placement.touchRoomNodePlacement(node.id);
-            ctx.pickSelection({ kind: "roomNode", id: node.id });
-            syncRoomGraphBake(state);
-            ctx.notifyUi();
-            return true;
-        },
-        buildFromSelection(state, sel) {
-            return buildRoomNodeInspectorInfo(state, sel);
-        },
-        listSceneItems({ placement, listPlacedRoomNodes }) {
-            const items = [];
-            for (const entry of listPlacedRoomNodes())
-                items.push(sceneItem(placement.placementSeq(placement.roomNodePlacementKey(entry.id), 7e9 + entry.id), entry.label, { kind: "roomNode", id: entry.id }));
-            return items;
-        },
-    },
-    roomLink: {
-        matchesSpawnAsset: isRoomLinkSpawnAsset,
-        spawnAt() {
-            return false;
-        },
-        buildFromSelection(state, sel) {
-            return buildRoomLinkInspectorInfo(state, sel);
-        },
-        listSceneItems({ placement, listPlacedRoomLinks }) {
-            const items = [];
-            for (const entry of listPlacedRoomLinks())
-                items.push(
-                    sceneItem(placement.placementSeq(placement.roomLinkPlacementKey(entry.linkId, entry.corridorIndex), 8e9 + entry.linkId + entry.corridorIndex * 1e6), entry.label, {
-                        kind: "roomLink",
-                        linkId: entry.linkId,
-                        corridorIndex: entry.corridorIndex,
-                        nodeId: null,
-                    }),
-                );
-            return items;
-        },
-    },
 };
-const SPAWN_ROWS = [PLACEABLE.floorBelt, PLACEABLE.roomNode, PLACEABLE.roomLink, PLACEABLE.prop];
+const SPAWN_ROWS = [PLACEABLE.floorBelt, PLACEABLE.prop];
 const FROM_SELECTION = {
     prop(state, sel, ctx) {
         if (sel.ids.size > 1) return inspectorResult("props", PLACEABLE.props.buildFromSelection(state, sel, ctx));
@@ -241,12 +230,6 @@ const FROM_SELECTION = {
     rail(state, sel, ctx) {
         return inspectorResult("rail", PLACEABLE.rail.buildFromSelection(state, sel, ctx));
     },
-    roomNode(state, sel, ctx) {
-        return inspectorResult("roomNode", PLACEABLE.roomNode.buildFromSelection(state, sel, ctx));
-    },
-    roomLink(state, sel, ctx) {
-        return inspectorResult("roomLink", PLACEABLE.roomLink.buildFromSelection(state, sel, ctx));
-    },
 };
 const DELETE_BY_SELECT_KIND = {
     prop(session, item) {
@@ -258,23 +241,8 @@ const DELETE_BY_SELECT_KIND = {
     },
     voxel: deleteWallSceneItem,
     rail: deleteWallSceneItem,
-    roomNode(session, item, pickSelection) {
-        pickSelection(item.select);
-        session.deleteSelectedRoomNode();
-    },
-    roomLink(session, item, pickSelection) {
-        pickSelection(item.select);
-        session.deleteSelectedRoomLink();
-    },
 };
-const SCENE_LISTERS = [
-    PLACEABLE.prop.listSceneItems,
-    PLACEABLE.floorBelt.listSceneItems,
-    PLACEABLE.voxel.listSceneItems,
-    PLACEABLE.rail.listSceneItems,
-    PLACEABLE.roomNode.listSceneItems,
-    PLACEABLE.roomLink.listSceneItems,
-];
+const SCENE_LISTERS = [PLACEABLE.prop.listSceneItems, PLACEABLE.floorBelt.listSceneItems, PLACEABLE.voxel.listSceneItems, PLACEABLE.rail.listSceneItems];
 export function spawnPlaceableAt(state, worldX, worldY, asset, ctx) {
     for (let i = 0; i < SPAWN_ROWS.length; i++) {
         const row = SPAWN_ROWS[i];
@@ -293,7 +261,7 @@ export function wallPlaceInspector(inspector) {
     if (inspector?.kind === "voxel" || inspector?.kind === "rail") return inspector;
     return null;
 }
-export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail", "roomNode", "roomLink"];
+export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail"];
 export function listPlacedSceneItems(ctx) {
     const items = [];
     for (let i = 0; i < SCENE_LISTERS.length; i++) items.push(...SCENE_LISTERS[i](ctx));
@@ -303,7 +271,8 @@ export function listPlacedSceneItems(ctx) {
 export function matchesSceneItem(selection, item) {
     return selectionMatchesSelect(selection, item.select);
 }
-export function pickSceneItem(item, { pickSelection }) {
+export function pickSceneItem(item, { pickSelection, setPlacePaletteKey }) {
+    if (item.paletteKey != null && setPlacePaletteKey != null) setPlacePaletteKey(item.paletteKey);
     pickSelection(item.select);
 }
 export function removeSceneItem(session, item, pickSelection) {

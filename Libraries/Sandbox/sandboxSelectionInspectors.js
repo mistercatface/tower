@@ -1,10 +1,6 @@
 import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
-import { formatRoomLinkCorridorLabel, formatRoomNodeLabel, getRoomLink, getRoomNode } from "../RoomGraph/index.js";
-import { linkCorridorLimits, MAX_CORRIDOR_COUNT, resolveLinkCorridorRoll } from "../RoomGraph/roomGraphLinkCorridor.js";
-import { normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
-import { createSeededRng } from "../Math/SeededRng.js";
 import { getRailWallInfo, getVoxelWallInfo } from "./gridWallEdit.js";
 export function selectionFloorCell(sel) {
     return sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null;
@@ -14,17 +10,6 @@ export function selectionVoxelCell(sel) {
 }
 export function selectionRailEdge(sel) {
     return sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null;
-}
-export function selectionRoomNodeId(sel) {
-    if (sel?.kind === "roomNode") return sel.id;
-    if (sel?.kind === "roomLink") return sel.nodeId;
-    return null;
-}
-export function selectionRoomLinkId(sel) {
-    return sel?.kind === "roomLink" ? sel.linkId : null;
-}
-export function selectionRoomLinkCorridorIndex(sel) {
-    return sel?.kind === "roomLink" ? sel.corridorIndex : 0;
 }
 export function selectionPropIds(sel) {
     return sel?.kind === "prop" ? [...sel.ids] : [];
@@ -61,40 +46,4 @@ export function buildRailWallInspectorInfo(state, sel) {
     const grid = state.obstacleGrid;
     const idx = edge.row * grid.cols + edge.col;
     return railWallEdgeAt(grid, idx, edge.side) ? getRailWallInfo(grid, idx, edge.side) : null;
-}
-export function buildRoomNodeInspectorInfo(state, sel) {
-    const id = selectionRoomNodeId(sel);
-    if (id == null) return null;
-    const node = getRoomNode(state, id);
-    if (!node) return null;
-    return { ...node, label: formatRoomNodeLabel(node) };
-}
-export function buildRoomLinkInspectorInfo(state, sel) {
-    const linkId = selectionRoomLinkId(sel);
-    if (linkId == null) return null;
-    const link = getRoomLink(state, linkId);
-    if (!link) return null;
-    const corridorIndex = selectionRoomLinkCorridorIndex(sel);
-    const nodeA = getRoomNode(state, link.a);
-    const nodeB = getRoomNode(state, link.b);
-    const limits = nodeA && nodeB ? linkCorridorLimits(nodeA, nodeB) : null;
-    const roll = nodeA && nodeB ? resolveLinkCorridorRoll(link, nodeA, nodeB, createSeededRng(link.seed ?? link.id * 9973)) : null;
-    return {
-        ...link,
-        corridorType: normalizeCorridorType(link.corridorType),
-        label: formatRoomLinkCorridorLabel(link, corridorIndex),
-        corridorIndex,
-        maxCorridorWidth: limits?.maxWidth ?? null,
-        maxCorridorCount: MAX_CORRIDOR_COUNT,
-        rolledCorridorCount: roll?.corridorCount ?? null,
-        rolledCorridorWidths: roll?.corridorWidths ?? null,
-    };
-}
-export function resolveSelectedRoomNode(state, sel) {
-    const id = selectionRoomNodeId(sel);
-    return id == null ? null : (getRoomNode(state, id) ?? null);
-}
-export function resolveSelectedRoomLink(state, sel) {
-    const id = selectionRoomLinkId(sel);
-    return id == null ? null : (getRoomLink(state, id) ?? null);
 }

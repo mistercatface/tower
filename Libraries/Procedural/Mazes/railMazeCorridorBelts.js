@@ -1,10 +1,14 @@
-import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLanePath.js";
-import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorApply.js";
+import { addCorridorPathToOccupied, buildCorridorBeltsFromPaths } from "./railMazeCorridorFootprint.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides } from "../../Spatial/grid/FloorCell.js";
+import { gridSettings } from "../../../Config/world.js";
+import { stampRailWallsQuiet } from "../../Sandbox/gridWallEdit.js";
+import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
+import { cellBoundsAt, unionCellBounds } from "../../DataStructures/CellRect.js";
+import { markGridZoneSubscriptionsDirty } from "../../Sandbox/floorOccupancy.js";
 import { isNavWalkableAt } from "./walkableCells.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
@@ -172,7 +176,7 @@ export function planRailMazeCorridorBelts({
     const { paths, widths } = planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, navWalkableIndex, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng: random });
     const neighborAtIdx = (idx) => navWalkableNeighborsIdx(grid, navTopology, idx);
     const degreeByIndex = degreeInZone(zoneCells, neighborAtIdx, grid.cols);
-    let floorBelts = buildCorridorBeltsFromPaths(paths, widths, [], null, null, globalLayout);
+    let floorBelts = buildCorridorBeltsFromPaths(paths, widths, globalLayout);
     const footprint = beltFootprintIndices(floorBelts, globalLayout);
     const mouthExteriorIndices = new Set(collectPathMouthExteriorIndices(paths, grid));
     const peeled = peelBrokenBelts(floorBelts, mouthExteriorIndices, globalLayout);
@@ -274,4 +278,34 @@ export function collectPathMouthExteriorIndices(paths, grid) {
         if (exitExteriorIdx !== -1) mouths.add(exitExteriorIdx);
     }
     return mouths;
+}
+export function stampGlobalRailMazeBelts(state, floorBelts) {
+    const grid = state.obstacleGrid;
+    let bounds = null;
+    for (let i = 0; i < floorBelts.length; i++) {
+        const belt = floorBelts[i];
+        if (!grid.writeFloorCell(belt.idx, belt.kind, belt.facingIndex)) continue;
+        const row = (belt.idx / grid.cols) | 0;
+        const col = belt.idx - row * grid.cols;
+        const cellBounds = cellBoundsAt(col, row);
+        bounds = bounds ? unionCellBounds(bounds, cellBounds) : cellBounds;
+    }
+    if (bounds) markGridZoneSubscriptionsDirty(state, bounds);
+    return { bounds };
+}
+export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {
+    const grid = state.obstacleGrid;
+    const cellSize = gridSettings.cellSize;
+    const gridRails = [];
+    for (let i = 0; i < rails.length; i++) {
+        const wall = rails[i];
+        const col = grid.worldCol(wall.col * cellSize);
+        const row = grid.worldRow(wall.row * cellSize);
+        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+        gridRails.push({ col, row, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
+    }
+    const result = stampRailWallsQuiet(state, gridRails);
+    if (!commit || !result.bounds) return result;
+    commitGridNavEdit(state, result.bounds);
+    return result;
 }

@@ -1,15 +1,21 @@
-import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../RoomGraph/roomGraphCorridorTypes.js";
 import propCatalog from "../../../Assets/props/index.js";
-import { isGridFloorBeltSpawnAsset, isRoomLinkSpawnAsset, isRoomNodeSpawnAsset, isPuzzleTemplateSpawnAsset, isSingleWorldPropSpawnAsset } from "../../Sandbox/sandboxCapabilities.js";
-import { appendAxisNumberFields, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
-import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
+import { isGridFloorBeltSpawnAsset, isSingleWorldPropSpawnAsset, getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
+import { appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandboxFaction.js";
 import { appendShapeFamilySpawnFields, appendCoatFields } from "./sandboxShapeFamilyUi.js";
 import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
+function appendFactionSelect(parent, { value, onChange }) {
+    appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
+}
+function appendBehaviorModeField(parent, behaviorIds, value, onChange) {
+    if (behaviorIds.length === 0) return;
+    appendSelectField(parent, "Mode", { value, options: behaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })), onChange });
+}
 function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
-    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset) && !isRoomNodeSpawnAsset(spawnAsset) && !isRoomLinkSpawnAsset(spawnAsset) && !isPuzzleTemplateSpawnAsset(spawnAsset))
+    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset))
         appendFactionSelect(addRow, {
             value: controller.getSpawnFaction(),
             onChange: (faction) => {
@@ -34,79 +40,6 @@ function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAdd
 }
 export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     const spawnAsset = propCatalog[spawnId];
-    if (isRoomLinkSpawnAsset(spawnAsset)) {
-        const fromNodeId = controller.getCorridorLinkWireFromNodeId();
-        appendSelectField(body, "Type", {
-            value: controller.getSpawnCorridorType(),
-            options: CORRIDOR_AUTHORING_TYPE_OPTIONS,
-            onChange: (value) => {
-                controller.setSpawnCorridorType(value);
-            },
-        });
-        appendNumberField(body, "Width", {
-            value: controller.getSpawnCorridorWidth(),
-            step: 1,
-            min: 1,
-            max: 8,
-            onChange: (width) => {
-                controller.setSpawnCorridorWidth(width);
-            },
-        });
-        appendEditorHint(
-            body,
-            fromNodeId != null
-                ? "Source room selected — click the target room. The corridor draws immediately; pick it from Scene to adjust type, width, or reroll."
-                : "Pick type and width, then click the source room and target room.",
-        );
-        appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
-        return;
-    }
-    if (isRoomNodeSpawnAsset(spawnAsset)) {
-        appendAxisNumberFields(body, {
-            Width: {
-                value: controller.getSpawnRoomNodeCols(),
-                step: 1,
-                min: 1,
-                onChange: (cols) => {
-                    controller.setSpawnRoomNodeCols(cols);
-                },
-            },
-            Height: {
-                value: controller.getSpawnRoomNodeRows(),
-                step: 1,
-                min: 1,
-                onChange: (rows) => {
-                    controller.setSpawnRoomNodeRows(rows);
-                },
-            },
-        });
-        appendEditorHint(body, "Hover the map to preview the footprint. Blocked cells turn red; click only places when every cell is clear.");
-        appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
-        return;
-    }
-    if (isPuzzleTemplateSpawnAsset(spawnAsset)) {
-        appendAxisNumberFields(body, {
-            Width: {
-                value: controller.getSpawnPuzzleAreaCols(),
-                step: 1,
-                min: 28,
-                onChange: (cols) => {
-                    controller.setSpawnPuzzleAreaCols(cols);
-                },
-            },
-            Height: {
-                value: controller.getSpawnPuzzleAreaRows(),
-                step: 1,
-                min: 24,
-                onChange: (rows) => {
-                    controller.setSpawnPuzzleAreaRows(rows);
-                },
-            },
-        });
-        appendEditorHint(body, "Click to stamp three rooms with random sizes and positions inside the area. Links are fixed: belt A→B, belt B→A, locked B→C. Room A gets a blue ball and crate.");
-        appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: false });
-        return;
-    }
     if (spawnId === "snake") {
         appendNumberField(body, "Length", {
             value: controller.getSpawnSnakeLength(),

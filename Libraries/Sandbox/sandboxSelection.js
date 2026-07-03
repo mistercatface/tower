@@ -1,4 +1,4 @@
-export function createSandboxSelection({ isLiveProp, getRoomLink }) {
+export function createSandboxSelection({ isLiveProp }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
     /** @param {SandboxSelection | null} next */
@@ -32,18 +32,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
             assign({ kind: "rail", col: input.col, row: input.row, side: input.side });
             return;
         }
-        if (input.kind === "roomNode") {
-            assign({ kind: "roomNode", id: input.id });
-            return;
-        }
-        if (input.kind === "roomLink") {
-            let nodeId = input.nodeId ?? null;
-            if (input.linkId != null && nodeId != null && getRoomLink) {
-                const link = getRoomLink(input.linkId);
-                if (link && link.a !== nodeId && link.b !== nodeId) nodeId = null;
-            }
-            assign({ kind: "roomLink", linkId: input.linkId, corridorIndex: input.linkId == null ? 0 : (input.corridorIndex ?? 0), nodeId });
-        }
     };
     const clearSelection = () => {
         assign(null);
@@ -56,9 +44,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
     };
     const clearWallSelection = () => {
         if (selection?.kind === "voxel" || selection?.kind === "rail") assign(null);
-    };
-    const clearRoomGraphSelection = () => {
-        if (selection?.kind === "roomNode" || selection?.kind === "roomLink") assign(null);
     };
     const prunePropSelection = () => {
         if (selection?.kind !== "prop") return false;
@@ -95,23 +80,6 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         }
         if (selection?.kind === "rail" && selection.col === col && selection.row === row && (side == null || selection.side === side)) assign(null);
     };
-    const dropDeletedRoomLinkSelection = (linkId) => {
-        if (selection?.kind === "roomLink" && selection.linkId === linkId)
-            if (selection.nodeId != null) assign({ kind: "roomNode", id: selection.nodeId });
-            else assign(null);
-    };
-    const dropRoomGraphIfLinkMissing = (linkExists) => {
-        if (selection?.kind === "roomLink" && selection.linkId != null && !linkExists(selection.linkId)) clearRoomGraphSelection();
-    };
-    const clampRoomLinkCorridorIndex = (laneCount) => {
-        if (selection?.kind !== "roomLink" || selection.linkId == null) return;
-        selection.corridorIndex = Math.min(selection.corridorIndex, laneCount - 1);
-    };
-    const clearRoomLinkAfterDelete = () => {
-        if (selection?.kind !== "roomLink" || selection.linkId == null) return;
-        if (selection.nodeId != null) assign({ kind: "roomNode", id: selection.nodeId });
-        else assign(null);
-    };
     return {
         getSelection: () => selection,
         select,
@@ -119,16 +87,11 @@ export function createSandboxSelection({ isLiveProp, getRoomLink }) {
         clearPropSelection,
         clearFloorSelection,
         clearWallSelection,
-        clearRoomGraphSelection,
         prunePropSelection,
         removePropFromSelection,
         togglePropInSelection,
         dropDeletedWallSelection,
-        dropDeletedRoomLinkSelection,
-        dropRoomGraphIfLinkMissing,
-        clampRoomLinkCorridorIndex,
-        clearRoomLinkAfterDelete,
     };
 }
-/** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex: number, nodeId: number | null }} SandboxSelection */
-/** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number } | { kind: 'roomNode', id: number } | { kind: 'roomLink', linkId: number | null, corridorIndex?: number, nodeId?: number | null }} SandboxSelectInput */
+/** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number }} SandboxSelection */
+/** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number }} SandboxSelectInput */

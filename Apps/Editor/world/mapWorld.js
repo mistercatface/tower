@@ -4,10 +4,8 @@ import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { generateCavernOccupancy } from "../../../Libraries/Procedural/Mazes/cavernOccupancy.js";
-import { stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/stampRailWalls.js";
 import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Sandbox/gridNavEdit.js";
-import { planRailMazeCorridorBelts } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
-import { stampGlobalRailMazeBelts } from "../../../Libraries/Procedural/Mazes/stampGlobalRailMazeBelts.js";
+import { planRailMazeCorridorBelts, stampGlobalRailMazeBelts, stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
@@ -188,7 +186,6 @@ export function clearSnakeRegionPaddingStrip(state, paddingCells) {
         boundsRows: padding,
     });
 }
-
 export async function generateLabRailDfsMaze(state, options = {}) {
     const { railConfig } = state.editor;
     const cellSize = gridSettings.cellSize;
@@ -341,11 +338,7 @@ export async function generateLabRailMaze(state, options = {}) {
     const corridorWidthMin = options.corridorWidthMin ?? config.corridorWidthMin;
     const corridorWidthMax = options.corridorWidthMax ?? config.corridorWidthMax;
     const extraLinkRatio = options.extraLinkRatio ?? config.extraLinkRatio;
-    let rails = bakeRailMazeDfs(
-        { originCol, originRow, cols, rows },
-        { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio },
-        state.mapSeed,
-    );
+    let rails = bakeRailMazeDfs({ originCol, originRow, cols, rows }, { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio }, state.mapSeed);
     if (config.boundsMode !== "rect")
         rails = rails.filter((wall) => {
             const inCell = isGlobalCellInMapGenBounds(config, wall.col, wall.row);

@@ -107,10 +107,6 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             const grid = state.obstacleGrid;
             const col = grid.worldCol(world.x);
             const row = grid.worldRow(world.y);
-            if (session.pickRoomNodeAtWorld(world.x, world.y)) {
-                exitWireModes();
-                return true;
-            }
             if (grid.hasFloorOccupancy(col + row * grid.cols)) {
                 session.select({ kind: "floor", col, row });
                 return true;

@@ -1,9 +1,39 @@
 import { PLACEABLE_INSPECTOR_KINDS } from "../../Sandbox/sandboxScenePlaceables.js";
-import { appendFloorBeltSelectedInspector } from "./sandboxFloorInspector.js";
-import { appendRoomNodeSelectedInspector } from "./sandboxRoomSelectedInspector.js";
-import { appendRoomLinkCorridorInspector, appendWallSelectedInspector } from "./sandboxWallInspector.js";
+import { appendWallSelectedInspector } from "./sandboxWallInspector.js";
 import { appendSelectedPropInspector } from "./sandboxPropSelectedInspector.js";
-import { appendActionRow, appendEditorHint } from "../../UI/paramFields.js";
+import { appendActionRow, appendEditorHint, appendAxisNumberFields, appendSelectField } from "../../UI/paramFields.js";
+import { listFloorBeltKindOptions } from "../../Sandbox/sandboxCapabilities.js";
+function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
+    appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, col/row, or rotation below. Move is blocked when the target has a wall or belt.`);
+    appendSelectField(body, "Type", {
+        value: String(selectedFloorBelt.kind),
+        options: listFloorBeltKindOptions().map((option) => ({ value: String(option.kind), label: option.label })),
+        onChange: (value) => {
+            controller.setSelectedFloorBeltKind(Number(value));
+        },
+    });
+    appendAxisNumberFields(body, {
+        Col: {
+            value: selectedFloorBelt.col,
+            step: 1,
+            onChange: (col) => {
+                controller.moveSelectedFloorBeltTo(col, selectedFloorBelt.row);
+            },
+        },
+        Row: {
+            value: selectedFloorBelt.row,
+            step: 1,
+            onChange: (row) => {
+                controller.moveSelectedFloorBeltTo(selectedFloorBelt.col, row);
+            },
+        },
+    });
+    appendActionRow(body, [
+        { label: "Rotate left", onClick: () => controller.rotateSelectedFloorBelt(-1) },
+        { label: "Rotate right", onClick: () => controller.rotateSelectedFloorBelt(1) },
+    ]);
+    appendActionRow(body, [{ label: "Delete belt", onClick: () => controller.deleteSelectedFloorCell() }]);
+}
 const INSPECTOR_UI = {
     props(body, state, controller, data) {
         const count = data.ids.length;
@@ -21,12 +51,6 @@ const INSPECTOR_UI = {
     },
     rail(body, state, controller, data) {
         appendWallSelectedInspector(body, state, controller, { rail: data });
-    },
-    roomNode(body, state, controller, data) {
-        appendRoomNodeSelectedInspector(body, state, controller, data);
-    },
-    roomLink(body, state, controller, data) {
-        appendRoomLinkCorridorInspector(body, state, data, controller);
     },
 };
 for (const key of PLACEABLE_INSPECTOR_KINDS) if (!INSPECTOR_UI[key]) throw new Error(`Missing inspector UI for placeable kind: ${key}`);

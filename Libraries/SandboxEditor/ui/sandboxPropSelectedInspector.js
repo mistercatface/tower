@@ -1,5 +1,6 @@
 import { formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
-import { resolveSandboxFaction } from "../../Sandbox/sandboxFaction.js";
+import { resolveSandboxFaction, SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandboxFaction.js";
+import { getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendChainLinkInspector } from "./sandboxWorldPropInspector.js";
 import { appendShapeFamilySelectedFields } from "./sandboxShapeFamilyUi.js";
@@ -8,8 +9,14 @@ import { isButtonEntity } from "../../Sandbox/buttonInput.js";
 import { isChainLinkBall } from "../../Sandbox/chainLinks.js";
 import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
 import { appendCheckboxField, appendSelectField, appendEditorSubhead } from "../../UI/paramFields.js";
-import { appendBehaviorModeField, appendFactionSelect } from "./sandboxUiFields.js";
 import propCatalog from "../../../Assets/props/index.js";
+function appendFactionSelect(parent, { value, onChange }) {
+    appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
+}
+function appendBehaviorModeField(parent, behaviorIds, value, onChange) {
+    if (behaviorIds.length === 0) return;
+    appendSelectField(parent, "Mode", { value, options: behaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })), onChange });
+}
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {

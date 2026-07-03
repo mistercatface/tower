@@ -1,17 +1,11 @@
 import { sampleAssetBaseTintHex } from "../Color/visualOverride.js";
 import { SANDBOX_DEFAULT_FACTION } from "./sandboxFaction.js";
-import { CORRIDOR_TYPE_EMPTY, normalizeCorridorType } from "../RoomGraph/roomGraphCorridorTypes.js";
-import { DEFAULT_ROOM_NODE_COLS, DEFAULT_ROOM_NODE_ROWS } from "../RoomGraph/index.js";
 import { DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT, DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH } from "./sandboxCapabilities.js";
 import { assetDefaultBallRadius, isShapeFamilyAsset } from "./sandboxShapeFamilies.js";
 import { spawnPlaceableAt } from "./sandboxScenePlaceables.js";
 import propCatalog from "../../Assets/props/index.js";
 export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection, notifyUi, placement }) {
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
-    let spawnRoomNodeCols = DEFAULT_ROOM_NODE_COLS;
-    let spawnRoomNodeRows = DEFAULT_ROOM_NODE_ROWS;
-    let spawnCorridorType = CORRIDOR_TYPE_EMPTY;
-    let spawnCorridorWidth = 1;
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
     let spawnCrossLength = 32;
@@ -33,8 +27,6 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         resolveSpawnPropTypeId: getSpawnPropId,
         resolveSpawnVisualOverride,
         spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(propCatalog[getSpawnPropId()]),
-        spawnRoomNodeCols,
-        spawnRoomNodeRows,
         spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
         spawnCrossLength,
         spawnCrossThickness,
@@ -54,26 +46,6 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
         getSpawnFaction: () => spawnFaction,
         setSpawnFaction: (faction) => {
             spawnFaction = faction;
-        },
-        getSpawnRoomNodeCols: () => spawnRoomNodeCols,
-        setSpawnRoomNodeCols: (cols) => {
-            spawnRoomNodeCols = Math.max(1, Math.min(32, Math.round(cols)));
-            notifyUi();
-        },
-        getSpawnRoomNodeRows: () => spawnRoomNodeRows,
-        setSpawnRoomNodeRows: (rows) => {
-            spawnRoomNodeRows = Math.max(1, Math.min(32, Math.round(rows)));
-            notifyUi();
-        },
-        getSpawnCorridorType: () => spawnCorridorType,
-        setSpawnCorridorType: (type) => {
-            spawnCorridorType = normalizeCorridorType(type);
-            notifyUi();
-        },
-        getSpawnCorridorWidth: () => spawnCorridorWidth,
-        setSpawnCorridorWidth: (width) => {
-            spawnCorridorWidth = Math.max(1, Math.min(8, Math.round(width)));
-            notifyUi();
         },
         getSpawnBoxWidth: () => spawnBoxWidth,
         setSpawnBoxWidth: (width) => {

@@ -4,8 +4,6 @@ import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
-import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
-import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { canStampFloorBeltAt, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt, markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
@@ -27,8 +25,7 @@ import { createSandboxSelection } from "./sandboxSelection.js";
 import { selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
 import { createSandboxSpawnSession } from "./sandboxSpawnSession.js";
-import { createSandboxRoomGraphSession } from "./sandboxRoomGraphSession.js";
-import { buildSelectionInspector, removeSceneItem } from "./sandboxScenePlaceables.js";
+import { buildSelectionInspector, removeSceneItem, listPlacedSceneItems, matchesSceneItem, pickSceneItem } from "./sandboxScenePlaceables.js";
 /** @param {object} state */
 export function createSandboxSession(state) {
     let placePaletteKey = "";
@@ -42,7 +39,7 @@ export function createSandboxSession(state) {
     }
     const registry = () => state.entityRegistry;
     const placement = createSandboxPlacementOrder(state);
-    const selection = createSandboxSelection({ isLiveProp: (id) => !!registry().getLive(id), getRoomLink: (linkId) => getRoomLink(state, linkId) });
+    const selection = createSandboxSelection({ isLiveProp: (id) => !!registry().getLive(id) });
     const pickSelection = (input) => {
         selection.select(input);
         if (input != null) clearPlaceMode();
@@ -63,11 +60,6 @@ export function createSandboxSession(state) {
     };
     const sel = () => selection.getSelection();
     const spawnPropIdFromPalette = () => (placePaletteKey.startsWith("prop:") ? placePaletteKey.slice(5) : "");
-    const clampAuthoredRailWallHeight = (level) => {
-        const max = state.worldSurfaces.settings.maxWallHeightLevel;
-        return Math.min(max, Math.max(1, Math.round(level)));
-    };
-    const clampAuthoredRailWallThickness = (level) => resolveRailWallThicknessLevel(level);
     const setPlacePaletteKey = (key) => {
         const hadSelection = selection.getSelection() != null;
         const changed = placePaletteKey !== key;
@@ -105,17 +97,6 @@ export function createSandboxSession(state) {
         return placed;
     };
     const spawn = createSandboxSpawnSession(state, { getSpawnPropId: spawnPropIdFromPalette, pickSelection, notifyUi, placement });
-    const roomGraph = createSandboxRoomGraphSession(state, {
-        selection,
-        pickSelection,
-        notifyUi,
-        placement,
-        clampAuthoredRailWallHeight,
-        clampAuthoredRailWallThickness,
-        setPlacePaletteKey,
-        listPlacedProps,
-        listPlacedFloorBelts,
-    });
     const removeProp = (prop) => removeSandboxWorldProp(state, prop);
     const listSelectedPropEntries = () => {
         pruneSelection();
@@ -139,24 +120,33 @@ export function createSandboxSession(state) {
     const filterPropSelectionToTag = (filter) => {
         const current = sel();
         if (current?.kind !== "prop") return;
-        const ids = [];
+        const next = new Set();
         for (const id of current.ids) {
             const prop = registry().getLive(id);
-            if (!prop) continue;
-            if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter)) continue;
-            ids.push(id);
+            if (prop && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter)) next.add(id);
         }
-        pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
+        selection.select(next.size === 0 ? null : { kind: "prop", ids: [...next] });
+        notifyUi();
     };
     return {
-        ...spawn,
-        getSelection: () => selection.getSelection(),
-        select: pickSelection,
-        getSelectionInspector: () => buildSelectionInspector(state, selection, (id) => registry().getLive(id), pruneSelection),
+        getSelection: () => sel(),
+        pickSelection,
         clearSelection,
-        clearPlaceMode,
-        clearRoomGraphSelection: () => {
-            selection.clearRoomGraphSelection();
+        getPlacePaletteKey: () => placePaletteKey,
+        setPlacePaletteKey,
+        getWallStampMode: () => wallStampMode,
+        setWallStampMode(mode) {
+            wallStampMode = mode;
+            notifyUi();
+        },
+        getWallHeightLevel: () => wallHeightLevel,
+        setWallHeightLevel(level) {
+            wallHeightLevel = Math.max(1, Math.min(3, Math.round(level)));
+            notifyUi();
+        },
+        getRailThicknessLevel: () => railThicknessLevel,
+        setRailThicknessLevel(level) {
+            railThicknessLevel = level;
             notifyUi();
         },
         rotateSelectedFloorBelt(steps = 1) {
@@ -234,25 +224,6 @@ export function createSandboxSession(state) {
             placement.forgetFloorPlacement(col, row);
             clearSelection();
             return true;
-        },
-        isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
-        isMapGenPlaceMode: () => placePaletteKey.startsWith("gen:"),
-        setPlacePaletteKey,
-        getPlacePaletteKey: () => placePaletteKey,
-        getWallStampMode: () => wallStampMode,
-        setWallStampMode(mode) {
-            wallStampMode = mode;
-            notifyUi();
-        },
-        getWallHeightLevel: () => wallHeightLevel,
-        setWallHeightLevel(level) {
-            wallHeightLevel = level;
-            notifyUi();
-        },
-        getRailThicknessLevel: () => railThicknessLevel,
-        setRailThicknessLevel(level) {
-            railThicknessLevel = level;
-            notifyUi();
         },
         listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
@@ -436,15 +407,35 @@ export function createSandboxSession(state) {
         filterPropSelectionToTag,
         listPlacedProps,
         listPlacedFloorBelts,
-        ...roomGraph,
+        placement,
+        seedPlacementOrderFromState() {
+            placement.resetPlacementOrder();
+            const props = listPlacedProps().sort((a, b) => a.id - b.id);
+            for (let i = 0; i < props.length; i++) placement.touchPropPlacement(props[i].id);
+            for (const entry of listPlacedFloorBelts()) placement.touchFloorPlacement(entry.col, entry.row);
+            for (const entry of listPlacedVoxelWalls(state.obstacleGrid)) placement.touchVoxelPlacement(entry.col, entry.row);
+            for (const entry of listPlacedRailWalls(state.obstacleGrid)) placement.touchEdgePlacement("rail", entry.col, entry.row, entry.side);
+        },
+        ...spawn,
+        select: pickSelection,
+        getSelectionInspector: () => buildSelectionInspector(state, selection, (id) => registry().getLive(id), pruneSelection),
+        isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
+        isMapGenPlaceMode: () => placePaletteKey.startsWith("mapGen:"),
+        listPlacedSceneItems() {
+            return listPlacedSceneItems(this);
+        },
+        isSceneItemSelected(item) {
+            return matchesSceneItem(sel(), item);
+        },
+        selectSceneItem(item) {
+            pickSceneItem(item, { pickSelection, setPlacePaletteKey });
+        },
         deleteSceneItem(item) {
             removeSceneItem(this, item, pickSelection);
         },
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
             state.obstacleGrid.clearAllFloorCells();
-            unbakeRoomGraph(state);
-            clearRoomGraph(state);
             selection.clearSelection();
             placement.resetPlacementOrder();
             notifyUi();

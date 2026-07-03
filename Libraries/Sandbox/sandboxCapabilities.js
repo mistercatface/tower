@@ -40,15 +40,6 @@ export function sandboxAssetMatchesTagFilter(asset, filter) {
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }
-export function isRoomNodeSpawnAsset(asset) {
-    return asset?.sandbox?.roomNode === true;
-}
-export function isRoomLinkSpawnAsset(asset) {
-    return asset?.sandbox?.roomLink === true;
-}
-export function isPuzzleTemplateSpawnAsset(asset) {
-    return asset?.sandbox?.puzzleTemplate === true;
-}
 export function isPoolRackSpawnAsset(asset) {
     return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
 }
@@ -58,7 +49,7 @@ export function isResizableBoxSpawnAsset(asset) {
     return Boolean(asset?.sandbox?.resizableBox);
 }
 export function isSingleWorldPropSpawnAsset(asset) {
-    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isRoomNodeSpawnAsset(asset) && !isRoomLinkSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
+    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
 }
 export function resolveFloorBeltKindFromSpawnAsset(asset) {
     const kind = asset?.sandbox?.floorBeltKind;

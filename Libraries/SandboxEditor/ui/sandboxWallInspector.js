@@ -1,7 +1,5 @@
-import { resolveRailWallHeightLevel, resolveRailWallThicknessLevel, MAX_RAIL_WALL_THICKNESS_LEVEL } from "../../RoomGraph/roomGraphClosedRooms.js";
-import { CORRIDOR_AUTHORING_TYPE_OPTIONS } from "../../RoomGraph/roomGraphCorridorTypes.js";
 import { formatGridWallEdgeSideLabel } from "../../Sandbox/gridWallEdit.js";
-import { appendActionRow, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
+import { appendActionRow, appendEditorHint, appendSelectField } from "../../UI/paramFields.js";
 import { SliderControl } from "../../UI/controls/SliderControl.js";
 const EDGE_SIDE_OPTIONS = [
     { value: "0", label: formatGridWallEdgeSideLabel(0) },
@@ -16,37 +14,7 @@ export function appendRailWallHeightSlider(body, state, heightLevel, onChange) {
     body.appendChild(new SliderControl("Rail height", 1, maxWallHeightLevel(state), 1, heightLevel, onChange).element);
 }
 export function appendRailWallThicknessSlider(body, controller, thicknessLevel, onChange) {
-    body.appendChild(new SliderControl("Rail thickness", 1, MAX_RAIL_WALL_THICKNESS_LEVEL, 1, thicknessLevel, onChange).element);
-}
-export function appendRoomLinkCorridorInspector(body, state, selectedRoomLink, controller) {
-    const limitHint = selectedRoomLink.maxCorridorWidth != null ? ` Max width for this wall pair: ${selectedRoomLink.maxCorridorWidth}.` : "";
-    appendEditorHint(body, `${selectedRoomLink.label}. Change type or width, then Reroll to regenerate the path.${limitHint}`);
-    appendSelectField(body, "Type", {
-        value: selectedRoomLink.corridorType,
-        options: CORRIDOR_AUTHORING_TYPE_OPTIONS,
-        onChange: (value) => {
-            controller.updateSelectedRoomLink({ corridorType: value });
-        },
-    });
-    appendNumberField(body, "Width", {
-        value: selectedRoomLink.corridorWidthMin ?? 1,
-        step: 1,
-        min: 1,
-        max: selectedRoomLink.maxCorridorWidth ?? 1,
-        onChange: (width) => {
-            controller.updateSelectedRoomLink({ corridorWidthMin: width, corridorWidthMax: width });
-        },
-    });
-    appendRailWallHeightSlider(body, state, resolveRailWallHeightLevel(selectedRoomLink.railWallHeightLevel), (val) => {
-        controller.updateSelectedRoomLink({ railWallHeightLevel: val });
-    });
-    appendRailWallThicknessSlider(body, controller, resolveRailWallThicknessLevel(selectedRoomLink.railWallThicknessLevel), (val) => {
-        controller.updateSelectedRoomLink({ railWallThicknessLevel: val });
-    });
-    appendActionRow(body, [
-        { label: "Reroll corridor", onClick: () => controller.rerollSelectedRoomLink() },
-        { label: "Delete link", onClick: () => controller.deleteSelectedRoomLink() },
-    ]);
+    body.appendChild(new SliderControl("Rail thickness", 1, 8, 1, thicknessLevel, onChange).element);
 }
 export function appendWallPlaceParams(body, state, controller, { wallStampMode, inspector }) {
     const selectedVoxelInfo = inspector?.kind === "voxel" ? inspector.data : null;

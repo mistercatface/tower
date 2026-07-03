@@ -1,6 +1,5 @@
 import { cellIsStaticWall, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
 import { getRailWallInfo } from "./gridWallEdit.js";
-import { roomLinkCorridorLaneCount } from "../RoomGraph/index.js";
 export function createSandboxPlacementOrder(state) {
     let nextPlacementSeq = 1;
     const placementSeqByKey = new Map();
@@ -8,8 +7,6 @@ export function createSandboxPlacementOrder(state) {
     const floorPlacementKey = (col, row) => `floor:${col},${row}`;
     const voxelPlacementKey = (col, row) => `voxel:${col},${row}`;
     const edgePlacementKey = (kind, col, row, side) => `${kind}:${col},${row},${side}`;
-    const roomNodePlacementKey = (id) => `roomNode:${id}`;
-    const roomLinkPlacementKey = (linkId, corridorIndex) => `roomLink:${linkId}:${corridorIndex}`;
     const touch = (key) => {
         if (!placementSeqByKey.has(key)) placementSeqByKey.set(key, nextPlacementSeq++);
     };
@@ -18,8 +15,6 @@ export function createSandboxPlacementOrder(state) {
         floorPlacementKey,
         voxelPlacementKey,
         edgePlacementKey,
-        roomNodePlacementKey,
-        roomLinkPlacementKey,
         touchPropPlacement(id) {
             touch(propPlacementKey(id));
         },
@@ -32,16 +27,6 @@ export function createSandboxPlacementOrder(state) {
         touchEdgePlacement(kind, col, row, side) {
             touch(edgePlacementKey(kind, col, row, side));
         },
-        touchRoomNodePlacement(id) {
-            touch(roomNodePlacementKey(id));
-        },
-        touchRoomLinkPlacement(linkId, corridorIndex) {
-            touch(roomLinkPlacementKey(linkId, corridorIndex));
-        },
-        touchRoomLinkCorridors(link) {
-            const count = roomLinkCorridorLaneCount(link);
-            for (let ci = 0; ci < count; ci++) this.touchRoomLinkPlacement(link.id, ci);
-        },
         forgetPropPlacement(id) {
             placementSeqByKey.delete(propPlacementKey(id));
         },
@@ -53,13 +38,6 @@ export function createSandboxPlacementOrder(state) {
         },
         forgetEdgePlacement(kind, col, row, side) {
             placementSeqByKey.delete(edgePlacementKey(kind, col, row, side));
-        },
-        forgetRoomNodePlacement(id) {
-            placementSeqByKey.delete(roomNodePlacementKey(id));
-        },
-        forgetRoomLinkPlacement(linkId) {
-            const prefix = `roomLink:${linkId}:`;
-            for (const key of placementSeqByKey.keys()) if (key.startsWith(prefix)) placementSeqByKey.delete(key);
         },
         resetPlacementOrder() {
             placementSeqByKey.clear();
