@@ -10,6 +10,8 @@ import { EXPLORE_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../../GameState/sandboxEntityMeta.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { pickNavWalkableCell } from "../../Procedural/Mazes/walkableCells.js";
+import { isGlobalCellInMapGenBounds, getMapGenBoundsStampExtent } from "../mapGenBounds.js";
+import { isNavWalkableCell } from "../../Spatial/grid/navWalkableCell.js";
 /** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
 export function createExploreBehavior(state) {
     const propRuns = new Map();
@@ -45,14 +47,45 @@ export function createExploreBehavior(state) {
         run.targetCellRow = snapped.row;
         if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
     };
+    const getActiveBoundsConfigForProp = (prop) => {
+        const grid = state.obstacleGrid;
+        const col = grid.worldCol(prop.x);
+        const row = grid.worldRow(prop.y);
+        const cellSize = grid.cellSize;
+        const x = grid.gridCenterX(col);
+        const y = grid.gridCenterY(row);
+        const globalCol = Math.round(x / cellSize);
+        const globalRow = Math.round(y / cellSize);
+        if (state.editor.railMazeConfig && isGlobalCellInMapGenBounds(state.editor.railMazeConfig, globalCol, globalRow)) return state.editor.railMazeConfig;
+        if (state.editor.railConfig && isGlobalCellInMapGenBounds(state.editor.railConfig, globalCol, globalRow)) return state.editor.railConfig;
+        return state.editor.cavernConfig;
+    };
     const pickNewTarget = (prop, run) => {
         const grid = state.obstacleGrid;
-        // Attempt to find a nav-walkable cell
-        let cell = pickNavWalkableCell(state, run.rng);
+        const boundsConfig = getActiveBoundsConfigForProp(prop);
+        // Attempt to find a nav-walkable cell inside the active bounds config
+        let cell = pickNavWalkableCell(state, run.rng, boundsConfig);
         if (!cell) {
-            // Fallback: search grid for any non-blocked cell
+            // Fallback: search within active bounds config extent for cells that are nav-walkable
+            const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(boundsConfig);
+            const gridCols = grid.cols;
+            const gridRows = grid.rows;
+            const cellSize = grid.cellSize;
+            const navTopology = state.nav.topology;
             const candidates = [];
-            for (let col = 0; col < grid.cols; col++) for (let row = 0; row < grid.rows; row++) if (!grid.isBlocked(col, row)) candidates.push({ col, row });
+            for (let lr = 0; lr < rows; lr++)
+                for (let lc = 0; lc < cols; lc++) {
+                    const gc = originCol + lc;
+                    const gr = originRow + lr;
+                    if (isGlobalCellInMapGenBounds(boundsConfig, gc, gr)) {
+                        const col = grid.worldCol(gc * cellSize);
+                        const row = grid.worldRow(gr * cellSize);
+                        if (col >= 0 && col < gridCols && row >= 0 && row < gridRows) {
+                            const idx = col + row * gridCols;
+                            if (!grid.isBlockedIdx(idx) && isNavWalkableCell(grid, navTopology, idx)) candidates.push({ col, row });
+                        }
+                    }
+                }
             if (candidates.length > 0) cell = candidates[Math.floor(run.rng() * candidates.length)];
         }
         if (cell) {

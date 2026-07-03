@@ -1,3 +1,4 @@
+import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
@@ -7,23 +8,33 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { createExploreBehavior } from "../Libraries/Sandbox/groundNav/exploreBehavior.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
+import { createWorkerNavigation, terminateWorkerNavigation } from "../Libraries/Navigation/WorkerNavigationFactory.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
+import { setBoundary } from "../Libraries/Spatial/grid/boundaryOccupancy.js";
+import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { pickNavWalkableCell, patchNavWalkableCellIndex, collectNavWalkableCells } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { isGlobalCellInMapGenBounds, getMapGenBoundsStampExtent } from "../Libraries/Sandbox/mapGenBounds.js";
+import { isNavWalkableCell, floodConnectedNavWalkableCells } from "../Libraries/Spatial/grid/navWalkableCell.js";
 
-function createEditorTestState() {
+async function createEditorTestState() {
     globalThis.window = {
         addEventListener() {},
         removeEventListener() {},
     };
     const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, 512, 512);
+    grid.rebuildFixed(256, 256, 512, 512);
     
     const cavernConfig = {
+        boundsMode: "rect",
         boundsCol: 0,
         boundsRow: 0,
         boundsCols: 32,
         boundsRows: 32,
     };
 
-    return {
+    const navigation = await createWorkerNavigation(grid);
+
+    const state = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -31,25 +42,24 @@ function createEditorTestState() {
         sandbox: new SandboxWorldState(),
         viewport: { x: 128, y: 128, snapTo() {}, circleInBounds() { return true; } },
         worldSurfaces: { settings: { maxWallHeightLevel: 8 } },
-        editor: { showSelectionRings: true, showPropTileCells: true, cavernConfig },
-        nav: {
-            settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 6, pathOffPathDistance: 4 },
-            topologyKey() { return "mockKey"; },
-            syncedTopologyKey() { return "mockKey"; },
-            worker: {
-                releaseOwnedPathSlot() {},
-            },
-            session: {
-                isReplanInFlight() { return false; },
-                requestReplan() { return true; },
-            },
+        editor: {
+            showSelectionRings: true,
+            showPropTileCells: true,
+            cavernConfig,
+            railConfig: { ...cavernConfig },
+            railMazeConfig: { ...cavernConfig },
         },
+        nav: navigation,
     };
+
+    navigation.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
+
+    return state;
 }
 
 describe("boid explore behavior", () => {
-    it("starts moving and selects a random free target cell deterministically", () => {
-        const state = createEditorTestState();
+    it("starts moving and selects a random free target cell deterministically", async () => {
+        const state = await createEditorTestState();
         
         // Spawn the boid triangle prop
         const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "neutral");
@@ -78,10 +88,12 @@ describe("boid explore behavior", () => {
         exploreBehavior.tickWorld(16);
         const target2 = exploreBehavior.getTargetCell(prop);
         assert.deepEqual(target1, target2);
+
+        await terminateWorkerNavigation(state.nav);
     });
 
-    it("re-picks a target when stuck, and uses fallback if no nav walkable cells are found", () => {
-        const state = createEditorTestState();
+    it("re-picks a target when stuck, and uses fallback if no nav walkable cells are found", async () => {
+        const state = await createEditorTestState();
         
         // Spawn prop
         const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "neutral");
@@ -96,46 +108,66 @@ describe("boid explore behavior", () => {
         for (let idx = 0; idx < grid.grid.length; idx++) {
             grid.grid[idx] = 1; // Blocked
         }
-        // Leave exactly one cell open for fallback picker
-        const openCol = 5;
-        const openRow = 5;
-        grid.grid[grid.idx(openCol, openRow)] = 0;
+        // Leave adjacent cells open so they are nav-walkable
+        grid.grid[grid.idx(5, 5)] = 0;
+        grid.grid[grid.idx(5, 6)] = 0;
         
+        // Rebake navigation to apply blockages
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        await state.nav.commitEdit(null, { fullNavSync: true });
+
         exploreBehavior.tickWorld(16);
         
-        // It should pick the fallback cell
+        // It should pick one of the open nav-walkable cells
         const targetCell = exploreBehavior.getTargetCell(prop);
-        assert.deepEqual(targetCell, { col: openCol, row: openRow });
+        assert.ok(targetCell);
+        assert.equal(targetCell.col, 5);
+        assert.ok(targetCell.row === 5 || targetCell.row === 6);
         
-        // Simulate getting stuck
-        const run = exploreBehavior.getLocomotionStatus(prop);
-        // Force stuckFrames in navState
-        const status = exploreBehavior.getLocomotionStatus(prop);
-        // Accessing the private state for test verification (only allowed if there is no other way,
-        // but here we just need to verify that triggering stuck frame logic causes a new pick).
-        // Let's manually tick stuckFrames up
-        const targetCellBefore = exploreBehavior.getTargetCell(prop);
+        // Open another set of adjacent cells to choose next
+        grid.grid[grid.idx(10, 10)] = 0;
+        grid.grid[grid.idx(10, 11)] = 0;
         
-        // Open another cell to choose next
-        const nextCol = 10;
-        const nextRow = 10;
-        grid.grid[grid.idx(nextCol, nextRow)] = 0;
-        
-        // We can get the run state or fake stuck frames
-        exploreBehavior.tickWorld(16);
-        
-        // To simulate stuck, we can just trigger stuck condition directly by incrementing run.hpaNav.navState.stuckFrames
-        // Let's find the active run by checking the behavior. It does not export run directly,
-        // but we can query behavior status.
-        // Wait, how can we make it stuck? Let's check:
-        // "stuckFrames > stuckReplanFrames * 3"
-        // Let's retrieve status and mutate stuckFrames
-        const statusObj = exploreBehavior.getLocomotionStatus(prop);
-        // Wait, getLocomotionStatus doesn't return the raw navState, but we can look at it via exploreBehavior's reset/run cache.
-        // Actually, we can just check if we clear the target, it will select the new one.
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        await state.nav.commitEdit(null, { fullNavSync: true });
+
         exploreBehavior.clearMoveTarget(prop);
         assert.equal(exploreBehavior.hasMoveTarget(prop), false);
         exploreBehavior.tickWorld(16);
         assert.ok(exploreBehavior.hasMoveTarget(prop));
+
+        await terminateWorkerNavigation(state.nav);
+    });
+
+    it("works correctly in a rail maze/rail wall environment", async () => {
+        const state = await createEditorTestState();
+        
+        // Spawn the boid in the middle of active area
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "neutral");
+        const entityMeta = getSandboxEntityMeta(state);
+        entityMeta.setActiveBehaviorId(prop.id, "explore");
+        
+        const exploreBehavior = createExploreBehavior(state);
+        state.sandbox.behaviors = [exploreBehavior];
+        
+        // Block all directions of cell (4,4) except EAST (can step east to (5,4))
+        const grid = state.obstacleGrid;
+        const idx = grid.idx(4, 4);
+        setBoundary(grid, idx, 0, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 });
+        setBoundary(grid, idx, 2, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 });
+        setBoundary(grid, idx, 3, { kind: "railWall", capHeightLevel: 1, thicknessLevel: 1 });
+        
+        // Sync navigation topology
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        await state.nav.commitEdit(null, { fullNavSync: true });
+        
+        exploreBehavior.tickWorld(16);
+        
+        // Explore behavior must have picked a target
+        assert.ok(exploreBehavior.hasMoveTarget(prop));
+        const target = exploreBehavior.getTargetCell(prop);
+        assert.ok(target);
+
+        await terminateWorkerNavigation(state.nav);
     });
 });
