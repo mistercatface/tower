@@ -1,5 +1,5 @@
 import { resolveBodyRadius } from "../Motion/physicsDefaults.js";
-import { applyRigidBodyImpulse } from "../Motion/rigidBodyImpulse.js";
+import { applyRigidBodyImpulse } from "../Motion/motionDynamics.js";
 import { massFromBody } from "../Motion/bodyMass.js";
 import { wakeKineticBody } from "../Motion/kineticSleep.js";
 /** Cue tip effective mass vs cue ball — near equal mass gives realistic transfer (~cue speed, not 2×). */

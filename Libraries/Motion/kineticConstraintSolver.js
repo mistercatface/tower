@@ -1,4 +1,4 @@
-import { collisionSettings } from "./collisionDefaults.js";
+import { collisionSettings } from "./physicsDefaults.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyMass.js";
 import { worldAnchorFromBody, worldAnchorFromSlab } from "./constraintAnchors.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";

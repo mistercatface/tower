@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
+import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { createKineticTestTick, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 

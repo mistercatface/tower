@@ -8,7 +8,7 @@ import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "..
 import { kineticPairBodiesAt } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
-import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
+import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { SatCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";

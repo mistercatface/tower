@@ -15,7 +15,7 @@ import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
-import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
+import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
 import propCatalog from "../Assets/props/index.js";
 const originalMathRandom = Math.random;
 Math.random = () => 0.5;

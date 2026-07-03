@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
+import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticPairStream.js";
 import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { snapshotActiveBroadphaseBounds } from "../Libraries/Spatial/collision/entityBroadphase.js";

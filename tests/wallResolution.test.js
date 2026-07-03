@@ -7,7 +7,7 @@ import { SatCollision, entityFacing, SAT_RESULT } from "../Libraries/Spatial/col
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { createKineticTick } from "../GameState/KineticTick.js";
-import { runCollisionPipeline } from "../Libraries/Spatial/collision/collisionPipeline.js";
+import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 function mockWallSegment(x, y, size = 16) {

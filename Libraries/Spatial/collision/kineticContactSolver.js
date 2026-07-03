@@ -1,4 +1,4 @@
-import { collisionSettings } from "../../Motion/collisionDefaults.js";
+import { collisionSettings } from "../../Motion/physicsDefaults.js";
 import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.js";
 import {
     gatherKineticCandidatePairs,
