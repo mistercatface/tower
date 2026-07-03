@@ -1,7 +1,6 @@
 import { cellEdgeSlotOffset } from "./CellEdgeStore.js";
 import { cellToChunkCoord, remapChunkCoord } from "./GridCoords.js";
-import { edgeMirrorSide, edgeNeighbor } from "./gridCellTopology.js";
-import { cellInRect, colRowToIndex } from "./GridUtils.js";
+import { edgeMirrorSide, edgeNeighborIdx } from "./gridCellTopology.js";
 // Surface material ownership resolves from the narrowest owner outward:
 // cell/edge override, then chunk profile, then the active/default profile.
 export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
@@ -93,32 +92,25 @@ export class SurfaceMaterialStore {
     hasAnyCellAtIdx(idx) {
         return this.cellProfileIds.has(idx);
     }
-    getEdge(col, row, side, cols) {
-        return this.edgeProfileIds.get(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)) ?? null;
-    }
     getEdgeByIdx(idx, side) {
         return this.edgeProfileIds.get(cellEdgeSlotOffset(idx, side)) ?? null;
     }
-    writeEdgeMirrored(col, row, side, cols, rows, profileId) {
-        if (!cellInRect(col, row, cols, rows)) return;
-        this.clearEdgeMirrored(col, row, side, cols, rows);
-        this._setEdgeSlot(col, row, side, cols, profileId);
-        const { nc, nr } = edgeNeighbor(col, row, side);
-        const nSide = edgeMirrorSide(side);
-        if (cellInRect(nc, nr, cols, rows)) this._setEdgeSlot(nc, nr, nSide, cols, profileId);
+    writeEdgeMirrored(idx, side, profileId) {
+        const cols = this.cols;
+        const rows = this.rows;
+        if (idx < 0 || idx >= cols * rows) return;
+        this.clearEdgeMirrored(idx, side);
+        this.edgeProfileIds.set(cellEdgeSlotOffset(idx, side), profileId);
+        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        if (nIdx !== -1) this.edgeProfileIds.set(cellEdgeSlotOffset(nIdx, edgeMirrorSide(side)), profileId);
     }
-    clearEdgeMirrored(col, row, side, cols, rows) {
-        if (!cellInRect(col, row, cols, rows)) return;
-        this._clearEdgeSlot(col, row, side, cols);
-        const { nc, nr } = edgeNeighbor(col, row, side);
-        const nSide = edgeMirrorSide(side);
-        if (cellInRect(nc, nr, cols, rows)) this._clearEdgeSlot(nc, nr, nSide, cols);
-    }
-    _setEdgeSlot(col, row, side, cols, profileId) {
-        this.edgeProfileIds.set(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side), profileId);
-    }
-    _clearEdgeSlot(col, row, side, cols) {
-        this.edgeProfileIds.delete(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side));
+    clearEdgeMirrored(idx, side) {
+        const cols = this.cols;
+        const rows = this.rows;
+        if (idx < 0 || idx >= cols * rows) return;
+        this.edgeProfileIds.delete(cellEdgeSlotOffset(idx, side));
+        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        if (nIdx !== -1) this.edgeProfileIds.delete(cellEdgeSlotOffset(nIdx, edgeMirrorSide(side)));
     }
     hasAnyEdgeAtIdx(idx) {
         return (
@@ -138,13 +130,9 @@ export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPer
         const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, a % grid.cols, (a / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
         return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
     }
-    if (ownerKind === SURFACE_MATERIAL_OWNER.Edge) {
-        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, a, b, cellsPerChunk, baseProfileId) : baseProfileId;
-        return grid.surfaceMaterials.getEdge(a, b, c, grid.cols) ?? chunkBase;
-    }
     if (ownerKind === SURFACE_MATERIAL_OWNER.WallFace) {
         const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, face.gridCol, face.gridRow, cellsPerChunk, baseProfileId) : baseProfileId;
-        if (face.isEdgeRail) return grid.surfaceMaterials.getEdge(face.gridCol, face.gridRow, face.gridSide, grid.cols) ?? chunkBase;
+        if (face.isEdgeRail) return grid.surfaceMaterials.getEdgeByIdx(face.gridIdx, face.gridSide) ?? chunkBase;
         return grid.surfaceMaterials.getCellAtIdx(face.gridIdx) ?? chunkBase;
     }
     throw new Error(`unknown surface material owner kind: ${ownerKind}`);

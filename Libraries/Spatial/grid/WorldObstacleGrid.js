@@ -321,11 +321,11 @@ export class WorldObstacleGrid {
         bumpSurfaceMaterialRevision(this);
     }
     setEdgeSurfaceProfile(col, row, side, profileId) {
-        this.surfaceMaterials.writeEdgeMirrored(col, row, side, this.cols, this.rows, profileId);
+        this.surfaceMaterials.writeEdgeMirrored(colRowToIndex(col, row, this.cols), side, profileId);
         bumpSurfaceMaterialRevision(this);
     }
     clearEdgeSurfaceProfile(col, row, side) {
-        this.surfaceMaterials.clearEdgeMirrored(col, row, side, this.cols, this.rows);
+        this.surfaceMaterials.clearEdgeMirrored(colRowToIndex(col, row, this.cols), side);
         bumpSurfaceMaterialRevision(this);
     }
     setChunkSurfaceProfile(chunkCol, chunkRow, profileId, cellsPerChunk = 0) {

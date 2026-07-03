@@ -15,7 +15,7 @@ export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
         clearBoundaryPrimary(grid, idx, side, bumpRevision);
         return true;
     }
-    grid.edgeStore.writeMirrored(idx, side, cols, rows, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
+    grid.edgeStore.writeMirrored(idx, side, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return true;
 }
@@ -24,7 +24,7 @@ export function clearBoundaryPrimary(grid, idx, side, bumpRevision = false) {
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
     if (!isRailWallEdge(grid.edgeStore.getIdx(idx, side))) return false;
-    grid.edgeStore.clearMirrored(idx, side, cols, rows);
+    grid.edgeStore.clearMirrored(idx, side);
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return true;
 }

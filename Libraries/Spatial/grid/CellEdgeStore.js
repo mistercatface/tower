@@ -75,19 +75,23 @@ export class CellEdgeStore {
     _free(ref) {
         this.free.push(ref);
     }
-    writeMirrored(idx, side, cols, rows, edge) {
+    writeMirrored(idx, side, edge) {
+        const cols = this.cols;
+        const rows = this.rows;
         if (idx < 0 || idx >= cols * rows) return;
         if (!edge) {
-            this.clearMirrored(idx, side, cols, rows);
+            this.clearMirrored(idx, side);
             return;
         }
-        this.clearMirrored(idx, side, cols, rows);
+        this.clearMirrored(idx, side);
         const ref = this._alloc(edge);
         this.slots[(idx << 2) + side] = ref;
         const nIdx = edgeNeighborIdx(idx, side, cols, rows);
         if (nIdx !== -1) this.slots[(nIdx << 2) + edgeMirrorSide(side)] = ref;
     }
-    clearMirrored(idx, side, cols, rows) {
+    clearMirrored(idx, side) {
+        const cols = this.cols;
+        const rows = this.rows;
         if (idx < 0 || idx >= cols * rows) return;
         const offset = (idx << 2) + side;
         const ref = this.slots[offset];

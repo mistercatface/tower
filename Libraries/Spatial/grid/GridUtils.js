@@ -144,7 +144,3 @@ export function forEachCardinalNeighborIdx(idx, cols, rows, fn) {
     if (row < rows - 1) fn(idx + cols);
     if (col > 0) fn(idx - 1);
 }
-export function gridSideNeighborIdx(idx, side, cols) {
-    const { dc, dr } = CARDINAL_OFFSETS[side];
-    return idx + dr * cols + dc;
-}
