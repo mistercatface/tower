@@ -30,7 +30,7 @@ describe("snake segment impact fracture", () => {
         resolveKineticContactPassWithEffects(tick);
 
         // Verify segA (which was hit) is evicted / removed from state
-        assert.ok(segA._pendingEviction);
+        assert.ok(segA.isDead);
         assert.ok(!tick.world.worldProps.includes(segA));
 
         // Verify segB (which was not hit) remains in state and is untouched
@@ -68,7 +68,7 @@ describe("snake segment impact fracture", () => {
         resolveKineticContactPassWithEffects(tick);
 
         // Verify segA is NOT evicted
-        assert.ok(!segA._pendingEviction);
+        assert.ok(!segA.isDead);
         assert.ok(tick.world.worldProps.includes(segA));
         assert.ok(hasChainLinkBetween(tick.world, segA.id, segB.id));
 
@@ -96,7 +96,7 @@ describe("snake segment impact fracture", () => {
 
         resolveKineticContactPassWithEffects(tick);
 
-        assert.ok(segA._pendingEviction);
+        assert.ok(segA.isDead);
         assert.ok(!tick.world.worldProps.includes(segA));
         assert.ok(tick.world.worldProps.includes(segB));
         assert.ok(!hasChainLinkBetween(tick.world, segA.id, segB.id));

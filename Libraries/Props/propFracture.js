@@ -121,6 +121,9 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const motion = currentPropMotion(sourceProp);
+    const faction = sourceProp.faction;
+    const wallChunkProfileId = sourceProp.wallChunkProfileId;
+    const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
     const spawned = [];
     const physId = sourceProp._physId;
     const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : sourceProp.x;
@@ -131,14 +134,14 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
         const shard = acquireWorldProp(worldPos.x, worldPos.y, shardPropId, facing);
         if (geom.collisionParts) applyChunkGeometryToProp(shard, geom);
         else applyShardGeometryToProp(shard, geom);
-        shard.faction = sourceProp.faction;
+        shard.faction = faction;
         shard.vx = motion.vx;
         shard.vy = motion.vy;
         shard.angularVelocity = motion.w;
         shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
-        if (sourceProp.wallChunkProfileId !== undefined) {
-            shard.wallChunkProfileId = sourceProp.wallChunkProfileId;
-            shard.wallChunkHeightPx = sourceProp.wallChunkHeightPx;
+        if (wallChunkProfileId !== undefined) {
+            shard.wallChunkProfileId = wallChunkProfileId;
+            shard.wallChunkHeightPx = wallChunkHeightPx;
         }
         if (configureShard) configureShard(shard, geom, i);
         spawned.push(shard);
@@ -193,8 +196,8 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const mainGeom = geometryFromChunkComponent(components[0], false);
-    const cos = Math.cos(prop.facing);
-    const sin = Math.sin(prop.facing);
+    const cos = Math.cos(propFacing(prop));
+    const sin = Math.sin(propFacing(prop));
     const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
     prop.x = mainWorldPos.x;
     prop.y = mainWorldPos.y;
@@ -204,7 +207,7 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     }
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyChunkGeometryToProp(prop, mainGeom);
-    return { debris, originX: wx, originY: wy, facing: prop.facing };
+    return { debris, originX: wx, originY: wy, facing: propFacing(prop) };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const physId = prop._physId;
@@ -212,8 +215,8 @@ export function worldHitToPropLocal(prop, worldX, worldY) {
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldX - wx;
     const dy = worldY - wy;
-    const cos = Math.cos(prop.facing);
-    const sin = Math.sin(prop.facing);
+    const cos = Math.cos(propFacing(prop));
+    const sin = Math.sin(propFacing(prop));
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
 }
 export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
@@ -226,13 +229,13 @@ export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldHitX - wx;
     const dy = worldHitY - wy;
-    const cos = Math.cos(prop.facing);
-    const sin = Math.sin(prop.facing);
+    const cos = Math.cos(propFacing(prop));
+    const sin = Math.sin(propFacing(prop));
     const localHitX = dx * cos + dy * sin;
     const localHitY = -dx * sin + dy * cos;
     const debris = shatterGlassPolygon(flatVertsFromShape(prop), localHitX, localHitY, impactForce);
     if (debris.length < 2) return null;
-    return { debris, originX: wx, originY: wy, facing: prop.facing, impactLocal: { x: localHitX, y: localHitY }, impactForce };
+    return { debris, originX: wx, originY: wy, facing: propFacing(prop), impactLocal: { x: localHitX, y: localHitY }, impactForce };
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
@@ -243,8 +246,8 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldHitX - wx;
     const dy = worldHitY - wy;
-    const cos = Math.cos(prop.facing);
-    const sin = Math.sin(prop.facing);
+    const cos = Math.cos(propFacing(prop));
+    const sin = Math.sin(propFacing(prop));
     const localHitX = dx * cos + dy * sin;
     const localHitY = -dx * sin + dy * cos;
     return peelSolidFracture(prop, localHitX, localHitY, impactForce);
@@ -255,13 +258,13 @@ export function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactFor
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     const dx = worldHitX - wx;
     const dy = worldHitY - wy;
-    const cos = Math.cos(prop.facing);
-    const sin = Math.sin(prop.facing);
+    const cos = Math.cos(propFacing(prop));
+    const sin = Math.sin(propFacing(prop));
     const localHitX = dx * cos + dy * sin;
     const localHitY = -dx * sin + dy * cos;
     const debris = buildCircleImpactShards(prop.radius, { x: localHitX, y: localHitY }, impactForce);
     if (debris.length === 0) return null;
-    return { debris, originX: wx, originY: wy, facing: prop.facing, impactLocal: { x: localHitX, y: localHitY }, impactForce };
+    return { debris, originX: wx, originY: wy, facing: propFacing(prop), impactLocal: { x: localHitX, y: localHitY }, impactForce };
 }
 export function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
     const cos = Math.cos(fracture.facing);

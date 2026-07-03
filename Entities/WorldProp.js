@@ -4,6 +4,7 @@ import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
+import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { isKinematicallyActive } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
 import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
@@ -32,6 +33,7 @@ export class WorldProp extends Entity {
         if (this.strategy.buttonLinks != null) initFloorButtonProp(this);
         if (this.strategy.isKinetic) syncKineticRigidBody(this);
         this.ageMs = 0;
+        this.alpha = undefined;
         this._sleepFrames = 0;
         this.isSleeping = false;
         this.stateTimer = 0;
@@ -63,12 +65,23 @@ export class WorldProp extends Entity {
     }
     update(dt, state, spatialFrame) {
         this.ageMs += dt;
+        if (this.strategy.fadeOutMs !== undefined) {
+            const fadeOutMs = this.strategy.fadeOutMs;
+            const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
+            if (this.ageMs >= fadeOutMs + durationMs) {
+                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
+                else this.isDead = true;
+                return;
+            } else if (this.ageMs >= fadeOutMs) {
+                const elapsedFade = this.ageMs - fadeOutMs;
+                this.alpha = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
+            } else this.alpha = 1;
+        }
         if (this._glassFractureCooldown > 0) this._glassFractureCooldown--;
         const asleep = this.isSleeping;
         if (!asleep) {
             if (this.strategy.rolls) integratePropMotion(this, dt);
             else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-
             if (this.type === "boid_triangle" || this.type === "snake") {
                 const speed = Math.hypot(this.vx, this.vy);
                 if (speed > 0.1) {

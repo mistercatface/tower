@@ -13,6 +13,8 @@ export default {
         quantizeSteps: { view: 6, facing: 64 },
         fracture: true,
         fractureMode: "glass",
+        fadeOutMs: 5000,
+        fadeOutDurationMs: 1000,
         spawn: { minRadius: 150, maxRadius: 1000, minCount: 4, randomRange: 12 },
         getCustomSpriteCacheKey: getWallChunkSpriteCacheKey,
     },

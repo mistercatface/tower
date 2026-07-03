@@ -169,15 +169,22 @@ export class WorldSceneRenderer {
         }
     }
     _drawProp(ctx, prop, viewport, state, options = {}) {
-        if (prop._gunBullet) {
-            drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
-            return;
+        const hasAlpha = prop.alpha !== undefined && prop.alpha !== 1;
+        const prevAlpha = ctx.globalAlpha;
+        if (hasAlpha) ctx.globalAlpha = prevAlpha * prop.alpha;
+        try {
+            if (prop._gunBullet) {
+                drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
+                return;
+            }
+            const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
+            const draw = propCatalog[renderKey]?.drawRecipe;
+            if (!draw) return;
+            prepareWallChunkPropTextures(state, prop);
+            if (options.flatWallChunks && drawFlatWallChunkProp(ctx, prop)) return;
+            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
+        } finally {
+            if (hasAlpha) ctx.globalAlpha = prevAlpha;
         }
-        const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
-        const draw = propCatalog[renderKey]?.drawRecipe;
-        if (!draw) return;
-        prepareWallChunkPropTextures(state, prop);
-        if (options.flatWallChunks && drawFlatWallChunkProp(ctx, prop)) return;
-        drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
     }
 }

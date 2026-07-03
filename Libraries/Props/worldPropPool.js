@@ -2,6 +2,7 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { IDENTITY_ROLL_QUAT } from "./rollingMotion.js";
 import { quantizeCardinalAngle } from "../Math/Angle.js";
 import { initWorldPropShape } from "./propStrategy.js";
+import propCatalog from "../../Assets/props/index.js";
 const pools = new Map();
 /**
  * Acquire a pooled WorldProp instance or create a new one.
@@ -21,6 +22,7 @@ export function acquireWorldProp(x, y, type, facing = null) {
     }
     if (list.length > 0) {
         const prop = list.pop();
+        const asset = propCatalog[type];
         // Reset spatial properties
         prop.x = x;
         prop.y = y;
@@ -35,6 +37,8 @@ export function acquireWorldProp(x, y, type, facing = null) {
         prop.isSleeping = false;
         prop.stateTimer = 0;
         prop.stateData = {};
+        // Reset height
+        prop.height = asset?.visuals?.world?.height ?? 12;
         // Reset facing / roll quaternions
         if (prop.strategy?.cardinalFacing) prop.facing = quantizeCardinalAngle(facing ?? 0);
         else prop.facing = facing ?? Math.random() * Math.PI * 2;
@@ -47,6 +51,12 @@ export function acquireWorldProp(x, y, type, facing = null) {
         prop.faction = undefined;
         prop.shape = undefined;
         prop.footprintVertices = undefined;
+        prop.footprintArea = undefined;
+        prop.alpha = undefined;
+        prop.wallChunkProfileId = undefined;
+        prop.wallChunkHeightPx = undefined;
+        prop._wallChunkTextures = undefined;
+        prop._wallChunkTextureReady = undefined;
         initWorldPropShape(prop);
         // Reset physics / broadphase / neighbor state
         if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
