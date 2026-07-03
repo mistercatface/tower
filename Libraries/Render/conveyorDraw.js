@@ -33,16 +33,13 @@ export function createConveyorDraw(options = {}) {
         const hy = prop.halfExtents?.y ?? 8;
         const lineScale = getCanvasLineScale(ctx);
         if (!turnDirection) {
-            // Straight conveyor drawing logic
-            const stroke = railStroke;
             const angle = prop.facing ?? 0;
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
-            // 1. Draw the belt bed (middle part)
-            const beltHalfW = hy - 1.5; // 6.5
+            // Draw full-tile belt bed
             const beltProp = subProp(prop.x, prop.y, angle);
             drawBox(ctx, beltProp, viewport, {
-                halfSize: { x: hx, y: beltHalfW },
+                halfSize: { x: hx, y: hy },
                 height: CONVEYOR_BELT_HEIGHT,
                 facing: angle,
                 faceColors: beltColors,
@@ -50,83 +47,54 @@ export function createConveyorDraw(options = {}) {
                 stroke: beltStroke,
                 lineWidth: 1.0 * lineScale,
             });
-            // 2. Draw the moving belt texture/arrows on the top face (z = CONVEYOR_BELT_HEIGHT)
             function projectLocalFlat(out8, offset, lx, ly, lz) {
                 const r = rotateXY(lx, ly, cos, sin);
                 projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
             }
             ctx.save();
             ctx.beginPath();
-            projectLocalFlat(sScratchQuad, 0, -hx, -beltHalfW, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(sScratchQuad, 2, hx, -beltHalfW, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(sScratchQuad, 4, hx, beltHalfW, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(sScratchQuad, 6, -hx, beltHalfW, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 0, -hx, -hy, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 2, hx, -hy, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 4, hx, hy, CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 6, -hx, hy, CONVEYOR_BELT_HEIGHT);
             traceClosedFlatPolygon(ctx, sScratchQuad, 4);
             ctx.clip();
-            const speed = 20; // speed of movement (units/sec)
-            const spacing = 8; // distance between treads
+            const speed = 20;
+            const spacing = 8;
             const timeSec = (prop.ageMs ?? 0) / 1000;
             const offset = (timeSec * speed) % spacing;
-            // Draw dark slats/grooves (conveyor tread lines)
             ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
             ctx.lineWidth = 1.0 * lineScale;
             const numSlats = Math.ceil((hx * 2) / 4) + 2;
             for (let i = -2; i < numSlats; i++) {
                 const cx = -hx + ((timeSec * speed) % 4) + i * 4;
-                projectLocalFlat(sScratchQuad, 0, cx, -beltHalfW, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(sScratchQuad, 2, cx, beltHalfW, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchQuad, 0, cx, -hy, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchQuad, 2, cx, hy, CONVEYOR_BELT_HEIGHT);
                 ctx.beginPath();
                 ctx.moveTo(sScratchQuad[0], sScratchQuad[1]);
                 ctx.lineTo(sScratchQuad[2], sScratchQuad[3]);
                 ctx.stroke();
             }
-            // Draw direction chevrons
             ctx.fillStyle = chevronColors.fill;
             ctx.strokeStyle = chevronColors.stroke;
             ctx.lineWidth = 0.5 * lineScale;
             const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
             for (let i = -2; i < numChevrons; i++) {
                 const cx = -hx + offset + i * spacing;
-                projectLocalFlat(sScratchChevron, 0, cx + 1.5, 0, CONVEYOR_BELT_HEIGHT); // tip
-                projectLocalFlat(sScratchChevron, 2, cx - 1.2, 3.2, CONVEYOR_BELT_HEIGHT); // right wing tip
-                projectLocalFlat(sScratchChevron, 4, cx - 0.4, 3.2, CONVEYOR_BELT_HEIGHT); // right inner
-                projectLocalFlat(sScratchChevron, 6, cx + 0.8, 0, CONVEYOR_BELT_HEIGHT); // inner tip
-                projectLocalFlat(sScratchChevron, 8, cx - 0.4, -3.2, CONVEYOR_BELT_HEIGHT); // left inner
-                projectLocalFlat(sScratchChevron, 10, cx - 1.2, -3.2, CONVEYOR_BELT_HEIGHT); // left wing tip
+                projectLocalFlat(sScratchChevron, 0, cx + 1.5, 0, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchChevron, 2, cx - 1.2, 3.2, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchChevron, 4, cx - 0.4, 3.2, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchChevron, 6, cx + 0.8, 0, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchChevron, 8, cx - 0.4, -3.2, CONVEYOR_BELT_HEIGHT);
+                projectLocalFlat(sScratchChevron, 10, cx - 1.2, -3.2, CONVEYOR_BELT_HEIGHT);
                 ctx.beginPath();
                 traceClosedFlatPolygon(ctx, sScratchChevron, 6);
                 ctx.fill();
                 ctx.stroke();
             }
             ctx.restore();
-            // 3. Draw the side rails (flat)
-            const leftOffset = -7.25;
-            const left = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, 0, leftOffset, cos, sin);
-            const leftRailProp = subProp(left.x, left.y, angle);
-            drawBox(ctx, leftRailProp, viewport, {
-                halfSize: { x: hx, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                facing: angle,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: stroke,
-                lineWidth: 1.0 * lineScale,
-            });
-            const rightOffset = 7.25;
-            const right = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, 0, rightOffset, cos, sin);
-            const rightRailProp = subProp(right.x, right.y, angle);
-            drawBox(ctx, rightRailProp, viewport, {
-                halfSize: { x: hx, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                facing: angle,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: stroke,
-                lineWidth: 1.0 * lineScale,
-            });
             return;
         }
-        // 90-degree curved conveyor drawing logic (elbow)
         const angle = prop.facing ?? 0;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
@@ -134,223 +102,34 @@ export function createConveyorDraw(options = {}) {
         const pivotX = 8;
         const pivotY = isLeft ? 8 : -8;
         const startAngle = Math.PI;
-        const endAngle = isLeft ? 1.5 * Math.PI : 0.5 * Math.PI;
         const dir = isLeft ? 1 : -1;
-        const beltHalfW = hy - 1.5; // 6.5
-        // Build list of subdivided boxes to draw in depth-sorted painter's order
-        const offsetWorld = (lx, ly) => rotateXY(lx, ly, cos, sin);
-        const drawList = [];
-        if (isLeft) {
-            // Belt bed segment 1 (vertical-ish relative to facing)
-            const lx_b1 = 0;
-            const ly_b1 = 0.75;
-            const r_b1 = offsetWorld(lx_b1, ly_b1);
-            const prop_b1 = subProp(prop.x + r_b1.x, prop.y + r_b1.y, angle + Math.PI / 2);
-            drawList.push({
-                type: "belt",
-                prop: prop_b1,
-                halfSize: { x: 7.25, y: 6.5 },
-                height: CONVEYOR_BELT_HEIGHT,
-                faceColors: beltColors,
-                topColors: beltTopColors,
-                stroke: beltStroke,
-                distSq: (prop_b1.x - viewport.x) ** 2 + (prop_b1.y - viewport.y) ** 2,
-            });
-            // Belt bed segment 2 (horizontal-ish relative to facing)
-            const lx_b2 = 0.75;
-            const ly_b2 = 0;
-            const r_b2 = offsetWorld(lx_b2, ly_b2);
-            const prop_b2 = subProp(prop.x + r_b2.x, prop.y + r_b2.y, angle);
-            drawList.push({
-                type: "belt",
-                prop: prop_b2,
-                halfSize: { x: 7.25, y: 6.5 },
-                height: CONVEYOR_BELT_HEIGHT,
-                faceColors: beltColors,
-                topColors: beltTopColors,
-                stroke: beltStroke,
-                distSq: (prop_b2.x - viewport.x) ** 2 + (prop_b2.y - viewport.y) ** 2,
-            });
-            // Outer rail 1 (along West edge)
-            const lx_r1 = -7.25;
-            const ly_r1 = 0;
-            const r_r1 = offsetWorld(lx_r1, ly_r1);
-            const prop_r1 = subProp(prop.x + r_r1.x, prop.y + r_r1.y, angle + Math.PI / 2);
-            drawList.push({
-                type: "rail",
-                prop: prop_r1,
-                halfSize: { x: 8, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (prop_r1.x - viewport.x) ** 2 + (prop_r1.y - viewport.y) ** 2,
-            });
-            // Outer rail 2 (along North edge)
-            const lx_r2 = 0;
-            const ly_r2 = -7.25;
-            const r_r2 = offsetWorld(lx_r2, ly_r2);
-            const prop_r2 = subProp(prop.x + r_r2.x, prop.y + r_r2.y, angle);
-            drawList.push({
-                type: "rail",
-                prop: prop_r2,
-                halfSize: { x: 8, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (prop_r2.x - viewport.x) ** 2 + (prop_r2.y - viewport.y) ** 2,
-            });
-            // Inner rail (bottom-right corner)
-            const lx_ri = 7.25;
-            const ly_ri = 7.25;
-            const r_ri = offsetWorld(lx_ri, ly_ri);
-            const prop_ri = subProp(prop.x + r_ri.x, prop.y + r_ri.y, angle);
-            drawList.push({
-                type: "rail",
-                prop: prop_ri,
-                halfSize: { x: 0.75, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (prop_ri.x - viewport.x) ** 2 + (prop_ri.y - viewport.y) ** 2,
-            });
-        } else {
-            // Belt bed segment 1 (vertical-ish relative to facing)
-            const lx_b1 = 0;
-            const ly_b1 = -0.75;
-            const r_b1 = offsetWorld(lx_b1, ly_b1);
-            const prop_b1 = subProp(prop.x + r_b1.x, prop.y + r_b1.y, angle + Math.PI / 2);
-            drawList.push({
-                type: "belt",
-                prop: prop_b1,
-                halfSize: { x: 7.25, y: 6.5 },
-                height: CONVEYOR_BELT_HEIGHT,
-                faceColors: beltColors,
-                topColors: beltTopColors,
-                stroke: beltStroke,
-                distSq: (prop_b1.x - viewport.x) ** 2 + (prop_b1.y - viewport.y) ** 2,
-            });
-            // Belt bed segment 2 (horizontal-ish)
-            const lx_b2 = 0.75;
-            const ly_b2 = 0;
-            const r_b2 = offsetWorld(lx_b2, ly_b2);
-            const prop_b2 = subProp(prop.x + r_b2.x, prop.y + r_b2.y, angle);
-            drawList.push({
-                type: "belt",
-                prop: prop_b2,
-                halfSize: { x: 7.25, y: 6.5 },
-                height: CONVEYOR_BELT_HEIGHT,
-                faceColors: beltColors,
-                topColors: beltTopColors,
-                stroke: beltStroke,
-                distSq: (prop_b2.x - viewport.x) ** 2 + (prop_b2.y - viewport.y) ** 2,
-            });
-            // Outer rail 1 (along West edge)
-            const lx_r1 = -7.25;
-            const ly_r1 = 0;
-            const r_r1 = offsetWorld(lx_r1, ly_r1);
-            const prop_r1 = subProp(prop.x + r_r1.x, prop.y + r_r1.y, angle + Math.PI / 2);
-            drawList.push({
-                type: "rail",
-                prop: prop_r1,
-                halfSize: { x: 8, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (prop_r1.x - viewport.x) ** 2 + (prop_r1.y - viewport.y) ** 2,
-            });
-            // Outer rail 2 (along South edge)
-            const lx_r2 = 0;
-            const ly_r2 = 7.25;
-            const r_r2 = offsetWorld(lx_r2, ly_r2);
-            const prop_r2 = subProp(prop.x + r_r2.x, prop.y + r_r2.y, angle);
-            drawList.push({
-                type: "rail",
-                prop: prop_r2,
-                halfSize: { x: 8, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (prop_r2.x - viewport.x) ** 2 + (prop_r2.y - viewport.y) ** 2,
-            });
-            // Inner rail (top-right corner)
-            const lx_ri = 7.25;
-            const ly_ri = -7.25;
-            const r_ri = offsetWorld(lx_ri, ly_ri);
-            const prop_ri = subProp(prop.x + r_ri.x, prop.y + r_ri.y, angle);
-            drawList.push({
-                type: "rail",
-                prop: prop_ri,
-                halfSize: { x: 0.75, y: 0.75 },
-                height: CONVEYOR_RAIL_HEIGHT,
-                faceColors: railColors,
-                topColors: railTopColors,
-                stroke: railStroke,
-                distSq: (prop_ri.x - viewport.x) ** 2 + (prop_ri.y - viewport.y) ** 2,
-            });
-        }
-        // Depth sort: draw furthest boxes first
-        drawList.sort((a, b) => b.distSq - a.distSq);
-        for (const item of drawList)
-            drawBox(ctx, item.prop, viewport, {
-                halfSize: item.halfSize,
-                height: item.height,
-                facing: item.prop.facing,
-                faceColors: item.faceColors,
-                topColors: item.topColors,
-                stroke: item.stroke,
-                lineWidth: 1.0 * lineScale,
-            });
+        const beltProp = subProp(prop.x, prop.y, angle);
+        drawBox(ctx, beltProp, viewport, {
+            halfSize: { x: hx, y: hy },
+            height: CONVEYOR_BELT_HEIGHT,
+            facing: angle,
+            faceColors: beltColors,
+            topColors: beltTopColors,
+            stroke: beltStroke,
+            lineWidth: 1.0 * lineScale,
+        });
         function projectLocalFlat(out8, offset, lx, ly, lz) {
             const r = rotateXY(lx, ly, cos, sin);
             projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
         }
-        // 4. Clip and draw moving treads & chevrons on curved belt surface
         ctx.save();
         ctx.beginPath();
-        const steps = 8;
-        if (isLeft) {
-            projectLocalFlat(sTemp, 0, -6.5, 8, CONVEYOR_BELT_HEIGHT);
-            ctx.moveTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, -6.5, -6.5, CONVEYOR_BELT_HEIGHT);
-            ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, -6.5, CONVEYOR_BELT_HEIGHT);
-            ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, 6.5, CONVEYOR_BELT_HEIGHT);
-            ctx.lineTo(sTemp[0], sTemp[1]);
-            for (let i = 0; i <= steps; i++) {
-                const A = 1.5 * Math.PI - (i / steps) * (0.5 * Math.PI);
-                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), 8 + 1.5 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
-                ctx.lineTo(sTemp[0], sTemp[1]);
-            }
-        } else {
-            projectLocalFlat(sTemp, 0, -6.5, -8, CONVEYOR_BELT_HEIGHT);
-            ctx.moveTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, -6.5, 6.5, CONVEYOR_BELT_HEIGHT);
-            ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, 6.5, CONVEYOR_BELT_HEIGHT);
-            ctx.lineTo(sTemp[0], sTemp[1]);
-            projectLocalFlat(sTemp, 0, 8, -6.5, CONVEYOR_BELT_HEIGHT);
-            ctx.lineTo(sTemp[0], sTemp[1]);
-            for (let i = 0; i <= steps; i++) {
-                const A = 0.5 * Math.PI + (i / steps) * (0.5 * Math.PI);
-                projectLocalFlat(sTemp, 0, 8 + 1.5 * Math.cos(A), -8 + 1.5 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
-                ctx.lineTo(sTemp[0], sTemp[1]);
-            }
-        }
-        ctx.closePath();
+        projectLocalFlat(sScratchQuad, 0, -hx, -hy, CONVEYOR_BELT_HEIGHT);
+        projectLocalFlat(sScratchQuad, 2, hx, -hy, CONVEYOR_BELT_HEIGHT);
+        projectLocalFlat(sScratchQuad, 4, hx, hy, CONVEYOR_BELT_HEIGHT);
+        projectLocalFlat(sScratchQuad, 6, -hx, hy, CONVEYOR_BELT_HEIGHT);
+        traceClosedFlatPolygon(ctx, sScratchQuad, 4);
         ctx.clip();
-        // Animation movement
-        const speed = 20; // units/sec
+        const speed = 20;
         const spacing = 8;
         const timeSec = (prop.ageMs ?? 0) / 1000;
-        const totalArcLength = (Math.PI / 2) * 8; // ~12.56
+        const totalArcLength = (Math.PI / 2) * 8;
         const offset = (timeSec * speed) % spacing;
-        // Draw dark curved slats (treads)
         ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
         ctx.lineWidth = 1.0 * lineScale;
         const numSlats = Math.ceil(totalArcLength / 4) + 2;
@@ -358,14 +137,13 @@ export function createConveyorDraw(options = {}) {
             const s = ((timeSec * speed) % 4) + i * 4;
             if (s < 0 || s > totalArcLength) continue;
             const A = startAngle + dir * (s / 8);
-            projectLocalFlat(sScratchQuad, 0, pivotX + 1.5 * Math.cos(A), pivotY + 1.5 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
+            projectLocalFlat(sScratchQuad, 0, pivotX, pivotY, CONVEYOR_BELT_HEIGHT);
             projectLocalFlat(sScratchQuad, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
             ctx.beginPath();
             ctx.moveTo(sScratchQuad[0], sScratchQuad[1]);
             ctx.lineTo(sScratchQuad[2], sScratchQuad[3]);
             ctx.stroke();
         }
-        // Draw chevrons curved along path
         ctx.fillStyle = chevronColors.fill;
         ctx.strokeStyle = chevronColors.stroke;
         ctx.lineWidth = 0.5 * lineScale;
@@ -374,7 +152,6 @@ export function createConveyorDraw(options = {}) {
             const s = offset + i * spacing;
             if (s < -2 || s > totalArcLength + 2) continue;
             const A = startAngle + dir * (s / 8);
-            // Polar offsets for chevron vertices
             const tipAngle = A + dir * (1.5 / 8);
             const wingAngle = A - dir * (1.2 / 8);
             const innerAngle = A - dir * (0.4 / 8);
