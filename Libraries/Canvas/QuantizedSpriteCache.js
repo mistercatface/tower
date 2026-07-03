@@ -9,6 +9,7 @@ import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropB
 import { resolveBodyRadius } from "../Motion/physicsDefaults.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
 import { getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/propVisualAttachments.js";
+import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 const SPRITE_VIEW_STEP = 30;
 const SPRITE_VIEW_LIMIT = 120;
 function packQuantizedViewBucket(dx, dy, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
@@ -151,6 +152,47 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
  * @param {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} draw
  * @param {number} [animFrame]
  */
+function getPropStaticKey(prop, renderKey) {
+    const facing = prop.facing ?? 0;
+    const powered = prop.powered !== false;
+    const pressed = !!prop._buttonDrawPressed;
+    const voKey = visualOverrideCacheKey(prop);
+    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
+    const rolls = !!prop.strategy?.rolls;
+    const rollKey = rolls ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : "";
+    if (
+        prop._staticKeyFacing === facing &&
+        prop._staticKeyPowered === powered &&
+        prop._staticKeyPressed === pressed &&
+        prop._staticKeyVo === voKey &&
+        prop._staticKeyAttachment === attachmentKey &&
+        (!rolls || prop._staticKeyRoll === rollKey) &&
+        prop._cachedStaticKey !== undefined
+    )
+        return prop._cachedStaticKey;
+    const k1 = BigInt(internSpriteKeyPart(renderKey));
+    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
+    const k2 = BigInt(internSpriteKeyPart(customKey));
+    const physicsKey = getBaseSpriteCacheKey(prop, PROP_SPRITE_KEY_DEPS);
+    const k3 = BigInt(internSpriteKeyPart(physicsKey));
+    const k4 = BigInt(internSpriteKeyPart(attachmentKey));
+    const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
+    prop._staticKeyFacing = facing;
+    prop._staticKeyPowered = powered;
+    prop._staticKeyPressed = pressed;
+    prop._staticKeyVo = voKey;
+    prop._staticKeyAttachment = attachmentKey;
+    if (rolls) prop._staticKeyRoll = rollKey;
+    prop._cachedStaticKey = staticKey;
+    return staticKey;
+}
+/**
+ * @param {object} prop
+ * @param {import("../Viewport/Viewport.js").Viewport} viewport
+ * @param {string} renderKey
+ * @param {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} draw
+ * @param {number} [animFrame]
+ */
 function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     const px = viewport.x;
     const py = viewport.y;
@@ -158,13 +200,9 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     const dx = prop.x - px;
     const dy = prop.y - py;
     const viewStep = resolvePropQuantizeSteps(prop).view;
-    const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
-    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
     const pixelSize = resolvePropPixelSizeForProp(prop);
-    let key = BigInt(internSpriteKeyPart(renderKey));
-    key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
-    key = (key << 20n) | BigInt(internedPropPhysicsKey(prop));
-    key = (key << 20n) | BigInt(internSpriteKeyPart(attachmentKey));
+    const staticKey = getPropStaticKey(prop, renderKey);
+    let key = staticKey;
     key = (key << 12n) | BigInt(packQuantizedViewBucket(dx, dy, viewStep));
     key = (key << 16n) | BigInt(animFrame & 0xffff);
     key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);

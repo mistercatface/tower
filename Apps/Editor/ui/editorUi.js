@@ -44,6 +44,10 @@ function computeMapColumnSlotMax(state) {
 }
 function fitMapColumnCanvases(state) {
     const stackSize = computeMapColumnSlotMax(state);
+    if (state.editor.lastFittedSizes && state.editor.lastFittedSizes.includes(stackSize)) return;
+    state.editor.lastFittedSizes = state.editor.lastFittedSizes || [];
+    state.editor.lastFittedSizes.push(stackSize);
+    if (state.editor.lastFittedSizes.length > 2) state.editor.lastFittedSizes.shift();
     syncMapOverviewCanvasSize(stackSize);
     if (mapCanvasResize) mapCanvasResize.setSize(stackSize);
 }
