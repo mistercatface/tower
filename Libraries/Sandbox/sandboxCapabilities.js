@@ -1,17 +1,10 @@
 import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
 export const EXPLORE_BEHAVIOR_ID = "explore";
-export const GROUND_NAV_BEHAVIOR_IDS = new Set([
-    DIRECT_GROUND_NAV_BEHAVIOR_ID,
-    FLOW_GROUND_NAV_BEHAVIOR_ID,
-    HPA_GROUND_NAV_BEHAVIOR_ID,
-    EXPLORE_BEHAVIOR_ID,
-]);
-
+export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID, EXPLORE_BEHAVIOR_ID]);
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
