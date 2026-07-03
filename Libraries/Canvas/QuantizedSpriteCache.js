@@ -41,10 +41,6 @@ function packZoomKeyBucket(zoom) {
     return Math.round(quantizePropBakeZoom(zoom) * 8);
 }
 const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex, buildRollOrientKey };
-function internedPropPhysicsKey(prop) {
-    const key = getBaseSpriteCacheKey(prop, PROP_SPRITE_KEY_DEPS);
-    return internSpriteKeyPart(key);
-}
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
  * Radial-elevation props use this; domain key/bake helpers live below.
@@ -53,7 +49,7 @@ function internedPropPhysicsKey(prop) {
  */
 function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
     const baked = createBakedSpriteCache({ maxItems });
-    const telemetry = { requests: 0, misses: 0, evictions: 0, uniqueKeys: new Set() };
+    const telemetry = { requests: 0, misses: 0, evictions: 0 };
     const originalOnEvict = baked.cache.onEvict;
     baked.cache.onEvict = (key, value) => {
         telemetry.evictions++;
@@ -75,21 +71,22 @@ function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
          */
         getOrBake(key, bakeFn) {
             this.telemetry.requests++;
-            this.telemetry.uniqueKeys.add(key);
             const cached = baked.get(key);
             if (!cached) this.telemetry.misses++;
-            // Evaluate cache pressure periodically
+            // Evaluate cache pressure periodically — grow the LRU if evictions are
+            // occurring while requests are still flowing (indicates thrashing).
             if (this.telemetry.requests >= 2000) {
-                const workingSet = this.telemetry.uniqueKeys.size;
-                // If working set is pushing the cache limits and we are thrashing
-                if (workingSet > baked.cache.maxSize * 0.8 && this.telemetry.evictions > 0) {
-                    baked.cache.maxSize = Math.max(baked.cache.maxSize, Math.ceil(workingSet * 1.5));
-                    this.maxItems = baked.cache.maxSize;
+                if (this.telemetry.evictions > 0) {
+                    // Use cache.size as a live proxy for the working set.
+                    const workingSet = baked.cache.size;
+                    if (workingSet > baked.cache.maxSize * 0.8) {
+                        baked.cache.maxSize = Math.max(baked.cache.maxSize, Math.ceil(workingSet * 1.5));
+                        this.maxItems = baked.cache.maxSize;
+                    }
                 }
                 this.telemetry.requests = 0;
                 this.telemetry.misses = 0;
                 this.telemetry.evictions = 0;
-                this.telemetry.uniqueKeys.clear();
             }
             if (cached) return cached;
             const result = bakeFn();
@@ -110,14 +107,14 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const canvas = sprite.canvas ?? sprite;
     const drawW = canvas.width / bakeScale;
     const drawH = canvas.height / bakeScale;
-    const drawX = modifier?.drawX ?? worldX;
-    const drawY = modifier?.drawY ?? worldY;
-    const scale = modifier?.scale ?? 1;
-    // Fast path for 99% of sprites that have no modifier
+    // Fast path for 99% of sprites that have no modifier — avoid any optional-chain reads.
     if (!modifier) {
-        ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.drawImage(canvas, worldX - anchorX, worldY - anchorY, drawW, drawH);
         return;
     }
+    const drawX = modifier.drawX ?? worldX;
+    const drawY = modifier.drawY ?? worldY;
+    const scale = modifier.scale ?? 1;
     if (modifier.clipCircle) {
         ctx.save();
         prepModifiedBlit(ctx, modifier);

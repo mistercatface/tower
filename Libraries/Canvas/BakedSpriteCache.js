@@ -40,22 +40,23 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
             cache.set(key, entry);
             // Asynchronously promote to a GPU-resident ImageBitmap so that
             // subsequent ctx.drawImage calls are zero-copy.
-            createImageBitmap(sourceCanvas)
-                .then((bitmap) => {
-                    // Only apply if this entry is still the live one in the cache.
-                    const live = cache.get(key);
-                    if (live === entry) {
-                        entry.canvas = bitmap;
-                        entry._isBitmap = true;
-                        // The OffscreenCanvas is no longer needed — return it to the pool.
-                        releaseOffscreenCanvas(sourceCanvas);
-                    } else
-                        // Entry was already evicted or replaced; discard the bitmap.
-                        bitmap.close();
-                })
-                .catch(() => {
-                    // Promotion failed (e.g. canvas was closed). Keep OffscreenCanvas as-is.
-                });
+            if (typeof createImageBitmap !== "undefined")
+                createImageBitmap(sourceCanvas)
+                    .then((bitmap) => {
+                        // Only apply if this entry is still the live one in the cache.
+                        const live = cache.get(key);
+                        if (live === entry) {
+                            entry.canvas = bitmap;
+                            entry._isBitmap = true;
+                            // The OffscreenCanvas is no longer needed — return it to the pool.
+                            releaseOffscreenCanvas(sourceCanvas);
+                        } else
+                            // Entry was already evicted or replaced; discard the bitmap.
+                            bitmap.close();
+                    })
+                    .catch(() => {
+                        // Promotion failed (e.g. canvas was closed). Keep OffscreenCanvas as-is.
+                    });
             return entry;
         },
         clear() {
