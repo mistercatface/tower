@@ -16,7 +16,6 @@ import floor_belt_elbow_right from "./floor_belt/floor_belt_elbow_right.asset.js
 import floor_belt_rails from "./floor_belt/floor_belt_rails.asset.js";
 import floor_belt_elbow_left_rails from "./floor_belt/floor_belt_elbow_left_rails.asset.js";
 import floor_belt_elbow_right_rails from "./floor_belt/floor_belt_elbow_right_rails.asset.js";
-import floor_power_source from "./floor_power_source/floor_power_source.asset.js";
 import room_node from "./room_node/room_node.asset.js";
 import corridor from "./corridor/corridor.asset.js";
 import poolBalls from "./poolBalls.js";
@@ -44,7 +43,6 @@ const catalog = {
     floor_belt_rails,
     floor_belt_elbow_left_rails,
     floor_belt_elbow_right_rails,
-    floor_power_source,
     room_node,
     corridor,
     cross_pinwheel,
