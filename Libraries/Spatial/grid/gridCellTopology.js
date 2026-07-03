@@ -1,5 +1,5 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
-import { isRailWallEdge, createRailWallEdge, railWallThicknessPx } from "./CellEdgeStore.js";
+import { isRailWallEdge, railWallThicknessPx } from "./CellEdgeStore.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
 export function edgeNeighborIdx(idx, side, cols, rows) {

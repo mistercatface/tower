@@ -5,7 +5,7 @@ import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { isRailWallEdge, railWallCapLevel } from "../Spatial/grid/CellEdgeStore.js";
-import { setBoundary, getBoundary } from "../Spatial/grid/boundaryOccupancy.js";
+import { setBoundary } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 import { overlaySegment } from "../Render/overlays/overlayCommands.js";

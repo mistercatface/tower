@@ -7,13 +7,9 @@ const sScratchQuad = new Float32Array(8);
 const sScratchChevron = new Float32Array(12);
 const sTemp = new Float32Array(2);
 const CONVEYOR_BELT_HEIGHT = 0;
-const CONVEYOR_RAIL_HEIGHT = 0;
 /** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
-    const { turnDirection = null, railColors: railColorsOverride, railTopColors: railTopColorsOverride, railStroke: railStrokeOverride, chevronColors: chevronColorsOverride } = options;
-    const railColors = railColorsOverride ?? { shadow: "#1E293B", mid: "#334155", highlight: "#475569" };
-    const railStroke = railStrokeOverride ?? "#0F172A";
-    const railTopColors = railTopColorsOverride ?? { light: "#94A3B8", mid: "#64748B", dark: "#475569" };
+    const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
     const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
     // Dark rubber colors for the moving belt bed
     const beltColors = {

@@ -16,7 +16,6 @@ export function wallDamageKey(target) {
 }
 export function resolveWallDamageTarget(grid, segment) {
     if (!segment) return null;
-    if (segment.passageEdge) return null;
     const col = segment.gridCol;
     const row = segment.gridRow;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return null;

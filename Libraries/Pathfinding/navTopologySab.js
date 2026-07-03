@@ -1,11 +1,10 @@
-import { CELL_EDGE_SLOT_BYTES, CELL_EDGE_SIDES, cellEdgeSlotBase, cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
-import { cellInRect, colRowToIndex, OCTILE_OFFSETS, OCTILE_DIR_TO_IDX } from "../Spatial/grid/GridUtils.js";
-import { diagonalStepOpen } from "../Spatial/grid/vertexPassability.js";
+import { CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
+import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
+import { diagonalStepOpen, getCardinalBit } from "../Spatial/grid/vertexPassability.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
-const CARDINAL_BITS = { "1,0": 1, "0,1": 2, "-1,0": 4, "0,-1": 8 };
 const OCTILE_REVERSE_DIR = OCTILE_OFFSETS.map(({ dc, dr }) => OCTILE_OFFSETS.findIndex(({ dc: dc2, dr: dr2 }) => dc2 === -dc && dr2 === -dr));
 /** @param {number} cellIdx */
 export function octileNeighborBase(cellIdx) {
@@ -117,7 +116,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     arena.floorKind[idx] = grid.floorStore.kind[idx];
     arena.floorFacing[idx] = grid.floorStore.facing[idx];
     for (let side = 0; side < 4; side++) {
-        const offset = cellEdgeSlotOffset(idx, side, cols);
+        const offset = cellEdgeSlotOffset(idx, side);
         arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
     }
 }
@@ -149,7 +148,7 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
-            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & CARDINAL_BITS[`${dc},${dr}`]) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, idx, dc, dr);
+            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & getCardinalBit(dc, dr)) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, idx, dc, dr);
             octileNeighbors[octileNeighborOffset(idx, i)] = open ? nIdx : -1;
         }
     });

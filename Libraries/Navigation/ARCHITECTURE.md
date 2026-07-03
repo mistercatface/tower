@@ -15,7 +15,7 @@ Walls block collision first; the worker bakes collision + floor direction + edge
 
 ## Edits → worker sync
 
-One entry point: **`commitGridNavEdit`** / **`commitGridNavEditUnion`** → `onObstaclesChanged`. Mutations: **`writeNavFloorCell`**, **`setNavEdge`**, **`syncBeltCellToEdges`** in `navGridMutations.js`. One bake input: **`captureNavGridSnapshot`** → **`bakeNavTopologyIntoArena`** (worker + `bakeNavTopologyLocal`).
+One entry point: **`commitGridNavEdit`** / **`commitGridNavEditUnion`** → `onObstaclesChanged`. Mutations: **`grid.writeFloorCell`**, **`setBoundary`**. One bake input: **`captureNavGridSnapshot`** → **`bakeNavTopologyIntoArena`** (worker + `bakeNavTopologyLocal`).
 
 Logical graph: **`createNavGraphView`** — see `navGraph.md`.
 

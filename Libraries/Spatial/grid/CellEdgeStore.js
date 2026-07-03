@@ -1,15 +1,11 @@
 import { cellInRect, gridSideOutwardVector } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { neighborFillLevel, edgeNeighborIdx, edgeMirrorSide } from "./gridCellTopology.js";
-export const EDGE_KIND = { RailWall: "railWall" };
 export function createRailWallEdge(heightDelta, thicknessLevel) {
-    return { kind: EDGE_KIND.RailWall, heightDelta, thicknessLevel };
+    return { heightDelta, thicknessLevel };
 }
 export function isRailWallEdge(edge) {
-    return edge?.kind === EDGE_KIND.RailWall;
-}
-export function edgeBlocksCrossing(edge) {
-    return isRailWallEdge(edge);
+    return edge != null;
 }
 export function railWallCapLevel(edge, neighborFillLevel) {
     return neighborFillLevel + edge.heightDelta;
@@ -20,12 +16,8 @@ export function railWallHeightPx(edge, cellSize, neighborFillLevel) {
 export function railWallThicknessPx(edge) {
     return Math.max(1, edge.thicknessLevel);
 }
-export const CELL_EDGE_SIDES = 4;
 export const CELL_EDGE_SLOT_BYTES = 16;
-export function cellEdgeSlotBase(idx, cols) {
-    return idx << 2;
-}
-export function cellEdgeSlotOffset(idx, side, cols) {
+export function cellEdgeSlotOffset(idx, side) {
     return (idx << 2) + side;
 }
 const EMPTY = -1;
@@ -68,27 +60,12 @@ export class CellEdgeStore {
         if (ref === EMPTY) return null;
         return this.pool[ref];
     }
-    hasIdx(idx, side) {
-        return this.slots[(idx << 2) + side] !== EMPTY;
-    }
     _alloc(edge) {
         if (this.free.length) {
             const ref = this.free.pop();
             const pooled = this.pool[ref];
-            pooled.kind = edge.kind;
-            if (isRailWallEdge(edge)) {
-                pooled.heightDelta = edge.heightDelta;
-                pooled.thicknessLevel = edge.thicknessLevel;
-                delete pooled.mode;
-                delete pooled.allowedSide;
-                delete pooled.powered;
-            } else {
-                delete pooled.heightDelta;
-                delete pooled.thicknessLevel;
-                delete pooled.mode;
-                delete pooled.allowedSide;
-                delete pooled.powered;
-            }
+            pooled.heightDelta = edge.heightDelta;
+            pooled.thicknessLevel = edge.thicknessLevel;
             return ref;
         }
         const ref = this.pool.length;
@@ -136,7 +113,6 @@ export class CellEdgeStore {
                 const ref = this.slots[(idx << 2) + side];
                 if (ref === EMPTY) continue;
                 const edge = this.pool[ref];
-                if (!isRailWallEdge(edge)) continue;
                 seen.add(railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, idx, side)));
             }
         const out = [...seen];

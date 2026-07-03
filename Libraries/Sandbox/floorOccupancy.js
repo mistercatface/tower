@@ -1,8 +1,7 @@
-import { cellBoundsAt, emptyCellBounds, growCellBounds, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 import { floorBeltFacingFromIndex, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
-import { stepCardinalFacing } from "../Math/Angle.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
@@ -26,8 +25,8 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
     if (kind === GRID_ROTATABLE_OCCUPANT.FloorBelt) {
         if (!grid.floorStore.isBeltKindAtIdx(idx)) return false;
         const beltKind = grid.floorStore.kind[idx];
-        const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-        grid.writeFloorCell(idx, beltKind, stepCardinalFacing(facingRadians, steps));
+        const facingIndex = (((grid.floorStore.facing[idx] + steps) % 4) + 4) % 4;
+        grid.writeFloorCell(idx, beltKind, facingIndex);
         commitGridNavEdit(state, idx);
         return true;
     }
@@ -42,13 +41,6 @@ export function canStampFloorOccupancyAt(state, col, row) {
     return true;
 }
 export const canStampFloorBeltAt = canStampFloorOccupancyAt;
-export function stampFloorBeltsInBounds(grid, minCol, maxCol, minRow, maxRow, facingRadians) {
-    let changed = false;
-    forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, grid.cols, (col, row) => {
-        if (grid.writeFloorBelt(col + row * grid.cols, facingRadians)) changed = true;
-    });
-    return changed;
-}
 /** Cell lookup + acceleration once per frame before kinetic physics substeps. */
 export function tickFloorOccupancy(state, spatialFrame, dt) {
     const grid = state.obstacleGrid;

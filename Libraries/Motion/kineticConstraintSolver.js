@@ -369,7 +369,6 @@ function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) 
     out.length = 0;
     for (let i = 0; i < walls.length; i++) {
         const seg = walls[i];
-        if (seg.passageEdge) continue;
         if (linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, seg)) out.push(seg);
     }
 }

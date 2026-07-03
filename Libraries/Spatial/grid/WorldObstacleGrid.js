@@ -4,8 +4,8 @@ import { cellEdgeEndpoints, edgeRailCollisionShouldEmit, edgeRailCollisionThickn
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { FloorCellStore } from "./FloorCellStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
-import { floorBeltFacingToIndex, isFloorBeltKind, FLOOR_CELL_KIND } from "./FloorCell.js";
-import { boundaryBlocksStep, clearAllBoundariesAtCell, clearBoundaryPrimary, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
+import { isFloorBeltKind } from "./FloorCell.js";
+import { clearAllBoundariesAtCell, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsAtOriginIdxInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
@@ -198,7 +198,6 @@ export class WorldObstacleGrid {
                 proxy.width = len;
                 proxy.height = thickness;
                 proxy.size = Math.max(len, thickness);
-                if ("passageEdge" in proxy) delete proxy.passageEdge;
                 out.push(proxy);
             }
         });
@@ -308,14 +307,8 @@ export class WorldObstacleGrid {
         if (changed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         return gridBounds;
     }
-    writeCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel });
-    }
     stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
         setBoundary(this, colRowToIndex(col, row, this.cols), side, { kind: "railWall", capHeightLevel, thicknessLevel }, true);
-    }
-    clearCellEdge(col, row, side) {
-        clearBoundaryPrimary(this, colRowToIndex(col, row, this.cols), side, true);
     }
     clearCellEdges(col, row) {
         clearAllBoundariesAtCell(this, colRowToIndex(col, row, this.cols), false);
@@ -351,36 +344,19 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.setChunkRange(chunkBounds, profileId);
         bumpSurfaceMaterialRevision(this);
     }
-    getCellEdge(idx, side) {
-        return this.edgeStore.getIdx(idx, side);
-    }
-    hasCellEdge(idx, side) {
-        return this.edgeStore.hasIdx(idx, side);
-    }
-    edgeBlocksStep(idx, side) {
-        return boundaryBlocksStep(this, idx, side);
-    }
-    writeFloorCell(idx, kind, facingRadians) {
+    writeFloorCell(idx, kind, facingIndex) {
         if (this.isBlockedIdx(idx)) return false;
         const prevKind = this.floorStore.kind[idx];
         const prevFacing = this.floorStore.facing[idx];
-        const facingIndex = floorBeltFacingToIndex(facingRadians);
         this.floorStore.setAtIdx(idx, kind, facingIndex);
         const floorNavChanged = (isFloorBeltKind(prevKind) || isFloorBeltKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
-    writeFloorBelt(idx, facingRadians) {
-        return this.writeFloorCell(idx, FLOOR_CELL_KIND.Belt, facingRadians);
-    }
     hasFloorOccupancy(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
         return this.floorStore.hasAnyAtIdx(idx);
-    }
-    hasFloorBelt(idx) {
-        if (idx < 0 || idx >= this.cols * this.rows) return false;
-        return this.floorStore.isBeltKindAtIdx(idx);
     }
     clearFloorCell(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
@@ -443,9 +419,6 @@ export class WorldObstacleGrid {
         const vertexPassability = navTopology.vertexPassability;
         if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(this, cardinalOpen, vertexPassability, fromIdx, toIdx);
         return false;
-    }
-    canStepIdx(fromIdx, toIdx, navTopology = null) {
-        return this.canStep(fromIdx, toIdx, navTopology);
     }
     getCellBounds(col, row) {
         return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);

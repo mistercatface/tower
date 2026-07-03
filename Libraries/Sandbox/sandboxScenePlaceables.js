@@ -121,7 +121,7 @@ const PLACEABLE = {
             const row = grid.worldRow(worldY);
             if (!canStampFloorBeltAt(state, col, row)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
-            if (!applyFloorCellEdit(state, col, row, kind, 0)) return false;
+            if (!applyFloorCellEdit(state, col + row * grid.cols, kind, 0)) return false;
             ctx.placement.touchFloorPlacement(col, row);
             ctx.pickSelection({ kind: "floor", col, row });
             return true;

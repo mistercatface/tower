@@ -1,4 +1,4 @@
-import { CARDINAL_FACING_STEPS, quantizeCardinalAngle } from "../../Math/Angle.js";
+import { CARDINAL_FACING_STEPS } from "../../Math/Angle.js";
 import { cellInRect } from "./GridUtils.js";
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
 export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
@@ -12,8 +12,9 @@ export function floorBeltElbowTurn(kind) {
     if (kind === FLOOR_CELL_KIND.BeltElbowRight) return "right";
     return null;
 }
-const SIDES_CACHE = new Array(8 * 4);
-for (let kind = 0; kind < 8; kind++)
+const FLOOR_BELT_KIND_COUNT = 4;
+const SIDES_CACHE = new Array(FLOOR_BELT_KIND_COUNT * 4);
+for (let kind = 0; kind < FLOOR_BELT_KIND_COUNT; kind++)
     for (let facingIndex = 0; facingIndex < 4; facingIndex++) {
         const f = facingIndex;
         const turn = floorBeltElbowTurn(kind);
@@ -36,7 +37,7 @@ for (let kind = 0; kind < 8; kind++)
  */
 export function floorBeltEntryExitSides(kind, facingIndex) {
     const f = facingIndex % 4;
-    const k = kind >= 0 && kind < 8 ? kind : 0;
+    const k = kind >= 0 && kind < FLOOR_BELT_KIND_COUNT ? kind : 0;
     return SIDES_CACHE[k * 4 + f];
 }
 /** Lateral rail edges — the two sides that are neither entry nor exit. */
@@ -76,12 +77,11 @@ export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
     if (diff === -cols) return 0;
     throw new Error(`gridSideFromCellIdxToNeighborIdx: non-cardinal step index diff ${diff} with cols ${cols}`);
 }
+const BELT_KIND_RESOLVE_ORDER = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
 /** @param {number} entrySide @param {number} exitSide */
-export function resolveRailedBeltFromSides(entrySide, exitSide) {
-    /** @type {number[]} */
-    const kinds = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
-    for (let ki = 0; ki < kinds.length; ki++) {
-        const kind = kinds[ki];
+export function resolveBeltKindFromSides(entrySide, exitSide) {
+    for (let ki = 0; ki < BELT_KIND_RESOLVE_ORDER.length; ki++) {
+        const kind = BELT_KIND_RESOLVE_ORDER[ki];
         for (let facingIndex = 0; facingIndex < CARDINAL_FACING_STEPS; facingIndex++) {
             const sides = floorBeltEntryExitSides(kind, facingIndex);
             if (sides.entrySide === entrySide && sides.exitSide === exitSide) return { kind, facingIndex };
@@ -93,11 +93,6 @@ export function resolveRailedBeltFromSides(entrySide, exitSide) {
 export function floorBeltFacingFromIndex(cardinalIndex) {
     return (cardinalIndex % CARDINAL_FACING_STEPS) * ((Math.PI * 2) / CARDINAL_FACING_STEPS);
 }
-/** @param {number} facingRadians */
-export function floorBeltFacingToIndex(facingRadians) {
-    const q = quantizeCardinalAngle(facingRadians);
-    return Math.round(q / ((Math.PI * 2) / CARDINAL_FACING_STEPS)) % CARDINAL_FACING_STEPS;
-}
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} idx @param {number} entrySide */
 export function floorBeltEntryEdgeWorldPoint(grid, idx, entrySide) {
     const x = grid.gridCenterXByIdx(idx);
@@ -107,13 +102,6 @@ export function floorBeltEntryEdgeWorldPoint(grid, idx, entrySide) {
     if (entrySide === 1) return { x: x + inset, y };
     if (entrySide === 2) return { x, y: y + inset };
     return { x: x - inset, y };
-}
-/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row @param {number} entrySide */
-export function floorBeltEntryNeighborCell(col, row, entrySide) {
-    if (entrySide === 0) return { col, row: row - 1 };
-    if (entrySide === 1) return { col: col + 1, row };
-    if (entrySide === 2) return { col, row: row + 1 };
-    return { col: col - 1, row };
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function isFloorBeltCell(grid, col, row) {

@@ -5,7 +5,7 @@ function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, g
     const wy = grid.gridCenterYByIdx(idx);
     if (Math.hypot(wx - bodyX, wy - bodyY) > arrivalPx) return false;
     if (bodyIdx === idx) return true;
-    return grid.canStepIdx(bodyIdx, idx, navTopology);
+    return grid.canStep(bodyIdx, idx, navTopology);
 }
 /**
  * @param {number} x
@@ -32,7 +32,7 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
             idx++;
             continue;
         }
-        if (!grid.canStepIdx(hereIdx, cellIdx, navTopology)) break;
+        if (!grid.canStep(hereIdx, cellIdx, navTopology)) break;
         idx++;
     }
     return idx;

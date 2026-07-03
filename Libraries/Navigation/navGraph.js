@@ -1,9 +1,20 @@
-import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { edgeNeighborIdx } from "../Spatial/grid/gridCellTopology.js";
 import { floorBeltEntryExitSides, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "../Pathfinding/bakeNavTopology.js";
 /** @typedef {number} CellIdx */
+export function beltEntryExitAtIdx(grid, idx) {
+    if (idx < 0 || idx >= grid.cols * grid.rows) return null;
+    const kind = grid.floorStore.kind[idx];
+    if (!isFloorBeltKind(kind)) return null;
+    return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
+}
+export function beltEntryNeighborAtIdx(grid, idx) {
+    const sides = beltEntryExitAtIdx(grid, idx);
+    if (!sides) return -1;
+    return edgeNeighborIdx(idx, sides.entrySide, grid.cols, grid.rows);
+}
 export function createNavGraphView(grid, baked = null, navTopology = null) {
     const topologyRef = navTopology ?? grid._navTopologyRef;
     const frame = topologyRef?.frame ?? null;
@@ -26,26 +37,6 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
         edgeAtIdx(idx, side) {
             return grid.edgeStore.getIdx(idx, side);
         },
-        isBeltCellIdx(idx) {
-            return isFloorBeltKind(grid.floorStore.kind[idx]);
-        },
-        beltEntryExitIdx(idx) {
-            if (idx < 0 || idx >= grid.cols * grid.rows) return null;
-            const kind = grid.floorStore.kind[idx];
-            if (!isFloorBeltKind(kind)) return null;
-            return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
-        },
-        beltEntryNeighborIdx(idx) {
-            const sides = this.beltEntryExitIdx(idx);
-            if (!sides) return -1;
-            const cols = grid.cols;
-            const side = sides.entrySide;
-            if (side === 0) return idx - cols >= 0 ? idx - cols : -1;
-            if (side === 1) return (idx % cols) + 1 < cols ? idx + 1 : -1;
-            if (side === 2) return idx + cols < cols * grid.rows ? idx + cols : -1;
-            if (side === 3) return idx % cols > 0 ? idx - 1 : -1;
-            return -1;
-        },
         canStepIdx(fromIdx, toIdx) {
             if (this.cardinalOpen && this.vertexPassability) return !boundaryBlocksStepFrom(grid, this.cardinalOpen, this.vertexPassability, fromIdx, toIdx);
             if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);
@@ -61,7 +52,7 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
 export function snapNavGraphGoalCellIdx(graph, fromIdx, targetIdx) {
     const { grid } = graph;
     if (!isFloorBeltKind(grid.floorStore.kind[targetIdx])) return targetIdx;
-    const neighborIdx = graph.beltEntryNeighborIdx(targetIdx);
+    const neighborIdx = beltEntryNeighborAtIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
     if (fromIdx === neighborIdx) return targetIdx;
     return neighborIdx;

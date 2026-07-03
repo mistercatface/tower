@@ -3,7 +3,7 @@ import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
-import { floorBeltFacingFromIndex, formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
+import { formatFloorBeltFacingLabel, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { getRoomLink, clearRoomGraph, unbakeRoomGraph } from "../RoomGraph/index.js";
 import { resolveRailWallThicknessLevel } from "../RoomGraph/roomGraphClosedRooms.js";
 import { canStampFloorBeltAt, GRID_ROTATABLE_OCCUPANT, pickRotatableGridOccupantAtWorld, rotateGridOccupantAt } from "./floorOccupancy.js";
@@ -193,11 +193,11 @@ export function createSandboxSession(state) {
             }
             if (!canStampFloorBeltAt(state, targetCol, targetRow)) return false;
             const kind = grid.floorStore.kind[idx];
-            const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
+            const facingIndex = grid.floorStore.facing[idx];
             const targetIdx = targetCol + targetRow * grid.cols;
             grid.clearFloorCell(idx);
-            if (!grid.writeFloorCell(targetIdx, kind, facingRadians)) {
-                grid.writeFloorCell(idx, kind, facingRadians);
+            if (!grid.writeFloorCell(targetIdx, kind, facingIndex)) {
+                grid.writeFloorCell(idx, kind, facingIndex);
                 return false;
             }
             commitGridNavEdit(state, idx);
@@ -216,8 +216,7 @@ export function createSandboxSession(state) {
                 return false;
             }
             if (grid.floorStore.kind[idx] === kind) return true;
-            const facingRadians = floorBeltFacingFromIndex(grid.floorStore.facing[idx]);
-            applyFloorCellEdit(state, idx, kind, facingRadians);
+            applyFloorCellEdit(state, idx, kind, grid.floorStore.facing[idx]);
             notifyUi();
             return true;
         },

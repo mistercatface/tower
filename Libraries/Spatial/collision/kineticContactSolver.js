@@ -10,6 +10,7 @@ import {
     patchKineticPairsForBodies,
     copyKineticPairBuffer,
     kineticContactBodiesAt,
+    pairPhysKey,
     KINETIC_PAIR_TIER,
 } from "./kineticPairStream.js";
 import { kineticPairTopologyStale, stampKineticPairGatherTopology } from "../../Motion/kineticConstraints.js";
@@ -61,8 +62,10 @@ const INNER_SOLVE_ITERATIONS = 4;
 const WARM_START_CACHE_SIZE = 16384;
 const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
 const warmStartKeys = new Float64Array(WARM_START_CACHE_SIZE);
+const warmStartGen = new Int32Array(WARM_START_CACHE_SIZE);
 const warmStartJn = new Float32Array(WARM_START_CACHE_SIZE);
 const warmStartJt = new Float32Array(WARM_START_CACHE_SIZE);
+let warmStartGeneration = 1;
 export const kineticContactBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_CONTACTS),
@@ -76,12 +79,6 @@ export const kineticContactBuffer = {
         rby: new Float32Array(MAX_CONTACTS),
         preDvx: new Float32Array(MAX_CONTACTS),
         preDvy: new Float32Array(MAX_CONTACTS),
-        preVxA: new Float32Array(MAX_CONTACTS),
-        preVyA: new Float32Array(MAX_CONTACTS),
-        preVxB: new Float32Array(MAX_CONTACTS),
-        preVyB: new Float32Array(MAX_CONTACTS),
-        preSpeedA: new Float32Array(MAX_CONTACTS),
-        preSpeedB: new Float32Array(MAX_CONTACTS),
         rAn: new Float32Array(MAX_CONTACTS),
         rBn: new Float32Array(MAX_CONTACTS),
         rAt: new Float32Array(MAX_CONTACTS),
@@ -132,9 +129,8 @@ export function circleCircleContactSlab(physIdA, physIdB) {
 function warmStartCacheLookup(key) {
     let idx = warmStartCacheIndex(key);
     while (true) {
-        const slot = warmStartKeys[idx];
-        if (slot === key) return idx;
-        if (slot === 0) return -1;
+        if (warmStartGen[idx] !== warmStartGeneration) return -1;
+        if (warmStartKeys[idx] === key) return idx;
         idx = (idx + 1) & WARM_START_CACHE_MASK;
     }
 }
@@ -178,13 +174,13 @@ function warmStartKineticContacts(contacts) {
     return restingCount;
 }
 function storeKineticWarmStartCache(contacts) {
-    warmStartKeys.fill(0);
+    warmStartGeneration++;
     for (let i = 0; i < contacts.count; i++) {
         const key = contacts.static.warmStartKey[i];
         let idx = warmStartCacheIndex(key);
         while (true) {
-            const slot = warmStartKeys[idx];
-            if (slot === key || slot === 0) {
+            if (warmStartGen[idx] !== warmStartGeneration || warmStartKeys[idx] === key) {
+                warmStartGen[idx] = warmStartGeneration;
                 warmStartKeys[idx] = key;
                 warmStartJn[idx] = contacts.dynamic.jn[i];
                 warmStartJt[idx] = contacts.dynamic.jt[i];
@@ -194,29 +190,7 @@ function storeKineticWarmStartCache(contacts) {
         }
     }
 }
-function appendContact(
-    contacts,
-    physIdA,
-    physIdB,
-    tier,
-    nx,
-    ny,
-    preDvx,
-    preDvy,
-    preVxA,
-    preVyA,
-    preVxB,
-    preVyB,
-    rax,
-    ray,
-    rbx,
-    rby,
-    restitution,
-    friction,
-    warmStartPairKey,
-    featureA = 0,
-    featureB = 0,
-) {
+function appendContact(contacts, physIdA, physIdB, tier, nx, ny, preDvx, preDvy, rax, ray, rbx, rby, restitution, friction, warmStartPairKey, featureA = 0, featureB = 0) {
     if (contacts.count >= MAX_CONTACTS) return;
     const i = contacts.count++;
     contacts.physIdA[i] = physIdA;
@@ -232,12 +206,6 @@ function appendContact(
     contacts.static.featureB[i] = featureB;
     contacts.dynamic.preDvx[i] = preDvx;
     contacts.dynamic.preDvy[i] = preDvy;
-    contacts.dynamic.preVxA[i] = preVxA;
-    contacts.dynamic.preVyA[i] = preVyA;
-    contacts.dynamic.preVxB[i] = preVxB;
-    contacts.dynamic.preVyB[i] = preVyB;
-    contacts.dynamic.preSpeedA[i] = Math.hypot(preVxA, preVyA);
-    contacts.dynamic.preSpeedB[i] = Math.hypot(preVxB, preVyB);
     contacts.static.restitution[i] = restitution;
     contacts.static.friction[i] = friction;
     contacts.static.warmStartKey[i] = contactWarmStartKeyFromPairKey(warmStartPairKey, featureA, featureB);
@@ -262,10 +230,6 @@ function narrowPhaseCircleContact(physIdA, physIdB, pairDynamic, pairIndex, rest
         ny,
         pairDynamic.preDvx[pairIndex],
         pairDynamic.preDvy[pairIndex],
-        pairDynamic.preVxA[pairIndex],
-        pairDynamic.preVyA[pairIndex],
-        pairDynamic.preVxB[pairIndex],
-        pairDynamic.preVyB[pairIndex],
         0,
         0,
         0,
@@ -306,10 +270,6 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairDynamic
             ny,
             pairDynamic.preDvx[pairIndex],
             pairDynamic.preDvy[pairIndex],
-            pairDynamic.preVxA[pairIndex],
-            pairDynamic.preVyA[pairIndex],
-            pairDynamic.preVxB[pairIndex],
-            pairDynamic.preVyB[pairIndex],
             cx - slab.x[physIdA],
             cy - slab.y[physIdA],
             cx - slab.x[physIdB],
@@ -502,16 +462,20 @@ export const sleepContactBuffer = {
     physIdA: new Int32Array(MAX_CONTACTS),
     physIdB: new Int32Array(MAX_CONTACTS),
     resting: new Uint8Array(MAX_CONTACTS),
+    _index: new Map(),
     reset() {
         this.count = 0;
+        this._index.clear();
     },
     add(idA, idB, isResting) {
-        for (let i = 0; i < this.count; i++)
-            if ((this.physIdA[i] === idA && this.physIdB[i] === idB) || (this.physIdA[i] === idB && this.physIdB[i] === idA)) {
-                if (isResting) this.resting[i] = 1;
-                return;
-            }
+        const key = pairPhysKey(idA, idB);
+        const existing = this._index.get(key);
+        if (existing !== undefined) {
+            if (isResting) this.resting[existing] = 1;
+            return;
+        }
         if (this.count < MAX_CONTACTS) {
+            this._index.set(key, this.count);
             this.physIdA[this.count] = idA;
             this.physIdB[this.count] = idB;
             this.resting[this.count] = isResting ? 1 : 0;

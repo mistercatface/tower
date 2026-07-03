@@ -32,7 +32,7 @@ export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfi
     const gridView = new FlatGridView(gridCols, grid.rows, {
         blocked: null,
         canStep(idx0, idx1) {
-            return walkable[idx1] && !reservedGlobalIndices.has(idx1) && grid.canStepIdx(idx0, idx1, navTopology);
+            return walkable[idx1] && !reservedGlobalIndices.has(idx1) && grid.canStep(idx0, idx1, navTopology);
         },
     });
     const gridSearch = new FlatGridSearch(searchState);

@@ -36,7 +36,8 @@ describe("polygon wall resolution", () => {
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
-        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction });
+        const wallBreakConfig = { minBreakStrength: 1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
+        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction, wallBreakConfig });
         assert.ok(collided);
         assert.ok(hits.length > 0);
         assert.ok(hits[0].normalX > 0.9);

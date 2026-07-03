@@ -1,7 +1,5 @@
 import { emptyCellBounds, growCellBoundsIdx } from "../DataStructures/CellRect.js";
 import { markGridZoneSubscriptionsDirty } from "../Sandbox/gridZoneTick.js";
-import { floorBeltFacingFromIndex } from "../Spatial/grid/FloorCell.js";
-import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
 /** @typedef {{ idx: number, kind: number, facingIndex: number }} BakedFloorBelt */
 export function clearBakedFloorBeltsQuiet(state, belts) {
     if (!belts.length) return null;
@@ -10,7 +8,7 @@ export function clearBakedFloorBeltsQuiet(state, belts) {
     let changed = false;
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
-        if (!clearNavFloorCell(grid, belt.idx)) continue;
+        if (!grid.clearFloorCell(belt.idx)) continue;
         changed = true;
         growCellBoundsIdx(bounds, belt.idx, grid.cols);
     }
@@ -27,7 +25,7 @@ export function stampBakedFloorBeltsQuiet(state, belts) {
     const bounds = emptyCellBounds();
     for (let i = 0; i < belts.length; i++) {
         const belt = belts[i];
-        if (!writeNavFloorCell(grid, belt.idx, belt.kind, floorBeltFacingFromIndex(belt.facingIndex))) continue;
+        if (!grid.writeFloorCell(belt.idx, belt.kind, belt.facingIndex)) continue;
         stamped.push(belt);
         growCellBoundsIdx(bounds, belt.idx, grid.cols);
     }

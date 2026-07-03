@@ -66,7 +66,7 @@ All gameplay geometry edits should follow this spine:
 ```text
 1. STAMP / MUTATE
    procgen, editor tool, or runtime system writes grid
-   (stampStaticWalls, setBoundary/railWall, writeNavFloorCell, …)
+   (stampStaticWalls, setBoundary/railWall, grid.writeFloorCell, …)
 
 2. BUMP EPOCH
    bumpGridNavEpoch(grid, Wall | Floor | Topology) on the grid object

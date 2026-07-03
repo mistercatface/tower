@@ -6,7 +6,7 @@ PR3 read API over the unified nav source (PR1–2). One mental model for authori
 
 | Layer | Role | API |
 |-------|------|-----|
-| **Authoring** | Voxels + floor cells + edges | `WorldObstacleGrid`, `writeNavFloorCell`, `setNavEdge`, `syncBeltCellToEdges` |
+| **Authoring** | Voxels + floor cells + edges | `WorldObstacleGrid`, `grid.writeFloorCell`, `setBoundary` |
 | **Snapshot** | Worker bake input | `captureNavGridSnapshot` → `{ gridFill, floorKind, floorFacing, edgeSlots, edgePool }` |
 | **Bake** | Topology arena | `bakeNavTopologyLocal` / worker `bakeNavTopologyIntoArena` |
 | **Logical graph** | Cell nodes + directed steps | `createNavGraphView` |
@@ -20,15 +20,14 @@ Each grid cell is a node:
 
 - **Blocked** — voxel fill (`gridFill !== 0`)
 - **Floor** — belt kind + facing index (`floorStore`)
-- **Derived belt rails** — lateral `beltRail` edges synced only via `syncBeltCellToEdges` (never stamped manually)
 
 ## Cardinal edges
 
 Steps between adjacent cells are derived at bake:
 
 1. Destination not blocked
-2. Belt entry rules (`beltBlocksEntry`)
-3. Boundary edges (rail wall, belt rail, powered passage)
+2. Belt entry rules (`beltBlocksStepFrom`)
+3. Rail-wall edges
 4. Vertex passability for diagonals
 
 `createNavGraphView.canStep` uses the baked octile CSR when `navGridFrame` + `navTopology` are set; map-gen can pass `cardinalOpen` + `vertexPassability` from a local bake for lighter queries.
@@ -45,11 +44,11 @@ Locomotion on belts: pathfinder owns direction along the chain; physics applies 
 
 All nav-affecting edits go through:
 
-- `writeNavFloorCell` — floor + auto `syncBeltCellToEdges` for railed kinds
-- `setNavEdge` — primary boundaries (rail wall)
+- `grid.writeFloorCell` — floor belt kind + facing index
+- `setBoundary` — rail-wall edges
 - `commitGridNavEdit` / `commitGridNavEditUnion` — one worker resync
 
-Room graph bake, editor stamps, and snake map-gen call the same floor/edge helpers; no third belt-rail authoring path.
+Room graph bake, editor stamps, and snake map-gen call the same floor/edge helpers.
 
 - `createNavGraphViewFromContext(gridNavContext)` — worker-synced reads for map-gen / vision
 - `canStepForAuthoring(grid, …, damageBounds?)` — local bake for batch authoring

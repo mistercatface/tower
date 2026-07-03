@@ -1,10 +1,9 @@
-import { createNavGraphView } from "./navGraph.js";
+import { beltEntryExitAtIdx, beltEntryNeighborAtIdx } from "./navGraph.js";
 import { isFloorBeltKind, floorBeltEntryEdgeWorldPoint } from "../Spatial/grid/FloorCell.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
     if (!isFloorBeltKind(grid.floorStore.kind[targetIdx])) return targetIdx;
-    const graph = createNavGraphView(grid);
-    const neighborIdx = graph.beltEntryNeighborIdx(targetIdx);
+    const neighborIdx = beltEntryNeighborAtIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
     if (fromIdx === neighborIdx) return targetIdx;
     return neighborIdx;
@@ -35,8 +34,7 @@ export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
     if (snappedIdx !== targetIdx) return { x: grid.gridCenterXByIdx(snappedIdx), y: grid.gridCenterYByIdx(snappedIdx) };
     if (!isFloorBeltKind(grid.floorStore.kind[targetIdx])) return { x: targetX, y: targetY };
     if (fromIdx === targetIdx) return { x: targetX, y: targetY };
-    const graph = createNavGraphView(grid);
-    const sides = graph.beltEntryExitIdx(targetIdx);
+    const sides = beltEntryExitAtIdx(grid, targetIdx);
     if (!sides) return { x: targetX, y: targetY };
     return floorBeltEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
 }

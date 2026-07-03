@@ -16,21 +16,30 @@ const sFlatCapCorners = new Float32Array(8);
 const sFlatCapUv = new Float32Array(8);
 const sFlatCapSrc = new Float32Array(8);
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
-function getWallDrawMemo(grid, key) {
-    const revision = `${grid.wallGridRevision}:${grid.surfaceMaterialRevision}`;
-    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== revision) {
-        grid._wallDrawMemoCache = new Map();
-        grid._wallDrawMemoRevision = revision;
+function wallFaceKindIndex(atlasFaceId) {
+    switch (atlasFaceId) {
+        case "inner":
+            return 1;
+        case "outer":
+            return 2;
+        case "end0":
+            return 3;
+        case "end1":
+            return 4;
+        default:
+            return 0;
     }
-    return grid._wallDrawMemoCache.get(key);
 }
-function setWallDrawMemo(grid, key, value) {
-    const revision = `${grid.wallGridRevision}:${grid.surfaceMaterialRevision}`;
-    if (!grid._wallDrawMemoCache || grid._wallDrawMemoRevision !== revision) {
-        grid._wallDrawMemoCache = new Map();
-        grid._wallDrawMemoRevision = revision;
+function ensureWallDrawMemo(grid) {
+    if (grid._wallDrawMemoWallRev !== grid.wallGridRevision || grid._wallDrawMemoSurfRev !== grid.surfaceMaterialRevision) {
+        grid._wallAtlasMemo = new Map();
+        grid._wallSubdivMemo = new Map();
+        grid._wallDrawMemoWallRev = grid.wallGridRevision;
+        grid._wallDrawMemoSurfRev = grid.surfaceMaterialRevision;
     }
-    grid._wallDrawMemoCache.set(key, value);
+}
+function wallDrawMemoSlot(grid, face) {
+    return ((face.gridRow * grid.cols + face.gridCol) * 4 + face.gridSide) * 5 + wallFaceKindIndex(face.atlasFaceId);
 }
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceFlatQuad(ctx, faceBottom.proj1X, faceBottom.proj1Y, faceTop.proj1X, faceTop.proj1Y, faceTop.proj2X, faceTop.proj2Y, faceBottom.proj2X, faceBottom.proj2Y);
@@ -79,10 +88,11 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
     const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.worldSurfaceSeed !== undefined;
     let stash = null;
-    let memoKey = null;
+    let memoSlot = -1;
     if (canUseSideCache) {
-        memoKey = `atlas|${face.gridCol},${face.gridRow},${face.gridSide}|${atlasFaceId ?? "side"}`;
-        stash = getWallDrawMemo(state.obstacleGrid, memoKey);
+        ensureWallDrawMemo(state.obstacleGrid);
+        memoSlot = wallDrawMemoSlot(state.obstacleGrid, face);
+        stash = state.obstacleGrid._wallAtlasMemo.get(memoSlot);
     }
     let cacheHit = false;
     if (canUseSideCache && stash) {
@@ -99,7 +109,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
             cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null,
             atlasFaceId: atlasFaceId ?? "side",
         });
-        if (canUseSideCache && stash) setWallDrawMemo(state.obstacleGrid, memoKey, stash);
+        if (canUseSideCache && stash) state.obstacleGrid._wallAtlasMemo.set(memoSlot, stash);
     }
     if (!stash) return null;
     const canvas = stash.canvases[0];
@@ -183,14 +193,14 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
     }
 }
 function resolveWallFaceSubdiv(face, atlas, viewport, grid) {
-    const { gridCol, gridRow, gridSide, atlasFaceId } = face;
-    const faceId = atlasFaceId ?? "side";
-    const subdivKey = `${viewport.cameraHeight.toFixed(0)}|${viewport.perspectiveStrength.toFixed(2)}`;
-    const memoKey = `subdiv|${gridCol},${gridRow},${gridSide}|${faceId}`;
-    const cached = getWallDrawMemo(grid, memoKey);
-    if (cached && cached.subdivKey === subdivKey) return cached.subdiv;
+    const camKey = Math.round(viewport.cameraHeight);
+    const perspKey = Math.round(viewport.perspectiveStrength * 100);
+    ensureWallDrawMemo(grid);
+    const memoSlot = wallDrawMemoSlot(grid, face);
+    const cached = grid._wallSubdivMemo.get(memoSlot);
+    if (cached && cached.camKey === camKey && cached.perspKey === perspKey) return cached.subdiv;
     const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, viewport);
-    setWallDrawMemo(grid, memoKey, { subdivKey, subdiv });
+    grid._wallSubdivMemo.set(memoSlot, { camKey, perspKey, subdiv });
     return subdiv;
 }
 function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewport, state, face) {

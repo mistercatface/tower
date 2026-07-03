@@ -66,9 +66,6 @@ export class NavTopology {
     get vertexPassability() {
         return this._worker?.getNavArena()?.vertexPassability ?? this._localArena()?.vertexPassability ?? null;
     }
-    get cardinalOpen() {
-        return this.navCardinalOpen;
-    }
     /** Octile CSR step — movement, HPA, flow. */
     canStep(fromIdx, toIdx) {
         const frame = this.frame;

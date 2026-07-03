@@ -139,14 +139,16 @@ export function ensureWallSegmentPolygonShape(segment) {
     }
     return segment.shape;
 }
+const EMPTY_WALL_HITS = [];
+const wallBestScratch = { normalX: 0, normalY: 0, overlap: 0, cx: 0, cy: 0, segment: null };
 export function resolveBodyAgainstWallSegments(body, shape, segments, { restitution = 0, friction = 0.9, passes = 2, preSpeed = 0, wallBreakConfig = null } = {}) {
-    const dispX = body._frameDispX;
-    const dispY = body._frameDispY;
     let collided = false;
-    const hits = [];
+    const wantHits = wallBreakConfig != null;
+    const hits = wantHits ? [] : EMPTY_WALL_HITS;
     const radius = shape.getBoundingRadius();
+    const best = wallBestScratch;
     for (let pass = 0; pass < passes; pass++) {
-        let best = null;
+        let hasBest = false;
         for (const seg of segments) {
             const maxDist = radius + seg.size * 0.75;
             const bx = body.x;
@@ -168,9 +170,17 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
                 overlap = SAT_RESULT[0];
                 satCollisionFound = true;
             } else continue;
-            if (!best || overlap > best.overlap) best = { normalX, normalY, overlap, cx: satCollisionFound ? SAT_RESULT[3] : NaN, cy: satCollisionFound ? SAT_RESULT[4] : NaN, segment: seg };
+            if (!hasBest || overlap > best.overlap) {
+                best.normalX = normalX;
+                best.normalY = normalY;
+                best.overlap = overlap;
+                best.cx = satCollisionFound ? SAT_RESULT[3] : NaN;
+                best.cy = satCollisionFound ? SAT_RESULT[4] : NaN;
+                best.segment = seg;
+                hasBest = true;
+            }
         }
-        if (!best) break;
+        if (!hasBest) break;
         collided = true;
         const bx = body.x;
         const by = body.y;
@@ -189,18 +199,18 @@ export function resolveBodyAgainstWallSegments(body, shape, segments, { restitut
         }
         applyPositionCorrection(body, best.normalX, best.normalY, best.overlap);
         applyBodyStaticSurfaceImpulse(body, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
-        hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
+        if (wantHits) hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
     }
     return { collided, hits };
 }
 export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { restitution = 0, friction = 0.9, passes = 2, preSpeed = 0, wallBreakConfig = null } = {}) {
-    const dispX = body._frameDispX;
-    const dispY = body._frameDispY;
     let collided = false;
-    const hits = [];
+    const wantHits = wallBreakConfig != null;
+    const hits = wantHits ? [] : EMPTY_WALL_HITS;
     const radius = shape.getBoundingRadius();
+    const best = wallBestScratch;
     for (let pass = 0; pass < passes; pass++) {
-        let best = null;
+        let hasBest = false;
         for (const seg of segments) {
             const maxDist = radius + seg.size * 0.75;
             const bx = kineticDynamicSlab.x[physId];
@@ -222,9 +232,17 @@ export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { 
                 overlap = SAT_RESULT[0];
                 satCollisionFound = true;
             } else continue;
-            if (!best || overlap > best.overlap) best = { normalX, normalY, overlap, cx: satCollisionFound ? SAT_RESULT[3] : NaN, cy: satCollisionFound ? SAT_RESULT[4] : NaN, segment: seg };
+            if (!hasBest || overlap > best.overlap) {
+                best.normalX = normalX;
+                best.normalY = normalY;
+                best.overlap = overlap;
+                best.cx = satCollisionFound ? SAT_RESULT[3] : NaN;
+                best.cy = satCollisionFound ? SAT_RESULT[4] : NaN;
+                best.segment = seg;
+                hasBest = true;
+            }
         }
-        if (!best) break;
+        if (!hasBest) break;
         collided = true;
         const bx = kineticDynamicSlab.x[physId];
         const by = kineticDynamicSlab.y[physId];
@@ -243,7 +261,7 @@ export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { 
         }
         if (!kineticStaticSlab.pinned[physId]) applySlabPositionCorrection(physId, best.normalX, best.normalY, best.overlap);
         applySlabStaticSurfaceImpulse(physId, best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
-        hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
+        if (wantHits) hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
     }
     return { collided, hits };
 }

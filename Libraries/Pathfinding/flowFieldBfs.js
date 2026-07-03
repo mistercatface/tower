@@ -26,7 +26,7 @@ export function computeFlowField(
     bfsDistances.fill(-1);
     localVectorMap.fill(0);
     const startIdx = tx + ty * gridWidth;
-    const isBlocked = (idx) => flowCellBlocked(idx, flowToNavIdx, navBlocked);
+    const isBlocked = (idx) => flowCellBlocked(flowToNavIdx, navBlocked, idx);
     if (startIdx >= 0 && startIdx < gridSize && !isBlocked(startIdx)) {
         localVectorMap[startIdx] = 4;
         let head = 0;

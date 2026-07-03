@@ -53,16 +53,11 @@ export class FloorCellStore {
         this.kind[idx] = kind;
         this.facing[idx] = facingIndex;
     }
-    /** @param {number} idx @param {number} facingIndex */
-    setBeltAtIdx(idx, facingIndex) {
-        this.setAtIdx(idx, FLOOR_CELL_KIND.Belt, facingIndex);
-    }
     /** @param {number} idx */
     clearAtIdx(idx) {
         this.kind[idx] = FLOOR_CELL_KIND.None;
         this.facing[idx] = 0;
     }
-    /** @param {number} cellCount */
     hasAny() {
         const size = this.kind.length;
         for (let idx = 0; idx < size; idx++) if (this.kind[idx] !== FLOOR_CELL_KIND.None) return true;

@@ -1,9 +1,6 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS, manhattanDistanceIdx, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 const STALE_F_EPSILON = 1e-4;
-function manhattanDistance(c0, r0, c1, r1) {
-    return Math.abs(c0 - c1) + Math.abs(r0 - r1);
-}
 function preparedSearchState(searchState) {
     return typeof searchState.prepare === "function" ? searchState.prepare() : searchState;
 }

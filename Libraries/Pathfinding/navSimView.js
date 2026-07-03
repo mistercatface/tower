@@ -15,7 +15,7 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
         slots: edgeSlots,
         pool: edgePool,
         getIdx(idx, side) {
-            const ref = edgeSlots[cellEdgeSlotOffset(idx, side, frame.cols)];
+            const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
             if (ref < 0) return null;
             return edgeStore.pool[ref];
         },

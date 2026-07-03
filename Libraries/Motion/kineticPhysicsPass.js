@@ -33,13 +33,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = c
     const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
-    if (hasActiveBodies)
-        for (let i = 0; i < activeBodies.length; i++) {
-            const prop = activeBodies[i];
-            prop._frameDispX = prop.x - (prop._wallDispPrevX ?? prop.x);
-            prop._frameDispY = prop.y - (prop._wallDispPrevY ?? prop.y);
-            prop._wallResolveHits = null;
-        }
+    if (hasActiveBodies) for (let i = 0; i < activeBodies.length; i++) activeBodies[i]._wallResolveHits = null;
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         sleepContactBuffer.reset();
@@ -63,12 +57,6 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = c
         refreshActiveKineticBodySlabPose(activeBodies);
         tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
     } else tick.world.kinetic.kineticSolverStats = { outerIterations: 0, maxIterations: kineticIterations };
-    if (hasActiveBodies)
-        for (let i = 0; i < activeBodies.length; i++) {
-            const prop = activeBodies[i];
-            prop._wallDispPrevX = prop.x;
-            prop._wallDispPrevY = prop.y;
-        }
 }
 export function runKineticPhysics(tick, dt, hooks) {
     const world = tick.world;
@@ -91,13 +79,14 @@ export function runKineticPhysics(tick, dt, hooks) {
     const subDtSec = subDt / 1000;
     const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
     let substepsRun = steps;
+    const collisionHooks = { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects };
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
         for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updateProp(world.worldProps[i], subDt, frame);
         const projectiles = world.projectiles || [];
         for (let i = projectiles.length - 1; i >= 0; i--) hooks.updateProp(projectiles[i], subDt, frame);
         frame.reindexKineticBodies(activeBodies);
-        runCollisionPipeline(tick, { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects });
+        runCollisionPipeline(tick, collisionHooks);
         const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
         const solverStats = world.kinetic.kineticSolverStats;
         const constraintsStable = !solverStats || solverStats.outerIterations < collisionSettings.kineticConstraints.iterations;

@@ -5,8 +5,16 @@ import { cellInRect, colRowToIndex } from "./GridUtils.js";
 // Surface material ownership resolves from the narrowest owner outward:
 // cell/edge override, then chunk profile, then the active/default profile.
 export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
+// Chunk coords are paired into a single numeric Map key (zigzag handles negatives from remap).
+const CHUNK_KEY_STRIDE = 0x400000;
+function zigzagChunk(n) {
+    return n >= 0 ? n * 2 : n * -2 - 1;
+}
+function unzigzagChunk(u) {
+    return u & 1 ? -(u + 1) / 2 : u / 2;
+}
 function chunkProfileKey(chunkCol, chunkRow) {
-    return `${chunkCol},${chunkRow}`;
+    return zigzagChunk(chunkCol) * CHUNK_KEY_STRIDE + zigzagChunk(chunkRow);
 }
 export class SurfaceMaterialStore {
     constructor() {
@@ -53,9 +61,8 @@ export class SurfaceMaterialStore {
         }
         if (snapshot.chunkProfileIds.size > 0 && (!cellsPerChunk || cellsPerChunk <= 0)) throw new Error("Surface material chunk remap requires cellsPerChunk");
         for (const [key, profileId] of snapshot.chunkProfileIds) {
-            const comma = key.indexOf(",");
-            const chunkCol = Number(key.slice(0, comma));
-            const chunkRow = Number(key.slice(comma + 1));
+            const chunkCol = unzigzagChunk(Math.floor(key / CHUNK_KEY_STRIDE));
+            const chunkRow = unzigzagChunk(key % CHUNK_KEY_STRIDE);
             const newChunkCol = remapChunkCoord(chunkCol, colOffset, cellsPerChunk);
             const newChunkRow = remapChunkCoord(chunkRow, rowOffset, cellsPerChunk);
             this.chunkProfileIds.set(chunkProfileKey(newChunkCol, newChunkRow), profileId);
@@ -87,10 +94,10 @@ export class SurfaceMaterialStore {
         return this.cellProfileIds.has(idx);
     }
     getEdge(col, row, side, cols) {
-        return this.edgeProfileIds.get(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side, cols)) ?? null;
+        return this.edgeProfileIds.get(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side)) ?? null;
     }
-    getEdgeByIdx(idx, side, cols = this.cols) {
-        return this.edgeProfileIds.get(cellEdgeSlotOffset(idx, side, cols)) ?? null;
+    getEdgeByIdx(idx, side) {
+        return this.edgeProfileIds.get(cellEdgeSlotOffset(idx, side)) ?? null;
     }
     writeEdgeMirrored(col, row, side, cols, rows, profileId) {
         if (!cellInRect(col, row, cols, rows)) return;
@@ -108,18 +115,17 @@ export class SurfaceMaterialStore {
         if (cellInRect(nc, nr, cols, rows)) this._clearEdgeSlot(nc, nr, nSide, cols);
     }
     _setEdgeSlot(col, row, side, cols, profileId) {
-        this.edgeProfileIds.set(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side, cols), profileId);
+        this.edgeProfileIds.set(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side), profileId);
     }
     _clearEdgeSlot(col, row, side, cols) {
-        this.edgeProfileIds.delete(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side, cols));
+        this.edgeProfileIds.delete(cellEdgeSlotOffset(colRowToIndex(col, row, cols), side));
     }
     hasAnyEdgeAtIdx(idx) {
-        const cols = this.cols;
         return (
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 0, cols)) ||
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 1, cols)) ||
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 2, cols)) ||
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 3, cols))
+            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 0)) ||
+            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 1)) ||
+            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 2)) ||
+            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 3))
         );
     }
 }

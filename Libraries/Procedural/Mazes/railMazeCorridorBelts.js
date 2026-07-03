@@ -29,19 +29,19 @@ function navWalkableNeighborsIdx(grid, navTopology, idx) {
     const out = [];
     if (c > 0) {
         const nIdx = idx - 1;
-        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
     }
     if (c + 1 < cols) {
         const nIdx = idx + 1;
-        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
     }
     if (r > 0) {
         const nIdx = idx - cols;
-        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
     }
     if (r + 1 < rows) {
         const nIdx = idx + cols;
-        if (grid.canStepIdx(idx, nIdx, navTopology) || grid.canStepIdx(nIdx, idx, navTopology)) out.push(nIdx);
+        if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
     }
     return out;
 }

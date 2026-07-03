@@ -15,10 +15,14 @@ export function groundNavArrivedAtTarget(prop, targetWorld, targetCellCol, targe
     const dist = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
     return dist <= stopRadius && (!targetOnBelt || onBelt);
 }
+const HPA_PATH_SETTINGS_SCRATCH = {};
 /** @param {object} state @param {object} prop @param {number} stopRadius */
 export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
     const hpaNav = physicsSettings.groundNavHpa;
-    return { ...state.nav.settings, pathWaypointArrival: Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor), arrivalDistance: stopRadius };
+    const settings = Object.assign(HPA_PATH_SETTINGS_SCRATCH, state.nav.settings);
+    settings.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor);
+    settings.arrivalDistance = stopRadius;
+    return settings;
 }
 /**
  * HPA ground-nav tick — belt handoff + session replan/steer loop.

@@ -1,6 +1,5 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
 import { markGridZoneSubscriptionsDirty } from "./gridZoneTick.js";
-import { writeNavFloorCell, clearNavFloorCell } from "../Spatial/grid/navGridMutations.js";
 import { chunkRangeToCellBounds } from "../Spatial/grid/GridCoords.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 /**
@@ -54,13 +53,13 @@ export function setChunkSurfaceProfileRangeEdit(state, chunkBounds, profileId) {
     return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
 }
 /** Stamp or replace one floor cell and resync nav topology. */
-export function applyFloorCellEdit(state, idx, kind, facingRadians) {
-    if (!writeNavFloorCell(state.obstacleGrid, idx, kind, facingRadians)) return null;
+export function applyFloorCellEdit(state, idx, kind, facingIndex) {
+    if (!state.obstacleGrid.writeFloorCell(idx, kind, facingIndex)) return null;
     return commitGridNavEdit(state, idx);
 }
 /** Clear one floor cell and resync nav topology. */
 export function clearFloorCellNavEdit(state, idx) {
-    if (!clearNavFloorCell(state.obstacleGrid, idx)) return null;
+    if (!state.obstacleGrid.clearFloorCell(idx)) return null;
     return commitGridNavEdit(state, idx);
 }
 /** @param {object} state @param {{ col: number, row: number }[]} cells */

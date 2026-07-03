@@ -12,7 +12,7 @@ import {
     writeStaticKineticSlabSlot,
     writeActiveKineticBodySlabPose,
 } from "./kineticBodySlab.js";
-import { getEntityCollisionParts } from "./SatCollision.js";
+import { getEntityCollisionParts, entityFacing } from "./SatCollision.js";
 function kineticActivity() {
     return collisionSettings.kineticActivity;
 }
@@ -31,10 +31,6 @@ export function maxNeighborQueryPad() {
 }
 export function createBroadphaseSnapshot() {
     return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
-}
-function entityAngle(entity) {
-    if (entity._collisionFacing != null) return entity._collisionFacing;
-    return entity.facing ?? entity.angle ?? 0;
 }
 const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 function entityCollisionSpan(entity) {
@@ -96,7 +92,7 @@ export function getBroadphaseBounds(entity) {
     ensureBroadphaseCache(entity);
     const x = entity.x;
     const y = entity.y;
-    const angle = entityAngle(entity);
+    const angle = entityFacing(entity);
     const snapshot = entity.broadphaseSnapshot;
     if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle) return entity.broadphaseBounds;
     const parts = getEntityCollisionParts(entity);
@@ -153,7 +149,7 @@ export function refreshActiveKineticBodySlabPose(bodies) {
         const physId = entity._physId;
         writeActiveKineticBodySlabPose(entity);
         if (slab.bpKind[physId] !== BP_KIND_CIRCLE) {
-            const angle = entityAngle(entity);
+            const angle = entityFacing(entity);
             slab.cos[physId] = Math.cos(angle);
             slab.sin[physId] = Math.sin(angle);
         }
@@ -166,10 +162,7 @@ export function pairBroadphaseOverlapSnapshotted(a, b) {
     return pairBroadphaseOverlapSlab(a._physId, b._physId);
 }
 export function shouldResolveKineticPair(a, b, overlaps) {
-    if (!overlaps) return false;
-    if (isKinematicallyActive(a) || isKinematicallyActive(b)) return true;
-    if (a.isSleeping || b.isSleeping) return false;
-    return false;
+    return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
 }
 export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (primary === other) return false;

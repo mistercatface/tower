@@ -77,7 +77,3 @@ export function sampleFlowDirectionInto(out, x, y, flowField, frame) {
 export function sampleFlowDirection(x, y, flowField, frame) {
     return sampleFlowDirectionInto({ x: 0, y: 0 }, x, y, flowField, frame);
 }
-/** @param {import("./FlowFieldGrid.js").FlowFieldGrid} grid */
-export function sampleFlowDirectionOnGrid(x, y, flowField, grid) {
-    return sampleFlowDirection(x, y, flowField, grid.frame);
-}

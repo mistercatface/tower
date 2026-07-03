@@ -273,6 +273,7 @@ export class HpaReplanPlanner {
         this.gridSearch = new FlatGridSearch(this.searchState);
         this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
         this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
+        this.abstractPathList = [];
     }
     run(slot, context, data) {
         const startIdx = data.startIdx;
@@ -314,7 +315,9 @@ export class HpaReplanPlanner {
             this.buffers.writeCellPath(slot, this.localPathScratch, 0);
             return this.buffers.buildReplanResult(slot);
         }
-        const abstractPath = Array.from(this.abstractPathScratch.subarray(0, abstractLen));
+        const abstractPath = this.abstractPathList;
+        abstractPath.length = abstractLen;
+        for (let i = 0; i < abstractLen; i++) abstractPath[i] = this.abstractPathScratch[i];
         this.buffers.writeAbstractPath(slot, abstractPath);
         const pathIdx = hpaPathSlotIdx(this.buffers.sabPathIdxPool, slot, this.buffers.maxPathLen);
         const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols);

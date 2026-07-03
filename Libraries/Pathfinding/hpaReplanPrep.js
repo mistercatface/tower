@@ -3,12 +3,17 @@ import { octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 export class HpaAbstractGraph extends FlatGraphView {
     constructor(nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
         super({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
+        this._candidateSeen = new Int32Array(nodeCount).fill(-1);
+        this._candidateGen = -1;
     }
     collectTempConnectCandidates(centerIdx, isStart, maxCellsPerChunk, anchorRegionIdx) {
         const searchRadius = Math.ceil(Math.sqrt(maxCellsPerChunk)) * 2;
         const out = [];
+        const seen = this._candidateSeen;
+        const gen = ++this._candidateGen;
         const add = (idx) => {
-            if (idx < 0 || idx >= this.nodeCount || out.includes(idx)) return;
+            if (idx < 0 || idx >= this.nodeCount || seen[idx] === gen) return;
+            seen[idx] = gen;
             out.push(idx);
         };
         if (anchorRegionIdx >= 0) {

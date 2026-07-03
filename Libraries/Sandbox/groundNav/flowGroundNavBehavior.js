@@ -1,10 +1,11 @@
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
-import { sampleFlowDirectionOnGrid } from "../../Pathfinding/sampleFlowDirection.js";
+import { sampleFlowDirectionInto } from "../../Pathfinding/sampleFlowDirection.js";
 import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
 import { agentPose } from "../../Agent/index.js";
 import { computeFlowFieldSteering } from "../../Pathfinding/flowSteering.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
+const FLOW_OVERLAY_DIR_SCRATCH = { x: 0, y: 0 };
 export function createFlowGroundNavBehavior(state) {
     const propRuns = new Map();
     const getRun = (prop) => {
@@ -102,7 +103,7 @@ export function createFlowGroundNavBehavior(state) {
             let dirX = null;
             let dirY = null;
             if (flowField) {
-                const dir = sampleFlowDirectionOnGrid(prop.x, prop.y, flowField, state.flowFieldGrid);
+                const dir = sampleFlowDirectionInto(FLOW_OVERLAY_DIR_SCRATCH, prop.x, prop.y, flowField, state.flowFieldGrid.frame);
                 if (dir) {
                     dirX = dir.x;
                     dirY = dir.y;

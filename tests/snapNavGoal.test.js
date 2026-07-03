@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { floorBeltFacingFromIndex, FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
 import { snapNavGoalCell, snapNavGoalWorld } from "../Libraries/Navigation/snapNavGoal.js";
 describe("snapNavGoal", () => {
     it("snapNavGoalCell moves belt target to entry neighbor", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(64, 64, 128, 128);
-        grid.writeFloorCell(2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        grid.writeFloorCell(2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, 0);
         const snapped = snapNavGoalCell(grid, 0, 0, 2, 2);
         assert.equal(snapped.col, 1);
         assert.equal(snapped.row, 2);
@@ -15,7 +15,7 @@ describe("snapNavGoal", () => {
     it("snapNavGoalWorld matches cell snap at entry neighbor", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(64, 64, 128, 128);
-        grid.writeFloorCell(2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, floorBeltFacingFromIndex(0));
+        grid.writeFloorCell(2 + 2 * grid.cols, FLOOR_CELL_KIND.Belt, 0);
         const from = grid.gridToWorld(0, 0);
         const target = grid.gridToWorld(2, 2);
         const snappedWorld = snapNavGoalWorld(grid, from.x, from.y, target.x, target.y);

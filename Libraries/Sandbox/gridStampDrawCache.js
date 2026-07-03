@@ -13,7 +13,7 @@ function beltDrawForKind(kind) {
 const floorBeltStampProxyProto = {
     ageMs: 0,
     getCustomSpriteCacheKey() {
-        return `k${this._gridStamp.kind}`;
+        return `k${this.beltKind}`;
     },
 };
 function createGridCellStampProxy(proto, x, y, cellHalf, init) {
@@ -31,7 +31,7 @@ function gridCellCenterWorld(grid, col, row) {
 function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
     return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {
         proxy.facing = facing;
-        proxy._gridStamp = { kind };
+        proxy.beltKind = kind;
     });
 }
 export function clearGridStampDrawCaches(state) {
@@ -67,7 +67,7 @@ function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
         const item = belts[i];
         if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
         item.proxy.ageMs = gameTime;
-        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy._gridStamp.kind), animFrame);
+        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy.beltKind), animFrame);
     }
 }
 export function drawFloorOccupancyBelts(ctx, state, viewport) {

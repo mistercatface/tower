@@ -14,50 +14,25 @@ import { shareKineticIsland } from "../../Motion/kineticIslands.js";
 import { kineticPairTopologyStale } from "../../Motion/kineticConstraints.js";
 import { MAX_ENTITIES as MAX_KINETIC_PAIRS, MAX_ENTITIES as MAX_PHYS_BODIES } from "../../../Core/engineLimits.js";
 const PAIR_BODY_KEY_SCALE = 1_000_000;
-export const kineticPairBuffer = {
-    count: 0,
-    physIdA: new Int32Array(MAX_KINETIC_PAIRS),
-    physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-    dynamic: {
-        preDvx: new Float32Array(MAX_KINETIC_PAIRS),
-        preDvy: new Float32Array(MAX_KINETIC_PAIRS),
-        preVxA: new Float32Array(MAX_KINETIC_PAIRS),
-        preVyA: new Float32Array(MAX_KINETIC_PAIRS),
-        preVxB: new Float32Array(MAX_KINETIC_PAIRS),
-        preVyB: new Float32Array(MAX_KINETIC_PAIRS),
-    },
-    static: {
-        tier: new Uint8Array(MAX_KINETIC_PAIRS),
-        restitution: new Float32Array(MAX_KINETIC_PAIRS),
-        friction: new Float32Array(MAX_KINETIC_PAIRS),
-        warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
-    },
-    reset() {
-        this.count = 0;
-    },
-};
-export const persistedKineticPairBuffer = {
-    count: 0,
-    physIdA: new Int32Array(MAX_KINETIC_PAIRS),
-    physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-    dynamic: {
-        preDvx: new Float32Array(MAX_KINETIC_PAIRS),
-        preDvy: new Float32Array(MAX_KINETIC_PAIRS),
-        preVxA: new Float32Array(MAX_KINETIC_PAIRS),
-        preVyA: new Float32Array(MAX_KINETIC_PAIRS),
-        preVxB: new Float32Array(MAX_KINETIC_PAIRS),
-        preVyB: new Float32Array(MAX_KINETIC_PAIRS),
-    },
-    static: {
-        tier: new Uint8Array(MAX_KINETIC_PAIRS),
-        restitution: new Float32Array(MAX_KINETIC_PAIRS),
-        friction: new Float32Array(MAX_KINETIC_PAIRS),
-        warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
-    },
-    reset() {
-        this.count = 0;
-    },
-};
+function createKineticPairBuffer() {
+    return {
+        count: 0,
+        physIdA: new Int32Array(MAX_KINETIC_PAIRS),
+        physIdB: new Int32Array(MAX_KINETIC_PAIRS),
+        dynamic: { preDvx: new Float32Array(MAX_KINETIC_PAIRS), preDvy: new Float32Array(MAX_KINETIC_PAIRS) },
+        static: {
+            tier: new Uint8Array(MAX_KINETIC_PAIRS),
+            restitution: new Float32Array(MAX_KINETIC_PAIRS),
+            friction: new Float32Array(MAX_KINETIC_PAIRS),
+            warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
+        },
+        reset() {
+            this.count = 0;
+        },
+    };
+}
+export const kineticPairBuffer = createKineticPairBuffer();
+export const persistedKineticPairBuffer = createKineticPairBuffer();
 export function copyKineticPairBuffer(from, to) {
     to.count = from.count;
     for (let i = 0; i < from.count; i++) {
@@ -65,10 +40,6 @@ export function copyKineticPairBuffer(from, to) {
         to.physIdB[i] = from.physIdB[i];
         to.dynamic.preDvx[i] = from.dynamic.preDvx[i];
         to.dynamic.preDvy[i] = from.dynamic.preDvy[i];
-        to.dynamic.preVxA[i] = from.dynamic.preVxA[i];
-        to.dynamic.preVyA[i] = from.dynamic.preVyA[i];
-        to.dynamic.preVxB[i] = from.dynamic.preVxB[i];
-        to.dynamic.preVyB[i] = from.dynamic.preVyB[i];
         to.static.tier[i] = from.static.tier[i];
         to.static.restitution[i] = from.static.restitution[i];
         to.static.friction[i] = from.static.friction[i];
@@ -106,16 +77,8 @@ export function refreshKineticPairRelativeVelocities(pairs) {
     }
 }
 function writePairPreVelocities(pairs, index, physIdA, physIdB, slab = kineticDynamicSlab) {
-    const vxA = slab.vx[physIdA];
-    const vyA = slab.vy[physIdA];
-    const vxB = slab.vx[physIdB];
-    const vyB = slab.vy[physIdB];
-    pairs.dynamic.preVxA[index] = vxA;
-    pairs.dynamic.preVyA[index] = vyA;
-    pairs.dynamic.preVxB[index] = vxB;
-    pairs.dynamic.preVyB[index] = vyB;
-    pairs.dynamic.preDvx[index] = vxB - vxA;
-    pairs.dynamic.preDvy[index] = vyB - vyA;
+    pairs.dynamic.preDvx[index] = slab.vx[physIdB] - slab.vx[physIdA];
+    pairs.dynamic.preDvy[index] = slab.vy[physIdB] - slab.vy[physIdA];
 }
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
@@ -143,10 +106,6 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
             pairs.physIdB[write] = physIdB;
             pairs.dynamic.preDvx[write] = pairs.dynamic.preDvx[i];
             pairs.dynamic.preDvy[write] = pairs.dynamic.preDvy[i];
-            pairs.dynamic.preVxA[write] = pairs.dynamic.preVxA[i];
-            pairs.dynamic.preVyA[write] = pairs.dynamic.preVyA[i];
-            pairs.dynamic.preVxB[write] = pairs.dynamic.preVxB[i];
-            pairs.dynamic.preVyB[write] = pairs.dynamic.preVyB[i];
             pairs.static.tier[write] = tier;
             pairs.static.restitution[write] = pairs.static.restitution[i];
             pairs.static.friction[write] = pairs.static.friction[i];

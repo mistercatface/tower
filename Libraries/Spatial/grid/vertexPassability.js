@@ -1,15 +1,15 @@
 import { cellInRect, colRowToIndex } from "./GridUtils.js";
-import { boundaryDirectedCrossingBlocked, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
+import { boundaryBlocksStep, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 export const VERTEX_HALF_EDGE = { NwEast: 1 << 0, NwSouth: 1 << 1, NeWest: 1 << 2, NeSouth: 1 << 3, SwEast: 1 << 4, SwNorth: 1 << 5, SeWest: 1 << 6, SeNorth: 1 << 7 };
 const HALF_EDGE_SPECS = [
-    { bit: VERTEX_HALF_EDGE.NwEast, fromCol: -1, fromRow: -1, toCol: 0, toRow: -1, ownerCol: -1, ownerRow: -1, ownerSide: 1 },
-    { bit: VERTEX_HALF_EDGE.NwSouth, fromCol: -1, fromRow: -1, toCol: -1, toRow: 0, ownerCol: -1, ownerRow: -1, ownerSide: 2 },
-    { bit: VERTEX_HALF_EDGE.NeWest, fromCol: 0, fromRow: -1, toCol: -1, toRow: -1, ownerCol: 0, ownerRow: -1, ownerSide: 3 },
-    { bit: VERTEX_HALF_EDGE.NeSouth, fromCol: 0, fromRow: -1, toCol: 0, toRow: 0, ownerCol: 0, ownerRow: -1, ownerSide: 2 },
-    { bit: VERTEX_HALF_EDGE.SwEast, fromCol: -1, fromRow: 0, toCol: 0, toRow: 0, ownerCol: -1, ownerRow: 0, ownerSide: 1 },
-    { bit: VERTEX_HALF_EDGE.SwNorth, fromCol: -1, fromRow: 0, toCol: -1, toRow: -1, ownerCol: -1, ownerRow: 0, ownerSide: 0 },
-    { bit: VERTEX_HALF_EDGE.SeWest, fromCol: 0, fromRow: 0, toCol: -1, toRow: 0, ownerCol: 0, ownerRow: 0, ownerSide: 3 },
-    { bit: VERTEX_HALF_EDGE.SeNorth, fromCol: 0, fromRow: 0, toCol: 0, toRow: -1, ownerCol: 0, ownerRow: 0, ownerSide: 0 },
+    { bit: VERTEX_HALF_EDGE.NwEast, ownerCol: -1, ownerRow: -1, ownerSide: 1 },
+    { bit: VERTEX_HALF_EDGE.NwSouth, ownerCol: -1, ownerRow: -1, ownerSide: 2 },
+    { bit: VERTEX_HALF_EDGE.NeWest, ownerCol: 0, ownerRow: -1, ownerSide: 3 },
+    { bit: VERTEX_HALF_EDGE.NeSouth, ownerCol: 0, ownerRow: -1, ownerSide: 2 },
+    { bit: VERTEX_HALF_EDGE.SwEast, ownerCol: -1, ownerRow: 0, ownerSide: 1 },
+    { bit: VERTEX_HALF_EDGE.SwNorth, ownerCol: -1, ownerRow: 0, ownerSide: 0 },
+    { bit: VERTEX_HALF_EDGE.SeWest, ownerCol: 0, ownerRow: 0, ownerSide: 3 },
+    { bit: VERTEX_HALF_EDGE.SeNorth, ownerCol: 0, ownerRow: 0, ownerSide: 0 },
 ];
 export function packVertexKey(vx, vy, cols) {
     return vx + vy * (cols + 1);
@@ -26,16 +26,8 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
             let mask = 0;
             for (let i = 0; i < HALF_EDGE_SPECS.length; i++) {
                 const spec = HALF_EDGE_SPECS[i];
-                const fromCol = vx + spec.fromCol;
-                const fromRow = vy + spec.fromRow;
-                const toCol = vx + spec.toCol;
-                const toRow = vy + spec.toRow;
-                const ownerCol = vx + spec.ownerCol;
-                const ownerRow = vy + spec.ownerRow;
-                const fromIdx = colRowToIndex(fromCol, fromRow, cols);
-                const toIdx = colRowToIndex(toCol, toRow, cols);
-                const ownerIdx = colRowToIndex(ownerCol, ownerRow, cols);
-                if (!boundaryDirectedCrossingBlocked(grid, fromIdx, toIdx, ownerIdx, spec.ownerSide)) mask |= spec.bit;
+                const ownerIdx = colRowToIndex(vx + spec.ownerCol, vy + spec.ownerRow, cols);
+                if (!boundaryBlocksStep(grid, ownerIdx, spec.ownerSide)) mask |= spec.bit;
             }
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
@@ -81,7 +73,7 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
             cardinalOpen[idx] = mask;
         }
 }
-function getCardinalBit(dc, dr) {
+export function getCardinalBit(dc, dr) {
     if (dc === 1) return 1;
     if (dr === 1) return 2;
     if (dc === -1) return 4;

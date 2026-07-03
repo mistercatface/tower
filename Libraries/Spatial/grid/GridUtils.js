@@ -96,9 +96,6 @@ export const OCTILE_OFFSETS = [
     { dc: -1, dr: 1, cost: Math.SQRT2 },
     { dc: -1, dr: -1, cost: Math.SQRT2 },
 ];
-export const OCTILE_DIR_TO_IDX = new Int32Array(9);
-OCTILE_DIR_TO_IDX.fill(-1);
-for (let i = 0; i < OCTILE_OFFSETS.length; i++) OCTILE_DIR_TO_IDX[OCTILE_OFFSETS[i].dc + 1 + (OCTILE_OFFSETS[i].dr + 1) * 3] = i;
 export function forEachCardinalNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr } of CARDINAL_OFFSETS) {
         const nc = col + dc;

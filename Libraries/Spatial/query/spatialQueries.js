@@ -45,9 +45,10 @@ export function collectWallSegmentsAlongLine(obstacleGrid, x1, y1, x2, y2, query
     const steps = Math.max(2, Math.ceil(len / 8));
     const seen = new Set();
     const result = [];
+    const batch = [];
     for (let step = 0; step <= steps; step++) {
         const t = step / steps;
-        const batch = [];
+        batch.length = 0;
         obstacleGrid.appendStaticWallProxiesNearWorld(x1 + dx * t, y1 + dy * t, queryRadius, batch);
         for (let i = 0; i < batch.length; i++) {
             const seg = batch[i];
@@ -75,10 +76,6 @@ export function hasLineOfSight(x1, y1, x2, y2, obstacleGrid, sourceRadius = 0, t
 // ==========================================
 // 4. Stepped Circle Ray Cast (from steppedCircleRayCast.js)
 // ==========================================
-/** @param {{ x: number, y: number, radius: number }} a @param {typeof a} b */
-function circlesOverlap(a, b) {
-    return lengthXY(a.x - b.x, a.y - b.y) < a.radius + b.radius;
-}
 /**
  * First wall segment intersecting a circle (broadphase + precise test).
  * @param {{ x: number, y: number, radius: number }} circle
@@ -172,7 +169,7 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { o
         for (const target of circles) {
             const entity = target.entity;
             const entityRadius = target.radius ?? entity.radius ?? radius;
-            if (!circlesOverlap(rayCircle, { x: entity.x, y: entity.y, radius: entityRadius })) continue;
+            if (lengthXY(rayCircle.x - entity.x, rayCircle.y - entity.y) >= rayCircle.radius + entityRadius) continue;
             const distToTarget = Math.hypot(entity.x - startX, entity.y - startY);
             const exactDist = distToTarget - entityRadius;
             return { hit: target.hitKind ?? "circle", entity, x: startX + dx * exactDist, y: startY + dy * exactDist, dist: exactDist };
