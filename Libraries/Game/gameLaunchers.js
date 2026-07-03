@@ -6,10 +6,7 @@
  * @property {(state: object) => Promise<object>=} setup
  */
 /** @type {Record<string, GameLauncher>} */
-export const GAME_LAUNCHERS = {
-    puzzle: { title: "Puzzle", hideEditor: true, portraitOnly: true, lockPortraitOrientation: true, actions: ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"] },
-    snake: { title: "Snake", hideEditor: false, actions: ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull"] },
-};
+export const GAME_LAUNCHERS = { snake: { title: "Snake", hideEditor: false, actions: ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull", "lockSelection"] } };
 /** @param {string} launchId */
 export function getGameLauncher(launchId) {
     const launcher = GAME_LAUNCHERS[launchId];

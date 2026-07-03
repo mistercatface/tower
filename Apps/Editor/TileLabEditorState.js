@@ -23,8 +23,9 @@ export class TileLabEditorState {
         this.eraseConfig = createDefaultMapGenBoundsConfig();
         this.sidebarPanel = "sandbox";
         this.showMapOverview = true;
-        this.showSelectionRings = true;
+        this.showSelectionRings = false;
         this.showPropTileCells = false;
         this.showRoomNodesAlways = false;
+        this.lockSelection = false;
     }
 }

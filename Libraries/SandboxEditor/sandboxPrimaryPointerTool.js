@@ -78,6 +78,7 @@ export function createSandboxPrimaryPointerTools(
             const registry = state.entityRegistry;
             const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
             if (hit) {
+                if (state.editor.lockSelection && !session.isSelected(hit.id)) return "consume";
                 if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
                 if (hit.type === "boid_triangle") {
                     const prevId = entityMeta().getActiveBehaviorId(hit.id);
@@ -109,6 +110,7 @@ export function createSandboxPrimaryPointerTools(
                 session.sync();
                 return true;
             }
+            if (state.editor.lockSelection) return false;
             const grid = state.obstacleGrid;
             const col = grid.worldCol(world.x);
             const row = grid.worldRow(world.y);

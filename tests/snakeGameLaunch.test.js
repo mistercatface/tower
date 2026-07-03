@@ -5,18 +5,30 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { createNavRuntime } from "../Libraries/Navigation/WorkerNavigationFactory.js";
-import { generateRailMazeAction, spawnBoidTriangleAction, focusBoidTriangleAction, setShadowsFullAction } from "../Libraries/Game/gameLaunchActions.js";
+import { generateRailMazeAction, spawnBoidTriangleAction, focusBoidTriangleAction, setShadowsFullAction, lockSelectionAction } from "../Libraries/Game/gameLaunchActions.js";
 import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandboxCameraTarget.js";
 
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
     
+    const selectedIds = [];
+    const session = {
+        select({ kind, ids }) {
+            selectedIds.push(...ids);
+        },
+        sync() {}
+    };
+    
     return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
-        sandbox: new SandboxWorldState(),
+        selectedIds,
+        sandbox: {
+            ...new SandboxWorldState(),
+            controller: { session }
+        },
         viewport: { 
             x: 128, 
             y: 128, 
@@ -67,6 +79,7 @@ describe("snake game launch actions", () => {
         assert.equal(ctx.boid.type, "boid_triangle");
         assert.equal(ctx.boid.x, state.viewport.x);
         assert.equal(ctx.boid.y, state.viewport.y);
+        assert.deepEqual(state.selectedIds, [ctx.boid.id]);
         
         // 3. Verify focusBoidTriangleAction
         focusBoidTriangleAction(state, ctx);
@@ -78,5 +91,10 @@ describe("snake game launch actions", () => {
         // 4. Verify setShadowsFullAction
         setShadowsFullAction(state);
         assert.equal(state.losShadowStrength, 1.0);
+
+        // 5. Verify lockSelectionAction
+        state.editor.lockSelection = false;
+        lockSelectionAction(state);
+        assert.equal(state.editor.lockSelection, true);
     });
 });

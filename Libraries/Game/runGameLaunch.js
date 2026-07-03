@@ -1,18 +1,12 @@
-import { fitPlayStageZoom } from "../Viewport/tileLabViewportLimits.js";
-import { focusBlueBallAction, refreshWorldAfterGameLaunch, snapCameraToTargetAction, stampBeltCratePuzzleAction, generateRailMazeAction, spawnBoidTriangleAction, focusBoidTriangleAction, setShadowsFullAction } from "./gameLaunchActions.js";
+import { generateRailMazeAction, spawnBoidTriangleAction, focusBoidTriangleAction, setShadowsFullAction, lockSelectionAction, refreshWorldAfterGameLaunch } from "./gameLaunchActions.js";
 /** @typedef {import("./gameLaunchActions.js").GameLaunchContext} GameLaunchContext */
 /** @type {Record<string, (state: object, ctx: GameLaunchContext) => void | Promise<void>>} */
 const GAME_LAUNCH_ACTIONS = {
-    stampBeltCratePuzzle: stampBeltCratePuzzleAction,
-    focusBlueBall: focusBlueBallAction,
-    snapCameraToTarget: snapCameraToTargetAction,
-    fitPlayViewport: (state) => {
-        fitPlayStageZoom(state.viewport, state.appLaunch?.session);
-    },
     generateRailMaze: generateRailMazeAction,
     spawnBoidTriangle: spawnBoidTriangleAction,
     focusBoidTriangle: focusBoidTriangleAction,
     setShadowsFull: setShadowsFullAction,
+    lockSelection: lockSelectionAction,
 };
 /** @param {object} state @param {import("./gameLaunchers.js").GameLauncher} launcher @param {{ playbackHandlers?: import("../Playback/speedControl.js").PlaybackHandlers }} [launchOptions] */
 export async function runGameLaunch(state, launcher, launchOptions = {}) {

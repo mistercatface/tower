@@ -9,21 +9,15 @@ describe("parseGameLaunchQuery", () => {
         assert.equal(parseGameLaunchQuery("?foo=1"), null);
     });
     it("returns the game id from the query string", () => {
-        assert.equal(parseGameLaunchQuery("?game=puzzle"), "puzzle");
+        assert.equal(parseGameLaunchQuery("?game=snake"), "snake");
     });
 });
 
 describe("game launchers", () => {
-    it("registers puzzle with expected start actions", () => {
-        const launcher = GAME_LAUNCHERS.puzzle;
-        assert.equal(launcher.title, "Puzzle");
-        assert.equal(launcher.hideEditor, true);
-        assert.deepEqual(launcher.actions, ["stampBeltCratePuzzle", "focusBlueBall", "snapCameraToTarget", "fitPlayViewport"]);
-    });
     it("registers snake with expected start actions", () => {
         const launcher = GAME_LAUNCHERS.snake;
         assert.equal(launcher.title, "Snake");
         assert.equal(launcher.hideEditor, false);
-        assert.deepEqual(launcher.actions, ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull"]);
+        assert.deepEqual(launcher.actions, ["generateRailMaze", "spawnBoidTriangle", "focusBoidTriangle", "setShadowsFull", "lockSelection"]);
     });
 });
