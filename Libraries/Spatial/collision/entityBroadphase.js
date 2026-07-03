@@ -139,9 +139,6 @@ export function snapshotKineticBodySlab(bodies) {
         writeBroadphaseFromBounds(entity._physId, getBroadphaseBounds(entity));
     }
 }
-export function snapshotActiveBroadphaseBounds(bodies) {
-    snapshotKineticBodySlab(bodies);
-}
 export function refreshActiveKineticBodySlabPose(bodies) {
     const slab = kineticDynamicSlab;
     for (let i = 0; i < bodies.length; i++) {

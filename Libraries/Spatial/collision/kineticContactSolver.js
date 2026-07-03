@@ -3,13 +3,11 @@ import { invalidateWallResolveCache } from "../../Motion/WallCollisionResolver.j
 import {
     gatherKineticCandidatePairs,
     kineticPairBuffer,
-    kineticPairBodiesAt,
     kineticPairBodyAt,
     refreshKineticPairRelativeVelocities,
     compactSubstepKineticPairs,
     patchKineticPairsForBodies,
     copyKineticPairBuffer,
-    kineticContactBodiesAt,
     pairPhysKey,
     KINETIC_PAIR_TIER,
 } from "./kineticPairStream.js";

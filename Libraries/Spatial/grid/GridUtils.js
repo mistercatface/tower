@@ -3,10 +3,6 @@ export function colRowToIndex(col, row, cols) {
 }
 /** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: colRowToIndex(col, row, grid.cols). */
 /** @typedef {number} LayoutCellIdx Dense index within a {@link CellIndexLayout} rect (local to origin/stride). */
-/** @param {number} col @param {number} row @param {number} gridCols @returns {GlobalCellIdx} */
-export function globalCellIdx(col, row, gridCols) {
-    return colRowToIndex(col, row, gridCols);
-}
 export function createCellIndexLayout(originCol, originRow, cols, rows) {
     return { originCol, originRow, strideCols: cols, cellCount: cols * rows };
 }

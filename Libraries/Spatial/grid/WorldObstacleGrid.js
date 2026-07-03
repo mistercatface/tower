@@ -1,10 +1,9 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { colRowToIndex, cellInRect } from "./GridUtils.js";
-import { cellEdgeEndpoints, edgeRailCollisionShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
+import { cellEdgeEndpoints, railWallEdgeShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
-import { FloorCellStore } from "./FloorCellStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
-import { isFloorBeltKind } from "./FloorCell.js";
+import { isFloorBeltKind, FloorCellStore } from "./FloorCell.js";
 import { clearAllBoundariesAtCell, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsAtOriginIdxInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -142,7 +141,7 @@ export class WorldObstacleGrid {
         forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
             if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterX(col), this.gridCenterY(row), col, row));
             for (let side = 0; side < 4; side++) {
-                if (!edgeRailCollisionShouldEmit(this, idx, side)) continue;
+                if (!railWallEdgeShouldEmit(this, idx, side)) continue;
                 const thickness = edgeRailCollisionThicknessPx(this, idx, side);
                 cellEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
                 const p1x = EDGE_PROXY_P1.x;

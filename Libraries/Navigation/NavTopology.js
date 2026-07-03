@@ -133,13 +133,3 @@ export function invalidateGridLocalNavBake(grid) {
     localBakeArenas.delete(grid);
     if (grid._navTopologyRef?.invalidateLocalBake) grid._navTopologyRef.invalidateLocalBake();
 }
-/** @param {NavTopology} navTopology */
-export function navTopologyGraphCanStep(navTopology, fromIdx, toIdx) {
-    const cardinalOpen = navTopology.navCardinalOpen;
-    const vertexPassability = navTopology.vertexPassability;
-    if (cardinalOpen && vertexPassability) return !boundaryBlocksStepFrom(navTopology.grid, cardinalOpen, vertexPassability, fromIdx, toIdx);
-    const frame = navTopology.frame;
-    const topology = navTopology.topology;
-    if (frame && topology) return navCanStep(frame, topology, fromIdx, toIdx);
-    return false;
-}

@@ -32,7 +32,7 @@ export function rotateGridOccupantAt(state, occupant, steps = 1) {
     }
     throw new Error(`Unknown rotatable grid occupant kind: ${kind}`);
 }
-export function canStampFloorOccupancyAt(state, col, row) {
+export function canStampFloorBeltAt(state, col, row) {
     const grid = state.obstacleGrid;
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
     if (grid.isBlocked(col, row)) return false;
@@ -40,7 +40,6 @@ export function canStampFloorOccupancyAt(state, col, row) {
     if (findGridAnchoredFloorPropAtCell(state.worldProps, col, row)) return false;
     return true;
 }
-export const canStampFloorBeltAt = canStampFloorOccupancyAt;
 /** Cell lookup + acceleration once per frame before kinetic physics substeps. */
 export function tickFloorOccupancy(state, spatialFrame, dt) {
     const grid = state.obstacleGrid;

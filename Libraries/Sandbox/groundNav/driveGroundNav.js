@@ -1,4 +1,4 @@
-import { snapNavGoalWorld } from "../../Navigation/snapNavGoal.js";
+import { snapNavGoalWorld } from "../../Navigation/navGraph.js";
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 /**

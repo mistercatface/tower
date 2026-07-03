@@ -1,5 +1,5 @@
 import { packEdgeCellKey } from "../../DataStructures/CellKey.js";
-import { isRailWallEdge, railWallThicknessPx } from "./CellEdgeStore.js";
+import { railWallThicknessPx } from "./CellEdgeStore.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { cellInRect, colRowToIndex, gridSideOutwardVector } from "./GridUtils.js";
 export function edgeNeighborIdx(idx, side, cols, rows) {
@@ -83,21 +83,13 @@ function edgeRailEmitOwner(grid, idx, side) {
     if (side === 0) return idx < grid.cols;
     return idx % grid.cols === 0;
 }
-export function edgeAt(grid, idx, side) {
+export function railWallEdgeAt(grid, idx, side) {
     if (idx < 0 || idx >= grid.cols * grid.rows) return null;
     return grid.edgeStore.getIdx(idx, side);
-}
-export function railWallEdgeAt(grid, idx, side) {
-    const edge = edgeAt(grid, idx, side);
-    if (!isRailWallEdge(edge)) return null;
-    return edge;
 }
 export function railWallEdgeShouldEmit(grid, idx, side) {
     if (!railWallEdgeAt(grid, idx, side)) return false;
     return edgeRailEmitOwner(grid, idx, side);
-}
-export function edgeRailCollisionShouldEmit(grid, idx, side) {
-    return railWallEdgeShouldEmit(grid, idx, side);
 }
 export function edgeRailCollisionThicknessPx(grid, idx, side) {
     const railEdge = railWallEdgeAt(grid, idx, side);
@@ -120,10 +112,6 @@ export function resolveCellWallHeightAtIdx(grid, idx) {
 export function cellIsStaticWall(grid, idx) {
     if (idx < 0 || idx >= grid.cols * grid.rows) return false;
     return grid.grid[idx] !== 0;
-}
-export function resolveCellWallHeightPx(grid, idx) {
-    if (idx < 0 || idx >= grid.cols * grid.rows) return 0;
-    return resolveCellWallHeightAtIdx(grid, idx);
 }
 const sExposedEdgeP1 = { x: 0, y: 0 };
 const sExposedEdgeP2 = { x: 0, y: 0 };

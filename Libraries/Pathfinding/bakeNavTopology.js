@@ -2,7 +2,7 @@ import { cellBoundsForGrid, padCellIdxToGrid } from "../DataStructures/CellRect.
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
 import { createNavSimView } from "./navSimView.js";
 import { buildOctileNeighborsFromTopologyBounds, buildOctilePredecessorsFromForwardGrid, navTopologyFromArena, expandNavTopologyBakeBounds, recomputeBlockedFromGridFill } from "./navTopologySab.js";
-import { recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../Spatial/grid/vertexPassability.js";
+import { recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../Spatial/grid/boundaryOccupancy.js";
 import { NavTopology } from "../Navigation/NavTopology.js";
 /**
  * One bake pass: blocked → vertex → cardinal → octile → predecessors.

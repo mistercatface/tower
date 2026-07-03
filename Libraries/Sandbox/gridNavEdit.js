@@ -62,9 +62,3 @@ export function clearFloorCellNavEdit(state, idx) {
     if (!state.obstacleGrid.clearFloorCell(idx)) return null;
     return commitGridNavEdit(state, idx);
 }
-/** @param {object} state @param {{ col: number, row: number }[]} cells */
-export function commitGridNavEditCells(state, cells) {
-    const grid = state.obstacleGrid;
-    for (let i = 0; i < cells.length; i++) commitGridNavEdit(state, cells[i].col + cells[i].row * grid.cols);
-    return Promise.resolve();
-}

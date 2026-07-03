@@ -1,5 +1,5 @@
 import { colRowToIndex, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
-import { snapNavGoalCellIndex } from "../Navigation/snapNavGoal.js";
+import { snapNavGoalCellIndex } from "../Navigation/navGraph.js";
 import { findSabPathProgressIdx } from "./hpaPathSlot.js";
 export const HPA_LOCAL_MAX_LEN = 96;
 export const HPA_REGION_CONNECT_MAX_LEN = 96;

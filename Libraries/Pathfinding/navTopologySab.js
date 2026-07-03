@@ -1,6 +1,6 @@
 import { CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
 import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
-import { diagonalStepOpen, getCardinalBit } from "../Spatial/grid/vertexPassability.js";
+import { diagonalStepOpen, getCardinalBit } from "../Spatial/grid/boundaryOccupancy.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
@@ -194,6 +194,5 @@ export function navCanStep(frame, topology, fromIdx, toIdx) {
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function createNavLocalView(frame, topology) {
-    const canStep = (fromIdx, toIdx) => navCanStep(frame, topology, fromIdx, toIdx);
-    return { canStep, canStepIdx: canStep };
+    return { canStepIdx: (fromIdx, toIdx) => navCanStep(frame, topology, fromIdx, toIdx) };
 }

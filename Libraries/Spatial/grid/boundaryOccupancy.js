@@ -1,9 +1,8 @@
-import { isRailWallEdge } from "./CellEdgeStore.js";
+import { isRailWallEdge, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
-import { railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { neighborFillLevel } from "./gridCellTopology.js";
-import { isFloorBeltKind, floorBeltEntryExitSides } from "./FloorCell.js";
-import { diagonalStepOpen } from "./vertexPassability.js";
+import { beltEntryExitAtIdx } from "./FloorCell.js";
+import { colRowToIndex } from "./GridUtils.js";
 /** @typedef {{ capHeightLevel: number, thicknessLevel?: number }} RailWallBoundarySpec */
 /** @typedef {RailWallBoundarySpec} BoundaryPrimarySpec */
 export function getBoundary(grid, idx, side) {
@@ -50,16 +49,11 @@ function cardinalStepSide(cols, fromIdx, toIdx) {
 function oppositeSide(side) {
     return side < 0 ? -1 : (side + 2) % 4;
 }
-function beltEntryExitAt(grid, idx) {
-    const kind = grid.floorStore.kind[idx];
-    if (!isFloorBeltKind(kind)) return null;
-    return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
-}
 function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     const cols = grid.cols;
     const stepSide = cardinalStepSide(cols, fromIdx, toIdx);
-    const fromBelt = beltEntryExitAt(grid, fromIdx);
-    const toBelt = beltEntryExitAt(grid, toIdx);
+    const fromBelt = beltEntryExitAtIdx(grid, fromIdx);
+    const toBelt = beltEntryExitAtIdx(grid, toIdx);
     if (!fromBelt && !toBelt) return false;
     if (stepSide < 0) return true;
     if (fromBelt && stepSide !== fromBelt.exitSide) return true;
@@ -81,4 +75,111 @@ export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability,
     if (diff === -cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, cols, grid.rows, fromIdx, 1, -1);
     if (diff === -cols - 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, cols, grid.rows, fromIdx, -1, -1);
     return false;
+}
+export const VERTEX_HALF_EDGE = { NwEast: 1 << 0, NwSouth: 1 << 1, NeWest: 1 << 2, NeSouth: 1 << 3, SwEast: 1 << 4, SwNorth: 1 << 5, SeWest: 1 << 6, SeNorth: 1 << 7 };
+const HALF_EDGE_SPECS = [
+    { bit: VERTEX_HALF_EDGE.NwEast, ownerCol: -1, ownerRow: -1, ownerSide: 1 },
+    { bit: VERTEX_HALF_EDGE.NwSouth, ownerCol: -1, ownerRow: -1, ownerSide: 2 },
+    { bit: VERTEX_HALF_EDGE.NeWest, ownerCol: 0, ownerRow: -1, ownerSide: 3 },
+    { bit: VERTEX_HALF_EDGE.NeSouth, ownerCol: 0, ownerRow: -1, ownerSide: 2 },
+    { bit: VERTEX_HALF_EDGE.SwEast, ownerCol: -1, ownerRow: 0, ownerSide: 1 },
+    { bit: VERTEX_HALF_EDGE.SwNorth, ownerCol: -1, ownerRow: 0, ownerSide: 0 },
+    { bit: VERTEX_HALF_EDGE.SeWest, ownerCol: 0, ownerRow: 0, ownerSide: 3 },
+    { bit: VERTEX_HALF_EDGE.SeNorth, ownerCol: 0, ownerRow: 0, ownerSide: 0 },
+];
+export function packVertexKey(vx, vy, cols) {
+    return vx + vy * (cols + 1);
+}
+export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds = null) {
+    if (!grid.cols) return;
+    const { cols, rows } = grid;
+    const vx0 = bounds ? Math.max(0, bounds.startCol) : 0;
+    const vx1 = bounds ? Math.min(cols, bounds.endCol + 1) : cols;
+    const vy0 = bounds ? Math.max(0, bounds.startRow) : 0;
+    const vy1 = bounds ? Math.min(rows, bounds.endRow + 1) : rows;
+    for (let vy = vy0; vy <= vy1; vy++)
+        for (let vx = vx0; vx <= vx1; vx++) {
+            let mask = 0;
+            for (let i = 0; i < HALF_EDGE_SPECS.length; i++) {
+                const spec = HALF_EDGE_SPECS[i];
+                const ownerIdx = colRowToIndex(vx + spec.ownerCol, vy + spec.ownerRow, cols);
+                if (!boundaryBlocksStep(grid, ownerIdx, spec.ownerSide)) mask |= spec.bit;
+            }
+            vertexPassability[packVertexKey(vx, vy, cols)] = mask;
+        }
+}
+const DIAG_1_1 = [VERTEX_HALF_EDGE.NwEast, VERTEX_HALF_EDGE.NwSouth, VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.NeSouth];
+const DIAG_N1_N1 = [VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.SeNorth, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeWest];
+const DIAG_1_N1 = [VERTEX_HALF_EDGE.SwEast, VERTEX_HALF_EDGE.SwNorth, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.NwEast];
+const DIAG_N1_1 = [VERTEX_HALF_EDGE.NeWest, VERTEX_HALF_EDGE.NeSouth, VERTEX_HALF_EDGE.SeWest, VERTEX_HALF_EDGE.NwSouth];
+export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassability, bounds = null) {
+    const { cols, rows } = grid;
+    const c0 = bounds ? bounds.startCol : 0;
+    const c1 = bounds ? bounds.endCol : cols - 1;
+    const r0 = bounds ? bounds.startRow : 0;
+    const r1 = bounds ? bounds.endRow : rows - 1;
+    for (let row = r0; row <= r1; row++)
+        for (let col = c0; col <= c1; col++) {
+            const idx = colRowToIndex(col, row, cols);
+            if (grid.isBlockedIdx(idx)) {
+                cardinalOpen[idx] = 0;
+                continue;
+            }
+            let mask = 0;
+            // East
+            if (col < cols - 1) {
+                const nIdx = idx + 1;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 1;
+            }
+            // South
+            if (row < rows - 1) {
+                const nIdx = idx + cols;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 2;
+            }
+            // West
+            if (col > 0) {
+                const nIdx = idx - 1;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 4;
+            }
+            // North
+            if (row > 0) {
+                const nIdx = idx - cols;
+                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) mask |= 8;
+            }
+            cardinalOpen[idx] = mask;
+        }
+}
+export function getCardinalBit(dc, dr) {
+    if (dc === 1) return 1;
+    if (dr === 1) return 2;
+    if (dc === -1) return 4;
+    return 8;
+}
+function cardinalLegOpen(cardinalOpen, cols, col, row, dc, dr) {
+    return (cardinalOpen[colRowToIndex(col, row, cols)] & getCardinalBit(dc, dr)) !== 0;
+}
+function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
+    const shoulderHCol = col + dc;
+    const shoulderHRow = row;
+    const shoulderVCol = col;
+    const shoulderVRow = row + dr;
+    return (
+        cardinalLegOpen(cardinalOpen, cols, col, row, dc, 0) &&
+        cardinalLegOpen(cardinalOpen, cols, col, row, 0, dr) &&
+        cardinalLegOpen(cardinalOpen, cols, shoulderHCol, shoulderHRow, 0, dr) &&
+        cardinalLegOpen(cardinalOpen, cols, shoulderVCol, shoulderVRow, dc, 0)
+    );
+}
+export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, fromIdx, dc, dr) {
+    const col = fromIdx % cols;
+    const row = (fromIdx / cols) | 0;
+    if (!diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr)) return false;
+    const cvx = dc > 0 ? col + dc : col;
+    const cvy = dr > 0 ? row + dr : row;
+    const mask = vertexPassability[packVertexKey(cvx, cvy, cols)] ?? 0;
+    let need;
+    if (dc === 1) need = dr === 1 ? DIAG_1_1 : DIAG_1_N1;
+    else need = dr === 1 ? DIAG_N1_1 : DIAG_N1_N1;
+    for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
+    return true;
 }

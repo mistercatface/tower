@@ -103,6 +103,13 @@ export function floorBeltEntryEdgeWorldPoint(grid, idx, entrySide) {
     if (entrySide === 2) return { x, y: y + inset };
     return { x: x - inset, y };
 }
+/** Belt entry/exit sides at a grid idx, or null when the cell holds no belt. */
+export function beltEntryExitAtIdx(grid, idx) {
+    if (idx < 0 || idx >= grid.cols * grid.rows) return null;
+    const kind = grid.floorStore.kind[idx];
+    if (!isFloorBeltKind(kind)) return null;
+    return floorBeltEntryExitSides(kind, grid.floorStore.facing[idx]);
+}
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {number} col @param {number} row */
 export function isFloorBeltCell(grid, col, row) {
     if (!cellInRect(col, row, grid.cols, grid.rows)) return false;
@@ -113,4 +120,52 @@ export function isEntityOnFloorBelt(grid, x, y) {
     const col = grid.worldCol(x);
     const row = grid.worldRow(y);
     return isFloorBeltCell(grid, col, row);
+}
+/** Structure-of-arrays store for floor occupancy (belt kind + cardinal facing) per cell. */
+export class FloorCellStore {
+    constructor() {
+        this.kind = new Uint8Array(0);
+        this.facing = new Uint8Array(0);
+    }
+    reset(cellCount) {
+        this.kind = new Uint8Array(cellCount);
+        this.facing = new Uint8Array(cellCount);
+    }
+    remap(oldKind, oldFacing, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
+        const newKind = new Uint8Array(newCols * newRows);
+        const newFacing = new Uint8Array(newCols * newRows);
+        const oldSize = oldCols * oldRows;
+        for (let idx = 0; idx < oldSize; idx++) {
+            if (oldKind[idx] === FLOOR_CELL_KIND.None) continue;
+            const row = (idx / oldCols) | 0;
+            const col = idx - row * oldCols;
+            const nc = col + colOffset;
+            const nr = row + rowOffset;
+            if (!cellInRect(nc, nr, newCols, newRows)) continue;
+            const newIdx = nc + nr * newCols;
+            newKind[newIdx] = oldKind[idx];
+            newFacing[newIdx] = oldFacing[idx];
+        }
+        this.kind = newKind;
+        this.facing = newFacing;
+    }
+    hasAnyAtIdx(idx) {
+        return this.kind[idx] !== FLOOR_CELL_KIND.None;
+    }
+    isBeltKindAtIdx(idx) {
+        return isFloorBeltKind(this.kind[idx]);
+    }
+    setAtIdx(idx, kind, facingIndex) {
+        this.kind[idx] = kind;
+        this.facing[idx] = facingIndex;
+    }
+    clearAtIdx(idx) {
+        this.kind[idx] = FLOOR_CELL_KIND.None;
+        this.facing[idx] = 0;
+    }
+    hasAny() {
+        const size = this.kind.length;
+        for (let idx = 0; idx < size; idx++) if (this.kind[idx] !== FLOOR_CELL_KIND.None) return true;
+        return false;
+    }
 }

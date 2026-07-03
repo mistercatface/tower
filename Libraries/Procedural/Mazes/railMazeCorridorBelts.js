@@ -2,7 +2,7 @@ import { addCorridorPathToOccupied } from "../../Pathfinding/Corridor/corridorLa
 import { buildCorridorBeltsFromPaths } from "../../RoomGraph/roomGraphCorridorBelts.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect, globalCellIdx, gridCellLayout, layoutAbsCellIndex, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex } from "../../Spatial/grid/GridUtils.js";
 import { floorBeltEntryExitSides, floorBeltRailEdgeSides } from "../../Spatial/grid/FloorCell.js";
 import { isNavWalkableAt } from "./navWalkableIndex.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";

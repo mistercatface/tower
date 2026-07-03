@@ -1,4 +1,4 @@
-import { cellInRect, gridSideOutwardVector } from "./GridUtils.js";
+import { cellInRect } from "./GridUtils.js";
 import { forEachObstacleGridCellInAabb } from "./GridCoords.js";
 import { neighborFillLevel, edgeNeighborIdx, edgeMirrorSide } from "./gridCellTopology.js";
 export function createRailWallEdge(heightDelta, thicknessLevel) {
