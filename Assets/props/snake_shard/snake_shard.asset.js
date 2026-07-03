@@ -3,7 +3,7 @@ export default {
     id: "snake_shard",
     primitive: "polygon",
     sandbox: { spawnable: false, tags: ["debris"] },
-    physics: { isKinetic: true, friction: 3, density: 0.001, wallPhysics: { restitution: 0.18, friction: 0.45 }, pairRestitution: 0.12, fracture: true, fractureMode: "glass" },
+    physics: { isKinetic: true, friction: 3, density: 0.001, wallPhysics: { restitution: 0.18, friction: 0.45 }, pairRestitution: 0.12, fracture: { mode: "glass" } },
     visuals: {
         colors: {
             side: NEUTRAL_BOX_COLORS.side,

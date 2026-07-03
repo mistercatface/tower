@@ -9,8 +9,7 @@ export default {
         density: 0.45 / 256,
         wallPhysics: { restitution: 0.06, friction: 0.25 },
         pairRestitution: 0.06,
-        fracture: true,
-        fractureMode: "glass",
+        fracture: { mode: "glass" },
     },
     visuals: {
         colors: { side: "#B3E5FC", sideShadow: "#81D4FA", top: "#E1F5FE", topHighlight: "#FFFFFF", bottom: "#4FC3F7", bodyInspect: "#81D4FA", stroke: "rgba(1, 87, 155, 0.5)" },

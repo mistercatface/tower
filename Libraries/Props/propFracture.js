@@ -1,5 +1,6 @@
 import { addWorldPropToState, removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
+import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D } from "../Math/Poly2D.js";
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
@@ -15,10 +16,10 @@ import { clearChainLinksForProp } from "../Sandbox/chainLinks.js";
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
 function isGlassFracture(prop) {
-    return prop?.strategy?.fractureMode === "glass";
+    return prop?.strategy?.fracture?.mode === "glass";
 }
 function isChunkFracture(prop) {
-    return prop?.strategy?.fractureMode === "chunk";
+    return prop?.strategy?.fracture?.mode === "chunk";
 }
 function glassFootprintArea(prop) {
     if (prop.footprintArea != null) return prop.footprintArea;
@@ -55,7 +56,7 @@ function flatVertsFromShape(prop) {
 }
 export function initFractureFootprint(prop) {
     if (isGlassFracture(prop)) return;
-    if (!isChunkFracture(prop)) throw new Error(`Fracture props need fractureMode "chunk" or "glass", got ${prop.strategy?.fractureMode}`);
+    if (!isChunkFracture(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
     applyChunkGeometryToProp(prop, bakeChunkOutline(flatVertsFromShape(prop)));
 }
 function applyFractureGeometryToProp(prop, geometry) {
@@ -308,33 +309,56 @@ export function queueCircleFracture(prop, hitX, hitY, force) {
     deferredFracturesCount++;
     return true;
 }
+export function evalFractureRules(prop, other, force) {
+    const config = prop.strategy?.fracture;
+    if (!config) return false;
+
+    const minForce = config.minForce ?? (config.mode === "glass" ? GLASS_FRACTURE_IMPACT_THRESHOLD : FRACTURE_IMPACT_THRESHOLD);
+    if (force < minForce) return false;
+
+    if (config.threatType && other.type !== config.threatType) return false;
+
+    const selfFaction = resolveSandboxFaction(prop);
+    if (config.excludeFactions && config.excludeFactions.includes(selfFaction)) return false;
+
+    if (config.opponentOnly) {
+        const otherFaction = resolveSandboxFaction(other);
+        if (selfFaction === otherFaction) return false;
+    }
+
+    return true;
+}
+
 export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
     const { frame, world } = tick;
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         const other = i === 0 ? bodyB : bodyA;
         if (prop._physId === undefined) continue;
-        // Fracture snake segment or ball on impact >= 12
-        if ((prop.type === "snake" || prop.type === "ball") && force >= FRACTURE_IMPACT_THRESHOLD) if (queueCircleFracture(prop, hitX, hitY, force)) return;
-        if (!canFracturePropSplit(prop)) continue;
-        if (prop._glassFractureCooldown > 0) continue;
-        if (isGlassFracture(prop) && isGlassFracture(other)) continue;
-        const threshold = isGlassFracture(prop) ? GLASS_FRACTURE_IMPACT_THRESHOLD : FRACTURE_IMPACT_THRESHOLD;
-        if (force < threshold) continue;
-        if (prop._pendingEviction) continue;
-        const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
-        if (!fracture) continue;
-        prop._pendingEviction = true;
-        let item = deferredFractures[deferredFracturesCount];
-        if (!item) {
-            item = { type: "", prop: null, fracture: null };
-            deferredFractures[deferredFracturesCount] = item;
+
+        if (evalFractureRules(prop, other, force)) {
+            const mode = prop.strategy?.fracture?.mode;
+            if (mode === "circle") {
+                if (queueCircleFracture(prop, hitX, hitY, force)) return;
+            } else {
+                if (!canFracturePropSplit(prop)) continue;
+                if (prop._glassFractureCooldown > 0) continue;
+                if (isGlassFracture(prop) && isGlassFracture(other)) continue;
+                if (prop._pendingEviction) continue;
+                const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
+                if (!fracture) continue;
+                prop._pendingEviction = true;
+                let item = deferredFractures[deferredFracturesCount];
+                if (!item) {
+                    item = { type: "", prop: null, fracture: null };
+                    deferredFractures[deferredFracturesCount] = item;
+                }
+                item.type = isGlassFracture(prop) ? "glass" : "chunk";
+                item.prop = prop;
+                item.fracture = fracture;
+                deferredFracturesCount++;
+            }
         }
-        item.type = isGlassFracture(prop) ? "glass" : "chunk";
-        item.prop = prop;
-        item.fracture = fracture;
-        deferredFracturesCount++;
-        return;
     }
 }
 export function flushDeferredFractures(world, spatialFrame) {
@@ -400,15 +424,6 @@ export function processKineticContactFractures(tick, contacts) {
         }
         const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
         const force = impactForceFromContact(relSpeed, bodyA.mass, bodyB.mass);
-        if (force >= FRACTURE_IMPACT_THRESHOLD) {
-            for (let j = 0; j < 2; j++) {
-                const prop = j === 0 ? bodyA : bodyB;
-                const other = j === 0 ? bodyB : bodyA;
-                if (prop.type === "boid_triangle" && prop.alwaysExplore && other.type === "boid_triangle" && !other.alwaysExplore) {
-                    queueCircleFracture(prop, hitX, hitY, force);
-                }
-            }
-        }
         queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx, ny);
     }
     flushDeferredFractures(tick.world, tick.frame);

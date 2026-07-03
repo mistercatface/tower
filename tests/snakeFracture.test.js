@@ -11,9 +11,9 @@ describe("snake segment impact fracture", () => {
         resetMockKineticCircleIds(1);
 
         // Segment A and B are connected snake segments
-        const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true } });
+        const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
         segA.type = "snake";
-        const segB = mockKineticCircle(108, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true } });
+        const segB = mockKineticCircle(108, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
         segB.type = "snake";
 
         // A heavy impactor moving fast towards segA
@@ -53,9 +53,9 @@ describe("snake segment impact fracture", () => {
         resetKineticConstraintIds(1);
         resetMockKineticCircleIds(1);
 
-        const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true } });
+        const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
         segA.type = "snake";
-        const segB = mockKineticCircle(108, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true } });
+        const segB = mockKineticCircle(108, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
         segB.type = "snake";
 
         // Slow impactor (speed 5)
@@ -81,9 +81,9 @@ describe("snake segment impact fracture", () => {
         resetMockKineticCircleIds(1);
 
         // Segment A and B are connected ball segments (snake body)
-        const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true } });
+        const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
         segA.type = "ball";
-        const segB = mockKineticCircle(108, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true } });
+        const segB = mockKineticCircle(108, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
         segB.type = "ball";
 
         // A heavy impactor moving fast towards segA

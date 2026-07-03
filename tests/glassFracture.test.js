@@ -73,7 +73,7 @@ function makeOverlappingGlassShards() {
 describe("glass fracture", () => {
     it("glass_pane asset uses glass fracture mode and resizable spawn", () => {
         const asset = propCatalog["glass_pane"];
-        assert.equal(asset.physics.fractureMode, "glass");
+        assert.equal(asset.physics.fracture.mode, "glass");
         assert.ok(asset.sandbox.resizableBox);
     });
     it("glass pane init has no poxel tessellation", () => {

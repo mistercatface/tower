@@ -11,8 +11,8 @@ import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import propCatalog from "../Assets/props/index.js";
 describe("chunk fracture", () => {
     it("crate asset uses chunk fracture mode", () => {
-        assert.equal(propCatalog["crate"].physics.fractureMode, "chunk");
-        assert.equal(propCatalog["custom_box"].physics.fractureMode, "chunk");
+        assert.equal(propCatalog["crate"].physics.fracture.mode, "chunk");
+        assert.equal(propCatalog["custom_box"].physics.fracture.mode, "chunk");
     });
     it("bakes rectilinear chunk grid from a box outline", () => {
         const geom = bakeChunkOutline(localBoxOutline(8, 8));

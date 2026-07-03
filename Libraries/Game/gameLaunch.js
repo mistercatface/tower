@@ -21,7 +21,7 @@ async function runSnakeLaunch(state, ctx) {
     // 2. Spawn and Select Boid Triangle
     const x = state.viewport.x;
     const y = state.viewport.y;
-    const boid = spawnPlacedSandboxProp(state, x, y, "boid_triangle", "neutral");
+    const boid = spawnPlacedSandboxProp(state, x, y, "boid_triangle", "alpha");
     ctx.boid = boid;
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [boid.id] });
@@ -34,7 +34,7 @@ async function runSnakeLaunch(state, ctx) {
     for (let i = 0; i < count; i++) {
         const redCell = pickNavWalkableCell(state, Math.random, boundsConfig);
         const pos = redCell ? state.obstacleGrid.gridToWorld(redCell.col, redCell.row) : { x: x + (Math.random() - 0.5) * 128, y: y + (Math.random() - 0.5) * 128 };
-        const redBoid = spawnPlacedSandboxProp(state, pos.x, pos.y, "boid_triangle", "neutral", 0, undefined, { tint: "#ff3366" });
+        const redBoid = spawnPlacedSandboxProp(state, pos.x, pos.y, "boid_triangle", "bravo", 0, undefined, { tint: "#ff3366" });
         redBoid.alwaysExplore = true;
         entityMeta.setActiveBehaviorId(redBoid.id, "explore");
     }

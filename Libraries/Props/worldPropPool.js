@@ -79,7 +79,7 @@ export function acquireWorldProp(x, y, type, facing = null) {
 export function releaseWorldProp(prop) {
     if (!prop) return;
     const type = prop.type;
-    const isDebris = prop.strategy?.fractureMode === "glass" || prop.strategy?.fractureMode === "chunk";
+    const isDebris = prop.strategy?.fracture?.mode === "glass" || prop.strategy?.fracture?.mode === "chunk";
     if (!isDebris) return;
     // Clear shapes/geometries to release heavy arrays
     prop.shape = undefined;

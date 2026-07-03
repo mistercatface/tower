@@ -197,7 +197,7 @@ export function applyPendingWallDamage(state, wallDamage) {
         const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
         if (fracture) {
             const height = prop.height;
-            if (prop.strategy?.fractureMode === "glass") {
+            if (prop.strategy?.fracture?.mode === "glass") {
                 removeWorldPropFromState(state, prop, spatialFrame ?? kineticSpatial);
                 const shards = spawnGlassShatterShards(state, prop, fracture, spatialFrame);
                 for (let i = 0; i < shards.length; i++) shards[i].height = height;
