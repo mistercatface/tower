@@ -95,13 +95,8 @@ describe("snake game launch actions", () => {
         // Verify Selection Lock
         assert.equal(state.editor.lockSelection, true);
 
-        // Verify Red Explore Boids
-        const redBoids = state.worldProps.filter(p => p.type === "boid_triangle" && p.alwaysExplore);
-        assert.equal(redBoids.length, 30);
-        for (const rb of redBoids) {
-            assert.equal(rb.visualOverride?.tint, "#ff3366");
-            const behaviorId = getSandboxEntityMeta(state).getActiveBehaviorId(rb.id);
-            assert.equal(behaviorId, "explore");
-        }
+        // Verify only the player boid is spawned
+        assert.equal(state.worldProps.length, 1);
+        assert.equal(state.worldProps[0].id, ctx.boid.id);
     });
 });

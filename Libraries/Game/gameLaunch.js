@@ -3,8 +3,6 @@ import { spawnPlacedSandboxProp } from "../Sandbox/sandboxPlacedSpawn.js";
 import { setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
-import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { pickNavWalkableCell } from "../Procedural/Mazes/walkableCells.js";
 export const GAME_LAUNCHERS = { snake: { title: "Snake", hideEditor: false } };
 export function parseGameLaunchQuery(search = window.location.search) {
     const game = new URLSearchParams(search).get("game");
@@ -26,17 +24,6 @@ async function runSnakeLaunch(state, ctx) {
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [boid.id] });
         state.sandbox.controller.session.sync();
-    }
-    // Spawn 30 Red Boids set to always be in explore mode
-    const count = 30;
-    const boundsConfig = state.editor.railMazeConfig;
-    const entityMeta = getSandboxEntityMeta(state);
-    for (let i = 0; i < count; i++) {
-        const redCell = pickNavWalkableCell(state, Math.random, boundsConfig);
-        const pos = redCell !== null && redCell !== undefined ? state.obstacleGrid.gridToWorldByIdx(redCell) : { x: x + (Math.random() - 0.5) * 128, y: y + (Math.random() - 0.5) * 128 };
-        const redBoid = spawnPlacedSandboxProp(state, pos.x, pos.y, "boid_triangle", "bravo", 0, undefined, { tint: "#ff3366" });
-        redBoid.alwaysExplore = true;
-        entityMeta.setActiveBehaviorId(redBoid.id, "explore");
     }
     // 3. Focus Camera and Zoom to 2.0
     setSandboxCameraTarget(state, boid, true);

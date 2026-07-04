@@ -3,8 +3,7 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
-export const EXPLORE_BEHAVIOR_ID = "explore";
-export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID, EXPLORE_BEHAVIOR_ID]);
+export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID]);
 export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunch: "Drag launch",
     dragLaunchWait: "Drag launch (wait for rest)",
@@ -15,7 +14,6 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)",
     [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)",
     [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)",
-    [EXPLORE_BEHAVIOR_ID]: "Explore",
 };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
