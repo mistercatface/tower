@@ -2,8 +2,6 @@ import { getKineticConstraintGraph } from "./kineticConstraintGraph.js";
 import { getKineticConstraintsVersion } from "./kineticConstraints.js";
 import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
-export const islandRootByPhysId = new Int32Array(MAX_PHYS_BODIES);
-islandRootByPhysId.fill(-1);
 function clearBodyIslandFields(body) {
     delete body._kineticLinkNeighbors;
     delete body._kineticIslandPeers;
@@ -16,12 +14,8 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         const body = kineticBodies[i];
         bodyById.set(body.id, body);
         clearBodyIslandFields(body);
-        if (body._physId !== undefined) {
-            islandRootByPhysId[body._physId] = -1;
-            kineticDynamicSlab.islandRoot[body._physId] = -1;
-        }
+        if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = -1;
     }
-    const bodyIdToIslandRoot = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
         const neighborIds = adjacent.get(body.id);
@@ -62,15 +56,11 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
             const body = memberBodies[m];
             assigned.add(body.id);
             body._kineticIslandRoot = root;
-            bodyIdToIslandRoot.set(body.id, root);
-            if (body._physId !== undefined) {
-                islandRootByPhysId[body._physId] = root;
-                kineticDynamicSlab.islandRoot[body._physId] = root;
-            }
+            if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = root;
             if (multiBody) body._kineticIslandPeers = memberBodies;
         }
     }
-    session._kineticIslandPlan = { version: getKineticConstraintsVersion(session), bodyIdToIslandRoot };
+    session._kineticIslandPlan = { version: getKineticConstraintsVersion(session) };
 }
 export function ensureKineticIslandPlan(session, kineticBodies) {
     const version = getKineticConstraintsVersion(session);

@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
-import { bakeKineticIslandPlan, islandRootByPhysId, shareKineticIsland } from "../Libraries/Motion/kineticIslands.js";
+import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Motion/kineticIslands.js";
+import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Motion/physicsDefaults.js";
 import { snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
@@ -152,9 +153,9 @@ describe("kinetic islands", () => {
         linkChain(state, bodies, 18);
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
-        assert.equal(islandRootByPhysId[a._physId], a.id);
-        assert.equal(islandRootByPhysId[b._physId], a.id);
-        assert.equal(islandRootByPhysId[c._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[a._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[b._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[c._physId], a.id);
     });
 
     it("addDistanceConstraint marks island topology dirty", () => {

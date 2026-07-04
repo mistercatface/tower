@@ -1,6 +1,5 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
 import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
-import { islandRootByPhysId } from "../../Libraries/Motion/kineticIslands.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticConstraints.js";
 import { getBroadphaseBounds, entityBroadphaseExtent } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -216,7 +215,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         prop.vx = kineticDynamicSlab.vx[physId];
         prop.vy = kineticDynamicSlab.vy[physId];
         prop.angularVelocity = kineticDynamicSlab.w[physId];
-        islandRootByPhysId[physId] = -1;
+        kineticDynamicSlab.islandRoot[physId] = -1;
         this.entityGrid.remove(prop);
         const all = this._kineticBodies;
         for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);

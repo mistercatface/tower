@@ -288,7 +288,11 @@ export function gatherKineticConstraintSlab(tick) {
         const bodyB = entry.bodyB;
         if (bodyA.isDead || bodyB.isDead) continue;
         if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
-        const root = plan.bodyIdToIslandRoot.get(bodyA.id) ?? bodyA.id;
+        let root = bodyA.id;
+        if (bodyA._physId !== undefined) {
+            const r = kineticDynamicSlab.islandRoot[bodyA._physId];
+            if (r !== -1) root = r;
+        }
         let bucketIdx = -1;
         for (let j = 0; j < bucketCount; j++)
             if (bucketRoots[j] === root) {
