@@ -54,8 +54,10 @@ export class EntityGrid {
     _getCellIndex(x, y) {
         const col = Math.floor((x - this.minX) / this.cellSize);
         const row = Math.floor((y - this.minY) / this.cellSize);
-        if (!cellInRect(col, row, this.cols, this.rows)) return -1;
-        return col + row * this.cols;
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
+        const idx = col + row * this.cols;
+        if (!cellInRect(idx, this.cols, this.rows)) return -1;
+        return idx;
     }
     insert(entity) {
         if (entity._physId === undefined) {

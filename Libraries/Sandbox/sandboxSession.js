@@ -87,12 +87,10 @@ export function createSandboxSession(state) {
         for (let idx = 0; idx < size; idx++) {
             if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
             const kind = grid.floorStore.kind[idx];
-            const col = idx % grid.cols;
-            const row = (idx / grid.cols) | 0;
             const index = (counts.get(kind) ?? 0) + 1;
             counts.set(kind, index);
             const facingLabel = FloorBelt.formatFacingLabel(grid.floorStore.facing[idx]);
-            placed.push({ col, row, kind, facingIndex: grid.floorStore.facing[idx], label: `${FloorBelt.formatKindLabel(kind)} #${index} · ${facingLabel}` });
+            placed.push({ idx, kind, facingIndex: grid.floorStore.facing[idx], label: `${FloorBelt.formatKindLabel(kind)} #${index} · ${facingLabel}` });
         }
         return placed;
     };
@@ -152,8 +150,7 @@ export function createSandboxSession(state) {
         rotateSelectedFloorBelt(steps = 1) {
             const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
-            const { col, row } = floorCell;
-            const idx = col + row * state.obstacleGrid.cols;
+            const idx = floorCell.idx;
             if (!state.obstacleGrid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
                 return false;
@@ -166,18 +163,14 @@ export function createSandboxSession(state) {
             const occupantIdx = FloorBelt.pickRotatableOccupantAtWorld(state, worldX, worldY);
             if (occupantIdx === -1) return false;
             if (!FloorBelt.rotateOccupantAt(state, occupantIdx, steps, commitGridNavEdit)) return false;
-            const cols = state.obstacleGrid.cols;
-            const row = (occupantIdx / cols) | 0;
-            const col = occupantIdx - row * cols;
-            pickSelection({ kind: "floor", col, row });
+            pickSelection({ kind: "floor", idx: occupantIdx });
             return true;
         },
-        moveSelectedFloorBeltTo(targetCol, targetRow) {
+        moveSelectedFloorBeltTo(targetIdx) {
             const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
-            const idx = floorCell.col + floorCell.row * grid.cols;
-            const targetIdx = targetCol + targetRow * grid.cols;
+            const idx = floorCell.idx;
             if (idx === targetIdx) return true;
             if (!grid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
@@ -193,15 +186,14 @@ export function createSandboxSession(state) {
             }
             commitGridNavEdit(state, idx);
             commitGridNavEdit(state, targetIdx);
-            pickSelection({ kind: "floor", col: targetCol, row: targetRow });
+            pickSelection({ kind: "floor", idx: targetIdx });
             return true;
         },
         setSelectedFloorBeltKind(kind) {
             const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
-            const { col, row } = floorCell;
-            const idx = col + row * grid.cols;
+            const idx = floorCell.idx;
             if (!grid.floorStore.hasAnyAtIdx(idx)) {
                 clearSelection();
                 return false;
@@ -215,43 +207,38 @@ export function createSandboxSession(state) {
             const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
-            const { col, row } = floorCell;
-            const idx = col + row * grid.cols;
+            const idx = floorCell.idx;
             if (grid.floorStore.hasAnyAtIdx(idx)) {
                 if (!clearFloorCellNavEdit(state, idx)) return false;
             } else if (!grid.clearFloorCell(idx)) return false;
             else FloorBelt.markZoneSubscriptionsDirty(state);
-            placement.forgetFloorPlacement(col, row);
+            placement.forgetFloorPlacement(idx);
             clearSelection();
             return true;
         },
         listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
         stampWallAtWorld(worldX, worldY) {
-            const grid = state.obstacleGrid;
-            const { col, row } = ensureObstacleGridAtWorld(state, worldX, worldY);
+            const targetIdx = ensureObstacleGridAtWorld(state, worldX, worldY);
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
-                const hitCol = hit.idx % grid.cols;
-                const hitRow = (hit.idx / grid.cols) | 0;
                 if (railWallEdgeAt(state.obstacleGrid, hit.idx, hit.side)) {
-                    pickSelection({ kind: "rail", col: hitCol, row: hitRow, side: hit.side });
+                    pickSelection({ kind: "rail", idx: hit.idx, side: hit.side });
                     return true;
                 }
                 if (!stampRailWallAt(state, hit.idx, hit.side, wallHeightLevel, railThicknessLevel)) return false;
-                placement.touchEdgePlacement("rail", hitCol, hitRow, hit.side);
-                pickSelection({ kind: "rail", col: hitCol, row: hitRow, side: hit.side });
+                placement.touchEdgePlacement("rail", hit.idx, hit.side);
+                pickSelection({ kind: "rail", idx: hit.idx, side: hit.side });
                 return true;
             }
-            const idx = col + row * state.obstacleGrid.cols;
-            if (cellIsStaticWall(state.obstacleGrid, idx)) {
-                pickSelection({ kind: "voxel", col, row });
+            if (cellIsStaticWall(state.obstacleGrid, targetIdx)) {
+                pickSelection({ kind: "voxel", idx: targetIdx });
                 return true;
             }
-            if (!stampVoxelWallAt(state, idx, wallHeightLevel)) return false;
-            placement.touchVoxelPlacement(col, row);
-            pickSelection({ kind: "voxel", col, row });
+            if (!stampVoxelWallAt(state, targetIdx, wallHeightLevel)) return false;
+            placement.touchVoxelPlacement(targetIdx);
+            pickSelection({ kind: "voxel", idx: targetIdx });
             return true;
         },
         stampWallAtCameraOrigin() {
@@ -261,7 +248,7 @@ export function createSandboxSession(state) {
         setSelectedVoxelWallHeight(heightLevel) {
             const voxelCell = selectionVoxelCell(sel());
             if (!voxelCell) return false;
-            const idx = voxelCell.col + voxelCell.row * state.obstacleGrid.cols;
+            const idx = voxelCell.idx;
             if (!setVoxelWallHeightAt(state, idx, heightLevel)) return false;
             notifyUi();
             return true;
@@ -269,7 +256,7 @@ export function createSandboxSession(state) {
         setSelectedRailWallProps(heightLevel, thicknessLevel) {
             const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
-            const idx = railEdge.col + railEdge.row * state.obstacleGrid.cols;
+            const idx = railEdge.idx;
             if (!stampRailWallAt(state, idx, railEdge.side, heightLevel, thicknessLevel)) return false;
             notifyUi();
             return true;
@@ -278,30 +265,30 @@ export function createSandboxSession(state) {
             const railEdge = selectionRailEdge(sel());
             if (!railEdge) return false;
             const grid = state.obstacleGrid;
-            const idx = railEdge.col + railEdge.row * grid.cols;
+            const idx = railEdge.idx;
             const info = getRailWallInfo(grid, idx, railEdge.side);
             if (!info || info.side === newSide) return true;
             if (railWallEdgeAt(grid, idx, newSide)) return false;
             if (!clearRailWallAt(state, idx, railEdge.side)) return false;
             if (!stampRailWallAt(state, idx, newSide, info.heightLevel, info.thicknessLevel)) return false;
-            pickSelection({ kind: "rail", col: railEdge.col, row: railEdge.row, side: newSide });
+            pickSelection({ kind: "rail", idx, side: newSide });
             return true;
         },
         deleteSelectedWall() {
             const voxelCell = selectionVoxelCell(sel());
             if (voxelCell) {
-                const idx = voxelCell.col + voxelCell.row * state.obstacleGrid.cols;
+                const idx = voxelCell.idx;
                 if (!clearVoxelWallAt(state, idx)) return false;
-                placement.forgetVoxelPlacement(voxelCell.col, voxelCell.row);
+                placement.forgetVoxelPlacement(idx);
                 clearSelection();
                 return true;
             }
             const railEdge = selectionRailEdge(sel());
             if (railEdge) {
                 const grid = state.obstacleGrid;
-                const idx = railEdge.col + railEdge.row * grid.cols;
+                const idx = railEdge.idx;
                 if (!clearRailWallAt(state, idx, railEdge.side)) return false;
-                placement.forgetEdgePlacement("rail", railEdge.col, railEdge.row, railEdge.side);
+                placement.forgetEdgePlacement("rail", idx, railEdge.side);
                 clearSelection();
                 return true;
             }
@@ -315,19 +302,16 @@ export function createSandboxSession(state) {
                 const idx = hit.idx;
                 if (!railWallEdgeAt(grid, idx, hit.side)) return false;
                 if (!clearRailWallAt(state, idx, hit.side)) return false;
-                const hitCol = idx % grid.cols;
-                const hitRow = (idx / grid.cols) | 0;
-                placement.forgetEdgePlacement("rail", hitCol, hitRow, hit.side);
-                selection.dropDeletedWallSelection(hitCol, hitRow, hit.side);
+                placement.forgetEdgePlacement("rail", idx, hit.side);
+                selection.dropDeletedWallSelection(idx, hit.side);
                 notifyUi();
                 return true;
             }
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            const idx = col + row * grid.cols;
+            const idx = grid.worldToIdx(worldX, worldY);
+            if (idx === -1) return false;
             if (!clearVoxelWallAt(state, idx)) return false;
-            placement.forgetVoxelPlacement(col, row);
-            selection.dropDeletedWallSelection(col, row);
+            placement.forgetVoxelPlacement(idx);
+            selection.dropDeletedWallSelection(idx);
             notifyUi();
             return true;
         },
@@ -339,18 +323,16 @@ export function createSandboxSession(state) {
                 if (railWallEdgeAt(grid, idx, side)) {
                     placePaletteKey = "wall:rail";
                     wallStampMode = "rail";
-                    const hitCol = idx % grid.cols;
-                    const hitRow = (idx / grid.cols) | 0;
-                    pickSelection({ kind: "rail", col: hitCol, row: hitRow, side });
+                    pickSelection({ kind: "rail", idx, side });
                     return true;
                 }
             }
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            if (!cellIsStaticWall(grid, col + row * grid.cols)) return false;
+            const idx = grid.worldToIdx(worldX, worldY);
+            if (idx === -1) return false;
+            if (!cellIsStaticWall(grid, idx)) return false;
             placePaletteKey = "wall:voxel";
             wallStampMode = "voxel";
-            pickSelection({ kind: "voxel", col, row });
+            pickSelection({ kind: "voxel", idx });
             return true;
         },
         pickWallAtWorld(worldX, worldY) {
@@ -358,15 +340,13 @@ export function createSandboxSession(state) {
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit || !railWallEdgeAt(grid, hit.idx, hit.side)) return false;
-                const hitCol = hit.idx % grid.cols;
-                const hitRow = (hit.idx / grid.cols) | 0;
-                pickSelection({ kind: "rail", col: hitCol, row: hitRow, side: hit.side });
+                pickSelection({ kind: "rail", idx: hit.idx, side: hit.side });
                 return true;
             }
-            const col = grid.worldCol(worldX);
-            const row = grid.worldRow(worldY);
-            if (!cellIsStaticWall(grid, col + row * grid.cols)) return false;
-            pickSelection({ kind: "voxel", col, row });
+            const idx = grid.worldToIdx(worldX, worldY);
+            if (idx === -1) return false;
+            if (!cellIsStaticWall(grid, idx)) return false;
+            pickSelection({ kind: "voxel", idx });
             return true;
         },
         getSelectedProp: () => {

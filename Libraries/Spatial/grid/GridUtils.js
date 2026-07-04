@@ -47,9 +47,8 @@ export function undirectedPairIndex(aIdx, bIdx, cellCount) {
 export function gridCellLayout(grid) {
     return { originCol: 0, originRow: 0, strideCols: grid.cols, cellCount: grid.cols * grid.rows };
 }
-/** @param {number} col @param {number} row @param {number} cols @param {number} rows */
-export function cellInRect(col, row, cols, rows) {
-    return col >= 0 && col < cols && row >= 0 && row < rows;
+export function cellInRect(idx, cols, rows) {
+    return idx >= 0 && idx < cols * rows;
 }
 export const CARDINAL_OFFSETS = [
     { dc: 0, dr: -1 },
@@ -93,14 +92,20 @@ export function forEachCardinalNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr } of CARDINAL_OFFSETS) {
         const nc = col + dc;
         const nr = row + dr;
-        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, nr * cols + nc);
+        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+            const nIdx = nr * cols + nc;
+            if (cellInRect(nIdx, cols, rows)) fn(nc, nr, nIdx);
+        }
     }
 }
 export function forEachOctileNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr, cost } of OCTILE_OFFSETS) {
         const nc = col + dc;
         const nr = row + dr;
-        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, nr * cols + nc, cost);
+        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+            const nIdx = nr * cols + nc;
+            if (cellInRect(nIdx, cols, rows)) fn(nc, nr, nIdx, cost);
+        }
     }
 }
 export function makeAdjacencyKey(idA, idB) {

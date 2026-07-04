@@ -260,9 +260,10 @@ export class WorldObstacleGrid {
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (!cellInRect(nc, nr, this.cols, this.rows)) continue;
-            const newIdx = nc + nr * this.cols;
-            newGrid[newIdx] = level;
+            if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
+                const newIdx = nc + nr * this.cols;
+                if (cellInRect(newIdx, this.cols, this.rows)) newGrid[newIdx] = level;
+            }
         }
         this.edgeStore.remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
@@ -294,11 +295,13 @@ export class WorldObstacleGrid {
             const lc = i % cols;
             const col = baseCol + lc;
             const row = baseRow + lr;
-            if (!cellInRect(col, row, this.cols, this.rows)) continue;
-            const idx = col + row * this.cols;
-            if (this.grid[idx] !== level) {
-                this.grid[idx] = level;
-                changed = true;
+            if (col >= 0 && col < this.cols && row >= 0 && row < this.rows) {
+                const idx = col + row * this.cols;
+                if (idx >= 0 && idx < this.cols * this.rows) {
+                    if (additive && this.grid[idx] !== 0) continue;
+                    this.grid[idx] = level;
+                    changed = true;
+                }
             }
         }
         if (changed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
@@ -401,8 +404,10 @@ export class WorldObstacleGrid {
     worldToIdx(x, y) {
         const col = this.worldCol(x);
         const row = this.worldRow(y);
-        if (!cellInRect(col, row, this.cols, this.rows)) return -1;
-        return row * this.cols + col;
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
+        const idx = row * this.cols + col;
+        if (!cellInRect(idx, this.cols, this.rows)) return -1;
+        return idx;
     }
     isBlockedIdx(idx) {
         if (idx < 0 || idx >= this.grid.length) return true;

@@ -21,15 +21,15 @@ export function createSandboxSelection({ isLiveProp }) {
             return;
         }
         if (input.kind === "floor") {
-            assign({ kind: "floor", col: input.col, row: input.row });
+            assign({ kind: "floor", idx: input.idx });
             return;
         }
         if (input.kind === "voxel") {
-            assign({ kind: "voxel", col: input.col, row: input.row });
+            assign({ kind: "voxel", idx: input.idx });
             return;
         }
         if (input.kind === "rail") {
-            assign({ kind: "rail", col: input.col, row: input.row, side: input.side });
+            assign({ kind: "rail", idx: input.idx, side: input.side });
             return;
         }
     };
@@ -73,12 +73,12 @@ export function createSandboxSelection({ isLiveProp }) {
         assign({ kind: "prop", ids: new Set([propId]) });
         return true;
     };
-    const dropDeletedWallSelection = (col, row, side = null) => {
-        if (selection?.kind === "voxel" && selection.col === col && selection.row === row) {
+    const dropDeletedWallSelection = (idx, side = null) => {
+        if (selection?.kind === "voxel" && selection.idx === idx) {
             assign(null);
             return;
         }
-        if (selection?.kind === "rail" && selection.col === col && selection.row === row && (side == null || selection.side === side)) assign(null);
+        if (selection?.kind === "rail" && selection.idx === idx && (side == null || selection.side === side)) assign(null);
     };
     return {
         getSelection: () => selection,
@@ -93,5 +93,5 @@ export function createSandboxSelection({ isLiveProp }) {
         dropDeletedWallSelection,
     };
 }
-/** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number }} SandboxSelection */
-/** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', col: number, row: number } | { kind: 'voxel', col: number, row: number } | { kind: 'rail', col: number, row: number, side: number }} SandboxSelectInput */
+/** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', idx: number } | { kind: 'voxel', idx: number } | { kind: 'rail', idx: number, side: number }} SandboxSelection */
+/** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', idx: number } | { kind: 'voxel', idx: number } | { kind: 'rail', idx: number, side: number }} SandboxSelectInput */

@@ -26,10 +26,13 @@ export class FloorCellStore {
             const col = idx - row * oldCols;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (!cellInRect(nc, nr, newCols, newRows)) continue;
-            const newIdx = nc + nr * newCols;
-            newKind[newIdx] = oldKind[idx];
-            newFacing[newIdx] = oldFacing[idx];
+            if (nc >= 0 && nc < newCols && nr >= 0 && nr < newRows) {
+                const newIdx = nc + nr * newCols;
+                if (cellInRect(newIdx, newCols, newRows)) {
+                    newKind[newIdx] = oldKind[idx];
+                    newFacing[newIdx] = oldFacing[idx];
+                }
+            }
         }
         this.kind = newKind;
         this.facing = newFacing;
@@ -142,8 +145,9 @@ export class FloorBelt {
         const grid = state.obstacleGrid;
         const col = grid.worldCol(worldX);
         const row = grid.worldRow(worldY);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) return -1;
+        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return -1;
         const idx = col + row * grid.cols;
+        if (!cellInRect(idx, grid.cols, grid.rows)) return -1;
         if (grid.floorStore.hasAnyAtIdx(idx)) return idx;
         return -1;
     }
@@ -259,8 +263,9 @@ export class FloorBelt {
             const entity = kineticBodies[i];
             const col = grid.worldCol(entity.x);
             const row = grid.worldRow(entity.y);
-            if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
+            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
             const idx = col + row * grid.cols;
+            if (!cellInRect(idx, grid.cols, grid.rows)) continue;
             if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
             const kind = grid.floorStore.kind[idx];
             const facingIndex = grid.floorStore.facing[idx];

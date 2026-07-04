@@ -149,10 +149,8 @@ export const PLACEABLE = {
             if (!FloorBelt.canStampAt(state, idx, findGridAnchoredFloorPropAtCell)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!applyFloorCellEdit(state, idx, kind, 0)) return false;
-            const row = (idx / grid.cols) | 0;
-            const col = idx - row * grid.cols;
-            ctx.placement.touchFloorPlacement(col, row);
-            ctx.pickSelection({ kind: "floor", col, row });
+            ctx.placement.touchFloorPlacement(idx);
+            ctx.pickSelection({ kind: "floor", idx });
             return true;
         },
         buildFromSelection(state, sel) {
@@ -163,9 +161,9 @@ export const PLACEABLE = {
             for (const entry of listPlacedFloorBelts())
                 items.push(
                     sceneItem(
-                        placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6),
-                        `Floor belt · (${entry.col},${entry.row}) · ${FloorBelt.formatKindLabel(entry.kind)}`,
-                        { kind: "floor", col: entry.col, row: entry.row },
+                        placement.placementSeq(placement.floorPlacementKey(entry.idx), 2e9 + entry.idx),
+                        entry.label,
+                        { kind: "floor", idx: entry.idx },
                         "floor",
                     ),
                 );
@@ -187,9 +185,9 @@ export const PLACEABLE = {
             for (const entry of placement.listTrackedVoxelWalls())
                 items.push(
                     sceneItem(
-                        placement.placementSeq(placement.voxelPlacementKey(entry.col, entry.row), 3e9 + entry.col + entry.row * 1e6),
+                        placement.placementSeq(placement.voxelPlacementKey(entry.idx), 3e9 + entry.idx),
                         entry.label,
-                        { kind: "voxel", col: entry.col, row: entry.row },
+                        { kind: "voxel", idx: entry.idx },
                         "wall:voxel",
                     ),
                 );
@@ -205,9 +203,9 @@ export const PLACEABLE = {
             for (const entry of placement.listTrackedRailWalls())
                 items.push(
                     sceneItem(
-                        placement.placementSeq(placement.edgePlacementKey("rail", entry.col, entry.row, entry.side), 4e9 + entry.col + entry.row * 1e6 + entry.side),
+                        placement.placementSeq(placement.edgePlacementKey("rail", entry.idx, entry.side), 4e9 + entry.idx + entry.side * 1e8),
                         entry.label,
-                        { kind: "rail", col: entry.col, row: entry.row, side: entry.side },
+                        { kind: "rail", idx: entry.idx, side: entry.side },
                         "wall:rail",
                     ),
                 );

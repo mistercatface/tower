@@ -50,13 +50,18 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
     const fromRow = grid.worldRow(fromY);
     const targetCol = grid.worldCol(targetX);
     const targetRow = grid.worldRow(targetY);
-    if (!cellInRect(targetCol, targetRow, cols, rows)) {
+    if (targetCol < 0 || targetCol >= cols || targetRow < 0 || targetRow >= rows) {
+        out.x = targetX;
+        out.y = targetY;
+        return out;
+    }
+    const targetIdx = targetCol + targetRow * cols;
+    if (!cellInRect(targetIdx, cols, rows)) {
         out.x = targetX;
         out.y = targetY;
         return out;
     }
     const fromIdx = fromCol + fromRow * cols;
-    const targetIdx = targetCol + targetRow * cols;
     const snappedIdx = snapNavGoalCellIndex(grid, fromIdx, targetIdx);
     if (snappedIdx !== targetIdx) {
         out.x = grid.gridCenterXByIdx(snappedIdx);

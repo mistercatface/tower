@@ -49,9 +49,12 @@ export class CellEdgeStore {
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
-            if (!cellInRect(nc, nr, newCols, newRows)) continue;
-            const newIdx = nc + nr * newCols;
-            for (let side = 0; side < 4; side++) newSlots[(newIdx << 2) + side] = oldSlots[(idx << 2) + side];
+            if (nc >= 0 && nc < newCols && nr >= 0 && nr < newRows) {
+                const newIdx = nc + nr * newCols;
+                if (cellInRect(newIdx, newCols, newRows)) {
+                    for (let side = 0; side < 4; side++) newSlots[(newIdx << 2) + side] = oldSlots[(idx << 2) + side];
+                }
+            }
         }
         this.slots = newSlots;
     }

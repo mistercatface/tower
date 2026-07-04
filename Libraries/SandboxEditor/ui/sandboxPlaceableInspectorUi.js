@@ -1,10 +1,10 @@
 import { PLACEABLE_INSPECTOR_KINDS } from "../../Sandbox/sandboxScenePlaceables.js";
 import { appendWallSelectedInspector } from "./sandboxWallInspector.js";
 import { appendSelectedPropInspector } from "./sandboxPropSelectedInspector.js";
-import { appendActionRow, appendEditorHint, appendAxisNumberFields, appendSelectField } from "../../UI/paramFields.js";
+import { appendActionRow, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
 import { listFloorBeltKindOptions } from "../../Sandbox/sandboxCapabilities.js";
 function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
-    appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, col/row, or rotation below. Move is blocked when the target has a wall or belt.`);
+    appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
     appendSelectField(body, "Type", {
         value: String(selectedFloorBelt.kind),
         options: listFloorBeltKindOptions().map((option) => ({ value: String(option.kind), label: option.label })),
@@ -12,20 +12,11 @@ function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
             controller.setSelectedFloorBeltKind(Number(value));
         },
     });
-    appendAxisNumberFields(body, {
-        Col: {
-            value: selectedFloorBelt.col,
-            step: 1,
-            onChange: (col) => {
-                controller.moveSelectedFloorBeltTo(col, selectedFloorBelt.row);
-            },
-        },
-        Row: {
-            value: selectedFloorBelt.row,
-            step: 1,
-            onChange: (row) => {
-                controller.moveSelectedFloorBeltTo(selectedFloorBelt.col, row);
-            },
+    appendNumberField(body, "Idx", {
+        value: selectedFloorBelt.idx,
+        step: 1,
+        onChange: (idx) => {
+            controller.moveSelectedFloorBeltTo(idx);
         },
     });
     appendActionRow(body, [

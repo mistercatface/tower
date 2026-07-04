@@ -153,11 +153,15 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
             const { dc, dr } = OCTILE_OFFSETS[i];
             const nc = col + dc;
             const nr = row + dr;
-            if (!cellInRect(nc, nr, cols, rows)) {
+            if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) {
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
             const nIdx = nr * cols + nc;
+            if (!cellInRect(nIdx, cols, rows)) {
+                octileNeighbors[octileNeighborOffset(idx, i)] = -1;
+                continue;
+            }
             if (blocked[nIdx]) {
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
@@ -193,8 +197,10 @@ export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePr
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology @param {number} col @param {number} row */
 export function navIsBlocked(frame, topology, col, row) {
     const { cols, rows } = frame;
-    if (!cellInRect(col, row, cols, rows)) return true;
-    return topology.blocked[row * cols + col] !== 0;
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return true;
+    const idx = row * cols + col;
+    if (!cellInRect(idx, cols, rows)) return true;
+    return topology.blocked[idx] !== 0;
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function navCanStep(frame, topology, fromIdx, toIdx) {
