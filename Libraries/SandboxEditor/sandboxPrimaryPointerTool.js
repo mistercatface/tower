@@ -9,6 +9,8 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
     let lastClickTime = 0;
     let lastClickX = 0;
     let lastClickY = 0;
+    let lastClickClientX = 0;
+    let lastClickClientY = 0;
     let lastSelectedBoidId = null;
     let lastSelectedBoidTime = 0;
     const tryPlaceSpawnAtWorld = (world, options = {}) => {
@@ -31,7 +33,10 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
         onPointerDown(world, e) {
             if (e.button !== 0) return false;
             const now = e.timeStamp || Date.now();
-            const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0);
+            const hasClient = e.clientX !== undefined && e.clientY !== undefined;
+            const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && (hasClient
+                ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0
+                : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
             let targetBoidId = lastSelectedBoidId;
             if (state.editor.lockSelection) {
                 const boid = state.worldProps.find((p) => p.type === "boid_triangle");
@@ -44,6 +49,8 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
                     lastClickTime = now;
                     lastClickX = world.x;
                     lastClickY = world.y;
+                    lastClickClientX = e.clientX ?? 0;
+                    lastClickClientY = e.clientY ?? 0;
                     return true;
                 }
             }
@@ -58,6 +65,8 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             lastClickTime = now;
             lastClickX = world.x;
             lastClickY = world.y;
+            lastClickClientX = e.clientX ?? 0;
+            lastClickClientY = e.clientY ?? 0;
             const floorButton = hitTestFloorButton(state, world.x, world.y);
             if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
                 session.sync();
