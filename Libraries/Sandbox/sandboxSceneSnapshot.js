@@ -6,7 +6,7 @@ import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
 import propCatalog from "../../Assets/props/index.js";
-import { applyStampedGridWallsFromGlobal, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
+import { applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
@@ -33,20 +33,15 @@ export function collectSandboxSceneSnapshot(state) {
     const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
     const chainHeadProp = headProp ? (propIdToIndex.get(headProp.id) ?? null) : null;
     const cellSize = grid.cellSize;
-    const voxels = listPlacedVoxelWalls(grid).map(({ col, row, heightLevel }) => {
-        const globalCol = Math.floor((grid.minX + col * cellSize) / cellSize);
-        const globalRow = Math.floor((grid.minY + row * cellSize) / cellSize);
-        return { col: globalCol, row: globalRow, heightLevel };
+    const voxels = listPlacedVoxelWalls(grid).map(({ idx, heightLevel }) => {
+        return { idx, heightLevel };
     });
     const railWalls = [];
     const listed = listPlacedRailWalls(grid);
     for (let i = 0; i < listed.length; i++) {
-        const { col, row, side, heightLevel, thicknessLevel } = listed[i];
-        const idx = row * grid.cols + col;
+        const { idx, side, heightLevel, thicknessLevel } = listed[i];
         if (!isCanonicalEdgeRepresentativeIdx(grid, idx, side)) continue;
-        const globalCol = Math.floor((grid.minX + col * cellSize) / cellSize);
-        const globalRow = Math.floor((grid.minY + row * cellSize) / cellSize);
-        railWalls.push({ col: globalCol, row: globalRow, side, heightLevel, thicknessLevel });
+        railWalls.push({ idx, side, heightLevel, thicknessLevel });
     }
     return {
         schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
@@ -74,14 +69,13 @@ function expandGridForSnapshot(state, doc) {
     const cellHalfSize = state.obstacleGrid.cellHalfSize;
     const bounds = emptyAabb();
     const includeWorldPoint = (x, y) => growAabbFromCenterInto(bounds, x, y, cellHalfSize, cellHalfSize);
-    for (let i = 0; i < doc.voxels.length; i++) {
-        const { col, row } = doc.voxels[i];
-        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
-    }
-    for (let i = 0; i < doc.railWalls.length; i++) {
-        const { col, row } = doc.railWalls[i];
-        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
-    }
+    const includeDocIdx = (idx) => {
+        const col = idx % doc.cols;
+        const row = Math.floor(idx / doc.cols);
+        includeWorldPoint(doc.origin.minX + col * cellSize + cellHalfSize, doc.origin.minY + row * cellSize + cellHalfSize);
+    };
+    for (let i = 0; i < doc.voxels.length; i++) includeDocIdx(doc.voxels[i].idx);
+    for (let i = 0; i < doc.railWalls.length; i++) includeDocIdx(doc.railWalls[i].idx);
     for (let i = 0; i < doc.floorBelts.length; i++) {
         const { col, row } = doc.floorBelts[i];
         includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
@@ -134,8 +128,8 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     if (cellSize !== state.obstacleGrid.cellSize) throw new Error(`Scene cellSize ${cellSize} does not match grid ${state.obstacleGrid.cellSize}`);
     clearSandboxSceneContent(state);
     expandGridForSnapshot(state, doc);
-    const wallBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
-    FloorBelt.applyFromGlobal(state, doc.floorBelts, cellSize);
+    const wallBounds = applyStampedGridWallsFromSnapshot(state, doc);
+    FloorBelt.applyFromSnapshot(state, doc);
     const grid = state.obstacleGrid;
     if (wallBounds) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     await commitGridNavEdit(state, null, { fullNavSync: true });

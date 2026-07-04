@@ -164,11 +164,9 @@ export class FloorBelt {
     static canStampAt(state, idx, findPropAtCell = null) {
         const grid = state.obstacleGrid;
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
-        const r = (idx / grid.cols) | 0;
-        const c = idx - r * grid.cols;
         if (grid.isBlockedIdx(idx)) return false;
         if (grid.hasFloorOccupancy(idx)) return false;
-        if (findPropAtCell && findPropAtCell(state.worldProps, c, r)) return false;
+        if (findPropAtCell && findPropAtCell(state.worldProps, idx)) return false;
         return true;
     }
     static clearOverlayAt(state, idx) {
@@ -184,23 +182,27 @@ export class FloorBelt {
         const cellSize = grid.cellSize;
         for (let idx = 0; idx < size; idx++) {
             if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
-            const col = idx % grid.cols;
-            const row = (idx / grid.cols) | 0;
-            const globalCol = Math.floor((grid.minX + col * cellSize) / cellSize);
-            const globalRow = Math.floor((grid.minY + row * cellSize) / cellSize);
-            items.push({ col: globalCol, row: globalRow, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
+            items.push({ idx, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
         }
         return items;
     }
-    static applyFromGlobal(state, floorBelts, cellSize) {
+    static applyFromSnapshot(state, doc) {
         const grid = state.obstacleGrid;
         const half = grid.cellHalfSize;
         const bounds = emptyCellBounds();
+        const cellSize = doc.cellSize ?? grid.cellSize;
         let floorNavChanged = false;
-        for (let i = 0; i < floorBelts.length; i++) {
-            const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
+        const toLocalIdx = (idx) => {
+            const col = idx % doc.cols;
+            const row = Math.floor(idx / doc.cols);
+            const x = doc.origin.minX + col * cellSize + half;
+            const y = doc.origin.minY + row * cellSize + half;
+            return grid.worldToIdx(x, y);
+        };
+        for (let i = 0; i < doc.floorBelts.length; i++) {
+            const { idx: docIdx, kind, facingIndex } = doc.floorBelts[i];
             if (!FloorBelt.isBelt(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
-            const idx = grid.worldToIdx(globalCol * cellSize + half, globalRow * cellSize + half);
+            const idx = toLocalIdx(docIdx);
             if (idx < 0 || idx >= grid.cols * grid.rows) continue;
             const prevKind = grid.floorStore.kind[idx];
             const prevFacing = grid.floorStore.facing[idx];

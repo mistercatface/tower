@@ -141,26 +141,30 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     }
 }
 /** Stamp many voxel/rail walls from global grid cells — one cache/nav invalidation at the end. */
-export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSize) {
+export function applyStampedGridWallsFromSnapshot(state, doc) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces.settings;
     const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
-    const toLocalIdx = (globalCol, globalRow) => {
-        const x = globalCol * cellSize + half;
-        const y = globalRow * cellSize + half;
+    const cellSize = doc.cellSize ?? grid.cellSize;
+    
+    const toLocalIdx = (idx) => {
+        const col = idx % doc.cols;
+        const row = Math.floor(idx / doc.cols);
+        const x = doc.origin.minX + col * cellSize + half;
+        const y = doc.origin.minY + row * cellSize + half;
         return grid.worldToIdx(x, y);
     };
-    for (let i = 0; i < voxels.length; i++) {
-        const { col: globalCol, row: globalRow, heightLevel } = voxels[i];
-        const idx = toLocalIdx(globalCol, globalRow);
+    for (let i = 0; i < doc.voxels.length; i++) {
+        const { idx: docIdx, heightLevel } = doc.voxels[i];
+        const idx = toLocalIdx(docIdx);
         if (idx < 0 || idx >= grid.grid.length) continue;
         grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
         growCellBoundsIdx(bounds, idx, grid.cols);
     }
-    for (let i = 0; i < railWalls.length; i++) {
-        const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
-        const idx = toLocalIdx(globalCol, globalRow);
+    for (let i = 0; i < doc.railWalls.length; i++) {
+        const { idx: docIdx, side, heightLevel, thicknessLevel } = doc.railWalls[i];
+        const idx = toLocalIdx(docIdx);
         if (idx < 0 || idx >= grid.grid.length) continue;
         setBoundary(grid, idx, side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
         growCellBoundsIdx(bounds, idx, grid.cols);
@@ -212,12 +216,10 @@ export function listPlacedVoxelWalls(grid) {
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) {
         if (!cellIsStaticWallAtIdx(grid, idx)) continue;
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
         const heightLevel = grid.grid[idx];
         const index = (counts.get(heightLevel) ?? 0) + 1;
         counts.set(heightLevel, index);
-        placed.push({ col, row, heightLevel, label: `Voxel #${index} · height ${heightLevel}` });
+        placed.push({ idx, heightLevel, label: `Voxel #${index} · height ${heightLevel}` });
     }
     return placed;
 }
@@ -232,9 +234,7 @@ export function listPlacedRailWalls(grid) {
             const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
-            const col = idx % grid.cols;
-            const row = (idx / grid.cols) | 0;
-            placed.push({ col, row, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
+            placed.push({ idx, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
         },
         false,
         undefined,

@@ -7,34 +7,32 @@ import { StrideFloatList } from "./StrideFloatList.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 export const RAIL_BOX = {
-    gridCol: 0,
-    gridRow: 1,
-    chunkCol: 2,
-    chunkRow: 3,
-    gridIdx: 4,
-    gridSide: 5,
-    minX: 6,
-    minY: 7,
-    maxX: 8,
-    maxY: 9,
-    innerP1x: 10,
-    innerP1y: 11,
-    innerP2x: 12,
-    innerP2y: 13,
-    outerP1x: 14,
-    outerP1y: 15,
-    outerP2x: 16,
-    outerP2y: 17,
-    inwardX: 18,
-    inwardY: 19,
-    wallBaseZ: 20,
-    wallHeight: 21,
-    wallCapHeight: 22,
-    edgeThickness: 23,
-    cx: 24,
-    cy: 25,
+    chunkCol: 0,
+    chunkRow: 1,
+    gridIdx: 2,
+    gridSide: 3,
+    minX: 4,
+    minY: 5,
+    maxX: 6,
+    maxY: 7,
+    innerP1x: 8,
+    innerP1y: 9,
+    innerP2x: 10,
+    innerP2y: 11,
+    outerP1x: 12,
+    outerP1y: 13,
+    outerP2x: 14,
+    outerP2y: 15,
+    inwardX: 16,
+    inwardY: 17,
+    wallBaseZ: 18,
+    wallHeight: 19,
+    wallCapHeight: 20,
+    edgeThickness: 21,
+    cx: 22,
+    cy: 23,
 };
-export const RAIL_BOX_STRIDE = 26;
+export const RAIL_BOX_STRIDE = 24;
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
@@ -177,8 +175,6 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const base = recordIndex * RAIL_BOX_STRIDE;
     const col = idx % cols;
     const row = (idx / cols) | 0;
-    data[base + RAIL_BOX.gridCol] = col;
-    data[base + RAIL_BOX.gridRow] = row;
     data[base + RAIL_BOX.chunkCol] = cellToChunkCoord(col, gridSettings.minCellsPerChunk);
     data[base + RAIL_BOX.chunkRow] = cellToChunkCoord(row, gridSettings.minCellsPerChunk);
     data[base + RAIL_BOX.gridIdx] = idx;
@@ -259,7 +255,7 @@ function extendCollinearRailWallBoxRecord(data, curIndex, nextIndex) {
     data[cur + RAIL_BOX.cx] = (data[cur + RAIL_BOX.minX] + data[cur + RAIL_BOX.maxX]) * 0.5;
     data[cur + RAIL_BOX.cy] = (data[cur + RAIL_BOX.minY] + data[cur + RAIL_BOX.maxY]) * 0.5;
 }
-function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex) {
+function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex, cols) {
     const a = aIndex * RAIL_BOX_STRIDE;
     const b = bIndex * RAIL_BOX_STRIDE;
     if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return false;
@@ -270,48 +266,56 @@ function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex) {
     )
         return false;
     if (data[a + RAIL_BOX.inwardX] !== data[b + RAIL_BOX.inwardX] || data[a + RAIL_BOX.inwardY] !== data[b + RAIL_BOX.inwardY]) return false;
+    const aRow = (data[a + RAIL_BOX.gridIdx] / cols) | 0;
+    const aCol = data[a + RAIL_BOX.gridIdx] - aRow * cols;
+    const bRow = (data[b + RAIL_BOX.gridIdx] / cols) | 0;
+    const bCol = data[b + RAIL_BOX.gridIdx] - bRow * cols;
     if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
-        if (data[a + RAIL_BOX.gridRow] !== data[b + RAIL_BOX.gridRow]) return false;
+        if (aRow !== bRow) return false;
         if (data[a + RAIL_BOX.chunkCol] !== data[b + RAIL_BOX.chunkCol]) return false;
-        return data[b + RAIL_BOX.gridCol] === data[a + RAIL_BOX.gridCol] + 1;
+        return bCol === aCol + 1;
     }
-    if (data[a + RAIL_BOX.gridCol] !== data[b + RAIL_BOX.gridCol]) return false;
+    if (aCol !== bCol) return false;
     if (data[a + RAIL_BOX.chunkRow] !== data[b + RAIL_BOX.chunkRow]) return false;
-    return data[b + RAIL_BOX.gridRow] === data[a + RAIL_BOX.gridRow] + 1;
+    return bRow === aRow + 1;
 }
-function compareRailWallBoxRecords(data, aIndex, bIndex) {
+function compareRailWallBoxRecords(data, aIndex, bIndex, cols) {
     const a = aIndex * RAIL_BOX_STRIDE;
     const b = bIndex * RAIL_BOX_STRIDE;
     if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return data[a + RAIL_BOX.gridSide] - data[b + RAIL_BOX.gridSide];
     if (data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight]) return data[a + RAIL_BOX.wallCapHeight] - data[b + RAIL_BOX.wallCapHeight];
     if (data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ]) return data[a + RAIL_BOX.wallBaseZ] - data[b + RAIL_BOX.wallBaseZ];
     if (data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]) return data[a + RAIL_BOX.edgeThickness] - data[b + RAIL_BOX.edgeThickness];
+    const aRow = (data[a + RAIL_BOX.gridIdx] / cols) | 0;
+    const aCol = data[a + RAIL_BOX.gridIdx] - aRow * cols;
+    const bRow = (data[b + RAIL_BOX.gridIdx] / cols) | 0;
+    const bCol = data[b + RAIL_BOX.gridIdx] - bRow * cols;
     if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
-        if (data[a + RAIL_BOX.gridRow] !== data[b + RAIL_BOX.gridRow]) return data[a + RAIL_BOX.gridRow] - data[b + RAIL_BOX.gridRow];
-        return data[a + RAIL_BOX.gridCol] - data[b + RAIL_BOX.gridCol];
+        if (aRow !== bRow) return aRow - bRow;
+        return aCol - bCol;
     }
-    if (data[a + RAIL_BOX.gridCol] !== data[b + RAIL_BOX.gridCol]) return data[a + RAIL_BOX.gridCol] - data[b + RAIL_BOX.gridCol];
-    return data[a + RAIL_BOX.gridRow] - data[b + RAIL_BOX.gridRow];
+    if (aCol !== bCol) return aCol - bCol;
+    return aRow - bRow;
 }
 function copyRailWallBoxRecord(data, dstIndex, src, srcIndex) {
     const dst = dstIndex * RAIL_BOX_STRIDE;
     const start = srcIndex * RAIL_BOX_STRIDE;
     for (let i = 0; i < RAIL_BOX_STRIDE; i++) data[dst + i] = src[start + i];
 }
-function mergeCollinearRailWallBoxRecordsInPlace(list) {
+function mergeCollinearRailWallBoxRecordsInPlace(list, cols) {
     const n = list.length;
     if (n <= 1) return n;
     const { data } = list;
     const order = new Array(n);
     for (let i = 0; i < n; i++) order[i] = i;
-    order.sort((a, b) => compareRailWallBoxRecords(data, a, b));
+    order.sort((a, b) => compareRailWallBoxRecords(data, a, b, cols));
     const scratch = new Float32Array(n * RAIL_BOX_STRIDE);
     for (let i = 0; i < n; i++) copyRailWallBoxRecord(scratch, i, data, order[i]);
     data.set(scratch);
     let write = 1;
     let cur = 0;
     for (let i = 1; i < n; i++)
-        if (collinearRailWallBoxRecordsAdjacent(data, cur, i)) extendCollinearRailWallBoxRecord(data, cur, i);
+        if (collinearRailWallBoxRecordsAdjacent(data, cur, i, cols)) extendCollinearRailWallBoxRecord(data, cur, i);
         else {
             cur = write;
             if (cur !== i) copyRailWallBoxRecord(data, cur, data, i);
@@ -319,8 +323,8 @@ function mergeCollinearRailWallBoxRecordsInPlace(list) {
         }
     return write;
 }
-export const VOXEL_FACE = { gridCol: 0, gridRow: 1, gridIdx: 2, gridSide: 3, x1: 4, y1: 5, x2: 6, y2: 7, wallBaseZ: 8, wallHeight: 9, wallCapHeight: 10, cx: 11, cy: 12, outX: 13, outY: 14 };
-export const VOXEL_FACE_STRIDE = 15;
+export const VOXEL_FACE = { gridIdx: 0, gridSide: 1, x1: 2, y1: 3, x2: 4, y2: 5, wallBaseZ: 6, wallHeight: 7, wallCapHeight: 8, cx: 9, cy: 10, outX: 11, outY: 12 };
+export const VOXEL_FACE_STRIDE = 13;
 export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     const base = baseIndex * VOXEL_FACE_STRIDE;
     const cols = grid.cols;
@@ -344,8 +348,6 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     const ecx = (sP1.x + sP2.x) / 2;
     const ecy = (sP1.y + sP2.y) / 2;
     const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);
-    data[base + VOXEL_FACE.gridCol] = col;
-    data[base + VOXEL_FACE.gridRow] = row;
     data[base + VOXEL_FACE.gridIdx] = idx;
     data[base + VOXEL_FACE.gridSide] = edge;
     data[base + VOXEL_FACE.x1] = sP1.x;
@@ -380,7 +382,7 @@ export function collectRailWallBoxesInAabb(grid, bounds, out) {
             if (writeRailWallBoxRecordInto(out.data, out.length, grid, idx, edge)) out.length++;
         }
     });
-    out.length = mergeCollinearRailWallBoxRecordsInPlace(out);
+    out.length = mergeCollinearRailWallBoxRecordsInPlace(out, grid.cols);
 }
 export function defaultWallCapPx(settings) {
     return settings.wallHeightCells * settings.cellSize;

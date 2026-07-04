@@ -69,8 +69,6 @@ function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
         scratch.wallBaseZ = d[b + RAIL_BOX.wallBaseZ];
         scratch.wallCapHeight = d[b + RAIL_BOX.wallCapHeight];
         scratch.cacheObj = null;
-        scratch.gridCol = d[b + RAIL_BOX.gridCol];
-        scratch.gridRow = d[b + RAIL_BOX.gridRow];
         scratch.gridSide = d[b + RAIL_BOX.gridSide];
         scratch.gridIdx = d[b + RAIL_BOX.gridIdx];
         scratch.isEdgeRail = true;
@@ -81,8 +79,6 @@ function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
         scratch.wallBaseZ = d[b + VOXEL_FACE.wallBaseZ];
         scratch.wallCapHeight = d[b + VOXEL_FACE.wallCapHeight];
         scratch.cacheObj = null;
-        scratch.gridCol = d[b + VOXEL_FACE.gridCol];
-        scratch.gridRow = d[b + VOXEL_FACE.gridRow];
         scratch.gridSide = d[b + VOXEL_FACE.gridSide];
         scratch.gridIdx = d[b + VOXEL_FACE.gridIdx];
         scratch.isEdgeRail = false;
@@ -98,7 +94,7 @@ function prepareWallChunkPropTextures(state, prop) {
 export class WorldSceneRenderer {
     constructor() {
         this.visibleDrawQueue = new VisibleDrawQueue();
-        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridCol: 0, gridRow: 0, gridSide: 0, gridIdx: 0, isEdgeRail: false };
+        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     drawDebrisProps(ctx, state, viewport, options = {}) {
         const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, DEBRIS_QUERY_OPTIONS);

@@ -84,18 +84,16 @@ export function obstacleGridCellHalfExtents(obstacleGrid) {
     return { halfWidth: half, halfHeight: half };
 }
 export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY) {
-    const col = obstacleGrid.worldCol(worldX);
-    const row = obstacleGrid.worldRow(worldY);
-    prop.gridCol = col;
-    prop.gridRow = row;
-    prop.x = obstacleGrid.gridCenterX(col);
-    prop.y = obstacleGrid.gridCenterY(row);
+    const idx = obstacleGrid.worldToIdx(worldX, worldY);
+    prop.gridIdx = idx;
+    prop.x = obstacleGrid.gridCenterXByIdx(idx);
+    prop.y = obstacleGrid.gridCenterYByIdx(idx);
     const { halfWidth, halfHeight } = obstacleGridCellHalfExtents(obstacleGrid);
     resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
 }
 export function rotateCardinalFloorProp(prop, steps = 1) {
     prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
 }
-export function findGridAnchoredFloorPropAtCell(worldProps, col, row, exceptPropId = -1) {
-    return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridCol === col && prop.gridRow === row);
+export function findGridAnchoredFloorPropAtIdx(worldProps, idx, exceptPropId = -1) {
+    return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridIdx === idx);
 }

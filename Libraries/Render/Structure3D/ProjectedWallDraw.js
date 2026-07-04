@@ -39,7 +39,7 @@ function ensureWallDrawMemo(grid) {
     }
 }
 function wallDrawMemoSlot(grid, face) {
-    return ((face.gridRow * grid.cols + face.gridCol) * 4 + face.gridSide) * 5 + wallFaceKindIndex(face.atlasFaceId);
+    return (face.gridIdx * 4 + face.gridSide) * 5 + wallFaceKindIndex(face.atlasFaceId);
 }
 export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
     traceFlatQuad(ctx, faceBottom.proj1X, faceBottom.proj1Y, faceTop.proj1X, faceTop.proj1Y, faceTop.proj2X, faceTop.proj2Y, faceBottom.proj2X, faceBottom.proj2Y);

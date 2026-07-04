@@ -47,21 +47,17 @@ export const PLACEABLE = {
             const propTypeId = ctx.resolveSpawnPropTypeId();
             if (propTypeId === "snake") {
                 const grid = state.obstacleGrid;
-                const col = grid.worldCol(worldX);
-                const row = grid.worldRow(worldY);
-                const chain = spawnLinkedBallChain(
-                    state,
-                    { col, row },
-                    {
-                        headBallType: "snake",
-                        ballType: "ball",
-                        segmentCount: ctx.spawnSnakeLength,
-                        segmentRadius: ctx.spawnBallRadius,
-                        faction: ctx.spawnFaction,
-                        spacing: ctx.spawnBallRadius * 2,
-                        linkSlack: 1.0,
-                    },
-                );
+                const idx = grid.worldToIdx(worldX, worldY);
+                if (idx === -1) return false;
+                const chain = spawnLinkedBallChain(state, idx, {
+                    headBallType: "snake",
+                    ballType: "ball",
+                    segmentCount: ctx.spawnSnakeLength,
+                    segmentRadius: ctx.spawnBallRadius,
+                    faction: ctx.spawnFaction,
+                    spacing: ctx.spawnBallRadius * 2,
+                    linkSlack: 1.0,
+                });
                 if (chain && chain.leader) {
                     const visualOverride = ctx.resolveSpawnVisualOverride(propCatalog["snake"]);
                     if (visualOverride) {
@@ -159,14 +155,7 @@ export const PLACEABLE = {
         listSceneItems({ placement, listPlacedFloorBelts }) {
             const items = [];
             for (const entry of listPlacedFloorBelts())
-                items.push(
-                    sceneItem(
-                        placement.placementSeq(placement.floorPlacementKey(entry.idx), 2e9 + entry.idx),
-                        entry.label,
-                        { kind: "floor", idx: entry.idx },
-                        "floor",
-                    ),
-                );
+                items.push(sceneItem(placement.placementSeq(placement.floorPlacementKey(entry.idx), 2e9 + entry.idx), entry.label, { kind: "floor", idx: entry.idx }, "floor"));
             return items;
         },
     },
@@ -183,14 +172,7 @@ export const PLACEABLE = {
         listSceneItems({ placement }) {
             const items = [];
             for (const entry of placement.listTrackedVoxelWalls())
-                items.push(
-                    sceneItem(
-                        placement.placementSeq(placement.voxelPlacementKey(entry.idx), 3e9 + entry.idx),
-                        entry.label,
-                        { kind: "voxel", idx: entry.idx },
-                        "wall:voxel",
-                    ),
-                );
+                items.push(sceneItem(placement.placementSeq(placement.voxelPlacementKey(entry.idx), 3e9 + entry.idx), entry.label, { kind: "voxel", idx: entry.idx }, "wall:voxel"));
             return items;
         },
     },

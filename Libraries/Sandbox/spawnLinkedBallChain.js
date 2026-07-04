@@ -7,8 +7,8 @@ import { spawnAgentChain } from "./spawnAgentChain.js";
 function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
 }
-export function spawnLinkedBallChain(state, anchorCell, options) {
-    return spawnAgentChain(state, anchorCell, {
+export function spawnLinkedBallChain(state, anchorIdx, options) {
+    return spawnAgentChain(state, anchorIdx, {
         leaderIndex: 0,
         headPropId: options.headBallType ?? options.ballType,
         bodyPropId: options.ballType,
