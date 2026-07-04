@@ -2,7 +2,7 @@ import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplan.js";
 import { createNavSession } from "../../Pathfinding/navSession.js";
-import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
+import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/navSession.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
@@ -64,7 +64,7 @@ export function createHpaGroundNavBehavior(state) {
             return;
         }
         if (vx === 0 && vy === 0) return;
-        steerRollToward(prop, vx, vy, config);
+        steerRollToward(prop, vx, vy, config, steering?.desiredSpeed);
     };
     return {
         id: HPA_GROUND_NAV_BEHAVIOR_ID,
@@ -163,7 +163,6 @@ export function createHpaGroundNavBehavior(state) {
         },
     };
 }
-
 import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 import { isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
@@ -186,8 +185,11 @@ const HPA_PATH_SETTINGS_SCRATCH = {};
 export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
     const hpaNav = physicsSettings.groundNavHpa;
     const settings = Object.assign(HPA_PATH_SETTINGS_SCRATCH, state.nav.settings);
+    const config = getKineticRollConfig(prop);
     settings.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor);
     settings.arrivalDistance = stopRadius;
+    settings.maxSpeed = config.maxSpeed;
+    settings.accel = config.accel;
     return settings;
 }
 /**
@@ -224,4 +226,3 @@ export function driveGroundNav({ prop, targetWorld, targetCellCol = null, target
     const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings);
     return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason, beltWasOnBelt: false };
 }
-

@@ -3,7 +3,7 @@ import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplan.js";
 import { createNavSession } from "../../Pathfinding/navSession.js";
 import { buildHpaGroundNavPathSettings, driveGroundNav, groundNavArrivedAtTarget } from "./hpaGroundNavBehavior.js";
-import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
+import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/navSession.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { EXPLORE_BEHAVIOR_ID } from "../sandboxCapabilities.js";
@@ -17,15 +17,7 @@ export function createExploreBehavior(state) {
     const getRun = (prop) => {
         let run = propRuns.get(prop.id);
         if (!run) {
-            run = {
-                targetWorld: null,
-                targetCellCol: null,
-                targetCellRow: null,
-                wasOnBelt: false,
-                beltHandoffCooldown: { frames: 0 },
-                hpaNav: createNavSession(),
-                rng: createSeededRng(prop.id),
-            };
+            run = { targetWorld: null, targetCellCol: null, targetCellRow: null, wasOnBelt: false, beltHandoffCooldown: { frames: 0 }, hpaNav: createNavSession(), rng: createSeededRng(prop.id) };
             propRuns.set(prop.id, run);
         }
         return run;
@@ -110,7 +102,7 @@ export function createExploreBehavior(state) {
             return;
         }
         if (vx === 0 && vy === 0) return;
-        steerRollToward(prop, vx, vy, config);
+        steerRollToward(prop, vx, vy, config, steering?.desiredSpeed);
     };
     return {
         id: EXPLORE_BEHAVIOR_ID,

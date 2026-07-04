@@ -70,7 +70,6 @@ export function replanPriorityFor(reason, isVisible) {
     if (reason === "noPath" || reason === "stuck" || reason === "offPath") return REPLAN_PRIORITY_VISIBLE;
     return REPLAN_PRIORITY_NORMAL;
 }
-
 import { FlatGraphView } from "./AStar.js";
 import { octileDistanceIdx, colRowToIndex } from "../Spatial/grid/GridUtils.js";
 export class HpaAbstractGraph extends FlatGraphView {
@@ -78,9 +77,8 @@ export class HpaAbstractGraph extends FlatGraphView {
         super({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
         this._candidateSeen = new Int32Array(nodeCount).fill(-1);
         this._candidateGen = -1;
-        
         const extCount = nodeCount + 2;
-        const maxEdges = (nodeCount * 8) + 128;
+        const maxEdges = nodeCount * 8 + 128;
         this._extNodeIdx = new Int32Array(extCount);
         this._targetConnectCost = new Int32Array(nodeCount);
         this._startEdgesTarget = new Int32Array(nodeCount);
@@ -198,10 +196,8 @@ export class HpaAbstractGraph extends FlatGraphView {
         return { extendedGraph, startTemp, targetTemp };
     }
 }
-
 import { snapNavGoalCellIndex } from "../Navigation/navGraph.js";
-import { findSabPathProgressIdx } from "./hpaPathSlot.js";
-
+import { findSabPathProgressIdx } from "./navSession.js";
 export const HPA_LOCAL_MAX_LEN = 96;
 export const HPA_REGION_CONNECT_MAX_LEN = 96;
 export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
@@ -284,4 +280,3 @@ export function findNearestOpenCellIdx(blocked, cols, rows, idx) {
         }
     return idx;
 }
-

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { findSabPathProgressIdx, computeSabPathSteering } from "../Libraries/Pathfinding/hpaPathSlot.js";
+import { findSabPathProgressIdx, computeSabPathSteering } from "../Libraries/Pathfinding/navSession.js";
 async function createGridWithNav() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
@@ -47,6 +47,60 @@ describe("hpaPathSlot", () => {
         });
         assert.ok(steering);
         assert.ok(Math.hypot(steering.desiredX, steering.desiredY) > 0);
+        terminateWorkerNavigation(navigation);
+    });
+    it("computeSabPathSteering slows down for sharp corners and arrival", async () => {
+        const { grid, navTopology, navigation } = await createGridWithNav();
+        const path = [
+            { col: 4, row: 4 },
+            { col: 5, row: 4 },
+            { col: 5, row: 5 },
+        ];
+        const worker = mockWorker(path, grid);
+        const start = grid.gridToWorld(4, 4);
+        const corner = grid.gridToWorld(5, 4);
+        const target = grid.gridToWorld(5, 5);
+
+        // Max speed 100, accel 200
+        const settings = {
+            pathWaypointArrival: 16,
+            arrivalDistance: 8,
+            pathOffPathDistance: 48,
+            maxSpeed: 100,
+            accel: 200,
+        };
+
+        // When starting at (4, 4), which is 16 pixels from corner (5, 4)
+        const steeringCorner = computeSabPathSteering(
+            { x: start.x, y: start.y },
+            worker,
+            0,
+            path.length,
+            target.x,
+            target.y,
+            grid,
+            navTopology,
+            settings
+        );
+        
+        assert.ok(steeringCorner.desiredSpeed < 100, `Expected slowdown near corner, got ${steeringCorner.desiredSpeed}`);
+
+        // When close to target (5, 5) - e.g. at (5, 4.8), 3.2 pixels away
+        const nearTarget = { x: target.x, y: target.y - 3.2 };
+        const steeringArrival = computeSabPathSteering(
+            nearTarget,
+            worker,
+            0,
+            path.length,
+            target.x,
+            target.y,
+            grid,
+            navTopology,
+            settings
+        );
+
+        assert.ok(steeringArrival.desiredSpeed < 50, `Expected arrival slowdown, got ${steeringArrival.desiredSpeed}`);
+        
         terminateWorkerNavigation(navigation);
     });
 });

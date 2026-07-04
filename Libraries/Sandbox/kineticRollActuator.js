@@ -39,7 +39,20 @@ function applyRollBrake(prop, dtSec, accel) {
     return true;
 }
 function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
-    applyKineticAcceleration(prop, dirX * accel, dirY * accel, dtSec);
+    const len = Math.hypot(dirX, dirY);
+    const dx = len > 0.001 ? dirX / len : 0;
+    const dy = len > 0.001 ? dirY / len : 0;
+    // Steering force: Desired Velocity - Current Velocity
+    const desiredVx = dx * maxSpeed;
+    const desiredVy = dy * maxSpeed;
+    const steerX = desiredVx - (prop.vx || 0);
+    const steerY = desiredVy - (prop.vy || 0);
+    const steerLen = Math.hypot(steerX, steerY);
+    if (steerLen > 0.001) {
+        const ax = (steerX / steerLen) * accel;
+        const ay = (steerY / steerLen) * accel;
+        applyKineticAcceleration(prop, ax, ay, dtSec);
+    }
     const speed = Math.hypot(prop.vx, prop.vy);
     if (speed > maxSpeed) {
         prop.vx = (prop.vx / speed) * maxSpeed;
@@ -48,9 +61,10 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
-export function steerRollToward(prop, dirX, dirY, config) {
+export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
-    prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: config.maxSpeed };
+    const limitSpeed = targetSpeed !== null ? Math.min(config.maxSpeed, targetSpeed) : config.maxSpeed;
+    prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: limitSpeed };
     wakeKineticBody(prop);
 }
 export function decelerateRoll(prop, config) {
