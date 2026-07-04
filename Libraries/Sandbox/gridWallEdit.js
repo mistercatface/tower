@@ -1,4 +1,4 @@
-import { cellBoundsAt, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { cellBoundsAtIdx, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
@@ -173,14 +173,14 @@ export function stampVoxelWallAt(state, idx, heightLevel) {
     const grid = state.obstacleGrid;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     grid.grid[idx] = level;
-    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
     return true;
 }
 export function clearVoxelWallAt(state, idx) {
     const grid = state.obstacleGrid;
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
-    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
     return true;
 }
 export function setVoxelWallHeightAt(state, idx, heightLevel) {
@@ -189,7 +189,7 @@ export function setVoxelWallHeightAt(state, idx, heightLevel) {
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     if (grid.grid[idx] === level) return true;
     grid.grid[idx] = level;
-    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
     return true;
 }
 export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
@@ -197,13 +197,13 @@ export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     setBoundary(grid, idx, side, { capHeightLevel: level, thicknessLevel }, true);
-    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
     return true;
 }
 export function clearRailWallAt(state, idx, side) {
     if (!clearPrimaryBoundaryAt(state, idx, side, true)) return false;
     const grid = state.obstacleGrid;
-    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
     return true;
 }
 export function listPlacedVoxelWalls(grid) {

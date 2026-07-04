@@ -6,7 +6,7 @@ import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
-import { cellBoundsAt, unionCellBounds } from "../DataStructures/CellRect.js";
+import { unionCellBounds } from "../DataStructures/CellRect.js";
 import propCatalog from "../../Assets/props/index.js";
 import {
     clearRailWallAt,

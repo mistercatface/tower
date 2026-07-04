@@ -47,10 +47,6 @@ export function growCellBoundsIdx(bounds, idx, cols) {
     if (row > bounds.endRow) bounds.endRow = row;
     return bounds;
 }
-/** @param {number} col @param {number} row @returns {CellBounds} */
-export function cellBoundsAt(col, row) {
-    return { startCol: col, endCol: col, startRow: row, endRow: row };
-}
 export function cellBoundsAtIdx(idx, cols) {
     const col = idx % cols;
     const row = (idx / cols) | 0;

@@ -7,7 +7,7 @@ import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { gridSettings } from "../../../Config/world.js";
 import { stampRailWallsQuiet } from "../../Sandbox/gridWallEdit.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
-import { cellBoundsAt, unionCellBounds } from "../../DataStructures/CellRect.js";
+import { cellBoundsAtIdx, unionCellBounds } from "../../DataStructures/CellRect.js";
 import { isNavWalkableAt } from "./walkableCells.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
@@ -284,9 +284,7 @@ export function stampGlobalRailMazeBelts(state, floorBelts) {
     for (let i = 0; i < floorBelts.length; i++) {
         const belt = floorBelts[i];
         if (!grid.writeFloorCell(belt.idx, belt.kind, belt.facingIndex)) continue;
-        const row = (belt.idx / grid.cols) | 0;
-        const col = belt.idx - row * grid.cols;
-        const cellBounds = cellBoundsAt(col, row);
+        const cellBounds = cellBoundsAtIdx(belt.idx, grid.cols);
         bounds = bounds ? unionCellBounds(bounds, cellBounds) : cellBounds;
     }
     if (bounds) FloorBelt.markZoneSubscriptionsDirty(state, bounds);
