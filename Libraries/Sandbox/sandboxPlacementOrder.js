@@ -54,9 +54,7 @@ export function createSandboxPlacementOrder(state) {
                 const idx = Number(key.slice(6));
                 if (!cellIsStaticWall(grid, idx)) continue;
                 const heightLevel = grid.grid[idx];
-                const col = idx % grid.cols;
-                const row = (idx / grid.cols) | 0;
-                placed.push({ col, row, heightLevel, label: `Voxel · (${col},${row}) · height ${heightLevel}`, idx });
+                placed.push({ heightLevel, label: `Voxel · idx ${idx} · height ${heightLevel}`, idx });
             }
             placed.sort((a, b) => this.placementSeq(voxelPlacementKey(a.idx), 0) - this.placementSeq(voxelPlacementKey(b.idx), 0));
             return placed;
@@ -73,15 +71,11 @@ export function createSandboxPlacementOrder(state) {
                 if (!railWallEdgeAt(grid, idx, side)) continue;
                 const info = getRailWallInfo(grid, idx, side);
                 if (!info) continue;
-                const col = idx % grid.cols;
-                const row = (idx / grid.cols) | 0;
                 placed.push({
-                    col,
-                    row,
                     side,
                     heightLevel: info.heightLevel,
                     thicknessLevel: info.thicknessLevel,
-                    label: `Rail · (${col},${row}) · ${info.sideLabel} · height ${info.heightLevel}`,
+                    label: `Rail · idx ${idx} · ${info.sideLabel} · height ${info.heightLevel}`,
                     idx,
                 });
             }
