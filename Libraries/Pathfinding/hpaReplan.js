@@ -192,7 +192,16 @@ export class HpaAbstractGraph extends FlatGraphView {
             extEdgeCosts[startWrite] = startEdgesCost[i];
             startWrite++;
         }
-        const extendedGraph = new HpaAbstractGraph(extNodeIdx, cols, extEdgeOffsets, extEdgeTargets, extEdgeCosts, extCount, totalEdges, this.nodeIds);
+        const extendedGraph = new FlatGraphView({
+            nodeIdx: extNodeIdx,
+            cols,
+            edgeOffsets: extEdgeOffsets,
+            edgeTargets: extEdgeTargets,
+            edgeCosts: extEdgeCosts,
+            nodeCount: extCount,
+            edgeWrite: totalEdges,
+            nodeIds: this.nodeIds
+        });
         return { extendedGraph, startTemp, targetTemp };
     }
 }

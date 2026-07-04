@@ -172,15 +172,31 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
         dy = steerY - y;
         dist = Math.hypot(dx, dy);
     }
+    // Dynamic safety clearance padding calculation based on bodyRadius, wall thickness, and cellSize
+    const bodyRadius = resolveBodyRadius(pose);
+    const wallProxies = [];
+    grid.appendStaticWallProxiesNearWorld(x, y, bodyRadius + grid.cellSize, wallProxies);
+    let wallThickness = 4; // Default thickness fallback
+    for (let i = 0; i < wallProxies.length; i++) {
+        const wall = wallProxies[i];
+        const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+        if (thickness > 0 && thickness < grid.cellSize) {
+            wallThickness = Math.max(wallThickness, thickness);
+        }
+    }
+    const freeHalfWidth = (grid.cellSize - wallThickness) * 0.5;
+    const centeredClearance = freeHalfWidth - bodyRadius;
+    const safetyPadding = Math.max(0, centeredClearance * 0.5);
+    const clearanceRadius = bodyRadius + safetyPadding;
+
     // Dynamic Line of Sight Steering (Lookahead Smoothing)
     const maxLookahead = 4;
-    const bodyRadius = resolveBodyRadius(pose);
     let lookaheadStep = step + 1;
     let validLookaheadStep = step;
     while (lookaheadStep < step + maxLookahead && lookaheadStep < pathLen) {
         const lx = grid.gridCenterXByIdx(worker.pathIdx(slot, lookaheadStep));
         const ly = grid.gridCenterYByIdx(worker.pathIdx(slot, lookaheadStep));
-        if (hasLineOfSight(x, y, lx, ly, grid, bodyRadius)) validLookaheadStep = lookaheadStep;
+        if (hasLineOfSight(x, y, lx, ly, grid, clearanceRadius)) validLookaheadStep = lookaheadStep;
         else break; // Stop looking ahead if line of sight is broken by walls/corners
         lookaheadStep++;
     }
@@ -203,43 +219,63 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     const accel = settings.accel ?? 600;
     let desiredSpeed = maxSpeed;
     // Cornering Slowdown check
-    if (step < pathLen - 1)
-        // Look ahead up to 3 waypoints for upcoming turns
-        for (let checkStep = step; checkStep < Math.min(step + 3, pathLen - 1); checkStep++) {
+    if (step < pathLen - 1) {
+        // 1. Turn at the immediate next waypoint 'step' (corner: steerX, steerY)
+        const nextIdx1 = worker.pathIdx(slot, step + 1);
+        const nextX1 = grid.gridCenterXByIdx(nextIdx1);
+        const nextY1 = grid.gridCenterYByIdx(nextIdx1);
+        const dx0 = steerX - x;
+        const dy0 = steerY - y;
+        const dx1 = nextX1 - steerX;
+        const dy1 = nextY1 - steerY;
+        const d0 = Math.hypot(dx0, dy0);
+        const d1 = Math.hypot(dx1, dy1);
+        if (d0 > 0.001 && d1 > 0.001) {
+            const cosTheta = (dx0 * dx1 + dy0 * dy1) / (d0 * d1);
+            if (cosTheta < 0.9) {
+                const cornerFactor = 0.35 + 0.65 * Math.max(0, cosTheta);
+                const cornerSpeed = maxSpeed * cornerFactor;
+                const distToCorner = d0;
+                const brakingDistance = (maxSpeed * maxSpeed - cornerSpeed * cornerSpeed) / (2 * accel);
+                if (distToCorner < brakingDistance) {
+                    const limit = Math.sqrt(cornerSpeed * cornerSpeed + 2 * accel * distToCorner);
+                    desiredSpeed = Math.min(desiredSpeed, limit);
+                }
+            }
+        }
+
+        // 2. Look ahead up to 2 waypoints further for upcoming turns (starting at step + 1)
+        for (let checkStep = step; checkStep < Math.min(step + 2, pathLen - 2); checkStep++) {
             const idx0 = worker.pathIdx(slot, checkStep);
             const idx1 = worker.pathIdx(slot, checkStep + 1);
-            const idx2 = checkStep + 2 < pathLen ? worker.pathIdx(slot, checkStep + 2) : -1;
-            if (idx2 !== -1) {
-                const x0 = grid.gridCenterXByIdx(idx0);
-                const y0 = grid.gridCenterYByIdx(idx0);
-                const x1 = grid.gridCenterXByIdx(idx1);
-                const y1 = grid.gridCenterYByIdx(idx1);
-                const x2 = grid.gridCenterXByIdx(idx2);
-                const y2 = grid.gridCenterYByIdx(idx2);
-                const dx1 = x1 - x0;
-                const dy1 = y1 - y0;
-                const dx2 = x2 - x1;
-                const dy2 = y2 - y1;
-                const d1 = Math.hypot(dx1, dy1);
-                const d2 = Math.hypot(dx2, dy2);
-                if (d1 > 0.001 && d2 > 0.001) {
-                    const cosTheta = (dx1 * dx2 + dy1 * dy2) / (d1 * d2);
-                    // cosTheta < 0.9 means a turn of more than ~25 degrees
-                    if (cosTheta < 0.9) {
-                        const cornerFactor = 0.35 + 0.65 * Math.max(0, cosTheta);
-                        const cornerSpeed = maxSpeed * cornerFactor;
-                        // Distance from entity to the corner waypoint x1, y1
-                        const distToCorner = Math.hypot(x1 - x, y1 - y);
-                        // Braking distance to slow down to cornerSpeed
-                        const brakingDistance = (maxSpeed * maxSpeed - cornerSpeed * cornerSpeed) / (2 * accel);
-                        if (distToCorner < brakingDistance) {
-                            const limit = Math.sqrt(cornerSpeed * cornerSpeed + 2 * accel * distToCorner);
-                            desiredSpeed = Math.min(desiredSpeed, limit);
-                        }
+            const idx2 = worker.pathIdx(slot, checkStep + 2);
+            const x0 = grid.gridCenterXByIdx(idx0);
+            const y0 = grid.gridCenterYByIdx(idx0);
+            const x1 = grid.gridCenterXByIdx(idx1);
+            const y1 = grid.gridCenterYByIdx(idx1);
+            const x2 = grid.gridCenterXByIdx(idx2);
+            const y2 = grid.gridCenterYByIdx(idx2);
+            const dx1_ch = x1 - x0;
+            const dy1_ch = y1 - y0;
+            const dx2_ch = x2 - x1;
+            const dy2_ch = y2 - y1;
+            const d1_ch = Math.hypot(dx1_ch, dy1_ch);
+            const d2_ch = Math.hypot(dx2_ch, dy2_ch);
+            if (d1_ch > 0.001 && d2_ch > 0.001) {
+                const cosTheta = (dx1_ch * dx2_ch + dy1_ch * dy2_ch) / (d1_ch * d2_ch);
+                if (cosTheta < 0.9) {
+                    const cornerFactor = 0.35 + 0.65 * Math.max(0, cosTheta);
+                    const cornerSpeed = maxSpeed * cornerFactor;
+                    const distToCorner = Math.hypot(x1 - x, y1 - y);
+                    const brakingDistance = (maxSpeed * maxSpeed - cornerSpeed * cornerSpeed) / (2 * accel);
+                    if (distToCorner < brakingDistance) {
+                        const limit = Math.sqrt(cornerSpeed * cornerSpeed + 2 * accel * distToCorner);
+                        desiredSpeed = Math.min(desiredSpeed, limit);
                     }
                 }
             }
         }
+    }
     // Arrival Slowdown check
     const decelRadius = 32.0; // 2 grid cells
     if (step >= pathLen - 1 || distToTarget < decelRadius) {
@@ -262,92 +298,97 @@ import {
     REPLAN_PRIORITY_TARGET,
 } from "./hpaReplan.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
-export function createNavSession() {
-    const navState = createNavState();
-    let replanClockMs = 0;
-    let pendingTargetReplan = false;
-    let committedPathSlot = -1;
-    let committedPathLen = 0;
-    let routeCommitFrames = 0;
-    const reset = (state) => {
-        pendingTargetReplan = false;
-        committedPathSlot = -1;
-        committedPathLen = 0;
-        routeCommitFrames = 0;
+export class HpaNavSession {
+    constructor() {
+        this.navState = createNavState();
+        this.replanClockMs = 0;
+        this.pendingTargetReplan = false;
+        this.committedPathSlot = -1;
+        this.committedPathLen = 0;
+        this.routeCommitFrames = 0;
+    }
+    reset(state) {
+        this.pendingTargetReplan = false;
+        this.committedPathSlot = -1;
+        this.committedPathLen = 0;
+        this.routeCommitFrames = 0;
         const nav = resolveNavRuntime(state);
-        nav.worker.releaseOwnedPathSlot(navState);
-        Object.assign(navState, createNavState());
-        replanClockMs = 0;
-    };
-    const markTargetChanged = () => {
-        pendingTargetReplan = true;
-    };
-    const isRoutePending = () => pendingTargetReplan || navState.hpaReplanRequestId !== 0;
-    const replan = (prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) => {
+        nav.worker.releaseOwnedPathSlot(this.navState);
+        Object.assign(this.navState, createNavState());
+        this.replanClockMs = 0;
+    }
+    markTargetChanged() {
+        this.pendingTargetReplan = true;
+    }
+    isRoutePending() {
+        return this.pendingTargetReplan || this.navState.hpaReplanRequestId !== 0;
+    }
+    replan(prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) {
         const nav = resolveNavRuntime(state);
-        return nav.session.requestReplan(navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, prop.navStepPenalty), priority);
-    };
-    const requestReplan = (prop, targetX, targetY, state, priority, reason) => {
-        const accepted = replan(prop, targetX, targetY, state, priority);
+        return nav.session.requestReplan(this.navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, prop.navStepPenalty), priority);
+    }
+    requestReplan(prop, targetX, targetY, state, priority, reason) {
+        const accepted = this.replan(prop, targetX, targetY, state, priority);
         if (accepted) {
-            pendingTargetReplan = false;
-            navState.pendingReplanReason = reason;
-            navState.stuckFrames = 0;
+            this.pendingTargetReplan = false;
+            this.navState.pendingReplanReason = reason;
+            this.navState.stuckFrames = 0;
             return { steering: null, replanReason: reason };
         }
         return { steering: null, replanReason: "cooldown" };
-    };
-    const syncRouteCommitState = () => {
-        if (!navHasPath(navState)) {
-            committedPathSlot = -1;
-            committedPathLen = 0;
-            routeCommitFrames = 0;
+    }
+    syncRouteCommitState() {
+        if (!navHasPath(this.navState)) {
+            this.committedPathSlot = -1;
+            this.committedPathLen = 0;
+            this.routeCommitFrames = 0;
             return;
         }
-        if (navState.pathSlot !== committedPathSlot || navState.pathLen !== committedPathLen) {
-            committedPathSlot = navState.pathSlot;
-            committedPathLen = navState.pathLen;
-            routeCommitFrames = 0;
+        if (this.navState.pathSlot !== this.committedPathSlot || this.navState.pathLen !== this.committedPathLen) {
+            this.committedPathSlot = this.navState.pathSlot;
+            this.committedPathLen = this.navState.pathLen;
+            this.routeCommitFrames = 0;
             return;
         }
-        routeCommitFrames++;
-    };
-    const softReplanAllowed = (stuckFrames, stuckReplanFrames) => {
+        this.routeCommitFrames++;
+    }
+    softReplanAllowed(stuckFrames, stuckReplanFrames) {
         return stuckFrames > Math.max(1, Math.floor(stuckReplanFrames * 0.5));
-    };
-    const update = (prop, targetX, targetY, state, dtMs, pathSettings) => {
-        replanClockMs += dtMs;
+    }
+    update(prop, targetX, targetY, state, dtMs, pathSettings) {
+        this.replanClockMs += dtMs;
         const nav = resolveNavRuntime(state);
         const settings = nav.settings;
-        const inFlight = nav.session.isReplanInFlight(navState);
-        const routePending = pendingTargetReplan || navState.hpaReplanRequestId !== 0;
+        const inFlight = nav.session.isReplanInFlight(this.navState);
+        const routePending = this.pendingTargetReplan || this.navState.hpaReplanRequestId !== 0;
         if (inFlight || routePending) {
-            navState.stuckFrames = 0;
-            navState.lastX = prop.x;
-            navState.lastY = prop.y;
-        } else trackNavStuck(navState, prop.x, prop.y, settings.stuckMoveThreshold);
+            this.navState.stuckFrames = 0;
+            this.navState.lastX = prop.x;
+            this.navState.lastY = prop.y;
+        } else trackNavStuck(this.navState, prop.x, prop.y, settings.stuckMoveThreshold);
         const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props");
-        const stuckFrames = navState.stuckFrames;
+        const stuckFrames = this.navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
-        syncRouteCommitState();
-        if (!inFlight && obstacleEpochReplanDue(navState, nav.topologyKey()))
-            if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) return requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
-        let sandboxReason = sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY);
-        if (sandboxReason === "targetMoved" && !softReplanAllowed(stuckFrames, stuckReplanFrames)) sandboxReason = null;
+        this.syncRouteCommitState();
+        if (!inFlight && obstacleEpochReplanDue(this.navState, nav.topologyKey()))
+            if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
+        let sandboxReason = sandboxReplanReason(this.navState, this.pendingTargetReplan, inFlight, targetX, targetY);
+        if (sandboxReason === "targetMoved" && !this.softReplanAllowed(stuckFrames, stuckReplanFrames)) sandboxReason = null;
         if (sandboxReason && sandboxReplanAllowed(sandboxReason, isVisible, stuckFrames, stuckReplanFrames))
-            return requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, isVisible), sandboxReason);
-        const idleReason = idlePathReplanReason(navState, settings, inFlight);
-        if (idleReason && idlePathReplanAllowed(navState, idleReason, isVisible, stuckReplanFrames))
-            return requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);
-        if (!navHasPath(navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
-        const steering = computeSabPathSteering(agentPose(prop), nav.worker, navState.pathSlot, navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, navState);
-        if (steering && !inFlight && offPathReplanDue(steering, navState, replanClockMs))
-            if (softReplanAllowed(stuckFrames, stuckReplanFrames) && obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
-                navState.lastOffPathReplan = replanClockMs;
-                return requestReplan(prop, targetX, targetY, state, replanPriorityFor("offPath", isVisible), "offPath");
+            return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, isVisible), sandboxReason);
+        const idleReason = idlePathReplanReason(this.navState, settings, inFlight);
+        if (idleReason && idlePathReplanAllowed(this.navState, idleReason, isVisible, stuckReplanFrames))
+            return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);
+        if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
+        const steering = computeSabPathSteering(agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
+        if (steering && !inFlight && offPathReplanDue(steering, this.navState, this.replanClockMs))
+            if (this.softReplanAllowed(stuckFrames, stuckReplanFrames) && obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
+                this.navState.lastOffPathReplan = this.replanClockMs;
+                return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor("offPath", isVisible), "offPath");
             }
         return { steering, replanReason: null };
-    };
-    const getCommitStatus = () => ({ routeCommitFrames });
-    return { navState, reset, markTargetChanged, replan, update, isRoutePending, getCommitStatus };
+    }
+    getCommitStatus() {
+        return { routeCommitFrames: this.routeCommitFrames };
+    }
 }

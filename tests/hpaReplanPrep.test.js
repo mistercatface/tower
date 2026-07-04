@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { HpaAbstractGraph } from "../Libraries/Pathfinding/hpaReplanPrep.js";
+import { HpaAbstractGraph } from "../Libraries/Pathfinding/hpaReplan.js";
 
 describe("HpaAbstractGraph Suite", () => {
     it("can collect temporary connect candidates", () => {

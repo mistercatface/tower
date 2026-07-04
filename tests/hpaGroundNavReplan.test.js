@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { obstacleEpochReplanDue, obstacleReplanAllowed, idlePathReplanReason, idlePathReplanAllowed, trackNavStuck, offPathReplanDue, sandboxReplanReason, sandboxReplanAllowed, replanPriorityFor, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest } from "../Libraries/Pathfinding/hpaReplan.js";
-import { createNavSession } from "../Libraries/Pathfinding/navSession.js";
+import { HpaNavSession } from "../Libraries/Pathfinding/navSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 describe("hpa ground nav replan policy", () => {
@@ -103,7 +103,7 @@ describe("hpa ground nav replan policy", () => {
                 },
             },
         };
-        const session = createNavSession();
+        const session = new HpaNavSession();
         Object.assign(session.navState, { pathSlot: 0, pathLen: 2, topologyKey: "", lastOffPathReplan: -999 });
         const prop = { x: 16, y: 160, radius: 2 };
         const target = grid.gridToWorld(5, 4);
