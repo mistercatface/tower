@@ -192,17 +192,10 @@ export class FloorBelt {
         const bounds = emptyCellBounds();
         const cellSize = doc.cellSize ?? grid.cellSize;
         let floorNavChanged = false;
-        const toLocalIdx = (idx) => {
-            const col = idx % doc.cols;
-            const row = Math.floor(idx / doc.cols);
-            const x = doc.origin.minX + col * cellSize + half;
-            const y = doc.origin.minY + row * cellSize + half;
-            return grid.worldToIdx(x, y);
-        };
         for (let i = 0; i < doc.floorBelts.length; i++) {
             const { idx: docIdx, kind, facingIndex } = doc.floorBelts[i];
             if (!FloorBelt.isBelt(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
-            const idx = toLocalIdx(docIdx);
+            const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
             if (idx < 0 || idx >= grid.cols * grid.rows) continue;
             const prevKind = grid.floorStore.kind[idx];
             const prevFacing = grid.floorStore.facing[idx];

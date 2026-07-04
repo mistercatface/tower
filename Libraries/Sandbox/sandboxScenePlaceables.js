@@ -1,6 +1,6 @@
 import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
 import { FloorBelt } from "../Spatial/grid/FloorCell.js";
-import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+import { findGridAnchoredFloorPropAtIdx } from "../Spatial/zones/floorShapes.js";
 import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
@@ -142,7 +142,7 @@ export const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const idx = grid.worldToIdx(worldX, worldY);
-            if (!FloorBelt.canStampAt(state, idx, findGridAnchoredFloorPropAtCell)) return false;
+            if (!FloorBelt.canStampAt(state, idx, findGridAnchoredFloorPropAtIdx)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!applyFloorCellEdit(state, idx, kind, 0)) return false;
             ctx.placement.touchFloorPlacement(idx);

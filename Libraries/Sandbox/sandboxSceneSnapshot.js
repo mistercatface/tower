@@ -70,9 +70,7 @@ function expandGridForSnapshot(state, doc) {
     const bounds = emptyAabb();
     const includeWorldPoint = (x, y) => growAabbFromCenterInto(bounds, x, y, cellHalfSize, cellHalfSize);
     const includeDocIdx = (idx) => {
-        const col = idx % doc.cols;
-        const row = Math.floor(idx / doc.cols);
-        includeWorldPoint(doc.origin.minX + col * cellSize + cellHalfSize, doc.origin.minY + row * cellSize + cellHalfSize);
+        includeWorldPoint(doc.origin.minX + (idx % doc.cols) * cellSize + cellHalfSize, doc.origin.minY + Math.floor(idx / doc.cols) * cellSize + cellHalfSize);
     };
     for (let i = 0; i < doc.voxels.length; i++) includeDocIdx(doc.voxels[i].idx);
     for (let i = 0; i < doc.railWalls.length; i++) includeDocIdx(doc.railWalls[i].idx);

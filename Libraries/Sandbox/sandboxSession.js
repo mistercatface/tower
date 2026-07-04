@@ -4,7 +4,7 @@ import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { FloorBelt } from "../Spatial/grid/FloorCell.js";
-import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
+import { findGridAnchoredFloorPropAtIdx } from "../Spatial/zones/floorShapes.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { unionCellBounds } from "../DataStructures/CellRect.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -176,7 +176,7 @@ export function createSandboxSession(state) {
                 clearSelection();
                 return false;
             }
-            if (!FloorBelt.canStampAt(state, targetIdx, findGridAnchoredFloorPropAtCell)) return false;
+            if (!FloorBelt.canStampAt(state, targetIdx, findGridAnchoredFloorPropAtIdx)) return false;
             const kind = grid.floorStore.kind[idx];
             const facingIndex = grid.floorStore.facing[idx];
             grid.clearFloorCell(idx);

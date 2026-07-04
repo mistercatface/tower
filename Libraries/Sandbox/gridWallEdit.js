@@ -147,24 +147,16 @@ export function applyStampedGridWallsFromSnapshot(state, doc) {
     const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
     const cellSize = doc.cellSize ?? grid.cellSize;
-    
-    const toLocalIdx = (idx) => {
-        const col = idx % doc.cols;
-        const row = Math.floor(idx / doc.cols);
-        const x = doc.origin.minX + col * cellSize + half;
-        const y = doc.origin.minY + row * cellSize + half;
-        return grid.worldToIdx(x, y);
-    };
     for (let i = 0; i < doc.voxels.length; i++) {
         const { idx: docIdx, heightLevel } = doc.voxels[i];
-        const idx = toLocalIdx(docIdx);
+        const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
         if (idx < 0 || idx >= grid.grid.length) continue;
         grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
         growCellBoundsIdx(bounds, idx, grid.cols);
     }
     for (let i = 0; i < doc.railWalls.length; i++) {
         const { idx: docIdx, side, heightLevel, thicknessLevel } = doc.railWalls[i];
-        const idx = toLocalIdx(docIdx);
+        const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
         if (idx < 0 || idx >= grid.grid.length) continue;
         setBoundary(grid, idx, side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
         growCellBoundsIdx(bounds, idx, grid.cols);
