@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
 import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
 import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";

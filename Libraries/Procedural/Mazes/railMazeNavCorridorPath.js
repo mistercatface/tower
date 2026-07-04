@@ -1,14 +1,13 @@
 import { FlatGridSearch, SearchState, FlatGridView } from "../../Pathfinding/AStar.js";
 import { corridorPathHitsOccupied } from "./railMazeCorridorFootprint.js";
 import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
-import { colRowToIndex, gridCellLayout } from "../../Spatial/grid/GridUtils.js";
+import { gridCellLayout } from "../../Spatial/grid/GridUtils.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 let pathScratch = new Int32Array(512);
 export function railMazeBeltZoneGridBounds(grid, railConfig) {
-    const cellSize = grid.cellSize;
-    const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(railConfig);
-    const baseCol = grid.worldCol(originCol * cellSize);
-    const baseRow = grid.worldRow(originRow * cellSize);
+    const { originIdx, cols, rows } = getMapGenBoundsStampExtent(grid, railConfig);
+    const baseCol = originIdx % grid.cols;
+    const baseRow = (originIdx / grid.cols) | 0;
     return { startCol: Math.max(0, baseCol), endCol: Math.min(grid.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(grid.rows - 1, baseRow + rows - 1) };
 }
 export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {

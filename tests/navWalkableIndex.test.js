@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { createNavWalkableCandidateMask, isNavWalkableAt, writeNavWalkableFlags } from "../Libraries/Procedural/Mazes/walkableCells.js";
 
 describe("navWalkableIndex", () => {

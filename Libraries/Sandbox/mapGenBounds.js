@@ -3,74 +3,93 @@ import { worldBoundsFromCellOriginInto } from "../Spatial/grid/GridCoords.js";
 export const MAP_GEN_KINDS = ["cavern", "rail", "railMaze", "erase"];
 export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", railMaze: "#ba68c8", erase: "#f44336" };
 export function createDefaultMapGenBoundsConfig() {
-    return { boundsMode: "rect", boundsCol: -8, boundsRow: -8, boundsCols: 32, boundsRows: 32, centerCol: 8, centerRow: 8, outerRadiusCells: 16, donutThicknessCells: 4 };
+    return { boundsMode: "rect", boundsIdx: 0, boundsCols: 32, boundsRows: 32, centerIdx: 0, outerRadiusCells: 16, donutThicknessCells: 4 };
 }
 export function createMapGenBoundsAabbCache() {
-    return { aabb: createAabb(), boundsMode: "", boundsCol: NaN, boundsRow: NaN, boundsCols: NaN, boundsRows: NaN, centerCol: NaN, centerRow: NaN, outerRadiusCells: NaN, donutThicknessCells: NaN };
+    return { aabb: createAabb(), boundsMode: "", boundsIdx: -1, boundsCols: NaN, boundsRows: NaN, centerIdx: -1, outerRadiusCells: NaN, donutThicknessCells: NaN };
 }
 export function getInnerRadiusCells(config) {
     if (config.boundsMode !== "donut") return 0;
     return Math.max(0, config.outerRadiusCells - config.donutThicknessCells);
 }
-export function getMapGenBoundsAabbInto(out, config, cellSize) {
-    if (config.boundsMode === "rect") return worldBoundsFromCellOriginInto(out, config.boundsCol, config.boundsRow, config.boundsCols, config.boundsRows, cellSize);
+export function getMapGenBoundsAabbInto(grid, out, config, cellSize) {
+    if (config.boundsMode === "rect") {
+        const minX = grid.gridCenterXByIdx(config.boundsIdx) - cellSize * 0.5;
+        const minY = grid.gridCenterYByIdx(config.boundsIdx) - cellSize * 0.5;
+        return minCornerAabbInto(out, minX, minY, config.boundsCols * cellSize, config.boundsRows * cellSize);
+    }
     const r = Math.max(1, config.outerRadiusCells) * cellSize;
-    const cx = (config.centerCol + 0.5) * cellSize;
-    const cy = (config.centerRow + 0.5) * cellSize;
+    const cx = grid.gridCenterXByIdx(config.centerIdx);
+    const cy = grid.gridCenterYByIdx(config.centerIdx);
     return minCornerAabbInto(out, cx - r, cy - r, r * 2, r * 2);
 }
-export function getMapGenBoundsAabb(config, cellSize) {
-    return getMapGenBoundsAabbInto(createAabb(), config, cellSize);
+export function getMapGenBoundsAabb(grid, config, cellSize) {
+    return getMapGenBoundsAabbInto(grid, createAabb(), config, cellSize);
 }
-export function getMapGenBoundsCenterWorld(config, cellSize) {
-    if (config.boundsMode === "rect") return { x: (config.boundsCol + config.boundsCols * 0.5) * cellSize, y: (config.boundsRow + config.boundsRows * 0.5) * cellSize };
-    return { x: (config.centerCol + 0.5) * cellSize, y: (config.centerRow + 0.5) * cellSize };
-}
-export function getMapGenBoundsStampExtent(config) {
+export function getMapGenBoundsCenterWorld(grid, config, cellSize) {
     if (config.boundsMode === "rect")
-        return { originCol: config.boundsCol, originRow: config.boundsRow, cols: Math.max(1, Math.round(config.boundsCols)), rows: Math.max(1, Math.round(config.boundsRows)) };
+        return { x: grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5, y: grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5 };
+    return { x: grid.gridCenterXByIdx(config.centerIdx), y: grid.gridCenterYByIdx(config.centerIdx) };
+}
+export function getMapGenBoundsStampExtent(grid, config) {
+    if (config.boundsMode === "rect") return { originIdx: config.boundsIdx, cols: Math.max(1, Math.round(config.boundsCols)), rows: Math.max(1, Math.round(config.boundsRows)) };
     const r = Math.max(1, Math.round(config.outerRadiusCells));
-    return { originCol: config.centerCol - r, originRow: config.centerRow - r, cols: r * 2, rows: r * 2 };
+    const originIdx = config.centerIdx - r - r * grid.cols;
+    return { originIdx, cols: r * 2, rows: r * 2 };
 }
-export function isGlobalCellInMapGenBounds(config, globalCol, globalRow) {
-    if (config.boundsMode === "rect")
-        return globalCol >= config.boundsCol && globalCol < config.boundsCol + config.boundsCols && globalRow >= config.boundsRow && globalRow < config.boundsRow + config.boundsRows;
-    const dist = Math.hypot(globalCol - config.centerCol, globalRow - config.centerRow);
+export function isIdxInMapGenBounds(config, grid, idx) {
+    if (config.boundsMode === "rect") {
+        const dCol = (idx % grid.cols) - (config.boundsIdx % grid.cols);
+        const dRow = ((idx / grid.cols) | 0) - ((config.boundsIdx / grid.cols) | 0);
+        return dCol >= 0 && dCol < config.boundsCols && dRow >= 0 && dRow < config.boundsRows;
+    }
+    const dCol = (idx % grid.cols) - (config.centerIdx % grid.cols);
+    const dRow = ((idx / grid.cols) | 0) - ((config.centerIdx / grid.cols) | 0);
+    const dist = Math.hypot(dCol, dRow);
     if (config.boundsMode === "circle") return dist <= config.outerRadiusCells;
     const innerR = getInnerRadiusCells(config);
     return dist <= config.outerRadiusCells && dist >= innerR;
 }
-export function forEachGlobalCellInMapGenBounds(config, fn) {
-    const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
-    for (let lr = 0; lr < rows; lr++)
-        for (let lc = 0; lc < cols; lc++) {
-            const gc = originCol + lc;
-            const gr = originRow + lr;
-            if (isGlobalCellInMapGenBounds(config, gc, gr)) fn(gc, gr);
+export function forEachGlobalCellInMapGenBounds(grid, config, fn) {
+    const { originIdx, cols, rows } = getMapGenBoundsStampExtent(grid, config);
+    for (let i = 0; i < rows; i++) {
+        const rowStartIdx = originIdx + i * grid.cols;
+        for (let j = 0; j < cols; j++) {
+            const idx = rowStartIdx + j;
+            if (idx >= 0 && idx < grid.grid.length && isIdxInMapGenBounds(config, grid, idx)) fn(idx);
         }
+    }
 }
-export function applyMapGenShapeMask(cells, cols, rows, config, originCol, originRow) {
+export function applyMapGenShapeMask(grid, cells, cols, rows, config, originIdx) {
     if (config.boundsMode === "rect") return;
     const outerR = Math.max(1, config.outerRadiusCells);
     const innerR = getInnerRadiusCells(config);
+    const baseCol = originIdx % grid.cols;
+    const baseRow = (originIdx / grid.cols) | 0;
+    const centerCol = config.centerIdx % grid.cols;
+    const centerRow = (config.centerIdx / grid.cols) | 0;
     for (let lr = 0; lr < rows; lr++)
         for (let lc = 0; lc < cols; lc++) {
-            const gc = originCol + lc;
-            const gr = originRow + lr;
-            const dist = Math.hypot(gc - config.centerCol, gr - config.centerRow);
+            const c = baseCol + lc;
+            const r = baseRow + lr;
+            const dist = Math.hypot(c - centerCol, r - centerRow);
             if (dist > outerR || dist < innerR) cells[lr * cols + lc] = 0;
         }
 }
-export function centerMapGenBoundsOnViewport(viewport, config, cellSize) {
+export function centerMapGenBoundsOnViewport(grid, viewport, config, cellSize) {
+    const colOffset = Math.round(grid.minX / cellSize);
+    const rowOffset = Math.round(grid.minY / cellSize);
     if (config.boundsMode === "rect") {
         const minX = viewport.x - (config.boundsCols * cellSize) / 2;
         const minY = viewport.y - (config.boundsRows * cellSize) / 2;
-        config.boundsCol = Math.round(minX / cellSize);
-        config.boundsRow = Math.round(minY / cellSize);
+        const c = Math.round(minX / cellSize) - colOffset;
+        const r = Math.round(minY / cellSize) - rowOffset;
+        config.boundsIdx = grid.idx(c, r);
         return;
     }
-    config.centerCol = Math.round(viewport.x / cellSize);
-    config.centerRow = Math.round(viewport.y / cellSize);
+    const c = Math.round(viewport.x / cellSize) - colOffset;
+    const r = Math.round(viewport.y / cellSize) - rowOffset;
+    config.centerIdx = grid.idx(c, r);
 }
 export function syncMapGenBoundsSizeFromPlayArea(playConfig, config) {
     if (config.boundsMode === "rect") {
@@ -80,16 +99,20 @@ export function syncMapGenBoundsSizeFromPlayArea(playConfig, config) {
     }
     config.outerRadiusCells = Math.max(1, Math.round(Math.min(playConfig.playAreaCols, playConfig.playAreaRows) / 2));
 }
-export function migrateMapGenBoundsForMode(config) {
+export function migrateMapGenBoundsForMode(grid, config) {
     if (config.boundsMode === "rect") {
-        config.centerCol = config.boundsCol + Math.floor(config.boundsCols / 2);
-        config.centerRow = config.boundsRow + Math.floor(config.boundsRows / 2);
+        const boundsCol = config.boundsIdx % grid.cols;
+        const boundsRow = (config.boundsIdx / grid.cols) | 0;
+        const centerCol = boundsCol + Math.floor(config.boundsCols / 2);
+        const centerRow = boundsRow + Math.floor(config.boundsRows / 2);
+        config.centerIdx = grid.idx(centerCol, centerRow);
         config.outerRadiusCells = Math.max(1, Math.round(Math.min(config.boundsCols, config.boundsRows) / 2));
         return;
     }
     const r = Math.max(1, config.outerRadiusCells);
-    config.boundsCol = config.centerCol - r;
-    config.boundsRow = config.centerRow - r;
+    const centerCol = config.centerIdx % grid.cols;
+    const centerRow = (config.centerIdx / grid.cols) | 0;
+    config.boundsIdx = grid.idx(centerCol - r, centerRow - r);
     config.boundsCols = r * 2;
     config.boundsRows = r * 2;
     if (config.boundsMode === "donut") config.donutThicknessCells = Math.max(1, Math.min(config.donutThicknessCells, config.outerRadiusCells - 1));
@@ -97,28 +120,24 @@ export function migrateMapGenBoundsForMode(config) {
 function mapGenBoundsCacheMatches(cache, config) {
     return (
         cache.boundsMode === config.boundsMode &&
-        cache.boundsCol === config.boundsCol &&
-        cache.boundsRow === config.boundsRow &&
+        cache.boundsIdx === config.boundsIdx &&
         cache.boundsCols === config.boundsCols &&
         cache.boundsRows === config.boundsRows &&
-        cache.centerCol === config.centerCol &&
-        cache.centerRow === config.centerRow &&
+        cache.centerIdx === config.centerIdx &&
         cache.outerRadiusCells === config.outerRadiusCells &&
         cache.donutThicknessCells === config.donutThicknessCells
     );
 }
-export function refreshMapGenBoundsAabb(cache, config, cellSize) {
+export function refreshMapGenBoundsAabb(grid, cache, config, cellSize) {
     if (mapGenBoundsCacheMatches(cache, config)) return;
     cache.boundsMode = config.boundsMode;
-    cache.boundsCol = config.boundsCol;
-    cache.boundsRow = config.boundsRow;
+    cache.boundsIdx = config.boundsIdx;
     cache.boundsCols = config.boundsCols;
     cache.boundsRows = config.boundsRows;
-    cache.centerCol = config.centerCol;
-    cache.centerRow = config.centerRow;
+    cache.centerIdx = config.centerIdx;
     cache.outerRadiusCells = config.outerRadiusCells;
     cache.donutThicknessCells = config.donutThicknessCells;
-    getMapGenBoundsAabbInto(cache.aabb, config, cellSize);
+    getMapGenBoundsAabbInto(grid, cache.aabb, config, cellSize);
 }
 export function getMapGenBoundsConfig(editor, kind) {
     if (kind === "cavern") return editor.cavernConfig;
@@ -129,20 +148,37 @@ export function getMapGenBoundsConfig(editor, kind) {
 export function getMapGenBoundsAabbCache(editor, kind) {
     return editor.mapBoundsPreview[kind];
 }
-export function refreshAllMapGenBoundsPreviews(editor, cellSize) {
+export function refreshAllMapGenBoundsPreviews(grid, editor, cellSize) {
     for (let i = 0; i < MAP_GEN_KINDS.length; i++) {
         const kind = MAP_GEN_KINDS[i];
-        refreshMapGenBoundsAabb(getMapGenBoundsAabbCache(editor, kind), getMapGenBoundsConfig(editor, kind), cellSize);
+        refreshMapGenBoundsAabb(grid, getMapGenBoundsAabbCache(editor, kind), getMapGenBoundsConfig(editor, kind), cellSize);
     }
 }
-export function syncMapGenBoundsFromPlay(viewport, playConfig, config, cellSize, { center = true, syncSizeFromPlay = false } = {}) {
+export function syncMapGenBoundsFromPlay(grid, viewport, playConfig, config, cellSize, { center = true, syncSizeFromPlay = false } = {}) {
     if (syncSizeFromPlay) syncMapGenBoundsSizeFromPlayArea(playConfig, config);
-    if (center) centerMapGenBoundsOnViewport(viewport, config, cellSize);
+    if (center) centerMapGenBoundsOnViewport(grid, viewport, config, cellSize);
 }
-export function isIdxInMapGenBounds(config, grid, idx) {
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    const globalCol = ((grid.minX / grid.cellSize) | 0) + col;
-    const globalRow = ((grid.minY / grid.cellSize) | 0) + row;
-    return isGlobalCellInMapGenBounds(config, globalCol, globalRow);
+export function registerMapGenBoundsGridExpansionListener(state) {
+    const grid = state.obstacleGrid;
+    if (grid._mapGenExpansionListenerRegistered) return;
+    grid._mapGenExpansionListenerRegistered = true;
+    const oldOnBoundsExpansion = grid.onBoundsExpansion;
+    grid.onBoundsExpansion = (colOffset, rowOffset, oldCols, oldRows) => {
+        if (oldOnBoundsExpansion) oldOnBoundsExpansion(colOffset, rowOffset, oldCols, oldRows);
+        for (let i = 0; i < MAP_GEN_KINDS.length; i++) {
+            const kind = MAP_GEN_KINDS[i];
+            const config = getMapGenBoundsConfig(state.editor, kind);
+            if (!config) continue;
+            if (config.boundsMode === "rect") {
+                const oldCol = config.boundsIdx % oldCols;
+                const oldRow = (config.boundsIdx / oldCols) | 0;
+                config.boundsIdx = grid.idx(oldCol + colOffset, oldRow + rowOffset);
+            } else {
+                const oldCol = config.centerIdx % oldCols;
+                const oldRow = (config.centerIdx / oldCols) | 0;
+                config.centerIdx = grid.idx(oldCol + colOffset, oldRow + rowOffset);
+            }
+            migrateMapGenBoundsForMode(grid, config);
+        }
+    };
 }

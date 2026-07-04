@@ -55,7 +55,7 @@ function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreview
         options: BOUNDS_SHAPE_OPTIONS,
         onChange: (value) => {
             config.boundsMode = value;
-            migrateMapGenBoundsForMode(config);
+            migrateMapGenBoundsForMode(state.obstacleGrid, config);
             refreshMapGenPanelInputs();
             updateModeVisibility();
             onPreviewChange();
@@ -67,8 +67,8 @@ function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreview
             {
                 label: "Center bounds on camera",
                 onClick: () => {
-                    syncMapGenBoundsFromPlay(state.viewport, playConfig, config, gridSettings.cellSize);
-                    migrateMapGenBoundsForMode(config);
+                    syncMapGenBoundsFromPlay(state.obstacleGrid, state.viewport, playConfig, config, gridSettings.cellSize);
+                    migrateMapGenBoundsForMode(state.obstacleGrid, config);
                     refreshMapGenPanelInputs();
                     onPreviewChange();
                 },
@@ -78,23 +78,25 @@ function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreview
     );
     const setBound = (setter) => (v) => {
         setter(v);
-        migrateMapGenBoundsForMode(config);
+        migrateMapGenBoundsForMode(state.obstacleGrid, config);
     };
     const addBound = (parent, label, get, set, opts) => appendSyncedNumberField(parent, label, get, setBound(set), onPreviewChange, opts);
     addBound(
         rectFields,
         "Bounds col",
-        () => config.boundsCol,
+        () => config.boundsIdx % state.obstacleGrid.cols,
         (v) => {
-            config.boundsCol = Math.round(v);
+            const r = (config.boundsIdx / state.obstacleGrid.cols) | 0;
+            config.boundsIdx = state.obstacleGrid.idx(Math.round(v), r);
         },
     );
     addBound(
         rectFields,
         "Bounds row",
-        () => config.boundsRow,
+        () => (config.boundsIdx / state.obstacleGrid.cols) | 0,
         (v) => {
-            config.boundsRow = Math.round(v);
+            const c = config.boundsIdx % state.obstacleGrid.cols;
+            config.boundsIdx = state.obstacleGrid.idx(c, Math.round(v));
         },
     );
     addBound(
@@ -118,17 +120,19 @@ function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreview
     addBound(
         circleFields,
         "Center col",
-        () => config.centerCol,
+        () => config.centerIdx % state.obstacleGrid.cols,
         (v) => {
-            config.centerCol = Math.round(v);
+            const r = (config.centerIdx / state.obstacleGrid.cols) | 0;
+            config.centerIdx = state.obstacleGrid.idx(Math.round(v), r);
         },
     );
     addBound(
         circleFields,
         "Center row",
-        () => config.centerRow,
+        () => (config.centerIdx / state.obstacleGrid.cols) | 0,
         (v) => {
-            config.centerRow = Math.round(v);
+            const c = config.centerIdx % state.obstacleGrid.cols;
+            config.centerIdx = state.obstacleGrid.idx(c, Math.round(v));
         },
     );
     addBound(

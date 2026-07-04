@@ -1,5 +1,5 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
-import { colRowToIndex, forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
+import { forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 import { findNearestOpenCellIdx } from "./hpaReplan.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
@@ -77,7 +77,7 @@ export class HpaRegionGraph {
     }
     collectRegionIdsInBounds(bounds) {
         const ids = new Set();
-        forEachDenseCellInBounds(bounds, this.frame.cols, (_col, _row, idx) => {
+        forEachDenseCellInBounds(bounds, this.frame.cols, (idx) => {
             const node = this.nodeForCell(idx);
             if (node) ids.add(node.id);
         });
@@ -168,7 +168,7 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
 function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
     const { cols } = frame;
     const touched = new Set();
-    forEachDenseCellInBounds(bounds, cols, (_col, _row, idx) => {
+    forEachDenseCellInBounds(bounds, cols, (idx) => {
         if (!blocked[idx]) return;
         const node = graph.stripCellFromRegion(idx);
         if (!node) return;
@@ -194,7 +194,7 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
         for (let i = 0; i < node.cells.length; i++) cells.add(node.cells[i]);
         graph.removeRegion(node);
     }
-    forEachDenseCellInBounds(bounds, cols, (_col, _row, idx) => {
+    forEachDenseCellInBounds(bounds, cols, (idx) => {
         if (!blocked[idx]) cells.add(idx);
     });
     if (cells.size === 0) return { repackedIds: [], nodeIdCounter: graph.nodeIdCounter, distToWall };
@@ -205,7 +205,9 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
 function connectAllNodes(navGraph, blocked, frame, graph) {
     graph.clearAllEdges();
     const { cols, rows } = frame;
-    forEachDenseCellInBounds(cellBoundsForGrid(cols, rows), cols, (col, row, idx) => {
+    forEachDenseCellInBounds(cellBoundsForGrid(cols, rows), cols, (idx) => {
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
         const node = graph.nodeForCell(idx);
         if (!node) return;
         if (col + 1 < cols) {
@@ -228,7 +230,7 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
 function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY) {
     const { cols, rows } = frame;
     const { col, row } = snapshotWorldToGrid(frame, seedWorldX, seedWorldY);
-    const seedIdx = colRowToIndex(col, row, cols);
+    const seedIdx = row * cols + col;
     const startIdx = findNearestOpenCellIdx(blocked, cols, rows, seedIdx);
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;

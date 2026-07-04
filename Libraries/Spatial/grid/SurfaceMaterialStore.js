@@ -131,7 +131,7 @@ export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPer
         return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
     }
     if (ownerKind === SURFACE_MATERIAL_OWNER.WallFace) {
-        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, face.gridCol, face.gridRow, cellsPerChunk, baseProfileId) : baseProfileId;
+        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, face.gridIdx % grid.cols, (face.gridIdx / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
         if (face.isEdgeRail) return grid.surfaceMaterials.getEdgeByIdx(face.gridIdx, face.gridSide) ?? chunkBase;
         return grid.surfaceMaterials.getCellAtIdx(face.gridIdx) ?? chunkBase;
     }

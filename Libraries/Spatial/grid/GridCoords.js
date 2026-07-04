@@ -73,16 +73,18 @@ export function gridToWorldInCenteredFrame(frame, col, row) {
     return { x: gridCenterXInCenteredFrame(frame, col), y: gridCenterYInCenteredFrame(frame, row) };
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function getCellBoundsCenteredInto(out, col, row, centerX, centerY, offsetX, offsetY, cellSize) {
+export function getCellBoundsCenteredInto(out, idx, cols, centerX, centerY, offsetX, offsetY, cellSize) {
+    const row = (idx / cols) | 0;
+    const col = idx - row * cols;
     const minX = col * cellSize + centerX - offsetX;
     const minY = row * cellSize + centerY - offsetY;
     return minCornerAabbInto(out, minX, minY, cellSize, cellSize);
 }
-export function getCellBoundsInCenteredFrameInto(out, frame, col, row) {
-    return getCellBoundsCenteredInto(out, col, row, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
+export function getCellBoundsInCenteredFrameInto(out, frame, idx) {
+    return getCellBoundsCenteredInto(out, idx, frame.cols, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
 }
-export function getCellBoundsCentered(col, row, centerX, centerY, offsetX, offsetY, cellSize) {
-    return getCellBoundsCenteredInto(createAabb(), col, row, centerX, centerY, offsetX, offsetY, cellSize);
+export function getCellBoundsCentered(idx, cols, centerX, centerY, offsetX, offsetY, cellSize) {
+    return getCellBoundsCenteredInto(createAabb(), idx, cols, centerX, centerY, offsetX, offsetY, cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
 export function cellBoundsAtOriginInto(out, originMinX, originMinY, col, row, cellSize) {
@@ -106,29 +108,31 @@ export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
     return cellBoundsToWorldBoundsInto(createAabb(), bounds, originX, originY, cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function worldBoundsFromCellOriginInto(out, col, row, cols, rows, cellSize) {
+export function worldBoundsFromCellOriginInto(out, idx, gridCols, cols, rows, cellSize) {
+    const row = (idx / gridCols) | 0;
+    const col = idx - row * gridCols;
     const minX = col * cellSize;
     const minY = row * cellSize;
     return minCornerAabbInto(out, minX, minY, cols * cellSize, rows * cellSize);
 }
-export function worldBoundsFromCellOrigin(col, row, cols, rows, cellSize) {
-    return worldBoundsFromCellOriginInto(createAabb(), col, row, cols, rows, cellSize);
+export function worldBoundsFromCellOrigin(idx, gridCols, cols, rows, cellSize) {
+    return worldBoundsFromCellOriginInto(createAabb(), idx, gridCols, cols, rows, cellSize);
 }
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
  * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb
- * @param {(col: number, row: number, idx: number) => void} fn
+ * @param {(idx: number) => void} fn
  */
 export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
     const { minCol, maxCol, minRow, maxRow } = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
-    const colMin = Math.max(0, minCol);
-    const colMax = Math.min(grid.cols - 1, maxCol);
-    const rowMin = Math.max(0, minRow);
-    const rowMax = Math.min(grid.rows - 1, maxRow);
+    const cMin = Math.max(0, minCol);
+    const cMax = Math.min(grid.cols - 1, maxCol);
+    const rMin = Math.max(0, minRow);
+    const rMax = Math.min(grid.rows - 1, maxRow);
     const cols = grid.cols;
-    for (let row = rowMin; row <= rowMax; row++) {
-        const rowOffset = row * cols;
-        for (let col = colMin; col <= colMax; col++) fn(col, row, rowOffset + col);
+    for (let r = rMin; r <= rMax; r++) {
+        const rowOffset = r * cols;
+        for (let c = cMin; c <= cMax; c++) fn(rowOffset + c);
     }
 }

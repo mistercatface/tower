@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { SpatialFrameCore } from "../Libraries/Spatial/world/SpatialFrameCore.js";
 import {
     commitWallCandidateBucket,
@@ -73,7 +73,7 @@ describe("wall candidate bucket slab", () => {
         stampBlockedCell(grid, 4, 4);
         const frame = new SpatialFrameCore(16);
         frame.resetFrame(grid);
-        const entity = mockKineticCircle(grid.gridCenterX(4), grid.gridCenterY(4), 4);
+        const entity = mockKineticCircle(grid.gridCenterXByIdx(4 + 4 * grid.cols), grid.gridCenterYByIdx(4 + 4 * grid.cols), 4);
         const first = frame.getWallCandidates(entity);
         const second = frame.getWallCandidates(entity);
         assert.equal(first, second);
@@ -85,7 +85,7 @@ describe("wall candidate bucket slab", () => {
         stampBlockedCell(grid, 4, 4);
         const frame = new SpatialFrameCore(16);
         frame.resetFrame(grid);
-        const entity = mockKineticCircle(grid.gridCenterX(4), grid.gridCenterY(4), 4);
+        const entity = mockKineticCircle(grid.gridCenterXByIdx(4 + 4 * grid.cols), grid.gridCenterYByIdx(4 + 4 * grid.cols), 4);
         const frameOne = frame.getWallCandidates(entity);
         frame.resetFrame(grid);
         const frameTwo = frame.getWallCandidates(entity);
@@ -95,7 +95,7 @@ describe("wall candidate bucket slab", () => {
     it("wallBucketKeyParts matches grid cell and pad", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
-        const parts = wallBucketKeyParts(grid, grid.gridCenterX(3), grid.gridCenterY(5), 20);
+        const parts = wallBucketKeyParts(grid, grid.gridCenterXByIdx(3), grid.gridCenterYByIdx(5 * grid.cols), 20);
         assert.equal(parts.keyLo, 3 | (5 << 16));
         assert.equal(parts.keyHi, 1 + Math.ceil(20 / 16));
     });

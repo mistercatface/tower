@@ -1,7 +1,4 @@
-export function colRowToIndex(col, row, cols) {
-    return row * cols + col;
-}
-/** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: colRowToIndex(col, row, grid.cols). */
+/** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: row * grid.cols + col. */
 /** @typedef {number} LayoutCellIdx Dense index within a {@link CellIndexLayout} rect (local to origin/stride). */
 export function createCellIndexLayout(originCol, originRow, cols, rows) {
     return { originCol, originRow, strideCols: cols, cellCount: cols * rows };
@@ -20,13 +17,13 @@ export function layoutLocalToAbsCell(layout, col, row) {
 }
 /** Dense index for absolute (col, row) within a bounded layout rect. */
 export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
-    return colRowToIndex(absCol - originCol, absRow - originRow, strideCols);
+    return (absRow - originRow) * strideCols + (absCol - originCol);
 }
 export function layoutAbsCellIndex(layout, absCol, absRow) {
-    return colRowToIndex(absCol - layout.originCol, absRow - layout.originRow, layout.strideCols);
+    return (absRow - layout.originRow) * layout.strideCols + (absCol - layout.originCol);
 }
 export function layoutLocalCellIndex(layout, localCol, localRow) {
-    return colRowToIndex(localCol, localRow, layout.strideCols);
+    return localRow * layout.strideCols + localCol;
 }
 /** @param {number} idx @param {CellIndexLayout} layout @param {number} gridCols */
 export function layoutIndexToGlobalIndex(idx, layout, gridCols) {
@@ -96,14 +93,14 @@ export function forEachCardinalNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr } of CARDINAL_OFFSETS) {
         const nc = col + dc;
         const nr = row + dr;
-        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, colRowToIndex(nc, nr, cols));
+        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, nr * cols + nc);
     }
 }
 export function forEachOctileNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr, cost } of OCTILE_OFFSETS) {
         const nc = col + dc;
         const nr = row + dr;
-        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, colRowToIndex(nc, nr, cols), cost);
+        if (cellInRect(nc, nr, cols, rows)) fn(nc, nr, nr * cols + nc, cost);
     }
 }
 export function makeAdjacencyKey(idA, idB) {

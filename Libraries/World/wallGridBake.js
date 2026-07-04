@@ -1,6 +1,6 @@
 import { cellToChunkCoord, forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { cellEdgeEndpoints, railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx } from "../Spatial/grid/gridCellTopology.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
+import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCellTopology.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdgeStore.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
@@ -73,26 +73,25 @@ export function resolveRailWallNeighborContext(grid, idx, side) {
     return { neighborFillLevel: fillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
 }
 export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {
-    forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(grid, aabb, (idx) => {
         for (let side = 0; side < 4; side++) {
             if (!railWallAtZLevel(grid, idx, side, zLevel)) continue;
-            fn(col, row, side, idx);
+            fn(idx, side);
         }
     });
 }
-export function railWallFootprintAabb(grid, col, row, edge) {
-    const halfT = railWallFootprintHalfThickness(grid, colRowToIndex(col, row, grid.cols), edge);
-    const b = grid.getCellBounds(col, row);
+export function railWallFootprintAabb(grid, idx, edge) {
+    const halfT = railWallFootprintHalfThickness(grid, idx, edge);
+    const b = grid.getCellBoundsByIdx(idx);
     if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
     if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
     if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
     return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
 }
 export function flatRailWallCapUvCornersIntoFlat(out8, grid, data, base) {
-    const col = data[base + RAIL_BOX.gridCol];
-    const row = data[base + RAIL_BOX.gridRow];
+    const idx = data[base + RAIL_BOX.gridIdx];
     const side = data[base + RAIL_BOX.gridSide];
-    const b = grid.getCellBounds(col, row);
+    const b = grid.getCellBoundsByIdx(idx);
     return fillFlatUvFromBounds(out8, b, side);
 }
 function fillFlatUvFromBounds(out8, b, side) {
@@ -135,9 +134,9 @@ function fillFlatUvFromBounds(out8, b, side) {
     }
     return out8;
 }
-function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
-    const halfT = railWallFootprintHalfThickness(grid, colRowToIndex(col, row, grid.cols), edge);
-    const b = grid.getCellBounds(col, row);
+function railWallSideEndpoints(grid, idx, edge, railSide, p1, p2) {
+    const halfT = railWallFootprintHalfThickness(grid, idx, edge);
+    const b = grid.getCellBoundsByIdx(idx);
     if (edge === 0) {
         const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
         p1.x = b.minX;
@@ -164,19 +163,20 @@ function railWallSideEndpoints(grid, col, row, edge, railSide, p1, p2) {
         p2.y = b.minY;
     }
 }
-function writeRailWallBoxRecordInto(data, recordIndex, grid, col, row, edge) {
+function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const cols = grid.cols;
-    const idx = col + row * cols;
     if (!railWallEdgeShouldEmit(grid, idx, edge)) return false;
     const railEdge = railWallEdgeAt(grid, idx, edge);
     if (!railEdge) return false;
     const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, idx, edge);
     if (edgeHeight <= 0) return false;
     if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return false;
-    const fp = railWallFootprintAabb(grid, col, row, edge);
+    const fp = railWallFootprintAabb(grid, idx, edge);
     const inward = railWallInwardNormal(edge);
-    railWallSideEndpoints(grid, col, row, edge, 0, sP1, sP2);
+    railWallSideEndpoints(grid, idx, edge, 0, sP1, sP2);
     const base = recordIndex * RAIL_BOX_STRIDE;
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
     data[base + RAIL_BOX.gridCol] = col;
     data[base + RAIL_BOX.gridRow] = row;
     data[base + RAIL_BOX.chunkCol] = cellToChunkCoord(col, gridSettings.minCellsPerChunk);
@@ -191,7 +191,7 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, col, row, edge) {
     data[base + RAIL_BOX.innerP1y] = sP1.y;
     data[base + RAIL_BOX.innerP2x] = sP2.x;
     data[base + RAIL_BOX.innerP2y] = sP2.y;
-    railWallSideEndpoints(grid, col, row, edge, 1, sP1, sP2);
+    railWallSideEndpoints(grid, idx, edge, 1, sP1, sP2);
     data[base + RAIL_BOX.outerP1x] = sP1.x;
     data[base + RAIL_BOX.outerP1y] = sP1.y;
     data[base + RAIL_BOX.outerP2x] = sP2.x;
@@ -321,10 +321,9 @@ function mergeCollinearRailWallBoxRecordsInPlace(list) {
 }
 export const VOXEL_FACE = { gridCol: 0, gridRow: 1, gridIdx: 2, gridSide: 3, x1: 4, y1: 5, x2: 6, y2: 7, wallBaseZ: 8, wallHeight: 9, wallCapHeight: 10, cx: 11, cy: 12, outX: 13, outY: 14 };
 export const VOXEL_FACE_STRIDE = 15;
-export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, col, row, edge) {
+export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     const base = baseIndex * VOXEL_FACE_STRIDE;
     const cols = grid.cols;
-    const idx = col + row * cols;
     const fillHeight = resolveCellWallHeightAtIdx(grid, idx);
     const storedEdge = railWallEdgeAt(grid, idx, edge);
     const edgeLevel = storedEdge ? railWallCapLevel(storedEdge, neighborFillLevel(grid, idx, edge)) : 0;
@@ -336,8 +335,10 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, col, row, edge
     if (nIdx !== -1) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nIdx);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;
     if (!voxelWallFaceVisible(neighborCap, faceHeight)) return false;
-    cellEdgeEndpoints(grid, col, row, edge, sP1, sP2, 0);
-    const cellBounds = grid.getCellBounds(col, row);
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    cellEdgeEndpointsIdx(grid, idx, edge, sP1, sP2, 0);
+    const cellBounds = grid.getCellBoundsByIdx(idx);
     const cx = (cellBounds.minX + cellBounds.maxX) / 2;
     const cy = (cellBounds.minY + cellBounds.maxY) / 2;
     const ecx = (sP1.x + sP2.x) / 2;
@@ -362,21 +363,21 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, col, row, edge
 }
 export function collectVoxelWallFacesInAabbFlat(grid, bounds, list) {
     list.clear();
-    forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(grid, bounds, (idx) => {
         if (resolveCellWallHeightAtIdx(grid, idx) === 0) return;
         for (let edge = 0; edge < 4; edge++) {
             list.ensureCapacity(list.length + 1);
-            if (writeVoxelWallFaceIntoFlat(list.data, list.length, grid, col, row, edge)) list.length++;
+            if (writeVoxelWallFaceIntoFlat(list.data, list.length, grid, idx, edge)) list.length++;
         }
     });
 }
 export function collectRailWallBoxesInAabb(grid, bounds, out) {
     out.clear();
-    forEachObstacleGridCellInAabb(grid, bounds, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(grid, bounds, (idx) => {
         if (!grid.edgeStore.hasAnyAtIdx(idx)) return;
         for (let edge = 0; edge < 4; edge++) {
             out.ensureCapacity(out.length + 1);
-            if (writeRailWallBoxRecordInto(out.data, out.length, grid, col, row, edge)) out.length++;
+            if (writeRailWallBoxRecordInto(out.data, out.length, grid, idx, edge)) out.length++;
         }
     });
     out.length = mergeCollinearRailWallBoxRecordsInPlace(out);
@@ -389,7 +390,7 @@ export function resolveWallCapHeightPx(capHeight, settings) {
 }
 export function chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) {
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
         if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) found = true;
     });
     return found;

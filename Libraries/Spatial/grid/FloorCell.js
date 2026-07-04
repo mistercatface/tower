@@ -1,8 +1,7 @@
 import { CARDINAL_FACING_STEPS } from "../../Math/Angle.js";
-import { cellInRect, colRowToIndex } from "./GridUtils.js";
-import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../../DataStructures/CellRect.js";
+import { cellInRect } from "./GridUtils.js";
+import { emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds } from "../../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "./gridNavEpoch.js";
-import { cellToGlobalColRow } from "./gridCellTopology.js";
 import { tickGridZoneMembership } from "../zones/gridZoneMembership.js";
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
 export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
@@ -178,11 +177,13 @@ export class FloorBelt {
     static listPlacedForSnapshot(grid) {
         const items = [];
         const size = grid.cols * grid.rows;
+        const cellSize = grid.cellSize;
         for (let idx = 0; idx < size; idx++) {
             if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
             const col = idx % grid.cols;
             const row = (idx / grid.cols) | 0;
-            const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
+            const globalCol = Math.floor((grid.minX + col * cellSize) / cellSize);
+            const globalRow = Math.floor((grid.minY + row * cellSize) / cellSize);
             items.push({ col: globalCol, row: globalRow, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
         }
         return items;
@@ -195,17 +196,14 @@ export class FloorBelt {
         for (let i = 0; i < floorBelts.length; i++) {
             const { col: globalCol, row: globalRow, kind, facingIndex } = floorBelts[i];
             if (!FloorBelt.isBelt(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
-            const col = grid.worldCol(globalCol * cellSize + half);
-            const row = grid.worldRow(globalRow * cellSize + half);
-            if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-            if (grid.isBlocked(col, row)) continue;
-            const idx = colRowToIndex(col, row, grid.cols);
+            const idx = grid.worldToIdx(globalCol * cellSize + half, globalRow * cellSize + half);
+            if (idx < 0 || idx >= grid.cols * grid.rows) continue;
             const prevKind = grid.floorStore.kind[idx];
             const prevFacing = grid.floorStore.facing[idx];
             const facing = ((facingIndex % 4) + 4) % 4;
             if (prevKind !== kind || prevFacing !== facing) floorNavChanged = true;
             grid.floorStore.setAtIdx(idx, kind, facing);
-            growCellBounds(bounds, col, row);
+            growCellBoundsIdx(bounds, idx, grid.cols);
         }
         if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
         if (isEmptyCellBounds(bounds)) return null;

@@ -25,9 +25,6 @@ function createGridCellStampProxy(proto, x, y, cellHalf, init) {
     init(proxy);
     return proxy;
 }
-function gridCellCenterWorld(grid, col, row) {
-    return { x: grid.gridCenterX(col), y: grid.gridCenterY(row) };
-}
 function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
     return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {
         proxy.facing = facing;
@@ -51,9 +48,7 @@ export function syncFloorOccupancyStampDrawCache(state, grid) {
     for (let idx = 0; idx < size; idx++) {
         const kind = grid.floorStore.kind[idx];
         if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
-        const col = idx % grid.cols;
-        const row = (idx / grid.cols) | 0;
-        const { x, y } = gridCellCenterWorld(grid, col, row);
+        const { x, y } = grid.gridToWorldByIdx(idx);
         if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorStore.facing[idx]), cellHalf, kind), x, y });
     }
     const next = { revision, belts };

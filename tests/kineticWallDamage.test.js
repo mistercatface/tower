@@ -5,7 +5,7 @@ import { applyPendingWallDamage, computeWallBreakStrength, createGridWallDamage,
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
@@ -50,7 +50,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampVoxel(state.obstacleGrid, 6, 6);
-        const segment = { gridCol: 6, gridRow: 6, isStaticGridProxy: true, isEdgeRail: false };
+        const segment = { gridIdx: colRowToIndex(6, 6, state.obstacleGrid.cols), isStaticGridProxy: true, isEdgeRail: false };
         const entity = { id: 42, vx: 560, vy: 0 };
         const wallResolver = {
             resolve(body) {
@@ -70,8 +70,8 @@ describe("kinetic wall damage", () => {
         const grid = state.obstacleGrid;
         stampVoxel(grid, 2, 2);
         stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 1, thicknessLevel: 1 }]);
-        const voxelSeg = { gridCol: 2, gridRow: 2, isStaticGridProxy: true, isEdgeRail: false };
-        const railSeg = { gridCol: 4, gridRow: 4, gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
+        const voxelSeg = { gridIdx: colRowToIndex(2, 2, grid.cols), isStaticGridProxy: true, isEdgeRail: false };
+        const railSeg = { gridIdx: colRowToIndex(4, 4, grid.cols), gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
         assert.equal(resolveWallDamageTarget(grid, voxelSeg)?.kind, "voxel");
         assert.equal(resolveWallDamageTarget(grid, railSeg)?.kind, "rail");
         terminateWorkerNavigation(state.nav);
@@ -81,7 +81,7 @@ describe("kinetic wall damage", () => {
         const grid = state.obstacleGrid;
         stampVoxel(grid, 3, 3);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
-        const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
+        const segment = { gridIdx: colRowToIndex(3, 3, grid.cols), isStaticGridProxy: true, isEdgeRail: false };
         const hit = { approachDot: -560, normalX: 1, normalY: 0, segment };
         queueWallHits(wallDamage, grid, [hit], 560);
         await applyPendingWallDamage(state, wallDamage);
@@ -94,7 +94,7 @@ describe("kinetic wall damage", () => {
         const grid = state.obstacleGrid;
         stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
-        const segment = { gridCol: 5, gridRow: 5, gridSide: 0, isStaticGridProxy: false, isEdgeRail: true };
+        const segment = { gridIdx: colRowToIndex(5, 5, grid.cols), gridSide: 0, isStaticGridProxy: false, isEdgeRail: true };
         const hit = { approachDot: -560, normalX: 0, normalY: 1, segment };
         queueWallHits(wallDamage, grid, [hit], 560);
         await applyPendingWallDamage(state, wallDamage);
@@ -112,7 +112,7 @@ describe("kinetic wall damage", () => {
         stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
         state.obstacleGrid.setChunkSurfaceProfile(0, 0, "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         
-        const segment = { gridCol: 3, gridRow: 3, isStaticGridProxy: true, isEdgeRail: false };
+        const segment = { gridIdx: colRowToIndex(3, 3, state.obstacleGrid.cols), isStaticGridProxy: true, isEdgeRail: false };
         const entity = { id: 101, type: "crate", vx: 560, vy: 0 };
         const wallResolver = {
             resolve(body) {
@@ -153,9 +153,9 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 2, thicknessLevel: 4 }]);
-        state.obstacleGrid.setEdgeSurfaceProfile(4, 4, 1, "edge-profile");
+        state.obstacleGrid.setEdgeSurfaceProfile(colRowToIndex(4, 4, state.obstacleGrid.cols), 1, "edge-profile");
         
-        const segment = { gridCol: 4, gridRow: 4, gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
+        const segment = { gridIdx: colRowToIndex(4, 4, state.obstacleGrid.cols), gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
         const entity = { id: 102, type: "ball", vx: 0, vy: -560 };
         const wallResolver = {
             resolve(body) {
@@ -203,7 +203,7 @@ describe("kinetic wall damage", () => {
         const candidates = [];
         state.obstacleGrid.appendStaticWallProxiesNearWorld(ballProp.x, ballProp.y, ballProp.radius + 32, candidates);
         
-        const railProxy = candidates.find(c => c.isEdgeRail && c.gridCol === 4 && c.gridRow === 4 && c.gridSide === 1);
+        const railProxy = candidates.find(c => c.isEdgeRail && c.gridIdx === colRowToIndex(4, 4, state.obstacleGrid.cols) && c.gridSide === 1);
         assert.ok(railProxy, "obstacle grid should emit rail proxy");
         
         const spatialFrame = {
@@ -229,7 +229,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampVoxel(state.obstacleGrid, 6, 6);
-        const cellCenter = state.obstacleGrid.gridToWorld(6, 6);
+        const cellCenter = state.obstacleGrid.gridToWorldByIdx(colRowToIndex(6, 6, state.obstacleGrid.cols));
         const ball = new WorldProp(cellCenter.x - 6, cellCenter.y, "ball", 0);
         ball.vx = 560;
         ball.vy = 0;

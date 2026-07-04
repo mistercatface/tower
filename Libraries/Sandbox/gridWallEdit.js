@@ -1,11 +1,11 @@
-import { cellBoundsAtIdx, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { cellBoundsAtIdx, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
-import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { isRailWallEdge, railWallCapLevel } from "../Spatial/grid/CellEdgeStore.js";
 import { setBoundary, clearBoundaryPrimary, boundaryBlocksStep } from "../Spatial/grid/boundaryOccupancy.js";
-import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpoints } from "../Spatial/grid/gridCellTopology.js";
+import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCellTopology.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 import { overlaySegment } from "../Render/overlays/overlayCommands.js";
 const ENSURE_AABB = createAabb();
@@ -16,10 +16,9 @@ export function formatGridWallEdgeSideLabel(side) {
     return EDGE_SIDE_LABELS[side] ?? `Side ${side}`;
 }
 export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid.cellSize * 0.25) {
-    const col = grid.worldCol(worldX);
-    const row = grid.worldRow(worldY);
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    const bounds = grid.getCellBounds(col, row);
+    const idx = grid.worldToIdx(worldX, worldY);
+    if (idx === -1) return null;
+    const bounds = grid.getCellBoundsByIdx(idx);
     const localX = worldX - bounds.minX;
     const localY = worldY - bounds.minY;
     const cellSize = grid.cellSize;
@@ -32,13 +31,13 @@ export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid
             bestSide = side;
         }
     if (bestSide < 0) return null;
-    return { col, row, side: bestSide };
+    return { idx, side: bestSide };
 }
 export function ensureObstacleGridAtWorld(state, worldX, worldY) {
     const grid = state.obstacleGrid;
     centeredAabbInto(ENSURE_AABB, worldX, worldY, grid.cellSize, grid.cellSize);
     grid.expandToCoverAabb(ENSURE_AABB);
-    return grid.worldToGrid(worldX, worldY);
+    return grid.worldToIdx(worldX, worldY);
 }
 export function clearRailWallsQuiet(state, rails) {
     const grid = state.obstacleGrid;
@@ -57,20 +56,21 @@ export function clearRailWallsQuiet(state, rails) {
 export function stampRailWallsQuiet(state, railWalls) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces.settings;
-    /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number }[]} */
     const stamped = [];
     const bounds = emptyCellBounds();
     for (let i = 0; i < railWalls.length; i++) {
         const wall = railWalls[i];
-        const { col, row, side } = wall;
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        const idx = colRowToIndex(col, row, grid.cols);
+        const idx = wall.idx !== undefined ? wall.idx : wall.col + wall.row * grid.cols;
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
+        const side = wall.side;
         clearPrimaryBoundaryAt(state, idx, side);
         const heightLevel = clampStampWallHeightLevel(wall.heightLevel ?? 1, settings);
         const thicknessLevel = wall.thicknessLevel ?? 1;
         setBoundary(grid, idx, side, { capHeightLevel: heightLevel, thicknessLevel });
-        stamped.push({ col, row, side, heightLevel, thicknessLevel });
-        growCellBounds(bounds, col, row);
+        stamped.push({ idx, side, heightLevel, thicknessLevel });
+        growCellBoundsIdx(bounds, idx, grid.cols);
     }
     if (!stamped.length) return { bounds: null, stamped };
     return { bounds, stamped };
@@ -146,25 +146,24 @@ export function applyStampedGridWallsFromGlobal(state, voxels, railWalls, cellSi
     const settings = state.worldSurfaces.settings;
     const half = grid.cellHalfSize;
     const bounds = emptyCellBounds();
-    const toLocal = (globalCol, globalRow) => {
+    const toLocalIdx = (globalCol, globalRow) => {
         const x = globalCol * cellSize + half;
         const y = globalRow * cellSize + half;
-        return grid.worldToGrid(x, y);
+        return grid.worldToIdx(x, y);
     };
     for (let i = 0; i < voxels.length; i++) {
         const { col: globalCol, row: globalRow, heightLevel } = voxels[i];
-        const { col, row } = toLocal(globalCol, globalRow);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        const idx = colRowToIndex(col, row, grid.cols);
+        const idx = toLocalIdx(globalCol, globalRow);
+        if (idx < 0 || idx >= grid.grid.length) continue;
         grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
-        growCellBounds(bounds, col, row);
+        growCellBoundsIdx(bounds, idx, grid.cols);
     }
     for (let i = 0; i < railWalls.length; i++) {
         const { col: globalCol, row: globalRow, side, heightLevel, thicknessLevel } = railWalls[i];
-        const { col, row } = toLocal(globalCol, globalRow);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
-        growCellBounds(bounds, col, row);
+        const idx = toLocalIdx(globalCol, globalRow);
+        if (idx < 0 || idx >= grid.grid.length) continue;
+        setBoundary(grid, idx, side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
+        growCellBoundsIdx(bounds, idx, grid.cols);
     }
     if (isEmptyCellBounds(bounds)) return null;
     return bounds;
@@ -228,11 +227,13 @@ export function listPlacedRailWalls(grid) {
     const counts = new Map();
     forEachCellEdge(
         grid,
-        (col, row, side, edge, idx) => {
+        (idx, side, edge) => {
             const capLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
             const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
+            const col = idx % grid.cols;
+            const row = (idx / grid.cols) | 0;
             placed.push({ col, row, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
         },
         false,
@@ -252,12 +253,10 @@ export function getRailWallInfo(grid, idx, side) {
     const edge = grid.edgeStore.getIdx(idx, side);
     if (!isRailWallEdge(edge)) return null;
     const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return { col, row, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };
+    return { idx, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };
 }
 export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {
-    cellEdgeEndpoints(grid, edge.col, edge.row, edge.side, EDGE_P1, EDGE_P2, 0);
+    cellEdgeEndpointsIdx(grid, edge.idx, edge.side, EDGE_P1, EDGE_P2, 0);
     out.push(overlaySegment(EDGE_P1.x, EDGE_P1.y, EDGE_P2.x, EDGE_P2.y, { stroke, lineWidth, dash: dash ?? undefined }));
 }
 export function clearPrimaryBoundaryAt(state, idx, side, bumpRevision = false) {

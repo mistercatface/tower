@@ -3,10 +3,11 @@ import { wakeKineticBody } from "../Motion/kineticSleep.js";
 import { physicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 export function snapMoveTargetToCellCenter(grid, world) {
-    const col = grid.worldCol(world.x);
-    const row = grid.worldRow(world.y);
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return { world, col: null, row: null };
-    return { world: grid.gridToWorld(col, row), col, row };
+    const idx = grid.worldToIdx(world.x, world.y);
+    if (idx === -1) return { world, col: null, row: null };
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
+    return { world: grid.gridToWorldByIdx(idx), col, row };
 }
 export function getKineticRollConfig(prop, overrides = null) {
     let base = prop._cachedRollBaseConfig;

@@ -1,5 +1,5 @@
 import { CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
-import { cellInRect, colRowToIndex, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
+import { cellInRect, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
 import { diagonalStepOpen, getCardinalBit } from "../Spatial/grid/boundaryOccupancy.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
@@ -113,7 +113,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
         return;
     }
     if (isBounds)
-        forEachDenseCellInBounds(idx, grid.cols, (col, row, cellIdx) => {
+        forEachDenseCellInBounds(idx, grid.cols, (cellIdx) => {
             arena.gridFill[cellIdx] = grid.grid[cellIdx];
             arena.floorKind[cellIdx] = grid.floorStore.kind[cellIdx];
             arena.floorFacing[cellIdx] = grid.floorStore.facing[cellIdx];
@@ -141,7 +141,9 @@ export function recomputeBlockedFromGridFill(gridFill, blocked, cols, idx = null
     blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
 }
 export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, bounds) {
-    forEachDenseCellInBounds(bounds, cols, (col, row, idx) => {
+    forEachDenseCellInBounds(bounds, cols, (idx) => {
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
         const base = octileNeighborBase(idx);
         if (blocked[idx]) {
             for (let i = 0; i < OCTILE_OFFSETS.length; i++) octileNeighbors[base + i] = -1;
@@ -155,7 +157,7 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
-            const nIdx = colRowToIndex(nc, nr, cols);
+            const nIdx = nr * cols + nc;
             if (blocked[nIdx]) {
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
@@ -170,7 +172,7 @@ export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePr
     const cellCount = cols * rows;
     if (!targetBounds) octilePredecessors.fill(-1);
     else
-        forEachDenseCellInRect(targetBounds.startCol, targetBounds.endCol, targetBounds.startRow, targetBounds.endRow, cols, (col, row, idx) => {
+        forEachDenseCellInRect(targetBounds.startCol, targetBounds.endCol, targetBounds.startRow, targetBounds.endRow, cols, (idx) => {
             const base = octileNeighborBase(idx);
             for (let i = 0; i < OCTILE_DIRS_PER_CELL; i++) octilePredecessors[base + i] = -1;
         });
@@ -192,7 +194,7 @@ export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePr
 export function navIsBlocked(frame, topology, col, row) {
     const { cols, rows } = frame;
     if (!cellInRect(col, row, cols, rows)) return true;
-    return topology.blocked[colRowToIndex(col, row, cols)] !== 0;
+    return topology.blocked[row * cols + col] !== 0;
 }
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function navCanStep(frame, topology, fromIdx, toIdx) {

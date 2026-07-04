@@ -16,10 +16,8 @@ export function wallDamageKey(target) {
 }
 export function resolveWallDamageTarget(grid, segment) {
     if (!segment) return null;
-    const col = segment.gridCol;
-    const row = segment.gridRow;
-    if (!cellInRect(col, row, grid.cols, grid.rows)) return null;
-    const idx = col + row * grid.cols;
+    const idx = segment.gridIdx;
+    if (idx < 0 || idx >= grid.grid.length) return null;
     if (segment.isStaticGridProxy && cellIsStaticWall(grid, idx)) return { kind: "voxel", idx };
     if (segment.isEdgeRail) {
         const side = segment.gridSide;
@@ -59,10 +57,8 @@ export function flushPendingWallDamage(state) {
     return applyPendingWallDamage(state, wallDamage);
 }
 function targetToSegment(grid, target) {
-    const col = target.idx % grid.cols;
-    const row = (target.idx / grid.cols) | 0;
-    if (target.kind === "voxel") return { gridCol: col, gridRow: row, isStaticGridProxy: true, isEdgeRail: false };
-    return { gridCol: col, gridRow: row, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
+    if (target.kind === "voxel") return { gridIdx: target.idx, isStaticGridProxy: true, isEdgeRail: false };
+    return { gridIdx: target.idx, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
 }
 export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
     const config = wallDamage.config;
@@ -76,8 +72,8 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
         if (!wallDamage.pendingBreaks.has(key)) {
             const col = target.idx % grid.cols;
             const row = (target.idx / grid.cols) | 0;
-            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterX(col);
-            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterY(row);
+            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
+            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
             wallDamage.pendingBreaks.set(key, {
                 target,
                 strength,

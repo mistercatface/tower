@@ -68,18 +68,18 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
             }
         ctx.stroke();
     }
-    const { nodeIdx, nodeCount, cols } = debugView;
+    const { nodeIdx, nodeCount } = debugView;
     for (let i = 0; i < nodeCount; i++) {
         const idx = nodeIdx[i];
-        const world = debugView.gridToWorld(idx % cols, (idx / cols) | 0);
+        const world = debugView.gridToWorldByIdx(idx);
         ctx.fillStyle = "#00e5ff";
         fillCircle(ctx, world.x, world.y, 4);
     }
     for (const edge of debugView.edges) {
         const idxA = nodeIdx[edge.sourceIdx];
         const idxB = nodeIdx[edge.targetIdx];
-        const a = debugView.gridToWorld(idxA % cols, (idxA / cols) | 0);
-        const b = debugView.gridToWorld(idxB % cols, (idxB / cols) | 0);
+        const a = debugView.gridToWorldByIdx(idxA);
+        const b = debugView.gridToWorldByIdx(idxB);
         ctx.strokeStyle = "#ff9800";
         ctx.lineWidth = 2.5;
         strokeSegment(ctx, a.x, a.y, b.x, b.y);
@@ -106,7 +106,9 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     }
     forEachCellEdge(
         obstacleGrid,
-        (col, row, side) => {
+        (idx, side) => {
+            const col = idx % cols;
+            const row = (idx / cols) | 0;
             if (side === 0) strokeAxisLineRgba(px, w, h, col * ppc, row * ppc, (col + 1) * ppc - 1, row * ppc, OVERVIEW_RAIL_RGB);
             else if (side === 1) strokeAxisLineRgba(px, w, h, (col + 1) * ppc - 1, row * ppc, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
             else if (side === 2) strokeAxisLineRgba(px, w, h, col * ppc, (row + 1) * ppc - 1, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);

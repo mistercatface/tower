@@ -72,8 +72,9 @@ export function createSandboxPlacementOrder(state) {
                 const col = Number(parts[0]);
                 const row = Number(parts[1]);
                 const side = Number(parts[2]);
-                if (!railWallEdgeAt(grid, row * grid.cols + col, side)) continue;
-                const info = getRailWallInfo(grid, col, row, side);
+                const idx = row * grid.cols + col;
+                if (!railWallEdgeAt(grid, idx, side)) continue;
+                const info = getRailWallInfo(grid, idx, side);
                 if (!info) continue;
                 placed.push({ col, row, side, heightLevel: info.heightLevel, thicknessLevel: info.thicknessLevel, label: `Rail · (${col},${row}) · ${info.sideLabel} · height ${info.heightLevel}` });
             }

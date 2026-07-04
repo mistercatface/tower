@@ -1,7 +1,7 @@
 import { addCorridorPathToOccupied, buildCorridorBeltsFromPaths } from "./railMazeCorridorFootprint.js";
 import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
 import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { gridSettings } from "../../../Config/world.js";
@@ -36,25 +36,28 @@ function navWalkableNeighborsIdx(grid, navTopology, idx) {
 /** @param {import("./navWalkableIndex.js").NavWalkableIndex} navWalkableIndex */
 export function collectRailMazeBeltZoneCells(grid, navTopology, railConfig, navWalkableIndex) {
     const cellSize = grid.cellSize;
-    const beltStartGlobalRow = railConfig.boundsRow;
+    const colOffset = Math.round(grid.minX / cellSize);
+    const rowOffset = Math.round(grid.minY / cellSize);
+    const localBoundsRow = (railConfig.boundsIdx / grid.cols) | 0;
+    const beltStartGlobalRow = localBoundsRow + rowOffset;
     const cells = [];
-    forEachGlobalCellInMapGenBounds(railConfig, (globalCol, globalRow) => {
+    forEachGlobalCellInMapGenBounds(grid, railConfig, (idx) => {
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        const globalCol = col + colOffset;
+        const globalRow = row + rowOffset;
         if (globalRow < beltStartGlobalRow) return;
-        const col = grid.worldCol(globalCol * cellSize);
-        const row = grid.worldRow(globalRow * cellSize);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) return;
-        const idx = col + row * grid.cols;
         if (!isNavWalkableAt(navWalkableIndex, idx)) return;
-        cells.push({ col, row, globalCol, globalRow });
+        cells.push({ idx, globalCol, globalRow });
     });
     return cells;
 }
-function degreeInZone(cells, neighborAtIdx, gridCols) {
+function degreeInZone(cells, neighborAtIdx) {
     const memberSet = new Set();
-    for (let i = 0; i < cells.length; i++) memberSet.add(colRowToIndex(cells[i].col, cells[i].row, gridCols));
+    for (let i = 0; i < cells.length; i++) memberSet.add(cells[i].idx);
     const degreeByIndex = new Map();
     for (let i = 0; i < cells.length; i++) {
-        const idx = colRowToIndex(cells[i].col, cells[i].row, gridCols);
+        const idx = cells[i].idx;
         const neighbors = neighborAtIdx(idx).filter((nIdx) => memberSet.has(nIdx));
         degreeByIndex.set(idx, neighbors.length);
     }
@@ -126,7 +129,7 @@ function planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, 
     const endpointIndices = filterNavBeltEndpointCandidatesIdx(
         grid,
         navTopology,
-        zoneCells.map((cell) => cell.col + cell.row * cols),
+        zoneCells.map((cell) => cell.idx),
     );
     const pathfinder = createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex);
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").GlobalCellIdx>} */
@@ -174,7 +177,7 @@ export function planRailMazeCorridorBelts({
     const random = rng ?? createSeededRng((mapSeed ^ BELT_PLAN_SEED_SALT) >>> 0);
     const { paths, widths } = planRandomNavCorridorPaths({ grid, navTopology, railConfig, zoneCells, navWalkableIndex, corridorCount, corridorWidth, pathLengthMin, pathLengthMax, rng: random });
     const neighborAtIdx = (idx) => navWalkableNeighborsIdx(grid, navTopology, idx);
-    const degreeByIndex = degreeInZone(zoneCells, neighborAtIdx, grid.cols);
+    const degreeByIndex = degreeInZone(zoneCells, neighborAtIdx);
     let floorBelts = buildCorridorBeltsFromPaths(paths, widths, globalLayout);
     const footprint = beltFootprintIndices(floorBelts, globalLayout);
     const mouthExteriorIndices = new Set(collectPathMouthExteriorIndices(paths, grid));
@@ -186,8 +189,7 @@ export function planRailMazeCorridorBelts({
     const globalCoordsByLocalIdx = new Map();
     for (let i = 0; i < zoneCells.length; i++) {
         const cell = zoneCells[i];
-        const idx = cell.col + cell.row * grid.cols;
-        globalCoordsByLocalIdx.set(idx, { globalCol: cell.globalCol, globalRow: cell.globalRow });
+        globalCoordsByLocalIdx.set(cell.idx, { globalCol: cell.globalCol, globalRow: cell.globalRow });
     }
     const cols = grid.cols;
     const heightLevel = railConfig.wallHeightLevel ?? 1;
@@ -296,10 +298,9 @@ export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {
     const gridRails = [];
     for (let i = 0; i < rails.length; i++) {
         const wall = rails[i];
-        const col = grid.worldCol(wall.col * cellSize);
-        const row = grid.worldRow(wall.row * cellSize);
-        if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        gridRails.push({ col, row, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
+        const idx = grid.worldToIdx(wall.col * cellSize + grid.cellHalfSize, wall.row * cellSize + grid.cellHalfSize);
+        if (idx < 0 || idx >= grid.grid.length) continue;
+        gridRails.push({ idx, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
     }
     const result = stampRailWallsQuiet(state, gridRails);
     if (!commit || !result.bounds) return result;

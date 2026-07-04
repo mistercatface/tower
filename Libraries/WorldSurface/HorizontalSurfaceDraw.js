@@ -9,7 +9,7 @@ import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 export function chunkHasBlockedCells(obstacleGrid, bounds) {
     let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
         if (obstacleGrid.grid[idx] !== 0) found = true;
     });
     return found;
@@ -22,9 +22,9 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (col, row, idx) => {
+    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
         if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
-        const cellBounds = obstacleGrid.getCellBounds(col, row);
+        const cellBounds = obstacleGrid.getCellBoundsByIdx(idx);
         const x = Math.round((cellBounds.minX - bounds.minX) * surfaceBakeScale);
         const y = Math.round((cellBounds.minY - bounds.minY) * surfaceBakeScale);
         ctx.fillRect(x, y, cellBakeSize, cellBakeSize);

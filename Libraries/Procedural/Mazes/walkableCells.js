@@ -1,7 +1,7 @@
 import { gridNavCacheKey, isNavTopologyReady } from "../../Spatial/grid/gridNavEpoch.js";
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { isIdxInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { padCellIdxToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
+import { padCellIdxToGrid, padCellBoundsToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
 import { forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
 /** @typedef {{ flags: Uint8Array, cols: number, rows: number }} NavWalkableIndex */
 export function isNavWalkableAt(index, idx) {
@@ -107,7 +107,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
         return walkable;
     });
     const seen = new Set(cache.candidates);
-    forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (_col, _row, idx) => {
+    forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (idx) => {
         if (!isIdxInMapGenBounds(boundsConfig, grid, idx)) {
             cache.candidateMask[idx] = 0;
             return;
@@ -123,7 +123,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
     });
 }
 function writeNavWalkableFlagsInRect(flags, cols, cells, patchBounds) {
-    forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (_col, _row, idx) => {
+    forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (idx) => {
         flags[idx] = 0;
     });
     for (let i = 0; i < cells.length; i++) flags[cells[i]] = 1;
@@ -132,7 +132,7 @@ function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const grid = state.obstacleGrid;
     const navTopology = state.nav.topology;
     const cols = grid.cols;
-    const patchBounds = padCellIdxToGrid(idx, cols, grid.rows, 2);
+    const patchBounds = typeof idx === "object" && idx !== null ? padCellBoundsToGrid(idx, cols, grid.rows, 2) : padCellIdxToGrid(idx, cols, grid.rows, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;

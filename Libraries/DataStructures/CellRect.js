@@ -30,14 +30,6 @@ export function padCellIdxToGrid(idx, cols, rows, padding = 0) {
         endRow: Math.min(rows - 1, ((idx / cols) | 0) + padding),
     };
 }
-/** @param {CellBounds} bounds @param {number} col @param {number} row @returns {CellBounds} */
-export function growCellBounds(bounds, col, row) {
-    if (col < bounds.startCol) bounds.startCol = col;
-    if (col > bounds.endCol) bounds.endCol = col;
-    if (row < bounds.startRow) bounds.startRow = row;
-    if (row > bounds.endRow) bounds.endRow = row;
-    return bounds;
-}
 export function growCellBoundsIdx(bounds, idx, cols) {
     const col = idx % cols;
     const row = (idx / cols) | 0;
@@ -75,7 +67,7 @@ export function forEachSparseCellInRect(minCol, maxCol, minRow, maxRow, fn) {
 export function forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, cols, fn) {
     for (let r = minRow; r <= maxRow; r++) {
         const rowOffset = r * cols;
-        for (let c = minCol; c <= maxCol; c++) fn(c, r, rowOffset + c);
+        for (let c = minCol; c <= maxCol; c++) fn(rowOffset + c);
     }
 }
 export function forEachDenseCellInBounds(bounds, cols, fn) {

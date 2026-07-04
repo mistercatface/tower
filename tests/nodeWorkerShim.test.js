@@ -8,7 +8,7 @@ import { buildReplanParams } from "../Libraries/Pathfinding/hpaReplan.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 
 describe("node worker shim", () => {
     it("runs HpaPathWorker nav topology sync", async () => {
@@ -66,8 +66,8 @@ describe("node worker shim", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
         const navigation = await createWorkerNavigation(grid);
-        const start = grid.gridToWorld(2, 2);
-        const target = grid.gridToWorld(10, 10);
+        const start = grid.gridToWorldByIdx(colRowToIndex(2, 2, grid.cols));
+        const target = grid.gridToWorldByIdx(colRowToIndex(10, 10, grid.cols));
         const request = buildReplanParams(grid, start.x, start.y, target.x, target.y, navigation, null);
 
         const navState1 = createNavState();

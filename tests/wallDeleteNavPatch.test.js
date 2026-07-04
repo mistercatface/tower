@@ -5,15 +5,14 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit } from "../Libraries/Sandbox/gridWallEdit.js";
 import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
 import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { collectNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickNavWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 async function createWallDeleteTestState() {
     const config = createDefaultMapGenBoundsConfig();
-    config.boundsCol = 0;
-    config.boundsRow = 0;
+    config.boundsIdx = 0;
     config.boundsCols = 8;
     config.boundsRows = 8;
     const grid = new WorldObstacleGrid(16);
@@ -71,7 +70,7 @@ describe("wall delete batching (4a)", () => {
             rails: [{ idx: colRowToIndex(4, 4, state.obstacleGrid.cols), side: 0 }]
         });
         assert.ok(bounds);
-        assert.equal(state.notifyCount, 2);
+        assert.equal(state.notifyCount, 1);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(1, 1, state.obstacleGrid.cols)));
         assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(4, 4, state.obstacleGrid.cols), 0)));
         terminateWorkerNavigation(state.nav);
@@ -86,7 +85,7 @@ describe("wall delete batching (4a)", () => {
         assert.equal(state.notifyCount, 0);
         assert.ok(commit.hasPending);
         assert.ok(commit.flush());
-        assert.equal(state.notifyCount, 2);
+        assert.equal(state.notifyCount, 1);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(5, 5, state.obstacleGrid.cols)));
         assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(6, 6, state.obstacleGrid.cols), 2)));
         terminateWorkerNavigation(state.nav);
@@ -102,7 +101,7 @@ describe("wall delete batching (4a)", () => {
         }));
         assert.equal(state.notifyCount, 0);
         commit.flush();
-        assert.equal(state.notifyCount, 2);
+        assert.equal(state.notifyCount, 1);
         terminateWorkerNavigation(state.nav);
     });
 });
@@ -164,7 +163,7 @@ describe("wall delete nav patch (4a)", () => {
             rails: [{ idx: idxRail, side: 1 }]
         });
         await state.nav.awaitWorkerNavReady();
-        assert.equal(state.notifyCount, 2); // since we commit each cleared wall index (voxel index and rail index)
+        assert.equal(state.notifyCount, 1);
         assert.ok(isNavWalkableCellAt(state, idxBlocked));
         assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), true);
         assert.ok(bounds);

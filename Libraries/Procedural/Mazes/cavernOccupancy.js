@@ -87,15 +87,15 @@ function carveCavernSouthVent(cells, cols, rows, stripRows) {
         if (!carved) return;
     }
 }
-export function generateCavernOccupancy(config, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
-    const { originCol, originRow, cols, rows } = getMapGenBoundsStampExtent(config);
+export function generateCavernOccupancy(grid, config, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
+    const { originIdx, cols, rows } = getMapGenBoundsStampExtent(grid, config);
     let cells = fillRandomGrid(cols, rows, config.fillChance);
     cells = runCellularAutomata(cols, rows, cells, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
-    applyMapGenShapeMask(cells, cols, rows, config, originCol, originRow);
+    applyMapGenShapeMask(grid, cells, cols, rows, config, originIdx);
     if (openBoundarySides?.south) {
         clearCavernOccupancyBoundaryStrip(cells, cols, rows, "south", openBoundaryRows);
         carveCavernSouthVent(cells, cols, rows, openBoundaryRows);
     }
     if (openBoundarySides?.north) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "north", openBoundaryRows);
-    return { originCol, originRow, cols, rows, cells };
+    return { originIdx, cols, rows, cells };
 }

@@ -79,11 +79,11 @@ export class FlowFieldWindow {
     gridToWorld(col, row) {
         return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
     }
-    getCellBounds(col, row) {
-        return getCellBoundsInCenteredFrameInto(this.cellBounds, this.frame, col, row);
+    getCellBoundsByIdx(idx) {
+        return getCellBoundsInCenteredFrameInto(this.cellBounds, this.frame, idx);
     }
-    entityIntersectsCell(x, y, radius, col, row) {
-        return circleIntersectsAabb(x, y, radius, this.getCellBounds(col, row));
+    entityIntersectsCellIdx(x, y, radius, idx) {
+        return circleIntersectsAabb(x, y, radius, this.getCellBoundsByIdx(idx));
     }
     flowRequest(targetX, targetY, range = 999999) {
         return FlowFieldRequest.fromWorld(this, targetX, targetY, range);

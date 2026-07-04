@@ -25,7 +25,7 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 4 },
         ];
         const worker = mockWorker(path, grid);
-        const start = grid.gridToWorld(4, 4);
+        const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
         const idx = findSabPathProgressIdx(start.x, start.y, worker, 0, path.length, grid, navTopology);
         assert.ok(idx >= 1);
         terminateWorkerNavigation(navigation);
@@ -38,8 +38,8 @@ describe("hpaPathSlot", () => {
             { col: 6, row: 4 },
         ];
         const worker = mockWorker(path, grid);
-        const start = grid.gridToWorld(4, 4);
-        const target = grid.gridToWorld(6, 4);
+        const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
+        const target = grid.gridToWorldByIdx(6 + 4 * grid.cols);
         const steering = computeSabPathSteering({ x: start.x, y: start.y }, worker, 0, path.length, target.x, target.y, grid, navTopology, {
             pathWaypointArrival: 16,
             arrivalDistance: 8,
@@ -57,9 +57,9 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 5 },
         ];
         const worker = mockWorker(path, grid);
-        const start = grid.gridToWorld(4, 4);
-        const corner = grid.gridToWorld(5, 4);
-        const target = grid.gridToWorld(5, 5);
+        const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
+        const corner = grid.gridToWorldByIdx(5 + 4 * grid.cols);
+        const target = grid.gridToWorldByIdx(5 + 5 * grid.cols);
 
         // Max speed 100, accel 200
         const settings = {

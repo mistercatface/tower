@@ -1,6 +1,6 @@
 import { forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
-import { colRowToIndex, cellInRect } from "./GridUtils.js";
-import { cellEdgeEndpoints, railWallEdgeShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
+import { cellInRect } from "./GridUtils.js";
+import { cellEdgeEndpointsIdx, railWallEdgeShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
 import { FloorBelt, FloorCellStore } from "./FloorCell.js";
@@ -40,6 +40,7 @@ export class WorldObstacleGrid {
         this.gridTopologyEpoch = 0;
         this._navTopologyRef = null;
         this.onBoundsResync = null;
+        this.onBoundsExpansion = null;
     }
     invalidateNavTopology() {
         invalidateGridLocalNavBake(this);
@@ -86,7 +87,7 @@ export class WorldObstacleGrid {
         if (this._structureZLevelsRevision !== this.wallGridRevision) this._rebuildStaticZLevelCaches();
         return this._fillZLevels;
     }
-    _borrowStaticWallProxy(x, y, col, row) {
+    _borrowStaticWallProxy(x, y, idx) {
         const size = this.cellSize;
         let proxy = this._staticWallProxies[this._staticWallProxyCount];
         if (!proxy) {
@@ -103,8 +104,7 @@ export class WorldObstacleGrid {
                 isStaticGridProxy: false,
                 isStaticGridFace: false,
                 isEdgeRail: false,
-                gridCol: 0,
-                gridRow: 0,
+                gridIdx: 0,
                 gridSide: 0,
                 shape: undefined,
             };
@@ -119,8 +119,7 @@ export class WorldObstacleGrid {
         proxy.width = size;
         proxy.height = size;
         proxy.shape = undefined;
-        proxy.gridCol = col;
-        proxy.gridRow = row;
+        proxy.gridIdx = idx;
         proxy.isStaticGridProxy = true;
         proxy.isStaticGridFace = false;
         proxy.isEdgeRail = false;
@@ -138,12 +137,12 @@ export class WorldObstacleGrid {
         const maxCol = Math.min(this.cols - 1, ec + pad);
         const minRow = Math.max(0, er - pad);
         const maxRow = Math.min(this.rows - 1, er + pad);
-        forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (col, row, idx) => {
-            if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterX(col), this.gridCenterY(row), col, row));
+        forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (idx) => {
+            if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterXByIdx(idx), this.gridCenterYByIdx(idx), idx));
             for (let side = 0; side < 4; side++) {
                 if (!railWallEdgeShouldEmit(this, idx, side)) continue;
                 const thickness = edgeRailCollisionThicknessPx(this, idx, side);
-                cellEdgeEndpoints(this, col, row, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
+                cellEdgeEndpointsIdx(this, idx, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
                 const p1x = EDGE_PROXY_P1.x;
                 const p1y = EDGE_PROXY_P1.y;
                 const p2x = EDGE_PROXY_P2.x;
@@ -166,8 +165,7 @@ export class WorldObstacleGrid {
                         isStaticGridProxy: false,
                         isStaticGridFace: false,
                         isEdgeRail: false,
-                        gridCol: 0,
-                        gridRow: 0,
+                        gridIdx: 0,
                         gridSide: 0,
                         shape: undefined,
                     };
@@ -188,8 +186,7 @@ export class WorldObstacleGrid {
                 proxy.isStaticGridFace = true;
                 proxy.isStaticGridProxy = false;
                 proxy.isEdgeRail = true;
-                proxy.gridCol = col;
-                proxy.gridRow = row;
+                proxy.gridIdx = idx;
                 proxy.gridSide = side;
                 proxy.x = (p1x + p2x) * 0.5;
                 proxy.y = (p1y + p2y) * 0.5;
@@ -271,6 +268,7 @@ export class WorldObstacleGrid {
         this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
         this.surfaceMaterials.remap(oldSurfaceMaterials, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows, this.surfaceMaterialCellsPerChunk);
         this.grid = newGrid;
+        if (this.onBoundsExpansion) this.onBoundsExpansion(colOffset, rowOffset, oldCols, oldRows);
         bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
@@ -279,13 +277,13 @@ export class WorldObstacleGrid {
         return true;
     }
     // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.
-    stampStaticWalls(originCol, originRow, cols, rows, cells, { additive = false, heightLevel }) {
+    stampStaticWalls(originIdx, cols, rows, cells, { additive = false, heightLevel }) {
         const level = heightLevel;
-        const baseCol = this.worldCol(originCol * this.cellSize);
-        const baseRow = this.worldRow(originRow * this.cellSize);
+        const baseCol = originIdx % this.cols;
+        const baseRow = (originIdx / this.cols) | 0;
         const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
         if (!additive)
-            forEachDenseCellInRect(gridBounds.startCol, gridBounds.endCol, gridBounds.startRow, gridBounds.endRow, this.cols, (_c, _r, idx) => {
+            forEachDenseCellInRect(gridBounds.startCol, gridBounds.endCol, gridBounds.startRow, gridBounds.endRow, this.cols, (idx) => {
                 this.grid[idx] = 0;
             });
         let changed = false;
@@ -306,11 +304,11 @@ export class WorldObstacleGrid {
         if (changed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
         return gridBounds;
     }
-    stampCellEdge(col, row, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, colRowToIndex(col, row, this.cols), side, { capHeightLevel, thicknessLevel }, true);
+    stampCellEdge(idx, side, capHeightLevel, thicknessLevel = 1) {
+        setBoundary(this, idx, side, { capHeightLevel, thicknessLevel }, true);
     }
-    clearCellEdges(col, row) {
-        clearAllBoundariesAtCell(this, colRowToIndex(col, row, this.cols), false);
+    clearCellEdges(idx) {
+        clearAllBoundariesAtCell(this, idx, false);
     }
     setCellSurfaceProfileAtIdx(idx, profileId) {
         this.surfaceMaterials.setCellAtIdx(idx, profileId);
@@ -320,12 +318,12 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.clearCellAtIdx(idx);
         bumpSurfaceMaterialRevision(this);
     }
-    setEdgeSurfaceProfile(col, row, side, profileId) {
-        this.surfaceMaterials.writeEdgeMirrored(colRowToIndex(col, row, this.cols), side, profileId);
+    setEdgeSurfaceProfile(idx, side, profileId) {
+        this.surfaceMaterials.writeEdgeMirrored(idx, side, profileId);
         bumpSurfaceMaterialRevision(this);
     }
-    clearEdgeSurfaceProfile(col, row, side) {
-        this.surfaceMaterials.clearEdgeMirrored(colRowToIndex(col, row, this.cols), side);
+    clearEdgeSurfaceProfile(idx, side) {
+        this.surfaceMaterials.clearEdgeMirrored(idx, side);
         bumpSurfaceMaterialRevision(this);
     }
     setChunkSurfaceProfile(chunkCol, chunkRow, profileId, cellsPerChunk = 0) {
@@ -397,32 +395,25 @@ export class WorldObstacleGrid {
     worldToGrid(x, y) {
         return { col: this.worldCol(x), row: this.worldRow(y) };
     }
-    gridToWorld(col, row) {
-        return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
-    }
     gridToWorldByIdx(idx) {
         return { x: this.gridCenterXByIdx(idx), y: this.gridCenterYByIdx(idx) };
     }
     worldToIdx(x, y) {
-        return this.idx(this.worldCol(x), this.worldRow(y));
+        const col = this.worldCol(x);
+        const row = this.worldRow(y);
+        if (!cellInRect(col, row, this.cols, this.rows)) return -1;
+        return row * this.cols + col;
     }
     isBlockedIdx(idx) {
         if (idx < 0 || idx >= this.grid.length) return true;
         return this.grid[idx] !== 0;
     }
-    isBlocked(col, row) {
-        if (!cellInRect(col, row, this.cols, this.rows)) return true;
-        return this.grid[colRowToIndex(col, row, this.cols)] !== 0;
-    }
     isBlockedWorld(x, y) {
-        return this.isBlocked(this.worldCol(x), this.worldRow(y));
+        return this.isBlockedIdx(this.worldToIdx(x, y));
     }
     canStep(fromIdx, toIdx, navTopology = null) {
         if (!navTopology) return false;
         return navTopology.canStep(fromIdx, toIdx);
-    }
-    getCellBounds(col, row) {
-        return cellBoundsAtOriginInto(this.cellBoundsScratch, this.minX, this.minY, col, row, this.cellSize);
     }
     getCellBoundsByIdx(idx) {
         return cellBoundsAtOriginIdxInto(this.cellBoundsScratch, this.minX, this.minY, idx, this.cols, this.cellSize);

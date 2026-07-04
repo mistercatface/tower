@@ -198,8 +198,8 @@ export class HpaPathWorker {
             nodeIdx,
             nodeIds: this.graphNodeIds,
             edges,
-            gridToWorld(col, row) {
-                return grid.gridToWorld(col, row);
+            gridToWorldByIdx(idx) {
+                return grid.gridToWorldByIdx(idx);
             },
         };
     }

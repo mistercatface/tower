@@ -153,7 +153,7 @@ export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertex
     const isBounds = idx !== null && typeof idx === "object";
     const bakeBounds = idx !== null ? (isBounds ? idx : padCellIdxToGrid(idx, cols, rows, 1)) : null;
     if (isBounds)
-        forEachDenseCellInBounds(idx, cols, (col, row, cellIdx) => {
+        forEachDenseCellInBounds(idx, cols, (cellIdx) => {
             recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, cellIdx);
         });
     else recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, idx);

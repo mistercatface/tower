@@ -106,7 +106,7 @@ describe("hpa ground nav replan policy", () => {
         const session = new HpaNavSession();
         Object.assign(session.navState, { pathSlot: 0, pathLen: 2, topologyKey: "", lastOffPathReplan: -999 });
         const prop = { x: 16, y: 160, radius: 2 };
-        const target = grid.gridToWorld(5, 4);
+        const target = grid.gridToWorldByIdx(5 + 4 * grid.cols);
         const pathSettings = { pathWaypointArrival: 1, arrivalDistance: 4, pathOffPathDistance: 4 };
 
         session.update(prop, target.x, target.y, state, 300, pathSettings);
@@ -118,8 +118,8 @@ describe("hpa ground nav replan policy", () => {
     it("records accepted route diagnostics when a path result is applied", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
-        const start = grid.gridToWorld(2, 3);
-        const target = grid.gridToWorld(4, 3);
+        const start = grid.gridToWorldByIdx(2 + 3 * grid.cols);
+        const target = grid.gridToWorldByIdx(4 + 3 * grid.cols);
         const nav = createNavState();
         nav.pendingReplanReason = "offPath";
         const worker = {

@@ -1,4 +1,3 @@
-import { colRowToIndex } from "../grid/GridUtils.js";
 /** @typedef {{ cells: Set<number> }} GridZoneSubscriptions */
 /**
  * @typedef {object} GridZoneEvent
@@ -38,7 +37,7 @@ export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
     const row = grid.worldRow(y);
     let cellIdx = -1;
     if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) {
-        cellIdx = colRowToIndex(col, row, grid.cols);
+        cellIdx = row * grid.cols + col;
         if (subscriptions.cells.has(cellIdx)) out.add(cellIdx);
     }
 }

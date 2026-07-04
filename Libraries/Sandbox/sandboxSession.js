@@ -233,13 +233,15 @@ export function createSandboxSession(state) {
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
-                if (railWallEdgeAt(state.obstacleGrid, hit.col + hit.row * state.obstacleGrid.cols, hit.side)) {
-                    pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
+                const hitCol = hit.idx % grid.cols;
+                const hitRow = (hit.idx / grid.cols) | 0;
+                if (railWallEdgeAt(state.obstacleGrid, hit.idx, hit.side)) {
+                    pickSelection({ kind: "rail", col: hitCol, row: hitRow, side: hit.side });
                     return true;
                 }
-                if (!stampRailWallAt(state, hit.col, hit.row, hit.side, wallHeightLevel, railThicknessLevel)) return false;
-                placement.touchEdgePlacement("rail", hit.col, hit.row, hit.side);
-                pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
+                if (!stampRailWallAt(state, hit.idx, hit.side, wallHeightLevel, railThicknessLevel)) return false;
+                placement.touchEdgePlacement("rail", hitCol, hitRow, hit.side);
+                pickSelection({ kind: "rail", col: hitCol, row: hitRow, side: hit.side });
                 return true;
             }
             const idx = col + row * state.obstacleGrid.cols;
@@ -310,11 +312,13 @@ export function createSandboxSession(state) {
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
-                const idx = hit.col + hit.row * grid.cols;
+                const idx = hit.idx;
                 if (!railWallEdgeAt(grid, idx, hit.side)) return false;
                 if (!clearRailWallAt(state, idx, hit.side)) return false;
-                placement.forgetEdgePlacement("rail", hit.col, hit.row, hit.side);
-                selection.dropDeletedWallSelection(hit.col, hit.row, hit.side);
+                const hitCol = idx % grid.cols;
+                const hitRow = (idx / grid.cols) | 0;
+                placement.forgetEdgePlacement("rail", hitCol, hitRow, hit.side);
+                selection.dropDeletedWallSelection(hitCol, hitRow, hit.side);
                 notifyUi();
                 return true;
             }
@@ -331,11 +335,13 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             const edgeHit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
             if (edgeHit) {
-                const { col, row, side } = edgeHit;
-                if (railWallEdgeAt(grid, col + row * grid.cols, side)) {
+                const { idx, side } = edgeHit;
+                if (railWallEdgeAt(grid, idx, side)) {
                     placePaletteKey = "wall:rail";
                     wallStampMode = "rail";
-                    pickSelection({ kind: "rail", col, row, side });
+                    const hitCol = idx % grid.cols;
+                    const hitRow = (idx / grid.cols) | 0;
+                    pickSelection({ kind: "rail", col: hitCol, row: hitRow, side });
                     return true;
                 }
             }
@@ -351,8 +357,10 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
-                if (!hit || !railWallEdgeAt(grid, hit.col + hit.row * grid.cols, hit.side)) return false;
-                pickSelection({ kind: "rail", col: hit.col, row: hit.row, side: hit.side });
+                if (!hit || !railWallEdgeAt(grid, hit.idx, hit.side)) return false;
+                const hitCol = hit.idx % grid.cols;
+                const hitRow = (hit.idx / grid.cols) | 0;
+                pickSelection({ kind: "rail", col: hitCol, row: hitRow, side: hit.side });
                 return true;
             }
             const col = grid.worldCol(worldX);

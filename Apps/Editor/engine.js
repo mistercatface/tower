@@ -12,6 +12,7 @@ import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage 
 import { commitGridNavEdit } from "../../Libraries/Sandbox/gridNavEdit.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
+import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Sandbox/mapGenBounds.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
 import { FloorBelt } from "../../Libraries/Spatial/grid/FloorCell.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
@@ -69,6 +70,7 @@ export function createEditorApp(options = {}) {
     const gameMode = launcher != null;
     const useGameShell = gameMode && launcher.hideEditor;
     const state = new TileLabGameState();
+    registerMapGenBoundsGridExpansionListener(state);
     state.appLaunch = gameLaunchId ? { id: gameLaunchId, launcher } : null;
     state.entityLayers = [];
     state.floatingTexts = [];

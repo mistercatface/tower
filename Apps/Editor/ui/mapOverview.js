@@ -46,7 +46,7 @@ export function paintMapOverviewFrame(state) {
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
     const displayH = canvas.height;
-    refreshAllMapGenBoundsPreviews(state.editor, gridSettings.cellSize);
+    refreshAllMapGenBoundsPreviews(state.obstacleGrid, state.editor, gridSettings.cellSize);
     drawWorldBoundsBox(ctx, state.viewport.bounds("clip"), cache, displayW, displayH, "#00e5ff");
     const genKind = activeMapGenKind(state);
     if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);

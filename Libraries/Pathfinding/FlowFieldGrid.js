@@ -220,11 +220,11 @@ export class FlowFieldGrid {
     gridToWorld(col, row) {
         return this.window.gridToWorld(col, row);
     }
-    getCellBounds(col, row) {
-        return this.window.getCellBounds(col, row);
+    getCellBoundsByIdx(idx) {
+        return this.window.getCellBoundsByIdx(idx);
     }
-    entityIntersectsCell(x, y, radius, col, row) {
-        return this.window.entityIntersectsCell(x, y, radius, col, row);
+    entityIntersectsCellIdx(x, y, radius, idx) {
+        return this.window.entityIntersectsCellIdx(x, y, radius, idx);
     }
     flowReachCacheToken() {
         return this.window.topologyKey;

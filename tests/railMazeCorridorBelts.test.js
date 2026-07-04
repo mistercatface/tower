@@ -110,7 +110,7 @@ function collectCorridorPathPolylines(cells, neighborAt, layout) {
 
 import { createNavRuntime, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { gridSettings } from "../Config/world.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { getNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
@@ -127,8 +127,7 @@ async function setupTestGridAndNav(seed) {
 
     const railConfig = {
         boundsMode: "rect",
-        boundsCol: 0,
-        boundsRow: 0,
+        boundsIdx: 0,
         boundsCols: cols,
         boundsRows: rows,
         wallHeightLevel: 1,
@@ -155,7 +154,7 @@ async function setupTestGridAndNav(seed) {
     stampGlobalRailWalls(state, rails, { commit: false });
     await commitGridNavEdit(state, null, { invalidateSurfaces: false, fullNavSync: true });
 
-    const floodSeedBounds = { boundsMode: "rect", boundsCol: 32, boundsRow: 32, boundsCols: 1, boundsRows: 1 };
+    const floodSeedBounds = { boundsMode: "rect", boundsIdx: 32 + 32 * cols, boundsCols: 1, boundsRows: 1 };
     const walkableState = { obstacleGrid: grid, nav, sandbox: {}, editor: { cavernConfig: railConfig } };
     const navWalkableIndex = getNavWalkableCellIndex(walkableState, railConfig, floodSeedBounds);
 
@@ -197,14 +196,14 @@ describe("rail maze corridor belts", () => {
         grid.rebuildFixed(0, 0, 5 * gridSettings.cellSize, 5 * gridSettings.cellSize);
         const nav = createNavRuntime(grid);
         for (let c = 0; c < 5; c++) for (let r = 0; r < 5; r++) grid.grid[c + r * grid.cols] = 0;
-        grid.stampCellEdge(2, 0, 2, 1, 1);
+        grid.stampCellEdge(colRowToIndex(2, 0, grid.cols), 2, 1, 1);
         await nav.syncTopology({ startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, grid);
         const path = [
             colRowToIndex(2, 1, grid.cols),
             colRowToIndex(2, 2, grid.cols),
         ];
         assert.equal(validateBeltPathMouthAccess(grid, nav.topology, path), false);
-        grid.clearCellEdges(2, 0);
+        grid.clearCellEdges(colRowToIndex(2, 0, grid.cols));
         await nav.syncTopology({ startCol: 1, endCol: 3, startRow: 0, endRow: 2 }, grid);
         assert.equal(validateBeltPathMouthAccess(grid, nav.topology, path), true);
         terminateWorkerNavigation(nav);
@@ -242,13 +241,8 @@ describe("rail maze corridor belts", () => {
         const zoneCells = collectRailMazeBeltZoneCells(grid, nav.topology, railConfig, navWalkableIndex);
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
-            const { col, row } = zoneCells[i];
-            const idx = colRowToIndex(col, row, grid.cols);
+            const { idx } = zoneCells[i];
             assert.ok(isNavWalkableAt(navWalkableIndex, idx));
-            const rtRow = (idx / grid.cols) | 0;
-            const rtCol = idx - (rtRow * grid.cols);
-            assert.equal(rtCol, col);
-            assert.equal(rtRow, row);
         }
         const plan = planRailMazeCorridorBelts({ grid, navTopology: nav.topology, railConfig, navWalkableIndex, mapSeed: 42 });
         assert.equal(plan.validation.ok, true);

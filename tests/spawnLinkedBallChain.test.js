@@ -8,7 +8,7 @@ import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraint
 import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/chainLinks.js";
 import { growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);

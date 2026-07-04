@@ -102,10 +102,10 @@ export class CellEdgeStore {
         this._free(ref);
     }
     forEachInAabb(grid, aabb, fn) {
-        forEachObstacleGridCellInAabb(grid, aabb, (col, row, idx) => {
+        forEachObstacleGridCellInAabb(grid, aabb, (idx) => {
             for (let side = 0; side < 4; side++) {
                 const edge = this.getIdx(idx, side);
-                if (edge) fn(col, row, side, idx, edge);
+                if (edge) fn(side, idx, edge);
             }
         });
     }

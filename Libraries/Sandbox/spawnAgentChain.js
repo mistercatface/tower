@@ -37,7 +37,7 @@ export function spawnAgentChain(state, anchorCell, spec) {
     } = spec;
     const grid = state.obstacleGrid;
     const meta = getSandboxEntityMeta(state);
-    const anchorWorld = grid.gridToWorld(anchorCell.col, anchorCell.row);
+    const anchorWorld = grid.gridToWorldByIdx(anchorCell.col + anchorCell.row * grid.cols);
     const props = [];
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
     const firstProp = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, resolveSegmentPropId(0, propSpec), faction);

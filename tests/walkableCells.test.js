@@ -5,7 +5,7 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBoun
 import { collectWalkableCells, collectNavWalkableCells, createNavWalkableAccess, getNavWalkableCellIndex, getNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, pickRandomWalkableCell, isNavWalkableAt, isNavWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { colRowToIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
 async function createWalkableCellsTestState(config) {
     const grid = new WorldObstacleGrid(16);
@@ -16,8 +16,7 @@ async function createWalkableCellsTestState(config) {
 describe("walkableCells", () => {
     it("collectWalkableCells skips blocked grid cells inside bounds", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -31,8 +30,7 @@ describe("walkableCells", () => {
     });
     it("collectNavWalkableCells skips blocked voxels", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -43,8 +41,7 @@ describe("walkableCells", () => {
     });
     it("collectNavWalkableCells rebakes when navigation epoch changes", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -60,8 +57,7 @@ describe("walkableCells", () => {
     });
     it("stores nav-walkable cells in a dense flag grid", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -74,8 +70,7 @@ describe("walkableCells", () => {
     });
     it("patchNavWalkableCellIndex rebakes cached bounds after obstacle epoch bump", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -91,8 +86,7 @@ describe("walkableCells", () => {
     });
     it("pickNavWalkableCell only returns baked nav-walkable cells", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -105,8 +99,7 @@ describe("walkableCells", () => {
     });
     it("createNavWalkableAccess binds state and bounds for pick/has/rebake", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
@@ -129,8 +122,7 @@ describe("walkableCells", () => {
     });
     it("pickRandomWalkableCell returns null when every cell is excluded", async () => {
         const config = createDefaultMapGenBoundsConfig();
-        config.boundsCol = 0;
-        config.boundsRow = 0;
+        config.boundsIdx = 0;
         config.boundsCols = 4;
         config.boundsRows = 4;
         const state = await createWalkableCellsTestState(config);

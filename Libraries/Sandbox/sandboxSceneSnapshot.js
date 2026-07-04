@@ -1,5 +1,5 @@
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
-import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
+import { isCanonicalEdgeRepresentativeIdx } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
 import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
@@ -32,16 +32,20 @@ export function collectSandboxSceneSnapshot(state) {
     const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
     const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
     const chainHeadProp = headProp ? (propIdToIndex.get(headProp.id) ?? null) : null;
+    const cellSize = grid.cellSize;
     const voxels = listPlacedVoxelWalls(grid).map(({ col, row, heightLevel }) => {
-        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
+        const globalCol = Math.floor((grid.minX + col * cellSize) / cellSize);
+        const globalRow = Math.floor((grid.minY + row * cellSize) / cellSize);
         return { col: globalCol, row: globalRow, heightLevel };
     });
     const railWalls = [];
     const listed = listPlacedRailWalls(grid);
     for (let i = 0; i < listed.length; i++) {
         const { col, row, side, heightLevel, thicknessLevel } = listed[i];
-        if (!isCanonicalEdgeRepresentative(grid, col, row, side)) continue;
-        const { globalCol, globalRow } = cellToGlobalColRow(grid, col, row);
+        const idx = row * grid.cols + col;
+        if (!isCanonicalEdgeRepresentativeIdx(grid, idx, side)) continue;
+        const globalCol = Math.floor((grid.minX + col * cellSize) / cellSize);
+        const globalRow = Math.floor((grid.minY + row * cellSize) / cellSize);
         railWalls.push({ col: globalCol, row: globalRow, side, heightLevel, thicknessLevel });
     }
     return {

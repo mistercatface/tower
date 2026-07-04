@@ -73,7 +73,7 @@ export function replanPriorityFor(reason, isVisible) {
     return REPLAN_PRIORITY_NORMAL;
 }
 import { FlatGraphView } from "./AStar.js";
-import { octileDistanceIdx, colRowToIndex } from "../Spatial/grid/GridUtils.js";
+import { octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
 export class HpaAbstractGraph extends FlatGraphView {
     constructor(nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
         super({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });

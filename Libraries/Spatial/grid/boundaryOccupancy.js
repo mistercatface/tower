@@ -2,7 +2,7 @@ import { isRailWallEdge, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { neighborFillLevel, edgeMirrorSide } from "./gridCellTopology.js";
 import { FloorBelt, gridSideFromCellIdxToNeighborIdx } from "./FloorCell.js";
-import { colRowToIndex, forEachCardinalNeighborIdx } from "./GridUtils.js";
+import { forEachCardinalNeighborIdx } from "./GridUtils.js";
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
@@ -86,7 +86,7 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
             let mask = 0;
             for (let i = 0; i < HALF_EDGE_SPECS.length; i++) {
                 const spec = HALF_EDGE_SPECS[i];
-                const ownerIdx = colRowToIndex(vx + spec.ownerCol, vy + spec.ownerRow, cols);
+                const ownerIdx = (vy + spec.ownerRow) * cols + (vx + spec.ownerCol);
                 if (!boundaryBlocksStep(grid, ownerIdx, spec.ownerSide)) mask |= spec.bit;
             }
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
@@ -104,7 +104,7 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
     const r1 = bounds ? bounds.endRow : rows - 1;
     for (let row = r0; row <= r1; row++)
         for (let col = c0; col <= c1; col++) {
-            const idx = colRowToIndex(col, row, cols);
+            const idx = row * cols + col;
             if (grid.isBlockedIdx(idx)) {
                 cardinalOpen[idx] = 0;
                 continue;
@@ -129,7 +129,7 @@ export function getCardinalBit(dc, dr) {
     return 8;
 }
 function cardinalLegOpen(cardinalOpen, cols, col, row, dc, dr) {
-    return (cardinalOpen[colRowToIndex(col, row, cols)] & getCardinalBit(dc, dr)) !== 0;
+    return (cardinalOpen[row * cols + col] & getCardinalBit(dc, dr)) !== 0;
 }
 function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
     const shoulderHCol = col + dc;
