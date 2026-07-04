@@ -59,19 +59,19 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         const { entrySide, exitSide } = floorBeltEntryExitSides(kind, facingIndex);
         const cx = grid.gridCenterXByIdx(idx);
         const cy = grid.gridCenterYByIdx(idx);
-        
-        let ax = 0, ay = 0;
-
+        let ax = 0,
+            ay = 0;
         if (kind === FLOOR_CELL_KIND.Belt) {
             const beltAngle = floorBeltFacingFromIndex(facingIndex);
             ax = Math.cos(beltAngle) * force;
             ay = Math.sin(beltAngle) * force;
-            
-            if (facingIndex % 2 === 0) { // E or W, center Y
+            if (facingIndex % 2 === 0) {
+                // E or W, center Y
                 const dy = cy - entity.y;
                 ay += (dy / grid.cellHalfSize) * force * 1.5;
                 if (entity.vy) ay -= entity.vy * 5.0; // Damp lateral velocity
-            } else { // S or N, center X
+            } else {
+                // S or N, center X
                 const dx = cx - entity.x;
                 ax += (dx / grid.cellHalfSize) * force * 1.5;
                 if (entity.vx) ax -= entity.vx * 5.0; // Damp lateral velocity
@@ -83,20 +83,18 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
             const pDy = getSideDy(entrySide) + getSideDy(exitSide);
             const pivotX = cx + pDx * grid.cellHalfSize;
             const pivotY = cy + pDy * grid.cellHalfSize;
-            
             const idealRadius = grid.cellHalfSize;
             const dx = entity.x - pivotX;
             const dy = entity.y - pivotY;
             const dist = Math.hypot(dx, dy);
-            
             const turn = floorBeltElbowTurn(kind);
             let tX, tY;
             if (turn === "left") {
-                tX = dy;
-                tY = -dx;
-            } else {
                 tX = -dy;
                 tY = dx;
+            } else {
+                tX = dy;
+                tY = -dx;
             }
             const tLen = Math.hypot(tX, tY);
             if (tLen > 0.001) {
@@ -107,7 +105,6 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
                 tX = Math.cos(beltAngle);
                 tY = Math.sin(beltAngle);
             }
-            
             const diff = dist - idealRadius;
             let rX = dx;
             let rY = dy;
@@ -115,16 +112,13 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
                 rX /= dist;
                 rY /= dist;
             }
-            
             // Proportional spring force toward ideal radius
             const diffRatio = diff / (grid.cellHalfSize * 0.5);
             const springForce = -diffRatio * force * 1.5;
-            
             // Damping radial velocity
             const v_r = (entity.vx || 0) * rX + (entity.vy || 0) * rY;
             const dampingX = -rX * v_r * 5.0;
             const dampingY = -rY * v_r * 5.0;
-            
             ax = tX * force + rX * springForce + dampingX;
             ay = tY * force + rY * springForce + dampingY;
         }
