@@ -7,24 +7,6 @@ import { tickGridZoneMembership } from "../zones/gridZoneMembership.js";
 /** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
 export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
 const DEFAULT_FLOOR_BELT_FORCE = 500;
-const SIDES_CACHE = new Array(16);
-for (let kind = 0; kind < 4; kind++)
-    for (let facingIndex = 0; facingIndex < 4; facingIndex++) {
-        const f = facingIndex;
-        const turn = kind === FLOOR_CELL_KIND.BeltElbowLeft ? "left" : kind === FLOOR_CELL_KIND.BeltElbowRight ? "right" : null;
-        let entrySide, exitSide;
-        if (!turn) {
-            exitSide = (f + 1) % 4;
-            entrySide = (f + 3) % 4;
-        } else if (turn === "left") {
-            entrySide = (2 + f) % 4;
-            exitSide = (1 + f) % 4;
-        } else {
-            entrySide = (0 + f) % 4;
-            exitSide = (1 + f) % 4;
-        }
-        SIDES_CACHE[kind * 4 + facingIndex] = { entrySide, exitSide };
-    }
 /** Structure-of-arrays store for floor occupancy (belt kind + cardinal facing) per cell. */
 export class FloorCellStore {
     constructor() {
@@ -102,9 +84,12 @@ export class FloorBelt {
         return null;
     }
     static getEntryExitSides(kind, facingIndex) {
-        const f = facingIndex % 4;
-        const k = kind >= 0 && kind < 4 ? kind : 0;
-        return SIDES_CACHE[k * 4 + f];
+        const exitSide = (facingIndex + 1) % 4;
+        let entrySide;
+        if (kind === FLOOR_CELL_KIND.BeltElbowLeft) entrySide = (exitSide + 1) % 4;
+        else if (kind === FLOOR_CELL_KIND.BeltElbowRight) entrySide = (exitSide + 3) % 4;
+        else entrySide = (exitSide + 2) % 4;
+        return { entrySide, exitSide };
     }
     static getRailEdgeSides(kind, facingIndex) {
         const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind, facingIndex);
@@ -121,15 +106,11 @@ export class FloorBelt {
         return labels[facingIndex % CARDINAL_FACING_STEPS];
     }
     static resolveKindFromSides(entrySide, exitSide) {
-        const resolveOrder = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
-        for (let ki = 0; ki < resolveOrder.length; ki++) {
-            const kind = resolveOrder[ki];
-            for (let facingIndex = 0; facingIndex < CARDINAL_FACING_STEPS; facingIndex++) {
-                const sides = FloorBelt.getEntryExitSides(kind, facingIndex);
-                if (sides.entrySide === entrySide && sides.exitSide === exitSide) return { kind, facingIndex };
-            }
-        }
-        return { kind: FLOOR_CELL_KIND.Belt, facingIndex: 0 };
+        const facingIndex = (exitSide + 3) % 4;
+        let kind = FLOOR_CELL_KIND.Belt;
+        if (entrySide === (exitSide + 1) % 4) kind = FLOOR_CELL_KIND.BeltElbowLeft;
+        else if (entrySide === (exitSide + 3) % 4) kind = FLOOR_CELL_KIND.BeltElbowRight;
+        return { kind, facingIndex };
     }
     static getFacingAngle(facingIndex) {
         return (facingIndex % CARDINAL_FACING_STEPS) * ((Math.PI * 2) / CARDINAL_FACING_STEPS);

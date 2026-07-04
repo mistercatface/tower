@@ -236,11 +236,11 @@ export function beltPathMouthExteriorCells(path, cols, rows) {
     const secondIdx = path[1];
     const endIdx = path[path.length - 1];
     const prevIdx = path[path.length - 2];
-    const startFlowSide = gridSideFromCellIdxToNeighborIdx(startIdx, secondIdx, cols);
-    const startEntrySide = edgeMirrorSide(startFlowSide);
+    // The entry mouth is adjacent to startIdx, on the side pointing towards it from secondIdx.
+    const startEntrySide = gridSideFromCellIdxToNeighborIdx(secondIdx, startIdx, cols);
     const entryExteriorIdx = edgeNeighborIdx(startIdx, startEntrySide, cols, rows);
-    const endEntrySide = gridSideFromCellIdxToNeighborIdx(endIdx, prevIdx, cols);
-    const endExitSide = edgeMirrorSide(endEntrySide);
+    // The exit mouth is adjacent to endIdx, on the side pointing away from prevIdx.
+    const endExitSide = gridSideFromCellIdxToNeighborIdx(prevIdx, endIdx, cols);
     const exitExteriorIdx = edgeNeighborIdx(endIdx, endExitSide, cols, rows);
     return { entryExteriorIdx, exitExteriorIdx };
 }
