@@ -1,8 +1,8 @@
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
-import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplanPolicy.js";
-import { createHpaGroundNavSession } from "./hpaGroundNavSession.js";
-import { buildHpaGroundNavPathSettings, driveGroundNav, groundNavArrivedAtTarget } from "./driveGroundNav.js";
+import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplan.js";
+import { createNavSession } from "../../Pathfinding/navSession.js";
+import { buildHpaGroundNavPathSettings, driveGroundNav, groundNavArrivedAtTarget } from "./hpaGroundNavBehavior.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/hpaPathSlot.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { isEntityOnFloorBelt } from "../../Spatial/grid/FloorCell.js";
@@ -23,7 +23,7 @@ export function createExploreBehavior(state) {
                 targetCellRow: null,
                 wasOnBelt: false,
                 beltHandoffCooldown: { frames: 0 },
-                hpaNav: createHpaGroundNavSession(),
+                hpaNav: createNavSession(),
                 rng: createSeededRng(prop.id),
             };
             propRuns.set(prop.id, run);

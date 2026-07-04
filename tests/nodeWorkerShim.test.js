@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { createWorkerNavigation, terminateWorkerNavigation, NavTopology } from "./WorkerNavigationFactory.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
-import { buildReplanParams } from "../Libraries/Pathfinding/hpaReplanPolicy.js";
+import { buildReplanParams } from "../Libraries/Pathfinding/hpaReplan.js";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Libraries/Spatial/grid/gridNavEpoch.js";

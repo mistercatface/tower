@@ -1,4 +1,4 @@
-import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP } from "./hpaReplanPolicy.js";
+import { HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP } from "./hpaReplan.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
 export class HpaPathSession {
     constructor(hpaPathWorker, { frameStartBudget = HPA_REPLAN_FRAME_START_BUDGET, peakInflightCap = HPA_REPLAN_PEAK_INFLIGHT_CAP } = {}) {

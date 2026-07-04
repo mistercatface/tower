@@ -1,6 +1,6 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
 import { colRowToIndex, forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
-import { findNearestOpenCellIdx } from "./hpaPathRequest.js";
+import { findNearestOpenCellIdx } from "./hpaReplan.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid } from "../DataStructures/CellRect.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";
 import { RegionNode, computeDistanceTransform, generateVoronoiRegions, repositionNodeCentroid, repositionRegionCentroids, mergeSmallRegions, floodFillRegion } from "./VoronoiRegions.js";

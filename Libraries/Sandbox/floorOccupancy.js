@@ -1,11 +1,11 @@
 import { emptyCellBounds, growCellBounds, isEmptyCellBounds } from "../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect, colRowToIndex } from "../Spatial/grid/GridUtils.js";
-import { floorBeltFacingFromIndex, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
+import { floorBeltFacingFromIndex, isFloorBeltKind, floorBeltEntryExitSides, floorBeltElbowTurn, FLOOR_CELL_KIND } from "../Spatial/grid/FloorCell.js";
 import { cellToGlobalColRow } from "../Spatial/grid/gridCellTopology.js";
 import { DEFAULT_FLOOR_BELT_FORCE } from "./floorBeltDefaults.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
-import { applyKineticAccelerationAlongAngle } from "../Motion/motionDynamics.js";
+import { applyKineticAccelerationAlongAngle, applyKineticAcceleration } from "../Motion/motionDynamics.js";
 import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 import { tickGridZoneMembership } from "../Spatial/zones/gridZoneMembership.js";
 /** @typedef {import("../Spatial/zones/gridZoneMembership.js").GridZoneSubscriptions} GridZoneSubscriptions */
@@ -56,8 +56,79 @@ export function tickFloorOccupancy(state, spatialFrame, dt) {
         if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
         const kind = grid.floorStore.kind[idx];
         const facingIndex = grid.floorStore.facing[idx];
-        const beltAngle = floorBeltFacingFromIndex(facingIndex);
-        applyKineticAccelerationAlongAngle(entity, beltAngle, force, dtSec);
+        const { entrySide, exitSide } = floorBeltEntryExitSides(kind, facingIndex);
+        const cx = grid.gridCenterXByIdx(idx);
+        const cy = grid.gridCenterYByIdx(idx);
+        
+        let ax = 0, ay = 0;
+
+        if (kind === FLOOR_CELL_KIND.Belt) {
+            const beltAngle = floorBeltFacingFromIndex(facingIndex);
+            ax = Math.cos(beltAngle) * force;
+            ay = Math.sin(beltAngle) * force;
+            
+            if (facingIndex % 2 === 0) { // E or W, center Y
+                const dy = cy - entity.y;
+                ay += (dy / grid.cellHalfSize) * force * 1.5;
+                if (entity.vy) ay -= entity.vy * 5.0; // Damp lateral velocity
+            } else { // S or N, center X
+                const dx = cx - entity.x;
+                ax += (dx / grid.cellHalfSize) * force * 1.5;
+                if (entity.vx) ax -= entity.vx * 5.0; // Damp lateral velocity
+            }
+        } else {
+            const getSideDx = (s) => (s === 1 ? 1 : s === 3 ? -1 : 0);
+            const getSideDy = (s) => (s === 2 ? 1 : s === 0 ? -1 : 0);
+            const pDx = getSideDx(entrySide) + getSideDx(exitSide);
+            const pDy = getSideDy(entrySide) + getSideDy(exitSide);
+            const pivotX = cx + pDx * grid.cellHalfSize;
+            const pivotY = cy + pDy * grid.cellHalfSize;
+            
+            const idealRadius = grid.cellHalfSize;
+            const dx = entity.x - pivotX;
+            const dy = entity.y - pivotY;
+            const dist = Math.hypot(dx, dy);
+            
+            const turn = floorBeltElbowTurn(kind);
+            let tX, tY;
+            if (turn === "left") {
+                tX = dy;
+                tY = -dx;
+            } else {
+                tX = -dy;
+                tY = dx;
+            }
+            const tLen = Math.hypot(tX, tY);
+            if (tLen > 0.001) {
+                tX /= tLen;
+                tY /= tLen;
+            } else {
+                const beltAngle = floorBeltFacingFromIndex(facingIndex);
+                tX = Math.cos(beltAngle);
+                tY = Math.sin(beltAngle);
+            }
+            
+            const diff = dist - idealRadius;
+            let rX = dx;
+            let rY = dy;
+            if (dist > 0.001) {
+                rX /= dist;
+                rY /= dist;
+            }
+            
+            // Proportional spring force toward ideal radius
+            const diffRatio = diff / (grid.cellHalfSize * 0.5);
+            const springForce = -diffRatio * force * 1.5;
+            
+            // Damping radial velocity
+            const v_r = (entity.vx || 0) * rX + (entity.vy || 0) * rY;
+            const dampingX = -rX * v_r * 5.0;
+            const dampingY = -rY * v_r * 5.0;
+            
+            ax = tX * force + rX * springForce + dampingX;
+            ay = tY * force + rY * springForce + dampingY;
+        }
+        applyKineticAcceleration(entity, ax, ay, dtSec);
     }
 }
 export function clearFloorOverlayAt(state, idx) {

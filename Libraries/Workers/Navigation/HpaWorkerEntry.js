@@ -1,8 +1,7 @@
 import { FlatAbstractGraphSearch, FlatGridSearch, SearchState } from "../../Pathfinding/AStar.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
-import { HpaAbstractGraph } from "../../Pathfinding/hpaReplanPrep.js";
-import { prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaPathRequest.js";
+import { HpaAbstractGraph, prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaReplan.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyIntoArena } from "../../Navigation/NavTopology.js";

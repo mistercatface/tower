@@ -1,3 +1,6 @@
+import { hasLineOfSight } from "../Spatial/query/spatialQueries.js";
+import { resolveBodyRadius } from "../Motion/physicsDefaults.js";
+
 const PATH_WAYPOINT_ARRIVAL_PX = 16;
 function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, grid, navTopology) {
     const idx = worker.pathIdx(slot, i);
@@ -125,6 +128,37 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
         dy = steerY - y;
         dist = Math.hypot(dx, dy);
     }
+    
+    // Dynamic Line of Sight Steering (Lookahead Smoothing)
+    const maxLookahead = 4;
+    const bodyRadius = resolveBodyRadius(pose);
+    let lookaheadStep = step + 1;
+    let validLookaheadStep = step;
+    
+    while (lookaheadStep < step + maxLookahead && lookaheadStep < pathLen) {
+        const lx = grid.gridCenterXByIdx(worker.pathIdx(slot, lookaheadStep));
+        const ly = grid.gridCenterYByIdx(worker.pathIdx(slot, lookaheadStep));
+        if (hasLineOfSight(x, y, lx, ly, grid, bodyRadius)) {
+            validLookaheadStep = lookaheadStep;
+        } else {
+            break; // Stop looking ahead if line of sight is broken by walls/corners
+        }
+        lookaheadStep++;
+    }
+    
+    if (validLookaheadStep > step) {
+        // Officially skip the intermediate waypoints since we have a clear shot
+        step = validLookaheadStep;
+        if (navState) navState.pathProgressIdx = step;
+        
+        steerIdx = worker.pathIdx(slot, step);
+        steerX = grid.gridCenterXByIdx(steerIdx);
+        steerY = grid.gridCenterYByIdx(steerIdx);
+        dx = steerX - x;
+        dy = steerY - y;
+        dist = Math.hypot(dx, dy);
+    }
+
     const distToTarget = Math.hypot(targetX - x, targetY - y);
     if (step >= pathLen - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, offPath: false };
     if (!(dist >= 0.01)) return { desiredX: 0, desiredY: 0, offPath: false };
