@@ -241,6 +241,7 @@ function narrowPhaseSatContact(spatialFrame, physIdA, physIdB, tier, pairDynamic
     const slab = kineticDynamicSlab;
     const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
     const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
+    if (!bodyA || !bodyB) return;
     const collided = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
     if (!collided) return;
     const overlap = SAT_RESULT[0];

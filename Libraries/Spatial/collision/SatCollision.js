@@ -159,6 +159,7 @@ export function entityFacing(entity) {
 }
 const EMPTY_ARRAY = [];
 export function getEntityCollisionParts(entity) {
+    if (!entity) return EMPTY_ARRAY;
     if (entity.collisionParts?.length) return entity.collisionParts;
     const shape = entity.shape;
     if (shape) {
