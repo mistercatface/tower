@@ -228,12 +228,7 @@ export function listPlacedRailWalls(grid) {
             counts.set(key, index);
             placed.push({ idx, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
         },
-        false,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        isRailWallEdge,
+        { filter: isRailWallEdge },
     );
     return placed;
 }

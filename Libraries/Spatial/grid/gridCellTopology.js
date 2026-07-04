@@ -133,7 +133,7 @@ export function canonicalEdgeCellKeyIdx(grid, idx, side) {
 export function isCanonicalEdgeRepresentativeIdx(grid, idx, side) {
     return packEdgeCellKeyByIdx(grid, idx, side) === canonicalEdgeCellKeyIdx(grid, idx, side);
 }
-export function forEachCellEdge(grid, fn, canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter) {
+export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter } = {}) {
     if (!grid.cols) return;
     const startCol = minCol ?? 0;
     const endCol = maxCol ?? grid.cols - 1;

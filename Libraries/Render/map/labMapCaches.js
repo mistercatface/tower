@@ -114,12 +114,7 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
             else if (side === 2) strokeAxisLineRgba(px, w, h, col * ppc, (row + 1) * ppc - 1, (col + 1) * ppc - 1, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
             else strokeAxisLineRgba(px, w, h, col * ppc, row * ppc, col * ppc, (row + 1) * ppc - 1, OVERVIEW_RAIL_RGB);
         },
-        true,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        isRailWallEdge,
+        { canonicalOnly: true, filter: isRailWallEdge },
     );
     ctx.putImageData(data, 0, 0);
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
