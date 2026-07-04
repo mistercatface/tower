@@ -176,6 +176,125 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen) {
  * @param {object} [settings]
  * @param {import("./navSession.js").NavSessionState | null} [navState]
  */
+const tempWallProxies = [];
+class PathSteeringEvaluator {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.radius = 0;
+        this.worker = null;
+        this.slot = -1;
+        this.pathLen = 0;
+        this.grid = null;
+        this.settings = null;
+        this.clearanceRadius = 0;
+    }
+    init(pose, worker, slot, pathLen, grid, settings) {
+        this.x = pose.x;
+        this.y = pose.y;
+        this.vx = pose.vx ?? 0;
+        this.vy = pose.vy ?? 0;
+        this.radius = resolveBodyRadius(pose);
+        this.worker = worker;
+        this.slot = slot;
+        this.pathLen = pathLen;
+        this.grid = grid;
+        this.settings = settings;
+        this.clearanceRadius = 0;
+    }
+    getPathX(step) {
+        return this.grid.gridCenterXByIdx(this.worker.pathIdx(this.slot, step));
+    }
+    getPathY(step) {
+        return this.grid.gridCenterYByIdx(this.worker.pathIdx(this.slot, step));
+    }
+    resolveClearanceRadius() {
+        const bodyRadius = this.radius;
+        tempWallProxies.length = 0;
+        this.grid.appendStaticWallProxiesNearWorld(this.x, this.y, bodyRadius + this.grid.cellSize, tempWallProxies);
+        let wallThickness = 4; // Default thickness fallback
+        for (let i = 0; i < tempWallProxies.length; i++) {
+            const wall = tempWallProxies[i];
+            const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+            if (thickness > 0 && thickness < this.grid.cellSize) wallThickness = Math.max(wallThickness, thickness);
+        }
+        tempWallProxies.length = 0; // Clear references to prevent memory leaks
+        const freeHalfWidth = (this.grid.cellSize - wallThickness) * 0.5;
+        const centeredClearance = freeHalfWidth - bodyRadius;
+        const safetyPadding = Math.max(0, centeredClearance * 0.5);
+        this.clearanceRadius = bodyRadius + safetyPadding;
+    }
+    findLookaheadStep(step) {
+        const maxLookahead = 4;
+        let lookaheadStep = step + 1;
+        let validLookaheadStep = step;
+        while (lookaheadStep < step + maxLookahead && lookaheadStep < this.pathLen) {
+            const lx = this.getPathX(lookaheadStep);
+            const ly = this.getPathY(lookaheadStep);
+            if (hasLineOfSight(this.x, this.y, lx, ly, this.grid, this.clearanceRadius)) validLookaheadStep = lookaheadStep;
+            else break; // Stop looking ahead if line of sight is broken by walls/corners
+            lookaheadStep++;
+        }
+        return validLookaheadStep;
+    }
+    calculateCornerSlowdown(progressStep, maxSpeed, accel, currentDesiredSpeed) {
+        let desiredSpeed = currentDesiredSpeed;
+        const maxDev = 2.0; // Max allowed deviation/overshoot in pixels
+        const minCornerSpeed = 30.0;
+        const startCheck = Math.max(1, progressStep - 1);
+        const endCheck = Math.min(this.pathLen - 2, progressStep + 3);
+        for (let i = startCheck; i <= endCheck; i++) {
+            const idxPrev = this.worker.pathIdx(this.slot, i - 1);
+            const idxCurr = this.worker.pathIdx(this.slot, i);
+            const idxNext = this.worker.pathIdx(this.slot, i + 1);
+            const xPrev = this.grid.gridCenterXByIdx(idxPrev);
+            const yPrev = this.grid.gridCenterYByIdx(idxPrev);
+            const xCurr = this.grid.gridCenterXByIdx(idxCurr);
+            const yCurr = this.grid.gridCenterYByIdx(idxCurr);
+            const xNext = this.grid.gridCenterXByIdx(idxNext);
+            const yNext = this.grid.gridCenterYByIdx(idxNext);
+            const dx0 = xCurr - xPrev;
+            const dy0 = yCurr - yPrev;
+            const dx1 = xNext - xCurr;
+            const dy1 = yNext - yCurr;
+            const d0 = Math.hypot(dx0, dy0);
+            const d1 = Math.hypot(dx1, dy1);
+            if (d0 > 0.001 && d1 > 0.001) {
+                const cosTheta = (dx0 * dx1 + dy0 * dy1) / (d0 * d1);
+                if (cosTheta < 0.95) {
+                    const invCos = 1.0 - Math.max(-1.0, Math.min(1.0, cosTheta));
+                    const cornerSpeed = Math.max(minCornerSpeed, Math.min(maxSpeed, Math.sqrt((accel * maxDev) / invCos)));
+                    const distToCorner = Math.hypot(xCurr - this.x, yCurr - this.y);
+                    const brakingDistance = (maxSpeed * maxSpeed - cornerSpeed * cornerSpeed) / (2 * accel);
+                    if (distToCorner < brakingDistance) {
+                        const limit = Math.sqrt(cornerSpeed * cornerSpeed + 2 * accel * distToCorner);
+                        desiredSpeed = Math.min(desiredSpeed, limit);
+                    }
+                }
+            }
+        }
+        return desiredSpeed;
+    }
+    calculateAlignmentSlowdown(dx, dy, dist, maxSpeed, accel, currentDesiredSpeed) {
+        const speed = Math.hypot(this.vx, this.vy);
+        if (speed <= 20.0 || dist < 0.01) return currentDesiredSpeed;
+        const dirX = this.vx / speed;
+        const dirY = this.vy / speed;
+        const tx = dx / dist;
+        const ty = dy / dist;
+        const cosAlign = dirX * tx + dirY * ty;
+        if (cosAlign < 0.95) {
+            const maxDevAlign = 2.0; // Max allowed alignment overshoot in pixels
+            const invCosAlign = 1.0 - Math.max(-1.0, Math.min(1.0, cosAlign));
+            const alignSpeed = Math.max(30.0, Math.min(maxSpeed, Math.sqrt((accel * maxDevAlign) / invCosAlign)));
+            return Math.min(currentDesiredSpeed, alignSpeed);
+        }
+        return currentDesiredSpeed;
+    }
+}
+const tempEvaluator = new PathSteeringEvaluator();
 export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
     const x = pose.x;
     const y = pose.y;
@@ -201,38 +320,15 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
         dy = steerY - y;
         dist = Math.hypot(dx, dy);
     }
-    // Dynamic safety clearance padding calculation based on bodyRadius, wall thickness, and cellSize
-    const bodyRadius = resolveBodyRadius(pose);
-    const wallProxies = [];
-    grid.appendStaticWallProxiesNearWorld(x, y, bodyRadius + grid.cellSize, wallProxies);
-    let wallThickness = 4; // Default thickness fallback
-    for (let i = 0; i < wallProxies.length; i++) {
-        const wall = wallProxies[i];
-        const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
-        if (thickness > 0 && thickness < grid.cellSize) wallThickness = Math.max(wallThickness, thickness);
-    }
-    const freeHalfWidth = (grid.cellSize - wallThickness) * 0.5;
-    const centeredClearance = freeHalfWidth - bodyRadius;
-    const safetyPadding = Math.max(0, centeredClearance * 0.5);
-    const clearanceRadius = bodyRadius + safetyPadding;
-    // Dynamic Line of Sight Steering (Lookahead Smoothing)
-    const maxLookahead = 4;
-    let lookaheadStep = step + 1;
-    let validLookaheadStep = step;
-    while (lookaheadStep < step + maxLookahead && lookaheadStep < pathLen) {
-        const lx = grid.gridCenterXByIdx(worker.pathIdx(slot, lookaheadStep));
-        const ly = grid.gridCenterYByIdx(worker.pathIdx(slot, lookaheadStep));
-        if (hasLineOfSight(x, y, lx, ly, grid, clearanceRadius)) validLookaheadStep = lookaheadStep;
-        else break; // Stop looking ahead if line of sight is broken by walls/corners
-        lookaheadStep++;
-    }
+    const progressStep = step;
+    tempEvaluator.init(pose, worker, slot, pathLen, grid, settings);
+    tempEvaluator.resolveClearanceRadius();
+    const validLookaheadStep = tempEvaluator.findLookaheadStep(step);
     if (validLookaheadStep > step) {
-        // Officially skip the intermediate waypoints since we have a clear shot
         step = validLookaheadStep;
         if (navState) navState.pathProgressIdx = step;
-        steerIdx = worker.pathIdx(slot, step);
-        steerX = grid.gridCenterXByIdx(steerIdx);
-        steerY = grid.gridCenterYByIdx(steerIdx);
+        steerX = tempEvaluator.getPathX(step);
+        steerY = tempEvaluator.getPathY(step);
         dx = steerX - x;
         dy = steerY - y;
         dist = Math.hypot(dx, dy);
@@ -240,68 +336,11 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     const distToTarget = Math.hypot(targetX - x, targetY - y);
     if (step >= pathLen - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     if (!(dist >= 0.01)) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
-    // Calculate cornering and arrival slowdown
     const maxSpeed = settings.maxSpeed ?? 180;
     const accel = settings.accel ?? 600;
     let desiredSpeed = maxSpeed;
-    // Cornering Slowdown check
-    if (step < pathLen - 1) {
-        // 1. Turn at the immediate next waypoint 'step' (corner: steerX, steerY)
-        const nextIdx1 = worker.pathIdx(slot, step + 1);
-        const nextX1 = grid.gridCenterXByIdx(nextIdx1);
-        const nextY1 = grid.gridCenterYByIdx(nextIdx1);
-        const dx0 = steerX - x;
-        const dy0 = steerY - y;
-        const dx1 = nextX1 - steerX;
-        const dy1 = nextY1 - steerY;
-        const d0 = Math.hypot(dx0, dy0);
-        const d1 = Math.hypot(dx1, dy1);
-        if (d0 > 0.001 && d1 > 0.001) {
-            const cosTheta = (dx0 * dx1 + dy0 * dy1) / (d0 * d1);
-            if (cosTheta < 0.9) {
-                const cornerFactor = 0.35 + 0.65 * Math.max(0, cosTheta);
-                const cornerSpeed = maxSpeed * cornerFactor;
-                const distToCorner = d0;
-                const brakingDistance = (maxSpeed * maxSpeed - cornerSpeed * cornerSpeed) / (2 * accel);
-                if (distToCorner < brakingDistance) {
-                    const limit = Math.sqrt(cornerSpeed * cornerSpeed + 2 * accel * distToCorner);
-                    desiredSpeed = Math.min(desiredSpeed, limit);
-                }
-            }
-        }
-        // 2. Look ahead up to 2 waypoints further for upcoming turns (starting at step + 1)
-        for (let checkStep = step; checkStep < Math.min(step + 2, pathLen - 2); checkStep++) {
-            const idx0 = worker.pathIdx(slot, checkStep);
-            const idx1 = worker.pathIdx(slot, checkStep + 1);
-            const idx2 = worker.pathIdx(slot, checkStep + 2);
-            const x0 = grid.gridCenterXByIdx(idx0);
-            const y0 = grid.gridCenterYByIdx(idx0);
-            const x1 = grid.gridCenterXByIdx(idx1);
-            const y1 = grid.gridCenterYByIdx(idx1);
-            const x2 = grid.gridCenterXByIdx(idx2);
-            const y2 = grid.gridCenterYByIdx(idx2);
-            const dx1_ch = x1 - x0;
-            const dy1_ch = y1 - y0;
-            const dx2_ch = x2 - x1;
-            const dy2_ch = y2 - y1;
-            const d1_ch = Math.hypot(dx1_ch, dy1_ch);
-            const d2_ch = Math.hypot(dx2_ch, dy2_ch);
-            if (d1_ch > 0.001 && d2_ch > 0.001) {
-                const cosTheta = (dx1_ch * dx2_ch + dy1_ch * dy2_ch) / (d1_ch * d2_ch);
-                if (cosTheta < 0.9) {
-                    const cornerFactor = 0.35 + 0.65 * Math.max(0, cosTheta);
-                    const cornerSpeed = maxSpeed * cornerFactor;
-                    const distToCorner = Math.hypot(x1 - x, y1 - y);
-                    const brakingDistance = (maxSpeed * maxSpeed - cornerSpeed * cornerSpeed) / (2 * accel);
-                    if (distToCorner < brakingDistance) {
-                        const limit = Math.sqrt(cornerSpeed * cornerSpeed + 2 * accel * distToCorner);
-                        desiredSpeed = Math.min(desiredSpeed, limit);
-                    }
-                }
-            }
-        }
-    }
-    // Arrival Slowdown check
+    desiredSpeed = tempEvaluator.calculateCornerSlowdown(progressStep, maxSpeed, accel, desiredSpeed);
+    desiredSpeed = tempEvaluator.calculateAlignmentSlowdown(dx, dy, dist, maxSpeed, accel, desiredSpeed);
     const decelRadius = 32.0; // 2 grid cells
     if (step >= pathLen - 1 || distToTarget < decelRadius) {
         const arrivalFactor = Math.max(0.15, Math.min(1.0, distToTarget / decelRadius));
