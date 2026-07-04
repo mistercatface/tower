@@ -9,6 +9,7 @@ import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js"
 import { applyKineticAcceleration } from "../../Libraries/Motion/motionDynamics.js";
 import { processKineticContactFractures } from "../../Libraries/Props/propFracture.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
+import { commitGridNavEdit } from "../../Libraries/Sandbox/gridNavEdit.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
@@ -46,7 +47,10 @@ function simulationKineticHooks(state) {
         applyContactSideEffects,
         afterKineticPhysics() {
             state.appLaunch?.session?.afterKineticPhysics?.();
-            flushPendingWallDamage(state);
+            const damageBounds = flushPendingWallDamage(state);
+            if (damageBounds) {
+                commitGridNavEdit(state, damageBounds).catch(console.error);
+            }
         },
     };
 }

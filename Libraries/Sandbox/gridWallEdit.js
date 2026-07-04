@@ -64,10 +64,11 @@ export function stampRailWallsQuiet(state, railWalls) {
         const wall = railWalls[i];
         const { col, row, side } = wall;
         if (!cellInRect(col, row, grid.cols, grid.rows)) continue;
-        clearPrimaryBoundaryAt(state, col, row, side);
+        const idx = colRowToIndex(col, row, grid.cols);
+        clearPrimaryBoundaryAt(state, idx, side);
         const heightLevel = clampStampWallHeightLevel(wall.heightLevel ?? 1, settings);
         const thicknessLevel = wall.thicknessLevel ?? 1;
-        setBoundary(grid, colRowToIndex(col, row, grid.cols), side, { capHeightLevel: heightLevel, thicknessLevel });
+        setBoundary(grid, idx, side, { capHeightLevel: heightLevel, thicknessLevel });
         stamped.push({ col, row, side, heightLevel, thicknessLevel });
         growCellBounds(bounds, col, row);
     }
