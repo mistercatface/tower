@@ -111,7 +111,14 @@ export class WorldSurfaceEngine {
         const generation = this.surfaceCache.getCurrentGeneration(key);
         bakeFn()
             .then((bitmaps) => {
-                if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) throw new Error("Invalid or empty bitmaps returned from bake");
+                if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) {
+                    if (bitmaps) {
+                        for (const b of bitmaps) {
+                            if (b && typeof b.close === "function") b.close();
+                        }
+                    }
+                    throw new Error("Invalid or empty bitmaps returned from bake");
+                }
                 this.surfaceCache.commitBake(key, generation, bitmaps);
                 this.bakeFailCounts.delete(key);
                 this.bakeCooldowns.delete(key);

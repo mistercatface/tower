@@ -1,8 +1,9 @@
 import { LruMap } from "../DataStructures/LruMap.js";
 import { isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
+import { releaseOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 /** LRU cache of baked surface ImageBitmap arrays (world chunks + wall atlases). */
 export class SurfaceBitmapCache {
-    constructor(maxEntries = 512) {
+    constructor(maxEntries = 2046) {
         this.maxEntries = maxEntries;
         this.cache = new LruMap(maxEntries, {
             onEvict: (key, value) => {
@@ -31,11 +32,13 @@ export class SurfaceBitmapCache {
             if (Array.isArray(newVal)) return newVal.includes(item);
             return newVal === item;
         };
-        if (Array.isArray(oldVal))
-            for (const item of oldVal) {
-                if (item instanceof ImageBitmap && !isReused(item)) item.close();
-            }
-        else if (oldVal instanceof ImageBitmap && !isReused(oldVal)) oldVal.close();
+        const disposeItem = (item) => {
+            if (isReused(item)) return;
+            if (item instanceof ImageBitmap) item.close();
+            else if (item instanceof OffscreenCanvas) releaseOffscreenCanvas(item);
+        };
+        if (Array.isArray(oldVal)) for (const item of oldVal) disposeItem(item);
+        else disposeItem(oldVal);
     }
     set(key, value) {
         const existing = this.peek(key);
@@ -82,7 +85,14 @@ export class SurfaceBitmapCache {
             bitmaps.forEach((b) => b.close());
             return;
         }
-        if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) return;
+        if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) {
+            if (bitmaps) {
+                for (const b of bitmaps) {
+                    if (b && typeof b.close === "function") b.close();
+                }
+            }
+            return;
+        }
         const existing = this.peek(key);
         if (existing?.[0]?.isPlaceholder === true) this.set(key, bitmaps);
         else if (existing !== bitmaps) bitmaps.forEach((b) => b.close());

@@ -6,6 +6,7 @@ import { releaseOffscreenCanvas } from "./offscreenCanvas.js";
  * @param {object} entry
  */
 function disposeEntry(entry) {
+    entry.disposed = true;
     if (entry._isBitmap) entry.canvas.close();
     else releaseOffscreenCanvas(entry.canvas);
 }
@@ -36,6 +37,8 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
          * @param {Record<string, unknown>} [meta]
          */
         set(key, sourceCanvas, meta = {}) {
+            const existing = cache.peek(key);
+            if (existing) disposeEntry(existing);
             const entry = { canvas: sourceCanvas, _isBitmap: false, bakeScale: meta.bakeScale ?? 1, anchorX: meta.anchorX ?? 0, anchorY: meta.anchorY ?? 0, ...meta };
             cache.set(key, entry);
             // Asynchronously promote to a GPU-resident ImageBitmap so that
@@ -43,6 +46,10 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
             if (typeof createImageBitmap !== "undefined")
                 createImageBitmap(sourceCanvas)
                     .then((bitmap) => {
+                        if (entry.disposed) {
+                            bitmap.close();
+                            return;
+                        }
                         // Only apply if this entry is still the live one in the cache.
                         const live = cache.get(key);
                         if (live === entry) {
