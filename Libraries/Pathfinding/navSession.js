@@ -50,7 +50,21 @@ function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, g
     const idx = worker.pathIdx(slot, i);
     const wx = grid.gridCenterXByIdx(idx);
     const wy = grid.gridCenterYByIdx(idx);
-    if (Math.hypot(wx - bodyX, wy - bodyY) > arrivalPx) return false;
+    if (Math.hypot(wx - bodyX, wy - bodyY) <= arrivalPx) return true;
+    if (i > 0) {
+        const prevIdx = worker.pathIdx(slot, i - 1);
+        const prevWx = grid.gridCenterXByIdx(prevIdx);
+        const prevWy = grid.gridCenterYByIdx(prevIdx);
+        const dx_seg = wx - prevWx;
+        const dy_seg = wy - prevWy;
+        const dx_agent = bodyX - wx;
+        const dy_agent = bodyY - wy;
+        const segLen = Math.hypot(dx_seg, dy_seg);
+        if (segLen > 0.001) {
+            const dot = (dx_seg / segLen) * dx_agent + (dy_seg / segLen) * dy_agent;
+            if (dot > 0 && Math.abs(dot) < grid.cellSize * 1.5) return true;
+        }
+    }
     if (bodyIdx === idx) return true;
     return grid.canStep(bodyIdx, idx, navTopology);
 }
@@ -74,7 +88,22 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
         const cellIdx = worker.pathIdx(slot, idx);
         const wx = grid.gridCenterXByIdx(cellIdx);
         const wy = grid.gridCenterYByIdx(cellIdx);
-        if (Math.hypot(wx - x, wy - y) > waypointArrival) break;
+        let arrived = Math.hypot(wx - x, wy - y) <= waypointArrival;
+        if (!arrived && idx > 0) {
+            const prevIdx = worker.pathIdx(slot, idx - 1);
+            const prevWx = grid.gridCenterXByIdx(prevIdx);
+            const prevWy = grid.gridCenterYByIdx(prevIdx);
+            const dx_seg = wx - prevWx;
+            const dy_seg = wy - prevWy;
+            const dx_agent = x - wx;
+            const dy_agent = y - wy;
+            const segLen = Math.hypot(dx_seg, dy_seg);
+            if (segLen > 0.001) {
+                const dot = (dx_seg / segLen) * dx_agent + (dy_seg / segLen) * dy_agent;
+                if (dot > 0 && Math.abs(dot) < grid.cellSize * 1.5) arrived = true;
+            }
+        }
+        if (!arrived) break;
         if (hereIdx === cellIdx) {
             idx++;
             continue;
@@ -180,15 +209,12 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     for (let i = 0; i < wallProxies.length; i++) {
         const wall = wallProxies[i];
         const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
-        if (thickness > 0 && thickness < grid.cellSize) {
-            wallThickness = Math.max(wallThickness, thickness);
-        }
+        if (thickness > 0 && thickness < grid.cellSize) wallThickness = Math.max(wallThickness, thickness);
     }
     const freeHalfWidth = (grid.cellSize - wallThickness) * 0.5;
     const centeredClearance = freeHalfWidth - bodyRadius;
     const safetyPadding = Math.max(0, centeredClearance * 0.5);
     const clearanceRadius = bodyRadius + safetyPadding;
-
     // Dynamic Line of Sight Steering (Lookahead Smoothing)
     const maxLookahead = 4;
     let lookaheadStep = step + 1;
@@ -243,7 +269,6 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
                 }
             }
         }
-
         // 2. Look ahead up to 2 waypoints further for upcoming turns (starting at step + 1)
         for (let checkStep = step; checkStep < Math.min(step + 2, pathLen - 2); checkStep++) {
             const idx0 = worker.pathIdx(slot, checkStep);
@@ -380,7 +405,18 @@ export class HpaNavSession {
         if (idleReason && idlePathReplanAllowed(this.navState, idleReason, isVisible, stuckReplanFrames))
             return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);
         if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
-        const steering = computeSabPathSteering(agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
+        const steering = computeSabPathSteering(
+            agentPose(prop),
+            nav.worker,
+            this.navState.pathSlot,
+            this.navState.pathLen,
+            targetX,
+            targetY,
+            state.obstacleGrid,
+            nav.topology,
+            pathSettings,
+            this.navState,
+        );
         if (steering && !inFlight && offPathReplanDue(steering, this.navState, this.replanClockMs))
             if (this.softReplanAllowed(stuckFrames, stuckReplanFrames) && obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
                 this.navState.lastOffPathReplan = this.replanClockMs;
