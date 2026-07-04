@@ -1,4 +1,4 @@
-import { cellBoundsAt, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
+import { cellBoundsAt, emptyCellBounds, growCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
@@ -80,10 +80,8 @@ export function stampRailWallsBatch(state, railWalls) {
     const { bounds, stamped } = stampRailWallsQuiet(state, railWalls);
     if (bounds) {
         const grid = state.obstacleGrid;
-        for (let i = 0; i < stamped.length; i++) {
-            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-            commitGridNavEdit(state, stamped[i].col + stamped[i].row * grid.cols);
-        }
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
     }
     return stamped;
 }
@@ -91,10 +89,8 @@ export function clearRailWallsBatch(state, rails) {
     const bounds = clearRailWallsQuiet(state, rails);
     if (bounds) {
         const grid = state.obstacleGrid;
-        for (let i = 0; i < rails.length; i++) {
-            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-            commitGridNavEdit(state, rails[i].idx);
-        }
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
     }
 }
 export function clearVoxelWallQuiet(state, idx) {
@@ -121,10 +117,8 @@ export function clearVoxelWallsBatch(state, voxelIndices) {
     const bounds = clearVoxelWallsQuiet(state, voxelIndices);
     if (bounds) {
         const grid = state.obstacleGrid;
-        for (let i = 0; i < voxelIndices.length; i++) {
-            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-            commitGridNavEdit(state, voxelIndices[i]);
-        }
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
     }
     return bounds;
 }
@@ -137,14 +131,8 @@ export function clearGridWallsBatch(state, { voxels = [], rails = [] } = {}) {
     const bounds = clearGridWallsQuiet(state, { voxels, rails });
     if (bounds) {
         const grid = state.obstacleGrid;
-        for (let i = 0; i < voxels.length; i++) {
-            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-            commitGridNavEdit(state, voxels[i]);
-        }
-        for (let i = 0; i < rails.length; i++) {
-            bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-            commitGridNavEdit(state, rails[i].idx);
-        }
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
     }
     return bounds;
 }
@@ -331,7 +319,9 @@ export function createDeferredGridWallCommit(state) {
         },
         flush() {
             if (!pending.size) return false;
-            for (const idx of pending) commitGridNavEdit(state, idx);
+            const bounds = emptyCellBounds();
+            for (const idx of pending) growCellBoundsIdx(bounds, idx, state.obstacleGrid.cols);
+            commitGridNavEdit(state, padCellBoundsToGrid(bounds, state.obstacleGrid.cols, state.obstacleGrid.rows, 1));
             pending.clear();
             return true;
         },

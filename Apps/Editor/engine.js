@@ -47,10 +47,7 @@ function simulationKineticHooks(state) {
         applyContactSideEffects,
         afterKineticPhysics() {
             state.appLaunch?.session?.afterKineticPhysics?.();
-            const damageBounds = flushPendingWallDamage(state);
-            if (damageBounds) {
-                commitGridNavEdit(state, damageBounds).catch(console.error);
-            }
+            flushPendingWallDamage(state);
         },
     };
 }
