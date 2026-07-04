@@ -177,6 +177,7 @@ export function buildSabAbstractPathOverlay(worker, slot, pathLen) {
  * @param {import("./navSession.js").NavSessionState | null} [navState]
  */
 const tempWallProxies = [];
+const tempCornerProxies = [];
 class PathSteeringEvaluator {
     constructor() {
         this.x = 0;
@@ -190,6 +191,8 @@ class PathSteeringEvaluator {
         this.grid = null;
         this.settings = null;
         this.clearanceRadius = 0;
+        this.centeredClearance = 0;
+        this.hasNearWalls = false;
     }
     init(pose, worker, slot, pathLen, grid, settings) {
         this.x = pose.x;
@@ -203,6 +206,8 @@ class PathSteeringEvaluator {
         this.grid = grid;
         this.settings = settings;
         this.clearanceRadius = 0;
+        this.centeredClearance = 0;
+        this.hasNearWalls = false;
     }
     getPathX(step) {
         return this.grid.gridCenterXByIdx(this.worker.pathIdx(this.slot, step));
@@ -220,14 +225,16 @@ class PathSteeringEvaluator {
             const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
             if (thickness > 0 && thickness < this.grid.cellSize) wallThickness = Math.max(wallThickness, thickness);
         }
+        this.hasNearWalls = tempWallProxies.length > 0;
         tempWallProxies.length = 0; // Clear references to prevent memory leaks
         const freeHalfWidth = (this.grid.cellSize - wallThickness) * 0.5;
         const centeredClearance = freeHalfWidth - bodyRadius;
-        const safetyPadding = Math.max(0, centeredClearance * 0.5);
+        this.centeredClearance = centeredClearance;
+        const safetyPadding = Math.max(0, centeredClearance * 0.85);
         this.clearanceRadius = bodyRadius + safetyPadding;
     }
     findLookaheadStep(step) {
-        const maxLookahead = 4;
+        const maxLookahead = this.hasNearWalls ? 1 : 4;
         let lookaheadStep = step + 1;
         let validLookaheadStep = step;
         while (lookaheadStep < step + maxLookahead && lookaheadStep < this.pathLen) {
@@ -241,8 +248,7 @@ class PathSteeringEvaluator {
     }
     calculateCornerSlowdown(progressStep, maxSpeed, accel, currentDesiredSpeed) {
         let desiredSpeed = currentDesiredSpeed;
-        const maxDev = 2.0; // Max allowed deviation/overshoot in pixels
-        const minCornerSpeed = 30.0;
+        const minCornerSpeed = Math.min(30.0, maxSpeed * 0.35);
         const startCheck = Math.max(1, progressStep - 1);
         const endCheck = Math.min(this.pathLen - 2, progressStep + 3);
         for (let i = startCheck; i <= endCheck; i++) {
@@ -264,6 +270,19 @@ class PathSteeringEvaluator {
             if (d0 > 0.001 && d1 > 0.001) {
                 const cosTheta = (dx0 * dx1 + dy0 * dy1) / (d0 * d1);
                 if (cosTheta < 0.95) {
+                    tempCornerProxies.length = 0;
+                    this.grid.appendStaticWallProxiesNearWorld(xCurr, yCurr, this.radius + this.grid.cellSize, tempCornerProxies);
+                    let cornerWallThickness = 4;
+                    for (let w = 0; w < tempCornerProxies.length; w++) {
+                        const wall = tempCornerProxies[w];
+                        const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+                        if (thickness > 0 && thickness < this.grid.cellSize) cornerWallThickness = Math.max(cornerWallThickness, thickness);
+                    }
+                    const hasNearWallsAtCorner = tempCornerProxies.length > 0;
+                    tempCornerProxies.length = 0;
+                    const cornerFreeHalfWidth = (this.grid.cellSize - cornerWallThickness) * 0.5;
+                    const cornerClearance = cornerFreeHalfWidth - this.radius;
+                    const maxDev = hasNearWallsAtCorner ? Math.max(0.5, cornerClearance * 0.75) : 4.0;
                     const invCos = 1.0 - Math.max(-1.0, Math.min(1.0, cosTheta));
                     const cornerSpeed = Math.max(minCornerSpeed, Math.min(maxSpeed, Math.sqrt((accel * maxDev) / invCos)));
                     const distToCorner = Math.hypot(xCurr - this.x, yCurr - this.y);
@@ -277,7 +296,7 @@ class PathSteeringEvaluator {
         }
         return desiredSpeed;
     }
-    calculateAlignmentSlowdown(dx, dy, dist, maxSpeed, accel, currentDesiredSpeed) {
+    calculateAlignmentSlowdown(steerX, steerY, dx, dy, dist, maxSpeed, accel, currentDesiredSpeed) {
         const speed = Math.hypot(this.vx, this.vy);
         if (speed <= 20.0 || dist < 0.01) return currentDesiredSpeed;
         const dirX = this.vx / speed;
@@ -286,7 +305,19 @@ class PathSteeringEvaluator {
         const ty = dy / dist;
         const cosAlign = dirX * tx + dirY * ty;
         if (cosAlign < 0.95) {
-            const maxDevAlign = 2.0; // Max allowed alignment overshoot in pixels
+            tempCornerProxies.length = 0;
+            this.grid.appendStaticWallProxiesNearWorld(steerX, steerY, this.radius + this.grid.cellSize, tempCornerProxies);
+            let targetWallThickness = 4;
+            for (let w = 0; w < tempCornerProxies.length; w++) {
+                const wall = tempCornerProxies[w];
+                const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+                if (thickness > 0 && thickness < this.grid.cellSize) targetWallThickness = Math.max(targetWallThickness, thickness);
+            }
+            const hasNearWallsAtTarget = tempCornerProxies.length > 0;
+            tempCornerProxies.length = 0;
+            const targetFreeHalfWidth = (this.grid.cellSize - targetWallThickness) * 0.5;
+            const targetClearance = targetFreeHalfWidth - this.radius;
+            const maxDevAlign = hasNearWallsAtTarget ? Math.max(0.5, targetClearance * 0.75) : 4.0;
             const invCosAlign = 1.0 - Math.max(-1.0, Math.min(1.0, cosAlign));
             const alignSpeed = Math.max(30.0, Math.min(maxSpeed, Math.sqrt((accel * maxDevAlign) / invCosAlign)));
             return Math.min(currentDesiredSpeed, alignSpeed);
@@ -299,7 +330,11 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     const x = pose.x;
     const y = pose.y;
     const bodyIdx = grid.worldCol(x) + grid.worldRow(y) * grid.cols;
-    const waypointArrival = settings.pathWaypointArrival;
+    // Initialize evaluator and resolve wall clearance first so we can use its properties
+    tempEvaluator.init(pose, worker, slot, pathLen, grid, settings);
+    tempEvaluator.resolveClearanceRadius();
+    let waypointArrival = settings.pathWaypointArrival;
+    if (tempEvaluator.hasNearWalls) waypointArrival = Math.min(waypointArrival, Math.max(3.0, tempEvaluator.radius + 1.0));
     const arrivalDistance = settings.arrivalDistance;
     const offPathDistance = settings.pathOffPathDistance;
     let step = navState?.pathProgressIdx ?? 0;
@@ -321,8 +356,6 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
         dist = Math.hypot(dx, dy);
     }
     const progressStep = step;
-    tempEvaluator.init(pose, worker, slot, pathLen, grid, settings);
-    tempEvaluator.resolveClearanceRadius();
     const validLookaheadStep = tempEvaluator.findLookaheadStep(step);
     if (validLookaheadStep > step) {
         step = validLookaheadStep;
@@ -340,8 +373,8 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     const accel = settings.accel ?? 600;
     let desiredSpeed = maxSpeed;
     desiredSpeed = tempEvaluator.calculateCornerSlowdown(progressStep, maxSpeed, accel, desiredSpeed);
-    desiredSpeed = tempEvaluator.calculateAlignmentSlowdown(dx, dy, dist, maxSpeed, accel, desiredSpeed);
-    const decelRadius = 32.0; // 2 grid cells
+    desiredSpeed = tempEvaluator.calculateAlignmentSlowdown(steerX, steerY, dx, dy, dist, maxSpeed, accel, desiredSpeed);
+    const decelRadius = Math.max(32.0, (maxSpeed * maxSpeed) / (2.0 * accel));
     if (step >= pathLen - 1 || distToTarget < decelRadius) {
         const arrivalFactor = Math.max(0.15, Math.min(1.0, distToTarget / decelRadius));
         desiredSpeed = Math.min(desiredSpeed, maxSpeed * arrivalFactor);

@@ -10,7 +10,7 @@ export default {
         canChain: true,
         density: 0.007958,
         friction: 4,
-        wallPhysics: { restitution: 0.35, friction: 0.4 },
+        wallPhysics: { restitution: 0.12, friction: 0.02 },
         quantizeSteps: { facing: 64 },
         fracture: { mode: "circle", minForce: 12, opponentOnly: true, excludeFactions: ["alpha"], threatType: "boid_triangle" },
     },
