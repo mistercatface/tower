@@ -1,4 +1,4 @@
-import { floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
+import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { CARDINAL_OFFSETS, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
 /** @param {{ idx: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
@@ -36,14 +36,14 @@ export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExt
     for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatLayoutCellForError(idx, layout)}`);
     for (const idx of footprint) {
         const belt = beltsByCell.get(idx);
-        const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
+        const { entrySide, exitSide } = FloorBelt.getEntryExitSides(belt.kind, belt.facingIndex);
         const entryIdx = edgeNeighborIdx(belt.idx, entrySide, stride, rows);
         const exitIdx = edgeNeighborIdx(belt.idx, exitSide, stride, rows);
         const entryInFootprint = footprint.has(entryIdx);
         const exitInFootprint = footprint.has(exitIdx);
         if (entryInFootprint) {
             const entryBelt = beltsByCell.get(entryIdx);
-            const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
+            const entryExit = FloorBelt.getEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
             if (entryExit !== edgeMirrorSide(entrySide))
                 throw new Error(
                     `${label}: belt chain break ${formatLayoutCellForError(entryIdx, layout)} -> ${formatLayoutCellForError(idx, layout)} (entry side ${entrySide}, upstream exit ${entryExit})`,
@@ -51,7 +51,7 @@ export function assertBeltChains(footprint, beltsByCell, layout, label, mouthExt
         }
         if (exitInFootprint) {
             const exitBelt = beltsByCell.get(exitIdx);
-            const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
+            const exitEntry = FloorBelt.getEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
             if (exitEntry !== edgeMirrorSide(exitSide))
                 throw new Error(
                     `${label}: belt chain break ${formatLayoutCellForError(idx, layout)} -> ${formatLayoutCellForError(exitIdx, layout)} (exit side ${exitSide}, downstream entry ${exitEntry})`,

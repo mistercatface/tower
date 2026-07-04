@@ -1,5 +1,6 @@
 import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
-import { canStampFloorBeltAt, markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
+import { FloorBelt } from "../Spatial/grid/FloorCell.js";
+import { findGridAnchoredFloorPropAtCell } from "../Spatial/zones/floorShapes.js";
 import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
@@ -9,7 +10,6 @@ import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
 import propCatalog from "../../Assets/props/index.js";
 import { isGridFloorBeltSpawnAsset, isResizableBoxSpawnAsset, resolveFloorBeltKindFromSpawnAsset } from "./sandboxCapabilities.js";
-import { formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
 import { buildFloorBeltInspectorInfo, buildRailWallInspectorInfo, buildVoxelWallInspectorInfo } from "./sandboxSelectionInspectors.js";
 function sceneItem(seq, label, select, category = "") {
     return { seq, label, select, category };
@@ -146,7 +146,7 @@ export const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const idx = grid.worldToIdx(worldX, worldY);
-            if (!canStampFloorBeltAt(state, idx)) return false;
+            if (!FloorBelt.canStampAt(state, idx, findGridAnchoredFloorPropAtCell)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!applyFloorCellEdit(state, idx, kind, 0)) return false;
             const row = (idx / grid.cols) | 0;
@@ -164,7 +164,7 @@ export const PLACEABLE = {
                 items.push(
                     sceneItem(
                         placement.placementSeq(placement.floorPlacementKey(entry.col, entry.row), 2e9 + entry.col + entry.row * 1e6),
-                        `Floor belt · (${entry.col},${entry.row}) · ${formatFloorBeltKindLabel(entry.kind)}`,
+                        `Floor belt · (${entry.col},${entry.row}) · ${FloorBelt.formatKindLabel(entry.kind)}`,
                         { kind: "floor", col: entry.col, row: entry.row },
                         "floor",
                     ),

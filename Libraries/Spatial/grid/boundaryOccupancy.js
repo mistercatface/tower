@@ -1,7 +1,7 @@
 import { isRailWallEdge, railWallEdgeFromStamp } from "./CellEdgeStore.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "./gridNavEpoch.js";
 import { neighborFillLevel, edgeMirrorSide } from "./gridCellTopology.js";
-import { beltEntryExitAtIdx, gridSideFromCellIdxToNeighborIdx } from "./FloorCell.js";
+import { FloorBelt, gridSideFromCellIdxToNeighborIdx } from "./FloorCell.js";
 import { colRowToIndex, forEachCardinalNeighborIdx } from "./GridUtils.js";
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
@@ -36,8 +36,8 @@ export function boundaryBlocksStep(grid, idx, side) {
 function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     const cols = grid.cols;
     const stepSide = gridSideFromCellIdxToNeighborIdx(fromIdx, toIdx, cols);
-    const fromBelt = beltEntryExitAtIdx(grid, fromIdx);
-    const toBelt = beltEntryExitAtIdx(grid, toIdx);
+    const fromBelt = FloorBelt.getEntryExitAtIdx(grid, fromIdx);
+    const toBelt = FloorBelt.getEntryExitAtIdx(grid, toIdx);
     if (!fromBelt && !toBelt) return false;
     if (stepSide < 0) return true;
     if (fromBelt && stepSide !== fromBelt.exitSide) return true;

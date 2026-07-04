@@ -7,74 +7,62 @@ import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTop
 import { bakeNavTopologyIntoArena } from "../../Navigation/NavTopology.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../DataStructures/CellKey.js";
-import { isFloorBeltKind, floorBeltEntryExitSides } from "../../Spatial/grid/FloorCell.js";
+import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 const CONVEYOR_AGAINST_FLOW_PENALTY = 20;
 const CONVEYOR_LATERAL_PENALTY = 5;
 const CONVEYOR_DIAGONAL_PENALTY = 8;
 export function getStepPenalty(currIdx, nIdx, cols, floorKind, floorFacing) {
     const kind_curr = floorKind[currIdx];
     const kind_n = floorKind[nIdx];
-    if (!isFloorBeltKind(kind_curr) && !isFloorBeltKind(kind_n)) return 0;
-    
+    if (!FloorBelt.isBelt(kind_curr) && !FloorBelt.isBelt(kind_n)) return 0;
     let penalty_out = 0;
-    if (isFloorBeltKind(kind_curr)) {
+    if (FloorBelt.isBelt(kind_curr)) {
         const diff = nIdx - currIdx;
         let side = -1;
         if (diff === -cols) side = 0;
         else if (diff === 1) side = 1;
         else if (diff === cols) side = 2;
         else if (diff === -1) side = 3;
-        
-        if (side === -1) {
-            penalty_out = CONVEYOR_DIAGONAL_PENALTY;
-        } else {
-            const { entrySide, exitSide } = floorBeltEntryExitSides(kind_curr, floorFacing[currIdx]);
+        if (side === -1) penalty_out = CONVEYOR_DIAGONAL_PENALTY;
+        else {
+            const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind_curr, floorFacing[currIdx]);
             if (side === exitSide) penalty_out = 0;
             else if (side === entrySide) penalty_out = CONVEYOR_AGAINST_FLOW_PENALTY;
             else penalty_out = CONVEYOR_LATERAL_PENALTY;
         }
     }
-    
     let penalty_in = 0;
-    if (isFloorBeltKind(kind_n)) {
+    if (FloorBelt.isBelt(kind_n)) {
         const diff_in = currIdx - nIdx;
         let side_n = -1;
         if (diff_in === -cols) side_n = 0;
         else if (diff_in === 1) side_n = 1;
         else if (diff_in === cols) side_n = 2;
         else if (diff_in === -1) side_n = 3;
-        
-        if (side_n === -1) {
-            penalty_in = CONVEYOR_DIAGONAL_PENALTY;
-        } else {
-            const { entrySide, exitSide } = floorBeltEntryExitSides(kind_n, floorFacing[nIdx]);
+        if (side_n === -1) penalty_in = CONVEYOR_DIAGONAL_PENALTY;
+        else {
+            const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind_n, floorFacing[nIdx]);
             if (side_n === entrySide) penalty_in = 0;
             else if (side_n === exitSide) penalty_in = CONVEYOR_AGAINST_FLOW_PENALTY;
             else penalty_in = CONVEYOR_LATERAL_PENALTY;
         }
     }
-    
     return Math.max(penalty_out, penalty_in);
 }
 export function createNavStepPenaltyLookup(cols, keys, costs, floorKind = null, floorFacing = null) {
     let maxIdx = 0;
-    if (keys && keys.length) {
+    if (keys && keys.length)
         for (let i = 0; i < keys.length; i++) {
             const idx = keys[i];
             if (idx > maxIdx) maxIdx = idx;
         }
-    }
     const costArray = keys && keys.length ? new Uint8Array(maxIdx + 1) : null;
-    if (keys && keys.length) {
-        for (let i = 0; i < keys.length; i++) costArray[keys[i]] = costs[i];
-    }
+    if (keys && keys.length) for (let i = 0; i < keys.length; i++) costArray[keys[i]] = costs[i];
     return {
         extraCost(idx, currIdx) {
             let cost = 0;
             if (costArray && idx < costArray.length) cost += costArray[idx];
-            if (floorKind && floorFacing && currIdx !== undefined) {
-                cost += getStepPenalty(currIdx, idx, cols, floorKind, floorFacing);
-            }
+            if (floorKind && floorFacing && currIdx !== undefined) cost += getStepPenalty(currIdx, idx, cols, floorKind, floorFacing);
             return cost;
         },
     };

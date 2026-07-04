@@ -1,5 +1,5 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
-import { markGridZoneSubscriptionsDirty } from "./floorOccupancy.js";
+import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { chunkRangeToCellBounds } from "../Spatial/grid/GridCoords.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 /**
@@ -16,7 +16,7 @@ export function commitGridNavEdit(state, idx, { invalidateSurfaces = true, fullN
     if (invalidateSurfaces && state.worldSurfaces)
         if (fullNavSync || idx === null) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, grid);
         else state.worldSurfaces.invalidateGridBounds(idx, grid);
-    if (state.sandbox) markGridZoneSubscriptionsDirty(state);
+    if (state.sandbox) FloorBelt.markZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     const nav = resolveNavRuntime(state);
     return nav.commitEdit(idx, { fullNavSync });
@@ -29,7 +29,7 @@ export function commitGridNavEditUnion(state, ...indices) {
 }
 export function commitSurfaceMaterialEdit(state, idx) {
     if (state.worldSurfaces) state.worldSurfaces.invalidateGridBounds(idx, state.obstacleGrid);
-    if (state.sandbox) markGridZoneSubscriptionsDirty(state);
+    if (state.sandbox) FloorBelt.markZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     return idx;
 }

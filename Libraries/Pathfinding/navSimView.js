@@ -1,4 +1,3 @@
-import { isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
 import { cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).

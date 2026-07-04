@@ -1,11 +1,11 @@
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
-import { floorBeltFacingFromIndex, floorBeltElbowTurn, isFloorBeltKind } from "../Spatial/grid/FloorCell.js";
+import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { floorOccupancyStampDrawCacheKey } from "../Spatial/grid/gridNavEpoch.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
 function beltDrawForKind(kind) {
-    const turn = floorBeltElbowTurn(kind);
+    const turn = FloorBelt.getElbowTurn(kind);
     if (turn === "left") return beltDrawByTurn.left;
     if (turn === "right") return beltDrawByTurn.right;
     return beltDrawByTurn.straight;
@@ -54,7 +54,7 @@ export function syncFloorOccupancyStampDrawCache(state, grid) {
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
         const { x, y } = gridCellCenterWorld(grid, col, row);
-        if (isFloorBeltKind(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, floorBeltFacingFromIndex(grid.floorStore.facing[idx]), cellHalf, kind), x, y });
+        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorStore.facing[idx]), cellHalf, kind), x, y });
     }
     const next = { revision, belts };
     state.sandbox._floorOccupancyStampDrawCache = next;

@@ -1,6 +1,6 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
-import { clearFloorOverlayAt } from "../Sandbox/floorOccupancy.js";
+import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 export function createSandboxDeletePointerTool(state, session) {
     return {
         isActive: () => true,
@@ -16,7 +16,7 @@ export function createSandboxDeletePointerTool(state, session) {
             }
             const grid = state.obstacleGrid;
             const idx = grid.worldToIdx(world.x, world.y);
-            if (clearFloorOverlayAt(state, idx)) {
+            if (FloorBelt.clearOverlayAt(state, idx)) {
                 const sel = session.getSelection();
                 if (sel?.kind === "floor" && sel.col === idx % grid.cols && sel.row === ((idx / grid.cols) | 0)) session.clearSelection();
                 session.sync();

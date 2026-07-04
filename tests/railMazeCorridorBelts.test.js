@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, floorBeltElbowTurn, floorBeltRailEdgeSides } from "../Libraries/Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND, FloorBelt } from "../Libraries/Spatial/grid/FloorCell.js";
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { layoutAbsCellIndex, undirectedPairIndex } from "../Libraries/Spatial/grid/GridUtils.js";
@@ -230,7 +230,7 @@ describe("rail maze corridor belts", () => {
             const expectedBelts = seeds[i] === 11 ? 20 : 50;
             assert.ok(plan.floorBelts.length > expectedBelts, `seed ${seeds[i]}: only ${plan.floorBelts.length} belts`);
             let elbows = 0;
-            for (let bi = 0; bi < plan.floorBelts.length; bi++) if (floorBeltElbowTurn(plan.floorBelts[bi].kind)) elbows++;
+            for (let bi = 0; bi < plan.floorBelts.length; bi++) if (FloorBelt.getElbowTurn(plan.floorBelts[bi].kind)) elbows++;
             assert.ok(elbows > 0, `seed ${seeds[i]}: no elbow belts`);
             assert.equal(plan.validation.ok, true, `seed ${seeds[i]}: ${plan.validation.error}`);
             terminateWorkerNavigation(nav);
@@ -291,7 +291,7 @@ describe("rail maze corridor belts", () => {
             assert.ok(beltSet.has(idx), "rail wall must be on a belt cell");
 
             const belt = plan.floorBelts.find(b => b.idx === idx);
-            const lateralSides = floorBeltRailEdgeSides(belt.kind, belt.facingIndex);
+            const lateralSides = FloorBelt.getRailEdgeSides(belt.kind, belt.facingIndex);
             assert.ok(lateralSides.includes(rWall.side), `side ${rWall.side} must be one of the lateral sides: ${lateralSides}`);
         }
 

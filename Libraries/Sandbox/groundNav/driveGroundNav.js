@@ -1,6 +1,6 @@
 import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 import { physicsSettings } from "../../Motion/physicsDefaults.js";
-import { isEntityOnFloorBelt, isFloorBeltCell } from "../../Spatial/grid/FloorCell.js";
+import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 /**
  * @param {object} prop
@@ -11,8 +11,8 @@ const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
  * @param {number} stopRadius
  */
 export function groundNavArrivedAtTarget(prop, targetWorld, targetCellCol, targetCellRow, grid, stopRadius) {
-    const onBelt = isEntityOnFloorBelt(grid, prop.x, prop.y);
-    const targetOnBelt = targetCellCol != null && targetCellRow != null && isFloorBeltCell(grid, targetCellCol + targetCellRow * grid.cols);
+    const onBelt = FloorBelt.isEntityOnBelt(grid, prop.x, prop.y);
+    const targetOnBelt = targetCellCol != null && targetCellRow != null && FloorBelt.isBeltAtIdx(grid, targetCellCol + targetCellRow * grid.cols);
     const dist = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
     return dist <= stopRadius && (!targetOnBelt || onBelt);
 }
@@ -43,7 +43,7 @@ export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
  */
 export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, beltHandoffCooldown, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
-    if (isEntityOnFloorBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
+    if (FloorBelt.isEntityOnBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
     const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
     if (beltWasOnBelt) {
         const cooldownFrames = beltHandoffCooldown.frames;

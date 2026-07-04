@@ -3,7 +3,7 @@ import { colRowToIndex, cellInRect } from "./GridUtils.js";
 import { cellEdgeEndpoints, railWallEdgeShouldEmit, edgeRailCollisionThicknessPx, resolveCellWallHeightAtIdx } from "./gridCellTopology.js";
 import { CellEdgeStore } from "./CellEdgeStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
-import { isFloorBeltKind, FloorCellStore } from "./FloorCell.js";
+import { FloorBelt, FloorCellStore } from "./FloorCell.js";
 import { clearAllBoundariesAtCell, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
 import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsAtOriginIdxInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
@@ -348,7 +348,7 @@ export class WorldObstacleGrid {
         const prevKind = this.floorStore.kind[idx];
         const prevFacing = this.floorStore.facing[idx];
         this.floorStore.setAtIdx(idx, kind, facingIndex);
-        const floorNavChanged = (isFloorBeltKind(prevKind) || isFloorBeltKind(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
+        const floorNavChanged = (FloorBelt.isBelt(prevKind) || FloorBelt.isBelt(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
@@ -361,7 +361,7 @@ export class WorldObstacleGrid {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
         if (!this.floorStore.hasAnyAtIdx(idx)) return false;
         const kind = this.floorStore.kind[idx];
-        if (isFloorBeltKind(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        if (FloorBelt.isBelt(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         this.floorStore.clearAtIdx(idx);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;

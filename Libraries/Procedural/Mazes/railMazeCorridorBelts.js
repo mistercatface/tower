@@ -3,12 +3,11 @@ import { createSeededRng } from "../../Math/SeededRng.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, colRowToIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
-import { floorBeltEntryExitSides, floorBeltRailEdgeSides } from "../../Spatial/grid/FloorCell.js";
+import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { gridSettings } from "../../../Config/world.js";
 import { stampRailWallsQuiet } from "../../Sandbox/gridWallEdit.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
 import { cellBoundsAt, unionCellBounds } from "../../DataStructures/CellRect.js";
-import { markGridZoneSubscriptionsDirty } from "../../Sandbox/floorOccupancy.js";
 import { isNavWalkableAt } from "./walkableCells.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
@@ -73,7 +72,7 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
         const removeIndices = new Set();
         for (const idx of footprint) {
             const belt = byCell.get(idx);
-            const { entrySide, exitSide } = floorBeltEntryExitSides(belt.kind, belt.facingIndex);
+            const { entrySide, exitSide } = FloorBelt.getEntryExitSides(belt.kind, belt.facingIndex);
             const entryIdx = edgeNeighborIdx(belt.idx, entrySide, stride, rows);
             const exitIdx = edgeNeighborIdx(belt.idx, exitSide, stride, rows);
             const entryInFootprint = footprint.has(entryIdx);
@@ -81,12 +80,12 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
             if (entryInFootprint) {
                 const entryBelt = byCell.get(entryIdx);
-                const entryExit = floorBeltEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
+                const entryExit = FloorBelt.getEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
                 if (entryExit !== edgeMirrorSide(entrySide)) removeIndices.add(idx);
             }
             if (exitInFootprint) {
                 const exitBelt = byCell.get(exitIdx);
-                const exitEntry = floorBeltEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
+                const exitEntry = FloorBelt.getEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
                 if (exitEntry !== edgeMirrorSide(exitSide)) removeIndices.add(idx);
             }
         }
@@ -198,7 +197,7 @@ export function planRailMazeCorridorBelts({
         const globalCoords = globalCoordsByLocalIdx.get(belt.idx);
         if (!globalCoords) continue;
         // Get the lateral rail sides for this belt kind and facing
-        const sides = floorBeltRailEdgeSides(belt.kind, belt.facingIndex);
+        const sides = FloorBelt.getRailEdgeSides(belt.kind, belt.facingIndex);
         for (let s = 0; s < sides.length; s++) beltRails.push({ col: globalCoords.globalCol, row: globalCoords.globalRow, side: sides[s], heightLevel, thicknessLevel });
     }
     return { floorBelts, paths, zoneCellCount: zoneCells.length, pathCount: paths.length, mouthExteriorIndices, validation, degreeByIndex, beltRails };
@@ -290,7 +289,7 @@ export function stampGlobalRailMazeBelts(state, floorBelts) {
         const cellBounds = cellBoundsAt(col, row);
         bounds = bounds ? unionCellBounds(bounds, cellBounds) : cellBounds;
     }
-    if (bounds) markGridZoneSubscriptionsDirty(state, bounds);
+    if (bounds) FloorBelt.markZoneSubscriptionsDirty(state, bounds);
     return { bounds };
 }
 export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {

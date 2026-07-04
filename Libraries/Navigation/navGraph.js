@@ -1,12 +1,12 @@
 import { edgeNeighborIdx } from "../Spatial/grid/gridCellTopology.js";
-import { floorBeltEntryExitSides, isFloorBeltKind, beltEntryExitAtIdx, floorBeltEntryEdgeWorldPoint } from "../Spatial/grid/FloorCell.js";
+import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "./NavTopology.js";
 /** @typedef {number} CellIdx */
 export function beltEntryNeighborAtIdx(grid, idx) {
-    const sides = beltEntryExitAtIdx(grid, idx);
+    const sides = FloorBelt.getEntryExitAtIdx(grid, idx);
     if (!sides) return -1;
     return edgeNeighborIdx(idx, sides.entrySide, grid.cols, grid.rows);
 }
@@ -32,7 +32,7 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
 }
 /** Snap a path goal cell to the belt entry neighbor (belt-mouth approach). */
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
-    if (!isFloorBeltKind(grid.floorStore.kind[targetIdx])) return targetIdx;
+    if (!FloorBelt.isBelt(grid.floorStore.kind[targetIdx])) return targetIdx;
     const neighborIdx = beltEntryNeighborAtIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
     if (fromIdx === neighborIdx) return targetIdx;
@@ -63,18 +63,18 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = grid.gridCenterYByIdx(snappedIdx);
         return out;
     }
-    if (!isFloorBeltKind(grid.floorStore.kind[targetIdx]) || fromIdx === targetIdx) {
+    if (!FloorBelt.isBelt(grid.floorStore.kind[targetIdx]) || fromIdx === targetIdx) {
         out.x = targetX;
         out.y = targetY;
         return out;
     }
-    const sides = beltEntryExitAtIdx(grid, targetIdx);
+    const sides = FloorBelt.getEntryExitAtIdx(grid, targetIdx);
     if (!sides) {
         out.x = targetX;
         out.y = targetY;
         return out;
     }
-    const pt = floorBeltEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
+    const pt = FloorBelt.getEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
     out.x = pt.x;
     out.y = pt.y;
     return out;
@@ -94,8 +94,8 @@ export function validateBeltChain(graph, cellIndices) {
         const facingA = grid.floorStore.facing[a];
         const kindB = grid.floorStore.kind[b];
         const facingB = grid.floorStore.facing[b];
-        const { exitSide } = floorBeltEntryExitSides(kindA, facingA);
-        const { entrySide } = floorBeltEntryExitSides(kindB, facingB);
+        const { exitSide } = FloorBelt.getEntryExitSides(kindA, facingA);
+        const { entrySide } = FloorBelt.getEntryExitSides(kindB, facingB);
         const diff = b - a;
         let stepSide = -1;
         if (diff === 1 && (a + 1) % cols !== 0) stepSide = 1;

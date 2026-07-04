@@ -1,7 +1,7 @@
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
 import { cellToGlobalColRow, isCanonicalEdgeRepresentative } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
-import { applyFloorBeltsFromGlobal, listPlacedFloorBeltsForSnapshot } from "./floorOccupancy.js";
+import { FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
@@ -52,7 +52,7 @@ export function collectSandboxSceneSnapshot(state) {
         rows: grid.rows,
         voxels,
         railWalls,
-        floorBelts: listPlacedFloorBeltsForSnapshot(grid),
+        floorBelts: FloorBelt.listPlacedForSnapshot(grid),
         props,
         kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),
         chainHeadProp,
@@ -131,7 +131,7 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     clearSandboxSceneContent(state);
     expandGridForSnapshot(state, doc);
     const wallBounds = applyStampedGridWallsFromGlobal(state, doc.voxels, doc.railWalls, cellSize);
-    applyFloorBeltsFromGlobal(state, doc.floorBelts, cellSize);
+    FloorBelt.applyFromGlobal(state, doc.floorBelts, cellSize);
     const grid = state.obstacleGrid;
     if (wallBounds) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     await commitGridNavEdit(state, null, { fullNavSync: true });

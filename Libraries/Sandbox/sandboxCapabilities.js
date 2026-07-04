@@ -1,4 +1,4 @@
-import { FLOOR_CELL_KIND, formatFloorBeltKindLabel } from "../Spatial/grid/FloorCell.js";
+import { FLOOR_CELL_KIND, FloorBelt } from "../Spatial/grid/FloorCell.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
@@ -57,7 +57,7 @@ export function resolveFloorBeltKindFromSpawnAsset(asset) {
 }
 const FLOOR_BELT_KINDS = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
 export function listFloorBeltKindOptions() {
-    return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: formatFloorBeltKindLabel(kind) }));
+    return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: FloorBelt.formatKindLabel(kind) }));
 }
 export function resolveSandboxBehaviors(asset, state, prop = null) {
     const behaviors = state.sandbox?.behaviors ?? [];

@@ -1,4 +1,4 @@
-import { gridSideFromCellIdxToNeighborIdx, resolveBeltKindFromSides } from "../../Spatial/grid/FloorCell.js";
+import { gridSideFromCellIdxToNeighborIdx, FloorBelt } from "../../Spatial/grid/FloorCell.js";
 import { edgeMirrorSide } from "../../Spatial/grid/gridCellTopology.js";
 /** @typedef {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} CellIndexLayout */
 /** @typedef {{ idx: number, kind: number, facingIndex: number }} BakedFloorBelt */
@@ -93,16 +93,16 @@ export function beltsForPathPolyline(path, width, layout) {
         if (prevIdx !== undefined && nextIdx !== undefined) {
             const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
             const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
-            spec = resolveBeltKindFromSides(entrySide, exitSide);
+            spec = FloorBelt.resolveKindFromSides(entrySide, exitSide);
         } else if (nextIdx !== undefined) {
             const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
             const entrySide = edgeMirrorSide(exitSide);
-            spec = resolveBeltKindFromSides(entrySide, exitSide);
+            spec = FloorBelt.resolveKindFromSides(entrySide, exitSide);
         } else if (prevIdx !== undefined) {
             const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
             const exitSide = edgeMirrorSide(entrySide);
-            spec = resolveBeltKindFromSides(entrySide, exitSide);
-        } else spec = resolveBeltKindFromSides(3, 1);
+            spec = FloorBelt.resolveKindFromSides(entrySide, exitSide);
+        } else spec = FloorBelt.resolveKindFromSides(3, 1);
         for (let ci = 0; ci < cells.length; ci++) {
             const idx = cells[ci];
             byCell.set(idx, { idx, kind: spec.kind, facingIndex: spec.facingIndex });

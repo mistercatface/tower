@@ -6,12 +6,13 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Motion/kineticPhysicsPass.js";
+import { applyKineticAcceleration } from "../../Libraries/Motion/motionDynamics.js";
 import { processKineticContactFractures } from "../../Libraries/Props/propFracture.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
-import { tickFloorOccupancy, tickGridZones } from "../../Libraries/Sandbox/floorOccupancy.js";
+import { FloorBelt } from "../../Libraries/Spatial/grid/FloorCell.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
@@ -55,9 +56,9 @@ function runSimulationTick(state, dt) {
     state.gameTime += simDt;
     const spatialFrame = kineticSpatial.begin(state);
     tickFloorProps(state, spatialFrame, simDt);
-    tickFloorOccupancy(state, spatialFrame, simDt);
+    FloorBelt.tickOccupancy(state, spatialFrame, simDt, applyKineticAcceleration);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
-    tickGridZones(state, spatialFrame);
+    FloorBelt.tickZones(state, spatialFrame);
     FloatingText.updateAll(state, simDt);
 }
 export function createEditorApp(options = {}) {
