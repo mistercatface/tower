@@ -1,4 +1,5 @@
 import { navHasPath } from "./navSession.js";
+import { FloatingText } from "../Render/FloatingText.js";
 export const REPLAN_TARGET_MOVE_PX = 64;
 export const REPLAN_OFF_PATH_COOLDOWN_MS = 250;
 export const REPLAN_PRIORITY_TARGET = 4;
@@ -7,7 +8,7 @@ export const REPLAN_PRIORITY_NORMAL = 2;
 export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
 export const HPA_REPLAN_FRAME_START_BUDGET = 12;
 export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
-export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, stepPenalty) {
+export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, stepPenalty, state = null) {
     return new HpaReplanRequest({
         obstacleGrid,
         startX,
@@ -18,6 +19,7 @@ export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY
         topologyKey: nav.syncedTopologyKey(),
         navTopology: nav.topology,
         stepPenalty: stepPenalty ?? null,
+        state,
     });
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
@@ -200,7 +202,7 @@ export class HpaAbstractGraph extends FlatGraphView {
             edgeCosts: extEdgeCosts,
             nodeCount: extCount,
             edgeWrite: totalEdges,
-            nodeIds: this.nodeIds
+            nodeIds: this.nodeIds,
         });
         return { extendedGraph, startTemp, targetTemp };
     }
@@ -212,7 +214,7 @@ export const HPA_REGION_CONNECT_MAX_LEN = 96;
 export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
 const globalReplanPayload = { startIdx: 0, targetIdx: 0, stepPenaltyKeys: null, stepPenaltyCosts: null };
 export class HpaReplanRequest {
-    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, stepPenalty = null }) {
+    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, stepPenalty = null, state = null }) {
         this.obstacleGrid = obstacleGrid;
         this.startX = startX;
         this.startY = startY;
@@ -222,6 +224,7 @@ export class HpaReplanRequest {
         this.topologyKey = topologyKey;
         this.navTopology = navTopology;
         this.stepPenalty = stepPenalty;
+        this.state = state;
     }
     toWorkerPayload() {
         const grid = this.obstacleGrid;
@@ -244,8 +247,27 @@ export class HpaReplanRequest {
     }
     applyResult(navState, worker, result) {
         navState.topologyKey = this.topologyKey;
-        if (!result.pathLen) {
+        if (!result || !result.pathLen) {
             worker.releaseOwnedPathSlot(navState);
+            if (this.state && (navState.pendingReplanReason === "targetChange" || navState.pendingReplanReason === "targetMoved")) {
+                const grid = this.obstacleGrid;
+                const cols = grid.cols;
+                const rows = grid.rows;
+                const startCol = grid.worldCol(this.startX);
+                const startRow = grid.worldRow(this.startY);
+                const targetCol = grid.worldCol(this.targetX);
+                const targetRow = grid.worldRow(this.targetY);
+                let errorMsg = "Unreachable";
+                if (startCol < 0 || startCol >= cols || startRow < 0 || startRow >= rows) errorMsg = "Start out of bounds";
+                else if (targetCol < 0 || targetCol >= cols || targetRow < 0 || targetRow >= rows) errorMsg = "Target out of bounds";
+                else {
+                    const startIdx = startCol + startRow * cols;
+                    const targetIdx = targetCol + targetRow * cols;
+                    if (grid.isBlockedIdx(startIdx)) errorMsg = "Start blocked";
+                    else if (grid.isBlockedIdx(targetIdx)) errorMsg = "Target blocked";
+                }
+                FloatingText.spawn(this.state, this.targetX, this.targetY, errorMsg, "#ff3333");
+            }
             return;
         }
         worker.releaseOwnedPathSlot(navState);

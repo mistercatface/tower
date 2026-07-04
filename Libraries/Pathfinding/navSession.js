@@ -422,7 +422,7 @@ export class HpaNavSession {
     }
     replan(prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) {
         const nav = resolveNavRuntime(state);
-        return nav.session.requestReplan(this.navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, prop.navStepPenalty), priority);
+        return nav.session.requestReplan(this.navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, prop.navStepPenalty, state), priority);
     }
     requestReplan(prop, targetX, targetY, state, priority, reason) {
         const accepted = this.replan(prop, targetX, targetY, state, priority);

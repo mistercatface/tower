@@ -122,7 +122,10 @@ export function createEditorApp(options = {}) {
         state.appLaunch?.session?.tick(dt);
         state.sandbox.controller?.tick(dt);
         if (!state.isPaused) runSimulationTick(state, dt);
-        else kineticSpatial.begin(state);
+        else {
+            kineticSpatial.begin(state);
+            FloatingText.updateAll(state, dt);
+        }
         if (shouldRenderLabFrame(state)) drawLabFrame(state);
         if (!useGameShell) flushMapOverviewRepaint(state);
         requestAnimationFrame(loop);

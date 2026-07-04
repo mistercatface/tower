@@ -123,8 +123,10 @@ export class HpaPathSession {
                     continue;
                 }
                 navState.hpaReplanRequestId = 0;
-                if (!workerOut?.result) this.worker.releaseOwnedPathSlot(navState);
-                else request.applyResult(navState, this.worker, workerOut.result);
+                if (!workerOut?.result) {
+                    this.worker.releaseOwnedPathSlot(navState);
+                    request.applyResult(navState, this.worker, null);
+                } else request.applyResult(navState, this.worker, workerOut.result);
             }
         } finally {
             this._draining.delete(navState);
