@@ -73,25 +73,23 @@ export function stampRailWallsQuiet(state, railWalls) {
         growCellBounds(bounds, col, row);
     }
     if (!stamped.length) return { bounds: null, stamped };
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return { bounds, stamped };
+}
+export function commitGridWallBatch(state, bounds) {
+    if (!bounds || isEmptyCellBounds(bounds)) return false;
+    const grid = state.obstacleGrid;
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
+    return true;
 }
 export function stampRailWallsBatch(state, railWalls) {
     const { bounds, stamped } = stampRailWallsQuiet(state, railWalls);
-    if (bounds) {
-        const grid = state.obstacleGrid;
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
-    }
+    commitGridWallBatch(state, bounds);
     return stamped;
 }
 export function clearRailWallsBatch(state, rails) {
     const bounds = clearRailWallsQuiet(state, rails);
-    if (bounds) {
-        const grid = state.obstacleGrid;
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
-    }
+    commitGridWallBatch(state, bounds);
 }
 export function clearVoxelWallQuiet(state, idx) {
     const grid = state.obstacleGrid;
@@ -115,11 +113,7 @@ export function clearVoxelWallsQuiet(state, voxelIndices) {
 }
 export function clearVoxelWallsBatch(state, voxelIndices) {
     const bounds = clearVoxelWallsQuiet(state, voxelIndices);
-    if (bounds) {
-        const grid = state.obstacleGrid;
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
-    }
+    commitGridWallBatch(state, bounds);
     return bounds;
 }
 /** Clear voxel and rail walls without nav invalidation — pair with commitGridNavEdit or deferred flush. */
@@ -129,11 +123,7 @@ export function clearGridWallsQuiet(state, { voxels = [], rails = [] } = {}) {
 /** Clear voxel and rail walls in one nav invalidation. */
 export function clearGridWallsBatch(state, { voxels = [], rails = [] } = {}) {
     const bounds = clearGridWallsQuiet(state, { voxels, rails });
-    if (bounds) {
-        const grid = state.obstacleGrid;
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-        commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
-    }
+    commitGridWallBatch(state, bounds);
     return bounds;
 }
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {
@@ -183,16 +173,14 @@ export function stampVoxelWallAt(state, idx, heightLevel) {
     const grid = state.obstacleGrid;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     grid.grid[idx] = level;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, idx);
+    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
     return true;
 }
 export function clearVoxelWallAt(state, idx) {
     const grid = state.obstacleGrid;
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, idx);
+    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
     return true;
 }
 export function setVoxelWallHeightAt(state, idx, heightLevel) {
@@ -201,8 +189,7 @@ export function setVoxelWallHeightAt(state, idx, heightLevel) {
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     if (grid.grid[idx] === level) return true;
     grid.grid[idx] = level;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, idx);
+    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
     return true;
 }
 export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
@@ -210,12 +197,13 @@ export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     setBoundary(grid, idx, side, { capHeightLevel: level, thicknessLevel }, true);
-    commitGridNavEdit(state, idx);
+    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
     return true;
 }
 export function clearRailWallAt(state, idx, side) {
     if (!clearPrimaryBoundaryAt(state, idx, side, true)) return false;
-    commitGridNavEdit(state, idx);
+    const grid = state.obstacleGrid;
+    commitGridWallBatch(state, cellBoundsAt(idx, grid.cols));
     return true;
 }
 export function listPlacedVoxelWalls(grid) {
@@ -321,7 +309,7 @@ export function createDeferredGridWallCommit(state) {
             if (!pending.size) return false;
             const bounds = emptyCellBounds();
             for (const idx of pending) growCellBoundsIdx(bounds, idx, state.obstacleGrid.cols);
-            commitGridNavEdit(state, padCellBoundsToGrid(bounds, state.obstacleGrid.cols, state.obstacleGrid.rows, 1));
+            commitGridWallBatch(state, bounds);
             pending.clear();
             return true;
         },
