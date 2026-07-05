@@ -1,12 +1,18 @@
-import { unionCellBounds, cellBoundsFromStampExtent } from "../../../Libraries/Spatial/spatial.js";
+import {
+    unionCellBounds,
+    cellBoundsFromStampExtent,
+    bakeRailMazeDfs,
+    generateCavernOccupancy,
+    commitGridNavEdit,
+    commitGridNavEditUnion,
+    planRailMazeCorridorBelts,
+    stampGlobalRailMazeBelts,
+    stampGlobalRailWalls,
+} from "../../../Libraries/Spatial/spatial.js";
+import { getNavWalkableCellIndex } from "../../../Libraries/Navigation/navigation.js";
 import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
-import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
-import { generateCavernOccupancy } from "../../../Libraries/Procedural/Mazes/cavernOccupancy.js";
-import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Spatial/spatial.js";
-import { planRailMazeCorridorBelts, stampGlobalRailMazeBelts, stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
-import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/math.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/spatial.js";
 import { setBoundary } from "../../../Libraries/Spatial/spatial.js";

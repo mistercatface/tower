@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { createNavWalkableCandidateMask, isNavWalkableAt, writeNavWalkableFlags } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { createNavWalkableCandidateMask, isNavWalkableAt, writeNavWalkableFlags } from "../Libraries/Navigation/navigation.js";
 
 describe("navWalkableIndex", () => {
     it("isNavWalkableAt uses dense cell indices", () => {

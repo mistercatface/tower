@@ -9,7 +9,7 @@ import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
+import { patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
+import { bakeRailMazeDfs } from "../Libraries/Spatial/spatial.js";
 
 describe("railMazeDfs", () => {
     it("builds edge-rail walls from a randomized DFS spanning tree", () => {

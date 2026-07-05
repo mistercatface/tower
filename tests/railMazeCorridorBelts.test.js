@@ -1,10 +1,8 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  FLOOR_CELL_KIND, FloorBelt  } from "../Libraries/Spatial/spatial.js";
-import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
-import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/walkableCells.js";
-import {  layoutAbsCellIndex, undirectedPairIndex  } from "../Libraries/Spatial/spatial.js";
+import {  FLOOR_CELL_KIND, FloorBelt, planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, layoutAbsCellIndex, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { isNavWalkableAt, getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 
 function undirectedEdgeIndex(aCol, aRow, bCol, bRow, layout) {
     const a = layoutAbsCellIndex(layout, aCol, aRow);
@@ -111,11 +109,6 @@ function collectCorridorPathPolylines(cells, neighborAt, layout) {
 import { createNavRuntime, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { gridSettings } from "../Config/world.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
-import { getNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
-import { stampGlobalRailWalls } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
-import { commitGridNavEdit } from "../Libraries/Spatial/spatial.js";
 
 async function setupTestGridAndNav(seed) {
     const cellSize = gridSettings.cellSize;
@@ -242,7 +235,7 @@ describe("rail maze corridor belts", () => {
         const zoneCells = collectRailMazeBeltZoneCells(grid, nav.topology, railConfig, navWalkableIndex);
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
-            const { idx } = zoneCells[i];
+            const idx = zoneCells[i].idx;
             assert.ok(isNavWalkableAt(navWalkableIndex, idx));
         }
         const plan = planRailMazeCorridorBelts({ grid, navTopology: nav.topology, railConfig, navWalkableIndex, mapSeed: 42 });
