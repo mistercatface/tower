@@ -6,13 +6,11 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget, setChainHead } from "../Libraries/Props/props.js";
-import { collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../Libraries/Sandbox/sandbox.js";
-import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
+import { getChainMemberIds, isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
-import { spawnLinkedBallChain } from "../Libraries/Props/props.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
+import { colRowToIndex } from "./harness/testGridUtils.js";
 
 function createSnapshotTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -45,7 +43,7 @@ describe("sandboxSceneSnapshot physics", () => {
     it("collectSandboxSceneSnapshot exports flat props, constraints, and chain head index", () => {
         resetKineticConstraintIds(1);
         const state = createSnapshotTestState();
-        spawnLinkedBallChain(state, { col: 10, row: 10 }, {
+        spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), {
             segmentCount: 4,
             spacing: 16,
             ballType: "ball",
@@ -67,7 +65,7 @@ describe("sandboxSceneSnapshot physics", () => {
         const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball");
         const tintHex = hueToPickerHex(135);
         setPropVisualTint(tinted, tintHex);
-        spawnLinkedBallChain(state, { col: 10, row: 10 }, {
+        spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), {
             segmentCount: 4,
             spacing: 16,
             ballType: "ball",

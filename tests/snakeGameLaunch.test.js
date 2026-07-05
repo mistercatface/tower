@@ -6,7 +6,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
-import { isSandboxCameraTarget } from "../Libraries/Render/render.js";
+import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandbox.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 
 function createEditorTestState() {

@@ -1,12 +1,15 @@
 import { appendPathOverlayCommands } from "../Render/render.js";
 import { appendButtonWireOverlayCommands } from "../Props/props.js";
-import { appendChainLinkWireOverlayCommands } from "../Props/props.js";
-import { appendKineticConstraintOverlayCommands } from "../Render/render.js";
-import { appendMarqueeOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Render/render.js";
-import { selectionPropIds } from "../Sandbox/sandbox.js";
-import { resolveSandboxPathVisual } from "../Sandbox/sandbox.js";
-import { isChainSteeringTarget } from "../Props/props.js";
-import { GROUND_NAV_BEHAVIOR_IDS } from "../Sandbox/sandbox.js";
+import {
+    appendChainLinkWireOverlayCommands,
+    appendMarqueeOverlayCommands,
+    appendSelectionOverlayCommands,
+    isChainSteeringTarget,
+    selectionPropIds,
+    resolveSandboxPathVisual,
+    GROUND_NAV_BEHAVIOR_IDS,
+} from "../Sandbox/sandbox.js";
+import { queryPropsInView } from "../Render/render.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export function buildSandboxOverlayCommands({
     state,

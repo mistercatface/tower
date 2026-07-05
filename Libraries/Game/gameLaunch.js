@@ -1,6 +1,5 @@
 import { generateLabRailMaze } from "../../Apps/Editor/world/mapWorld.js";
-import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
-import { setSandboxCameraTarget } from "../Render/render.js";
+import { spawnPlacedSandboxProp, setSandboxCameraTarget } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 export const GAME_LAUNCHERS = { snake: { title: "Snake", hideEditor: false } };

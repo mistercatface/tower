@@ -73,7 +73,8 @@ import {
     centerReachAabbInto,
 } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
-import { getFlipperSpec, buildPipeElbowCenterline3D, getPipeElbowSpec } from "../Props/props.js";
+import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../Props/props.js";
+import { drawFloorOccupancyBelts, getFlipperSpec, setSandboxCameraTarget } from "../Sandbox/sandbox.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import {
     collectVoxelWallFacesInAabbFlat,
@@ -2975,6 +2976,9 @@ function prepareWallChunkPropTextures(state, prop) {
     prop._wallChunkTextureReady = !!textures.ready;
 }
 // Removed parallel sort (now in VisibleDrawQueue.js)
+export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
+    return entityRegistry.queryView({ bounds: viewport.bounds(tier), kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
+}
 export class WorldSceneRenderer {
     constructor() {
         this.visibleDrawQueue = new VisibleDrawQueue();
@@ -3190,182 +3194,6 @@ export class FollowCamera {
         this._candidateListFn = null;
         this._pickResolverFn = null;
     }
-}
-// --- MERGED FROM sandboxCameraTarget.js ---
-/** @param {object} state @param {object} prop */
-export function isSandboxCameraTarget(state, prop) {
-    return getSandboxEntityMeta(state).isCameraTarget(prop.id);
-}
-/** @param {object} state @param {object} prop @param {boolean} enabled */
-export function setSandboxCameraTarget(state, prop, enabled) {
-    const meta = getSandboxEntityMeta(state);
-    if (enabled) meta.setCameraTarget(prop.id, true);
-    else meta.setCameraTarget(prop.id, false);
-}
-/** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
-export function findSandboxCameraTargetWorldProp(state, registry) {
-    const targetId = getSandboxEntityMeta(state).findCameraTargetEntityId();
-    if (targetId == null) return null;
-    return registry.getLive(targetId);
-}
-/**
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {object} state
- * @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry
- * @param {number} dtMs
- */
-export function tickSandboxCameraFollow(viewport, state, registry, dtMs) {
-    const target = findSandboxCameraTargetWorldProp(state, registry);
-    if (!target) return;
-    const factor = 1 - Math.exp(-8 * (dtMs / 1000));
-    viewport.follow(target.x, target.y, factor);
-}
-// --- MERGED FROM kineticConstraintOverlays.js ---
-function constraintWireColor(strain) {
-    if (strain < 0.05) return "rgba(100, 255, 140, 0.85)";
-    if (strain < 0.2) return "rgba(255, 220, 80, 0.9)";
-    return "rgba(255, 80, 80, 0.95)";
-}
-const overlayAnchorA = { x: 0, y: 0 };
-const overlayAnchorB = { x: 0, y: 0 };
-export function appendKineticConstraintOverlayCommands(out, state) {
-    const constraints = listKineticConstraints(state.kinetic);
-    for (let i = 0; i < constraints.length; i++) {
-        const entry = constraints[i];
-        if (entry.type !== "distance") continue;
-        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
-        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
-        if (!bodyA || !bodyB) continue;
-        const wa = worldAnchorFromBody(bodyA, entry.anchorA.x, entry.anchorA.y, overlayAnchorA);
-        const wb = worldAnchorFromBody(bodyB, entry.anchorB.x, entry.anchorB.y, overlayAnchorB);
-        const dist = distanceBetweenAnchors(bodyA, entry.anchorA, bodyB, entry.anchorB);
-        const strain = entry.restLength > 0 ? Math.abs(dist - entry.restLength) / entry.restLength : 0;
-        const color = constraintWireColor(strain);
-        out.push(overlayCachedWireEndpoint(wa.x, wa.y, 4, color));
-        out.push(overlayCachedWireEndpoint(wb.x, wb.y, 4, color));
-        appendOverlayWireLink(out, wa.x, wa.y, wb.x, wb.y, color, { lineWidth: 2, dash: [5, 4], endpointRadius: 4 });
-    }
-}
-// --- MERGED FROM sandboxOverlayCommands.js ---
-const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
-const WALL_CELL_SELECTION_BOUNDS = createAabb();
-const PROP_TILE_CELL_BOUNDS = createAabb();
-const PROP_SELECTION_STROKE = "rgba(255, 252, 245, 0.32)";
-const PROP_SELECTION_DASH = [4, 4];
-const SELECTION_RING_PAD = 4;
-function selectionRingRadius(prop) {
-    const base = prop.radius ?? 8;
-    return base + SELECTION_RING_PAD;
-}
-export function appendSelectionOverlayCommands(out, { selectedProps, showRings, selectedFloorIdx = null, selectedVoxelIdx = null, selectedRailEdge = null, grid = null }) {
-    if (!showRings) return;
-    for (let i = 0; i < selectedProps.length; i++) {
-        const prop = selectedProps[i];
-        out.push(overlayCachedSelectionRing(prop.x, prop.y, selectionRingRadius(prop), { stroke: PROP_SELECTION_STROKE, lineWidth: 1, dash: PROP_SELECTION_DASH }));
-    }
-    if (selectedFloorIdx != null && grid) {
-        const x = grid.gridCenterXByIdx(selectedFloorIdx);
-        const y = grid.gridCenterYByIdx(selectedFloorIdx);
-        out.push(
-            overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "floor", {
-                fill: "rgba(120, 200, 255, 0.1)",
-                stroke: "rgba(120, 200, 255, 0.75)",
-                lineWidth: 1,
-                dash: [4, 3],
-            }),
-        );
-    }
-    if (selectedVoxelIdx != null && grid) {
-        const x = grid.gridCenterXByIdx(selectedVoxelIdx);
-        const y = grid.gridCenterYByIdx(selectedVoxelIdx);
-        out.push(
-            overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "voxel", {
-                fill: "rgba(255, 152, 0, 0.12)",
-                stroke: "rgba(255, 152, 0, 0.85)",
-                lineWidth: 1,
-                dash: [4, 3],
-            }),
-        );
-    }
-    if (selectedRailEdge && grid) appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
-}
-export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
-    if (!marqueeRect) return;
-    out.push(overlayAabb(marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
-}
-export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
-    return entityRegistry.queryView({ bounds: viewport.bounds(tier), kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
-}
-// --- MERGED FROM gridStampDrawCache.js ---
-const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
-const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
-function beltDrawForKind(kind) {
-    const turn = FloorBelt.getElbowTurn(kind);
-    if (turn === "left") return beltDrawByTurn.left;
-    if (turn === "right") return beltDrawByTurn.right;
-    return beltDrawByTurn.straight;
-}
-const floorBeltStampProxyProto = {
-    ageMs: 0,
-    getCustomSpriteCacheKey() {
-        return `k${this.beltKind}`;
-    },
-};
-function createGridCellStampProxy(proto, x, y, cellHalf, init) {
-    const proxy = Object.create(proto);
-    proxy.x = x;
-    proxy.y = y;
-    proxy.radius = cellHalf;
-    proxy.halfExtents = SHARED_HALF_EXTENTS;
-    init(proxy);
-    return proxy;
-}
-function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
-    return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {
-        proxy.facing = facing;
-        proxy.beltKind = kind;
-    });
-}
-export function clearGridStampDrawCaches(state) {
-    if (!state.sandbox) return;
-    state.sandbox._floorOccupancyStampDrawCache = null;
-}
-export function syncFloorOccupancyStampDrawCache(state, grid) {
-    if (!state.sandbox) return null;
-    const revision = floorOccupancyStampDrawCacheKey(grid);
-    const cached = state.sandbox._floorOccupancyStampDrawCache;
-    if (cached?.revision === revision) return cached;
-    const cellHalf = grid.cellHalfSize;
-    SHARED_HALF_EXTENTS.x = cellHalf;
-    SHARED_HALF_EXTENTS.y = cellHalf;
-    const belts = [];
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const kind = grid.floorKind[idx];
-        if (!(grid.floorKind[idx] !== 0)) continue;
-        const { x, y } = grid.gridToWorldByIdx(idx);
-        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
-    }
-    const next = { revision, belts };
-    state.sandbox._floorOccupancyStampDrawCache = next;
-    return next;
-}
-function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
-    const animFrame = Math.floor(gameTime / 60) % 8;
-    const belts = cached.belts;
-    for (let i = 0; i < belts.length; i++) {
-        const item = belts[i];
-        if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
-        item.proxy.ageMs = gameTime;
-        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy.beltKind), animFrame);
-    }
-}
-export function drawFloorOccupancyBelts(ctx, state, viewport) {
-    const grid = state.obstacleGrid;
-    if (!grid.floorKind.some((k) => k !== 0)) return;
-    const cached = syncFloorOccupancyStampDrawCache(state, grid);
-    if (!cached?.belts.length) return;
-    drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);
 }
 // --- MERGED FROM losShadow.js ---
 // --- MERGED FROM losShadowDefaults.js ---

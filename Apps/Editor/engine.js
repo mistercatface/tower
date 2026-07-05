@@ -16,7 +16,7 @@ import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spati
 import { tickFloorProps } from "../../Libraries/Props/props.js";
 import { FloorBelt } from "../../Libraries/Spatial/spatial.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
-import { tickSandboxCameraFollow } from "../../Libraries/Render/render.js";
+import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandbox.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
 import { tickGameViewportNavigation } from "./ui/gameViewport.js";
 import { mountEditorUi, refreshEditorUi, resizeEditorLayout, flushEditorLayoutResize } from "./ui/editorUi.js";

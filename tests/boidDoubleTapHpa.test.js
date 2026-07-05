@@ -6,8 +6,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxController } from "../Libraries/SandboxEditor/createSandboxController.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { createHpaGroundNavBehavior } from "../Libraries/Navigation/navigation.js";
-import { createDragLaunchBehavior } from "../Libraries/Props/props.js";
+import { createHpaGroundNavBehavior, createDragLaunchBehavior } from "../Libraries/Sandbox/sandbox.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 function createEditorTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };

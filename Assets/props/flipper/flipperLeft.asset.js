@@ -1,4 +1,4 @@
-import { getFlipperSpriteCacheKey, syncFlipperCollisionShape } from "../../../Libraries/Props/props.js";
+import { getFlipperSpriteCacheKey, syncFlipperCollisionShape } from "../../../Libraries/Sandbox/sandbox.js";
 import { FLIPPER_ACTIVE_COLORS, FLIPPER_COLORS, FLIPPER_LAYOUT } from "./flipperShared.js";
 const FLIPPER = { side: "left", extendDir: 1, ...FLIPPER_LAYOUT, restAngle: 0.45, activeAngle: -0.55 };
 export default {

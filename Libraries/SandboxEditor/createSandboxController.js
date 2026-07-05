@@ -17,13 +17,10 @@ import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandbox.js";
 import { createAabb } from "../Math/math.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandbox.js";
-import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Render/render.js";
+import { isSandboxCameraTarget, setSandboxCameraTarget, clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead, countNavPropsInSelection, issueGroundNavToSelection, selectionPropIds } from "../Sandbox/sandbox.js";
 import { FollowCamera } from "../Render/render.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { removeKineticConstraint } from "../Physics/physics.js";
-import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Props/props.js";
-import { countNavPropsInSelection, issueGroundNavToSelection } from "../Navigation/navigation.js";
-import { selectionPropIds } from "../Sandbox/sandbox.js";
 import propCatalog from "../../Assets/props/index.js";
 /**
  * @param {object} state

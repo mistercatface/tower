@@ -1,6 +1,6 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { createTwoAnchorWireTool } from "../Editor/twoAnchorWireTool.js";
-import { addChainLink, isChainLinkBall } from "../Props/props.js";
+import { addChainLink, isChainLinkBall } from "../Sandbox/sandbox.js";
 export function createChainLinkWireTool(state, session) {
     const tool = createTwoAnchorWireTool({
         getEnterCursor: () => ({ x: state.viewport.x, y: state.viewport.y }),

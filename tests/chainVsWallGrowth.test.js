@@ -6,8 +6,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds } from "../Libraries/Props/props.js";
-import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Props/props.js";
+import { getChainMemberIds, growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,
@@ -52,7 +51,7 @@ describe("chainVsWallGrowth (v1 accepted: tail clip on grow)", () => {
     it("v1 documents tail overlap when growth pushes segment centers into blocked corridor cells", () => {
         resetKineticConstraintIds(1);
         const state = createNarrowCorridorState();
-        const chain = spawnLinkedBallChain(state, { col: 5, row: 7 }, CHAIN_OPTIONS);
+        const chain = spawnLinkedBallChain(state, colRowToIndex(5, 7, state.obstacleGrid.cols), CHAIN_OPTIONS);
         let tail = chain.tail;
         const growCount = 10;
         for (let i = 0; i < growCount; i++) tail = growChainSegment(state, tail, CHAIN_OPTIONS);
