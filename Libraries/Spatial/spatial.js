@@ -50,8 +50,106 @@ import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { resolveNavRuntime } from "../Navigation/navigation.js";
-export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
+const BELT_DIR_X = [0, 1, 0, -1];
+const BELT_DIR_Y = [-1, 0, 1, 0];
+const BELT_TWO_PI = Math.PI * 2;
+const BELT_TURN_TABLE = new Uint8Array(16);
+const BELT_VALID_TABLE = new Uint8Array(16);
+const BELT_FLOW_ANGLE_TABLE = new Float32Array(16);
+const BELT_PIVOT_DX_TABLE = new Int8Array(16);
+const BELT_PIVOT_DY_TABLE = new Int8Array(16);
+const BELT_RAIL_SIDE0_TABLE = new Int8Array(16);
+const BELT_RAIL_SIDE1_TABLE = new Int8Array(16);
+const BELT_RENDER_KEY_TABLE = new Array(16);
+const BELT_LABEL_TABLE = new Array(16);
+const BELT_STRIP_KEY_TABLE = new Array(16);
+const BELT_SPAWN_DEFAULT = { floor_belt: 0, floor_belt_elbow_left: 0, floor_belt_elbow_right: 0 };
+for (let exit = 0; exit < 4; exit++)
+    for (let di = 0; di < 3; di++) {
+        const delta = di === 0 ? 1 : di === 1 ? 2 : 3;
+        const entry = (exit + delta) % 4;
+        const packed = entry | (exit << 2);
+        BELT_VALID_TABLE[packed] = 1;
+        BELT_TURN_TABLE[packed] = di;
+        const facingIndex = (exit + 3) % 4;
+        BELT_FLOW_ANGLE_TABLE[packed] = facingIndex * (BELT_TWO_PI / 4);
+        BELT_PIVOT_DX_TABLE[packed] = BELT_DIR_X[entry] + BELT_DIR_X[exit];
+        BELT_PIVOT_DY_TABLE[packed] = BELT_DIR_Y[entry] + BELT_DIR_Y[exit];
+        if (di === 0) BELT_RENDER_KEY_TABLE[packed] = "floor_belt_elbow_left";
+        else if (di === 1) BELT_RENDER_KEY_TABLE[packed] = "floor_belt";
+        else BELT_RENDER_KEY_TABLE[packed] = "floor_belt_elbow_right";
+        BELT_STRIP_KEY_TABLE[packed] = `p${packed}`;
+        const exitLabel = ["N", "E", "S", "W"][exit];
+        BELT_LABEL_TABLE[packed] = di === 1 ? `Conveyor ${exitLabel}` : di === 0 ? `Conveyor Elbow L ${exitLabel}` : `Conveyor Elbow R ${exitLabel}`;
+        let railWrite = 0;
+        for (let side = 0; side < 4; side++) {
+            if (side === entry || side === exit) continue;
+            if (railWrite === 0) BELT_RAIL_SIDE0_TABLE[packed] = side;
+            else BELT_RAIL_SIDE1_TABLE[packed] = side;
+            railWrite++;
+        }
+    }
+export class BeltPacked {
+    static EMPTY = 0;
+    static pack(entrySide, exitSide) {
+        return entrySide | (exitSide << 2);
+    }
+    static entry(packed) {
+        return packed & 3;
+    }
+    static exit(packed) {
+        return (packed >> 2) & 3;
+    }
+    static rotate(packed, steps) {
+        const s = ((steps % 4) + 4) % 4;
+        return ((BeltPacked.entry(packed) + s) & 3) | (((BeltPacked.exit(packed) + s) & 3) << 2);
+    }
+    static isValid(packed) {
+        return packed !== 0 && BELT_VALID_TABLE[packed] !== 0;
+    }
+    static fromSides(entrySide, exitSide) {
+        return BeltPacked.pack(entrySide, exitSide);
+    }
+    static withTurn(packed, turn) {
+        const exit = BeltPacked.exit(packed);
+        const delta = turn === 0 ? 2 : turn === 1 ? 1 : 3;
+        return BeltPacked.pack((exit + delta) % 4, exit);
+    }
+    static turn(packed) {
+        return BELT_TURN_TABLE[packed];
+    }
+    static flowAngle(packed) {
+        return BELT_FLOW_ANGLE_TABLE[packed];
+    }
+    static pivotDx(packed) {
+        return BELT_PIVOT_DX_TABLE[packed];
+    }
+    static pivotDy(packed) {
+        return BELT_PIVOT_DY_TABLE[packed];
+    }
+    static renderKey(packed) {
+        return BELT_RENDER_KEY_TABLE[packed];
+    }
+    static label(packed) {
+        return BELT_LABEL_TABLE[packed];
+    }
+    static stripKey(packed) {
+        return BELT_STRIP_KEY_TABLE[packed];
+    }
+    static railSide0(packed) {
+        return BELT_RAIL_SIDE0_TABLE[packed];
+    }
+    static railSide1(packed) {
+        return BELT_RAIL_SIDE1_TABLE[packed];
+    }
+    static defaultForSpawn(assetId) {
+        return BELT_SPAWN_DEFAULT[assetId] ?? BELT_SPAWN_DEFAULT.floor_belt;
+    }
+}
+BELT_SPAWN_DEFAULT.floor_belt = BeltPacked.pack(3, 1);
+BELT_SPAWN_DEFAULT.floor_belt_elbow_left = BeltPacked.pack(2, 1);
+BELT_SPAWN_DEFAULT.floor_belt_elbow_right = BeltPacked.pack(0, 1);
 export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
     const diff = nIdx - idx;
     if (diff === 1) return 1;
@@ -714,12 +812,12 @@ export function boundaryBlocksStep(grid, idx, side) {
 function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     const cols = grid.cols;
     const stepSide = gridSideFromCellIdxToNeighborIdx(fromIdx, toIdx, cols);
-    const fromBelt = FloorBelt.getEntryExitAtIdx(grid, fromIdx);
-    const toBelt = FloorBelt.getEntryExitAtIdx(grid, toIdx);
-    if (!fromBelt && !toBelt) return false;
+    const fromPacked = grid.floorPacked[fromIdx];
+    const toPacked = grid.floorPacked[toIdx];
+    if (!fromPacked && !toPacked) return false;
     if (stepSide < 0) return true;
-    if (fromBelt && stepSide !== fromBelt.exitSide) return true;
-    if (toBelt && edgeMirrorSide(stepSide) === toBelt.exitSide) return true;
+    if (fromPacked && stepSide !== BeltPacked.exit(fromPacked)) return true;
+    if (toPacked && edgeMirrorSide(stepSide) === BeltPacked.exit(toPacked)) return true;
     return false;
 }
 /** Directional step blocking: belt entry rules + rail-wall edges. */
@@ -853,50 +951,29 @@ export function cellEdgeSlotOffset(idx, side) {
     return (idx << 2) + side;
 }
 const EMPTY = -1;
+function appendFloorBeltLoadedIdx(grid, idx) {
+    let list = grid._floorBeltLoadedIdx;
+    const count = grid._floorBeltLoadedCount;
+    if (count >= list.length) {
+        const grown = new Uint32Array(Math.max(8, list.length * 2));
+        grown.set(list);
+        list = grid._floorBeltLoadedIdx = grown;
+    }
+    list[count] = idx;
+    grid._floorBeltLoadedCount = count + 1;
+}
+function removeFloorBeltLoadedIdx(grid, idx) {
+    const list = grid._floorBeltLoadedIdx;
+    let count = grid._floorBeltLoadedCount;
+    for (let i = 0; i < count; i++) {
+        if (list[i] !== idx) continue;
+        count--;
+        if (i < count) list[i] = list[count];
+        grid._floorBeltLoadedCount = count;
+        return;
+    }
+}
 export class FloorBelt {
-    static get KIND() {
-        return FLOOR_CELL_KIND;
-    }
-    static isBelt(kind) {
-        return kind >= FLOOR_CELL_KIND.Belt && kind <= FLOOR_CELL_KIND.BeltElbowRight;
-    }
-    static getElbowTurn(kind) {
-        if (kind === FLOOR_CELL_KIND.BeltElbowLeft) return "left";
-        if (kind === FLOOR_CELL_KIND.BeltElbowRight) return "right";
-        return null;
-    }
-    static getEntryExitSides(kind, facingIndex) {
-        const exitSide = (facingIndex + 1) % 4;
-        let entrySide;
-        if (kind === FLOOR_CELL_KIND.BeltElbowLeft) entrySide = (exitSide + 1) % 4;
-        else if (kind === FLOOR_CELL_KIND.BeltElbowRight) entrySide = (exitSide + 3) % 4;
-        else entrySide = (exitSide + 2) % 4;
-        return { entrySide, exitSide };
-    }
-    static getRailEdgeSides(kind, facingIndex) {
-        const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind, facingIndex);
-        const sides = [];
-        for (let side = 0; side < 4; side++) if (side !== entrySide && side !== exitSide) sides.push(side);
-        return sides;
-    }
-    static formatKindLabel(kind) {
-        const labels = { [FLOOR_CELL_KIND.Belt]: "Conveyor", [FLOOR_CELL_KIND.BeltElbowLeft]: "Conveyor Elbow L", [FLOOR_CELL_KIND.BeltElbowRight]: "Conveyor Elbow R" };
-        return labels[kind] ?? "Belt";
-    }
-    static formatFacingLabel(facingIndex) {
-        const labels = ["E", "S", "W", "N"];
-        return labels[facingIndex % CARDINAL_FACING_STEPS];
-    }
-    static resolveKindFromSides(entrySide, exitSide) {
-        const facingIndex = (exitSide + 3) % 4;
-        let kind = FLOOR_CELL_KIND.Belt;
-        if (entrySide === (exitSide + 1) % 4) kind = FLOOR_CELL_KIND.BeltElbowLeft;
-        else if (entrySide === (exitSide + 3) % 4) kind = FLOOR_CELL_KIND.BeltElbowRight;
-        return { kind, facingIndex };
-    }
-    static getFacingAngle(facingIndex) {
-        return (facingIndex % CARDINAL_FACING_STEPS) * ((Math.PI * 2) / CARDINAL_FACING_STEPS);
-    }
     static getEntryEdgeWorldPoint(grid, idx, entrySide) {
         const x = grid.gridCenterXByIdx(idx);
         const y = grid.gridCenterYByIdx(idx);
@@ -906,15 +983,18 @@ export class FloorBelt {
         if (entrySide === 2) return { x, y: y + inset };
         return { x: x - inset, y };
     }
-    static getEntryExitAtIdx(grid, idx) {
-        if (idx < 0 || idx >= grid.cols * grid.rows) return null;
-        const kind = grid.floorKind[idx];
-        if (!FloorBelt.isBelt(kind)) return null;
-        return FloorBelt.getEntryExitSides(kind, grid.floorFacing[idx]);
+    static packedAtIdx(grid, idx) {
+        if (idx < 0 || idx >= grid.cols * grid.rows) return BeltPacked.EMPTY;
+        return grid.floorPacked[idx];
     }
     static isBeltAtIdx(grid, idx) {
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
-        return grid.floorKind[idx] !== 0;
+        return BeltPacked.isValid(grid.floorPacked[idx]);
+    }
+    static getEntryExitAtIdx(grid, idx) {
+        const packed = FloorBelt.packedAtIdx(grid, idx);
+        if (!BeltPacked.isValid(packed)) return null;
+        return { entrySide: BeltPacked.entry(packed), exitSide: BeltPacked.exit(packed) };
     }
     static isEntityOnBelt(grid, x, y) {
         return FloorBelt.isBeltAtIdx(grid, grid.worldToIdx(x, y));
@@ -923,16 +1003,15 @@ export class FloorBelt {
         const grid = state.obstacleGrid;
         const idx = grid.worldToIdx(worldX, worldY);
         if (idx < 0) return -1;
-        if (grid.floorKind[idx] !== 0) return idx;
+        if (grid.floorPacked[idx] !== 0) return idx;
         return -1;
     }
     static rotateOccupantAt(state, occupant, steps = 1, onCommit = null) {
         const grid = state.obstacleGrid;
         const idx = occupant;
-        if (!(grid.floorKind[idx] !== 0)) return false;
-        const beltKind = grid.floorKind[idx];
-        const facingIndex = (((grid.floorFacing[idx] + steps) % 4) + 4) % 4;
-        grid.writeFloorCell(idx, beltKind, facingIndex);
+        const packed = grid.floorPacked[idx];
+        if (!packed) return false;
+        grid.writeFloorCell(idx, BeltPacked.rotate(packed, steps));
         if (onCommit) onCommit(state, idx);
         return true;
     }
@@ -953,10 +1032,10 @@ export class FloorBelt {
     static listPlacedForSnapshot(grid) {
         const items = [];
         const size = grid.cols * grid.rows;
-        const cellSize = grid.cellSize;
         for (let idx = 0; idx < size; idx++) {
-            if (!(grid.floorKind[idx] !== 0)) continue;
-            items.push({ idx, kind: grid.floorKind[idx], facingIndex: grid.floorFacing[idx] });
+            const packed = grid.floorPacked[idx];
+            if (!packed) continue;
+            items.push({ idx, packed });
         }
         return items;
     }
@@ -967,16 +1046,12 @@ export class FloorBelt {
         const cellSize = doc.cellSize ?? grid.cellSize;
         let floorNavChanged = false;
         for (let i = 0; i < doc.floorBelts.length; i++) {
-            const { idx: docIdx, kind, facingIndex } = doc.floorBelts[i];
-            if (!FloorBelt.isBelt(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
+            const { idx: docIdx, packed } = doc.floorBelts[i];
+            if (!BeltPacked.isValid(packed)) throw new Error(`Invalid floor belt packed: ${packed}`);
             const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
             if (idx < 0 || idx >= grid.cols * grid.rows) continue;
-            const prevKind = grid.floorKind[idx];
-            const prevFacing = grid.floorFacing[idx];
-            const facing = ((facingIndex % 4) + 4) % 4;
-            if (prevKind !== kind || prevFacing !== facing) floorNavChanged = true;
-            grid.floorKind[idx] = kind;
-            grid.floorFacing[idx] = facing;
+            if (grid.floorPacked[idx] !== packed) floorNavChanged = true;
+            grid.writeFloorCell(idx, packed);
             growCellBoundsIdx(bounds, idx, grid);
         }
         if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
@@ -989,7 +1064,7 @@ export class FloorBelt {
     static recomputeFloorBeltCount(grid) {
         let count = 0;
         const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++) if (FloorBelt.isBelt(grid.floorKind[idx])) count++;
+        for (let idx = 0; idx < size; idx++) if (grid.floorPacked[idx] !== 0) count++;
         grid.floorBeltCount = count;
     }
     static markZoneSubscriptionsDirty(state) {
@@ -999,7 +1074,7 @@ export class FloorBelt {
         const cells = new Set();
         if (!grid.cols) return { cells };
         const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++) if (grid.floorKind[idx] !== 0) cells.add(idx);
+        for (let idx = 0; idx < size; idx++) if (grid.floorPacked[idx] !== 0) cells.add(idx);
         return { cells };
     }
     static ensureZoneSubscriptions(state) {
@@ -1020,7 +1095,9 @@ export class FloorBelt {
         if (!subscriptions.cells.size) return;
         tickGridZoneMembership(spatialFrame, grid, subscriptions, {
             onEnter(event) {
-                grid._floorBeltLoad[event.idx]++;
+                const load = grid._floorBeltLoad[event.idx] + 1;
+                grid._floorBeltLoad[event.idx] = load;
+                if (load === 1) appendFloorBeltLoadedIdx(grid, event.idx);
                 FloorBelt.onCellZoneEvent(state, event, "enter");
             },
             onOn(event) {
@@ -1028,7 +1105,11 @@ export class FloorBelt {
             },
             onExit(event) {
                 const load = grid._floorBeltLoad[event.idx];
-                if (load > 0) grid._floorBeltLoad[event.idx] = load - 1;
+                if (load > 0) {
+                    const next = load - 1;
+                    grid._floorBeltLoad[event.idx] = next;
+                    if (next === 0) removeFloorBeltLoadedIdx(grid, event.idx);
+                }
                 FloorBelt.onCellZoneEvent(state, event, "exit");
             },
         });
@@ -1036,10 +1117,11 @@ export class FloorBelt {
     static tickAnim(state, dt) {
         const grid = state.obstacleGrid;
         if (grid.floorBeltCount === 0) return;
-        const subscriptions = FloorBelt.ensureZoneSubscriptions(state);
-        for (const idx of subscriptions.cells) {
-            if (!FloorBelt.isBelt(grid.floorKind[idx])) continue;
-            if (grid._floorBeltLoad[idx] > 0) grid._floorBeltAnimMs[idx] += dt;
+        const list = grid._floorBeltLoadedIdx;
+        const count = grid._floorBeltLoadedCount;
+        for (let i = 0; i < count; i++) {
+            const idx = list[i];
+            grid._floorBeltAnimMs[idx] += dt;
         }
     }
     static tickOccupancy(state, spatialFrame, dt, applyAcceleration = null) {
@@ -1053,15 +1135,15 @@ export class FloorBelt {
             const entity = kineticBodies[i];
             const idx = grid.worldToIdx(entity.x, entity.y);
             if (idx < 0) continue;
-            if (!(grid.floorKind[idx] !== 0)) continue;
-            const kind = grid.floorKind[idx];
-            const facingIndex = grid.floorFacing[idx];
+            const packed = grid.floorPacked[idx];
+            if (!packed) continue;
             const cx = grid.gridCenterXByIdx(idx);
             const cy = grid.gridCenterYByIdx(idx);
             let ax = 0,
                 ay = 0;
-            if (kind === FLOOR_CELL_KIND.Belt) {
-                const beltAngle = FloorBelt.getFacingAngle(facingIndex);
+            const turn = BeltPacked.turn(packed);
+            if (turn === 1) {
+                const beltAngle = BeltPacked.flowAngle(packed);
                 const flowX = Math.cos(beltAngle);
                 const flowY = Math.sin(beltAngle);
                 const normalX = -flowY;
@@ -1075,18 +1157,12 @@ export class FloorBelt {
                 ax = flowX * force + normalX * (lateralForceMagnitude + lateralDamping);
                 ay = flowY * force + normalY * (lateralForceMagnitude + lateralDamping);
             } else {
-                const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind, facingIndex);
-                const DIR_X = [0, 1, 0, -1];
-                const DIR_Y = [-1, 0, 1, 0];
-                const pDx = DIR_X[entrySide] + DIR_X[exitSide];
-                const pDy = DIR_Y[entrySide] + DIR_Y[exitSide];
-                const pivotX = cx + pDx * grid.cellHalfSize;
-                const pivotY = cy + pDy * grid.cellHalfSize;
+                const pivotX = cx + BeltPacked.pivotDx(packed) * grid.cellHalfSize;
+                const pivotY = cy + BeltPacked.pivotDy(packed) * grid.cellHalfSize;
                 const dx = entity.x - pivotX;
                 const dy = entity.y - pivotY;
                 const dist = Math.hypot(dx, dy);
-                const turn = FloorBelt.getElbowTurn(kind);
-                const isLeft = turn === "left";
+                const isLeft = turn === 0;
                 let rX = 0,
                     rY = 0,
                     tX = 0,
@@ -1097,7 +1173,7 @@ export class FloorBelt {
                     tX = isLeft ? -rY : rY;
                     tY = isLeft ? rX : -rX;
                 } else {
-                    const angle = FloorBelt.getFacingAngle(facingIndex);
+                    const angle = BeltPacked.flowAngle(packed);
                     tX = Math.cos(angle);
                     tY = Math.sin(angle);
                 }
@@ -1542,11 +1618,12 @@ export class WorldObstacleGrid {
         this.cellEdgeSlots = new Int32Array(0);
         this.cellEdgePool = [];
         this.cellEdgeFree = [];
-        this.floorKind = new Uint8Array(0);
-        this.floorFacing = new Uint8Array(0);
+        this.floorPacked = new Uint8Array(0);
         this.floorBeltCount = 0;
         this._floorBeltLoad = new Uint8Array(0);
         this._floorBeltAnimMs = new Uint32Array(0);
+        this._floorBeltLoadedIdx = new Uint32Array(0);
+        this._floorBeltLoadedCount = 0;
         this.surfaceMaterials = new SurfaceMaterialStore();
         this.surfaceMaterialCellsPerChunk = 0;
         this.staticPropBuckets = new SparseBucketGrid();
@@ -1796,11 +1873,12 @@ export class WorldObstacleGrid {
         this.cellEdgeSlots.fill(EMPTY);
         this.cellEdgePool.length = 0;
         this.cellEdgeFree.length = 0;
-        this.floorKind = new Uint8Array(size);
-        this.floorFacing = new Uint8Array(size);
+        this.floorPacked = new Uint8Array(size);
         this.floorBeltCount = 0;
         this._floorBeltLoad = new Uint8Array(size);
         this._floorBeltAnimMs = new Uint32Array(size);
+        this._floorBeltLoadedIdx = new Uint32Array(8);
+        this._floorBeltLoadedCount = 0;
         this.staticPropBuckets.clear();
         this.staticPropCount = new Uint16Array(size);
         this.staticPropTotalCount = 0;
@@ -1838,22 +1916,20 @@ export class WorldObstacleGrid {
         this.rows = Math.ceil((newMaxY - newMinY) / this.cellSize);
         const newGrid = new Uint8Array(this.cols * this.rows);
         const oldSlots = this.cellEdgeSlots;
-        const oldFloorKind = this.floorKind;
-        const oldFloorFacing = this.floorFacing;
+        const oldFloorPacked = this.floorPacked;
         const oldFloorBeltLoad = this._floorBeltLoad;
         const oldFloorBeltAnimMs = this._floorBeltAnimMs;
         const oldSurfaceMaterials = this.surfaceMaterials.snapshot();
         const oldSize = oldCols * oldRows;
         const newEdgeSlots = new Int32Array(this.cols * this.rows * 4);
         newEdgeSlots.fill(EMPTY);
-        const newFloorKind = new Uint8Array(this.cols * this.rows);
-        const newFloorFacing = new Uint8Array(this.cols * this.rows);
+        const newFloorPacked = new Uint8Array(this.cols * this.rows);
         const newFloorBeltLoad = new Uint8Array(this.cols * this.rows);
         const newFloorBeltAnimMs = new Uint32Array(this.cols * this.rows);
         let floorBeltCount = 0;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
-            if (level === 0 && !this.hasAnyCellEdgeAtIdx(idx) && this.floorKind[idx] === 0 && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx)) continue;
+            if (level === 0 && !this.hasAnyCellEdgeAtIdx(idx) && this.floorPacked[idx] === 0 && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx)) continue;
             const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
@@ -1862,22 +1938,22 @@ export class WorldObstacleGrid {
                 const newIdx = nc + nr * this.cols;
                 if (cellInRect(newIdx, this)) {
                     newGrid[newIdx] = level;
-                    if (this.floorKind[idx] !== 0) {
-                        newFloorKind[newIdx] = this.floorKind[idx];
-                        newFloorFacing[newIdx] = this.floorFacing[idx];
+                    if (this.floorPacked[idx] !== 0) {
+                        newFloorPacked[newIdx] = this.floorPacked[idx];
                         newFloorBeltLoad[newIdx] = oldFloorBeltLoad[idx];
                         newFloorBeltAnimMs[newIdx] = oldFloorBeltAnimMs[idx];
-                        if (FloorBelt.isBelt(this.floorKind[idx])) floorBeltCount++;
+                        floorBeltCount++;
                     }
                     for (let side = 0; side < 4; side++) newEdgeSlots[(newIdx << 2) + side] = this.cellEdgeSlots[(idx << 2) + side];
                 }
             }
         }
         this.cellEdgeSlots = newEdgeSlots;
-        this.floorKind = newFloorKind;
-        this.floorFacing = newFloorFacing;
+        this.floorPacked = newFloorPacked;
         this._floorBeltLoad = newFloorBeltLoad;
         this._floorBeltAnimMs = newFloorBeltAnimMs;
+        this._floorBeltLoadedIdx = new Uint32Array(8);
+        this._floorBeltLoadedCount = 0;
         this.floorBeltCount = floorBeltCount;
         this.staticPropBuckets.clear();
         this.staticPropCount = new Uint16Array(this.cols * this.rows);
@@ -1959,49 +2035,45 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.setChunkProfileForCellBounds(cellBounds, cellsPerChunk, profileId);
         bumpSurfaceMaterialRevision(this);
     }
-    writeFloorCell(idx, kind, facingIndex) {
+    writeFloorCell(idx, packed) {
         if (this.isBlockedIdx(idx)) return false;
-        const prevKind = this.floorKind[idx];
-        const prevFacing = this.floorFacing[idx];
-        const wasBelt = FloorBelt.isBelt(prevKind);
-        const isBelt = FloorBelt.isBelt(kind);
-        if (!wasBelt && isBelt) this.floorBeltCount++;
-        else if (wasBelt && !isBelt) {
+        if (packed !== 0 && !BeltPacked.isValid(packed)) return false;
+        const prevPacked = this.floorPacked[idx];
+        const hadBelt = prevPacked !== 0;
+        const hasBelt = packed !== 0;
+        if (!hadBelt && hasBelt) this.floorBeltCount++;
+        else if (hadBelt && !hasBelt) {
             this.floorBeltCount--;
             this._floorBeltLoad[idx] = 0;
             this._floorBeltAnimMs[idx] = 0;
+            removeFloorBeltLoadedIdx(this, idx);
         }
-        this.floorKind[idx] = kind;
-        this.floorFacing[idx] = facingIndex;
-        const floorNavChanged = (wasBelt || isBelt) && (prevKind !== kind || prevFacing !== facingIndex);
-        if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        this.floorPacked[idx] = packed;
+        if ((hadBelt || hasBelt) && prevPacked !== packed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     hasFloorOccupancy(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
-        return this.floorKind[idx] !== 0;
+        return this.floorPacked[idx] !== 0;
     }
     clearFloorCell(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
-        if (!(this.floorKind[idx] !== 0)) return false;
-        const kind = this.floorKind[idx];
-        if (FloorBelt.isBelt(kind)) {
-            bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
-            this.floorBeltCount--;
-        }
-        this.floorKind[idx] = 0;
-        this.floorFacing[idx] = 0;
+        if (this.floorPacked[idx] === 0) return false;
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        this.floorBeltCount--;
+        this.floorPacked[idx] = 0;
         this._floorBeltLoad[idx] = 0;
         this._floorBeltAnimMs[idx] = 0;
+        removeFloorBeltLoadedIdx(this, idx);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     clearAllFloorCells() {
-        this.floorKind.fill(0);
-        this.floorFacing.fill(0);
+        this.floorPacked.fill(0);
         this._floorBeltLoad.fill(0);
         this._floorBeltAnimMs.fill(0);
+        this._floorBeltLoadedCount = 0;
         this.floorBeltCount = 0;
         bumpFloorOccupancyStampDrawRevision(this);
     }
@@ -2903,9 +2975,9 @@ export class RailWallBatch {
         return batch;
     }
 }
-function beltLinkOk(idxA, kindA, facingA, idxB, kindB, facingB, cols, graph) {
-    const { exitSide } = FloorBelt.getEntryExitSides(kindA, facingA);
-    const { entrySide } = FloorBelt.getEntryExitSides(kindB, facingB);
+function beltLinkOk(idxA, packedA, idxB, packedB, cols, graph) {
+    const exitSide = BeltPacked.exit(packedA);
+    const entrySide = BeltPacked.entry(packedB);
     const diff = idxB - idxA;
     let stepSide = -1;
     if (diff === 1 && (idxA + 1) % cols !== 0) stepSide = 1;
@@ -2929,8 +3001,8 @@ export class BeltPlan {
     get(idx) {
         return this.cells.get(idx);
     }
-    set(idx, kind, facingIndex) {
-        this.cells.set(idx, [kind, facingIndex]);
+    set(idx, packed) {
+        this.cells.set(idx, packed);
     }
     accumulatePath(path, width, layout) {
         const collapsed = collapsePathRevisits(path, layout);
@@ -2941,21 +3013,19 @@ export class BeltPlan {
             const nextIdx = i < collapsed.length - 1 ? collapsed[i + 1] : undefined;
             if (prevIdx !== undefined && pIdx === prevIdx) continue;
             const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, width, false, i, collapsed.length, layout);
-            let spec;
+            let packed;
             if (prevIdx !== undefined && nextIdx !== undefined) {
                 const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
                 const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
-                spec = FloorBelt.resolveKindFromSides(entrySide, exitSide);
+                packed = BeltPacked.fromSides(entrySide, exitSide);
             } else if (nextIdx !== undefined) {
                 const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
-                const entrySide = edgeMirrorSide(exitSide);
-                spec = FloorBelt.resolveKindFromSides(entrySide, exitSide);
+                packed = BeltPacked.fromSides(edgeMirrorSide(exitSide), exitSide);
             } else if (prevIdx !== undefined) {
                 const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
-                const exitSide = edgeMirrorSide(entrySide);
-                spec = FloorBelt.resolveKindFromSides(entrySide, exitSide);
-            } else spec = FloorBelt.resolveKindFromSides(3, 1);
-            for (let ci = 0; ci < cells.length; ci++) this.cells.set(cells[ci], [spec.kind, spec.facingIndex]);
+                packed = BeltPacked.fromSides(entrySide, edgeMirrorSide(entrySide));
+            } else packed = BeltPacked.fromSides(3, 1);
+            for (let ci = 0; ci < cells.length; ci++) this.cells.set(cells[ci], packed);
         }
     }
     accumulatePaths(paths, widths, layout) {
@@ -2966,23 +3036,20 @@ export class BeltPlan {
         try {
             for (const idx of footprint) if (!this.cells.get(idx)) throw new Error(`belt plan: missing belt at ${formatGlobalCellIdx(idx)}`);
             for (const idx of footprint) {
-                const belt = this.cells.get(idx);
-                const kind = belt[0];
-                const facingIndex = belt[1];
-                const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind, facingIndex);
+                const packed = this.cells.get(idx);
+                const entrySide = BeltPacked.entry(packed);
+                const exitSide = BeltPacked.exit(packed);
                 const entryIdx = edgeNeighborIdx(idx, entrySide, layout);
                 const exitIdx = edgeNeighborIdx(idx, exitSide, layout);
                 const entryInFootprint = footprint.has(entryIdx);
                 const exitInFootprint = footprint.has(exitIdx);
                 if (entryInFootprint) {
-                    const entryBelt = this.cells.get(entryIdx);
-                    const entryExit = FloorBelt.getEntryExitSides(entryBelt[0], entryBelt[1]).exitSide;
+                    const entryExit = BeltPacked.exit(this.cells.get(entryIdx));
                     if (entryExit !== edgeMirrorSide(entrySide))
                         throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(entryIdx)} -> ${formatGlobalCellIdx(idx)} (entry side ${entrySide}, upstream exit ${entryExit})`);
                 }
                 if (exitInFootprint) {
-                    const exitBelt = this.cells.get(exitIdx);
-                    const exitEntry = FloorBelt.getEntryExitSides(exitBelt[0], exitBelt[1]).entrySide;
+                    const exitEntry = BeltPacked.entry(this.cells.get(exitIdx));
                     if (exitEntry !== edgeMirrorSide(exitSide))
                         throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(idx)} -> ${formatGlobalCellIdx(exitIdx)} (exit side ${exitSide}, downstream entry ${exitEntry})`);
                 }
@@ -3000,13 +3067,9 @@ export class BeltPlan {
         for (let i = 0; i < cellIndices.length - 1; i++) {
             const a = cellIndices[i];
             const b = cellIndices[i + 1];
-            const specA = this.cells.get(a);
-            const kindA = specA ? specA[0] : grid.floorKind[a];
-            const facingA = specA ? specA[1] : grid.floorFacing[a];
-            const specB = this.cells.get(b);
-            const kindB = specB ? specB[0] : grid.floorKind[b];
-            const facingB = specB ? specB[1] : grid.floorFacing[b];
-            const link = beltLinkOk(a, kindA, facingA, b, kindB, facingB, cols, graph);
+            const packedA = this.cells.get(a) ?? grid.floorPacked[a];
+            const packedB = this.cells.get(b) ?? grid.floorPacked[b];
+            const link = beltLinkOk(a, packedA, b, packedB, cols, graph);
             if (!link.ok) return { ok: false, reason: `cell ${i}: ${link.reason}` };
         }
         return { ok: true };
@@ -3019,23 +3082,20 @@ export class BeltPlan {
             const byCell = validation.cells;
             const removeIndices = new Set();
             for (const idx of footprint) {
-                const belt = byCell.get(idx);
-                const kind = belt[0];
-                const facingIndex = belt[1];
-                const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind, facingIndex);
+                const packed = byCell.get(idx);
+                const entrySide = BeltPacked.entry(packed);
+                const exitSide = BeltPacked.exit(packed);
                 const entryIdx = edgeNeighborIdx(idx, entrySide, layout);
                 const exitIdx = edgeNeighborIdx(idx, exitSide, layout);
                 const entryInFootprint = footprint.has(entryIdx);
                 const exitInFootprint = footprint.has(exitIdx);
                 if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
                 if (entryInFootprint) {
-                    const entryBelt = byCell.get(entryIdx);
-                    const entryExit = FloorBelt.getEntryExitSides(entryBelt[0], entryBelt[1]).exitSide;
+                    const entryExit = BeltPacked.exit(byCell.get(entryIdx));
                     if (entryExit !== edgeMirrorSide(entrySide)) removeIndices.add(idx);
                 }
                 if (exitInFootprint) {
-                    const exitBelt = byCell.get(exitIdx);
-                    const exitEntry = FloorBelt.getEntryExitSides(exitBelt[0], exitBelt[1]).entrySide;
+                    const exitEntry = BeltPacked.entry(byCell.get(exitIdx));
                     if (exitEntry !== edgeMirrorSide(exitSide)) removeIndices.add(idx);
                 }
             }
@@ -3048,8 +3108,8 @@ export class BeltPlan {
     stamp(state) {
         const grid = state.obstacleGrid;
         let bounds = null;
-        for (const [idx, spec] of this.cells) {
-            if (!grid.writeFloorCell(idx, spec[0], spec[1])) continue;
+        for (const [idx, packed] of this.cells) {
+            if (!grid.writeFloorCell(idx, packed)) continue;
             if (!bounds) bounds = emptyCellBounds();
             growCellBoundsIdx(bounds, idx, grid);
         }
@@ -3058,9 +3118,9 @@ export class BeltPlan {
     }
     toRailWalls(heightLevel, thicknessLevel) {
         const batch = new RailWallBatch(Math.max(1, this.cells.size * 2));
-        for (const [idx, spec] of this.cells) {
-            const sides = FloorBelt.getRailEdgeSides(spec[0], spec[1]);
-            for (let s = 0; s < sides.length; s++) batch.add(idx, sides[s], heightLevel, thicknessLevel);
+        for (const [idx, packed] of this.cells) {
+            batch.add(idx, BeltPacked.railSide0(packed), heightLevel, thicknessLevel);
+            batch.add(idx, BeltPacked.railSide1(packed), heightLevel, thicknessLevel);
         }
         return batch;
     }
@@ -3375,8 +3435,8 @@ export function clearChunkSurfaceProfileEdit(state, cellBounds) {
     return cellBounds;
 }
 /** Stamp or replace one floor cell and resync nav topology. */
-export function applyFloorCellEdit(state, idx, kind, facingIndex) {
-    if (!state.obstacleGrid.writeFloorCell(idx, kind, facingIndex)) return null;
+export function applyFloorCellEdit(state, idx, packed) {
+    if (!state.obstacleGrid.writeFloorCell(idx, packed)) return null;
     return commitGridNavEdit(state, idx);
 }
 /** Clear one floor cell and resync nav topology. */

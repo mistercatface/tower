@@ -1486,7 +1486,7 @@ export class NavTopology {
         const arena = ensureLocalBakeArena(this.grid);
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
-        const simView = createNavSimView(frame, arena.gridFill, arena.floorKind, arena.floorFacing, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability);
+        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability);
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
@@ -1508,7 +1508,7 @@ export class NavTopology {
     static packSnapshot(grid, idx = null) {
         const arena = ensureLocalBakeArena(grid);
         packNavTopologyFromGrid(grid, arena, idx);
-        return { gridFill: arena.gridFill, floorKind: arena.floorKind, floorFacing: arena.floorFacing, edgeSlots: arena.edgeSlots, edgePool: grid.cellEdgePool };
+        return { gridFill: arena.gridFill, floorPacked: arena.floorPacked, edgeSlots: arena.edgeSlots, edgePool: grid.cellEdgePool };
     }
     _localArena() {
         return localBakeArenas.get(this.grid) ?? null;
@@ -1596,8 +1596,7 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {number} cellCount
  * @property {SharedArrayBuffer} sabBlocked
  * @property {SharedArrayBuffer} sabGridFill
- * @property {SharedArrayBuffer} sabFloorKind
- * @property {SharedArrayBuffer} sabFloorFacing
+ * @property {SharedArrayBuffer} sabFloorPacked
  * @property {SharedArrayBuffer} sabEdgeSlots
  * @property {SharedArrayBuffer} sabOctileNeighbors
  * @property {SharedArrayBuffer} sabOctilePredecessors
@@ -1605,8 +1604,7 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {SharedArrayBuffer} sabVertexPassability
  * @property {Uint8Array} blocked
  * @property {Uint8Array} gridFill
- * @property {Uint8Array} floorKind
- * @property {Uint8Array} floorFacing
+ * @property {Uint8Array} floorPacked
  * @property {Int32Array} edgeSlots
  * @property {Int32Array} octileNeighbors
  * @property {Int32Array} octilePredecessors
@@ -1631,8 +1629,7 @@ export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows =
         cellCount,
         sabBlocked: new SharedArrayBuffer(cellCount),
         sabGridFill: new SharedArrayBuffer(cellCount),
-        sabFloorKind: new SharedArrayBuffer(cellCount),
-        sabFloorFacing: new SharedArrayBuffer(cellCount),
+        sabFloorPacked: new SharedArrayBuffer(cellCount),
         sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES),
         sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
         sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
@@ -1640,8 +1637,7 @@ export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows =
         sabVertexPassability: new SharedArrayBuffer(vertBytes),
         blocked: undefined,
         gridFill: undefined,
-        floorKind: undefined,
-        floorFacing: undefined,
+        floorPacked: undefined,
         edgeSlots: undefined,
         octileNeighbors: undefined,
         octilePredecessors: undefined,
@@ -1656,8 +1652,7 @@ export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows =
 export function bindNavTopologySabViews(arena) {
     arena.blocked = new Uint8Array(arena.sabBlocked);
     arena.gridFill = new Uint8Array(arena.sabGridFill);
-    arena.floorKind = new Uint8Array(arena.sabFloorKind);
-    arena.floorFacing = new Uint8Array(arena.sabFloorFacing);
+    arena.floorPacked = new Uint8Array(arena.sabFloorPacked);
     arena.edgeSlots = new Int32Array(arena.sabEdgeSlots);
     arena.octileNeighbors = new Int32Array(arena.sabOctileNeighbors);
     arena.octilePredecessors = new Int32Array(arena.sabOctilePredecessors);
@@ -1680,16 +1675,14 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
         arena.gridFill.set(grid.grid);
-        arena.floorKind.set(grid.floorKind);
-        arena.floorFacing.set(grid.floorFacing);
+        arena.floorPacked.set(grid.floorPacked);
         arena.edgeSlots.set(grid.cellEdgeSlots);
         return;
     }
     if (isBounds)
         forEachDenseCellInBounds(grid, idx, (cellIdx) => {
             arena.gridFill[cellIdx] = grid.grid[cellIdx];
-            arena.floorKind[cellIdx] = grid.floorKind[cellIdx];
-            arena.floorFacing[cellIdx] = grid.floorFacing[cellIdx];
+            arena.floorPacked[cellIdx] = grid.floorPacked[cellIdx];
             for (let side = 0; side < 4; side++) {
                 const offset = cellEdgeSlotOffset(cellIdx, side);
                 arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
@@ -1697,8 +1690,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
         });
     else {
         arena.gridFill[idx] = grid.grid[idx];
-        arena.floorKind[idx] = grid.floorKind[idx];
-        arena.floorFacing[idx] = grid.floorFacing[idx];
+        arena.floorPacked[idx] = grid.floorPacked[idx];
         for (let side = 0; side < 4; side++) {
             const offset = cellEdgeSlotOffset(idx, side);
             arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
@@ -1788,21 +1780,19 @@ export function createNavLocalView(frame, topology) {
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
  * @param {import("./GridNavSnapshot.js").GridFrame} frame
  * @param {Uint8Array} gridFill
- * @param {Uint8Array} floorKind
- * @param {Uint8Array} floorFacing
+ * @param {Uint8Array} floorPacked
  * @param {Int32Array} edgeSlots
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, vertexPassability) {
+export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability) {
     const simView = {
         frame,
         grid: gridFill,
         vertexPassability,
         cellEdgeSlots: edgeSlots,
         cellEdgePool: edgePool,
-        floorKind: floorKind,
-        floorFacing: floorFacing,
+        floorPacked: floorPacked,
         getCellEdge(idx, side) {
             const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
             if (ref < 0) return null;
@@ -1887,7 +1877,7 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
 }
 /** Snap a path goal cell to the belt entry neighbor (belt-mouth approach). */
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
-    if (!FloorBelt.isBelt(grid.floorKind[targetIdx])) return targetIdx;
+    if (!FloorBelt.isBeltAtIdx(grid, targetIdx)) return targetIdx;
     const neighborIdx = beltEntryNeighborAtIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
     if (fromIdx === neighborIdx) return targetIdx;
@@ -1917,7 +1907,7 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = grid.gridCenterYByIdx(snappedIdx);
         return out;
     }
-    if (!FloorBelt.isBelt(grid.floorKind[targetIdx]) || fromIdx === targetIdx) {
+    if (!FloorBelt.isBeltAtIdx(grid, targetIdx) || fromIdx === targetIdx) {
         out.x = targetX;
         out.y = targetY;
         return out;

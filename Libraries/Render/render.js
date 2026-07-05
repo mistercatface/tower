@@ -51,7 +51,7 @@ import {
     projectWorldQuadInto,
     resolveWallSurfaceProfileId,
     cellInRect,
-    FloorBelt,
+    BeltPacked,
     floorOccupancyStampDrawCacheKey,
     projectWallShadowQuadScreenInto,
     collectExposedWallEdgesInAabb,
@@ -2799,50 +2799,24 @@ export class WorldSceneRenderer {
 }
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltFilmstripDrawByTurn = { straight: createFlatConveyorDraw(), left: createFlatConveyorDraw({ turnDirection: "left" }), right: createFlatConveyorDraw({ turnDirection: "right" }) };
-function beltFilmstripDrawForKind(kind) {
-    const turn = FloorBelt.getElbowTurn(kind);
-    if (turn === "left") return beltFilmstripDrawByTurn.left;
-    if (turn === "right") return beltFilmstripDrawByTurn.right;
-    return beltFilmstripDrawByTurn.straight;
+const BELT_FILMSTRIP_DRAW = new Array(16);
+let beltFilmstripDrawReady = false;
+function ensureBeltFilmstripDrawTable() {
+    if (beltFilmstripDrawReady) return;
+    for (let packed = 1; packed < 16; packed++) {
+        if (!BeltPacked.isValid(packed)) continue;
+        const turn = BeltPacked.turn(packed);
+        BELT_FILMSTRIP_DRAW[packed] = turn === 0 ? beltFilmstripDrawByTurn.left : turn === 2 ? beltFilmstripDrawByTurn.right : beltFilmstripDrawByTurn.straight;
+    }
+    beltFilmstripDrawReady = true;
 }
-const floorBeltStampProxyProto = {
-    ageMs: 0,
-    getCustomSpriteCacheKey() {
-        return `k${this.beltKind}`;
-    },
-};
-function createGridCellStampProxy(proto, x, y, cellHalf, init) {
-    const proxy = Object.create(proto);
-    proxy.x = x;
-    proxy.y = y;
-    proxy.radius = cellHalf;
-    proxy.halfExtents = SHARED_HALF_EXTENTS;
-    init(proxy);
-    return proxy;
-}
-function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
-    return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {
-        proxy.facing = facing;
-        proxy.beltKind = kind;
-    });
+function beltDrawForPacked(packed) {
+    ensureBeltFilmstripDrawTable();
+    return BELT_FILMSTRIP_DRAW[packed];
 }
 export function clearGridStampDrawCaches(state) {
     if (!state.sandbox) return;
     state.sandbox._floorOccupancyStampDrawCache = null;
-}
-function warmFloorBeltFilmstripCache(grid, viewport, belts) {
-    const seen = new Set();
-    const entries = [];
-    for (let i = 0; i < belts.length; i++) {
-        const item = belts[i];
-        const kind = item.proxy.beltKind;
-        const facingIndex = grid.floorFacing[item.idx];
-        const stripKey = `k${kind}f${facingIndex}`;
-        if (seen.has(stripKey)) continue;
-        seen.add(stripKey);
-        entries.push({ kind, stripKey, facing: FloorBelt.getFacingAngle(facingIndex) });
-    }
-    warmSharedGridStampFilmstripCache(viewport, grid.cellHalfSize, GRID_STAMP_RENDER_KEY.FloorBelt, entries, beltFilmstripDrawForKind, BELT_FILMSTRIP_FRAMES);
 }
 export function syncFloorOccupancyStampDrawCache(state, grid, viewport = null) {
     if (!state.sandbox) return null;
@@ -2852,40 +2826,51 @@ export function syncFloorOccupancyStampDrawCache(state, grid, viewport = null) {
     const cellHalf = grid.cellHalfSize;
     SHARED_HALF_EXTENTS.x = cellHalf;
     SHARED_HALF_EXTENTS.y = cellHalf;
-    const belts = [];
     const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const kind = grid.floorKind[idx];
-        if (!(grid.floorKind[idx] !== 0)) continue;
-        const x = grid.gridCenterXByIdx(idx);
-        const y = grid.gridCenterYByIdx(idx);
-        if (FloorBelt.isBelt(kind)) belts.push({ idx, proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
+    let idxList = new Uint32Array(Math.max(grid.floorBeltCount, 8));
+    const packedSeen = new Uint8Array(16);
+    const uniquePacked = [];
+    let count = 0;
+    for (let cellIdx = 0; cellIdx < size; cellIdx++) {
+        const packed = grid.floorPacked[cellIdx];
+        if (!packed) continue;
+        if (count >= idxList.length) {
+            const grown = new Uint32Array(idxList.length * 2);
+            grown.set(idxList.subarray(0, count));
+            idxList = grown;
+        }
+        idxList[count++] = cellIdx;
+        if (!packedSeen[packed]) {
+            packedSeen[packed] = 1;
+            uniquePacked.push(packed);
+        }
     }
-    const next = { revision, belts };
+    const next = { revision, idx: idxList, count };
     state.sandbox._floorOccupancyStampDrawCache = next;
-    if (viewport && belts.length) warmFloorBeltFilmstripCache(grid, viewport, belts);
+    if (viewport && uniquePacked.length)
+        warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY.FloorBelt, uniquePacked, BeltPacked.flowAngle, beltDrawForPacked, BELT_FILMSTRIP_FRAMES);
     return next;
 }
 function drawCachedFloorOccupancyBelts(ctx, viewport, grid, cached) {
-    const belts = cached.belts;
     const halfExtents = SHARED_HALF_EXTENTS;
-    for (let i = 0; i < belts.length; i++) {
-        const item = belts[i];
-        if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
-        const frameIndex = Math.floor(grid._floorBeltAnimMs[item.idx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
-        const proxy = item.proxy;
-        const facingIndex = grid.floorFacing[item.idx];
-        const stripKey = `k${proxy.beltKind}f${facingIndex}`;
+    const cellHalf = grid.cellHalfSize;
+    for (let i = 0; i < cached.count; i++) {
+        const cellIdx = cached.idx[i];
+        const x = grid.gridCenterXByIdx(cellIdx);
+        const y = grid.gridCenterYByIdx(cellIdx);
+        if (!viewport.circleInBounds(x, y, cellHalf, "props")) continue;
+        const packed = grid.floorPacked[cellIdx];
+        const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
         drawCachedGridStampFilmstripShared(
             ctx,
-            item.x,
-            item.y,
+            x,
+            y,
             halfExtents,
             viewport,
             GRID_STAMP_RENDER_KEY.FloorBelt,
-            stripKey,
-            proxy.facing,
-            beltFilmstripDrawForKind(proxy.beltKind),
+            BeltPacked.stripKey(packed),
+            BeltPacked.flowAngle(packed),
+            beltDrawForPacked(packed),
             frameIndex,
             BELT_FILMSTRIP_FRAMES,
         );
@@ -2895,7 +2880,7 @@ export function drawFloorOccupancyBelts(ctx, state, viewport) {
     const grid = state.obstacleGrid;
     if (grid.floorBeltCount === 0) return;
     const cached = syncFloorOccupancyStampDrawCache(state, grid, viewport);
-    if (!cached?.belts.length) return;
+    if (!cached?.count) return;
     drawCachedFloorOccupancyBelts(ctx, viewport, grid, cached);
 }
 /** Default omnidirectional vision radius in grid tiles. */

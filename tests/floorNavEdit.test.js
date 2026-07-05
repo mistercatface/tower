@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit, commitGridNavEditUnion } from "../Libraries/Spatial/spatial.js";
 import { stampRailWallsBatch, RailWallBatch } from "../Libraries/Spatial/spatial.js";
-import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
+import {  BeltPacked  } from "../Libraries/Spatial/spatial.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 
 function createNavEditTestState() {
@@ -35,14 +35,14 @@ describe("gridNavEdit", () => {
     it("applyFloorCellEdit calls commitEdit with the edited cell index", async () => {
         const state = createNavEditTestState();
         const idx = 2 + 2 * state.obstacleGrid.cols;
-        await applyFloorCellEdit(state, idx, FLOOR_CELL_KIND.Belt, 0);
+        await applyFloorCellEdit(state, idx, BeltPacked.defaultForSpawn("floor_belt"));
         assert.equal(state.syncBounds, idx);
     });
 
     it("clearFloorCellNavEdit resyncs after belt removal", async () => {
         const state = createNavEditTestState();
         const idx = 2 + 2 * state.obstacleGrid.cols;
-        state.obstacleGrid.writeFloorCell(idx, FLOOR_CELL_KIND.Belt, 0);
+        state.obstacleGrid.writeFloorCell(idx, BeltPacked.defaultForSpawn("floor_belt"));
         await clearFloorCellNavEdit(state, idx);
         assert.equal(state.syncBounds, idx);
     });

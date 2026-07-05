@@ -29,12 +29,11 @@ describe("nav step penalty", () => {
         const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
         const cols = 5;
         const rows = 3;
-        const floorKind = new Uint8Array(cols * rows);
-        const floorFacing = new Uint8Array(cols * rows);
+        const { BeltPacked } = await import("../Libraries/Spatial/spatial.js");
+        const floorPacked = new Uint8Array(cols * rows);
         const beltIdx = 2 + 1 * cols;
-        floorKind[beltIdx] = 1; // FLOOR_CELL_KIND.Belt
-        floorFacing[beltIdx] = 0; // East (exit East, entry West)
-        const penalty = createNavStepPenaltyLookup(cols, [], [], floorKind, floorFacing);
+        floorPacked[beltIdx] = BeltPacked.defaultForSpawn("floor_belt");
+        const penalty = createNavStepPenaltyLookup(cols, [], [], floorPacked);
         const eastCost = penalty.extraCost(beltIdx, 1 + 1 * cols);
         assert.equal(eastCost, 0, "Stepping with flow of conveyor should be 0");
         const westCost = penalty.extraCost(beltIdx, 3 + 1 * cols);

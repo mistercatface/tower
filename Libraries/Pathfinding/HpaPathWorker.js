@@ -259,8 +259,7 @@ export class HpaPathWorker {
         const arena = this._navArena;
         this.sabBlocked = arena.sabBlocked;
         this.sabGridFill = arena.sabGridFill;
-        this.sabFloorKind = arena.sabFloorKind;
-        this.sabFloorFacing = arena.sabFloorFacing;
+        this.sabFloorPacked = arena.sabFloorPacked;
         this.sabEdgeSlots = arena.sabEdgeSlots;
         this.sabOctileNeighbors = arena.sabOctileNeighbors;
         this.sabOctilePredecessors = arena.sabOctilePredecessors;
@@ -323,8 +322,7 @@ export class HpaPathWorker {
             sabOctilePredecessors: this.sabOctilePredecessors,
             sabEdgePool: this.sabEdgePool,
             sabGridFill: this.sabGridFill,
-            sabFloorKind: this.sabFloorKind,
-            sabFloorFacing: this.sabFloorFacing,
+            sabFloorPacked: this.sabFloorPacked,
             sabEdgeSlots: this.sabEdgeSlots,
         };
     }

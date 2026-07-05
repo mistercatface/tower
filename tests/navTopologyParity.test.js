@@ -3,7 +3,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
+import {  BeltPacked  } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import { createRailStampTestState } from "./harness/stateFactories.js";
@@ -28,9 +28,10 @@ describe("nav topology parity", () => {
     it("local bake matches worker canStep for belts and rail walls", async () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 12 * 16, 12 * 16);
-        grid.writeFloorCell(grid.idx(4, 4), FLOOR_CELL_KIND.Belt, 0);
-        grid.writeFloorCell(grid.idx(5, 4), FLOOR_CELL_KIND.Belt, 0);
-        grid.writeFloorCell(grid.idx(7, 7), FLOOR_CELL_KIND.Belt, 1);
+        const straightEast = BeltPacked.defaultForSpawn("floor_belt");
+        grid.writeFloorCell(grid.idx(4, 4), straightEast);
+        grid.writeFloorCell(grid.idx(5, 4), straightEast);
+        grid.writeFloorCell(grid.idx(7, 7), BeltPacked.rotate(straightEast, 1));
         stampRailWallsQuiet(createRailStampTestState(grid), RailWallBatch.single(grid.idx(3, 5), 0));
 
         const navigation = await createWorkerNavigation(grid);

@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableAt, getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 
 function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
@@ -192,7 +192,7 @@ describe("rail maze corridor belts", () => {
             const expectedBelts = seeds[i] === 11 ? 20 : 50;
             assert.ok(result.beltPlan.size > expectedBelts, `seed ${seeds[i]}: only ${result.beltPlan.size} belts`);
             let elbows = 0;
-            for (const [idx, spec] of result.beltPlan) if (FloorBelt.getElbowTurn(spec[0])) elbows++;
+            for (const [idx, packed] of result.beltPlan) if (BeltPacked.turn(packed) !== 1) elbows++;
             assert.ok(elbows > 0, `seed ${seeds[i]}: no elbow belts`);
             assert.equal(result.validation.ok, true, `seed ${seeds[i]}: ${result.validation.error}`);
             terminateWorkerNavigation(nav);
@@ -232,8 +232,8 @@ describe("rail maze corridor belts", () => {
             const rSide = result.beltRails.data[o + 1];
             assert.ok(beltSet.has(rIdx), "rail wall must be on a belt cell");
 
-            const spec = result.beltPlan.get(rIdx);
-            const lateralSides = FloorBelt.getRailEdgeSides(spec[0], spec[1]);
+            const packed = result.beltPlan.get(rIdx);
+            const lateralSides = [BeltPacked.railSide0(packed), BeltPacked.railSide1(packed)];
             assert.ok(lateralSides.includes(rSide), `side ${rSide} must be one of the lateral sides: ${lateralSides}`);
         }
 

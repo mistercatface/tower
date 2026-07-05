@@ -15,44 +15,44 @@ import {
     navTopologyFromSab,
     bakeNavTopologyIntoArena,
 } from "../../Navigation/navigation.js";
-import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
+import { bindNavEdgePoolFromSab, BeltPacked } from "../../Spatial/spatial.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
-import { FloorBelt } from "../../Spatial/spatial.js";
 const CONVEYOR_AGAINST_FLOW_PENALTY = 20;
 const CONVEYOR_LATERAL_PENALTY = 5;
 const CONVEYOR_DIAGONAL_PENALTY = 8;
-export function getStepPenalty(currIdx, nIdx, cols, floorKind, floorFacing) {
-    const kind_curr = floorKind[currIdx];
-    const kind_n = floorKind[nIdx];
-    if (!FloorBelt.isBelt(kind_curr) && !FloorBelt.isBelt(kind_n)) return 0;
+function stepSideFromIdxDiff(diff, fromIdx, cols) {
+    if (diff === 1 && (fromIdx + 1) % cols !== 0) return 1;
+    if (diff === -1 && fromIdx % cols !== 0) return 3;
+    if (diff === cols) return 2;
+    if (diff === -cols) return 0;
+    return -1;
+}
+export function getStepPenalty(currIdx, nIdx, cols, floorPacked) {
+    const packed_curr = floorPacked[currIdx];
+    const packed_n = floorPacked[nIdx];
+    if (!packed_curr && !packed_n) return 0;
     let penalty_out = 0;
-    if (FloorBelt.isBelt(kind_curr)) {
+    if (packed_curr) {
         const diff = nIdx - currIdx;
-        let side = -1;
-        if (diff === -cols) side = 0;
-        else if (diff === 1) side = 1;
-        else if (diff === cols) side = 2;
-        else if (diff === -1) side = 3;
+        const side = stepSideFromIdxDiff(diff, currIdx, cols);
         if (side === -1) penalty_out = CONVEYOR_DIAGONAL_PENALTY;
         else {
-            const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind_curr, floorFacing[currIdx]);
+            const entrySide = BeltPacked.entry(packed_curr);
+            const exitSide = BeltPacked.exit(packed_curr);
             if (side === exitSide) penalty_out = 0;
             else if (side === entrySide) penalty_out = CONVEYOR_AGAINST_FLOW_PENALTY;
             else penalty_out = CONVEYOR_LATERAL_PENALTY;
         }
     }
     let penalty_in = 0;
-    if (FloorBelt.isBelt(kind_n)) {
+    if (packed_n) {
         const diff_in = currIdx - nIdx;
-        let side_n = -1;
-        if (diff_in === -cols) side_n = 0;
-        else if (diff_in === 1) side_n = 1;
-        else if (diff_in === cols) side_n = 2;
-        else if (diff_in === -1) side_n = 3;
+        const side_n = stepSideFromIdxDiff(diff_in, nIdx, cols);
         if (side_n === -1) penalty_in = CONVEYOR_DIAGONAL_PENALTY;
         else {
-            const { entrySide, exitSide } = FloorBelt.getEntryExitSides(kind_n, floorFacing[nIdx]);
+            const entrySide = BeltPacked.entry(packed_n);
+            const exitSide = BeltPacked.exit(packed_n);
             if (side_n === entrySide) penalty_in = 0;
             else if (side_n === exitSide) penalty_in = CONVEYOR_AGAINST_FLOW_PENALTY;
             else penalty_in = CONVEYOR_LATERAL_PENALTY;
@@ -60,7 +60,7 @@ export function getStepPenalty(currIdx, nIdx, cols, floorKind, floorFacing) {
     }
     return Math.max(penalty_out, penalty_in);
 }
-export function createNavStepPenaltyLookup(cols, keys, costs, floorKind = null, floorFacing = null) {
+export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null) {
     let maxIdx = 0;
     if (keys && keys.length)
         for (let i = 0; i < keys.length; i++) {
@@ -73,7 +73,7 @@ export function createNavStepPenaltyLookup(cols, keys, costs, floorKind = null, 
         extraCost(idx, currIdx) {
             let cost = 0;
             if (costArray && idx < costArray.length) cost += costArray[idx];
-            if (floorKind && floorFacing && currIdx !== undefined) cost += getStepPenalty(currIdx, idx, cols, floorKind, floorFacing);
+            if (floorPacked && currIdx !== undefined) cost += getStepPenalty(currIdx, idx, cols, floorPacked);
             return cost;
         },
     };
@@ -207,13 +207,12 @@ export class HpaTopologyArena {
         this.sabEdgePool = data.sabEdgePool;
         this.edgePoolCount = data.edgePoolCount;
         const gridFill = new Uint8Array(data.sabGridFill);
-        const floorKind = new Uint8Array(data.sabFloorKind);
-        const floorFacing = new Uint8Array(data.sabFloorFacing);
+        const floorPacked = new Uint8Array(data.sabFloorPacked);
         const edgeSlots = new Int32Array(data.sabEdgeSlots);
         this.cardinalOpen = new Uint8Array(data.sabCardinalOpen);
         this.vertexPassability = new Uint8Array(data.sabVertexPassability);
         const edgePool = bindNavEdgePoolFromSab(new Uint8Array(this.sabEdgePool), this.edgePoolCount);
-        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, this.vertexPassability);
+        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorPacked, edgeSlots, edgePool, this.vertexPassability);
         this.navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);
         this.navView = createNavLocalView(this.requireGridFrame(), this.navTopology);
         this.navArenaBound = true;
@@ -404,9 +403,8 @@ export class HpaPathfindingWorker {
     runReplan(slot, data) {
         const frame = this.topology.requireGridFrame();
         const simView = this.topology.navSimView;
-        const floorKind = simView?.floorKind ?? null;
-        const floorFacing = simView?.floorFacing ?? null;
-        const stepPenaltyLookup = createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts, floorKind, floorFacing);
+        const floorPacked = simView?.floorPacked ?? null;
+        const stepPenaltyLookup = createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts, floorPacked);
         const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
         const baseGraph = this.graph.abstractGraph();
         const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, penaltyLookup: stepPenaltyLookup, cellToRegion });

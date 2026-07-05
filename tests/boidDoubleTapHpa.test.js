@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import {  WorldObstacleGrid, BeltPacked  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxController, spawnPlacedSandboxProp, createDefaultSandboxBehaviors, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 function createEditorTestState() {
@@ -53,7 +53,7 @@ describe("boid double tap hpa pathing", () => {
         const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "neutral");
         // Write a floor cell at col: 22, row: 22 to ensure Click 1 changes selection to floor
         const cellIdx = worldIdxAtCell(state.obstacleGrid, 22, 22);
-        state.obstacleGrid.writeFloorCell(cellIdx, 1, 0); // 1 = FLOOR_CELL_KIND.Belt
+        state.obstacleGrid.writeFloorCell(cellIdx, BeltPacked.defaultForSpawn("floor_belt"));
         // Setup mock canvas with listener recording
         const eventListeners = {};
         const canvas = {
@@ -99,7 +99,7 @@ describe("boid double tap hpa pathing", () => {
         // 3. Verify a subsequent single click on the ground does NOT update the path, and deselects the boid instead
         // Write another floor cell at col: 23, row: 23 (x: 116, y: 116)
         const cellIdx2 = worldIdxAtCell(state.obstacleGrid, 23, 23);
-        state.obstacleGrid.writeFloorCell(cellIdx2, 1, 0);
+        state.obstacleGrid.writeFloorCell(cellIdx2, BeltPacked.defaultForSpawn("floor_belt"));
         eventListeners.pointerdown({ button: 0, clientX: 116, clientY: 116, detail: 1, pointerId: 1, preventDefault() {}, stopPropagation() {} });
         eventListeners.pointerup({ clientX: 116, clientY: 116, pointerId: 1, preventDefault() {}, stopPropagation() {} });
         const newTargetIdx = hpaBehavior.getTargetCellIdx(prop);

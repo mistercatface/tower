@@ -7,7 +7,7 @@ import {
     formatSandboxFactionLabel,
 } from "../../GameState/SandboxWorldState.js";
 import {
-    FLOOR_CELL_KIND,
+    BeltPacked,
     FloorBelt,
     migrateMapGenBoundsForMode,
     syncMapGenBoundsFromPlay,
@@ -206,15 +206,10 @@ export function isResizableBoxSpawnAsset(asset) {
 export function isSingleWorldPropSpawnAsset(asset) {
     return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
 }
-export function resolveFloorBeltKindFromSpawnAsset(asset) {
-    const kind = asset?.sandbox?.floorBeltKind;
-    if (kind === "elbowLeft") return FLOOR_CELL_KIND.BeltElbowLeft;
-    if (kind === "elbowRight") return FLOOR_CELL_KIND.BeltElbowRight;
-    return FLOOR_CELL_KIND.Belt;
-}
-export function listFloorBeltKindOptions() {
-    const FLOOR_BELT_KINDS = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
-    return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: FloorBelt.formatKindLabel(kind) }));
+const FLOOR_BELT_PACKED_OPTIONS = [];
+for (let packed = 1; packed < 16; packed++) if (BeltPacked.isValid(packed)) FLOOR_BELT_PACKED_OPTIONS.push({ packed, label: BeltPacked.label(packed) });
+export function listFloorBeltPackedOptions() {
+    return FLOOR_BELT_PACKED_OPTIONS;
 }
 function syncSandboxBehaviorById(state, behaviors) {
     state.sandbox.behaviors = behaviors;
@@ -982,8 +977,8 @@ const PLACEABLE = {
             const grid = state.obstacleGrid;
             const idx = grid.worldToIdx(worldX, worldY);
             if (!FloorBelt.canStampAt(state, idx)) return false;
-            const kind = resolveFloorBeltKindFromSpawnAsset(asset);
-            if (!applyFloorCellEdit(state, idx, kind, 0)) return false;
+            const packed = BeltPacked.defaultForSpawn(asset.id);
+            if (!applyFloorCellEdit(state, idx, packed)) return false;
             ctx.placement.touchFloorPlacement(idx);
             ctx.pickSelection({ kind: "floor", idx });
             return true;
@@ -993,10 +988,9 @@ const PLACEABLE = {
             const grid = state.obstacleGrid;
             const idx = sel.idx;
             if (!cellInRect(idx, grid)) return null;
-            if (!(grid.floorKind[idx] !== 0)) return null;
-            const kind = grid.floorKind[idx];
-            const facingIndex = grid.floorFacing[idx];
-            return { idx, kind, facingIndex, kindLabel: FloorBelt.formatKindLabel(kind), facingLabel: FloorBelt.formatFacingLabel(facingIndex) };
+            if (grid.floorPacked[idx] === 0) return null;
+            const packed = grid.floorPacked[idx];
+            return { idx, packed };
         },
         listSceneItems({ placement, listPlacedFloorBelts }) {
             const items = [];
@@ -1267,12 +1261,11 @@ export function createSandboxSession(state) {
         const placed = [];
         const size = grid.cols * grid.rows;
         for (let idx = 0; idx < size; idx++) {
-            if (!(grid.floorKind[idx] !== 0)) continue;
-            const kind = grid.floorKind[idx];
-            const index = (counts.get(kind) ?? 0) + 1;
-            counts.set(kind, index);
-            const facingLabel = FloorBelt.formatFacingLabel(grid.floorFacing[idx]);
-            placed.push({ idx, kind, facingIndex: grid.floorFacing[idx], label: `${FloorBelt.formatKindLabel(kind)} #${index} · ${facingLabel}` });
+            const packed = grid.floorPacked[idx];
+            if (!packed) continue;
+            const index = (counts.get(packed) ?? 0) + 1;
+            counts.set(packed, index);
+            placed.push({ idx, packed, label: `${BeltPacked.label(packed)} #${index}` });
         }
         return placed;
     };
@@ -1371,7 +1364,7 @@ export function createSandboxSession(state) {
             const s = sel();
             if (s?.kind !== "floor") return false;
             const idx = s.idx;
-            if (!(state.obstacleGrid.floorKind[idx] !== 0)) {
+            if (state.obstacleGrid.floorPacked[idx] === 0) {
                 clearSelection();
                 return false;
             }
@@ -1392,16 +1385,15 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             const idx = s.idx;
             if (idx === targetIdx) return true;
-            if (!(grid.floorKind[idx] !== 0)) {
+            if (grid.floorPacked[idx] === 0) {
                 clearSelection();
                 return false;
             }
             if (!FloorBelt.canStampAt(state, targetIdx)) return false;
-            const kind = grid.floorKind[idx];
-            const facingIndex = grid.floorFacing[idx];
+            const packed = grid.floorPacked[idx];
             grid.clearFloorCell(idx);
-            if (!grid.writeFloorCell(targetIdx, kind, facingIndex)) {
-                grid.writeFloorCell(idx, kind, facingIndex);
+            if (!grid.writeFloorCell(targetIdx, packed)) {
+                grid.writeFloorCell(idx, packed);
                 return false;
             }
             commitGridNavEdit(state, idx);
@@ -1409,17 +1401,17 @@ export function createSandboxSession(state) {
             pickSelection({ kind: "floor", idx: targetIdx });
             return true;
         },
-        setSelectedFloorBeltKind(kind) {
+        setSelectedFloorBeltPacked(packed) {
             const s = sel();
             if (s?.kind !== "floor") return false;
             const grid = state.obstacleGrid;
             const idx = s.idx;
-            if (!(grid.floorKind[idx] !== 0)) {
+            if (grid.floorPacked[idx] === 0) {
                 clearSelection();
                 return false;
             }
-            if (grid.floorKind[idx] === kind) return true;
-            applyFloorCellEdit(state, idx, kind, grid.floorFacing[idx]);
+            if (grid.floorPacked[idx] === packed) return true;
+            applyFloorCellEdit(state, idx, packed);
             notifyUi();
             return true;
         },
@@ -1428,7 +1420,7 @@ export function createSandboxSession(state) {
             if (s?.kind !== "floor") return false;
             const grid = state.obstacleGrid;
             const idx = s.idx;
-            if (grid.floorKind[idx] !== 0) {
+            if (grid.floorPacked[idx] !== 0) {
                 if (!clearFloorCellNavEdit(state, idx)) return false;
             } else if (!grid.clearFloorCell(idx)) return false;
             else FloorBelt.markZoneSubscriptionsDirty(state);
@@ -3727,12 +3719,12 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
 }
 function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
     const session = controller.session;
-    appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
-    appendSelectField(body, "Type", {
-        value: String(selectedFloorBelt.kind),
-        options: listFloorBeltKindOptions().map((option) => ({ value: String(option.kind), label: option.label })),
+    appendEditorHint(body, `${BeltPacked.label(selectedFloorBelt.packed)}. Change orientation, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
+    appendSelectField(body, "Orientation", {
+        value: String(selectedFloorBelt.packed),
+        options: FLOOR_BELT_PACKED_OPTIONS.map((option) => ({ value: String(option.packed), label: option.label })),
         onChange: (value) => {
-            session.setSelectedFloorBeltKind(Number(value));
+            session.setSelectedFloorBeltPacked(Number(value));
         },
     });
     appendNumberField(body, "Idx", {
