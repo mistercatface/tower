@@ -6,7 +6,7 @@ const EDGE_HIT_PX = 8;
 /** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Spatial/spatial.js").WorldObstacleGrid} grid @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
 export function drawMapGenBoundsPreview(ctx, grid, config, cache, displayW, displayH, color = "#ff9800") {
     const cellSize = grid.cellSize;
-    const center = getMapGenBoundsCenterWorld(grid, config, cellSize);
+    const center = getMapGenBoundsCenterWorld(grid, config);
     const outerR = config.outerRadiusCells * cellSize;
     drawWorldCircle(ctx, center.x, center.y, outerR, cache, displayW, displayH, color, 2);
     if (config.boundsMode === "donut") {
@@ -27,7 +27,7 @@ export function drawMapGenBoundsPreview(ctx, grid, config, cache, displayW, disp
 export function hitTestMapGenBounds(sx, sy, grid, config, boundsCache, cache, displayW, displayH) {
     const cellSize = grid.cellSize;
     if (config.boundsMode === "rect") return hitTestRectAabb(sx, sy, boundsCache.aabb, cache, displayW, displayH);
-    const center = getMapGenBoundsCenterWorld(grid, config, cellSize);
+    const center = getMapGenBoundsCenterWorld(grid, config);
     const centerS = worldToScreen(center.x, center.y, cache, displayW, displayH);
     const distPx = Math.hypot(sx - centerS.x, sy - centerS.y);
     const mapW = cache.maxX - cache.minX;
@@ -45,9 +45,8 @@ export function applyMapGenBoundsDrag(grid, mode, dxWorld, dyWorld, config) {
     const dyCells = dyWorld / cellSize;
     const cols = grid.cols;
     if (config.boundsMode === "rect") {
-        if (mode === "move") {
-            config.boundsIdx += Math.round(dxCells) + Math.round(dyCells) * cols;
-        } else if (mode === "resize-e") config.boundsCols = Math.max(1, Math.round(config.boundsCols + dxCells));
+        if (mode === "move") config.boundsIdx += Math.round(dxCells) + Math.round(dyCells) * cols;
+        else if (mode === "resize-e") config.boundsCols = Math.max(1, Math.round(config.boundsCols + dxCells));
         else if (mode === "resize-w") {
             const next = Math.max(1, Math.round(config.boundsCols - dxCells));
             config.boundsIdx += Math.round(config.boundsCols - next);
@@ -101,7 +100,7 @@ export function applyMapGenBoundsDrag(grid, mode, dxWorld, dyWorld, config) {
 export function applyMapGenBoundsDragAtPointer(grid, mode, worldX, worldY, config) {
     const cellSize = grid.cellSize;
     if (config.boundsMode === "rect") return;
-    const center = getMapGenBoundsCenterWorld(grid, config, cellSize);
+    const center = getMapGenBoundsCenterWorld(grid, config);
     const distCells = Math.hypot(worldX - center.x, worldY - center.y) / cellSize;
     if (mode === "resize-outer") {
         config.outerRadiusCells = Math.max(1, Math.round(distCells));

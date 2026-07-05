@@ -48,7 +48,7 @@ export function railWallInwardNormal(edge) {
 export function railWallTopZAt(grid, idx, side) {
     const edge = railWallEdgeAt(grid, idx, side);
     if (!edge) return 0;
-    return railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, idx, side));
+    return railWallHeightPx(edge, grid, neighborFillLevel(grid, idx, side));
 }
 export function railWallAtZLevel(grid, idx, side, zLevel) {
     return railWallEdgeShouldEmit(grid, idx, side) && railWallTopZAt(grid, idx, side) === zLevel;
@@ -65,7 +65,7 @@ export function resolveRailWallNeighborContext(grid, idx, side) {
     if (nIdx !== -1) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nIdx);
     const neighborCap = neighborFillHeightPx > 0 ? neighborFillHeightPx : null;
     const railEdge = railWallEdgeAt(grid, idx, side);
-    const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid.cellSize, fillLevel) : 0;
+    const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid, fillLevel) : 0;
     return { neighborFillLevel: fillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
 }
 export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {

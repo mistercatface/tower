@@ -75,7 +75,6 @@ import {
     physicsSettings,
     entityContainedInAabb,
 } from "../Physics/physics.js";
-import { gridSettings } from "../../Config/world.js";
 import {
     appendActionRow,
     appendEditorHint,
@@ -404,7 +403,7 @@ function appendMapGenBoundsControls(panel, config, state, overlayHint, onPreview
             {
                 label: "Center bounds on camera",
                 onClick: () => {
-                    syncMapGenBoundsFromPlay(grid, state.viewport, playConfig, config, gridSettings.cellSize);
+                    syncMapGenBoundsFromPlay(grid, state.viewport, playConfig, config);
                     migrateMapGenBoundsForMode(grid, config);
                     refreshMapGenPanelInputs();
                     onPreviewChange();
@@ -1440,7 +1439,7 @@ export function createSandboxSession(state) {
         listPlacedVoxelWalls: () => listPlacedVoxelWalls(state.obstacleGrid),
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
         stampWallAtWorld(worldX, worldY) {
-            const targetIdx = ensureObstacleGridAtWorld(state, worldX, worldY);
+            const targetIdx = ensureObstacleGridAtWorld(state.obstacleGrid, worldX, worldY);
             if (wallStampMode === "rail") {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
@@ -2974,7 +2973,7 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
         const x = grid.gridCenterXByIdx(selectedFloorIdx);
         const y = grid.gridCenterYByIdx(selectedFloorIdx);
         out.push(
-            overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "floor", {
+            overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "floor", {
                 fill: "rgba(120, 200, 255, 0.1)",
                 stroke: "rgba(120, 200, 255, 0.75)",
                 lineWidth: 1,
@@ -2986,7 +2985,7 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
         const x = grid.gridCenterXByIdx(selectedVoxelIdx);
         const y = grid.gridCenterYByIdx(selectedVoxelIdx);
         out.push(
-            overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "voxel", {
+            overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "voxel", {
                 fill: "rgba(255, 152, 0, 0.12)",
                 stroke: "rgba(255, 152, 0, 0.85)",
                 lineWidth: 1,

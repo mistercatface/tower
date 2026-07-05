@@ -194,7 +194,7 @@ export class SpatialFrameCore {
         return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
 }
-function neighborGridDims(grid) {
+export function neighborGridDims(grid) {
     return { cols: grid.cols ?? grid.gridCols, rows: grid.rows ?? grid.gridRows };
 }
 function idxCol(idx, cols) {
@@ -470,15 +470,16 @@ function cellBoundsAtOriginIdxInto(out, grid, idx) {
     return minCornerAabbInto(out, grid.minX + col * grid.cellSize, grid.minY + row * grid.cellSize, grid.cellSize, grid.cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function cellBoundsToWorldBoundsInto(out, bounds, originX, originY, cellSize) {
-    out.minX = originX + bounds.startCol * cellSize;
-    out.minY = originY + bounds.startRow * cellSize;
-    out.maxX = originX + (bounds.endCol + 1) * cellSize;
-    out.maxY = originY + (bounds.endRow + 1) * cellSize;
+export function cellBoundsToWorldBoundsInto(out, bounds, grid) {
+    const cellSize = grid.cellSize;
+    out.minX = grid.minX + bounds.startCol * cellSize;
+    out.minY = grid.minY + bounds.startRow * cellSize;
+    out.maxX = grid.minX + (bounds.endCol + 1) * cellSize;
+    out.maxY = grid.minY + (bounds.endRow + 1) * cellSize;
     return out;
 }
-export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
-    return cellBoundsToWorldBoundsInto(createAabb(), bounds, originX, originY, cellSize);
+export function cellBoundsToWorldBounds(bounds, grid) {
+    return cellBoundsToWorldBoundsInto(createAabb(), bounds, grid);
 }
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
@@ -738,10 +739,10 @@ export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability,
     if (diff === -1) return boundaryBlocksStep(grid, fromIdx, 3);
     if (diff === cols) return boundaryBlocksStep(grid, fromIdx, 2);
     if (diff === -cols) return boundaryBlocksStep(grid, fromIdx, 0);
-    if (diff === cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, cols, grid.rows, fromIdx, 1, 1);
-    if (diff === cols - 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, cols, grid.rows, fromIdx, -1, 1);
-    if (diff === -cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, cols, grid.rows, fromIdx, 1, -1);
-    if (diff === -cols - 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, cols, grid.rows, fromIdx, -1, -1);
+    if (diff === cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, 1, 1);
+    if (diff === cols - 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, -1, 1);
+    if (diff === -cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, 1, -1);
+    if (diff === -cols - 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, -1, -1);
     return false;
 }
 export const VERTEX_HALF_EDGE = { NwEast: 1 << 0, NwSouth: 1 << 1, NeWest: 1 << 2, NeSouth: 1 << 3, SwEast: 1 << 4, SwNorth: 1 << 5, SeWest: 1 << 6, SeNorth: 1 << 7 };
@@ -825,7 +826,8 @@ function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
         cardinalLegOpen(cardinalOpen, cols, shoulderVCol, shoulderVRow, dc, 0)
     );
 }
-export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, fromIdx, dc, dr) {
+export function diagonalStepOpen(cardinalOpen, vertexPassability, grid, fromIdx, dc, dr) {
+    const { cols } = neighborGridDims(grid);
     const col = fromIdx % cols;
     const row = (fromIdx / cols) | 0;
     if (!diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr)) return false;
@@ -847,8 +849,8 @@ export function isRailWallEdge(edge) {
 export function railWallCapLevel(edge, neighborFillLevel) {
     return neighborFillLevel + edge.heightDelta;
 }
-export function railWallHeightPx(edge, cellSize, neighborFillLevel) {
-    return railWallCapLevel(edge, neighborFillLevel) * cellSize;
+export function railWallHeightPx(edge, grid, neighborFillLevel) {
+    return railWallCapLevel(edge, neighborFillLevel) * grid.cellSize;
 }
 export function railWallThicknessPx(edge) {
     return Math.max(1, edge.thicknessLevel);
@@ -1733,7 +1735,7 @@ export class WorldObstacleGrid {
                 const ref = this.cellEdgeSlots[(idx << 2) + side];
                 if (ref === EMPTY) continue;
                 const edge = this.cellEdgePool[ref];
-                seenEdge.add(railWallHeightPx(edge, this.cellSize, neighborFillLevel(this, idx, side)));
+                seenEdge.add(railWallHeightPx(edge, this, neighborFillLevel(this, idx, side)));
             }
         const edgeLevels = [...seenEdge];
         edgeLevels.sort((a, b) => a - b);
@@ -2961,8 +2963,7 @@ export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid
     if (bestSide < 0) return null;
     return { idx, side: bestSide };
 }
-export function ensureObstacleGridAtWorld(state, worldX, worldY) {
-    const grid = state.obstacleGrid;
+export function ensureObstacleGridAtWorld(grid, worldX, worldY) {
     centeredAabbInto(ENSURE_AABB, worldX, worldY, grid.cellSize, grid.cellSize);
     grid.expandToCoverAabb(ENSURE_AABB);
     return grid.worldToIdx(worldX, worldY);
@@ -3748,7 +3749,8 @@ export function getInnerRadiusCells(config) {
     if (config.boundsMode !== "donut") return 0;
     return Math.max(0, config.outerRadiusCells - config.donutThicknessCells);
 }
-export function getMapGenBoundsAabbInto(grid, out, config, cellSize) {
+export function getMapGenBoundsAabbInto(grid, out, config) {
+    const cellSize = grid.cellSize;
     if (config.boundsMode === "rect") {
         const minX = grid.gridCenterXByIdx(config.boundsIdx) - cellSize * 0.5;
         const minY = grid.gridCenterYByIdx(config.boundsIdx) - cellSize * 0.5;
@@ -3759,10 +3761,11 @@ export function getMapGenBoundsAabbInto(grid, out, config, cellSize) {
     const cy = grid.gridCenterYByIdx(config.centerIdx);
     return minCornerAabbInto(out, cx - r, cy - r, r * 2, r * 2);
 }
-export function getMapGenBoundsAabb(grid, config, cellSize) {
-    return getMapGenBoundsAabbInto(grid, createAabb(), config, cellSize);
+export function getMapGenBoundsAabb(grid, config) {
+    return getMapGenBoundsAabbInto(grid, createAabb(), config);
 }
-export function getMapGenBoundsCenterWorld(grid, config, cellSize) {
+export function getMapGenBoundsCenterWorld(grid, config) {
+    const cellSize = grid.cellSize;
     if (config.boundsMode === "rect")
         return { x: grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5, y: grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5 };
     return { x: grid.gridCenterXByIdx(config.centerIdx), y: grid.gridCenterYByIdx(config.centerIdx) };
@@ -3794,7 +3797,8 @@ export function applyMapGenShapeMask(grid, cells, layout, config) {
         if (!isIdxInMapGenBounds(config, grid, idx)) cells[localIdx] = 0;
     });
 }
-export function centerMapGenBoundsOnViewport(grid, viewport, config, cellSize) {
+export function centerMapGenBoundsOnViewport(grid, viewport, config) {
+    const cellSize = grid.cellSize;
     if (config.boundsMode === "rect") {
         const minX = viewport.x - (config.boundsCols * cellSize) / 2;
         const minY = viewport.y - (config.boundsRows * cellSize) / 2;
@@ -3840,7 +3844,7 @@ function mapGenBoundsCacheMatches(cache, config) {
         cache.donutThicknessCells === config.donutThicknessCells
     );
 }
-export function refreshMapGenBoundsAabb(grid, cache, config, cellSize) {
+export function refreshMapGenBoundsAabb(grid, cache, config) {
     if (mapGenBoundsCacheMatches(cache, config)) return;
     cache.boundsMode = config.boundsMode;
     cache.boundsIdx = config.boundsIdx;
@@ -3849,7 +3853,7 @@ export function refreshMapGenBoundsAabb(grid, cache, config, cellSize) {
     cache.centerIdx = config.centerIdx;
     cache.outerRadiusCells = config.outerRadiusCells;
     cache.donutThicknessCells = config.donutThicknessCells;
-    getMapGenBoundsAabbInto(grid, cache.aabb, config, cellSize);
+    getMapGenBoundsAabbInto(grid, cache.aabb, config);
 }
 export function getMapGenBoundsConfig(editor, kind) {
     if (kind === "cavern") return editor.cavernConfig;
@@ -3860,15 +3864,15 @@ export function getMapGenBoundsConfig(editor, kind) {
 export function getMapGenBoundsAabbCache(editor, kind) {
     return editor.mapBoundsPreview[kind];
 }
-export function refreshAllMapGenBoundsPreviews(grid, editor, cellSize) {
+export function refreshAllMapGenBoundsPreviews(grid, editor) {
     for (let i = 0; i < MAP_GEN_KINDS.length; i++) {
         const kind = MAP_GEN_KINDS[i];
-        refreshMapGenBoundsAabb(grid, getMapGenBoundsAabbCache(editor, kind), getMapGenBoundsConfig(editor, kind), cellSize);
+        refreshMapGenBoundsAabb(grid, getMapGenBoundsAabbCache(editor, kind), getMapGenBoundsConfig(editor, kind));
     }
 }
-export function syncMapGenBoundsFromPlay(grid, viewport, playConfig, config, cellSize, { center = true, syncSizeFromPlay = false } = {}) {
+export function syncMapGenBoundsFromPlay(grid, viewport, playConfig, config, { center = true, syncSizeFromPlay = false } = {}) {
     if (syncSizeFromPlay) syncMapGenBoundsSizeFromPlayArea(playConfig, config);
-    if (center) centerMapGenBoundsOnViewport(grid, viewport, config, cellSize);
+    if (center) centerMapGenBoundsOnViewport(grid, viewport, config);
 }
 export function registerMapGenBoundsGridExpansionListener(state) {
     const grid = state.obstacleGrid;
@@ -3949,7 +3953,7 @@ function mergeDonutInnerClear(state, config, damageBounds) {
     if (config.boundsMode !== "donut") return damageBounds;
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
-    const center = getMapGenBoundsCenterWorld(grid, config, cellSize);
+    const center = getMapGenBoundsCenterWorld(grid, config);
     const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, getInnerRadiusCells(config) * cellSize);
     return cleared ? unionCellBounds(damageBounds, cleared) : damageBounds;
 }
@@ -4085,11 +4089,11 @@ export async function applyPlayAreaConfig(state) {
     registerMapGenBoundsGridExpansionListener(state);
     const { viewport, editor } = state;
     const { playConfig } = editor;
-    const cellSize = state.obstacleGrid.cellSize;
+    const grid = state.obstacleGrid;
     for (let i = 0; i < MAP_GEN_KINDS.length; i++) {
         const kind = MAP_GEN_KINDS[i];
         const config = getMapGenBoundsConfig(editor, kind);
-        syncMapGenBoundsFromPlay(state.obstacleGrid, viewport, playConfig, config, cellSize, { center: true, syncSizeFromPlay: true });
+        syncMapGenBoundsFromPlay(grid, viewport, playConfig, config, { center: true, syncSizeFromPlay: true });
         migrateMapGenBoundsForMode(state.obstacleGrid, config);
     }
     ensureLabObstacleGridCoverage(state);
@@ -4100,10 +4104,10 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
     const { editor } = state;
-    let required = getMapGenBoundsAabb(grid, editor.cavernConfig, cellSize);
-    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.railConfig, cellSize));
-    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.railMazeConfig, cellSize));
-    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.eraseConfig, cellSize));
+    let required = getMapGenBoundsAabb(grid, editor.cavernConfig);
+    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.railConfig));
+    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.railMazeConfig));
+    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.eraseConfig));
     if (extraAabb) required = unionAabb(required, extraAabb);
     return grid.expandToCoverAabb(padAabb(required, cellSize));
 }

@@ -41,6 +41,7 @@ import {
     forEachStampGlobalIdx,
     gridCellLayout,
     corridorPathHitsOccupied,
+    neighborGridDims,
 } from "../Spatial/spatial.js";
 import { FloatingText } from "../Render/render.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
@@ -268,7 +269,8 @@ export function createNavWalkableCandidateMask(grid, cells, reuse = null) {
     for (let i = 0; i < cells.length; i++) mask[cells[i]] = 1;
     return mask;
 }
-export function createNavWalkableReachedMask(cols, rows, reuse = null) {
+export function createNavWalkableReachedMask(grid, reuse = null) {
+    const { cols, rows } = neighborGridDims(grid);
     const size = cols * rows;
     return reuse && reuse.length === size ? reuse : new Uint8Array(size);
 }
@@ -287,7 +289,7 @@ export function isNavWalkableCell(grid, navTopology, idx) {
     });
     return walkable;
 }
-export function floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, cols, rows, seedCells, reachedMask) {
+export function floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, seedCells, reachedMask) {
     reachedMask.fill(0);
     const queue = [];
     for (let i = 0; i < seedCells.length; i++) {
@@ -366,8 +368,8 @@ function patchNavWalkableCellIndexRegion(state, cache, idx) {
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
     if (!seedCells.length) seedCells = cache.candidates;
-    const reachedMask = createNavWalkableReachedMask(grid.cols, grid.rows, cache.reachedMask);
-    const connected = cache.candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, cache.candidates, cache.candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
+    const reachedMask = createNavWalkableReachedMask(grid, cache.reachedMask);
+    const connected = cache.candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, cache.candidates, cache.candidateMask, seedCells, reachedMask) : [];
     writeNavWalkableFlagsInRect(cache.flags, grid, connected, patchBounds);
     cache.cells = connected;
     cache.reachedMask = reachedMask;
@@ -407,8 +409,8 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
         grid,
     );
     const candidateMask = createNavWalkableCandidateMask(grid, candidates, cache.candidateMask);
-    const reachedMask = createNavWalkableReachedMask(grid.cols, grid.rows, cache.reachedMask);
-    const cells = candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
+    const reachedMask = createNavWalkableReachedMask(grid, cache.reachedMask);
+    const cells = candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, seedCells, reachedMask) : [];
     writeNavWalkableFlags(cache.flags, cells);
     cache.cells = cells;
     cache.candidates = candidates;
@@ -971,10 +973,10 @@ export class HpaReplanRequest {
         const rows = grid.rows;
         let startIdx = grid.worldToIdx(this.startX, this.startY);
         if (startIdx < 0) startIdx = 0;
-        startIdx = findNearestOpenCellIdx(grid.grid, cols, rows, startIdx);
+        startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
         let targetIdx = grid.worldToIdx(this.targetX, this.targetY);
         if (targetIdx < 0) targetIdx = 0;
-        targetIdx = findNearestOpenCellIdx(grid.grid, cols, rows, targetIdx);
+        targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
         const snappedIdx = snapNavGoalCellIndex(grid, startIdx, targetIdx);
         globalReplanPayload.startIdx = startIdx;
         globalReplanPayload.targetIdx = snappedIdx;
@@ -1024,7 +1026,8 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startIdx, ta
     const { nodeIds, nodeIdx } = graphMeta;
     return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
 }
-export function findNearestOpenCellIdx(blocked, cols, rows, idx) {
+export function findNearestOpenCellIdx(blocked, grid, idx) {
+    const { cols, rows } = neighborGridDims(grid);
     if (blocked[idx] === 0) return idx;
     const c0 = idx % cols;
     const cellCount = cols * rows;
@@ -1268,7 +1271,7 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
 function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY) {
     const { cols, rows } = frame;
     const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
-    const startIdx = findNearestOpenCellIdx(blocked, cols, rows, seedIdx);
+    const startIdx = findNearestOpenCellIdx(blocked, frame, seedIdx);
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;
     bfsIndices([startIdx], (idx, enqueue) => {
@@ -1730,7 +1733,7 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
-            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & getCardinalBit(dc, dr)) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, idx, dc, dr);
+            const open = dc === 0 || dr === 0 ? (cardinalOpen[idx] & getCardinalBit(dc, dr)) !== 0 : diagonalStepOpen(cardinalOpen, vertexPassability, grid, idx, dc, dr);
             octileNeighbors[octileNeighborOffset(idx, i)] = open ? nIdx : -1;
         }
     });
@@ -2664,12 +2667,6 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
         if (result !== undefined) return result;
     }
 }
-/** Snap a tile layout so its origin sits on the global nav cell grid (multiples of cellSize). */
-export function snapLayoutOrigin(px, py, cols, rows, cellSize) {
-    const totalW = cols * cellSize;
-    const totalH = rows * cellSize;
-    return { offsetX: Math.round((px - totalW / 2) / cellSize) * cellSize, offsetY: Math.round((py - totalH / 2) / cellSize) * cellSize };
-}
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
 /** @typedef {import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
@@ -3244,10 +3241,7 @@ export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {
         const worldY = row * flowFrame.cellSize + wyBase;
         for (let col = 0; col < cols; col++) {
             const worldX = col * flowFrame.cellSize + wxBase;
-            const navCol = worldColAtOrigin(worldX, navFrame.minX, navFrame.cellSize);
-            const navRow = worldRowAtOrigin(worldY, navFrame.minY, navFrame.cellSize);
-            if (navCol >= 0 && navCol < navCols && navRow >= 0 && navRow < navRows) flowToNavIdx[idx] = navRow * navCols + navCol;
-            else flowToNavIdx[idx] = -1;
+            flowToNavIdx[idx] = snapshotWorldToIdx(navFrame, worldX, worldY);
             idx++;
         }
     }

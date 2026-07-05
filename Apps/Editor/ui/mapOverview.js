@@ -1,5 +1,4 @@
 import { applySquareCanvasResize } from "./squareCanvasResize.js";
-import { gridSettings } from "../../../Config/world.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Spatial/spatial.js";
 import { createMapGenBoundsOverviewEditor, createViewportOverviewEditor, drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
@@ -46,7 +45,7 @@ export function paintMapOverviewFrame(state) {
     ctx.drawImage(cache.canvas, 0, 0, canvas.width, canvas.height);
     const displayW = canvas.width;
     const displayH = canvas.height;
-    refreshAllMapGenBoundsPreviews(state.obstacleGrid, state.editor, gridSettings.cellSize);
+    refreshAllMapGenBoundsPreviews(state.obstacleGrid, state.editor);
     drawWorldBoundsBox(ctx, state.viewport.bounds("clip"), cache, displayW, displayH, "#00e5ff");
     const genKind = activeMapGenKind(state);
     if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);

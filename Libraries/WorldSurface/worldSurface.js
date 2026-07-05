@@ -1,7 +1,6 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbWidth, aabbHeight, intersectAabbOptionalInto } from "../Math/math.js";
 import {
-    cellBoundsToWorldBoundsInto,
     projectWorldAabbCornersIntoFlat,
     forEachObstacleGridCellInAabb,
     resolveCellWallHeightAtIdx,

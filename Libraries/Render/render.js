@@ -335,8 +335,8 @@ export function flowDirectionArrowCacheKey(dirX, dirY, pad, len, stroke, headLen
 export function wireEndpointCacheKey(r, fill) {
     return `r${quantizeOverlayRadius(r)}_${fill}`;
 }
-export function gridCellHighlightCacheKey(cellSize, tint) {
-    return `cs${cellSize}_${tint}`;
+export function gridCellHighlightCacheKey(grid, tint) {
+    return `cs${grid.cellSize}_${tint}`;
 }
 /** @typedef {{ renderKey: string, customKey: string, worldSpan: number, anchorX?: number, anchorY?: number }} OverlayCacheMeta */
 /** @typedef {{ kind: 'aabb', minX: number, minY: number, maxX: number, maxY: number, fill?: string, stroke?: string, lineWidth?: number, dash?: number[], cache?: OverlayCacheMeta }} OverlayAabbCommand */
@@ -357,13 +357,13 @@ function overlayGlyphSpan(r, lineWidth = 1, extra = 0) {
 export function overlayAabb(aabb, { fill, stroke, lineWidth = 1, dash } = {}) {
     return { kind: "aabb", minX: aabb.minX, minY: aabb.minY, maxX: aabb.maxX, maxY: aabb.maxY, fill, stroke, lineWidth, dash };
 }
-export function overlayGridCellHighlight(aabb, cellSize, tint, style) {
+export function overlayGridCellHighlight(aabb, grid, tint, style) {
     const w = aabb.maxX - aabb.minX;
     const h = aabb.maxY - aabb.minY;
     const anchorX = (aabb.minX + aabb.maxX) * 0.5;
     const anchorY = (aabb.minY + aabb.maxY) * 0.5;
     const cmd = overlayAabb(aabb, style);
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.GridCellHighlight, gridCellHighlightCacheKey(cellSize, tint), Math.max(w, h), anchorX, anchorY);
+    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.GridCellHighlight, gridCellHighlightCacheKey(grid, tint), Math.max(w, h), anchorX, anchorY);
     return cmd;
 }
 export function overlayCircleStroke(cx, cy, r, { stroke, lineWidth = 1, dash }) {
