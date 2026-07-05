@@ -1,4 +1,33 @@
-import { distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
+import {
+    distanceToAabb,
+    rectCorners,
+    rotateXYInto,
+    transformPoint2DInto,
+    distanceSqToLineSegment,
+    rotateXY,
+    normalizeXY,
+    quantizeAngle,
+    clamp,
+    lengthXY,
+    dotXY,
+    addXY,
+    speedSqXY,
+    aabbContains,
+    createAabb,
+    emptyAabbInto,
+    growAabbFromCenterInto,
+    normalizeAngle,
+    cardinalUnitVectorFromAngle,
+    polygonSecondMomentAboutCentroid2D,
+    polygonSignedArea2D,
+    polygonCentroid2D,
+    reversePolygonWinding,
+    findClosestWorldVertexInto,
+    findExtremeVertexInto,
+    computeCompoundLocalBounds,
+    convexFootprintHalfExtents,
+    boxLocalFootprint,
+} from "../Math/math.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 import { computeWallBreakStrength } from "../Sandbox/gridWallDamage.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
@@ -3608,8 +3637,6 @@ export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = colli
     if (p2.vy !== undefined) p2.vy += j * ny * invMass2;
     if (p2.momentOfInertia) p2.angularVelocity += j * cross2 * invI2;
 }
-
-
 // --- MERGED FROM WallGeometry.js ---
 export function getWallReach(wall, padding = wall.padding) {
     return (wall.size / 2) * Math.SQRT2 + padding;
@@ -3996,7 +4023,6 @@ export function pushPointFromWalls(x, y, walls, clearance) {
         }
     return { x: px, y: py };
 }
-
 // --- MERGED FROM circleSweep.js ---
 /**
  * @typedef {object} CircleSegmentSweepHit
@@ -4091,7 +4117,6 @@ export function sweepCircleAgainstSegments(ox, oy, dx, dy, radius, segments, max
     }
     return best;
 }
-
 // --- MERGED FROM circleContact.js ---
 /**
  * Circle contact geometry — surface points for casts, previews, and impulse hooks.
@@ -4110,7 +4135,6 @@ export function circlePairContactPoint(centerAx, centerAy, radiusA, centerBx, ce
     if (d < 1e-8) return { x: centerAx + radiusA, y: centerAy };
     return { x: centerAx + nx * radiusA, y: centerAy + ny * radiusA };
 }
-
 // --- MERGED FROM rollingMotion.js ---
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
@@ -4226,7 +4250,6 @@ export function buildRollOrientKey(rollQuat, steps = 16) {
     const axisBucket = Math.round(((heading + Math.PI) / (Math.PI * 2)) * steps) % steps;
     return `r${angleBucket}_${axisBucket}`;
 }
-
 // --- MERGED FROM propMotion.js ---
 function resolveRollingFriction(strategy, body) {
     const base = strategy.friction ?? 8;
