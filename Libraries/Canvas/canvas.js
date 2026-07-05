@@ -827,16 +827,12 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
  */
 function getPropStaticKey(prop, renderKey) {
     const facing = prop.facing ?? 0;
-    const powered = prop.powered !== false;
-    const pressed = !!prop._buttonDrawPressed;
     const voKey = visualOverrideCacheKey(prop);
     const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
     const rolls = !!prop.strategy?.rolls;
     const rollKey = rolls ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : "";
     if (
         prop._staticKeyFacing === facing &&
-        prop._staticKeyPowered === powered &&
-        prop._staticKeyPressed === pressed &&
         prop._staticKeyVo === voKey &&
         prop._staticKeyAttachment === attachmentKey &&
         (!rolls || prop._staticKeyRoll === rollKey) &&
@@ -851,8 +847,6 @@ function getPropStaticKey(prop, renderKey) {
     const k4 = BigInt(internSpriteKeyPart(attachmentKey));
     const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
     prop._staticKeyFacing = facing;
-    prop._staticKeyPowered = powered;
-    prop._staticKeyPressed = pressed;
     prop._staticKeyVo = voKey;
     prop._staticKeyAttachment = attachmentKey;
     if (rolls) prop._staticKeyRoll = rollKey;

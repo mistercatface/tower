@@ -14,7 +14,6 @@ import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/render.js";
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spatial/spatial.js";
-import { tickFloorProps } from "../../Libraries/Props/props.js";
 import { FloorBelt } from "../../Libraries/Spatial/spatial.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandbox.js";
@@ -35,9 +34,7 @@ function loadGameModeStylesheet() {
     document.head.appendChild(link);
 }
 function editorKineticContactSideEffects(tick, contacts) {
-    processKineticContactFractures(tick, contacts, {
-        onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id),
-    });
+    processKineticContactFractures(tick, contacts, { onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id) });
 }
 /** @param {import("./state.js").TileLabGameState} state */
 function simulationKineticHooks(state) {
@@ -63,7 +60,6 @@ function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
     const spatialFrame = kineticSpatial.begin(state);
-    tickFloorProps(state, spatialFrame, simDt);
     FloorBelt.tickOccupancy(state, spatialFrame, simDt, applyKineticAcceleration);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
     FloorBelt.tickZones(state, spatialFrame);

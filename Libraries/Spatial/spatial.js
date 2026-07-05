@@ -942,12 +942,11 @@ export class FloorBelt {
         if (onCommit) onCommit(state, idx);
         return true;
     }
-    static canStampAt(state, idx, findPropAtCell = null) {
+    static canStampAt(state, idx) {
         const grid = state.obstacleGrid;
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
         if (grid.isBlockedIdx(idx)) return false;
         if (grid.hasFloorOccupancy(idx)) return false;
-        if (findPropAtCell && findPropAtCell(state.worldProps, idx)) return false;
         return true;
     }
     static clearOverlayAt(state, idx) {
@@ -2630,38 +2629,6 @@ export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, rev
     slab.revisionStamp[slot] = revision;
     slab.segments[slot] = segments;
 }
-// --- MERGED FROM floorShapes.js ---
-export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
-    if (!shapes.length) return;
-    for (let z = 0; z < shapes.length; z++) {
-        const floorShape = shapes[z];
-        const candidates = spatialFrame.collectEntitiesInBounds(floorShape.aabb);
-        const next = floorShape._nextOccupants;
-        next.clear();
-        const zoneShape = floorShape.shape;
-        for (let i = 0; i < candidates.length; i++) {
-            const entity = candidates[i];
-            if (!entity || entity.isDead) continue;
-            const shape = entity.shape;
-            if (!satCheckCollision(entity.x, entity.y, entityFacing(entity), shape, floorShape.x, floorShape.y, entityFacing(floorShape), zoneShape)) continue;
-            next.add(entity.id);
-            if (!floorShape._occupants.has(entity.id)) onEnter(floorShape, entity);
-        }
-        for (const id of floorShape._occupants) if (!next.has(id)) onExit(floorShape, id);
-        const prev = floorShape._occupants;
-        floorShape._occupants = next;
-        floorShape._nextOccupants = prev;
-    }
-}
-export function syncFloorPropCollisionShape(prop) {
-    const footprint = prop.strategy.localFootprint;
-    if (footprint && vertCount(footprint) >= 3) prop.shape = new PolygonShape(footprint);
-    else {
-        const radius = prop.radius ?? prop.strategy.radius ?? 0;
-        prop.shape = new CircleShape(radius);
-    }
-    prop.radius = prop.shape.getBoundingRadius();
-}
 // --- MERGED FROM gridZoneMembership.js ---
 /** @typedef {{ cells: Set<number> }} GridZoneSubscriptions */
 /**
@@ -3419,7 +3386,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const prop = worldProps[i];
             prop.ax = 0;
             prop.ay = 0;
-            if (prop.strategy?.spatialRole === "trigger") continue;
             this.insertEntity(prop, physIdCounter++);
             if (prop.strategy?.isKinetic) {
                 this._kineticBodies.push(prop);
@@ -3447,7 +3413,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
      * Keeps broadphase, neighbor queries, and registry view gen in sync for the rest of the frame.
      */
     admitKineticProp(prop, world) {
-        if (!prop || prop.strategy?.spatialRole === "trigger") return;
+        if (!prop) return;
         const isNew = prop._physId === undefined;
         if (isNew) {
             prop._physId = this._nextPhysId++;
@@ -3471,7 +3437,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         let anyAdmitted = false;
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
-            if (!prop || prop.strategy?.spatialRole === "trigger") continue;
+            if (!prop) continue;
             const isNew = prop._physId === undefined;
             if (isNew) {
                 prop._physId = this._nextPhysId++;

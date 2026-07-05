@@ -2789,8 +2789,6 @@ function drawProjectile(ctx, prop, viewport) {
 }
 const matchDebris = (p) => p.strategy?.renderMode === "debris";
 const DEBRIS_QUERY_OPTIONS = { filterId: "debris", match: matchDebris };
-const matchFloor = (p) => p.strategy?.renderMode === "floor";
-const FLOOR_QUERY_OPTIONS = { hitTest: "aabb", filterId: "floor", match: matchFloor };
 const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
 function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
@@ -2836,18 +2834,8 @@ export class WorldSceneRenderer {
         const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, DEBRIS_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) this._drawProp(ctx, props[i], viewport);
     }
-    drawFloorProps(ctx, state, viewport) {
+    drawFloorBelts(ctx, state, viewport) {
         drawFloorOccupancyBelts(ctx, state, viewport);
-        const q = this.visibleDrawQueue;
-        q.clear();
-        const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, FLOOR_QUERY_OPTIONS);
-        for (let i = 0; i < props.length; i++) {
-            const prop = props[i];
-            const distSq = (prop.x - viewport.x) ** 2 + (prop.y - viewport.y) ** 2;
-            q.push(DRAW_KIND_PROP, 0, prop, distSq);
-        }
-        q.sort();
-        for (let i = 0; i < q.length; i++) this._drawProp(ctx, q.refs[i], viewport);
     }
     _appendVisible3dProps(state, viewport) {
         const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, THREE_D_QUERY_OPTIONS);

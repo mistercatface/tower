@@ -39,7 +39,6 @@ import {
     estimateRollingTravelDistance,
     appendGridEdgeOverlayCommand,
     formatGridWallEdgeSideLabel,
-    syncFloorPropCollisionShape,
 } from "../Spatial/spatial.js";
 import {
     visitLiveWorldProps,
@@ -95,17 +94,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
-import {
-    applyPropBoxFootprint,
-    findGridAnchoredFloorPropAtIdx,
-    setPropRadius,
-    getPropRadius,
-    propFootprintHalfExtents,
-    applyCrossPinwheelFootprint,
-    formatPropTypeLabel,
-    formatSandboxSpawnLabel,
-    syncFloorTriggerAabb,
-} from "../Props/props.js";
+import { applyPropBoxFootprint, setPropRadius, getPropRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
@@ -1007,7 +996,7 @@ const PLACEABLE = {
         spawnAt(state, worldX, worldY, asset, ctx) {
             const grid = state.obstacleGrid;
             const idx = grid.worldToIdx(worldX, worldY);
-            if (!FloorBelt.canStampAt(state, idx, findGridAnchoredFloorPropAtIdx)) return false;
+            if (!FloorBelt.canStampAt(state, idx)) return false;
             const kind = resolveFloorBeltKindFromSpawnAsset(asset);
             if (!applyFloorCellEdit(state, idx, kind, 0)) return false;
             ctx.placement.touchFloorPlacement(idx);
@@ -1415,7 +1404,7 @@ export function createSandboxSession(state) {
                 clearSelection();
                 return false;
             }
-            if (!FloorBelt.canStampAt(state, targetIdx, findGridAnchoredFloorPropAtIdx)) return false;
+            if (!FloorBelt.canStampAt(state, targetIdx)) return false;
             const kind = grid.floorKind[idx];
             const facingIndex = grid.floorFacing[idx];
             grid.clearFloorCell(idx);
@@ -3497,7 +3486,6 @@ function applyWorldPropFacing(prop, degrees) {
 function applyWorldPropPosition(prop, { x, y }) {
     if (x != null) prop.x = x;
     if (y != null) prop.y = y;
-    if (prop.aabb) syncFloorTriggerAabb(prop);
     if (prop.strategy?.isKinetic) wakeKineticBody(prop);
 }
 export function appendChainLinkInspector(body, chain) {

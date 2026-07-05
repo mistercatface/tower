@@ -33,8 +33,6 @@ import {
     polygonSignedArea2D,
     closestPointOnLineSegment,
     quantizeCardinalAngle,
-    stepCardinalFacing,
-    createAabb,
     normalizeXY,
 } from "../Math/math.js";
 import {
@@ -50,7 +48,7 @@ import {
 } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
-import { processFloorShapes, syncFloorPropCollisionShape, computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
+import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../../GameState/SandboxWorldState.js";
@@ -1876,8 +1874,6 @@ export function getBaseSpriteCacheKey(prop, deps) {
     if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing);
     else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
     let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
-    if (prop.powered === false) key += "_off";
-    if (prop._buttonDrawPressed) key += "_on";
     key += visualOverrideCacheKey(prop);
     return key;
 }
@@ -2087,68 +2083,6 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
     }
     return radius;
 }
-// --- MERGED FROM gridFloorProp.js ---
-export function syncFloorTriggerAabb(prop) {
-    const shape = prop.shape;
-    if (shape.type === "Polygon") {
-        const span = convexFootprintHalfExtents(shape.vertices);
-        centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, span.x, span.y, neighborQueryPadFor(prop));
-        return;
-    }
-    const radius = shape.radius ?? prop.radius;
-    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, radius, radius, neighborQueryPadFor(prop));
-}
-export function floorCircleRadius(prop) {
-    return prop.shape?.radius ?? prop.radius;
-}
-export function readFloorPropHalfExtents(prop) {
-    const shape = prop.shape;
-    if (shape.type === "Polygon") {
-        const span = convexFootprintHalfExtents(shape.vertices);
-        return { halfWidth: span.x, halfHeight: span.y };
-    }
-    if (shape.type === "Circle") return { halfWidth: shape.radius, halfHeight: shape.radius };
-    throw new Error("readFloorPropHalfExtents requires a circle or polygon shape");
-}
-export function floorShapeHasLiveOccupant(registry, floorShape) {
-    for (const entityId of floorShape._occupants) {
-        const entity = registry.get(entityId);
-        if (entity && !entity.isDead) return true;
-    }
-    return false;
-}
-export function initFloorTriggerProp(prop) {
-    prop._occupants = new Set();
-    prop._nextOccupants = new Set();
-    prop.triggers = prop.strategy.floorTriggers.map((trigger) => ({ ...trigger }));
-    prop.powered = prop.strategy.powered !== false;
-    prop.aabb = createAabb();
-    syncFloorPropCollisionShape(prop);
-    syncFloorTriggerAabb(prop);
-}
-export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
-    prop.shape = new PolygonShape(boxLocalFootprint(halfWidth, halfHeight));
-    prop.radius = prop.shape.getBoundingRadius();
-    syncFloorTriggerAabb(prop);
-}
-export function obstacleGridCellHalfExtents(obstacleGrid) {
-    const half = obstacleGrid.cellHalfSize;
-    return { halfWidth: half, halfHeight: half };
-}
-export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY) {
-    const idx = obstacleGrid.worldToIdx(worldX, worldY);
-    prop.gridIdx = idx;
-    prop.x = obstacleGrid.gridCenterXByIdx(idx);
-    prop.y = obstacleGrid.gridCenterYByIdx(idx);
-    const { halfWidth, halfHeight } = obstacleGridCellHalfExtents(obstacleGrid);
-    resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
-}
-export function rotateCardinalFloorProp(prop, steps = 1) {
-    prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
-}
-export function findGridAnchoredFloorPropAtIdx(worldProps, idx, exceptPropId = -1) {
-    return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridIdx === idx);
-}
 export function registerPropDrawRecipe(asset) {
     if (asset.physics?.renderMode === "none") {
         asset.drawRecipe = () => {};
@@ -2173,63 +2107,10 @@ export function registerAllPropDrawRecipes() {
     }
 }
 Promise.resolve().then(registerAllPropDrawRecipes);
-// --- MERGED FROM floorProps.js ---
-/** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
-export function tickFloorProps(state, spatialFrame, dt) {
-    /** @type {object[]} */
-    const shapes = [];
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !prop.triggers?.length) continue;
-        shapes.push(prop);
-    }
-    if (!shapes.length) return;
-    const dtSec = dt / 1000;
-    processFloorShapes(spatialFrame, shapes, {
-        onEnter(shape, entity) {
-            if (!shape.powered) return;
-            runFloorTriggers(state, shape, "enter", { entity });
-        },
-        onExit(shape, entityId) {
-            if (!shape.powered) return;
-            runFloorTriggers(state, shape, "exit", { entityId });
-        },
-    });
-    for (let i = 0; i < shapes.length; i++) {
-        const prop = shapes[i];
-        if (!prop.powered) continue;
-        runFloorTriggers(state, prop, floorShapeHasLiveOccupant(state.entityRegistry, prop) ? "occupied" : "empty", { dtSec });
-    }
-}
-/** @param {object} state @param {object} prop @param {import("./floorEffects.js").FloorTriggerWhen} when @param {import("./floorEffects.js").FloorEffectContext} ctx */
-function runFloorTriggers(state, prop, when, ctx) {
-    for (let i = 0; i < prop.triggers.length; i++) {
-        const trigger = prop.triggers[i];
-        if (trigger.when === when) runFloorEffect(state, prop, trigger, ctx);
-    }
-}
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
-export const floorPropEffectPass = {
+export const floorBeltEffectPass = {
     zIndex: 10.5,
     draw(state, viewport, ctx, renderer) {
-        renderer.render3D.drawFloorProps(ctx, state, viewport);
+        renderer.render3D.drawFloorBelts(ctx, state, viewport);
     },
 };
-/** @typedef {{ when?: FloorTriggerWhen, effect: string, force?: number, forceX?: number, forceY?: number }} FloorTriggerDef */
-/** @typedef {"enter" | "exit" | "occupied" | "empty"} FloorTriggerWhen */
-/**
- * @typedef {object} FloorEffectContext
- * @property {object} [entity]
- * @property {number} [entityId]
- * @property {number} [dtSec]
- * @property {{ x: number, y: number }} [world]
- */
-/** @type {Record<string, { run: (state: object, floorProp: object, trigger: FloorTriggerDef, ctx: FloorEffectContext) => void }>} */
-const FLOOR_EFFECTS = {};
-/** @param {object} state @param {object} floorProp @param {FloorTriggerDef} trigger @param {FloorEffectContext} ctx */
-export function runFloorEffect(state, floorProp, trigger, ctx) {
-    const effect = FLOOR_EFFECTS[trigger.effect];
-    if (!effect) throw new Error(`Unknown floor effect "${trigger.effect}"`);
-    effect.run(state, floorProp, trigger, ctx);
-}
