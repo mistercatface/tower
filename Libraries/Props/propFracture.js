@@ -312,30 +312,23 @@ export function queueCircleFracture(prop, hitX, hitY, force) {
 export function evalFractureRules(prop, other, force) {
     const config = prop.strategy?.fracture;
     if (!config) return false;
-
     const minForce = config.minForce ?? (config.mode === "glass" ? GLASS_FRACTURE_IMPACT_THRESHOLD : FRACTURE_IMPACT_THRESHOLD);
     if (force < minForce) return false;
-
     if (config.threatType && other.type !== config.threatType) return false;
-
     const selfFaction = resolveSandboxFaction(prop);
     if (config.excludeFactions && config.excludeFactions.includes(selfFaction)) return false;
-
     if (config.opponentOnly) {
         const otherFaction = resolveSandboxFaction(other);
         if (selfFaction === otherFaction) return false;
     }
-
     return true;
 }
-
 export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
     const { frame, world } = tick;
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         const other = i === 0 ? bodyB : bodyA;
         if (prop._physId === undefined) continue;
-
         if (evalFractureRules(prop, other, force)) {
             const mode = prop.strategy?.fracture?.mode;
             if (mode === "circle") {
@@ -396,7 +389,6 @@ export function flushDeferredFractures(world, spatialFrame) {
         deferredFracturesCount = 0;
     }
 }
-
 export function processKineticContactFractures(tick, contacts) {
     if (contacts.count === 0) return;
     const slab = kineticDynamicSlab;
@@ -405,6 +397,7 @@ export function processKineticContactFractures(tick, contacts) {
         const physIdB = contacts.physIdB[i];
         const bodyA = kineticPairBodyAt(tick.frame, physIdA);
         const bodyB = kineticPairBodyAt(tick.frame, physIdB);
+        if (!bodyA || !bodyB) continue;
         const nx = contacts.dynamic.nx[i];
         const ny = contacts.dynamic.ny[i];
         let hitX;
