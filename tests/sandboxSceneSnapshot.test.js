@@ -4,7 +4,6 @@ import { EntityRegistry, findLiveWorldProp } from "../GameState/EntityRegistry.j
 import { KineticSession, createKineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
@@ -41,7 +40,6 @@ function applyPhysicsSnapshot(state, doc) {
 
 describe("sandboxSceneSnapshot physics", () => {
     it("collectSandboxSceneSnapshot exports flat props, constraints, and chain head index", () => {
-        resetKineticConstraintIds(1);
         const state = createSnapshotTestState();
         spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), {
             segmentCount: 4,
@@ -60,7 +58,6 @@ describe("sandboxSceneSnapshot physics", () => {
     });
 
     it("round-trips physics fields through collect and apply helpers", () => {
-        resetKineticConstraintIds(1);
         const state = createSnapshotTestState();
         const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball");
         const tintHex = hueToPickerHex(135);

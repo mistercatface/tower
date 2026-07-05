@@ -2,9 +2,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, checkEntityPairCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
-import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
+import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
@@ -14,7 +14,7 @@ function pairStillOverlaps(a, b) {
     return satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
 }
 function slabPairStillOverlaps(a, b) {
-    return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
+    return checkPairAtSlabPose(a, b);
 }
 function separatePairUntilClear(a, b, maxPasses = 8) {
     let last = null;

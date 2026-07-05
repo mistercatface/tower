@@ -1,23 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
-import { clearGroundRollDrive, decelerateRoll, getKineticRollConfig, steerRollToward } from "../Libraries/Physics/physics.js";;
+import { clearGroundRollDrive, decelerateRoll, getKineticRollConfig, steerRollToward } from "../Libraries/Physics/physics.js";
 import { integratePropMotion } from "../Libraries/Physics/physics.js";
-
-function mockRollingProp(overrides = {}) {
-    return {
-        id: 1,
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        angularVelocity: 0,
-        radius: 8,
-        isSleeping: false,
-        strategy: { rolls: true, friction: 0, isKinetic: true },
-        ...overrides,
-    };
-}
+import { mockRollingProp } from "./harness/kineticTickHarness.js";
 
 describe("kineticRollActuator", () => {
     it("steerRollToward stores thrust intent without mutating velocity", () => {

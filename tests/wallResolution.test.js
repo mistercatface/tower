@@ -9,9 +9,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
-function mockWallSegment(x, y, size = 16) {
-    return { x, y, size, width: size, height: size, angle: 0, isDead: false };
-}
+import { mockWallSegment } from "./harness/wallSegmentHarness.js";
 function shapeOverlapsWall(prop, wall) {
     const segShape = ensureWallSegmentPolygonShape(wall);
     return satCheckCollision(prop.x, prop.y, entityFacing(prop), prop.shape, wall.x, wall.y, entityFacing(wall), segShape);

@@ -1,15 +1,61 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { snapshotKineticBodySlab } from "../../Libraries/Physics/physics.js";
-import { CircleShape } from "../../Libraries/Physics/physics.js";
+import { snapshotKineticBodySlab, CircleShape } from "../../Libraries/Physics/physics.js";
 
 export const noop = () => {};
-export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop };
+export const kineticPipelineStubs = {
+    resolveWalls: noop,
+    applyContactSideEffects: noop,
+    updatePropFrame: noop,
+    updatePropSubstep: noop,
+};
+
+export function kineticPhysicsHooks(overrides = {}) {
+    return { ...kineticPipelineStubs, ...overrides };
+}
+
+export function kineticIntegrateHooks(integrateFn) {
+    return kineticPhysicsHooks({
+        updatePropSubstep: (prop, subDt, frame) => integrateFn(prop, subDt, frame),
+    });
+}
 
 let nextMockKineticCircleId = 1;
+let nextMockBallId = 1;
 
 export function resetMockKineticCircleIds(next = 1) {
     nextMockKineticCircleId = next;
+}
+
+export function resetMockBallIds(next = 1) {
+    nextMockBallId = next;
+}
+
+export function mockBall(x, y, overrides = {}) {
+    return {
+        id: overrides.id ?? nextMockBallId++,
+        x,
+        y,
+        type: "ball",
+        strategy: { isKinetic: true },
+        shape: overrides.shape ?? new CircleShape(4),
+        ...overrides,
+    };
+}
+
+export function mockRollingProp(overrides = {}) {
+    return {
+        id: 1,
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        angularVelocity: 0,
+        radius: 8,
+        isSleeping: false,
+        strategy: { rolls: true, friction: 0, isKinetic: true },
+        ...overrides,
+    };
 }
 
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {

@@ -67,8 +67,6 @@ import {
     distanceBetweenAnchors,
     worldAnchorFromBody,
     invalidateBroadphaseBounds,
-    kineticMassFromFootprint,
-    syncKineticRigidBody,
     kineticDynamicSlab,
     KINETIC_PAIR_TIER,
     IDENTITY_ROLL_QUAT,
@@ -1757,8 +1755,6 @@ export function getSpawnerDragConfig(_prop, asset) {
 }
 /** @param {object} prop @param {object | null | undefined} asset */
 export function getSpawnerOutletWorld(prop, asset) {
-    const resolver = asset?.sandbox?.spawner?.getOutletWorld;
-    if (typeof resolver === "function") return resolver(prop, asset);
     const facing = prop.facing ?? 0;
     const reach = prop.radius ?? 8;
     const cos = Math.cos(facing);
@@ -1804,11 +1800,7 @@ function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, 
 }
 function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     if (headScaleFn) headScaleFn(prop, segmentRadius);
-    else if (segmentRadius != null) {
-        const shape = prop.shape;
-        if (shape?.type === "Polygon") setPropRadius(prop, segmentRadius);
-        else setPropRadius(prop, segmentRadius);
-    }
+    else if (segmentRadius != null) setPropRadius(prop, segmentRadius);
 }
 export function spawnAgentChain(state, anchorIdx, spec) {
     const {

@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Physics/physics.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology, kineticPairTopologyStale } from "../Libraries/Physics/physics.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
@@ -73,7 +73,6 @@ describe("kinetic topology lifecycle", () => {
     });
 
     it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {
-        resetKineticConstraintIds(1);
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
         const c = mockKineticCircle(36, 0, 10);

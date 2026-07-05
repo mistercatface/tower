@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { addChainLink, hasChainLinkBetween } from "../Libraries/Sandbox/sandbox.js";
 import { createKineticTestTick, mockKineticCircle, resetMockKineticCircleIds } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 
 describe("snake segment impact fracture", () => {
     it("fractures the snake segment on high force impact and splits the chain", () => {
-        resetKineticConstraintIds(1);
         resetMockKineticCircleIds(1);
 
         // Segment A and B are connected snake segments
@@ -50,7 +48,6 @@ describe("snake segment impact fracture", () => {
     });
 
     it("does not fracture snake segment on low force impact", () => {
-        resetKineticConstraintIds(1);
         resetMockKineticCircleIds(1);
 
         const segA = mockKineticCircle(100, 100, 4, 0, 0, { strategy: { canChain: true, rolls: true, fracture: { mode: "circle", minForce: 12 } } });
@@ -77,7 +74,6 @@ describe("snake segment impact fracture", () => {
     });
 
     it("fractures the ball segment (snake body segment) on high force impact and splits the chain", () => {
-        resetKineticConstraintIds(1);
         resetMockKineticCircleIds(1);
 
         // Segment A and B are connected ball segments (snake body)

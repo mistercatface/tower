@@ -38,8 +38,6 @@ All props are static ESM imports in `Assets/props/index.js`. `PropCatalog.js` bu
 
 Import maps at lookup sites: `worldPropAssets[id]`, `worldPropDefinitions[id]`, `worldPropRecipes[renderKey]`.
 
-`setPropCatalog` remains **tests only** (e.g. `tests/lockedRoomHarness.js` minimal subset).
-
 ## Review bar
 
 - New param threading recipes, definitions, or assets through draw/sim? → Stop; import instead.

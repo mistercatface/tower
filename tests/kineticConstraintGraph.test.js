@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
-import { addDistanceConstraint, removeKineticConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint, removeKineticConstraint } from "../Libraries/Physics/physics.js";
 import { areBodiesConnected, getConnectedBodyIds, getConnectedComponentPath, getConstraintIslands, getKineticConstraintGraph } from "../Libraries/Physics/physics.js";
 function createState() {
     return { kinetic: createKineticSession() };
@@ -14,7 +14,6 @@ function link(state, aId, bId) {
 }
 describe("kineticConstraintGraph", () => {
     it("getConnectedBodyIds returns the whole island for any member", () => {
-        resetKineticConstraintIds(1);
         const state = createState();
         link(state, 1, 2);
         link(state, 2, 3);
@@ -22,7 +21,6 @@ describe("kineticConstraintGraph", () => {
         assert.deepEqual(ids, [1, 2, 3]);
     });
     it("getConnectedComponentPath walks an acyclic chain end to end from the head", () => {
-        resetKineticConstraintIds(1);
         const state = createState();
         link(state, 10, 11);
         link(state, 11, 12);
@@ -30,7 +28,6 @@ describe("kineticConstraintGraph", () => {
         assert.deepEqual(getConnectedComponentPath(state.kinetic, 10), [10, 11, 12, 13]);
     });
     it("areBodiesConnected reflects island membership across separate islands", () => {
-        resetKineticConstraintIds(1);
         const state = createState();
         link(state, 1, 2);
         link(state, 5, 6);
@@ -39,7 +36,6 @@ describe("kineticConstraintGraph", () => {
         assert.ok(areBodiesConnected(state.kinetic, 7, 7));
     });
     it("getConstraintIslands groups bodies into their connected components", () => {
-        resetKineticConstraintIds(1);
         const state = createState();
         link(state, 1, 2);
         link(state, 2, 3);
@@ -51,7 +47,6 @@ describe("kineticConstraintGraph", () => {
         ]);
     });
     it("caches the adjacency map until the constraint topology changes", () => {
-        resetKineticConstraintIds(1);
         const state = createState();
         const first = link(state, 1, 2);
         const graphA = getKineticConstraintGraph(state.kinetic);

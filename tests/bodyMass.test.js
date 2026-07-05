@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { inverseMassFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, syncKineticRigidBody } from "../Libraries/Physics/physics.js";
+import { inverseMassFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
@@ -19,8 +19,8 @@ describe("bodyMass", () => {
         ]);
         const small = { strategy: {}, shape: { type: "Polygon", vertices: smallVerts } };
         const large = { strategy: {}, shape: { type: "Polygon", vertices: largeVerts } };
-        syncKineticRigidBody(small);
-        syncKineticRigidBody(large);
+        small.mass = kineticMassFromFootprint(small);
+        large.mass = kineticMassFromFootprint(large);
         assert.ok(large.mass > small.mass);
         assert.ok(Math.abs(large.mass / small.mass - 4) < 1e-6);
     });
@@ -43,7 +43,7 @@ describe("bodyMass", () => {
 
     it("derives circle mass from density and radius", () => {
         const body = { strategy: { density: 0.01 }, radius: 10, shape: { type: "Circle", radius: 10 } };
-        syncKineticRigidBody(body);
+        body.mass = kineticMassFromFootprint(body);
         assert.ok(Math.abs(body.mass - 0.01 * Math.PI * 100) < 1e-6);
     });
     it("kineticFootprintArea uses polygon vertices when present", () => {
@@ -79,7 +79,7 @@ describe("bodyMass", () => {
         assert.equal(triangleArea, 135);
         assert.ok(triangleArea < aabbArea);
         assert.equal(kineticFootprintArea(prop), triangleArea);
-        syncKineticRigidBody(prop);
+        prop.mass = kineticMassFromFootprint(prop);
         assert.ok(Math.abs(prop.mass - kineticMassFromFootprint(prop)) < 1e-6);
         assert.ok(Math.abs(kineticInertiaFromBody(prop) - prop.mass * (polygonSecondMomentAboutCentroid2D(prop.shape.vertices) / triangleArea)) < 1e-6);
     });
@@ -90,7 +90,7 @@ describe("bodyMass", () => {
     it("ball default density matches canonical asset", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
         assert.ok(Math.abs(kineticDensity(prop) - 0.007958) < 1e-6);
-        syncKineticRigidBody(prop);
+        prop.mass = kineticMassFromFootprint(prop);
         assert.ok(prop.mass > 0);
     });
 });

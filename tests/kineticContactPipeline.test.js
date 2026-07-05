@@ -1,12 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, checkEntityPairCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
@@ -15,7 +15,7 @@ function largeBall(x, y) {
 }
 
 function slabPairCollision(a, b) {
-    return checkEntityPairCollisionAt(a, kineticDynamicSlab.x[a._physId], kineticDynamicSlab.y[a._physId], b, kineticDynamicSlab.x[b._physId], kineticDynamicSlab.y[b._physId]);
+    return checkPairAtSlabPose(a, b);
 }
 
 describe("kinetic contact pipeline", () => {

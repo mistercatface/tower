@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { countMotionSubsteps } from "../Libraries/Physics/physics.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
-import { createKineticTestTick, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 
 describe("kinetic substep early-out", () => {
@@ -13,10 +13,7 @@ describe("kinetic substep early-out", () => {
             const tick = createKineticTestTick([body]);
             const planned = countMotionSubsteps(dt, tick.frame._activeKineticBodies, { maxStepPx: 4, maxSubsteps: 8 });
             assert.ok(planned > 1);
-            runKineticPhysics(tick, dt, {
-                updateProp: (prop, subDt) => prop.update(subDt),
-                ...kineticPipelineStubs,
-            });
+            runKineticPhysics(tick, dt, kineticIntegrateHooks((prop, subDt) => prop.update(subDt)));
             assert.ok(tick.world.kinetic.motionSubstepStats.substepsRun < tick.world.kinetic.motionSubstepStats.substepsPlanned);
         });
     });

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { addDistanceConstraint, pruneKineticConstraintsForBody, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint, pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab, kineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
@@ -9,7 +9,6 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 
 describe("kinetic constraint solver", () => {
     it("pulls stretched distance joint back toward rest length", () => {
-        resetKineticConstraintIds(1);
         const bodyA = mockKineticCircle(0, 0, 10);
         const bodyB = mockKineticCircle(30, 0, 10);
         const restLength = 30;
@@ -34,7 +33,6 @@ describe("kinetic constraint solver", () => {
         assert.equal(bodyB.x, bx);
     });
     it("drops constraints when a linked body is removed", () => {
-        resetKineticConstraintIds(1);
         const bodyA = mockKineticCircle(0, 0, 10);
         const bodyB = mockKineticCircle(30, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
@@ -44,7 +42,6 @@ describe("kinetic constraint solver", () => {
         assert.equal(tick.world.kinetic.kineticConstraints.length, 0);
     });
     it("partitions sleeping link islands out of activeCount", () => {
-        resetKineticConstraintIds(1);
         const asleepA = mockKineticCircle(0, 0, 10);
         const asleepB = mockKineticCircle(20, 0, 10);
         const awakeA = mockKineticCircle(0, 40, 10, 10, 0);

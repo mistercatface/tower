@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { inverseMassFromBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { applyCrossPinwheelFootprint } from "../Libraries/Props/props.js";
@@ -53,18 +53,9 @@ describe("cross pinwheel prop", () => {
 
         // Run the physics step
         // We run a physics tick with dt = 100
-        runKineticPhysics(tick, 100, {
-            updateProp: (prop, subDt) => prop.update(subDt),
-            resolveWalls: () => {},
-            applyContactSideEffects: () => {},
-        });
+        runKineticPhysics(tick, 100, kineticIntegrateHooks((prop, subDt) => prop.update(subDt)));
 
-        // Run a second small step to integrate the angular velocity into facing angle
-        runKineticPhysics(tick, 50, {
-            updateProp: (prop, subDt) => prop.update(subDt),
-            resolveWalls: () => {},
-            applyContactSideEffects: () => {},
-        });
+        runKineticPhysics(tick, 50, kineticIntegrateHooks((prop, subDt) => prop.update(subDt)));
 
         // After tick:
         // 1. Pinwheel position should remain exactly at (0, 0) since it's pinned

@@ -1,16 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { mockWallSegment } from "./harness/wallSegmentHarness.js";
 
 const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });
 
-function mockWallSegment(x, y, size = 16) {
-    return { x, y, size, width: size, height: size, angle: 0, isDead: false };
-}
 function resolveLinkConstraints(tick, bodies) {
     resolveGatheredKineticConstraintSlab(tick);
     writebackActiveKineticBodySlab(bodies);
@@ -30,7 +28,6 @@ describe("link capsule wall projection", () => {
         assert.ok(pen.overlap > 0);
     });
     it("projects a wedged distance link out of a wall segment", () => {
-        resetKineticConstraintIds(1);
         const wall = mockWallSegment(58, 4, 16);
         const bodyA = wallCircle(50, 14, 4);
         const bodyB = wallCircle(66, 14, 4);
@@ -43,7 +40,6 @@ describe("link capsule wall projection", () => {
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("gathers wall candidates once per unique body in an island", () => {
-        resetKineticConstraintIds(1);
         const bodyA = wallCircle(10, 10, 4, 0, 0);
         const bodyB = wallCircle(26, 10, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB]);
@@ -58,7 +54,6 @@ describe("link capsule wall projection", () => {
         assert.equal(wallQueries, 2, "one wall gather per unique body in the island");
     });
     it("dedupes wall gathers across a multi-link chain island", () => {
-        resetKineticConstraintIds(1);
         const bodyA = wallCircle(10, 10, 4, 0, 0);
         const bodyB = wallCircle(26, 10, 4, 0, 0);
         const bodyC = wallCircle(42, 10, 4, 0, 0);
@@ -75,7 +70,6 @@ describe("link capsule wall projection", () => {
         assert.equal(wallQueries, 3, "three unique bodies in a two-link chain");
     });
     it("does not disturb a fast-moving link in open space with distant gathered walls", () => {
-        resetKineticConstraintIds(1);
         const bodyA = wallCircle(10, 10, 4, 40, 0);
         const bodyB = wallCircle(26, 10, 4, 40, 0);
         const startAx = bodyA.x;
@@ -90,7 +84,6 @@ describe("link capsule wall projection", () => {
         assert.equal(bodyB.x, startBx);
     });
     it("filters island walls per link before narrow phase", () => {
-        resetKineticConstraintIds(1);
         const nearWall = mockWallSegment(58, 4, 16);
         const farWall = mockWallSegment(500, 500, 16);
         const bodyA = wallCircle(50, 14, 4, 0, 0);
@@ -104,7 +97,6 @@ describe("link capsule wall projection", () => {
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) >= 4 - 0.05);
     });
     it("still projects a nearly-static wedged link", () => {
-        resetKineticConstraintIds(1);
         const wall = mockWallSegment(58, 4, 16);
         const bodyA = wallCircle(50, 14, 4, 0, 0);
         const bodyB = wallCircle(66, 14, 4, 0, 0);
@@ -116,7 +108,6 @@ describe("link capsule wall projection", () => {
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("link wall correction survives constraint solve on kinetic slab", () => {
-        resetKineticConstraintIds(1);
         const wall = mockWallSegment(58, 4, 16);
         const bodyA = wallCircle(50, 14, 4);
         const bodyB = wallCircle(66, 14, 4);

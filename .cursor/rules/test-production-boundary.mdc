@@ -1,0 +1,38 @@
+---
+description: Tests must not add production exports or optional prod paths — harness lives in tests/
+alwaysApply: true
+---
+
+# Test / production boundary
+
+## No test-only exports in Libraries/
+
+Test helpers belong in `tests/harness/`, not `Libraries/`.
+
+- Do **not** add `resetFooForTests`, `clearFooPools`, `getFooPoolSize`, or assert helpers to production modules.
+- If a test needs isolation (IDs, pools, slab pose checks), build it in `tests/harness/` importing production APIs — or fix production to be session-scoped so tests get isolation from fresh session construction.
+
+Before adding any new export under `Libraries/`, run:
+
+```powershell
+node scripts/audit-test-leaks.mjs
+```
+
+## No production branches for tests
+
+- No optional constructor modes, null `state` stubs, or `if (test)` paths in production to keep tests easy.
+- Tests must construct real runtime wiring (`KineticSession`, `WorldObstacleGrid`, registry, …) or use harness factories.
+
+See also `no-shims-and-guards.mdc`, `.agents/AGENTS.md`.
+
+## Mock consolidation
+
+- Reuse `tests/harness/kineticTickHarness.js`, `kineticSlabHarness.js`, `kineticContactHarness.js`, `worldPropHarness.js`, `wallSegmentHarness.js`.
+- Do **not** define `function mock*` / `function createMock*` in `tests/*.test.js` when the shape is reused — extend harness instead.
+- Canvas mocks: `tests/mockCanvas2d.js`.
+
+## Review bar
+
+- New `Libraries/` export imported only from `tests/`? → Move to harness or delete.
+- Test file defines inline mock used in one place only? → OK; used 2+ times? → Harness.
+- Production code changed solely because a test couldn't set up state? → Fix the test harness, revert the prod branch.

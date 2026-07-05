@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it, beforeEach } from "node:test";
+import { describe, it } from "node:test";
 import { EntityRegistry, addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
@@ -7,7 +7,6 @@ import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { clearWorldPropPools, getWorldPropPoolSize } from "../Libraries/Props/props.js";
 import { spawnFractureShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { fracturePropOnImpact } from "../Libraries/Props/props.js";
@@ -25,10 +24,6 @@ function createTestState() {
 }
 
 describe("Shatter / Debris Performance Fixes", () => {
-    beforeEach(() => {
-        clearWorldPropPools();
-    });
-
     it("EntityRegistry membershipGen increments once for batch operations", () => {
         const state = createTestState();
         const initialGen = state.entityRegistry.membershipGen;
@@ -65,8 +60,6 @@ describe("Shatter / Debris Performance Fixes", () => {
             removeWorldPropFromState(state, spawned[i], { evictKineticProp() {} });
         }
 
-        assert.equal(getWorldPropPoolSize("glass_pane"), spawned.length);
-
         // Shatter again and verify same instances are acquired
         const spawnedAgain = spawnFractureShards(state, prop, fracture, null);
         assert.ok(spawnedAgain.length >= 2);
@@ -78,8 +71,6 @@ describe("Shatter / Debris Performance Fixes", () => {
         for (const id of reacquiredIds) {
             assert.ok(originalShardIds.includes(id));
         }
-        
-        assert.equal(getWorldPropPoolSize("glass_pane"), 0);
     });
 
     it("KineticSpatialFrame assigns unique monotonic physIds and prevents collision", () => {

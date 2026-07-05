@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
-import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
@@ -39,7 +39,7 @@ describe("kinetic pair stream", () => {
         a._physId = 0;
         b._physId = 1;
         snapshotKineticBodySlab([a, b]);
-        assert.equal(pairBroadphaseOverlapSnapshotted(a, b), pairBroadphaseOverlap(a, b));
+        assert.equal(pairBroadphaseOverlapSlab(a._physId, b._physId), pairBroadphaseOverlap(a, b));
     });
     it("slab-backed pair policy matches live bounds overlap", () => {
         const rest = mockKineticCircle(0, 0, 10, 0, 0);
@@ -48,7 +48,7 @@ describe("kinetic pair stream", () => {
         mover._physId = 1;
         snapshotKineticBodySlab([rest, mover]);
         assert.equal(
-            allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSnapshotted(rest, mover)),
+            allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSlab(rest._physId, mover._physId)),
             allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlap(rest, mover)),
         );
     });

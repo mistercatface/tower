@@ -4,7 +4,6 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import propCatalog from "../Assets/props/index.js";
 
@@ -16,7 +15,6 @@ function createSnakeSpawnTestState(cols = 32, rows = 32) {
 
 describe("snake prop kinetic chain spawning", () => {
     it("spawns a snake chain prop using the configured length parameter, custom radius, and visual overrides", () => {
-        resetKineticConstraintIds(1);
         const state = createSnakeSpawnTestState();
         const meta = state.sandbox.entityMeta;
 

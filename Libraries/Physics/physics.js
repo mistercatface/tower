@@ -182,19 +182,13 @@ export function kineticInertiaFromBody(body) {
     const r = shape?.type === "Circle" ? shape.radius : (body.radius ?? 0);
     return (m * r * r) / 2;
 }
-export function syncKineticRigidBody(body) {
-    body.mass = kineticMassFromFootprint(body);
-}
 export function massFromBody(body) {
-    if (body.mass == null) throw new Error("Kinetic body missing mass — call syncKineticRigidBody first");
+    if (body.mass == null) throw new Error("Kinetic body missing mass");
     return body.mass;
 }
 export function inverseMassFromBody(body) {
     if (body.strategy?.pinned) return 0;
     return 1 / massFromBody(body);
-}
-export function bodyPinnedForContact(body) {
-    return Boolean(body.strategy?.pinned);
 }
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
@@ -257,7 +251,7 @@ export function writeStaticKineticSlabSlot(body) {
     slab.invMass[physId] = inverseMassFromBody(body);
     const moment = body.momentOfInertia;
     slab.invI[physId] = moment ? 1 / moment : 0;
-    slab.pinned[physId] = bodyPinnedForContact(body) ? 1 : 0;
+    slab.pinned[physId] = body.strategy?.pinned ? 1 : 0;
     slab.entityId[physId] = body.id;
     slab.restitution[physId] = body.strategy?.pairRestitution ?? -1;
     slab.friction[physId] = body.strategy?.pairFriction ?? body.strategy?.wallPhysics?.friction ?? -1;
@@ -311,21 +305,6 @@ export function clampActiveKineticBodySlabSpeed(maxSpeed) {
         slab.vx[physId] = (vx / speed) * maxSpeed;
         slab.vy[physId] = (vy / speed) * maxSpeed;
     }
-}
-const SLAB_POSE_EPS = 1e-4;
-const SLAB_VEL_EPS = 1e-4;
-export function activeBodiesMatchKineticSlab(bodies) {
-    const slab = kineticDynamicSlab;
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        const physId = body._physId;
-        if (Math.abs(body.x - slab.x[physId]) > SLAB_POSE_EPS) return false;
-        if (Math.abs(body.y - slab.y[physId]) > SLAB_POSE_EPS) return false;
-        if (Math.abs((body.vx ?? 0) - slab.vx[physId]) > SLAB_VEL_EPS) return false;
-        if (Math.abs((body.vy ?? 0) - slab.vy[physId]) > SLAB_VEL_EPS) return false;
-        if (Math.abs((body.angularVelocity ?? 0) - slab.w[physId]) > SLAB_VEL_EPS) return false;
-    }
-    return true;
 }
 function readSlabIntoBounds(physId, out) {
     const slab = kineticDynamicSlab;
@@ -680,9 +659,6 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
         return true;
     }
     return false;
-}
-export function checkEntityPairCollisionAt(bodyA, xA, yA, bodyB, xB, yB) {
-    return checkEntityPairCollision(bodyA, bodyB, xA, yA, xB, yB);
 }
 export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     if (!shapeA || !shapeB) return false;
@@ -1217,12 +1193,6 @@ export function refreshActiveKineticBodySlabPose(bodies) {
         }
     }
 }
-export function pairCircleCircleOverlapSnapshotted(a, b) {
-    return pairCircleCircleOverlapSlab(a._physId, b._physId);
-}
-export function pairBroadphaseOverlapSnapshotted(a, b) {
-    return pairBroadphaseOverlapSlab(a._physId, b._physId);
-}
 export function shouldResolveKineticPair(a, b, overlaps) {
     return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
 }
@@ -1742,8 +1712,8 @@ function appendConstraintEntry(slab, item) {
     slab.static.invMassB[idx] = inverseMassFromBody(bodyB);
     slab.static.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
     slab.static.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
-    slab.static.pinnedA[idx] = bodyPinnedForContact(bodyA) ? 1 : 0;
-    slab.static.pinnedB[idx] = bodyPinnedForContact(bodyB) ? 1 : 0;
+    slab.static.pinnedA[idx] = bodyA.strategy?.pinned ? 1 : 0;
+    slab.static.pinnedB[idx] = bodyB.strategy?.pinned ? 1 : 0;
     slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
     slab.entry[idx] = item.entry;
 }
@@ -2349,7 +2319,6 @@ export function getConstraintIslands(session) {
     cache.islands = islands;
     return islands;
 }
-let nextKineticConstraintId = 1;
 export function markKineticConstraintsDirty(session) {
     session.kineticConstraintsDirty = true;
     session.kineticConstraintsVersion = (session.kineticConstraintsVersion ?? 0) + 1;
@@ -2358,12 +2327,9 @@ export function markKineticConstraintsDirty(session) {
 export function getKineticConstraintsVersion(session) {
     return session.kineticConstraintsVersion ?? 0;
 }
-export function resetKineticConstraintIds(startId = 1) {
-    nextKineticConstraintId = startId;
-}
 export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0, y: 0 }, anchorB = { x: 0, y: 0 }, restLength }) {
     const constraint = {
-        id: nextKineticConstraintId++,
+        id: session.nextConstraintId++,
         type: "distance",
         bodyAId: bodyA.id,
         bodyBId: bodyB.id,
@@ -2379,7 +2345,7 @@ export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0,
     return constraint;
 }
 export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
-    const constraint = { id: nextKineticConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, referenceAngle, accumulatedImpulse: 0 };
+    const constraint = { id: session.nextConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, referenceAngle, accumulatedImpulse: 0 };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
     return constraint;
@@ -2711,7 +2677,7 @@ function narrowPhaseSatContact(spatialFrame, pairs, pairIndex, contacts) {
     const bodyB = spatialFrame.entityGrid.entities[physIdB]?._physId === physIdB ? spatialFrame.entityGrid.entities[physIdB] : null;
     if (!bodyA || !bodyB) return;
     const slab = kineticDynamicSlab;
-    const collided = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
+    const collided = checkEntityPairCollision(bodyA, bodyB, slab.x[physIdA], slab.y[physIdA], slab.x[physIdB], slab.y[physIdB]);
     if (!collided) return;
     const overlap = SAT_RESULT[0];
     const nx = SAT_RESULT[1];
@@ -3487,7 +3453,7 @@ export function hasSleepBlockingNeighbor(prop, neighbors) {
         const other = neighbors[i];
         if (other === prop || !isKineticSleepNeighbor(other)) continue;
         if (shareKineticIsland(prop, other)) continue;
-        if (!pairBroadphaseOverlapSnapshotted(prop, other)) continue;
+        if (!pairBroadphaseOverlapSlab(prop._physId, other._physId)) continue;
         if (other.isSleeping) continue;
         if (isKinematicallyActive(other)) return true;
     }

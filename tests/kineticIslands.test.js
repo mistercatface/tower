@@ -1,14 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Physics/physics.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Physics/physics.js";
-import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
+import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticIntegrateHooks, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
@@ -29,7 +29,6 @@ function createState(props, constraints = []) {
 }
 
 function linkChain(state, bodies, spacing) {
-    resetKineticConstraintIds(1);
     for (let i = 0; i < bodies.length - 1; i++) {
         addDistanceConstraint(state.kinetic, {
             bodyA: bodies[i],
@@ -159,7 +158,6 @@ describe("kinetic islands", () => {
     });
 
     it("addDistanceConstraint marks island topology dirty", () => {
-        resetKineticConstraintIds(1);
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
         const state = createState([a, b]);
@@ -176,14 +174,12 @@ describe("kinetic islands", () => {
         const bodies = [a, b, c];
         const tick = createKineticTestTick(bodies);
         
+        const integrate = (prop, subDt) => {
+            prop.x += (prop.vx || 0) * (subDt / 1000);
+            prop.y += (prop.vy || 0) * (subDt / 1000);
+        };
         for (let frame = 0; frame < SLEEP_FRAMES; frame++) {
-            runKineticPhysics(tick, 16.667, {
-                updateProp: (prop, subDt) => {
-                    prop.x += (prop.vx || 0) * (subDt / 1000);
-                    prop.y += (prop.vy || 0) * (subDt / 1000);
-                },
-                ...kineticPipelineStubs,
-            });
+            runKineticPhysics(tick, 16.667, kineticIntegrateHooks(integrate));
         }
         
         assert.equal(a.isSleeping, true);
@@ -207,13 +203,10 @@ describe("kinetic islands", () => {
         assert.equal(b.isSleeping, false);
         
         // Run one frame of physics
-        runKineticPhysics(tick, 16.667, {
-            updateProp: (prop, subDt) => {
-                prop.x += (prop.vx || 0) * (subDt / 1000);
-                prop.y += (prop.vy || 0) * (subDt / 1000);
-            },
-            ...kineticPipelineStubs,
-        });
+        runKineticPhysics(tick, 16.667, kineticIntegrateHooks((prop, subDt) => {
+            prop.x += (prop.vx || 0) * (subDt / 1000);
+            prop.y += (prop.vy || 0) * (subDt / 1000);
+        }));
         
         // A should be woken up because B was active and overlapped
         assert.equal(a.isSleeping, false);

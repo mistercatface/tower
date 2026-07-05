@@ -1,13 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { addAngleConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { addAngleConstraint } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 
 describe("angle constraint solver", () => {
     it("locks the angle of two connected bodies and propagates torque", () => {
-        resetKineticConstraintIds(1);
         const bodyA = mockKineticCircle(0, 0, 10);
         const bodyB = mockKineticCircle(30, 0, 10);
         
@@ -41,7 +40,6 @@ describe("angle constraint solver", () => {
     });
     
     it("corrects angle offset during position projection pass", () => {
-        resetKineticConstraintIds(1);
         const bodyA = mockKineticCircle(0, 0, 10);
         const bodyB = mockKineticCircle(30, 0, 10);
         

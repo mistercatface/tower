@@ -4,7 +4,6 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
@@ -16,7 +15,6 @@ function createChainSpawnTestState(cols = 32, rows = 32) {
 }
 describe("spawnLinkedBallChain", () => {
     it("spawns a linked ball chain with one head and distance links", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const meta = state.sandbox.entityMeta;
         const anchorIdx = colRowToIndex(10, 10, state.obstacleGrid.cols);
@@ -35,7 +33,6 @@ describe("spawnLinkedBallChain", () => {
         for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) assert.ok(Math.abs(state.kinetic.kineticConstraints[i].restLength - 16) < 1e-6);
     });
     it("exports linked chain spawn groups with segment count and anchor position", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const meta = state.sandbox.entityMeta;
         const chain = spawnLinkedBallChain(state, colRowToIndex(8, 8, state.obstacleGrid.cols), CHAIN_OPTIONS);
@@ -47,7 +44,6 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(exported.y, chain.head.y);
     });
     it("linkedChainOccupiedCellIndices lists unique grid cells occupied by members", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const chain = spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), CHAIN_OPTIONS);
         const indices = linkedChainOccupiedCellIndices(chain.members, state.obstacleGrid);
@@ -59,7 +55,6 @@ describe("spawnLinkedBallChain", () => {
         }
     });
     it("growChainSegment links a new tail segment at spacing", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const chain = spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), CHAIN_OPTIONS);
         const tail = chain.tail;
@@ -69,14 +64,12 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(segment.y, tail.y);
     });
     it("spawnLinkedBallChain uses headBallType for the first segment only", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const chain = spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), { ...CHAIN_OPTIONS, headBallType: "cross_pinwheel" });
         assert.equal(chain.head.type, "cross_pinwheel");
         assert.equal(chain.tail.type, CHAIN_OPTIONS.ballType);
     });
     it("spawnLinkedBallChain applies segmentRadius to every member", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const chain = spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), { ...CHAIN_OPTIONS, segmentRadius: 2.1, spacing: 4.0, linkSlack: 1.05 });
         assert.equal(chain.head.radius, 2.1);
@@ -84,7 +77,6 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(state.kinetic.kineticConstraints[0].restLength, 4.2);
     });
     it("assigns a unique spawn group id per chain", () => {
-        resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
         const first = spawnLinkedBallChain(state, colRowToIndex(4, 4, state.obstacleGrid.cols), CHAIN_OPTIONS);
         const second = spawnLinkedBallChain(state, colRowToIndex(12, 12, state.obstacleGrid.cols), CHAIN_OPTIONS);

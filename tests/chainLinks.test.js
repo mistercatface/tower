@@ -1,11 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CircleShape } from "../Libraries/Physics/physics.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
-import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/sandbox.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
+import { mockBall, resetMockBallIds } from "./harness/kineticTickHarness.js";
+import { CircleShape } from "../Libraries/Physics/physics.js";
+
 class MockEntityMeta {
     constructor() {
         this.byEntityId = new Map();
@@ -29,17 +30,7 @@ class MockEntityMeta {
         else if (this.get(entityId)) this.get(entityId).chainHead = false;
     }
 }
-let nextId = 1;
-function mockBall(x, y) {
-    return {
-        id: nextId++,
-        x,
-        y,
-        type: "ball",
-        strategy: { isKinetic: true },
-        shape: new CircleShape(4),
-    };
-}
+
 function createState(props) {
     return {
         kinetic: createKineticSession(),
@@ -52,9 +43,10 @@ function createState(props) {
         },
     };
 }
+
 describe("chain links", () => {
     it("addChainLink creates a distance constraint from linked sphere radii", () => {
-        resetKineticConstraintIds(1);
+        resetMockBallIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(30, 0);
         const state = createState([a, b]);
@@ -63,7 +55,7 @@ describe("chain links", () => {
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });
     it("resyncChainLinkRestLengths updates rest lengths after prop scale", () => {
-        resetKineticConstraintIds(1);
+        resetMockBallIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(8.4, 0);
         const state = createState([a, b]);
@@ -74,7 +66,7 @@ describe("chain links", () => {
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });
     it("chain tail is not a steering target but head is", () => {
-        resetKineticConstraintIds(1);
+        resetMockBallIds(1);
         const head = mockBall(0, 0);
         const tail = mockBall(20, 0);
         const state = createState([head, tail]);
@@ -84,16 +76,17 @@ describe("chain links", () => {
         assert.ok(!isChainSteeringTarget(state, state.sandbox.entityMeta, tail.id));
     });
     it("unlinked nav ball remains a steering target", () => {
+        resetMockBallIds(1);
         const ball = mockBall(0, 0);
         const state = createState([ball]);
         assert.ok(isChainSteeringTarget(state, state.sandbox.entityMeta, ball.id));
         assert.ok(!hasChainMembership(state, ball.id));
     });
     it("addChainLink accepts tri wedges marked chain-link eligible", () => {
-        resetKineticConstraintIds(2);
+        resetMockBallIds(1);
         const head = mockBall(0, 0);
         const wedge = {
-            id: nextId++,
+            id: 2,
             x: 20,
             y: 0,
             type: "tri_wedge",
@@ -106,7 +99,7 @@ describe("chain links", () => {
         assert.equal(state.kinetic.kineticConstraints.length, 1);
     });
     it("getConnectedBodyIds walks transitive links", () => {
-        resetKineticConstraintIds(1);
+        resetMockBallIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(20, 0);
         const c = mockBall(40, 0);

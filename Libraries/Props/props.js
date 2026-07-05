@@ -6,8 +6,8 @@ import {
     CircleShape,
     invalidateBroadphaseBounds,
     kineticMassFromFootprint,
-    syncKineticRigidBody,
     wakeKineticBody,
+    entityFacing,
     kineticDynamicSlab,
     KINETIC_PAIR_TIER,
     IDENTITY_ROLL_QUAT,
@@ -147,7 +147,7 @@ export function scalePolygonPropFootprint(prop, scale) {
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
     invalidateBroadphaseBounds(prop);
     if (prop.strategy?.isKinetic) {
-        syncKineticRigidBody(prop);
+        prop.mass = kineticMassFromFootprint(prop);
         wakeKineticBody(prop);
     }
 }
@@ -170,7 +170,7 @@ function setCirclePropRadius(prop, radius) {
     if (prop.strategy) prop.strategy.radius = radius;
     invalidateBroadphaseBounds(prop);
     if (prop.strategy?.isKinetic) {
-        syncKineticRigidBody(prop);
+        prop.mass = kineticMassFromFootprint(prop);
         wakeKineticBody(prop);
     }
 }
@@ -1239,13 +1239,10 @@ export function applyPropFractureGeometry(prop, geometry) {
     prop.radius = geometry.boundingRadius;
     prop.shape = new PolygonShape(geometry.footprintVertices);
     invalidateBroadphaseBounds(prop);
-    syncKineticRigidBody(prop);
+    prop.mass = kineticMassFromFootprint(prop);
 }
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
-}
-function propFacing(prop) {
-    return prop.facing ?? prop.angle ?? 0;
 }
 function propWorldPosition(prop) {
     const physId = prop._physId;
@@ -1282,7 +1279,7 @@ export function buildCircleImpactShards(radius, localHit, impactForce, { minShar
     return shards;
 }
 export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shardPropId, spatialFrame = null, configureShard = null) {
-    const facing = propFacing(sourceProp);
+    const facing = entityFacing(sourceProp);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const motion = currentPropMotion(sourceProp);
@@ -1363,8 +1360,8 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     components.sort((a, b) => b.length - a.length);
     const origin = propWorldPosition(prop);
     const mainGeom = geometryFromChunkComponent(components[0], false);
-    const cos = Math.cos(propFacing(prop));
-    const sin = Math.sin(propFacing(prop));
+    const cos = Math.cos(entityFacing(prop));
+    const sin = Math.sin(entityFacing(prop));
     const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
     const physId = prop._physId;
     prop.x = mainWorldPos.x;
@@ -1375,19 +1372,19 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     }
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyPropFractureGeometry(prop, mainGeom);
-    return { debris, originX: origin.x, originY: origin.y, facing: propFacing(prop) };
+    return { debris, originX: origin.x, originY: origin.y, facing: entityFacing(prop) };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
     const origin = propWorldPosition(prop);
     const dx = worldX - origin.x;
     const dy = worldY - origin.y;
-    const cos = Math.cos(propFacing(prop));
-    const sin = Math.sin(propFacing(prop));
+    const cos = Math.cos(entityFacing(prop));
+    const sin = Math.sin(entityFacing(prop));
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
 }
 function fractureImpactContext(prop, worldHitX, worldHitY, impactForce) {
     const origin = propWorldPosition(prop);
-    return { origin, impactLocal: worldHitToPropLocal(prop, worldHitX, worldHitY), facing: propFacing(prop), impactForce };
+    return { origin, impactLocal: worldHitToPropLocal(prop, worldHitX, worldHitY), facing: entityFacing(prop), impactForce };
 }
 export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
     return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
@@ -1564,7 +1561,7 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.radius = prop.shape.getBoundingRadius();
     invalidateBroadphaseBounds(prop);
     if (prop.strategy?.fracture && prop.strategy.fracture.mode !== "glass") initFractureFootprint(prop);
-    else if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
+    else if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
 }
 export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
@@ -1696,7 +1693,7 @@ export class WorldProp {
         else this.facing = facing ?? Math.random() * Math.PI * 2;
         if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
         initWorldPropShape(this);
-        if (this.strategy.isKinetic) syncKineticRigidBody(this);
+        if (this.strategy.isKinetic) this.mass = kineticMassFromFootprint(this);
         this.ageMs = 0;
         this.alpha = undefined;
         this._sleepFrames = 0;
@@ -1805,7 +1802,7 @@ export function acquireWorldProp(x, y, type, facing = null) {
         prop._wallChunkTextures = undefined;
         prop._wallChunkTextureReady = undefined;
         initWorldPropShape(prop);
-        if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
+        if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
         if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
         prop._kineticIslandPeers = null;
         if (prop._neighbors) prop._neighbors.length = 0;
@@ -1832,12 +1829,6 @@ export function releaseWorldProp(prop) {
     }
     if (list.indexOf(prop) === -1) list.push(prop);
 }
-export function clearWorldPropPools() {
-    pools.clear();
-}
-export function getWorldPropPoolSize(type) {
-    return pools.get(type)?.length ?? 0;
-}
 export function applyCrossPinwheelFootprint(prop, length, thickness) {
     const halfL = length / 2;
     const halfT = thickness / 2;
@@ -1847,7 +1838,7 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     prop.crossLength = length;
     prop.crossThickness = thickness;
     invalidateBroadphaseBounds(prop);
-    if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
+    if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
 }
 /**
  * Asset-level fixed child visuals. These are render-only and never become

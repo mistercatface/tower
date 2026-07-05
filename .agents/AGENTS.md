@@ -5,6 +5,7 @@ These rules are project-scoped behavior constraints for all AI agents editing th
 ## 1. Test Decoupling & Stability
 
 - **KEEP TEST SPECIFIC CODE INSIDE THE TEST FOLDER. DO NOT PUT TEST CODE OUTSIDE THE TEST FOLDER.**
+- **Consolidate Mocks**: Reuse `tests/harness/kineticTickHarness.js`, `kineticSlabHarness.js`, `kineticContactHarness.js`, `worldPropHarness.js`, `wallSegmentHarness.js` — not inline mocks in test files.
 
 ## 2. Test Execution
 
