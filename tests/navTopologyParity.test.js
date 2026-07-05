@@ -6,6 +6,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import { stampRailWallsQuiet } from "../Libraries/Spatial/spatial.js";
+import { createRailStampTestState } from "./harness/stateFactories.js";
 
 
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
@@ -30,7 +31,7 @@ describe("nav topology parity", () => {
         grid.writeFloorCell(grid.idx(4, 4), FLOOR_CELL_KIND.Belt, 0);
         grid.writeFloorCell(grid.idx(5, 4), FLOOR_CELL_KIND.Belt, 0);
         grid.writeFloorCell(grid.idx(7, 7), FLOOR_CELL_KIND.Belt, 1);
-        stampRailWallsQuiet({ obstacleGrid: grid, worldSurfaces: { settings: { maxWallHeightLevel: 4 } } }, [{ idx: grid.idx(3, 5), side: 0, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(createRailStampTestState(grid), [{ idx: grid.idx(3, 5), side: 0, heightLevel: 1, thicknessLevel: 1 }]);
 
         const navigation = await createWorkerNavigation(grid);
         await navigation.awaitWorkerNavReady();

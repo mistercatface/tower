@@ -5,9 +5,7 @@ import { TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
 import { TILE_WORKER_MESSAGE } from "../Libraries/WorldSurface/worldSurface.js";
 import { TileSurfaceWorkerClient, EMPTY_TILE_BAKE_STATS } from "../Libraries/WorldSurface/worldSurface.js";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
-function createMockWorker() {
-    return { onmessage: null, onerror: null, postMessage() {}, terminate() {} };
-}
+import { createMockWorker } from "./harness/mockWorkerHarness.js";
 function createTestClient() {
     const posts = [];
     const pool = new PromiseWorkerPoolHost("fake-url", { poolSize: 1, createWorker: () => createMockWorker(), onJobComplete: () => {} });

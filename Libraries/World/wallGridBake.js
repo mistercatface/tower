@@ -171,7 +171,7 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const inward = railWallInwardNormal(edge);
     railWallSideEndpoints(grid, idx, edge, 0, sP1, sP2);
     const base = recordIndex * RAIL_BOX_STRIDE;
-    data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, cols, gridSettings.minCellsPerChunk);
+    data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, grid, gridSettings.minCellsPerChunk);
     data[base + RAIL_BOX.gridIdx] = idx;
     data[base + RAIL_BOX.gridSide] = edge;
     data[base + RAIL_BOX.minX] = fp.minX;

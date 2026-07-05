@@ -2,16 +2,14 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
+import { createNavWalkableTestState } from "./harness/stateFactories.js";
 import { getNavWalkableCellIndex, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, isNavWalkableAt, isNavWalkableCell } from "../Libraries/Navigation/navigation.js";
-import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
+import { terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Libraries/Spatial/spatial.js";
 async function createWalkableCellsTestState(config) {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, config.boundsCols * 16, config.boundsRows * 16);
-    const navigation = await createWorkerNavigation(grid);
-    return { obstacleGrid: grid, editor: { cavernConfig: config }, sandbox: {}, nav: navigation };
+    return createNavWalkableTestState(config);
 }
 describe("walkableCells", () => {
     it("getNavWalkableCellIndex skips blocked grid cells inside bounds", async () => {
@@ -106,7 +104,7 @@ describe("walkableCells", () => {
             worldIdxAtCell(grid, 3, 3),
         ];
         const excludeIndices = new Set([worldIdxAtCell(grid, 2, 2)]);
-        const picked = pickWalkableCell(cells, 8, excludeIndices, () => 0.9);
+        const picked = pickWalkableCell(cells, excludeIndices, () => 0.9);
         assert.equal(picked, worldIdxAtCell(grid, 3, 3));
     });
     it("pickNavWalkableCell returns null when every cell is excluded", async () => {

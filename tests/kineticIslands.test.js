@@ -7,9 +7,12 @@ import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Physics/physics.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
-import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Physics/physics.js";
+import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
+import { createKineticPairBuffer } from "./harness/kineticBufferHarness.js";
 import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticIntegrateHooks, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
+
+const pairBuffer = createKineticPairBuffer();
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 
@@ -49,8 +52,8 @@ describe("kinetic islands", () => {
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         snapshotKineticBodySlab(frame._activeKineticBodies);
-        gatherKineticCandidatePairs(frame, kineticPairBuffer);
-        assert.equal(kineticPairBuffer.count, 0);
+        gatherKineticCandidatePairs(frame, pairBuffer);
+        assert.equal(pairBuffer.count, 0);
     });
 
     it("unlinked chain still emits moving-body pairs", () => {
@@ -62,8 +65,8 @@ describe("kinetic islands", () => {
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         snapshotKineticBodySlab(frame._activeKineticBodies);
-        gatherKineticCandidatePairs(frame, kineticPairBuffer);
-        assert.equal(kineticPairBuffer.count, 2);
+        gatherKineticCandidatePairs(frame, pairBuffer);
+        assert.equal(pairBuffer.count, 2);
     });
 
     it("linked chain generates far fewer pairs than free balls for the same layout", () => {
@@ -76,8 +79,8 @@ describe("kinetic islands", () => {
         const linkedFrame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(linkedState.kinetic, linkedFrame._kineticBodies);
         snapshotKineticBodySlab(linkedFrame._activeKineticBodies);
-        gatherKineticCandidatePairs(linkedFrame, kineticPairBuffer);
-        const linkedPairs = kineticPairBuffer.count;
+        gatherKineticCandidatePairs(linkedFrame, pairBuffer);
+        const linkedPairs = pairBuffer.count;
 
         resetMockKineticCircleIds(100);
         const freeBodies = [];
@@ -86,8 +89,8 @@ describe("kinetic islands", () => {
         const freeFrame = setupKineticTestFrame(freeBodies);
         bakeKineticIslandPlan(freeState.kinetic, freeFrame._kineticBodies);
         snapshotKineticBodySlab(freeFrame._activeKineticBodies);
-        gatherKineticCandidatePairs(freeFrame, kineticPairBuffer);
-        assert.ok(linkedPairs < kineticPairBuffer.count);
+        gatherKineticCandidatePairs(freeFrame, pairBuffer);
+        assert.ok(linkedPairs < pairBuffer.count);
         assert.equal(linkedPairs, 0);
     });
 

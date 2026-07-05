@@ -9,6 +9,7 @@ const testsDir = path.join(root, "tests");
 const prodRoots = ["Apps", "Assets", "GameState", "Libraries", "Config", "Core"];
 
 const exportRe = /^export (?:async )?(?:function|const|class) (\w+)/gm;
+const forTestsNameRe = /ForTests?$/;
 const importNamedRe = /import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
 const importDefaultRe = /import\s+(\w+)\s+from\s*["']([^"']+)["']/g;
 const mockFnRe = /^function (mock\w+|createMock\w*)\s*\(/gm;
@@ -88,7 +89,12 @@ for (const file of allJs) {
 }
 
 const leaks = [];
+const forbiddenExports = [];
 for (const [symbol, defFiles] of exports) {
+    if (forTestsNameRe.test(symbol)) {
+        forbiddenExports.push({ symbol, defFiles });
+        continue;
+    }
     const users = importRecords.filter((r) => !r.default && r.name === symbol);
     if (users.length === 0) continue;
     const testUsers = users.filter((u) => isTestFile(u.file));
@@ -107,6 +113,14 @@ for (const file of walk(testsDir, (p) => p.endsWith(".test.js"))) {
 }
 
 let failed = false;
+if (forbiddenExports.length) {
+    failed = true;
+    console.error("Forbidden ForTests export names in Libraries/:\n");
+    for (const row of forbiddenExports.sort((a, b) => a.symbol.localeCompare(b.symbol))) {
+        console.error(`  ${row.symbol}  (${row.defFiles.join(", ")})`);
+    }
+    console.error("");
+}
 if (leaks.length) {
     failed = true;
     console.error("Test-only library exports (imported from tests/, never from production):\n");
@@ -130,5 +144,5 @@ if (!failed) {
     console.log("audit-test-leaks: OK");
     process.exit(0);
 }
-console.error(`audit-test-leaks: ${leaks.length} export leak(s), ${inlineMocks.length} inline mock(s)`);
+console.error(`audit-test-leaks: ${forbiddenExports.length} forbidden name(s), ${leaks.length} export leak(s), ${inlineMocks.length} inline mock(s)`);
 process.exit(1);

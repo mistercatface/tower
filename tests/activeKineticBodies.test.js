@@ -2,48 +2,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
-import { CircleShape } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { mockKineticBody, mockCircleProp } from "./harness/kineticTickHarness.js";
+import { createKineticAdmitTestState } from "./harness/stateFactories.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
-let mockPhysId = 0;
-function mockKineticBody(isSleeping = false) {
-    const radius = 10;
-    return {
-        x: 0,
-        y: 0,
-        radius,
-        isSleeping,
-        isDead: false,
-        strategy: { isKinetic: true },
-        _sleepFrames: 0,
-        _physId: mockPhysId++,
-        mass: radius,
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        shape: new CircleShape(radius),
-    };
-}
-function mockCircleProp(x, y, radius) {
-    return {
-        id: 1,
-        x,
-        y,
-        radius,
-        mass: radius,
-        isSleeping: false,
-        isDead: false,
-        strategy: { isKinetic: true },
-        get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
-        },
-        shape: new CircleShape(radius),
-    };
-}
 const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
-const mockState = { entityRegistry: { membershipGen: 1 }, kinetic: createKineticSession() };
+const mockState = createKineticAdmitTestState();
 describe("active kinetic bodies", () => {
     it("syncActiveKineticBodies keeps only awake bodies", () => {
         const frame = new KineticSpatialFrame(50);

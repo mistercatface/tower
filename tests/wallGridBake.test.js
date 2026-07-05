@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { collectRailWallBoxesInAabb, RAIL_BOX_STRIDE } from "../Libraries/World/wallGridBake.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
-import { makeTestObstacleGrid, stampRailWallEdge } from "./losShadowHarness.js";
+import { makeTestObstacleGrid, stampRailWallEdge } from "./harness/losShadowHarness.js";
 
 const TEST_BOUNDS = { minX: -1024, minY: -1024, maxX: 1024, maxY: 1024 };
 

@@ -381,8 +381,9 @@ function chunkKeyAxis0(key) {
 function chunkKeyAxis1(key) {
     return unzigzagChunk(key % CHUNK_KEY_STRIDE);
 }
-export function cellIdxToChunkKey(idx, gridCols, cellsPerChunk) {
-    return packChunkKey(cellToChunkCoord(idx % gridCols, cellsPerChunk), cellToChunkCoord((idx / gridCols) | 0, cellsPerChunk));
+export function cellIdxToChunkKey(idx, grid, cellsPerChunk) {
+    const cols = neighborGridDims(grid).cols;
+    return packChunkKey(cellToChunkCoord(idx % cols, cellsPerChunk), cellToChunkCoord((idx / cols) | 0, cellsPerChunk));
 }
 export function forEachChunkKeyInCellBounds(cellBounds, cellsPerChunk, fn) {
     if (!cellsPerChunk || cellsPerChunk <= 0) return;
@@ -1591,7 +1592,7 @@ export class SurfaceMaterialStore {
     }
 }
 export function resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) {
-    return resolveChunkSurfaceProfileIdAtKey(grid, cellIdxToChunkKey(idx, grid.cols, cellsPerChunk), baseProfileId);
+    return resolveChunkSurfaceProfileIdAtKey(grid, cellIdxToChunkKey(idx, grid, cellsPerChunk), baseProfileId);
 }
 export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
     if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunkAtKey(a) ?? baseProfileId;
@@ -3286,11 +3287,11 @@ export function clearFloorCellNavEdit(state, idx) {
 }
 export const DEFAULT_WALL_THRESHOLD = 5;
 export function fillRandomGrid(cols, rows, fillChance, out) {
-    const grid = out ?? new Uint8Array(cols * rows);
-    for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < fillChance ? 1 : 0;
-    return grid;
+    const cells = out ?? new Uint8Array(cols * rows);
+    for (let i = 0; i < cells.length; i++) cells[i] = Math.random() < fillChance ? 1 : 0;
+    return cells;
 }
-export function runCellularAutomata(cols, rows, grid, { iterations, wallThreshold = DEFAULT_WALL_THRESHOLD, scratch }) {
+export function runCellularAutomata(cols, rows, cells, { iterations, wallThreshold = DEFAULT_WALL_THRESHOLD, scratch }) {
     let next = scratch ?? new Uint8Array(cols * rows);
     for (let iter = 0; iter < iterations; iter++) {
         for (let r = 0; r < rows; r++)
@@ -3301,26 +3302,26 @@ export function runCellularAutomata(cols, rows, grid, { iterations, wallThreshol
                         const nr = r + dr;
                         const nc = c + dc;
                         if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                            if (grid[nr * cols + nc] === 1) wallsCount++;
+                            if (cells[nr * cols + nc] === 1) wallsCount++;
                         } else wallsCount++;
                     }
                 next[r * cols + c] = wallsCount >= wallThreshold ? 1 : 0;
             }
-        const temp = grid;
-        grid = next;
+        const temp = cells;
+        cells = next;
         next = temp;
     }
-    return grid;
+    return cells;
 }
 export function generateCellularAutomataGrid(cols, rows, { fillChance, iterations, wallThreshold = DEFAULT_WALL_THRESHOLD }) {
-    let grid = fillRandomGrid(cols, rows, fillChance);
-    return runCellularAutomata(cols, rows, grid, { iterations, wallThreshold, scratch: new Uint8Array(cols * rows) });
+    let cells = fillRandomGrid(cols, rows, fillChance);
+    return runCellularAutomata(cols, rows, cells, { iterations, wallThreshold, scratch: new Uint8Array(cols * rows) });
 }
 export function fillRandomBuffer(strideCols, cellCount, fillChance, out) {
     return fillRandomGrid(strideCols, cellCount / strideCols, fillChance, out);
 }
-export function runCellularAutomataBuffer(strideCols, cellCount, grid, options) {
-    return runCellularAutomata(strideCols, cellCount / strideCols, grid, options);
+export function runCellularAutomataBuffer(strideCols, cellCount, cells, options) {
+    return runCellularAutomata(strideCols, cellCount / strideCols, cells, options);
 }
 function clearCavernOccupancyBoundaryStrip(cells, cols, rows, side, stripRows) {
     const depth = Math.max(1, Math.round(stripRows));

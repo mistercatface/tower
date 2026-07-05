@@ -2,12 +2,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, checkEntityPairCollision, circleCircleContact, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
-import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Physics/physics.js";
+import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
+import { createKineticPairBuffer } from "./harness/kineticBufferHarness.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
+const kineticPairBuffer = createKineticPairBuffer();
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
     setCirclePropRadius(prop, 7);

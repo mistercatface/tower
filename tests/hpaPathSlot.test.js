@@ -3,7 +3,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { worldIdxAtCell } from "./harness/testGridUtils.js";
+import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 
 async function createGridWithNav() {
@@ -12,13 +12,7 @@ async function createGridWithNav() {
     const navigation = await createWorkerNavigation(grid);
     return { grid, navTopology: navigation.topology, navigation };
 }
-function mockWorker(path, grid) {
-    return {
-        pathIdx(_slot, i) {
-            return worldIdxAtCell(grid, path[i].col, path[i].row);
-        },
-    };
-}
+
 describe("hpaPathSlot", () => {
     it("findSabPathProgressIdx uses navTopology for waypoint canStep checks", async () => {
         const { grid, navTopology, navigation } = await createGridWithNav();
@@ -26,7 +20,7 @@ describe("hpaPathSlot", () => {
             { col: 4, row: 4 },
             { col: 5, row: 4 },
         ];
-        const worker = mockWorker(path, grid);
+        const worker = mockHpaPathWorker(path, grid);
         const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
         const idx = findSabPathProgressIdx(start.x, start.y, worker, 0, path.length, grid, navTopology);
         assert.ok(idx >= 1);
@@ -39,7 +33,7 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 4 },
             { col: 6, row: 4 },
         ];
-        const worker = mockWorker(path, grid);
+        const worker = mockHpaPathWorker(path, grid);
         const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
         const target = grid.gridToWorldByIdx(6 + 4 * grid.cols);
         const steering = computeSabPathSteering({ x: start.x, y: start.y }, worker, 0, path.length, target.x, target.y, grid, navTopology, {
@@ -58,7 +52,7 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 4 },
             { col: 5, row: 5 },
         ];
-        const worker = mockWorker(path, grid);
+        const worker = mockHpaPathWorker(path, grid);
         const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
         const corner = grid.gridToWorldByIdx(5 + 4 * grid.cols);
         const target = grid.gridToWorldByIdx(5 + 5 * grid.cols);

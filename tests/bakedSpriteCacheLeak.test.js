@@ -6,6 +6,7 @@ import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
+import { createSurfaceBakeTestState } from "./harness/stateFactories.js";
 
 // Ensure global ImageBitmap shim exists for environment
 if (typeof globalThis.ImageBitmap === "undefined") {
@@ -107,17 +108,7 @@ describe("WorldSurfaceEngine Leak Auditing", () => {
         };
 
         try {
-            const obstacleGrid = {
-                cols: 8,
-                rows: 8,
-                minX: 0,
-                minY: 0,
-                cellSize: 16,
-                collectStaticStructureZLevels: () => [0],
-                worldCol: () => 0,
-                worldRow: () => 0
-            };
-            const mockState = { obstacleGrid };
+            const mockState = createSurfaceBakeTestState();
 
             engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
 

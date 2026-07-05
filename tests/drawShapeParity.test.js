@@ -17,21 +17,7 @@ const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa", bottom: "#444", stroke: "#222" },
     world: { height: 10 },
 };
-function createMockCtx() {
-    const gradient = { addColorStop() {} };
-    return {
-        fillStyle: "",
-        strokeStyle: "",
-        lineWidth: 1,
-        createLinearGradient: () => gradient,
-        beginPath() {},
-        moveTo() {},
-        lineTo() {},
-        closePath() {},
-        fill() {},
-        stroke() {},
-    };
-}
+import { createMockDrawCtx } from "./mockCanvas2d.js";
 describe("draw shape parity", () => {
     it("hex block shares polygon sim and draw footprint with six vertices", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
@@ -74,7 +60,7 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        draw(createMockCtx(), prop, viewport);
+        draw(createMockDrawCtx(), prop, viewport);
         assert.equal(prop.shape.vertices[2], 12);
         assert.equal(prop.shape.vertices[5], 5);
     });

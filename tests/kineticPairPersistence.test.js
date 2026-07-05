@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
-import { persistedKineticPairBuffer } from "./harness/kineticPairHarness.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
@@ -26,7 +25,7 @@ describe("kinetic pair persistence", () => {
             const ax0 = a.x;
             runCollisionPipeline(tick, kineticPipelineStubs);
             assert.equal(tick.world.kinetic.kineticSolverStats.outerIterations, 3);
-            assert.equal(persistedKineticPairBuffer.count, 1);
+            assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 1);
             assert.ok(a.x !== ax0 || b.x !== 14);
             assert.ok(bodiesMatchKineticSlab(tick.frame._activeKineticBodies));
         });
@@ -80,7 +79,7 @@ describe("kinetic pair persistence", () => {
             assert.equal(stats.full, 1);
             assert.ok(substeps > 1);
             assert.equal(stats.refresh, substeps - 1);
-            assert.equal(persistedKineticPairBuffer.count, 1);
+            assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 1);
         });
     });
 });

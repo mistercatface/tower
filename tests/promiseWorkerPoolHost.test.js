@@ -2,25 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
 
-function createMockWorker() {
-    return {
-        onmessage: null,
-        onerror: null,
-        postMessage(message) {
-            queueMicrotask(() => {
-                this.onmessage?.({ data: { id: message.id, bitmaps: ["mock-bitmap"] } });
-            });
-        },
-        terminate() {},
-    };
-}
-
+import { createMockBitmapWorker } from "./harness/mockWorkerHarness.js";
 describe("PromiseWorkerPoolHost", () => {
     it("marks slots busy and reports completion by worker index", async () => {
         const completions = [];
         const pool = new PromiseWorkerPoolHost("fake-url", {
             poolSize: 2,
-            createWorker: () => createMockWorker(),
+            createWorker: () => createMockBitmapWorker(),
             onJobComplete: (workerIndex, result) => completions.push({ workerIndex, ...result }),
         });
         pool.ensureStarted();
@@ -41,7 +29,7 @@ describe("PromiseWorkerPoolHost", () => {
     it("forEachIdle skips busy workers", () => {
         const pool = new PromiseWorkerPoolHost("fake-url", {
             poolSize: 3,
-            createWorker: () => createMockWorker(),
+            createWorker: () => createMockBitmapWorker(),
         });
         pool.ensureStarted();
         pool.markBusy(1, { jobId: 1, tier: 0 });

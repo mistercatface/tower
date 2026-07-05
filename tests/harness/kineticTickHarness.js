@@ -1,6 +1,44 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape } from "../../Libraries/Physics/physics.js";
+let nextMockPhysId = 0;
+export function resetMockPhysId(next = 0) {
+    nextMockPhysId = next;
+}
+export function mockKineticBody(isSleeping = false) {
+    const radius = 10;
+    return {
+        x: 0,
+        y: 0,
+        radius,
+        isSleeping,
+        isDead: false,
+        strategy: { isKinetic: true },
+        _sleepFrames: 0,
+        _physId: nextMockPhysId++,
+        mass: radius,
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
+        shape: new CircleShape(radius),
+    };
+}
+export function mockCircleProp(x, y, radius) {
+    return {
+        id: 1,
+        x,
+        y,
+        radius,
+        mass: radius,
+        isSleeping: false,
+        isDead: false,
+        strategy: { isKinetic: true },
+        get momentOfInertia() {
+            return this.mass * this.radius * this.radius * 0.5;
+        },
+        shape: new CircleShape(radius),
+    };
+}
 export const noop = () => {};
 export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop, updatePropFrame: noop, updatePropSubstep: noop };
 export function kineticPhysicsHooks(overrides = {}) {

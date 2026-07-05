@@ -4,15 +4,7 @@ import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHos
 import { TILE_BAKE_TIER, TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 
-function createMockWorker() {
-    return {
-        onmessage: null,
-        onerror: null,
-        postMessage() {},
-        terminate() {},
-    };
-}
-
+import { createMockWorker } from "./harness/mockWorkerHarness.js";
 function createTestPool(poolSize) {
     return new PromiseWorkerPoolHost("fake-url", {
         poolSize,

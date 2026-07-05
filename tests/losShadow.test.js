@@ -7,7 +7,7 @@ import {  projectWorldPointToScreenInto  } from "../Libraries/Spatial/spatial.js
 import {  projectWallShadowQuadScreenInto, shadowGroundContactXY  } from "../Libraries/Spatial/spatial.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
-import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
+import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./harness/losShadowHarness.js";
 describe("projectWorldPointToScreenInto", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);

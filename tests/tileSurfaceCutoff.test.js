@@ -4,6 +4,7 @@ import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.
 import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey, WorldSurfaceEngine, TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 import { SurfaceSpatialMap } from "../Libraries/WorldSurface/worldSurface.js";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
+import { createSurfaceBakeTestState } from "./harness/stateFactories.js";
 globalThis.ImageBitmap = class ImageBitmap { close() {} };
 
 function createSurfaceSpace(overrides = {}) {
@@ -49,17 +50,7 @@ describe("world surface retry and cooldown", () => {
     it("handles worker bake failure, sets cooldown, and retries after expiration", async () => {
         const settings = createGameWorldSurfaceSettings();
         const engine = new WorldSurfaceEngine(settings);
-        const obstacleGrid = {
-            cols: 8,
-            rows: 8,
-            minX: 0,
-            minY: 0,
-            cellSize: 16,
-            collectStaticStructureZLevels: () => [0],
-            worldCol: () => 0,
-            worldRow: () => 0
-        };
-        const mockState = { obstacleGrid };
+        const mockState = createSurfaceBakeTestState();
         
         let shouldFail = true;
         let callCount = 0;

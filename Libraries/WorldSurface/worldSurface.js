@@ -982,7 +982,7 @@ export class WorldSurfaceEngine {
     }
     invalidateGridBounds(idx, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         const cols = obstacleGrid.cols;
-        const startKey = idx === null || idx === undefined ? packChunkKey(0, 0) : cellIdxToChunkKey(idx, cols, cellsPerChunk);
+        const startKey = idx === null || idx === undefined ? packChunkKey(0, 0) : cellIdxToChunkKey(idx, obstacleGrid, cellsPerChunk);
         const endKey = idx === null || idx === undefined ? packChunkKey(((cols - 1) / cellsPerChunk) | 0, ((obstacleGrid.rows - 1) / cellsPerChunk) | 0) : startKey;
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
         forEachChunkKeyInRange(startKey, endKey, (chunkKey) => {

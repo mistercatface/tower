@@ -2521,7 +2521,7 @@ const warmStartGen = new Int32Array(WARM_START_CACHE_SIZE);
 const warmStartJn = new Float32Array(WARM_START_CACHE_SIZE);
 const warmStartJt = new Float32Array(WARM_START_CACHE_SIZE);
 let warmStartGeneration = 1;
-export const kineticContactBuffer = {
+const kineticContactBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_CONTACTS),
     physIdB: new Int32Array(MAX_CONTACTS),
@@ -2912,13 +2912,16 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     const frame = tick.frame;
     const contacts = kineticContactBuffer;
     narrowPhaseKineticContacts(frame, pairs, contacts);
-    if (contacts.count === 0) return;
+    if (contacts.count === 0) return contacts;
     precomputeKineticContacts(frame, contacts);
     const restingCount = warmStartKineticContacts(contacts);
-    tick.world.kinetic.kineticContactStats = solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
+    const solveStats = solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
+    solveStats.contactCount = contacts.count;
+    tick.world.kinetic.kineticContactStats = solveStats;
     storeKineticWarmStartCache(contacts);
     applyKineticContactWake(contacts, frame);
     for (let i = 0; i < contacts.count; i++) sleepContactBuffer.add(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
+    return contacts;
 }
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
 export function classifyKineticPairTier(bodyA, bodyB) {
@@ -2941,12 +2944,9 @@ function createKineticPairBuffer() {
         },
     };
 }
-export const kineticPairBuffer = createKineticPairBuffer();
+const kineticPairBuffer = createKineticPairBuffer();
 const persistedKineticPairBuffer = createKineticPairBuffer();
-export function getPersistedKineticPairBufferForTests() {
-    return persistedKineticPairBuffer;
-}
-export function copyKineticPairBuffer(from, to) {
+function copyKineticPairBuffer(from, to) {
     to.count = from.count;
     for (let i = 0; i < from.count; i++) {
         to.physIdA[i] = from.physIdA[i];
@@ -3157,8 +3157,8 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = c
         }
         writebackActiveKineticBodySlab(activeBodies);
         refreshActiveKineticBodySlabPose(activeBodies);
-        tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations };
-    } else tick.world.kinetic.kineticSolverStats = { outerIterations: 0, maxIterations: kineticIterations };
+        tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations, pairCount: persistedKineticPairBuffer.count };
+    } else tick.world.kinetic.kineticSolverStats = { outerIterations: 0, maxIterations: kineticIterations, pairCount: 0 };
 }
 export function runKineticPhysics(tick, dt, hooks) {
     const world = tick.world;

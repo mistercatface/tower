@@ -78,3 +78,19 @@ export function createMockCanvas2d(width, height) {
         },
     };
 }
+
+export function createMockDrawCtx() {
+    const gradient = { addColorStop() {} };
+    return {
+        fillStyle: "",
+        strokeStyle: "",
+        lineWidth: 1,
+        createLinearGradient: () => gradient,
+        beginPath() {},
+        moveTo() {},
+        lineTo() {},
+        closePath() {},
+        fill() {},
+        stroke() {},
+    };
+}
