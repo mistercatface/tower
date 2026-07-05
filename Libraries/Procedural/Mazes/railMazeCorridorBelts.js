@@ -1,9 +1,10 @@
 import { addCorridorPathToOccupied, buildCorridorBeltsFromPaths } from "./railMazeCorridorFootprint.js";
 import { createSeededRng } from "../../Math/math.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
-import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
-import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
-import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
+import { CARDINAL_OFFSETS } from "../../Math/math.js";
+import { cellInRect, gridCellLayout, layoutAbsCellIndex, forEachCardinalNeighborIdx } from "../../Spatial/spatial.js";;
+import {  edgeMirrorSide, edgeNeighborIdx  } from "../../Spatial/spatial.js";
+import {  FloorBelt  } from "../../Spatial/spatial.js";
 import { gridSettings } from "../../../Config/world.js";
 import { stampRailWallsQuiet } from "../../Sandbox/gridWallEdit.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
@@ -11,7 +12,7 @@ import { cellBoundsAtIdx, unionCellBounds } from "../../DataStructures/CellRect.
 import { isNavWalkableAt } from "./walkableCells.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { createNavGraphViewFromTopology } from "../../Navigation/navGraph.js";
-import { gridSideFromCellIdxToNeighborIdx } from "../../Spatial/grid/FloorCell.js";
+import {  gridSideFromCellIdxToNeighborIdx  } from "../../Spatial/spatial.js";
 import { createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "./railMazeNavCorridorPath.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 const DEFAULT_CORRIDOR_COUNT = 150;

@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
-import { SpatialFrameCore } from "../Libraries/Spatial/world/SpatialFrameCore.js";
-import {
+import {  SpatialFrameCore  } from "../Libraries/Spatial/spatial.js";
+import { 
     commitWallCandidateBucket,
     createWallCandidateBucketSlab,
     invalidateWallCandidateBucketFrame,
     lookupWallCandidateBucket,
     resetWallCandidateBucketSlab,
     wallBucketKeyParts,
-} from "../Libraries/Spatial/world/wallCandidateBucketSlab.js";
+ } from "../Libraries/Spatial/spatial.js";
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 
 function stampBlockedCell(grid, col, row) {

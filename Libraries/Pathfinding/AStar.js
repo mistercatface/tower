@@ -1,5 +1,6 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS, manhattanDistanceIdx, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "../Math/math.js";
+import { manhattanDistanceIdx, octileDistanceIdx } from "../Spatial/spatial.js";;
 const STALE_F_EPSILON = 1e-4;
 export class SearchState {
     constructor(size) {

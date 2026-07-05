@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { FLOOR_CELL_KIND, FloorBelt } from "../Libraries/Spatial/grid/FloorCell.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import {  FLOOR_CELL_KIND, FloorBelt  } from "../Libraries/Spatial/spatial.js";
 
 describe("floor belt on/off cell", () => {
     it("isEntityOnFloorBelt matches body center cell only", () => {

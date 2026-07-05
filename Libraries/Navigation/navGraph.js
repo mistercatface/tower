@@ -1,7 +1,7 @@
-import { edgeNeighborIdx } from "../Spatial/grid/gridCellTopology.js";
-import { FloorBelt } from "../Spatial/grid/FloorCell.js";
-import { boundaryBlocksStepFrom } from "../Spatial/grid/boundaryOccupancy.js";
-import { cellInRect } from "../Spatial/grid/GridUtils.js";
+import {  edgeNeighborIdx  } from "../Spatial/spatial.js";
+import {  FloorBelt  } from "../Spatial/spatial.js";
+import {  boundaryBlocksStepFrom  } from "../Spatial/spatial.js";
+import {  cellInRect  } from "../Spatial/spatial.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "./NavTopology.js";
 /** @typedef {number} CellIdx */

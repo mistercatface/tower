@@ -8,11 +8,11 @@ import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Sa
 import { planRailMazeCorridorBelts, stampGlobalRailMazeBelts, stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/math.js";
-import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
-import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
-import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";
-import { cellInRect } from "../../../Libraries/Spatial/grid/GridUtils.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/grid/gridNavEpoch.js";
+import {  forEachObstacleGridCellInAabb  } from "../../../Libraries/Spatial/spatial.js";
+import {  setBoundary  } from "../../../Libraries/Spatial/spatial.js";
+import {  cellIsStaticWallAtIdx  } from "../../../Libraries/Spatial/spatial.js";
+import {  cellInRect  } from "../../../Libraries/Spatial/spatial.js";
+import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../../../Libraries/Spatial/spatial.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     MAP_GEN_KINDS,

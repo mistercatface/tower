@@ -1,5 +1,5 @@
 import { traceClosedFlatPolygon } from "../../Canvas/CanvasPath.js";
-import { resolveElevationAlpha } from "../../Spatial/elevation/RadialElevationProjection.js";
+import {  resolveElevationAlpha  } from "../../Spatial/spatial.js";
 let sFlatProjectedVerts = new Float32Array(8);
 function ensureFlatProjectedVertScratch(count) {
     if (sFlatProjectedVerts.length < count * 2) sFlatProjectedVerts = new Float32Array(count * 2);

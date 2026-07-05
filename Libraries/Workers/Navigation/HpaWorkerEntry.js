@@ -1,13 +1,13 @@
 import { FlatAbstractGraphSearch, FlatGridSearch, SearchState } from "../../Pathfinding/AStar.js";
 import { createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame } from "../../Pathfinding/navSimView.js";
-import { bindNavEdgePoolFromSab } from "../../Spatial/grid/navEdgePoolSab.js";
+import {  bindNavEdgePoolFromSab  } from "../../Spatial/spatial.js";
 import { HpaAbstractGraph, prepareHpaReplanPrep, HPA_LOCAL_MAX_LEN } from "../../Pathfinding/hpaReplan.js";
 import { buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph } from "../../Pathfinding/hpaRegionGraph.js";
 import { createNavLocalView, navTopologyFromSab } from "../../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyIntoArena } from "../../Navigation/NavTopology.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../DataStructures/CellKey.js";
-import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
+import {  FloorBelt  } from "../../Spatial/spatial.js";
 const CONVEYOR_AGAINST_FLOW_PENALTY = 20;
 const CONVEYOR_LATERAL_PENALTY = 5;
 const CONVEYOR_DIAGONAL_PENALTY = 8;

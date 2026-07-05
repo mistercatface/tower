@@ -1,6 +1,6 @@
 import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
-import { FloorBelt } from "../Spatial/grid/FloorCell.js";
-import { chunkRangeToCellBounds } from "../Spatial/grid/GridCoords.js";
+import {  FloorBelt  } from "../Spatial/spatial.js";
+import {  chunkRangeToCellBounds  } from "../Spatial/spatial.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 /**
  * Schedule one worker nav resync after grid edits (walls, belts, boundaries).

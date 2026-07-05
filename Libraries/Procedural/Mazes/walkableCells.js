@@ -1,8 +1,8 @@
-import { gridNavCacheKey, isNavTopologyReady } from "../../Spatial/grid/gridNavEpoch.js";
-import { cellInRect } from "../../Spatial/grid/GridUtils.js";
+import {  gridNavCacheKey, isNavTopologyReady  } from "../../Spatial/spatial.js";
+import {  cellInRect  } from "../../Spatial/spatial.js";
 import { isIdxInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { padCellIdxToGrid, padCellBoundsToGrid, forEachDenseCellInRect } from "../../DataStructures/CellRect.js";
-import { forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
+import {  forEachCardinalNeighborIdx  } from "../../Spatial/spatial.js";
 /** @typedef {{ flags: Uint8Array, cols: number, rows: number }} NavWalkableIndex */
 export function isNavWalkableAt(index, idx) {
     if (idx < 0 || idx >= index.flags.length) return false;

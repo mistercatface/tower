@@ -1,5 +1,5 @@
 import { aabbFromTwoPointsInto, createAabb, distanceSqToAabb } from "../../Math/math.js";
-import { projectWallShadowQuadScreenInto } from "../../Spatial/elevation/shadowProjection.js";
+import {  projectWallShadowQuadScreenInto  } from "../../Spatial/spatial.js";
 import { EDGE_STRIDE } from "./EdgeList.js";
 const sEdgeSegmentAabb = createAabb();
 function clampSegmentCoord(a, b, v) {

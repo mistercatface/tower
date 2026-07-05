@@ -20,7 +20,6 @@ import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
 import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
-import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/props.js";
 const catalog = {
     ball,
     flipper_left,
@@ -45,25 +44,4 @@ const catalog = {
     snake_shard,
     ...poolBalls,
 };
-function registerPropDrawRecipe(asset) {
-    if (asset.physics?.renderMode === "none") {
-        asset.drawRecipe = () => {};
-        return;
-    }
-    if (typeof asset.draw === "function") {
-        asset.drawRecipe = asset.draw;
-        return;
-    }
-    if (asset.primitive) {
-        const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
-        if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
-        asset.drawRecipe = builder(asset.visuals);
-        return;
-    }
-    throw new Error(`Asset "${asset.id}" must define draw or primitive`);
-}
-for (const asset of Object.values(catalog)) {
-    if (!asset.physics) throw new Error(`Asset "${asset.id}" must include physics`);
-    registerPropDrawRecipe(asset);
-}
 export default catalog;

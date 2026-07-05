@@ -957,3 +957,61 @@ export function mixHash4(a, b, c, d) {
     h = Math.imul(h ^ d, 0x9e3779b1);
     return h >>> 0;
 }
+
+// --- QUATERNION MATH ---
+export function multiplyQuat(a, b) {
+    return {
+        w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+        x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+        y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+        z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+    };
+}
+
+export function axisAngleQuat(ax, ay, az, angle) {
+    const half = angle * 0.5;
+    const s = Math.sin(half);
+    return { w: Math.cos(half), x: ax * s, y: ay * s, z: az * s };
+}
+
+export function normalizeQuat(q) {
+    const len = Math.hypot(q.w, q.x, q.y, q.z);
+    if (len < 1e-8) {
+        q.w = 1;
+        q.x = 0;
+        q.y = 0;
+        q.z = 0;
+        return q;
+    }
+    q.w /= len;
+    q.x /= len;
+    q.y /= len;
+    q.z /= len;
+    return q;
+}
+
+export function rotateVecByQuat(x, y, z, q) {
+    const ix = q.w * x + q.y * z - q.z * y;
+    const iy = q.w * y + q.z * x - q.x * z;
+    const iz = q.w * z + q.x * y - q.y * x;
+    const iw = -q.x * x - q.y * y - q.z * z;
+    return { x: ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y, y: iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z, z: iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x };
+}
+
+
+export const CARDINAL_OFFSETS = [
+    { dc: 0, dr: -1 },
+    { dc: 1, dr: 0 },
+    { dc: 0, dr: 1 },
+    { dc: -1, dr: 0 },
+];
+export const OCTILE_OFFSETS = [
+    { dc: 0, dr: -1, cost: 1 },
+    { dc: 1, dr: 0, cost: 1 },
+    { dc: 0, dr: 1, cost: 1 },
+    { dc: -1, dr: 0, cost: 1 },
+    { dc: 1, dr: -1, cost: Math.SQRT2 },
+    { dc: 1, dr: 1, cost: Math.SQRT2 },
+    { dc: -1, dr: 1, cost: Math.SQRT2 },
+    { dc: -1, dr: -1, cost: Math.SQRT2 },
+];

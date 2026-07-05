@@ -2,7 +2,7 @@ import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offsc
 import { blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase } from "../../Canvas/maskCompositor.js";
 import { traceWoundFlatQuad } from "../../Canvas/CanvasPath.js";
 import { centerReachAabbInto, createAabb } from "../../Math/math.js";
-import { collectExposedWallEdgesInAabb } from "../../Spatial/grid/gridCellTopology.js";
+import {  collectExposedWallEdgesInAabb  } from "../../Spatial/spatial.js";
 import { LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, LOS_SHADOW_OVERLAY_ALPHA, LOS_SHADOW_VISION_TILES_DEFAULT } from "./losShadowDefaults.js";
 import { forEachLosShadowQuadInRange } from "./losShadowEdges.js";
 import { collectRailWallShadowEdgesInAabb } from "./railWallShadowEdges.js";

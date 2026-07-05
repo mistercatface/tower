@@ -1,5 +1,5 @@
 import { bfsIndices } from "../DataStructures/gridBfs.js";
-import { forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx } from "../Spatial/grid/GridUtils.js";
+import {  forEachCardinalNeighborIdx, makeAdjacencyKey, octileDistanceIdx  } from "../Spatial/spatial.js";
 import { findNearestOpenCellIdx } from "./hpaReplan.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { snapshotWorldToGrid } from "./GridNavSnapshot.js";

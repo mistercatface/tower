@@ -2,7 +2,7 @@ import { normalizeXY } from "../Math/math.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";
-import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
+import {  computeCircleAimLineSegment, estimateRollingTravelDistance  } from "../Spatial/spatial.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";
 import propCatalog from "../../Assets/props/index.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */

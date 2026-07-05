@@ -5,7 +5,7 @@ import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setup
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Physics/physics.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Physics/physics.js";
-import { kineticPairBodiesAt } from "../Libraries/Physics/physics.js";
+;
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
@@ -42,9 +42,9 @@ describe("kinetic topology lifecycle", () => {
         const world = createTestWorld([a, b]);
         const frame = setupKineticTestFrame([a, b]);
         stampKineticPairGatherTopology(frame, world.kinetic);
-        assert.ok(kineticPairBodiesAt(frame, 0, 1));
+        assert.ok((kineticPairTopologyStale(frame) ? null : ((frame.entityGrid.entities[0]?._physId === 0 && frame.entityGrid.entities[1]?._physId === 1) ? { bodyA: frame.entityGrid.entities[0], bodyB: frame.entityGrid.entities[1] } : null)));
         frame.admitKineticProp(mockKineticCircle(40, 0, 10), world);
-        assert.equal(kineticPairBodiesAt(frame, 0, 1), null);
+        assert.equal((kineticPairTopologyStale(frame) ? null : ((frame.entityGrid.entities[0]?._physId === 0 && frame.entityGrid.entities[1]?._physId === 1) ? { bodyA: frame.entityGrid.entities[0], bodyB: frame.entityGrid.entities[1] } : null)), null);
     });
 
     it("contact side effects still fracture glass after topology bump", () => {
@@ -55,7 +55,7 @@ describe("kinetic topology lifecycle", () => {
         const tick = createKineticTestTick([glass, ball]);
         stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
         tick.frame.admitKineticProp(mockKineticCircle(40, 0, 10), tick.world);
-        assert.equal(kineticPairBodiesAt(tick.frame, glass._physId, ball._physId), null);
+        assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.frame.entityGrid.entities[glass._physId]?._physId === glass._physId && tick.frame.entityGrid.entities[ball._physId]?._physId === ball._physId) ? { bodyA: tick.frame.entityGrid.entities[glass._physId], bodyB: tick.frame.entityGrid.entities[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(tick.world.worldProps.filter((p) => p.type === "glass_pane").length > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
@@ -68,7 +68,7 @@ describe("kinetic topology lifecycle", () => {
         const tick = createKineticTestTick([crate, ball]);
         stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
         tick.frame.admitKineticProp(mockKineticCircle(40, 0, 10), tick.world);
-        assert.equal(kineticPairBodiesAt(tick.frame, crate._physId, ball._physId), null);
+        assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.frame.entityGrid.entities[crate._physId]?._physId === crate._physId && tick.frame.entityGrid.entities[ball._physId]?._physId === ball._physId) ? { bodyA: tick.frame.entityGrid.entities[crate._physId], bodyB: tick.frame.entityGrid.entities[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(tick.world.worldProps.length > 2);
     });

@@ -1,5 +1,5 @@
 import { circleIntersectsAabb, createAabb } from "../Math/math.js";
-import {
+import { 
     centeredGridFrameKey,
     createCenteredGridFrame,
     getCellBoundsInCenteredFrameInto,
@@ -8,7 +8,7 @@ import {
     setCenteredGridFrameCenter,
     worldColInCenteredFrame,
     worldRowInCenteredFrame,
-} from "../Spatial/grid/GridCoords.js";
+ } from "../Spatial/spatial.js";
 import { snapshotWorldCol, snapshotWorldRow } from "./GridNavSnapshot.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
 export class FlowFieldWindow {

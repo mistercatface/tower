@@ -1,6 +1,7 @@
 import { createAabb } from "../Math/math.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
-import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
+import { syncFloorTriggerAabb } from "../Props/props.js";
+import { processFloorShapes, syncFloorPropCollisionShape } from "../Spatial/spatial.js";;
 import { isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";
 import { runButtonTapLinks, syncButtonFlipperLinks, tickButtonSpawnerLinks } from "./floorEffects.js";
 const POINTER_HIT_PADDING = 4;

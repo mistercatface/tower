@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { segmentIntersectionPoint } from "../Libraries/Math/math.js";
 import { minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
-import { hasLineOfSight } from "../Libraries/Spatial/query/spatialQueries.js";
+import {  hasLineOfSight  } from "../Libraries/Spatial/spatial.js";
 function obstacleGridWithSegments(segments) {
     return {
         cellSize: 16,

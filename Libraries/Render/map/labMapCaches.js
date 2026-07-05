@@ -1,9 +1,9 @@
 import { fillCircle, strokeSegment, traceSegment } from "../../Canvas/CanvasPath.js";
 import { fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba } from "../../Canvas/imageDataBuffer.js";
 import { createOffscreenCanvas, resizeOffscreenCanvas } from "../../Canvas/offscreenCanvas.js";
-import { isRailWallEdge } from "../../Spatial/grid/CellEdgeStore.js";
-import { forEachCellEdge } from "../../Spatial/grid/gridCellTopology.js";
-import { gridNavCacheKey } from "../../Spatial/grid/gridNavEpoch.js";
+import {  isRailWallEdge  } from "../../Spatial/spatial.js";
+import {  forEachCellEdge  } from "../../Spatial/spatial.js";
+import {  gridNavCacheKey  } from "../../Spatial/spatial.js";
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
 const OVERVIEW_FLOOR_RGB = [12, 14, 18];

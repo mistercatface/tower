@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame } from "../Libraries/Spatial/grid/GridCoords.js";
+import {  createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame  } from "../Libraries/Spatial/spatial.js";
 import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx } from "../Libraries/Pathfinding/flowFieldWindow.js";
 import { FlowFieldWindow } from "../Libraries/Pathfinding/flowFieldWindow.js";
 import { FlowCacheManager } from "../Libraries/Pathfinding/FlowFieldGrid.js";

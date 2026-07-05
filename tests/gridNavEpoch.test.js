@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey, isNavTopologyReady } from "../Libraries/Spatial/grid/gridNavEpoch.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import {  GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey, isNavTopologyReady  } from "../Libraries/Spatial/spatial.js";
 
 describe("gridNavEpoch invalidation spine", () => {
     it("gridNavCacheKey folds all bump channels", () => {

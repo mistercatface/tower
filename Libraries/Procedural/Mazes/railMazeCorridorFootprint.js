@@ -1,5 +1,5 @@
-import { gridSideFromCellIdxToNeighborIdx, FloorBelt } from "../../Spatial/grid/FloorCell.js";
-import { edgeMirrorSide } from "../../Spatial/grid/gridCellTopology.js";
+import {  gridSideFromCellIdxToNeighborIdx, FloorBelt  } from "../../Spatial/spatial.js";
+import {  edgeMirrorSide  } from "../../Spatial/spatial.js";
 /** @typedef {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} CellIndexLayout */
 /** @typedef {{ idx: number, kind: number, facingIndex: number }} BakedFloorBelt */
 export function corridorPerpendicularOffsets(width) {

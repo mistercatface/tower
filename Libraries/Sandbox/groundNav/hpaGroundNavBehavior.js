@@ -4,7 +4,7 @@ import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplan.js";
 import { HpaNavSession } from "../../Pathfinding/navSession.js";
 import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/navSession.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
+import {  FloorBelt  } from "../../Spatial/spatial.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 export function createHpaGroundNavBehavior(state) {
     const propRuns = new Map();

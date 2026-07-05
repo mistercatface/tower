@@ -1,6 +1,6 @@
 import { collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE } from "../../World/wallGridBake.js";
 import { StrideFloatList } from "../../World/StrideFloatList.js";
-import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
+import {  isOutwardFaceTowardViewer  } from "../../Spatial/spatial.js";
 import { drawProjectedWallFaceScalars, drawProjectedRailWallCapFlat } from "./ProjectedWallDraw.js";
 import { storeWallGridDrawCache, wallGridDrawCacheHit } from "./StaticGridWallDraw.js";
 import { DRAW_KIND_RAIL } from "./VisibleDrawQueue.js";

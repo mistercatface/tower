@@ -1,4 +1,4 @@
-import { cellIsStaticWall, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
+import {  cellIsStaticWall, railWallEdgeAt  } from "../Spatial/spatial.js";
 import { getRailWallInfo } from "./gridWallEdit.js";
 export function createSandboxPlacementOrder(state) {
     let nextPlacementSeq = 1;

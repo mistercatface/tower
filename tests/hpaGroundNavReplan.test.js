@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { createNavState } from "../Libraries/Pathfinding/navSession.js";
 import { obstacleEpochReplanDue, obstacleReplanAllowed, idlePathReplanReason, idlePathReplanAllowed, trackNavStuck, offPathReplanDue, sandboxReplanReason, sandboxReplanAllowed, replanPriorityFor, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest } from "../Libraries/Pathfinding/hpaReplan.js";
 import { HpaNavSession } from "../Libraries/Pathfinding/navSession.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 describe("hpa ground nav replan policy", () => {
     it("obstacleEpochReplanDue when path topology lags grid", () => {

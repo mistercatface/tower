@@ -1,4 +1,4 @@
-import { FLOOR_CELL_KIND, FloorBelt } from "../Spatial/grid/FloorCell.js";
+import {  FLOOR_CELL_KIND, FloorBelt  } from "../Spatial/spatial.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";

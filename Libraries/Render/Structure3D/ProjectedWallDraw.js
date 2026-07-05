@@ -3,12 +3,12 @@
  * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
  */
 import { drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars } from "../../Canvas/AffineTexture.js";
-import { resolveElevationAlpha, projectWorldPointInto, projectWorldQuadInto } from "../../Spatial/elevation/RadialElevationProjection.js";
+import {  resolveElevationAlpha, projectWorldPointInto, projectWorldQuadInto  } from "../../Spatial/spatial.js";
 import { flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx, RAIL_BOX } from "../../World/wallGridBake.js";
 import { pointsAabbOverlapAabb, flatQuadOverlapAabb } from "../../Math/math.js";
 import { traceClosedFlatPolygon, traceFlatQuad } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { resolveWallSurfaceProfileId } from "../../Spatial/grid/SurfaceMaterialStore.js";
+import {  resolveWallSurfaceProfileId  } from "../../Spatial/spatial.js";
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sSubdivQuad = new Float32Array(8);

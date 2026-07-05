@@ -1,6 +1,7 @@
-import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { isRailWallEdge } from "../Spatial/grid/CellEdgeStore.js";
-import { cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCellTopology.js";
+import { computeWallBreakStrength } from "../Physics/physics.js";
+import {  cellInRect  } from "../Spatial/spatial.js";
+import {  isRailWallEdge  } from "../Spatial/spatial.js";
+import {  cellIsStaticWall, cellEdgeEndpointsIdx  } from "../Spatial/spatial.js";
 import { createDeferredGridWallCommit } from "./gridWallEdit.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
@@ -9,7 +10,7 @@ import { applyPropBoxFootprint } from "../Props/props.js";
 import { fracturePropOnImpact, spawnFractureShards } from "../Props/props.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
-import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";
+import {  resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId  } from "../Spatial/spatial.js";
 /** @typedef {{ kind: "voxel", idx: number } | { kind: "rail", idx: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
@@ -28,13 +29,7 @@ export function resolveWallDamageTarget(grid, segment) {
     }
     return null;
 }
-export function computeWallBreakStrength(preSpeed, approachDot, config) {
-    if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
-    const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
-    const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
-    const angleT = Math.min(1, -approachDot / preSpeed);
-    return speedT * angleT;
-}
+
 export function getGridWallDamageState(state) {
     return state.sandbox?.gridWallDamage ?? null;
 }

@@ -1,34 +1,8 @@
+
 import propCatalog from "../../Assets/props/index.js";
-import {
-    PolygonShape,
-    getEntityCollisionParts,
-    resolveBodyRadius,
-    CircleShape,
-    invalidateBroadphaseBounds,
-    kineticMassFromFootprint,
-    syncKineticRigidBody,
-    wakeKineticBody,
-    kineticDynamicSlab,
-    kineticPairBodyAt,
-    KINETIC_PAIR_TIER,
-    IDENTITY_ROLL_QUAT,
-} from "../Physics/physics.js";
-import {
-    transformPoint2DInto,
-    ensureFlatVerts,
-    quantizeAngleIndex,
-    scaleFlatVerts,
-    boxLocalFootprint,
-    convexFootprintHalfExtents,
-    vertCount,
-    quantizeAngle,
-    rotateXY,
-    polygonCentroid2D,
-    pointInPolygon,
-    polygonSignedArea2D,
-    closestPointOnLineSegment,
-    quantizeCardinalAngle,
-} from "../Math/math.js";
+import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
+import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT,  } from "../Physics/physics.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, stepCardinalFacing } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../Render/Props3D/SolidDraw.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
@@ -1767,8 +1741,8 @@ export function processKineticContactFractures(tick, contacts) {
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];
-        const bodyA = kineticPairBodyAt(tick.frame, physIdA);
-        const bodyB = kineticPairBodyAt(tick.frame, physIdB);
+        const bodyA = (tick.frame.entityGrid.entities[physIdA]?._physId === physIdA ? tick.frame.entityGrid.entities[physIdA] : null);
+        const bodyB = (tick.frame.entityGrid.entities[physIdB]?._physId === physIdB ? tick.frame.entityGrid.entities[physIdB] : null);
         if (!bodyA || !bodyB) continue;
         const nx = contacts.dynamic.nx[i];
         const ny = contacts.dynamic.ny[i];
@@ -2100,3 +2074,92 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
     }
     return radius;
 }
+
+// --- MERGED FROM gridFloorProp.js ---
+export function syncFloorTriggerAabb(prop) {
+    const shape = prop.shape;
+    if (shape.type === "Polygon") {
+        const span = convexFootprintHalfExtents(shape.vertices);
+        centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, span.x, span.y, neighborQueryPadFor(prop));
+        return;
+    }
+    const radius = shape.radius ?? prop.radius;
+    centerHalfExtentsAabbInto(prop.aabb, prop.x, prop.y, radius, radius, neighborQueryPadFor(prop));
+}
+export function floorCircleRadius(prop) {
+    return prop.shape?.radius ?? prop.radius;
+}
+export function readFloorPropHalfExtents(prop) {
+    const shape = prop.shape;
+    if (shape.type === "Polygon") {
+        const span = convexFootprintHalfExtents(shape.vertices);
+        return { halfWidth: span.x, halfHeight: span.y };
+    }
+    if (shape.type === "Circle") return { halfWidth: shape.radius, halfHeight: shape.radius };
+    throw new Error("readFloorPropHalfExtents requires a circle or polygon shape");
+}
+export function floorShapeHasLiveOccupant(registry, floorShape) {
+    for (const entityId of floorShape._occupants) {
+        const entity = registry.get(entityId);
+        if (entity && !entity.isDead) return true;
+    }
+    return false;
+}
+export function initFloorTriggerProp(prop) {
+    prop._occupants = new Set();
+    prop._nextOccupants = new Set();
+    prop.triggers = prop.strategy.floorTriggers.map((trigger) => ({ ...trigger }));
+    prop.powered = prop.strategy.powered !== false;
+    prop.aabb = createAabb();
+    syncFloorPropCollisionShape(prop);
+    syncFloorTriggerAabb(prop);
+}
+export function resizeFloorPropHalfExtents(prop, halfWidth, halfHeight) {
+    prop.shape = new PolygonShape(boxLocalFootprint(halfWidth, halfHeight));
+    prop.radius = prop.shape.getBoundingRadius();
+    syncFloorTriggerAabb(prop);
+}
+export function obstacleGridCellHalfExtents(obstacleGrid) {
+    const half = obstacleGrid.cellHalfSize;
+    return { halfWidth: half, halfHeight: half };
+}
+export function anchorFloorPropToObstacleGrid(prop, obstacleGrid, worldX, worldY) {
+    const idx = obstacleGrid.worldToIdx(worldX, worldY);
+    prop.gridIdx = idx;
+    prop.x = obstacleGrid.gridCenterXByIdx(idx);
+    prop.y = obstacleGrid.gridCenterYByIdx(idx);
+    const { halfWidth, halfHeight } = obstacleGridCellHalfExtents(obstacleGrid);
+    resizeFloorPropHalfExtents(prop, halfWidth, halfHeight);
+}
+export function rotateCardinalFloorProp(prop, steps = 1) {
+    prop.facing = stepCardinalFacing(prop.facing ?? 0, steps);
+}
+export function findGridAnchoredFloorPropAtIdx(worldProps, idx, exceptPropId = -1) {
+    return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridIdx === idx);
+}
+
+export function registerPropDrawRecipe(asset) {
+    if (asset.physics?.renderMode === "none") {
+        asset.drawRecipe = () => {};
+        return;
+    }
+    if (typeof asset.draw === "function") {
+        asset.drawRecipe = asset.draw;
+        return;
+    }
+    if (asset.primitive) {
+        const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
+        if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
+        asset.drawRecipe = builder(asset.visuals);
+        return;
+    }
+    throw new Error(`Asset "${asset.id}" must define draw or primitive`);
+}
+export function registerAllPropDrawRecipes() {
+    for (const asset of Object.values(propCatalog)) {
+        if (!asset.physics) throw new Error(`Asset "${asset.id}" must include physics`);
+        registerPropDrawRecipe(asset);
+    }
+}
+Promise.resolve().then(registerAllPropDrawRecipes);
+

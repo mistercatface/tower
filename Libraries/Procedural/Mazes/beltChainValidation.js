@@ -1,6 +1,7 @@
-import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
-import { CARDINAL_OFFSETS, layoutAbsCellIndex } from "../../Spatial/grid/GridUtils.js";
-import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";
+import {  FloorBelt  } from "../../Spatial/spatial.js";
+import { CARDINAL_OFFSETS } from "../../Math/math.js";
+import { layoutAbsCellIndex } from "../../Spatial/spatial.js";;
+import {  edgeMirrorSide, edgeNeighborIdx  } from "../../Spatial/spatial.js";
 /** @param {{ idx: number, kind: number, facingIndex: number }[]} belts @param {import("../../Spatial/grid/GridUtils.js").CellIndexLayout} layout */
 export function beltFootprintIndices(belts, layout) {
     /** @type {Set<import("../../Spatial/grid/GridUtils.js").LayoutCellIdx>} */

@@ -13,7 +13,7 @@ import { SurfaceSpatialMap } from "./SurfaceSpatialMap.js";
 import { createWallFaceAxes, wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawProjectedHorizontalChunkAt, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
-import { resolveChunkSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";
+import {  resolveChunkSurfaceProfileId  } from "../Spatial/spatial.js";
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 export class WorldSurfaceEngine {

@@ -1,4 +1,4 @@
-import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin } from "../Spatial/grid/GridCoords.js";
+import {  worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin  } from "../Spatial/spatial.js";
 /** @typedef {{ minX: number, minY: number, cellSize: number, cols: number, rows: number, key: string }} GridFrame */
 /** Stable id for obstacle-grid frame — resize or origin shift changes this. */
 export function gridNavFrameKey(grid) {

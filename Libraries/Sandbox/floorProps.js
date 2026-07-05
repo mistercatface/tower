@@ -1,4 +1,5 @@
-import { floorShapeHasLiveOccupant, processFloorShapes } from "../Spatial/zones/floorShapes.js";
+import { floorShapeHasLiveOccupant } from "../Props/props.js";
+import { processFloorShapes } from "../Spatial/spatial.js";
 import { tickFloorButtons } from "./floorButtons.js";
 import { runFloorEffect } from "./floorEffects.js";
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */

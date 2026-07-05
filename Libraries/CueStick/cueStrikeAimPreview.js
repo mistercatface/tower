@@ -1,4 +1,4 @@
-import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
+import {  computeCircleAimLineSegment, estimateRollingTravelDistance  } from "../Spatial/spatial.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { CUE_BALL_RESTITUTION } from "./cueStrikeCollision.js";
 /** Post-strike cue-ball speed from striker approach speed (equal-mass impulse + restitution). */

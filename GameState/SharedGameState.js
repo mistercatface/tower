@@ -4,7 +4,7 @@ import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";

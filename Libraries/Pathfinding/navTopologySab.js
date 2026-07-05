@@ -1,6 +1,7 @@
-import { CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
-import { cellInRect, OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
-import { diagonalStepOpen, getCardinalBit } from "../Spatial/grid/boundaryOccupancy.js";
+import {  CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset  } from "../Spatial/spatial.js";
+import { OCTILE_OFFSETS } from "../Math/math.js";
+import { cellInRect } from "../Spatial/spatial.js";;
+import {  diagonalStepOpen, getCardinalBit  } from "../Spatial/spatial.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;

@@ -10,8 +10,8 @@ import {
     recomputeBlockedFromGridFill,
 } from "../Pathfinding/navTopologySab.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
-import { boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../Spatial/grid/boundaryOccupancy.js";
-import { isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
+import {  boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto  } from "../Spatial/spatial.js";
+import {  isNavTopologyReady  } from "../Spatial/spatial.js";
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */

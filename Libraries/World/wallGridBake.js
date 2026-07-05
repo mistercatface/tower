@@ -1,7 +1,7 @@
-import { cellToChunkCoord, forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { cellInRect } from "../Spatial/grid/GridUtils.js";
-import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCellTopology.js";
-import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/grid/CellEdgeStore.js";
+import {  cellToChunkCoord, forEachObstacleGridCellInAabb  } from "../Spatial/spatial.js";
+import {  cellInRect  } from "../Spatial/spatial.js";
+import {  railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx  } from "../Spatial/spatial.js";
+import {  railWallCapLevel, railWallHeightPx, railWallThicknessPx  } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
 const sP1 = { x: 0, y: 0 };

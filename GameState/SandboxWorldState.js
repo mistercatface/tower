@@ -1,5 +1,5 @@
 import { SandboxEntityMetaStore } from "./sandboxEntityMeta.js";
-import { CellPropIndex } from "../Libraries/Spatial/indexes/CellPropIndex.js";
+import {  CellPropIndex  } from "../Libraries/Spatial/spatial.js";
 /** Sandbox playfield data — per-entity editor metadata. */
 export class SandboxWorldState {
     constructor() {

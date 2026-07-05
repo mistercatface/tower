@@ -1,4 +1,4 @@
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 
 export function makeTestObstacleGrid(cols, rows, cellSize = 16) {
     const grid = new WorldObstacleGrid(cellSize);

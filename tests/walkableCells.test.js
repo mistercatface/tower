@@ -4,9 +4,9 @@ import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
 import { collectWalkableCells, collectNavWalkableCells, createNavWalkableAccess, getNavWalkableCellIndex, getNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, pickRandomWalkableCell, isNavWalkableAt, isNavWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
+import {  GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 async function createWalkableCellsTestState(config) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, config.boundsCols * 16, config.boundsRows * 16);

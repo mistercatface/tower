@@ -14,7 +14,7 @@ import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Sandbox/mapGenBounds.js";
 import { tickFloorProps } from "../../Libraries/Sandbox/floorProps.js";
-import { FloorBelt } from "../../Libraries/Spatial/grid/FloorCell.js";
+import {  FloorBelt  } from "../../Libraries/Spatial/spatial.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandboxCameraTarget.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";

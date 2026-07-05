@@ -43,7 +43,7 @@ export function createNavState() {
     };
 }
 import { agentPose } from "../Agent/index.js";
-import { hasLineOfSight } from "../Spatial/query/spatialQueries.js";
+import {  hasLineOfSight  } from "../Spatial/spatial.js";
 import { resolveBodyRadius } from "../Physics/physics.js";
 const PATH_WAYPOINT_ARRIVAL_PX = 16;
 function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, grid, navTopology) {

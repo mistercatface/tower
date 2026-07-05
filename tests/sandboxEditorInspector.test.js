@@ -3,7 +3,7 @@ import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxSession } from "../Libraries/Sandbox/sandboxSession.js";
 import { createSandboxController } from "../Libraries/SandboxEditor/createSandboxController.js";
 import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";

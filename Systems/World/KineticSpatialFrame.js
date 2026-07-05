@@ -1,4 +1,4 @@
-import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
+import {  SpatialFrameCore  } from "../../Libraries/Spatial/spatial.js";
 import { wakeKineticBody } from "../../Libraries/Physics/physics.js";
 import { bumpKineticTopologyGeneration } from "../../Libraries/Physics/physics.js";
 import { getBroadphaseBounds, entityBroadphaseExtent } from "../../Libraries/Physics/physics.js";

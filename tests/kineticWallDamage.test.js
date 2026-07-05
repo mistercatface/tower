@@ -1,12 +1,13 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyPendingWallDamage, computeWallBreakStrength, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";
+import { computeWallBreakStrength } from "../Libraries/Physics/physics.js";
+import { applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";;
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
-import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
-import { cellIsStaticWall } from "../Libraries/Spatial/grid/gridCellTopology.js";
+import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
+import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";

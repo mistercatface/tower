@@ -3,7 +3,7 @@
  */
 import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../../World/wallGridBake.js";
 import { StrideFloatList } from "../../World/StrideFloatList.js";
-import { isOutwardFaceTowardViewer } from "../../Spatial/elevation/RadialElevationProjection.js";
+import {  isOutwardFaceTowardViewer  } from "../../Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "./ProjectedWallDraw.js";
 import { DRAW_KIND_VOXEL } from "./VisibleDrawQueue.js";
 const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: new StrideFloatList(VOXEL_FACE_STRIDE) };

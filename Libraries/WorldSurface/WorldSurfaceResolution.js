@@ -1,5 +1,5 @@
 import { drawImageQuadScalars } from "../Canvas/AffineTexture.js";
-import { projectWorldAabbCornersIntoFlat } from "../Spatial/elevation/RadialElevationProjection.js";
+import {  projectWorldAabbCornersIntoFlat  } from "../Spatial/spatial.js";
 const sProjectedChunkCorners = new Float32Array(8);
 /** @param {number} worldSpan @param {number} surfaceBakeScale */
 export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {

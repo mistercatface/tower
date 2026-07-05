@@ -2,9 +2,9 @@
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  * Elevated-chunk clip helpers live in ChunkDrawPass.js.
  */
-import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
+import {  forEachObstacleGridCellInAabb  } from "../Spatial/spatial.js";
 import { aabbWidth } from "../Math/math.js";
-import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
+import {  resolveCellWallHeightAtIdx  } from "../Spatial/spatial.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
 export function chunkHasBlockedCells(obstacleGrid, bounds) {

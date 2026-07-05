@@ -1,4 +1,4 @@
-import { cellEdgeSlotOffset } from "../Spatial/grid/CellEdgeStore.js";
+import {  cellEdgeSlotOffset  } from "../Spatial/spatial.js";
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
  * @param {import("./GridNavSnapshot.js").GridFrame} frame

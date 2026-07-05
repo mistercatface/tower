@@ -1,9 +1,9 @@
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/math.js";
-import { isCanonicalEdgeRepresentativeIdx } from "../Spatial/grid/gridCellTopology.js";
+import {  isCanonicalEdgeRepresentativeIdx  } from "../Spatial/spatial.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
-import { FloorBelt } from "../Spatial/grid/FloorCell.js";
+import {  FloorBelt  } from "../Spatial/spatial.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
-import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
+import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Spatial/spatial.js";
 import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
 import propCatalog from "../../Assets/props/index.js";
 import { applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";

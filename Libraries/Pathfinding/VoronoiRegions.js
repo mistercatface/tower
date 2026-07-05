@@ -1,5 +1,6 @@
 import { bfsColRowQueue, bfsIndices } from "../DataStructures/gridBfs.js";
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS, makeAdjacencyKey, forEachCardinalNeighbor, forEachCardinalNeighborIdx } from "../Spatial/grid/GridUtils.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "../Math/math.js";
+import { makeAdjacencyKey, forEachCardinalNeighbor, forEachCardinalNeighborIdx } from "../Spatial/spatial.js";;
 export class RegionNode {
     constructor(id, idx) {
         this.id = id;

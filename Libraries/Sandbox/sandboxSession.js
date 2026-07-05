@@ -3,8 +3,8 @@ import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
-import { FloorBelt } from "../Spatial/grid/FloorCell.js";
-import { findGridAnchoredFloorPropAtIdx } from "../Spatial/zones/floorShapes.js";
+import {  FloorBelt  } from "../Spatial/spatial.js";
+import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";;
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { unionCellBounds } from "../DataStructures/CellRect.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -20,7 +20,7 @@ import {
     setVoxelWallHeightAt,
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
-import { cellIsStaticWall, railWallEdgeAt } from "../Spatial/grid/gridCellTopology.js";
+import {  cellIsStaticWall, railWallEdgeAt  } from "../Spatial/spatial.js";
 import { createSandboxSelection } from "./sandboxSelection.js";
 import { selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";

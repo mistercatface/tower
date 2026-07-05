@@ -1,3 +1,4 @@
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat } from "../Math/math.js";
 import {
     distanceToAabb,
     rectCorners,
@@ -29,8 +30,6 @@ import {
     boxLocalFootprint,
 } from "../Math/math.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
-import { computeWallBreakStrength } from "../Sandbox/gridWallDamage.js";
-import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
 // --- MERGED FROM physicsDefaults.js ---
 // --- MERGED FROM physicsDefaults.js ---
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -2717,8 +2716,8 @@ function narrowPhaseCircleContact(pairs, pairIndex, contacts) {
 function narrowPhaseSatContact(spatialFrame, pairs, pairIndex, contacts) {
     const physIdA = pairs.physIdA[pairIndex];
     const physIdB = pairs.physIdB[pairIndex];
-    const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
-    const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
+    const bodyA = (spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null);
+    const bodyB = (spatialFrame.entityGrid.entities[physIdB]?._physId === physIdB ? spatialFrame.entityGrid.entities[physIdB] : null);
     if (!bodyA || !bodyB) return;
     const slab = kineticDynamicSlab;
     const collided = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
@@ -2859,8 +2858,8 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
 }
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
-        const bodyA = kineticPairBodyAt(spatialFrame, contacts.physIdA[i]);
-        const bodyB = kineticPairBodyAt(spatialFrame, contacts.physIdB[i]);
+        const bodyA = (spatialFrame.entityGrid.entities[contacts.physIdA[i]]?._physId === contacts.physIdA[i] ? spatialFrame.entityGrid.entities[contacts.physIdA[i]] : null);
+        const bodyB = (spatialFrame.entityGrid.entities[contacts.physIdB[i]]?._physId === contacts.physIdB[i] ? spatialFrame.entityGrid.entities[contacts.physIdB[i]] : null);
         if (!bodyA || !bodyB) continue;
         invalidateWallResolveCache(bodyA, bodyB);
         spatialFrame.scheduleKineticActivation(bodyA);
@@ -3063,27 +3062,12 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     for (let k = 0; k < seenCount; k++) seenPrimaryScratch[seenPrimaryScratchIds[k]] = 0;
     return added;
 }
-export function kineticPairBodyAt(spatialFrame, physId) {
-    const body = spatialFrame.entityGrid.entities[physId];
-    if (!body || body._physId !== physId) return null;
-    return body;
-}
-export function kineticPairBodiesAt(spatialFrame, physIdA, physIdB) {
-    if (kineticPairTopologyStale(spatialFrame)) return null;
-    return kineticContactBodiesAt(spatialFrame, physIdA, physIdB);
-}
-export function kineticContactBodiesAt(spatialFrame, physIdA, physIdB) {
-    const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
-    const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
-    if (!bodyA || !bodyB) return null;
-    return { bodyA, bodyB };
-}
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     pairs.reset();
     const slab = kineticDynamicSlab;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
-        const primary = kineticPairBodyAt(spatialFrame, physIdA);
+        const primary = (spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null);
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
@@ -4166,41 +4150,7 @@ export function circlePairContactPoint(centerAx, centerAy, radiusA, centerBx, ce
 // --- MERGED FROM rollingMotion.js ---
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
-export function multiplyQuat(a, b) {
-    return {
-        w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
-        x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-        y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-        z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-    };
-}
-export function axisAngleQuat(ax, ay, az, angle) {
-    const half = angle * 0.5;
-    const s = Math.sin(half);
-    return { w: Math.cos(half), x: ax * s, y: ay * s, z: az * s };
-}
-export function normalizeQuat(q) {
-    const len = Math.hypot(q.w, q.x, q.y, q.z);
-    if (len < 1e-8) {
-        q.w = 1;
-        q.x = 0;
-        q.y = 0;
-        q.z = 0;
-        return q;
-    }
-    q.w /= len;
-    q.x /= len;
-    q.y /= len;
-    q.z /= len;
-    return q;
-}
-export function rotateVecByQuat(x, y, z, q) {
-    const ix = q.w * x + q.y * z - q.z * y;
-    const iy = q.w * y + q.z * x - q.x * z;
-    const iz = q.w * z + q.x * y - q.y * x;
-    const iw = -q.x * x - q.y * y - q.z * z;
-    return { x: ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y, y: iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z, z: iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x };
-}
+
 export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL_QUAT) {
     const rotated = rotateVecByQuat(lx, ly, lz - radius, rollQuat);
     return { lx: rotated.x, ly: rotated.y, z: rotated.z + radius };
@@ -4297,4 +4247,66 @@ export function integratePropMotion(body, dtMs) {
     integrateRollOrientation(body, dtMs);
     body.angularVelocity = 0;
     applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
+}
+
+// --- MOVED FROM kineticRollActuator.js ---
+export function applyGroundRollDrive(prop, dtSec) {
+    const drive = prop._groundRollDrive;
+    if (!drive) return false;
+    if (drive.kind === "brake") return applyRollBrake(prop, dtSec, drive.accel);
+    applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
+    return true;
+}
+
+export function computeWallBreakStrength(preSpeed, approachDot, config) {
+    if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
+    const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
+    const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
+    const angleT = Math.min(1, -approachDot / preSpeed);
+    return speedT * angleT;
+}
+
+export function applyRollSpin(prop) {
+    if (!prop.strategy?.rolls) return;
+    const speed = Math.hypot(prop.vx, prop.vy);
+    prop.angularVelocity = (speed / (prop.radius || 8)) * 0.12;
+}
+function applyRollBrake(prop, dtSec, accel) {
+    const speed = Math.hypot(prop.vx, prop.vy);
+    if (speed <= 0) return false;
+    const decel = accel * dtSec * 2;
+    if (speed <= decel) {
+        prop.vx = 0;
+        prop.vy = 0;
+        prop.angularVelocity = 0;
+    } else {
+        prop.vx -= (prop.vx / speed) * decel;
+        prop.vy -= (prop.vy / speed) * decel;
+        applyRollSpin(prop);
+    }
+    wakeKineticBody(prop);
+    return true;
+}
+function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
+    const len = Math.hypot(dirX, dirY);
+    const dx = len > 0.001 ? dirX / len : 0;
+    const dy = len > 0.001 ? dirY / len : 0;
+    // Steering force: Desired Velocity - Current Velocity
+    const desiredVx = dx * maxSpeed;
+    const desiredVy = dy * maxSpeed;
+    const steerX = desiredVx - (prop.vx || 0);
+    const steerY = desiredVy - (prop.vy || 0);
+    const steerLen = Math.hypot(steerX, steerY);
+    if (steerLen > 0.001) {
+        const ax = (steerX / steerLen) * accel;
+        const ay = (steerY / steerLen) * accel;
+        applyKineticAcceleration(prop, ax, ay, dtSec);
+    }
+    const speed = Math.hypot(prop.vx, prop.vy);
+    if (speed > maxSpeed) {
+        prop.vx = (prop.vx / speed) * maxSpeed;
+        prop.vy = (prop.vy / speed) * maxSpeed;
+    }
+    applyRollSpin(prop);
+    wakeKineticBody(prop);
 }

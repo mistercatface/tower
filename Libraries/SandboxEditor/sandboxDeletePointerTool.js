@@ -1,6 +1,6 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
-import { FloorBelt } from "../Spatial/grid/FloorCell.js";
+import {  FloorBelt  } from "../Spatial/spatial.js";
 export function createSandboxDeletePointerTool(state, session) {
     return {
         isActive: () => true,

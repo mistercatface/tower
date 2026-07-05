@@ -1,4 +1,4 @@
-import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/grid/gridNavEpoch.js";
+import {  gridNavCacheKey, isNavTopologyReady  } from "../Spatial/spatial.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { FlowFieldWindow } from "./flowFieldWindow.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";

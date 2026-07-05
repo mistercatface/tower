@@ -1,4 +1,4 @@
-import {
+import { 
     extrudeLocalVertsInto,
     pointOnFrustumInto,
     radiusAtT,
@@ -9,7 +9,7 @@ import {
     createSideGradientAt,
     projectVertical,
     scaleAtHeight,
-} from "../../Spatial/elevation/RadialElevationProjection.js";
+ } from "../../Spatial/spatial.js";
 import { traceClosedFlatPolygon, traceFlatQuad, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 import { drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform } from "../../Canvas/AffineTexture.js";
 import { getEntityCollisionParts } from "../../Physics/physics.js";

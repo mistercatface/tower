@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { resolveChunkSurfaceProfileId } from "../Libraries/Spatial/grid/SurfaceMaterialStore.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import {  resolveChunkSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { setChunkSurfaceProfileRangeEdit } from "../Libraries/Sandbox/gridNavEdit.js";
 

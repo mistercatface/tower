@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
-import { gridNavCacheKey } from "../Libraries/Spatial/grid/gridNavEpoch.js";
+import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "../Libraries/Render/Structure3D/ProjectedWallDraw.js";
-import { resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Libraries/Spatial/grid/SurfaceMaterialStore.js";
+import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
 
 function createPathOnlyContext() {
     return {

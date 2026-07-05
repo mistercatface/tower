@@ -1,10 +1,10 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, FloorBelt } from "../Libraries/Spatial/grid/FloorCell.js";
+import {  FLOOR_CELL_KIND, FloorBelt  } from "../Libraries/Spatial/spatial.js";
 import { planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { isNavWalkableAt } from "../Libraries/Procedural/Mazes/walkableCells.js";
-import { layoutAbsCellIndex, undirectedPairIndex } from "../Libraries/Spatial/grid/GridUtils.js";
+import {  layoutAbsCellIndex, undirectedPairIndex  } from "../Libraries/Spatial/spatial.js";
 
 function undirectedEdgeIndex(aCol, aRow, bCol, bRow, layout) {
     const a = layoutAbsCellIndex(layout, aCol, aRow);
@@ -111,7 +111,7 @@ function collectCorridorPathPolylines(cells, neighborAt, layout) {
 import { createNavRuntime, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { gridSettings } from "../Config/world.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { getNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { stampGlobalRailWalls } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";

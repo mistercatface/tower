@@ -1,9 +1,9 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { FLOOR_CELL_KIND } from "../Libraries/Spatial/grid/FloorCell.js";
-import { isRailWallEdge } from '../Libraries/Spatial/grid/CellEdgeStore.js';
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
+import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import { bakeNavTopologyLocal } from "../Libraries/Navigation/NavTopology.js";
 import { navCanStep } from "../Libraries/Pathfinding/navTopologySab.js";

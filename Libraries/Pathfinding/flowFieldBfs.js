@@ -1,6 +1,6 @@
 import { flowCellBlocked } from "./flowFieldWindow.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./neighborGridLayout.js";
-import { OCTILE_OFFSETS } from "../Spatial/grid/GridUtils.js";
+import { OCTILE_OFFSETS } from "../Math/math.js";;
 /**
  * BFS flow-field integrated backward from the goal on reverse nav adjacency (octile predecessors).
  *
