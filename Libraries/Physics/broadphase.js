@@ -223,6 +223,14 @@ export function isRotatingEntity(entity) {
 export function isKinematicallyActive(entity) {
     return isMovingEntity(entity) || isRotatingEntity(entity);
 }
+export function isKinematicallyActiveSlab(physId) {
+    const slab = kineticDynamicSlab;
+    const vx = slab.vx[physId];
+    const vy = slab.vy[physId];
+    const w = slab.w[physId];
+    const { movingSpeedSq, rotatingSpeedRad } = kineticActivity();
+    return speedSqXY(vx, vy) > movingSpeedSq || w * w > rotatingSpeedRad * rotatingSpeedRad;
+}
 export function pairBroadphaseOverlap(a, b) {
     return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
 }
@@ -255,6 +263,9 @@ export function pairBroadphaseOverlapSnapshotted(a, b) {
 }
 export function shouldResolveKineticPair(a, b, overlaps) {
     return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
+}
+export function shouldResolveKineticPairSlab(physIdA, physIdB, overlaps) {
+    return overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
 }
 export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (primary === other) return false;

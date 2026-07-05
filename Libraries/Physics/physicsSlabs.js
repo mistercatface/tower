@@ -135,6 +135,9 @@ export const kineticStaticSlab = {
     invMass: new Float32Array(MAX_PHYS_BODIES),
     invI: new Float32Array(MAX_PHYS_BODIES),
     pinned: new Uint8Array(MAX_PHYS_BODIES),
+    entityId: new Int32Array(MAX_PHYS_BODIES),
+    restitution: new Float32Array(MAX_PHYS_BODIES),
+    friction: new Float32Array(MAX_PHYS_BODIES),
 };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
@@ -170,6 +173,9 @@ export function writeStaticKineticSlabSlot(body) {
     const moment = body.momentOfInertia;
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.pinned[physId] = bodyPinnedForContact(body) ? 1 : 0;
+    slab.entityId[physId] = body.id;
+    slab.restitution[physId] = body.strategy?.pairRestitution ?? -1;
+    slab.friction[physId] = body.strategy?.pairFriction ?? body.strategy?.wallPhysics?.friction ?? -1;
 }
 export function clearActiveKineticBodySlab() {
     const slab = kineticDynamicSlab;

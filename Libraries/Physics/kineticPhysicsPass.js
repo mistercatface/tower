@@ -214,6 +214,12 @@ export function shareKineticIsland(bodyA, bodyB) {
     if (bodyA._kineticIslandRoot !== bodyB._kineticIslandRoot) return false;
     return Boolean(bodyA._kineticIslandPeers);
 }
+export function shareKineticIslandSlab(physIdA, physIdB) {
+    const rootA = kineticDynamicSlab.islandRoot[physIdA];
+    const rootB = kineticDynamicSlab.islandRoot[physIdB];
+    if (rootA === -1 || rootB === -1) return false;
+    return rootA === rootB;
+}
 export function kineticIslandMembers(body) {
     return body._kineticIslandPeers ?? [body];
 }

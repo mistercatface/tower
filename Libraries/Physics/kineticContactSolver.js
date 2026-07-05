@@ -1,11 +1,11 @@
 import { collisionSettings } from "./physicsDefaults.js";
 import { invalidateWallResolveCache } from "./wallResolution.js";
 import { kineticPairTopologyStale, stampKineticPairGatherTopology } from "./kineticConstraintSolver.js";
-import { refreshActiveKineticBodySlabPose, allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./broadphase.js";
+import { refreshActiveKineticBodySlabPose, allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair, shouldResolveKineticPairSlab } from "./broadphase.js";
 import { kineticDynamicSlab, kineticStaticSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./physicsSlabs.js";
 import { COINCIDENT_CIRCLE_EPS, checkEntityPairCollisionAt, SAT_RESULT, SHAPE_TYPE_ID } from "./collisionMath.js";
 import { MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS, MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
-import { shareKineticIsland } from "./kineticPhysicsPass.js";
+import { shareKineticIsland, shareKineticIslandSlab } from "./kineticPhysicsPass.js";
 // --- MERGED FROM kineticContactSolver.js ---
 export const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_FEATURE_STRIDE = 1024;
@@ -483,27 +483,19 @@ export function copyKineticPairBuffer(from, to) {
         to.static.warmStartPairKey[i] = from.static.warmStartPairKey[i];
     }
 }
-function pairMaterialFriction(body) {
-    const pair = body.strategy?.pairFriction;
-    if (pair != null) return pair;
-    return body.strategy?.wallPhysics?.friction ?? null;
-}
-function kineticPairRestitution(bodyA, bodyB) {
-    const r1 = bodyA.strategy?.pairRestitution;
-    const r2 = bodyB.strategy?.pairRestitution;
-    if (r1 != null && r2 != null) return (r1 + r2) * 0.5;
-    return r1 ?? r2 ?? collisionSettings.restitution.kineticPair;
-}
-function kineticPairFriction(bodyA, bodyB) {
-    const f1 = pairMaterialFriction(bodyA);
-    const f2 = pairMaterialFriction(bodyB);
-    if (f1 != null && f2 != null) return Math.sqrt(f1 * f2);
-    return f1 ?? f2 ?? collisionSettings.pairFriction;
-}
-function writePairMaterial(pairs, index, bodyA, bodyB) {
-    pairs.static.restitution[index] = kineticPairRestitution(bodyA, bodyB);
-    pairs.static.friction[index] = kineticPairFriction(bodyA, bodyB);
-    pairs.static.warmStartPairKey[index] = bodyA.id < bodyB.id ? bodyA.id * PAIR_BODY_KEY_SCALE + bodyB.id : bodyB.id * PAIR_BODY_KEY_SCALE + bodyA.id;
+function writePairMaterial(pairs, index, physIdA, physIdB) {
+    const slab = kineticStaticSlab;
+    const r1 = slab.restitution[physIdA];
+    const r2 = slab.restitution[physIdB];
+    if (r1 !== -1 && r2 !== -1) pairs.static.restitution[index] = (r1 + r2) * 0.5;
+    else pairs.static.restitution[index] = r1 !== -1 ? r1 : r2 !== -1 ? r2 : collisionSettings.restitution.kineticPair;
+    const f1 = slab.friction[physIdA];
+    const f2 = slab.friction[physIdB];
+    if (f1 !== -1 && f2 !== -1) pairs.static.friction[index] = Math.sqrt(f1 * f2);
+    else pairs.static.friction[index] = f1 !== -1 ? f1 : f2 !== -1 ? f2 : collisionSettings.pairFriction;
+    const idA = slab.entityId[physIdA];
+    const idB = slab.entityId[physIdB];
+    pairs.static.warmStartPairKey[index] = idA < idB ? idA * PAIR_BODY_KEY_SCALE + idB : idB * PAIR_BODY_KEY_SCALE + idA;
 }
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
@@ -518,14 +510,11 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        const bodyA = kineticPairBodyAt(spatialFrame, physIdA);
-        const bodyB = kineticPairBodyAt(spatialFrame, physIdB);
-        if (!bodyA || !bodyB) continue;
-        if (shareKineticIsland(bodyA, bodyB)) continue;
+        if (shareKineticIslandSlab(physIdA, physIdB)) continue;
         const tier = pairs.static.tier[i];
         const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
         if (!overlaps) continue;
-        if (!shouldResolveKineticPair(bodyA, bodyB, overlaps)) continue;
+        if (!shouldResolveKineticPairSlab(physIdA, physIdB, overlaps)) continue;
         if (write !== i) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
@@ -568,7 +557,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
             pairs.static.tier[idx] = tier;
-            writePairMaterial(pairs, idx, primary, neighbor);
+            writePairMaterial(pairs, idx, physIdA, physIdB);
             keys.add(key);
             added++;
         }
@@ -609,7 +598,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
             pairs.static.tier[idx] = tier;
-            writePairMaterial(pairs, idx, primary, neighbor);
+            writePairMaterial(pairs, idx, physIdA, physIdB);
         }
     }
 }
