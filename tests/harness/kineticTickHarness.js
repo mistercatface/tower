@@ -1,63 +1,28 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape } from "../../Libraries/Physics/physics.js";
-
 export const noop = () => {};
-export const kineticPipelineStubs = {
-    resolveWalls: noop,
-    applyContactSideEffects: noop,
-    updatePropFrame: noop,
-    updatePropSubstep: noop,
-};
-
+export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop, updatePropFrame: noop, updatePropSubstep: noop };
 export function kineticPhysicsHooks(overrides = {}) {
     return { ...kineticPipelineStubs, ...overrides };
 }
-
 export function kineticIntegrateHooks(integrateFn) {
-    return kineticPhysicsHooks({
-        updatePropSubstep: (prop, subDt, frame) => integrateFn(prop, subDt, frame),
-    });
+    return kineticPhysicsHooks({ updatePropSubstep: (prop, subDt, frame) => integrateFn(prop, subDt, frame) });
 }
-
 let nextMockKineticCircleId = 1;
 let nextMockBallId = 1;
-
 export function resetMockKineticCircleIds(next = 1) {
     nextMockKineticCircleId = next;
 }
-
 export function resetMockBallIds(next = 1) {
     nextMockBallId = next;
 }
-
 export function mockBall(x, y, overrides = {}) {
-    return {
-        id: overrides.id ?? nextMockBallId++,
-        x,
-        y,
-        type: "ball",
-        strategy: { isKinetic: true },
-        shape: overrides.shape ?? new CircleShape(4),
-        ...overrides,
-    };
+    return { id: overrides.id ?? nextMockBallId++, x, y, type: "ball", strategy: { isKinetic: true }, shape: overrides.shape ?? new CircleShape(4), ...overrides };
 }
-
 export function mockRollingProp(overrides = {}) {
-    return {
-        id: 1,
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        angularVelocity: 0,
-        radius: 8,
-        isSleeping: false,
-        strategy: { rolls: true, friction: 0, isKinetic: true },
-        ...overrides,
-    };
+    return { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, isSleeping: false, strategy: { rolls: true, friction: 0, isKinetic: true }, ...overrides };
 }
-
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     const strategy = { isKinetic: true, ...options.strategy };
     if (options.pairFriction != null) strategy.pairFriction = options.pairFriction;
@@ -83,19 +48,16 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     if (options.isDead) body.isDead = true;
     body.currentState = options.currentState === true || options.currentState == null ? {} : options.currentState;
     body.needsWallCollision = () => (typeof options.needsWallCollision === "function" ? options.needsWallCollision() : (options.needsWallCollision ?? false));
-    if (options.dampedMotion) {
+    if (options.dampedMotion)
         body.update = function update(dt) {
             this.x += (this.vx ?? 0) * (dt / 1000);
             this.y += (this.vy ?? 0) * (dt / 1000);
             this.vx *= 0.02;
             this.vy *= 0.02;
         };
-    } else if (options.update) {
-        body.update = options.update;
-    }
+    else if (options.update) body.update = options.update;
     return body;
 }
-
 export function createKineticTestRegistry(liveProps) {
     return {
         membershipGen: 0,
@@ -114,17 +76,11 @@ export function createKineticTestRegistry(liveProps) {
         endMembershipBatch() {},
     };
 }
-
 export function createKineticTestWorld(initialProps, { constraints = [], constraintsDirty = false } = {}) {
     const worldProps = initialProps.slice();
     const liveProps = initialProps.slice();
-    return {
-        worldProps,
-        entityRegistry: createKineticTestRegistry(liveProps),
-        kinetic: createKineticSession({ constraints, constraintsDirty }),
-    };
+    return { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraints, constraintsDirty }) };
 }
-
 export function setupKineticTestFrame(bodies, cellSize = 50) {
     const frame = new KineticSpatialFrame(cellSize);
     frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
@@ -138,13 +94,11 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
     frame.syncActiveKineticBodies();
     return frame;
 }
-
 export function createKineticTestTick(initialProps, options = {}) {
     const world = createKineticTestWorld(initialProps, options);
     const frame = setupKineticTestFrame(initialProps, options.cellSize);
     return { frame, world };
 }
-
 export function attachKineticTestTickFromState(state, props, cellSize = state.obstacleGrid?.cellSize ?? 16) {
     const frame = new KineticSpatialFrame(cellSize);
     frame.resetFrame(state.obstacleGrid);
@@ -156,8 +110,5 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     frame._nextPhysId = props.length;
     snapshotKineticBodySlab(frame._kineticBodies);
     frame.syncActiveKineticBodies();
-    return {
-        frame,
-        world: { worldProps: state.worldProps, projectiles: state.projectiles, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox },
-    };
+    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
 }

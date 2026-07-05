@@ -4207,17 +4207,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 writeKineticBodySlabSnapshot(prop);
             }
         }
-        const projectiles = state.projectiles || [];
-        for (let i = 0; i < projectiles.length; i++) {
-            const proj = projectiles[i];
-            proj.ax = 0;
-            proj.ay = 0;
-            this.insertEntity(proj, physIdCounter++);
-            if (proj.strategy?.isKinetic) {
-                this._kineticBodies.push(proj);
-                writeKineticBodySlabSnapshot(proj);
-            }
-        }
         this._nextPhysId = physIdCounter;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;

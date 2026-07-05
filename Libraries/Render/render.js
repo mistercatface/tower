@@ -2692,51 +2692,6 @@ export class FloatingText {
     }
 }
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
-function drawProjectile(ctx, prop, viewport) {
-    const length = 1.0;
-    const width = 0.6;
-    let mainColor = "#00f0ff";
-    let glowColor = "rgba(0, 240, 255, 0.4)";
-    if (prop.faction === "charlie") {
-        mainColor = "#ffd700";
-        glowColor = "rgba(255, 215, 0, 0.5)";
-    } else if (prop.faction === "delta") {
-        mainColor = "#00ff88";
-        glowColor = "rgba(0, 255, 136, 0.5)";
-    } else if (prop.faction === "echo") {
-        mainColor = "#ff5500";
-        glowColor = "rgba(255, 85, 0, 0.5)";
-    }
-    ctx.save();
-    ctx.translate(prop.x, prop.y);
-    ctx.rotate(prop.facing ?? 0);
-    // Draw outer glowing capsule trail
-    ctx.beginPath();
-    ctx.ellipse(0, 0, length * 1.5, width * 2.5, 0, 0, Math.PI * 2);
-    const glowGrad = ctx.createLinearGradient(-length * 1.5, 0, length * 1.5, 0);
-    glowGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-    glowGrad.addColorStop(0.3, glowColor);
-    glowGrad.addColorStop(0.7, glowColor);
-    glowGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = glowGrad;
-    ctx.fill();
-    // Draw main laser capsule body
-    ctx.beginPath();
-    ctx.ellipse(0, 0, length, width, 0, 0, Math.PI * 2);
-    const bodyGrad = ctx.createLinearGradient(-length, 0, length, 0);
-    bodyGrad.addColorStop(0, "rgba(255, 255, 255, 0.2)");
-    bodyGrad.addColorStop(0.5, mainColor);
-    bodyGrad.addColorStop(0.8, mainColor);
-    bodyGrad.addColorStop(1, "#ffffff");
-    ctx.fillStyle = bodyGrad;
-    ctx.fill();
-    // Draw inner white-hot core
-    ctx.beginPath();
-    ctx.ellipse(length * 0.2, 0, length * 0.5, width * 0.4, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    ctx.restore();
-}
 const matchDebris = (p) => p.strategy?.renderMode === "debris";
 const DEBRIS_QUERY_OPTIONS = { filterId: "debris", match: matchDebris };
 const match3d = (p) => p.strategy?.renderMode === "3d";
@@ -2804,14 +2759,6 @@ export class WorldSceneRenderer {
         const face = this.wallFaceScratch;
         q.clear();
         this._appendVisible3dProps(state, viewport);
-        const projectiles = state.projectiles || [];
-        for (let i = 0; i < projectiles.length; i++) {
-            const proj = projectiles[i];
-            if (viewport.circleInBounds(proj.x, proj.y, proj.radius, "props")) {
-                const distSq = (proj.x - viewport.x) ** 2 + (proj.y - viewport.y) ** 2;
-                q.push(DRAW_KIND_PROP, 0, proj, distSq);
-            }
-        }
         const skipWalls = options.skipWalls === true;
         const skipWallCaps = options.skipWallCaps === true;
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
@@ -2836,10 +2783,6 @@ export class WorldSceneRenderer {
         const prevAlpha = ctx.globalAlpha;
         if (hasAlpha) ctx.globalAlpha = prevAlpha * prop.alpha;
         try {
-            if (prop._gunBullet) {
-                drawCachedPropSprite(ctx, prop, viewport, "projectile_bullet", drawProjectile);
-                return;
-            }
             const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
             const draw = propCatalog[renderKey]?.drawRecipe;
             if (!draw) return;
