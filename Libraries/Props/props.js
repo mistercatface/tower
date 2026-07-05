@@ -1,19 +1,62 @@
 import { findLiveWorldProp, addWorldPropToState, removeWorldPropFromState, addWorldPropsToState, findWorldPropAtInView, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, getConnectedComponentPath } from "../Physics/physics.js";
-import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, stepCardinalFacing, createAabb, normalizeXY } from "../Math/math.js";
-import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere, createPipeElbowPrimitive, appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
+import {
+    PolygonShape,
+    getEntityCollisionParts,
+    resolveBodyRadius,
+    CircleShape,
+    invalidateBroadphaseBounds,
+    kineticMassFromFootprint,
+    syncKineticRigidBody,
+    wakeKineticBody,
+    kineticDynamicSlab,
+    KINETIC_PAIR_TIER,
+    IDENTITY_ROLL_QUAT,
+    massFromBody,
+    addDistanceConstraint,
+    listKineticConstraints,
+    removeKineticConstraint,
+    getConnectedBodyIds,
+    getConnectedComponentPath,
+} from "../Physics/physics.js";
+import {
+    transformPoint2DInto,
+    ensureFlatVerts,
+    quantizeAngleIndex,
+    scaleFlatVerts,
+    boxLocalFootprint,
+    convexFootprintHalfExtents,
+    vertCount,
+    quantizeAngle,
+    rotateXY,
+    polygonCentroid2D,
+    pointInPolygon,
+    polygonSignedArea2D,
+    closestPointOnLineSegment,
+    quantizeCardinalAngle,
+    stepCardinalFacing,
+    createAabb,
+    normalizeXY,
+} from "../Math/math.js";
+import {
+    drawExtrudedConvexPolygon,
+    drawExtrudedCompoundPolygon,
+    drawSphere,
+    createPipeElbowPrimitive,
+    appendOverlayWireLink,
+    overlayAimSegment,
+    overlayCircleFillStroke,
+    overlayCircleStroke,
+    overlaySegment,
+} from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { processFloorShapes, syncFloorPropCollisionShape, computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { resolveSandboxFaction } from "../../GameState/sandboxEntityMeta.js";
+import { resolveSandboxFaction } from "../../GameState/SandboxWorldState.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
-import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
-
-
 // --- MERGED FROM propRenderDefaults.js ---
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
@@ -1403,31 +1446,36 @@ export function initFractureFootprint(prop) {
     if (!isChunkFracture(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
     applyChunkGeometryToProp(prop, bakeChunkOutline(flatVertsFromShape(prop)));
 }
-export function applyFractureGeometryToProp(prop, geometry) {
+function applyPropFractureGeometry(prop, geometry) {
+    if (geometry.collisionParts) {
+        prop.chunks = geometry.chunks;
+        prop.collisionParts = geometry.collisionParts;
+    } else {
+        prop.chunks = undefined;
+        prop.collisionParts = undefined;
+    }
     prop.footprintVertices = geometry.footprintVertices;
     prop.footprintArea = geometry.footprintArea;
     prop.radius = geometry.boundingRadius;
     prop.shape = new PolygonShape(geometry.footprintVertices);
-    prop.chunks = undefined;
-    prop.collisionParts = undefined;
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
 }
+export function applyFractureGeometryToProp(prop, geometry) {
+    applyPropFractureGeometry(prop, geometry);
+}
 export function applyChunkGeometryToProp(prop, geometry) {
-    prop.chunks = geometry.chunks;
-    prop.collisionParts = geometry.collisionParts;
-    prop.footprintVertices = geometry.footprintVertices;
-    prop.footprintArea = geometry.footprintArea;
-    prop.radius = geometry.boundingRadius;
-    prop.shape = new PolygonShape(geometry.footprintVertices);
-    invalidateBroadphaseBounds(prop);
-    syncKineticRigidBody(prop);
+    applyPropFractureGeometry(prop, geometry);
 }
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
 function propFacing(prop) {
     return prop.facing ?? prop.angle ?? 0;
+}
+function propWorldPosition(prop) {
+    const physId = prop._physId;
+    return { x: physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x, y: physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y };
 }
 function currentPropMotion(prop) {
     const physId = prop._physId;
@@ -1468,15 +1516,12 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     const wallChunkProfileId = sourceProp.wallChunkProfileId;
     const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
     const spawned = [];
-    const physId = sourceProp._physId;
-    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : sourceProp.x;
-    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : sourceProp.y;
+    const origin = propWorldPosition(sourceProp);
     for (let i = 0; i < geometries.length; i++) {
         const geom = geometries[i];
-        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, geom.centroid.cx, geom.centroid.cy, cos, sin);
+        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
         const shard = acquireWorldProp(worldPos.x, worldPos.y, shardPropId, facing);
-        if (geom.collisionParts) applyChunkGeometryToProp(shard, geom);
-        else applyFractureGeometryToProp(shard, geom);
+        applyPropFractureGeometry(shard, geom);
         shard.faction = faction;
         shard.vx = motion.vx;
         shard.vy = motion.vy;
@@ -1498,23 +1543,29 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     }
     return spawned;
 }
-function spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+function applyShardBurstImpulse(fracture, frag, geom) {
     const cos = Math.cos(fracture.facing);
     const sin = Math.sin(fracture.facing);
     const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
     const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
-    return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, sourceProp.type, spatialFrame, (frag, geom, i) => {
-        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-        const dx = worldPos.x - impactWorld.x;
-        const dy = worldPos.y - impactWorld.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 1e-6) {
-            frag.vx += (dx / dist) * burst;
-            frag.vy += (dy / dist) * burst;
-        }
-        frag.angularVelocity += (Math.random() - 0.5) * 0.4;
-        frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+    const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+    const dx = worldPos.x - impactWorld.x;
+    const dy = worldPos.y - impactWorld.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1e-6) {
+        frag.vx += (dx / dist) * burst;
+        frag.vy += (dy / dist) * burst;
+    }
+    frag.angularVelocity += (Math.random() - 0.5) * 0.4;
+    frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+}
+function spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame = null) {
+    return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom) => {
+        applyShardBurstImpulse(fracture, frag, geom);
     });
+}
+function spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+    return spawnBurstFractureShards(world, sourceProp, fracture, sourceProp.type, spatialFrame);
 }
 function spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame = null) {
     return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, sourceProp.type, spatialFrame);
@@ -1536,13 +1587,12 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
     if (components.length <= 1) return null;
     components.sort((a, b) => b.length - a.length);
-    const physId = prop._physId;
-    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
-    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
+    const origin = propWorldPosition(prop);
     const mainGeom = geometryFromChunkComponent(components[0], false);
     const cos = Math.cos(propFacing(prop));
     const sin = Math.sin(propFacing(prop));
-    const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
+    const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
+    const physId = prop._physId;
     prop.x = mainWorldPos.x;
     prop.y = mainWorldPos.y;
     if (physId !== undefined && physId !== -1) {
@@ -1551,35 +1601,29 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     }
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyChunkGeometryToProp(prop, mainGeom);
-    return { debris, originX: wx, originY: wy, facing: propFacing(prop) };
+    return { debris, originX: origin.x, originY: origin.y, facing: propFacing(prop) };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {
-    const physId = prop._physId;
-    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
-    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
-    const dx = worldX - wx;
-    const dy = worldY - wy;
+    const origin = propWorldPosition(prop);
+    const dx = worldX - origin.x;
+    const dy = worldY - origin.y;
     const cos = Math.cos(propFacing(prop));
     const sin = Math.sin(propFacing(prop));
     return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
+}
+function fractureImpactContext(prop, worldHitX, worldHitY, impactForce) {
+    const origin = propWorldPosition(prop);
+    return { origin, impactLocal: worldHitToPropLocal(prop, worldHitX, worldHitY), facing: propFacing(prop), impactForce };
 }
 export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
     return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
 }
 function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
-    const physId = prop._physId;
-    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
-    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
-    const dx = worldHitX - wx;
-    const dy = worldHitY - wy;
-    const cos = Math.cos(propFacing(prop));
-    const sin = Math.sin(propFacing(prop));
-    const localHitX = dx * cos + dy * sin;
-    const localHitY = -dx * sin + dy * cos;
-    const debris = shatterGlassPolygon(flatVertsFromShape(prop), localHitX, localHitY, impactForce);
+    const ctx = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
+    const debris = shatterGlassPolygon(flatVertsFromShape(prop), ctx.impactLocal.x, ctx.impactLocal.y, impactForce);
     if (debris.length < 2) return null;
-    return { debris, originX: wx, originY: wy, facing: propFacing(prop), impactLocal: { x: localHitX, y: localHitY }, impactForce };
+    return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (prop.shape?.type === "Circle") return fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce);
@@ -1590,30 +1634,14 @@ function fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     ensureChunkFractureGrid(prop);
     if (!canFracturePropSplit(prop)) return null;
-    const physId = prop._physId;
-    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
-    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
-    const dx = worldHitX - wx;
-    const dy = worldHitY - wy;
-    const cos = Math.cos(propFacing(prop));
-    const sin = Math.sin(propFacing(prop));
-    const localHitX = dx * cos + dy * sin;
-    const localHitY = -dx * sin + dy * cos;
-    return peelSolidFracture(prop, localHitX, localHitY, impactForce);
+    const { impactLocal } = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
+    return peelSolidFracture(prop, impactLocal.x, impactLocal.y, impactForce);
 }
 function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
-    const physId = prop._physId;
-    const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
-    const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
-    const dx = worldHitX - wx;
-    const dy = worldHitY - wy;
-    const cos = Math.cos(propFacing(prop));
-    const sin = Math.sin(propFacing(prop));
-    const localHitX = dx * cos + dy * sin;
-    const localHitY = -dx * sin + dy * cos;
-    const debris = buildCircleImpactShards(prop.radius, { x: localHitX, y: localHitY }, impactForce);
+    const ctx = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
+    const debris = buildCircleImpactShards(prop.radius, ctx.impactLocal, impactForce);
     if (debris.length === 0) return null;
-    return { debris, originX: wx, originY: wy, facing: propFacing(prop), impactLocal: { x: localHitX, y: localHitY }, impactForce };
+    return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
 }
 export function spawnFractureShards(world, sourceProp, fracture, spatialFrame = null) {
     if (sourceProp.shape?.type === "Circle") return spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame);
@@ -1621,23 +1649,8 @@ export function spawnFractureShards(world, sourceProp, fracture, spatialFrame = 
     return spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame);
 }
 function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
-    const cos = Math.cos(fracture.facing);
-    const sin = Math.sin(fracture.facing);
-    const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
-    const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
     const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" || sourceProp.type === "boid_triangle" ? "snake_shard" : sourceProp.type;
-    return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom, i) => {
-        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-        const dx = worldPos.x - impactWorld.x;
-        const dy = worldPos.y - impactWorld.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 1e-6) {
-            frag.vx += (dx / dist) * burst;
-            frag.vy += (dy / dist) * burst;
-        }
-        frag.angularVelocity += (Math.random() - 0.5) * 0.4;
-        frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
-    });
+    return spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame);
 }
 function evictFracturedProp(world, prop, spatialFrame) {
     removeWorldPropFromState(world, prop, spatialFrame);
@@ -1741,8 +1754,8 @@ export function processKineticContactFractures(tick, contacts, hooks = {}) {
     for (let i = 0; i < contacts.count; i++) {
         const physIdA = contacts.physIdA[i];
         const physIdB = contacts.physIdB[i];
-        const bodyA = (tick.frame.entityGrid.entities[physIdA]?._physId === physIdA ? tick.frame.entityGrid.entities[physIdA] : null);
-        const bodyB = (tick.frame.entityGrid.entities[physIdB]?._physId === physIdB ? tick.frame.entityGrid.entities[physIdB] : null);
+        const bodyA = tick.frame.entityGrid.entities[physIdA]?._physId === physIdA ? tick.frame.entityGrid.entities[physIdA] : null;
+        const bodyB = tick.frame.entityGrid.entities[physIdB]?._physId === physIdB ? tick.frame.entityGrid.entities[physIdB] : null;
         if (!bodyA || !bodyB) continue;
         const nx = contacts.dynamic.nx[i];
         const ny = contacts.dynamic.ny[i];
@@ -2163,7 +2176,6 @@ Promise.resolve().then(registerAllPropDrawRecipes);
 // --- MERGED FROM floorProps.js ---
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickFloorProps(state, spatialFrame, dt) {
-    tickFloorButtons(state, spatialFrame);
     /** @type {object[]} */
     const shapes = [];
     const worldProps = state.worldProps;
@@ -2204,159 +2216,6 @@ export const floorPropEffectPass = {
         renderer.render3D.drawFloorProps(ctx, state, viewport);
     },
 };
-
-// --- MERGED FROM buttonFloorDefaults.js ---
-export { DEFAULT_BUTTON_FLOOR_RADIUS, DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD } from "../../Assets/props/button_floor/button_floor.asset.js";
-
-// --- MERGED FROM buttonInput.js ---
-/** @typedef {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} ButtonInputMode */
-/** @param {object | null | undefined} entity */
-export function isButtonEntity(entity) {
-    return entity?.buttonLinks != null;
-}
-/** @param {ButtonInputMode} inputMode */
-export function isMassButtonInputMode(inputMode) {
-    return inputMode === "massTap" || inputMode === "massHold" || inputMode === "massToggle";
-}
-/** @param {ButtonInputMode} inputMode */
-export function isToggleInputMode(inputMode) {
-    return inputMode === "toggle" || inputMode === "massToggle";
-}
-/** @param {object | null | undefined} prop */
-function isSpawnerWorldProp(prop) {
-    const asset = propCatalog[prop?.type];
-    return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
-}
-/** @param {ButtonInputMode} inputMode */
-export function isSustainedSpawnerButtonInputMode(inputMode) {
-    return inputMode === "hold" || inputMode === "massHold";
-}
-/** @param {object} state @param {object} button */
-export function buttonOccupantMass(state, button) {
-    let total = 0;
-    for (const entityId of button._occupants) {
-        const prop = state.entityRegistry.get(entityId);
-        if (!prop || prop.isDead) continue;
-        total += massFromBody(prop);
-    }
-    return total;
-}
-/** @param {object} state @param {object} button */
-export function isMassOverThreshold(state, button) {
-    return buttonOccupantMass(state, button) > button.massThreshold;
-}
-/** @param {object} state @param {object} button */
-export function isButtonActive(state, button) {
-    if (isToggleInputMode(button.inputMode)) return Boolean(button._toggleLatched);
-    if (isMassButtonInputMode(button.inputMode)) return isMassOverThreshold(state, button);
-    return Boolean(button._pointerHeld);
-}
-/** @param {object} state @param {object} button */
-export function buttonEffectiveActive(state, button) {
-    const active = isButtonActive(state, button);
-    return button.invert ? !active : active;
-}
-
-// --- MERGED FROM buttonLinks.js ---
-
-/** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
-/** @typedef {WorldPropButtonLinkTarget} ButtonLinkTarget */
-/** @param {object} button */
-export function getButtonLinks(button) {
-    return button.buttonLinks;
-}
-/** @param {object} button @param {ButtonLinkTarget[]} links */
-function setButtonLinks(button, links) {
-    button.buttonLinks = links.map((link) => ({ ...link }));
-}
-/** @param {ButtonLinkTarget} a @param {ButtonLinkTarget} b */
-function sameButtonLink(a, b) {
-    if (a.type !== b.type) return false;
-    return a.id === b.id;
-}
-/** @param {object} state @param {number} buttonId @param {ButtonLinkTarget} target */
-export function addButtonLink(state, buttonId, target) {
-    const button = state.entityRegistry.getLive(buttonId);
-    if (!isButtonEntity(button)) return false;
-    const links = getButtonLinks(button);
-    if (links.some((link) => sameButtonLink(link, target))) return true;
-    setButtonLinks(button, [...links, target]);
-    return true;
-}
-/** @param {object} state @param {number} buttonId @param {ButtonLinkTarget} target */
-export function removeButtonLink(state, buttonId, target) {
-    const button = state.entityRegistry.getLive(buttonId);
-    if (!isButtonEntity(button)) return false;
-    setButtonLinks(
-        button,
-        getButtonLinks(button).filter((link) => !sameButtonLink(link, target)),
-    );
-    return true;
-}
-/** @param {object} state @param {number} buttonId */
-export function clearButtonLinks(state, buttonId) {
-    const button = state.entityRegistry.getLive(buttonId);
-    if (!isButtonEntity(button)) return false;
-    button.buttonLinks = [];
-    return true;
-}
-/**
- * @param {object} state
- * @param {number} worldX
- * @param {number} worldY
- * @param {number} sourceButtonId
- */
-export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
-    const prop = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, worldX, worldY);
-    if (!prop || prop.id === sourceButtonId) return null;
-    if (isSpawnerWorldProp(prop)) return { type: "worldProp", id: prop.id };
-    return null;
-}
-/** @param {object} state @param {ButtonLinkTarget} target */
-export function resolveButtonLinkEndpoint(state, target) {
-    if (target.type !== "worldProp") return null;
-    const prop = state.entityRegistry.getLive(target.id);
-    if (!prop) return null;
-    const typeLabel = formatPropTypeLabel(prop.type);
-    const role = isSpawnerWorldProp(prop) ? "spawner" : typeLabel;
-    return { target, label: `${role} · #${prop.id}`, x: prop.x, y: prop.y };
-}
-/** @param {object} state @param {object} button */
-export function listButtonLinkEndpoints(state, button) {
-    /** @type {{ target: ButtonLinkTarget, label: string, x: number, y: number }[]} */
-    const endpoints = [];
-    const links = getButtonLinks(button);
-    for (let i = 0; i < links.length; i++) {
-        const endpoint = resolveButtonLinkEndpoint(state, links[i]);
-        if (endpoint) endpoints.push(endpoint);
-    }
-    return endpoints;
-}
-/** @param {object} state @param {(button: object) => void} visit */
-export function forEachButtonEntity(state, visit) {
-    visitLiveWorldProps(state.worldProps, (prop) => {
-        if (!isButtonEntity(prop)) return;
-        visit(prop);
-    });
-}
-export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
-    forEachButtonEntity(state, (button) => {
-        const endpoints = listButtonLinkEndpoints(state, button);
-        const color = button.id === wireFromPropId ? "#FFB74D" : "#FF7043";
-        for (let j = 0; j < endpoints.length; j++) {
-            const endpoint = endpoints[j];
-            appendOverlayWireLink(out, button.x, button.y, endpoint.x, endpoint.y, color);
-        }
-    });
-    if (wireFromPropId != null && wireCursor) appendButtonWirePreviewCommands(out, state, wireFromPropId, wireCursor);
-}
-export function appendButtonWirePreviewCommands(out, state, fromPropId, wireCursor) {
-    const from = state.entityRegistry.getLive(fromPropId);
-    if (!from) return;
-    appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D", { live: true });
-}
-
-// --- MERGED FROM floorEffects.js ---
 /** @typedef {{ when?: FloorTriggerWhen, effect: string, force?: number, forceX?: number, forceY?: number }} FloorTriggerDef */
 /** @typedef {"enter" | "exit" | "occupied" | "empty"} FloorTriggerWhen */
 /**
@@ -2366,8 +2225,6 @@ export function appendButtonWirePreviewCommands(out, state, fromPropId, wireCurs
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-/** @param {object} state @param {object} button @param {FloorEffectContext} [ctx] */
-export function runButtonTapLinks(_state, _button, _ctx = {}) {}
 /** @type {Record<string, { run: (state: object, floorProp: object, trigger: FloorTriggerDef, ctx: FloorEffectContext) => void }>} */
 const FLOOR_EFFECTS = {};
 /** @param {object} state @param {object} floorProp @param {FloorTriggerDef} trigger @param {FloorEffectContext} ctx */
@@ -2375,77 +2232,4 @@ export function runFloorEffect(state, floorProp, trigger, ctx) {
     const effect = FLOOR_EFFECTS[trigger.effect];
     if (!effect) throw new Error(`Unknown floor effect "${trigger.effect}"`);
     effect.run(state, floorProp, trigger, ctx);
-}
-
-// --- MERGED FROM floorButtons.js ---
-const POINTER_HIT_PADDING = 4;
-export function initFloorButtonProp(prop) {
-    prop._occupants = new Set();
-    prop._nextOccupants = new Set();
-    prop.buttonLinks = prop.strategy.buttonLinks.map((link) => ({ ...link }));
-    prop.inputMode = prop.strategy.inputMode;
-    prop.massThreshold = prop.strategy.massThreshold;
-    prop.invert = prop.strategy.invert === true;
-    prop._toggleLatched = false;
-    prop.aabb = createAabb();
-    syncFloorPropCollisionShape(prop);
-    syncFloorTriggerAabb(prop);
-}
-export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
-    let hit = null;
-    visitLiveWorldProps(state.worldProps, (prop) => {
-        if (!isButtonEntity(prop)) return;
-        if (Math.hypot(wx - prop.x, wy - prop.y) <= prop.radius + padding) hit = prop;
-    });
-    return hit;
-}
-export function handleButtonPointerDown(state, button, world) {
-    if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode)) return false;
-    if (button.inputMode === "toggle") {
-        button._toggleLatched = !button._toggleLatched;
-        return true;
-    }
-    button._pointerHeld = true;
-    if (button.inputMode === "tap" && button.invert) return true;
-    runButtonTapLinks(state, button, { world });
-    return true;
-}
-export function releaseButtonPointerHold(state) {
-    visitLiveWorldProps(state.worldProps, (button) => {
-        if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") return;
-        if (button.inputMode === "tap" && button.invert) runButtonTapLinks(state, button);
-        button._pointerHeld = false;
-    });
-}
-function tickFloorButton(state, button) {
-    if (button.inputMode === "massToggle") {
-        const massActive = isMassOverThreshold(state, button);
-        const wasMassActive = button._massWasActive ?? false;
-        if (massActive && !wasMassActive) button._toggleLatched = !button._toggleLatched;
-        button._massWasActive = massActive;
-    }
-    state.sandbox?.tickButtonSpawnerLinks?.(state, button);
-    if (isToggleInputMode(button.inputMode)) {
-        button._buttonDrawPressed = isButtonActive(state, button);
-        return;
-    }
-    const active = isButtonActive(state, button);
-    const wasActive = button._buttonWasActive ?? false;
-    if (button.inputMode === "massTap" && active && !wasActive) runButtonTapLinks(state, button);
-    button._buttonWasActive = active;
-    button._buttonDrawPressed = active;
-}
-export function tickFloorButtons(state, spatialFrame) {
-    const massButtons = [];
-    const buttons = [];
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !isButtonEntity(prop)) continue;
-        buttons.push(prop);
-        if (isMassButtonInputMode(prop.inputMode)) massButtons.push(prop);
-    }
-    if (!buttons.length) return;
-    if (massButtons.length) processFloorShapes(spatialFrame, massButtons, { onEnter() {}, onExit() {} });
-    for (let i = 0; i < buttons.length; i++) tickFloorButton(state, buttons[i]);
 }

@@ -1,5 +1,5 @@
 import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
-import { createSandboxController, createDefaultSandboxBehaviors, tickButtonSpawnerLinks } from "../../../Libraries/Sandbox/sandbox.js";
+import { createSandboxController, createDefaultSandboxBehaviors } from "../../../Libraries/Sandbox/sandbox.js";
 /** @param {import("../state.js").TileLabGameState} state @param {{ playMode?: boolean }} [options] */
 export function mountSandboxController(state, { playMode = false } = {}) {
     if (playMode) state.editor.showSelectionRings = false;
@@ -13,7 +13,6 @@ export function mountSandboxController(state, { playMode = false } = {}) {
             },
         };
     const getCanvas = () => state.editor.canvas;
-    state.sandbox.tickButtonSpawnerLinks = tickButtonSpawnerLinks;
     state.sandbox.controller = createSandboxController(state, {
         getCanvas,
         clientToWorld(clientX, clientY) {

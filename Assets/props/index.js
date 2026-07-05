@@ -7,12 +7,9 @@ import boid_triangle from "./boid_triangle/boid_triangle.asset.js";
 import snake from "./snake/snake.asset.js";
 import hex_block from "./hex_block/hex_block.asset.js";
 import pipe_elbow from "./pipe_elbow/pipe_elbow.asset.js";
-import button_floor from "./button_floor/button_floor.asset.js";
 import floor_belt from "./floor_belt/floor_belt.asset.js";
 import floor_belt_elbow_left from "./floor_belt/floor_belt_elbow_left.asset.js";
 import floor_belt_elbow_right from "./floor_belt/floor_belt_elbow_right.asset.js";
-import room_node from "./room_node/room_node.asset.js";
-import corridor from "./corridor/corridor.asset.js";
 import poolBalls from "./poolBalls.js";
 import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
@@ -28,12 +25,9 @@ const catalog = {
     snake,
     hex_block,
     pipe_elbow,
-    button_floor,
     floor_belt,
     floor_belt_elbow_left,
     floor_belt_elbow_right,
-    room_node,
-    corridor,
     cross_pinwheel,
     wall_voxel_chunk,
     wall_rail_chunk,

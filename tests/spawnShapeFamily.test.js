@@ -7,11 +7,8 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getPropRadius } from "../Libraries/Props/props.js";
 import { propFootprintHalfExtents } from "../Libraries/Props/props.js";
-import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandbox.js";
-import { spawnPlaceableAt } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
-
-import propCatalog from "../Assets/props/index.js";
 function createSpawnTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
@@ -28,28 +25,12 @@ function createSpawnTestState() {
 describe("spawn shape family defaults", () => {
     it("places ball with spawn radius, tint, and brightness", () => {
         const state = createSpawnTestState();
-        let spawnPropId = "ball";
-        const session = createSandboxSpawnSession(state, {
-            getSpawnPropId: () => spawnPropId,
-            pickSelection: () => {},
-            notifyUi: () => {},
-            placement: { touchPropPlacement: () => {} },
-        });
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:ball");
         session.setSpawnBallRadius(6);
         session.setSpawnVisualOverrideTint("#ff0000");
         session.setSpawnVisualOverrideBrightness(1.25);
-        const asset = propCatalog["ball"];
-        const ctx = {
-            spawnPropId,
-            spawnFaction: "neutral",
-            resolveSpawnPropTypeId: () => spawnPropId,
-            resolveSpawnVisualOverride: (a) => session.resolveSpawnVisualOverride(a),
-            spawnBallRadius: session.getSpawnBallRadius(asset),
-            spawnBoxHalfExtents: { x: 8, y: 8 },
-            pickSelection: () => {},
-            placement: { touchPropPlacement: () => {} },
-        };
-        assert.equal(spawnPlaceableAt(state, 64, 64, asset, ctx), true);
+        assert.equal(session.spawnAt(64, 64), true);
         const prop = state.worldProps[0];
         assert.equal(prop.type, "ball");
         assert.equal(getPropRadius(prop), 6);
@@ -59,28 +40,12 @@ describe("spawn shape family defaults", () => {
 
     it("places custom box with resizable footprint and coat", () => {
         const state = createSpawnTestState();
-        let spawnPropId = "custom_box";
-        const session = createSandboxSpawnSession(state, {
-            getSpawnPropId: () => spawnPropId,
-            pickSelection: () => {},
-            notifyUi: () => {},
-            placement: { touchPropPlacement: () => {} },
-        });
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:custom_box");
         session.setSpawnBoxWidth(24);
         session.setSpawnBoxHeight(32);
         session.setSpawnVisualOverrideTint("#00aa88");
-        const asset = propCatalog["custom_box"];
-        const ctx = {
-            spawnPropId,
-            spawnFaction: "neutral",
-            resolveSpawnPropTypeId: () => spawnPropId,
-            resolveSpawnVisualOverride: (a) => session.resolveSpawnVisualOverride(a),
-            spawnBallRadius: 4,
-            spawnBoxHalfExtents: { x: session.getSpawnBoxWidth() / 2, y: session.getSpawnBoxHeight() / 2 },
-            pickSelection: () => {},
-            placement: { touchPropPlacement: () => {} },
-        };
-        assert.equal(spawnPlaceableAt(state, 96, 96, asset, ctx), true);
+        assert.equal(session.spawnAt(96, 96), true);
         const prop = state.worldProps[0];
         assert.equal(prop.type, "custom_box");
         const span = propFootprintHalfExtents(prop);

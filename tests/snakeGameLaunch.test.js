@@ -6,8 +6,6 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
-import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandbox.js";
-import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -84,7 +82,7 @@ describe("snake game launch actions", () => {
         assert.deepEqual(state.selectedIds, [ctx.boid.id]);
         
         // Verify Focus
-        assert.ok(isSandboxCameraTarget(state, ctx.boid));
+        assert.ok(state.sandbox.entityMeta.isCameraTarget(ctx.boid.id));
         assert.equal(state.viewport.zoom, 2.0);
         assert.equal(state.viewport.x, ctx.boid.x);
         assert.equal(state.viewport.y, ctx.boid.y);

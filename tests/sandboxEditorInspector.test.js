@@ -4,11 +4,9 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { createSandboxSession, spawnPlaceableAt, createSandboxSpawnSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
-
-import propCatalog from "../Assets/props/index.js";
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
@@ -144,54 +142,30 @@ describe("sandbox editor inspector wiring", () => {
 
     it("spawn with selectSpawned false leaves selection empty", () => {
         const state = createEditorTestState();
-        let lastSelection = "unset";
-        const session = createSandboxSpawnSession(state, {
-            getSpawnPropId: () => "ball",
-            pickSelection: (input) => {
-                lastSelection = input;
-            },
-            notifyUi: () => {},
-            placement: { touchPropPlacement: () => {} },
-        });
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:ball");
         assert.equal(session.spawnAt(64, 64, { selectSpawned: false }), true);
-        assert.equal(lastSelection, "unset");
+        assert.equal(session.getSelection(), null);
         assert.equal(state.worldProps.length, 1);
     });
 
     it("spawn with default selectSpawned selects the new prop", () => {
         const state = createEditorTestState();
-        let lastSelection = null;
-        const session = createSandboxSpawnSession(state, {
-            getSpawnPropId: () => "ball",
-            pickSelection: (input) => {
-                lastSelection = input;
-            },
-            notifyUi: () => {},
-            placement: { touchPropPlacement: () => {} },
-        });
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:ball");
         assert.equal(session.spawnAt(64, 64), true);
-        assert.equal(lastSelection?.kind, "prop");
-        assert.deepEqual(lastSelection.ids, [state.worldProps[0].id]);
+        const selection = session.getSelection();
+        assert.equal(selection?.kind, "prop");
+        assert.ok(selection.ids.has(state.worldProps[0].id));
     });
 
-    it("spawnPlaceableAt honors selectSpawned false in spawn context", () => {
+    it("spawnAt honors selectSpawned false in spawn context", () => {
         const state = createEditorTestState();
-        let pickCount = 0;
-        const asset = propCatalog["ball"];
-        const ctx = {
-            spawnPropId: "ball",
-            spawnFaction: "neutral",
-            resolveSpawnPropTypeId: () => "ball",
-            resolveSpawnVisualOverride: () => null,
-            spawnBallRadius: 4,
-            spawnBoxHalfExtents: { x: 8, y: 8 },
-            pickSelection: () => {
-                pickCount += 1;
-            },
-            placement: { touchPropPlacement: () => {} },
-            selectSpawned: false,
-        };
-        assert.equal(spawnPlaceableAt(state, 48, 48, asset, ctx), true);
-        assert.equal(pickCount, 0);
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:ball");
+        session.setSpawnBallRadius(4);
+        assert.equal(session.spawnAt(48, 48, { selectSpawned: false }), true);
+        assert.equal(state.worldProps.length, 1);
+        assert.equal(session.getSelection(), null);
     });
 });

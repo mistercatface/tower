@@ -1,5 +1,4 @@
 import {
-    clipToAabb,
     traceAabbRect,
     fillCircle,
     strokeSegment,
@@ -10,7 +9,6 @@ import {
     strokeOpenPolyline,
     traceClosedFlatPolygon,
     traceFlatQuad,
-    traceQuad,
     fillRgbaBuffer,
     fillRgbaRect,
     strokeAxisLineRgba,
@@ -52,7 +50,6 @@ import {
     resolveWallSurfaceProfileId,
     cellBoundsAtOriginInto,
     cellInRect,
-    appendGridEdgeOverlayCommand,
     FloorBelt,
     floorOccupancyStampDrawCacheKey,
     projectWallShadowQuadScreenInto,
@@ -63,7 +60,6 @@ import {
     normalizeXY,
     lengthXY,
     rotateXY,
-    pointsAabbOverlapAabb,
     flatQuadOverlapAabb,
     transformPoint2DInto,
     centeredAabbInto,
@@ -88,7 +84,6 @@ import {
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
-import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
 // --- Consolidated Global Scratch Arrays (GC & Memory Optimization) ---
 const sScratchQuad1 = new Float32Array(8);
@@ -384,20 +379,9 @@ export function overlayCachedSelectionRing(cx, cy, r, style) {
 export function overlayCircleFillStroke(cx, cy, r, { fill, stroke = "#fff", lineWidth = 1 }) {
     return { kind: "circleFillStroke", cx, cy, r, fill, stroke, lineWidth };
 }
-export function overlayCachedPathDestination(cx, cy, r, style) {
+export function overlayCachedCircleFillStroke(cx, cy, r, style, renderKey, customKey, lineWidthForSpan = style.lineWidth ?? 1) {
     const cmd = overlayCircleFillStroke(cx, cy, r, style);
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(r, style.fill), overlayGlyphSpan(r, style.lineWidth ?? 1), cx, cy);
-    return cmd;
-}
-export function overlayCachedPathDebugNode(cx, cy, r, style) {
-    const cmd = overlayCircleFillStroke(cx, cy, r, style);
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(r, style.fill), overlayGlyphSpan(r, style.lineWidth ?? 1), cx, cy);
-    return cmd;
-}
-export function overlayCachedWireEndpoint(cx, cy, r, color) {
-    const style = { fill: color, stroke: color, lineWidth: 1 };
-    const cmd = overlayCircleFillStroke(cx, cy, r, style);
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.WireEndpoint, wireEndpointCacheKey(r, color), overlayGlyphSpan(r, 1), cx, cy);
+    cmd.cache = overlayCacheMeta(renderKey, customKey, overlayGlyphSpan(r, lineWidthForSpan), cx, cy);
     return cmd;
 }
 export function overlaySegment(x0, y0, x1, y1, { stroke, lineWidth = 1, dash, lineCap }) {
@@ -422,7 +406,7 @@ export function overlayCachedFlowDirectionArrow(cx, cy, dirX, dirY, { pad = 0, l
 export function appendOverlayWireLink(out, x0, y0, x1, y1, color, { lineWidth = 2, dash = [6, 4], endpointRadius = 3, live = false } = {}) {
     out.push(overlaySegment(x0, y0, x1, y1, { stroke: color, lineWidth, dash }));
     if (live) out.push(overlayCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }));
-    else out.push(overlayCachedWireEndpoint(x1, y1, endpointRadius, color));
+    else out.push(overlayCachedCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }, OVERLAY_RENDER_KEY.WireEndpoint, wireEndpointCacheKey(endpointRadius, color), 1));
 }
 export function overlayAimSegment(x1, y1, x2, y2, { color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
     return { kind: "aimSegment", x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };
@@ -439,6 +423,22 @@ function drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, fill, headLen, headWidth) 
         { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
         { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
     ]);
+}
+function drawAabbStyle(ctx, rect, { fill, stroke, lineWidth = 1, dash }) {
+    const w = rect.maxX - rect.minX;
+    const h = rect.maxY - rect.minY;
+    if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(rect.minX, rect.minY, w, h);
+    }
+    if (!stroke) return;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    if (dash?.length) ctx.setLineDash(dash);
+    ctx.beginPath();
+    traceAabbRect(ctx, rect);
+    ctx.stroke();
+    if (dash?.length) ctx.setLineDash([]);
 }
 export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
     if (cmd.kind === "circleStroke") {
@@ -477,20 +477,7 @@ export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
         const h = cmd.maxY - cmd.minY;
         const minX = anchorX - w * 0.5;
         const minY = anchorY - h * 0.5;
-        const rect = { minX, minY, maxX: minX + w, maxY: minY + h };
-        const { fill, stroke, lineWidth = 1, dash } = cmd;
-        if (fill) {
-            ctx.fillStyle = fill;
-            ctx.fillRect(rect.minX, rect.minY, w, h);
-        }
-        if (!stroke) return;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        if (dash?.length) ctx.setLineDash(dash);
-        ctx.beginPath();
-        traceAabbRect(ctx, rect);
-        ctx.stroke();
-        if (dash?.length) ctx.setLineDash([]);
+        drawAabbStyle(ctx, { minX, minY, maxX: minX + w, maxY: minY + h }, cmd);
     }
 }
 // --- MERGED FROM pathOverlayCommands.js ---
@@ -535,7 +522,8 @@ function appendFlowAgentArrow(out, overlay) {
         out.push(overlayCachedFlowDirectionArrow(propX, propY, dirX, dirY, { pad: propRadius + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
         return;
     }
-    if (targetX != null && targetY != null) out.push(overlayCachedPathDestination(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }));
+    if (targetX != null && targetY != null)
+        out.push(overlayCachedCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(4, "rgba(255, 193, 7, 0.85)")));
 }
 function appendNormalPathOverlayCommands(out, overlay) {
     const { mode, targetX, targetY, pathNodes } = overlay;
@@ -572,7 +560,16 @@ function appendAbstractPathCommands(out, abstractPath, grid, pathPlanner = "hpa"
         const isEndpoint = i === 0 || i === abstractPath.length - 1;
         const x = grid.gridCenterXByIdx(idx);
         const y = grid.gridCenterYByIdx(idx);
-        out.push(overlayCachedPathDebugNode(x, y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }));
+        out.push(
+            overlayCachedCircleFillStroke(
+                x,
+                y,
+                isEndpoint ? 8 : 10,
+                { fill: isEndpoint ? endpointColor : nodeColor },
+                OVERLAY_RENDER_KEY.PathDebugNode,
+                pathDestinationCacheKey(isEndpoint ? 8 : 10, isEndpoint ? endpointColor : nodeColor),
+            ),
+        );
     }
 }
 export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") {
@@ -586,7 +583,8 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") 
         if (abstractPath) appendAbstractPathCommands(out, abstractPath, grid, pathPlanner ?? "hpa");
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
         if (pathNodes.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
-        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedPathDebugNode(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }));
+        for (let i = 0; i < pathNodes.length; i++)
+            out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
         return;
     }
     if (mode === "flow") {
@@ -596,35 +594,11 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") 
     if (pathNodes.length < 2) return;
     out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.65)", lineWidth: 3, dash: [8, 6] }));
     const end = pathNodes[pathNodes.length - 1];
-    out.push(overlayCachedPathDestination(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }));
+    out.push(overlayCachedCircleFillStroke(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(10, "rgba(0, 188, 212, 0.85)")));
 }
 // --- MERGED FROM drawOverlayCommands.js ---
-function drawArrowHead(ctx, x, y, dirX, dirY, fill, headLen, headWidth) {
-    const tx = -dirY;
-    const ty = dirX;
-    const baseCenterX = x - dirX * headLen;
-    const baseCenterY = y - dirY * headLen;
-    ctx.fillStyle = fill;
-    fillClosedPolygon(ctx, [
-        { x, y },
-        { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
-        { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
-    ]);
-}
 function drawAabbCommand(ctx, cmd) {
-    const { minX, minY, maxX, maxY, fill, stroke, lineWidth = 1, dash } = cmd;
-    if (fill) {
-        ctx.fillStyle = fill;
-        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
-    }
-    if (!stroke) return;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    if (dash?.length) ctx.setLineDash(dash);
-    ctx.beginPath();
-    traceAabbRect(ctx, cmd);
-    ctx.stroke();
-    if (dash?.length) ctx.setLineDash([]);
+    drawAabbStyle(ctx, cmd, cmd);
 }
 function drawAimSegmentCommand(ctx, cmd) {
     const { x1, y1, x2, y2, color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = cmd;
@@ -642,7 +616,7 @@ function drawAimSegmentCommand(ctx, cmd) {
     strokeSegment(ctx, x1, y1, x2, y2);
     if (arrowhead) {
         const { nx, ny } = normalizeXY(dx, dy);
-        drawArrowHead(ctx, x2, y2, nx, ny, color, 8, 5);
+        drawArrowHeadAt(ctx, x2, y2, nx, ny, color, 8, 5);
     }
     ctx.restore();
 }
@@ -712,7 +686,7 @@ export function drawOverlayCommands(ctx, commands, viewport) {
             continue;
         }
         if (cmd.kind === "arrowHead") {
-            drawArrowHead(ctx, cmd.x, cmd.y, cmd.dirX, cmd.dirY, cmd.fill, cmd.headLen ?? 9, cmd.headWidth ?? 6);
+            drawArrowHeadAt(ctx, cmd.x, cmd.y, cmd.dirX, cmd.dirY, cmd.fill, cmd.headLen ?? 9, cmd.headWidth ?? 6);
             continue;
         }
         if (cmd.kind === "directionArrow") {
@@ -2519,32 +2493,6 @@ export function drawTexturedQuadCellsFlat(ctx, data, indices, count, img) {
         const d3y = data[base + 12];
         drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y);
     }
-}
-// --- MERGED FROM buttonFloorDraw.js ---
-/** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
-export function createButtonFloorDraw() {
-    return (ctx, prop, viewport) => {
-        const radius = prop.radius;
-        const pressed = prop._buttonDrawPressed === true;
-        const lineScale = getCanvasLineScale(ctx);
-        ctx.save();
-        ctx.translate(prop.x, prop.y);
-        ctx.scale(pressed ? 0.88 : 1, pressed ? 0.88 : 1);
-        const grad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
-        grad.addColorStop(0, pressed ? "#FFAB91" : "#FF7043");
-        grad.addColorStop(1, pressed ? "#BF360C" : "#E64A19");
-        ctx.fillStyle = grad;
-        fillCircle(ctx, 0, 0, radius);
-        ctx.strokeStyle = "#3E2723";
-        ctx.lineWidth = 2.5 * lineScale;
-        strokeCircle(ctx, 0, 0, radius);
-        ctx.fillStyle = "rgba(255,255,255,0.38)";
-        fillCircle(ctx, -radius * 0.28, -radius * 0.28, radius * 0.32);
-        ctx.strokeStyle = "rgba(0,0,0,0.18)";
-        ctx.lineWidth = 1.5 * lineScale;
-        strokeCircle(ctx, 0, 0, radius * 0.55);
-        ctx.restore();
-    };
 }
 // --- MERGED FROM conveyorDraw.js ---
 const CONVEYOR_BELT_HEIGHT = 0;

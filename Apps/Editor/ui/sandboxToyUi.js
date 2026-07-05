@@ -1,5 +1,16 @@
 import { formatSandboxSpawnLabel } from "../../../Libraries/Props/props.js";
-import { isSandboxSpawnable, sandboxTagsMatchFilter, orderSandboxPalettePropIds, wallPlaceInspector, appendSelectionInspector, appendWallPlaceParams, appendPropPlaceParams, appendSandboxSelectionPanel, buildPlacePaletteItems, appendSandboxTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/Sandbox/sandbox.js";
+import {
+    isSandboxSpawnable,
+    sandboxTagsMatchFilter,
+    orderSandboxPalettePropIds,
+    appendSelectionInspector,
+    appendWallPlaceParams,
+    appendPropPlaceParams,
+    appendSandboxSelectionPanel,
+    buildPlacePaletteItems,
+    appendSandboxTagFilters,
+    appendSpawnPaletteGrid,
+} from "../../../Libraries/Sandbox/sandbox.js";
 import { appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
@@ -135,7 +146,8 @@ export function mountSandboxToyUi(container, state, controller) {
         if (inspector) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
         else if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
         else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
-        else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: wallPlaceInspector(inspector) });
+        else if (activeItem.kind === "wall")
+            appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: inspector?.kind === "voxel" || inspector?.kind === "rail" ? inspector : null });
         else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         refreshSelectionHead();
         clearElement(sections.selectionBody);
@@ -148,12 +160,7 @@ export function mountSandboxToyUi(container, state, controller) {
             sections.sceneBody,
             session
                 .listPlacedSceneItems()
-                .map((item) => ({
-                    label: item.label,
-                    selected: session.isSceneItemSelected(item),
-                    onSelect: () => controller.selectSceneItem(item),
-                    onDelete: () => session.deleteSceneItem(item),
-                })),
+                .map((item) => ({ label: item.label, selected: session.isSceneItemSelected(item), onSelect: () => controller.selectSceneItem(item), onDelete: () => session.deleteSceneItem(item) })),
             "Nothing placed yet.",
         );
     }

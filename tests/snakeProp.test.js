@@ -5,9 +5,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/sandbox.js";
-import { spawnPlaceableAt } from "../Libraries/Sandbox/sandbox.js";
-import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
+import { getChainMemberIds, isChainSteeringTarget, createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import propCatalog from "../Assets/props/index.js";
 
 function createSnakeSpawnTestState(cols = 32, rows = 32) {
@@ -20,25 +18,17 @@ describe("snake prop kinetic chain spawning", () => {
     it("spawns a snake chain prop using the configured length parameter, custom radius, and visual overrides", () => {
         resetKineticConstraintIds(1);
         const state = createSnakeSpawnTestState();
-        const meta = getSandboxEntityMeta(state);
+        const meta = state.sandbox.entityMeta;
 
-        // Mock spawn context for testing
-        const ctx = {
-            resolveSpawnPropTypeId: () => "snake",
-            resolveSpawnVisualOverride: (asset) => ({ tint: "#aabbcc", brightness: 1.5 }),
-            spawnFaction: "alpha",
-            spawnSnakeLength: 7, // Custom configured length
-            spawnBallRadius: 3,  // Custom configured radius
-            selectSpawned: true,
-            placement: {
-                touchPropPlacement() {},
-            },
-            pickSelection(sel) {
-                this.selection = sel;
-            },
-        };
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:snake");
+        session.setSpawnSnakeLength(7);
+        session.setSpawnBallRadius(3);
+        session.setSpawnVisualOverrideTint("#aabbcc");
+        session.setSpawnVisualOverrideBrightness(1.5);
+        session.setSpawnFaction("alpha");
 
-        const success = spawnPlaceableAt(state, 160, 160, propCatalog["snake"], ctx);
+        const success = session.spawnAt(160, 160);
         assert.ok(success);
         assert.equal(state.worldProps.length, 7); // Head + 6 body segments
 

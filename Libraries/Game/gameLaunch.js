@@ -1,5 +1,5 @@
 import { generateLabRailMaze } from "../../Apps/Editor/world/mapWorld.js";
-import { spawnPlacedSandboxProp, setSandboxCameraTarget } from "../Sandbox/sandbox.js";
+import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 export const GAME_LAUNCHERS = { snake: { title: "Snake", hideEditor: false } };
@@ -25,7 +25,7 @@ async function runSnakeLaunch(state, ctx) {
         state.sandbox.controller.session.sync();
     }
     // 3. Focus Camera and Zoom to 2.0
-    setSandboxCameraTarget(state, boid, true);
+    state.sandbox.entityMeta.setCameraTarget(boid.id, true);
     state.viewport.zoom = 2.0;
     syncLabViewportZoomUi(state);
     state.viewport.snapTo(boid.x, boid.y);

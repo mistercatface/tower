@@ -558,21 +558,6 @@ export function idlePathReplanAllowed(navState, reason, isVisible, stuckReplanFr
 export function offPathReplanDue(steering, navState, nowMs, cooldownMs = REPLAN_OFF_PATH_COOLDOWN_MS) {
     return navHasPath(navState) && steering.offPath && nowMs - navState.lastOffPathReplan >= cooldownMs;
 }
-/** @param {import("./navSession.js").NavSessionState} navState */
-export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY) {
-    if (inFlight) return null;
-    if (pendingTargetReplan) return "targetChange";
-    if (!navState.pathLen) return "noPath";
-    const targetMovedPx = navState.lastTargetX == null || navState.lastTargetY == null ? Infinity : Math.hypot(targetX - navState.lastTargetX, targetY - navState.lastTargetY);
-    if (targetMovedPx >= REPLAN_TARGET_MOVE_PX) return "targetMoved";
-    return null;
-}
-export function sandboxReplanAllowed(reason, isVisible, stuckFrames, stuckReplanFrames) {
-    if (reason === "targetChange") return true;
-    if (reason === "noPath") return isVisible || stuckFrames > stuckReplanFrames;
-    if (reason === "targetMoved") return obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames);
-    return false;
-}
 export function replanPriorityFor(reason, isVisible) {
     if (reason === "targetChange") return REPLAN_PRIORITY_TARGET;
     if (!isVisible) return REPLAN_PRIORITY_STUCK_OFFSCREEN;
@@ -2340,7 +2325,7 @@ export class HpaNavSession {
     softReplanAllowed(stuckFrames, stuckReplanFrames) {
         return stuckFrames > Math.max(1, Math.floor(stuckReplanFrames * 0.5));
     }
-    update(prop, targetX, targetY, state, dtMs, pathSettings) {
+    update(prop, targetX, targetY, state, dtMs, pathSettings, sandboxReplan) {
         this.replanClockMs += dtMs;
         const nav = resolveNavRuntime(state);
         const settings = nav.settings;
@@ -2357,10 +2342,10 @@ export class HpaNavSession {
         this.syncRouteCommitState();
         if (!inFlight && obstacleEpochReplanDue(this.navState, nav.topologyKey()))
             if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
-        let sandboxReason = sandboxReplanReason(this.navState, this.pendingTargetReplan, inFlight, targetX, targetY);
-        if (sandboxReason === "targetMoved" && !this.softReplanAllowed(stuckFrames, stuckReplanFrames)) sandboxReason = null;
-        if (sandboxReason && sandboxReplanAllowed(sandboxReason, isVisible, stuckFrames, stuckReplanFrames))
-            return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, isVisible), sandboxReason);
+        if (sandboxReplan) {
+            const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible, stuckFrames, stuckReplanFrames });
+            if (sandboxResult) return sandboxResult;
+        }
         const idleReason = idlePathReplanReason(this.navState, settings, inFlight);
         if (idleReason && idlePathReplanAllowed(this.navState, idleReason, isVisible, stuckReplanFrames))
             return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);

@@ -1,4 +1,5 @@
-import { createNavState, obstacleEpochReplanDue, obstacleReplanAllowed, idlePathReplanReason, idlePathReplanAllowed, trackNavStuck, offPathReplanDue, sandboxReplanReason, sandboxReplanAllowed, replanPriorityFor, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest, HpaNavSession } from "../Libraries/Navigation/navigation.js";
+import { createNavState, obstacleEpochReplanDue, obstacleReplanAllowed, idlePathReplanReason, idlePathReplanAllowed, trackNavStuck, offPathReplanDue, replanPriorityFor, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest, HpaNavSession } from "../Libraries/Navigation/navigation.js";
+import { sandboxReplanReason, sandboxReplanAllowed } from "../Libraries/Sandbox/sandbox.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 

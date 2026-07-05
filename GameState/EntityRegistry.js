@@ -1,4 +1,3 @@
-import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/math.js";

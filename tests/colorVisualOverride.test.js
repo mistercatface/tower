@@ -26,7 +26,7 @@ describe("Color visualOverride", () => {
     it("assetHasTintableColors covers spheres, crates, and goal star", () => {
         assert.equal(assetHasTintableColors(propCatalog["ball"]), true);
         assert.equal(assetHasTintableColors(propCatalog["crate"]), true);
-        assert.equal(assetHasTintableColors(propCatalog["button_floor"]), false);
+        assert.equal(assetHasTintableColors(propCatalog["floor_belt"]), false);
     });
     it("resolveVisualOverridePanels uses asset panels when prop has no override", () => {
         const base = propCatalog["ball"].visuals.panels;

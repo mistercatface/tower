@@ -6,7 +6,6 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { getChainMemberIds, isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
-import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
@@ -18,7 +17,7 @@ describe("spawnLinkedBallChain", () => {
     it("spawns a linked ball chain with one head and distance links", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
-        const meta = getSandboxEntityMeta(state);
+        const meta = state.sandbox.entityMeta;
         const anchorIdx = colRowToIndex(10, 10, state.obstacleGrid.cols);
         const chain = spawnLinkedBallChain(state, anchorIdx, CHAIN_OPTIONS);
         assert.equal(chain.members.length, 3);
@@ -37,7 +36,7 @@ describe("spawnLinkedBallChain", () => {
     it("exports linked chain spawn groups with segment count and anchor position", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
-        const meta = getSandboxEntityMeta(state);
+        const meta = state.sandbox.entityMeta;
         const chain = spawnLinkedBallChain(state, colRowToIndex(8, 8, state.obstacleGrid.cols), CHAIN_OPTIONS);
         const exported = tryExportLinkedBallChainSpawnGroup(chain.members, meta);
         assert.ok(exported);

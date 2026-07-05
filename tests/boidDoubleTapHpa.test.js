@@ -5,7 +5,6 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxController, spawnPlacedSandboxProp, createHpaGroundNavBehavior, createDragLaunchBehavior } from "../Libraries/Sandbox/sandbox.js";
-import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 function createEditorTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
     const grid = new WorldObstacleGrid(16);
@@ -88,7 +87,7 @@ describe("boid double tap hpa pathing", () => {
         eventListeners.pointerdown({ button: 0, clientX: 100, clientY: 100, detail: 2, preventDefault() {}, stopPropagation() {} });
         // After Click 2, the selection should be restored to the boid triangle, and HPA pathing should be active!
         assert.equal(controller.session.getSelectedProp()?.id, prop.id);
-        assert.equal(getSandboxEntityMeta(state).getActiveBehaviorId(prop.id), "rollToCursorHpa");
+        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), "rollToCursorHpa");
         // Check that the move target is set
         const hpaBehavior = behaviors.find((b) => b.id === "rollToCursorHpa");
         assert.ok(hpaBehavior.hasMoveTarget(prop));
@@ -114,7 +113,7 @@ describe("boid double tap hpa pathing", () => {
         // The boid is at x: 64, y: 64 (world coordinates), so we simulate clicking at x: 64, y: 64.
         eventListeners.pointerdown({ button: 0, clientX: 64, clientY: 64, detail: 1, pointerId: 1, preventDefault() {}, stopPropagation() {} });
         // Click/drag on the boid triangle must revert its behavior to dragLaunch and cancel the HPA move target
-        assert.equal(getSandboxEntityMeta(state).getActiveBehaviorId(prop.id), "dragLaunch");
+        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), "dragLaunch");
         assert.equal(hpaBehavior.hasMoveTarget(prop), false);
         controller.destroy();
     });
