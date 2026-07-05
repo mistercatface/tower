@@ -4,7 +4,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/propStrategy.js";
 import { resolveBodyRadius } from "../Libraries/Physics/physics.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { createPolygonPrimitive } from "../Libraries/Props/primitives/polygonPrimitive.js";
+import { createPolygonPrimitive } from "../Libraries/Props/primitives.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/Angle.js";

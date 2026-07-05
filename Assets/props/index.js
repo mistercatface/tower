@@ -20,7 +20,7 @@ import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
 import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
-import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/primitives/index.js";
+import { PROP_PRIMITIVE_BUILDERS } from "../../Libraries/Props/primitives.js";
 const catalog = {
     ball,
     flipper_left,
