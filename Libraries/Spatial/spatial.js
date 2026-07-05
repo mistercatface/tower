@@ -972,7 +972,14 @@ export class FloorBelt {
         if (isEmptyCellBounds(bounds)) return null;
         FloorBelt.markZoneSubscriptionsDirty(state);
         bumpFloorOccupancyStampDrawRevision(grid);
+        FloorBelt.recomputeFloorBeltCount(grid);
         return bounds;
+    }
+    static recomputeFloorBeltCount(grid) {
+        let count = 0;
+        const size = grid.cols * grid.rows;
+        for (let idx = 0; idx < size; idx++) if (FloorBelt.isBelt(grid.floorKind[idx])) count++;
+        grid.floorBeltCount = count;
     }
     static markZoneSubscriptionsDirty(state) {
         state.sandbox.gridZoneSubscriptionsDirty = true;
@@ -997,23 +1004,36 @@ export class FloorBelt {
         if (state.sandbox.beltZoneEvents.length > 32) state.sandbox.beltZoneEvents.shift();
     }
     static tickZones(state, spatialFrame) {
+        const grid = state.obstacleGrid;
         const subscriptions = FloorBelt.ensureZoneSubscriptions(state);
         if (!subscriptions.cells.size) return;
-        tickGridZoneMembership(spatialFrame, state.obstacleGrid, subscriptions, {
+        tickGridZoneMembership(spatialFrame, grid, subscriptions, {
             onEnter(event) {
+                grid._floorBeltLoad[event.idx]++;
                 FloorBelt.onCellZoneEvent(state, event, "enter");
             },
             onOn(event) {
                 FloorBelt.onCellZoneEvent(state, event, "on");
             },
             onExit(event) {
+                const load = grid._floorBeltLoad[event.idx];
+                if (load > 0) grid._floorBeltLoad[event.idx] = load - 1;
                 FloorBelt.onCellZoneEvent(state, event, "exit");
             },
         });
     }
+    static tickAnim(state, dt) {
+        const grid = state.obstacleGrid;
+        if (grid.floorBeltCount === 0) return;
+        const subscriptions = FloorBelt.ensureZoneSubscriptions(state);
+        for (const idx of subscriptions.cells) {
+            if (!FloorBelt.isBelt(grid.floorKind[idx])) continue;
+            if (grid._floorBeltLoad[idx] > 0) grid._floorBeltAnimMs[idx] += dt;
+        }
+    }
     static tickOccupancy(state, spatialFrame, dt, applyAcceleration = null) {
         const grid = state.obstacleGrid;
-        if (!grid.floorKind.some((k) => k !== 0)) return;
+        if (grid.floorBeltCount === 0) return;
         const kineticBodies = spatialFrame._kineticBodies;
         if (!kineticBodies?.length) return;
         const dtSec = dt / 1000;
@@ -1468,6 +1488,9 @@ export class WorldObstacleGrid {
         this.cellEdgeFree = [];
         this.floorKind = new Uint8Array(0);
         this.floorFacing = new Uint8Array(0);
+        this.floorBeltCount = 0;
+        this._floorBeltLoad = new Uint8Array(0);
+        this._floorBeltAnimMs = new Uint32Array(0);
         this.surfaceMaterials = new SurfaceMaterialStore();
         this.surfaceMaterialCellsPerChunk = 0;
         this.staticPropBuckets = new SparseBucketGrid();
@@ -1720,6 +1743,9 @@ export class WorldObstacleGrid {
         this.cellEdgeFree.length = 0;
         this.floorKind = new Uint8Array(size);
         this.floorFacing = new Uint8Array(size);
+        this.floorBeltCount = 0;
+        this._floorBeltLoad = new Uint8Array(size);
+        this._floorBeltAnimMs = new Uint32Array(size);
         this.staticPropBuckets.clear();
         this.staticPropCount = new Uint16Array(size);
         this.staticPropTotalCount = 0;
@@ -1759,12 +1785,17 @@ export class WorldObstacleGrid {
         const oldSlots = this.cellEdgeSlots;
         const oldFloorKind = this.floorKind;
         const oldFloorFacing = this.floorFacing;
+        const oldFloorBeltLoad = this._floorBeltLoad;
+        const oldFloorBeltAnimMs = this._floorBeltAnimMs;
         const oldSurfaceMaterials = this.surfaceMaterials.snapshot();
         const oldSize = oldCols * oldRows;
         const newEdgeSlots = new Int32Array(this.cols * this.rows * 4);
         newEdgeSlots.fill(EMPTY);
         const newFloorKind = new Uint8Array(this.cols * this.rows);
         const newFloorFacing = new Uint8Array(this.cols * this.rows);
+        const newFloorBeltLoad = new Uint8Array(this.cols * this.rows);
+        const newFloorBeltAnimMs = new Uint32Array(this.cols * this.rows);
+        let floorBeltCount = 0;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
             if (level === 0 && !this.hasAnyCellEdgeAtIdx(idx) && this.floorKind[idx] === 0 && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx)) continue;
@@ -1779,6 +1810,9 @@ export class WorldObstacleGrid {
                     if (this.floorKind[idx] !== 0) {
                         newFloorKind[newIdx] = this.floorKind[idx];
                         newFloorFacing[newIdx] = this.floorFacing[idx];
+                        newFloorBeltLoad[newIdx] = oldFloorBeltLoad[idx];
+                        newFloorBeltAnimMs[newIdx] = oldFloorBeltAnimMs[idx];
+                        if (FloorBelt.isBelt(this.floorKind[idx])) floorBeltCount++;
                     }
                     for (let side = 0; side < 4; side++) newEdgeSlots[(newIdx << 2) + side] = this.cellEdgeSlots[(idx << 2) + side];
                 }
@@ -1787,6 +1821,9 @@ export class WorldObstacleGrid {
         this.cellEdgeSlots = newEdgeSlots;
         this.floorKind = newFloorKind;
         this.floorFacing = newFloorFacing;
+        this._floorBeltLoad = newFloorBeltLoad;
+        this._floorBeltAnimMs = newFloorBeltAnimMs;
+        this.floorBeltCount = floorBeltCount;
         this.staticPropBuckets.clear();
         this.staticPropCount = new Uint16Array(this.cols * this.rows);
         this.staticPropTotalCount = 0;
@@ -1871,9 +1908,17 @@ export class WorldObstacleGrid {
         if (this.isBlockedIdx(idx)) return false;
         const prevKind = this.floorKind[idx];
         const prevFacing = this.floorFacing[idx];
+        const wasBelt = FloorBelt.isBelt(prevKind);
+        const isBelt = FloorBelt.isBelt(kind);
+        if (!wasBelt && isBelt) this.floorBeltCount++;
+        else if (wasBelt && !isBelt) {
+            this.floorBeltCount--;
+            this._floorBeltLoad[idx] = 0;
+            this._floorBeltAnimMs[idx] = 0;
+        }
         this.floorKind[idx] = kind;
         this.floorFacing[idx] = facingIndex;
-        const floorNavChanged = (FloorBelt.isBelt(prevKind) || FloorBelt.isBelt(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
+        const floorNavChanged = (wasBelt || isBelt) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
@@ -1886,16 +1931,23 @@ export class WorldObstacleGrid {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
         if (!(this.floorKind[idx] !== 0)) return false;
         const kind = this.floorKind[idx];
-        if (FloorBelt.isBelt(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        if (FloorBelt.isBelt(kind)) {
+            bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+            this.floorBeltCount--;
+        }
         this.floorKind[idx] = 0;
         this.floorFacing[idx] = 0;
+        this._floorBeltLoad[idx] = 0;
+        this._floorBeltAnimMs[idx] = 0;
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     clearAllFloorCells() {
-        const size = this.cols * this.rows;
         this.floorKind.fill(0);
         this.floorFacing.fill(0);
+        this._floorBeltLoad.fill(0);
+        this._floorBeltAnimMs.fill(0);
+        this.floorBeltCount = 0;
         bumpFloorOccupancyStampDrawRevision(this);
     }
     worldCol(x) {

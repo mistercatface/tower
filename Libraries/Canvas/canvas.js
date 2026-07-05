@@ -768,16 +768,23 @@ function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
         },
     };
 }
-export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null) {
+export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null, frameIndex = 0) {
     const bakeScale = sprite.bakeScale ?? 1;
     const anchorX = sprite.anchorX ?? 0;
     const anchorY = sprite.anchorY ?? 0;
     const canvas = sprite.canvas ?? sprite;
-    const drawW = sprite.drawW ?? canvas.width / bakeScale;
+    const frameCount = sprite.frameCount ?? 1;
+    const frameWidthCanvas = sprite.frameWidthCanvas ?? canvas.width / frameCount;
+    const drawW = sprite.drawW ?? (frameCount > 1 ? frameWidthCanvas / bakeScale : canvas.width / bakeScale);
     const drawH = sprite.drawH ?? canvas.height / bakeScale;
+    const destX = worldX - anchorX;
+    const destY = worldY - anchorY;
+    const sx = frameCount > 1 ? (frameIndex % frameCount) * frameWidthCanvas : 0;
+    const sw = frameCount > 1 ? frameWidthCanvas : canvas.width;
+    const sh = canvas.height;
     // Fast path for 99% of sprites that have no modifier — avoid any optional-chain reads.
     if (!modifier) {
-        ctx.drawImage(canvas, worldX - anchorX, worldY - anchorY, drawW, drawH);
+        ctx.drawImage(canvas, sx, 0, sw, sh, destX, destY, drawW, drawH);
         return;
     }
     const drawX = modifier.drawX ?? worldX;
@@ -786,18 +793,18 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     if (modifier.clipCircle) {
         ctx.save();
         prepModifiedBlit(ctx, modifier);
-        ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
         ctx.restore();
         return;
     }
     if (modifier.alpha != null) {
         const prevAlpha = ctx.globalAlpha;
         ctx.globalAlpha = prevAlpha * modifier.alpha;
-        ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+        ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
         ctx.globalAlpha = prevAlpha;
         return;
     }
-    ctx.drawImage(canvas, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+    ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
 }
 // ─── Radial elevation prop preset ────────────────────────────────────────────
 const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
@@ -896,10 +903,68 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
 export function clearPropSpriteCache() {
     propSpriteCache.clear();
     overlaySpriteCache.clear();
+    gridStampSpriteCache.clear();
     clearSpriteKeyIntern();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
 export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt" };
+export const BELT_FILMSTRIP_FRAMES = 8;
+export const BELT_FRAME_MS = 60;
+const GRID_STAMP_STAGE_PADDING = 40;
+const gridStampSpriteCache = createQuantizedSpriteCache({ maxItems: 512 });
+function buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize) {
+    let key = BigInt(internSpriteKeyPart(renderKey));
+    key = (key << 20n) | BigInt(internSpriteKeyPart(stripKey));
+    key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
+    key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
+    return key;
+}
+function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount) {
+    const zoom = viewport.zoom ?? 1;
+    const stageR = halfExtents.x;
+    const worldDiameter = stageR * 2;
+    const pixelSize = Math.round(worldDiameter * zoom);
+    const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
+    return gridStampSpriteCache.getOrBake(key, () => {
+        const bakeScale = resolvePropBakeScale(worldDiameter, undefined, false, zoom);
+        const frameSpan = Math.ceil((stageR * 2.6 + GRID_STAMP_STAGE_PADDING * 2) * bakeScale);
+        const anchorX = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
+        const anchorY = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
+        const canvas = acquireOffscreenCanvas(frameSpan * frameCount, frameSpan);
+        const bakeCtx = canvas.getContext("2d");
+        const stageProp = { x: 0, y: 0, facing: quantizeAngle(facing ?? 0, 4), halfExtents, radius: stageR };
+        for (let f = 0; f < frameCount; f++) {
+            stageProp.ageMs = f * BELT_FRAME_MS;
+            bakeCtx.save();
+            bakeCtx.translate(f * frameSpan, 0);
+            if (bakeScale !== 1) bakeCtx.scale(bakeScale, bakeScale);
+            bakeCtx.translate(anchorX, anchorY);
+            draw(bakeCtx, stageProp, viewport);
+            bakeCtx.restore();
+        }
+        return { canvas, meta: { anchorX, anchorY, bakeScale, frameCount, frameWidthCanvas: frameSpan, drawW: frameSpan / bakeScale, drawH: frameSpan / bakeScale } };
+    });
+}
+export function hasSharedGridStampFilmstrip(renderKey, stripKey, halfExtents, zoom) {
+    const pixelSize = Math.round(halfExtents.x * 2 * (zoom ?? 1));
+    const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom ?? 1, pixelSize);
+    return gridStampSpriteCache.get(key) != null;
+}
+export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, entries, getDraw, frameCount = BELT_FILMSTRIP_FRAMES) {
+    const halfExtents = { x: cellHalf, y: cellHalf };
+    const zoom = viewport.zoom ?? 1;
+    for (let i = 0; i < entries.length; i++) {
+        const { stripKey, facing } = entries[i];
+        const pixelSize = Math.round(cellHalf * 2 * zoom);
+        const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
+        if (gridStampSpriteCache.get(key)) continue;
+        getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, getDraw(entries[i].kind), frameCount);
+    }
+}
+export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExtents, viewport, renderKey, stripKey, facing, draw, frameIndex, frameCount) {
+    const sprite = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
+    blitAnchoredSprite(ctx, sprite, worldX, worldY, null, frameIndex);
+}
 /** Render keys for baked sandbox/editor overlay glyphs. */
 export const OVERLAY_RENDER_KEY = {
     SelectionRing: "overlay_selection_ring",

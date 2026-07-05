@@ -69,6 +69,7 @@ function runSimulationTick(state, dt) {
     FloorBelt.tickOccupancy(state, spatialFrame, simDt, applyKineticAcceleration);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
     FloorBelt.tickZones(state, spatialFrame);
+    FloorBelt.tickAnim(state, simDt);
     FloatingText.updateAll(state, simDt);
 }
 export function createEditorApp(options = {}) {

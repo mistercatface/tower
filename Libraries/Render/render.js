@@ -17,6 +17,8 @@ import {
     OVERLAY_RENDER_KEY,
     drawCachedOverlayGlyph,
     drawCachedPropSprite,
+    drawCachedGridStampFilmstripShared,
+    warmSharedGridStampFilmstripCache,
     drawImageQuadFromFlatRingsWithBaseTransform,
     drawImageTriangleFlatWithBaseTransform,
     drawImageQuadWithBaseTransformScalars,
@@ -24,6 +26,8 @@ import {
     drawImageQuadScalars,
     SpriteCache,
     GRID_STAMP_RENDER_KEY,
+    BELT_FILMSTRIP_FRAMES,
+    BELT_FRAME_MS,
     blitMaskOverlay,
     addMaskPathFill,
     cutOutRadialSoftDisc,
@@ -2502,6 +2506,108 @@ export function createConveyorDraw(options = {}) {
         ctx.restore();
     };
 }
+export function createFlatConveyorDraw(options = {}) {
+    const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
+    const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
+    const beltStroke = "#111111";
+    const beltFill = "#1e1e1e";
+    return (ctx, prop) => {
+        const hx = prop.halfExtents?.x ?? 8;
+        const hy = prop.halfExtents?.y ?? 8;
+        const lineScale = getCanvasLineScale(ctx);
+        const angle = prop.facing ?? 0;
+        ctx.save();
+        ctx.translate(prop.x, prop.y);
+        ctx.rotate(angle);
+        ctx.fillStyle = beltFill;
+        ctx.fillRect(-hx, -hy, hx * 2, hy * 2);
+        ctx.strokeStyle = beltStroke;
+        ctx.lineWidth = 1.0 * lineScale;
+        ctx.strokeRect(-hx, -hy, hx * 2, hy * 2);
+        ctx.beginPath();
+        ctx.rect(-hx, -hy, hx * 2, hy * 2);
+        ctx.clip();
+        const speed = 20;
+        const spacing = 8;
+        const timeSec = (prop.ageMs ?? 0) / 1000;
+        if (!turnDirection) {
+            const offset = (timeSec * speed) % spacing;
+            ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
+            ctx.lineWidth = 1.0 * lineScale;
+            const numSlats = Math.ceil((hx * 2) / 4) + 2;
+            for (let i = -2; i < numSlats; i++) {
+                const cx = -hx + ((timeSec * speed) % 4) + i * 4;
+                ctx.beginPath();
+                ctx.moveTo(cx, -hy);
+                ctx.lineTo(cx, hy);
+                ctx.stroke();
+            }
+            ctx.fillStyle = chevronColors.fill;
+            ctx.strokeStyle = chevronColors.stroke;
+            ctx.lineWidth = 0.5 * lineScale;
+            const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
+            for (let i = -2; i < numChevrons; i++) {
+                const cx = -hx + offset + i * spacing;
+                ctx.beginPath();
+                ctx.moveTo(cx + 1.5, 0);
+                ctx.lineTo(cx - 1.2, 3.2);
+                ctx.lineTo(cx - 0.4, 3.2);
+                ctx.lineTo(cx + 0.8, 0);
+                ctx.lineTo(cx - 0.4, -3.2);
+                ctx.lineTo(cx - 1.2, -3.2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.restore();
+            return;
+        }
+        const isLeft = turnDirection === "left";
+        const pivotX = hx;
+        const pivotY = isLeft ? hy : -hy;
+        const startAngle = Math.PI;
+        const dir = isLeft ? 1 : -1;
+        const arcR = hx;
+        const totalArcLength = (Math.PI / 2) * arcR;
+        const offset = (timeSec * speed) % spacing;
+        ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
+        ctx.lineWidth = 1.0 * lineScale;
+        const numSlats = Math.ceil(totalArcLength / 4) + 2;
+        for (let i = -1; i < numSlats; i++) {
+            const s = ((timeSec * speed) % 4) + i * 4;
+            if (s < 0 || s > totalArcLength) continue;
+            const A = startAngle + dir * (s / arcR);
+            ctx.beginPath();
+            ctx.moveTo(pivotX, pivotY);
+            ctx.lineTo(pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A));
+            ctx.stroke();
+        }
+        ctx.fillStyle = chevronColors.fill;
+        ctx.strokeStyle = chevronColors.stroke;
+        ctx.lineWidth = 0.5 * lineScale;
+        const numChevrons = Math.ceil(totalArcLength / spacing) + 2;
+        for (let i = -1; i < numChevrons; i++) {
+            const s = offset + i * spacing;
+            if (s < -2 || s > totalArcLength + 2) continue;
+            const A = startAngle + dir * (s / arcR);
+            const tipAngle = A + dir * (1.5 / arcR);
+            const wingAngle = A - dir * (1.2 / arcR);
+            const innerAngle = A - dir * (0.4 / arcR);
+            const innerTipAngle = A + dir * (0.8 / arcR);
+            ctx.beginPath();
+            ctx.moveTo(pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle));
+            ctx.lineTo(pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle));
+            ctx.lineTo(pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle));
+            ctx.lineTo(pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle));
+            ctx.lineTo(pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle));
+            ctx.lineTo(pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle));
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+    };
+}
 let floatingTextCache = null;
 export const FLOATING_TEXT_SPAWN_EVENT = "fx:floatingText";
 export const TextStyles = {
@@ -2747,12 +2853,12 @@ export class WorldSceneRenderer {
     }
 }
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
-const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
-function beltDrawForKind(kind) {
+const beltFilmstripDrawByTurn = { straight: createFlatConveyorDraw(), left: createFlatConveyorDraw({ turnDirection: "left" }), right: createFlatConveyorDraw({ turnDirection: "right" }) };
+function beltFilmstripDrawForKind(kind) {
     const turn = FloorBelt.getElbowTurn(kind);
-    if (turn === "left") return beltDrawByTurn.left;
-    if (turn === "right") return beltDrawByTurn.right;
-    return beltDrawByTurn.straight;
+    if (turn === "left") return beltFilmstripDrawByTurn.left;
+    if (turn === "right") return beltFilmstripDrawByTurn.right;
+    return beltFilmstripDrawByTurn.straight;
 }
 const floorBeltStampProxyProto = {
     ageMs: 0,
@@ -2779,7 +2885,21 @@ export function clearGridStampDrawCaches(state) {
     if (!state.sandbox) return;
     state.sandbox._floorOccupancyStampDrawCache = null;
 }
-export function syncFloorOccupancyStampDrawCache(state, grid) {
+function warmFloorBeltFilmstripCache(grid, viewport, belts) {
+    const seen = new Set();
+    const entries = [];
+    for (let i = 0; i < belts.length; i++) {
+        const item = belts[i];
+        const kind = item.proxy.beltKind;
+        const facingIndex = grid.floorFacing[item.idx];
+        const stripKey = `k${kind}f${facingIndex}`;
+        if (seen.has(stripKey)) continue;
+        seen.add(stripKey);
+        entries.push({ kind, stripKey, facing: FloorBelt.getFacingAngle(facingIndex) });
+    }
+    warmSharedGridStampFilmstripCache(viewport, grid.cellHalfSize, GRID_STAMP_RENDER_KEY.FloorBelt, entries, beltFilmstripDrawForKind, BELT_FILMSTRIP_FRAMES);
+}
+export function syncFloorOccupancyStampDrawCache(state, grid, viewport = null) {
     if (!state.sandbox) return null;
     const revision = floorOccupancyStampDrawCacheKey(grid);
     const cached = state.sandbox._floorOccupancyStampDrawCache;
@@ -2793,28 +2913,44 @@ export function syncFloorOccupancyStampDrawCache(state, grid) {
         const kind = grid.floorKind[idx];
         if (!(grid.floorKind[idx] !== 0)) continue;
         const { x, y } = grid.gridToWorldByIdx(idx);
-        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
+        if (FloorBelt.isBelt(kind)) belts.push({ idx, proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
     }
     const next = { revision, belts };
     state.sandbox._floorOccupancyStampDrawCache = next;
+    if (viewport && belts.length) warmFloorBeltFilmstripCache(grid, viewport, belts);
     return next;
 }
-function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
-    const animFrame = Math.floor(gameTime / 60) % 8;
+function drawCachedFloorOccupancyBelts(ctx, viewport, grid, cached) {
     const belts = cached.belts;
+    const halfExtents = SHARED_HALF_EXTENTS;
     for (let i = 0; i < belts.length; i++) {
         const item = belts[i];
         if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
-        item.proxy.ageMs = gameTime;
-        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy.beltKind), animFrame);
+        const frameIndex = Math.floor(grid._floorBeltAnimMs[item.idx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
+        const proxy = item.proxy;
+        const facingIndex = grid.floorFacing[item.idx];
+        const stripKey = `k${proxy.beltKind}f${facingIndex}`;
+        drawCachedGridStampFilmstripShared(
+            ctx,
+            item.x,
+            item.y,
+            halfExtents,
+            viewport,
+            GRID_STAMP_RENDER_KEY.FloorBelt,
+            stripKey,
+            proxy.facing,
+            beltFilmstripDrawForKind(proxy.beltKind),
+            frameIndex,
+            BELT_FILMSTRIP_FRAMES,
+        );
     }
 }
 export function drawFloorOccupancyBelts(ctx, state, viewport) {
     const grid = state.obstacleGrid;
-    if (!grid.floorKind.some((k) => k !== 0)) return;
-    const cached = syncFloorOccupancyStampDrawCache(state, grid);
+    if (grid.floorBeltCount === 0) return;
+    const cached = syncFloorOccupancyStampDrawCache(state, grid, viewport);
     if (!cached?.belts.length) return;
-    drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);
+    drawCachedFloorOccupancyBelts(ctx, viewport, grid, cached);
 }
 /** Default omnidirectional vision radius in grid tiles. */
 export const LOS_SHADOW_VISION_TILES_DEFAULT = 16;
