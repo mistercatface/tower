@@ -1612,7 +1612,6 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     return fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce);
 }
-
 function fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     ensureChunkFractureGrid(prop);
@@ -1647,7 +1646,6 @@ export function spawnFractureShards(world, sourceProp, fracture, spatialFrame = 
     if (isGlassFracture(sourceProp)) return spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame);
     return spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame);
 }
-
 function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
     const cos = Math.cos(fracture.facing);
     const sin = Math.sin(fracture.facing);
@@ -1742,9 +1740,8 @@ export function flushDeferredFractures(world, spatialFrame) {
             const item = deferredFractures[i];
             const prop = item.prop;
             delete prop._pendingEviction;
-            if (item.type === "glass") {
-                evictFracturedProp(world, prop, spatialFrame);
-            } else if (item.type === "circle") {
+            if (item.type === "glass") evictFracturedProp(world, prop, spatialFrame);
+            else if (item.type === "circle") {
                 clearChainLinksForProp(world, prop.id);
                 evictFracturedProp(world, prop, spatialFrame);
             } else {
@@ -1795,13 +1792,9 @@ export function getPropRadius(prop) {
     return getCirclePropRadius(prop);
 }
 export function setPropRadius(prop, radius) {
-    if (prop.shape?.type === "Polygon" && !prop.strategy?.syncCollisionShape) {
-        setPolygonPropBoundingRadius(prop, radius);
-    } else {
-        setCirclePropRadius(prop, radius);
-    }
+    if (prop.shape?.type === "Polygon" && !prop.strategy?.syncCollisionShape) setPolygonPropBoundingRadius(prop, radius);
+    else setCirclePropRadius(prop, radius);
 }
-
 // --- MERGED
 // --- MERGED FROM propStrategy.js ---
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
