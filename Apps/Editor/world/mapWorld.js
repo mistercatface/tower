@@ -134,6 +134,7 @@ export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
 /** @param {import("../state.js").TileLabGameState} state */
 export async function generateLabCaverns(state, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
     const { cavernConfig } = state.editor;
+    const grid = state.obstacleGrid;
     const cellSize = gridSettings.cellSize;
     /** @type {{ originIdx: number, cols: number, rows: number, cells: Uint8Array }} */
     let stamp = null;
