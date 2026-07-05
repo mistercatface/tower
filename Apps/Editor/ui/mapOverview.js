@@ -31,7 +31,7 @@ function paintMapGenBoundsOverlay(ctx, state, kind, cache, displayW, displayH) {
     const config = getMapGenBoundsConfig(state.editor, kind);
     const color = MAP_GEN_OVERLAY_COLORS[kind];
     if (config.boundsMode === "rect") drawWorldBoundsBox(ctx, getMapGenBoundsAabbCache(state.editor, kind).aabb, cache, displayW, displayH, color, 2);
-    else drawMapGenBoundsPreview(ctx, config, cache, displayW, displayH, color);
+    else drawMapGenBoundsPreview(ctx, state.obstacleGrid, config, cache, displayW, displayH, color);
 }
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */
 export function paintMapOverviewFrame(state) {
