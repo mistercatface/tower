@@ -24,7 +24,6 @@ import {
     forEachDenseCellInBounds,
     padCellIdxToGrid,
     padCellBoundsToGrid,
-    clampCellBoundsToGrid,
     forEachDenseCellInRect,
     gridNavCacheKey,
     centeredGridFrameKey,
@@ -338,7 +337,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
         return walkable;
     });
     const seen = new Set(cache.candidates);
-    forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (idx) => {
+    forEachDenseCellInRect(grid, patchBounds, (idx) => {
         if (!isIdxInMapGenBounds(boundsConfig, grid, idx)) {
             cache.candidateMask[idx] = 0;
             return;
@@ -353,8 +352,8 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
         seen.add(idx);
     });
 }
-function writeNavWalkableFlagsInRect(flags, cols, cells, patchBounds) {
-    forEachDenseCellInRect(patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, cols, (idx) => {
+function writeNavWalkableFlagsInRect(flags, grid, cells, patchBounds) {
+    forEachDenseCellInRect(grid, patchBounds, (idx) => {
         flags[idx] = 0;
     });
     for (let i = 0; i < cells.length; i++) flags[cells[i]] = 1;
@@ -362,15 +361,14 @@ function writeNavWalkableFlagsInRect(flags, cols, cells, patchBounds) {
 function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const grid = state.obstacleGrid;
     const navTopology = state.nav.topology;
-    const cols = grid.cols;
-    const patchBounds = typeof idx === "object" && idx !== null ? padCellBoundsToGrid(idx, cols, grid.rows, 2) : padCellIdxToGrid(idx, cols, grid.rows, 2);
+    const patchBounds = typeof idx === "object" && idx !== null ? padCellBoundsToGrid(idx, grid, 2) : padCellIdxToGrid(idx, grid, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
     if (!seedCells.length) seedCells = cache.candidates;
     const reachedMask = createNavWalkableReachedMask(grid.cols, grid.rows, cache.reachedMask);
     const connected = cache.candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, cache.candidates, cache.candidateMask, grid.cols, grid.rows, seedCells, reachedMask) : [];
-    writeNavWalkableFlagsInRect(cache.flags, grid.cols, connected, patchBounds);
+    writeNavWalkableFlagsInRect(cache.flags, grid, connected, patchBounds);
     cache.cells = connected;
     cache.reachedMask = reachedMask;
     cache.navCacheKey = navWalkableCacheKey(state);
@@ -1117,7 +1115,7 @@ export class HpaRegionGraph {
     }
     collectRegionIdsInBounds(bounds) {
         const ids = new Set();
-        forEachDenseCellInBounds(bounds, this.frame.cols, (idx) => {
+        forEachDenseCellInBounds(this.frame, bounds, (idx) => {
             const node = this.nodeForCell(idx);
             if (node) ids.add(node.id);
         });
@@ -1137,8 +1135,8 @@ export class HpaRegionGraph {
     }
 }
 export function expandRegionDamageBounds(idxOrBounds, frame, padding = 12) {
-    if (typeof idxOrBounds === "number") return padCellIdxToGrid(idxOrBounds, frame.cols, frame.rows, padding);
-    return padCellBoundsToGrid(idxOrBounds, frame.cols, frame.rows, padding);
+    if (typeof idxOrBounds === "number") return padCellIdxToGrid(idxOrBounds, frame, padding);
+    return padCellBoundsToGrid(idxOrBounds, frame, padding);
 }
 function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     if (!nodeA || !nodeB || nodeA.id === nodeB.id) return false;
@@ -1208,7 +1206,7 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
 function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
     const { cols } = frame;
     const touched = new Set();
-    forEachDenseCellInBounds(bounds, cols, (idx) => {
+    forEachDenseCellInBounds(frame, bounds, (idx) => {
         if (!blocked[idx]) return;
         const node = graph.stripCellFromRegion(idx);
         if (!node) return;
@@ -1234,7 +1232,7 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
         for (let i = 0; i < node.cells.length; i++) cells.add(node.cells[i]);
         graph.removeRegion(node);
     }
-    forEachDenseCellInBounds(bounds, cols, (idx) => {
+    forEachDenseCellInBounds(frame, bounds, (idx) => {
         if (!blocked[idx]) cells.add(idx);
     });
     if (cells.size === 0) return { repackedIds: [], nodeIdCounter: graph.nodeIdCounter, distToWall };
@@ -1245,7 +1243,7 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
 function connectAllNodes(navGraph, blocked, frame, graph) {
     graph.clearAllEdges();
     const { cols, rows } = frame;
-    forEachDenseCellInBounds(cellBoundsForGrid(cols, rows), cols, (idx) => {
+    forEachDenseCellInBounds(frame, cellBoundsForGrid(frame), (idx) => {
         const col = idx % cols;
         const row = (idx / cols) | 0;
         const node = graph.nodeForCell(idx);
@@ -1536,15 +1534,15 @@ export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertex
     const frame = simView.frame;
     const { cols, rows } = frame;
     const isBounds = idx !== null && typeof idx === "object";
-    const bakeBounds = idx !== null ? (isBounds ? idx : padCellIdxToGrid(idx, cols, rows, 1)) : null;
+    const bakeBounds = idx !== null ? (isBounds ? idx : padCellIdxToGrid(idx, frame, 1)) : null;
     if (isBounds)
-        forEachDenseCellInBounds(idx, cols, (cellIdx) => {
+        forEachDenseCellInBounds(frame, idx, (cellIdx) => {
             recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, cellIdx);
         });
     else recomputeBlockedFromGridFill(simView.grid, topology.blocked, cols, idx);
     recomputeVertexPassabilityInto(simView, vertexPassability, bakeBounds);
     recomputeNavCardinalOpenInto(simView, cardinalOpen, vertexPassability, bakeBounds);
-    buildOctileNeighborsFromTopologyBounds(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, bakeBounds ?? cellBoundsForGrid(cols, rows));
+    buildOctileNeighborsFromTopologyBounds(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, bakeBounds ?? cellBoundsForGrid(frame));
     if (topology.octilePredecessors) buildOctilePredecessorsFromForwardGrid(topology.octileNeighbors, topology.octilePredecessors, cols, rows, bakeBounds);
 }
 /**
@@ -1678,7 +1676,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
         return;
     }
     if (isBounds)
-        forEachDenseCellInBounds(idx, grid.cols, (cellIdx) => {
+        forEachDenseCellInBounds(grid, idx, (cellIdx) => {
             arena.gridFill[cellIdx] = grid.grid[cellIdx];
             arena.floorKind[cellIdx] = grid.floorKind[cellIdx];
             arena.floorFacing[cellIdx] = grid.floorFacing[cellIdx];
@@ -1706,7 +1704,8 @@ export function recomputeBlockedFromGridFill(gridFill, blocked, cols, idx = null
     blocked[idx] = gridFill[idx] !== 0 ? 1 : 0;
 }
 export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, vertexPassability, cols, rows, octileNeighbors, bounds) {
-    forEachDenseCellInBounds(bounds, cols, (idx) => {
+    const grid = { cols, rows };
+    forEachDenseCellInBounds(grid, bounds, (idx) => {
         const col = idx % cols;
         const row = (idx / cols) | 0;
         const base = octileNeighborBase(idx);
@@ -1723,7 +1722,7 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
                 continue;
             }
             const nIdx = nr * cols + nc;
-            if (!cellInRect(nIdx, cols, rows)) {
+            if (!cellInRect(nIdx, grid)) {
                 octileNeighbors[octileNeighborOffset(idx, i)] = -1;
                 continue;
             }
@@ -1739,9 +1738,10 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
 /** @param {Int32Array} octileNeighbors @param {Int32Array} octilePredecessors @param {number} cols @param {number} rows @param {import("../DataStructures/CellRect.js").CellBounds | null} targetBounds */
 export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePredecessors, cols, rows, targetBounds = null) {
     const cellCount = cols * rows;
+    const grid = { cols, rows };
     if (!targetBounds) octilePredecessors.fill(-1);
     else
-        forEachDenseCellInRect(targetBounds.startCol, targetBounds.endCol, targetBounds.startRow, targetBounds.endRow, cols, (idx) => {
+        forEachDenseCellInRect(grid, targetBounds, (idx) => {
             const base = octileNeighborBase(idx);
             for (let i = 0; i < OCTILE_DIRS_PER_CELL; i++) octilePredecessors[base + i] = -1;
         });
@@ -1895,7 +1895,7 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = targetY;
         return out;
     }
-    if (!cellInRect(targetIdx, grid.cols, grid.rows)) {
+    if (!cellInRect(targetIdx, grid)) {
         out.x = targetX;
         out.y = targetY;
         return out;

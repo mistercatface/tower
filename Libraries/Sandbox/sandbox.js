@@ -993,7 +993,7 @@ const PLACEABLE = {
             if (sel?.kind !== "floor") return null;
             const grid = state.obstacleGrid;
             const idx = sel.idx;
-            if (!cellInRect(idx, grid.cols, grid.rows)) return null;
+            if (!cellInRect(idx, grid)) return null;
             if (!(grid.floorKind[idx] !== 0)) return null;
             const kind = grid.floorKind[idx];
             const facingIndex = grid.floorFacing[idx];
@@ -1172,7 +1172,7 @@ function spawnSnapshotProp(state, entry) {
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents, entry.visualOverride);
-    if (entry.radius != null) 
+    if (entry.radius != null)
         if (prop.shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
     if (prop && entry.type === "cross_pinwheel" && (entry.crossLength != null || entry.crossThickness != null)) applyCrossPinwheelFootprint(prop, entry.crossLength ?? 32, entry.crossThickness ?? 8);

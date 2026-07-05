@@ -1,5 +1,4 @@
 import { cellIdxToChunkKey, forEachObstacleGridCellInAabb } from "../Spatial/spatial.js";
-import { cellInRect } from "../Spatial/spatial.js";
 import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";

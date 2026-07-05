@@ -50,7 +50,6 @@ import {
     projectWorldPointInto,
     projectWorldQuadInto,
     resolveWallSurfaceProfileId,
-    cellBoundsAtOriginInto,
     cellInRect,
     FloorBelt,
     floorOccupancyStampDrawCacheKey,

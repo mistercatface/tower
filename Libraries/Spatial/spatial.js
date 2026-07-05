@@ -197,10 +197,16 @@ export class SpatialFrameCore {
 function neighborGridDims(grid) {
     return { cols: grid.cols ?? grid.gridCols, rows: grid.rows ?? grid.gridRows };
 }
+function idxCol(idx, cols) {
+    return idx % cols;
+}
+function idxRow(idx, cols) {
+    return (idx / cols) | 0;
+}
 export function edgeNeighborIdx(idx, side, grid) {
     const { cols, rows } = neighborGridDims(grid);
-    const col = idx % cols;
-    const row = (idx / cols) | 0;
+    const col = idxCol(idx, cols);
+    const row = idxRow(idx, cols);
     const { dc, dr } = CARDINAL_OFFSETS[side];
     const nc = col + dc;
     const nr = row + dr;
@@ -449,29 +455,19 @@ export function gridToWorldCentered(col, row, centerX, centerY, offsetX, offsetY
 export function gridToWorldInCenteredFrame(frame, col, row) {
     return { x: gridCenterXInCenteredFrame(frame, col), y: gridCenterYInCenteredFrame(frame, row) };
 }
-/** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function getCellBoundsCenteredInto(out, idx, cols, centerX, centerY, offsetX, offsetY, cellSize) {
-    const row = (idx / cols) | 0;
-    const col = idx - row * cols;
-    const minX = col * cellSize + centerX - offsetX;
-    const minY = row * cellSize + centerY - offsetY;
-    return minCornerAabbInto(out, minX, minY, cellSize, cellSize);
-}
 export function getCellBoundsInCenteredFrameInto(out, frame, idx) {
-    return getCellBoundsCenteredInto(out, idx, frame.cols, frame.centerX, frame.centerY, frame.offsetX, frame.offsetY, frame.cellSize);
-}
-export function getCellBoundsCentered(idx, cols, centerX, centerY, offsetX, offsetY, cellSize) {
-    return getCellBoundsCenteredInto(createAabb(), idx, cols, centerX, centerY, offsetX, offsetY, cellSize);
-}
-/** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function cellBoundsAtOriginInto(out, originMinX, originMinY, col, row, cellSize) {
-    return minCornerAabbInto(out, originMinX + col * cellSize, originMinY + row * cellSize, cellSize, cellSize);
+    const col = idxCol(idx, frame.cols);
+    const row = idxRow(idx, frame.cols);
+    const minX = col * frame.cellSize + frame.centerX - frame.offsetX;
+    const minY = row * frame.cellSize + frame.centerY - frame.offsetY;
+    return minCornerAabbInto(out, minX, minY, frame.cellSize, frame.cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function cellBoundsAtOriginIdxInto(out, originMinX, originMinY, idx, cols, cellSize) {
-    const row = (idx / cols) | 0;
-    const col = idx - row * cols;
-    return minCornerAabbInto(out, originMinX + col * cellSize, originMinY + row * cellSize, cellSize, cellSize);
+function cellBoundsAtOriginIdxInto(out, grid, idx) {
+    const cols = neighborGridDims(grid).cols;
+    const col = idxCol(idx, cols);
+    const row = idxRow(idx, cols);
+    return minCornerAabbInto(out, grid.minX + col * grid.cellSize, grid.minY + row * grid.cellSize, grid.cellSize, grid.cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
 export function cellBoundsToWorldBoundsInto(out, bounds, originX, originY, cellSize) {
@@ -484,17 +480,6 @@ export function cellBoundsToWorldBoundsInto(out, bounds, originX, originY, cellS
 export function cellBoundsToWorldBounds(bounds, originX, originY, cellSize) {
     return cellBoundsToWorldBoundsInto(createAabb(), bounds, originX, originY, cellSize);
 }
-/** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function worldBoundsFromCellOriginInto(out, idx, gridCols, cols, rows, cellSize) {
-    const row = (idx / gridCols) | 0;
-    const col = idx - row * gridCols;
-    const minX = col * cellSize;
-    const minY = row * cellSize;
-    return minCornerAabbInto(out, minX, minY, cols * cellSize, rows * cellSize);
-}
-export function worldBoundsFromCellOrigin(idx, gridCols, cols, rows, cellSize) {
-    return worldBoundsFromCellOriginInto(createAabb(), idx, gridCols, cols, rows, cellSize);
-}
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
@@ -503,7 +488,7 @@ export function worldBoundsFromCellOrigin(idx, gridCols, cols, rows, cellSize) {
  */
 export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
     const rect = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
-    const bounds = clampCellBoundsToGrid({ startCol: rect.minCol, endCol: rect.maxCol, startRow: rect.minRow, endRow: rect.maxRow }, grid.cols, grid.rows);
+    const bounds = clampCellBoundsToGrid({ startCol: rect.minCol, endCol: rect.maxCol, startRow: rect.minRow, endRow: rect.maxRow }, grid);
     forEachCellInColRowBounds(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, grid.cols, (c, r, idx) => fn(idx));
 }
 // Viewer-relative radial elevation projection (worldRenderMode: "radial").
@@ -997,7 +982,7 @@ export class FloorBelt {
             if (prevKind !== kind || prevFacing !== facing) floorNavChanged = true;
             grid.floorKind[idx] = kind;
             grid.floorFacing[idx] = facing;
-            growCellBoundsIdx(bounds, idx, grid.cols);
+            growCellBoundsIdx(bounds, idx, grid);
         }
         if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
         if (isEmptyCellBounds(bounds)) return null;
@@ -1410,7 +1395,8 @@ export function undirectedPairIndex(aIdx, bIdx, cellCount) {
 export function gridCellLayout(grid) {
     return { originIdx: 0, gridCols: grid.cols, gridRows: grid.rows, strideCols: grid.cols, cellCount: grid.cols * grid.rows };
 }
-export function cellInRect(idx, cols, rows) {
+export function cellInRect(idx, grid) {
+    const { cols, rows } = neighborGridDims(grid);
     return idx >= 0 && idx < cols * rows;
 }
 const GRID_SIDE_NEIGHBOR_LABELS = ["North neighbor", "East neighbor", "South neighbor", "West neighbor"];
@@ -1434,17 +1420,17 @@ export function makeAdjacencyKey(idA, idB) {
     return idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
 }
 export function manhattanDistanceIdx(idxA, idxB, cols) {
-    const rowA = (idxA / cols) | 0;
-    const colA = idxA - rowA * cols;
-    const rowB = (idxB / cols) | 0;
-    const colB = idxB - rowB * cols;
+    const rowA = idxRow(idxA, cols);
+    const colA = idxCol(idxA, cols);
+    const rowB = idxRow(idxB, cols);
+    const colB = idxCol(idxB, cols);
     return Math.abs(colA - colB) + Math.abs(rowA - rowB);
 }
 export function octileDistanceIdx(idxA, idxB, cols) {
-    const rowA = (idxA / cols) | 0;
-    const colA = idxA - rowA * cols;
-    const rowB = (idxB / cols) | 0;
-    const colB = idxB - rowB * cols;
+    const rowA = idxRow(idxA, cols);
+    const colA = idxCol(idxA, cols);
+    const rowB = idxRow(idxB, cols);
+    const colB = idxCol(idxB, cols);
     const dx = Math.abs(colA - colB);
     const dy = Math.abs(rowA - rowB);
     const min = Math.min(dx, dy);
@@ -1453,8 +1439,8 @@ export function octileDistanceIdx(idxA, idxB, cols) {
 }
 export function forEachCardinalNeighborIdx(idx, grid, fn) {
     const { cols, rows } = neighborGridDims(grid);
-    const row = (idx / cols) | 0;
-    const col = idx - row * cols;
+    const row = idxRow(idx, cols);
+    const col = idxCol(idx, cols);
     if (row > 0) fn(idx - cols);
     if (col < cols - 1) fn(idx + 1);
     if (row < rows - 1) fn(idx + cols);
@@ -1823,7 +1809,7 @@ export class WorldObstacleGrid {
         const maxCol = Math.min(this.cols - 1, ec + pad);
         const minRow = Math.max(0, er - pad);
         const maxRow = Math.min(this.rows - 1, er + pad);
-        forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, this.cols, (idx) => {
+        forEachDenseCellInRect(this, { startCol: minCol, endCol: maxCol, startRow: minRow, endRow: maxRow }, (idx) => {
             if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterXByIdx(idx), this.gridCenterYByIdx(idx), idx));
             for (let side = 0; side < 4; side++) {
                 if (!railWallEdgeShouldEmit(this, idx, side)) continue;
@@ -1966,7 +1952,7 @@ export class WorldObstacleGrid {
             const nr = row + rowOffset;
             if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
                 const newIdx = nc + nr * this.cols;
-                if (cellInRect(newIdx, this.cols, this.rows)) {
+                if (cellInRect(newIdx, this)) {
                     newGrid[newIdx] = level;
                     if (this.floorKind[idx] !== 0) {
                         newFloorKind[newIdx] = this.floorKind[idx];
@@ -2006,7 +1992,7 @@ export class WorldObstacleGrid {
         const baseCol = layout.originIdx % this.cols;
         const baseRow = (layout.originIdx / this.cols) | 0;
         if (!additive)
-            forEachDenseCellInRect(gridBounds.startCol, gridBounds.endCol, gridBounds.startRow, gridBounds.endRow, this.cols, (idx) => {
+            forEachDenseCellInRect(this, gridBounds, (idx) => {
                 this.grid[idx] = 0;
             });
         let changed = false;
@@ -2143,7 +2129,7 @@ export class WorldObstacleGrid {
         const row = this.worldRow(y);
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
         const idx = row * this.cols + col;
-        if (!cellInRect(idx, this.cols, this.rows)) return -1;
+        if (!cellInRect(idx, this)) return -1;
         return idx;
     }
     isBlockedIdx(idx) {
@@ -2158,7 +2144,7 @@ export class WorldObstacleGrid {
         return navTopology.canStep(fromIdx, toIdx);
     }
     getCellBoundsByIdx(idx) {
-        return cellBoundsAtOriginIdxInto(this.cellBoundsScratch, this.minX, this.minY, idx, this.cols, this.cellSize);
+        return cellBoundsAtOriginIdxInto(this.cellBoundsScratch, this, idx);
     }
 }
 /**
@@ -2317,7 +2303,7 @@ export class EntityGrid {
         const row = Math.floor((y - this.minY) / this.cellSize);
         if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
         const idx = col + row * this.cols;
-        if (!cellInRect(idx, this.cols, this.rows)) return -1;
+        if (!cellInRect(idx, this)) return -1;
         return idx;
     }
     insert(entity) {
@@ -2883,14 +2869,17 @@ export function emptyCellBounds() {
 export function isEmptyCellBounds(bounds) {
     return bounds.startCol === Infinity;
 }
-/** @param {CellBounds} bounds @param {number} cols @param {number} rows @returns {CellBounds} */
-export function clampCellBoundsToGrid(bounds, cols, rows) {
+/** @param {CellBounds} bounds @returns {CellBounds} */
+export function clampCellBoundsToGrid(bounds, grid) {
+    const { cols, rows } = neighborGridDims(grid);
     return { startCol: Math.max(0, bounds.startCol), endCol: Math.min(cols - 1, bounds.endCol), startRow: Math.max(0, bounds.startRow), endRow: Math.min(rows - 1, bounds.endRow) };
 }
-export function cellBoundsForGrid(cols, rows) {
+export function cellBoundsForGrid(grid) {
+    const { cols, rows } = neighborGridDims(grid);
     return { startCol: 0, endCol: cols - 1, startRow: 0, endRow: rows - 1 };
 }
-export function padCellBoundsToGrid(bounds, cols, rows, padding = 0) {
+export function padCellBoundsToGrid(bounds, grid, padding = 0) {
+    const { cols, rows } = neighborGridDims(grid);
     return {
         startCol: Math.max(0, bounds.startCol - padding),
         endCol: Math.min(cols - 1, bounds.endCol + padding),
@@ -2898,26 +2887,26 @@ export function padCellBoundsToGrid(bounds, cols, rows, padding = 0) {
         endRow: Math.min(rows - 1, bounds.endRow + padding),
     };
 }
-export function padCellIdxToGrid(idx, cols, rows, padding = 0) {
-    return {
-        startCol: Math.max(0, (idx % cols) - padding),
-        endCol: Math.min(cols - 1, (idx % cols) + padding),
-        startRow: Math.max(0, ((idx / cols) | 0) - padding),
-        endRow: Math.min(rows - 1, ((idx / cols) | 0) + padding),
-    };
+export function padCellIdxToGrid(idx, grid, padding = 0) {
+    const { cols, rows } = neighborGridDims(grid);
+    const col = idxCol(idx, cols);
+    const row = idxRow(idx, cols);
+    return { startCol: Math.max(0, col - padding), endCol: Math.min(cols - 1, col + padding), startRow: Math.max(0, row - padding), endRow: Math.min(rows - 1, row + padding) };
 }
-export function growCellBoundsIdx(bounds, idx, cols) {
-    const col = idx % cols;
-    const row = (idx / cols) | 0;
+export function growCellBoundsIdx(bounds, idx, grid) {
+    const cols = neighborGridDims(grid).cols;
+    const col = idxCol(idx, cols);
+    const row = idxRow(idx, cols);
     if (col < bounds.startCol) bounds.startCol = col;
     if (col > bounds.endCol) bounds.endCol = col;
     if (row < bounds.startRow) bounds.startRow = row;
     if (row > bounds.endRow) bounds.endRow = row;
     return bounds;
 }
-export function cellBoundsAtIdx(idx, cols) {
-    const col = idx % cols;
-    const row = (idx / cols) | 0;
+export function cellBoundsAtIdx(idx, grid) {
+    const cols = neighborGridDims(grid).cols;
+    const col = idxCol(idx, cols);
+    const row = idxRow(idx, cols);
     return { startCol: col, endCol: col, startRow: row, endRow: row };
 }
 /** @param {CellBounds | null} a @param {CellBounds | null} b @returns {CellBounds | null} */
@@ -2939,12 +2928,13 @@ export function forEachSparseCellInRect(minCol, maxCol, minRow, maxRow, fn) {
         for (let c = minCol; c <= maxCol; c++) fn(c, r, c + rowKey);
     }
 }
-/** Iterate dense grid cells; fn(col, row, cellIndex). */
-export function forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, cols, fn) {
-    forEachCellInColRowBounds(minCol, maxCol, minRow, maxRow, cols, (c, r, idx) => fn(idx));
+/** Iterate dense grid cells; fn(cellIndex). */
+export function forEachDenseCellInRect(grid, bounds, fn) {
+    const cols = neighborGridDims(grid).cols;
+    forEachCellInColRowBounds(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, (c, r, idx) => fn(idx));
 }
-export function forEachDenseCellInBounds(bounds, cols, fn) {
-    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, fn);
+export function forEachDenseCellInBounds(grid, bounds, fn) {
+    forEachDenseCellInRect(grid, bounds, fn);
 }
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
@@ -2985,7 +2975,7 @@ export function clearRailWallsQuiet(state, rails) {
         const { idx, side } = rails[i];
         if (!clearPrimaryBoundaryAt(state, idx, side)) continue;
         changed = true;
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     }
     if (!changed) return null;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
@@ -3009,7 +2999,7 @@ export function stampRailWallsQuiet(state, railWalls) {
         const thicknessLevel = wall.thicknessLevel ?? 1;
         setBoundary(grid, idx, side, { capHeightLevel: heightLevel, thicknessLevel });
         stamped.push({ idx, side, heightLevel, thicknessLevel });
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     }
     if (!stamped.length) return { bounds: null, stamped };
     return { bounds, stamped };
@@ -3018,7 +3008,7 @@ export function commitGridWallBatch(state, bounds) {
     if (!bounds || isEmptyCellBounds(bounds)) return false;
     const grid = state.obstacleGrid;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
-    commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid.cols, grid.rows, 1));
+    commitGridNavEdit(state, padCellBoundsToGrid(bounds, grid, 1));
     return true;
 }
 export function stampRailWallsBatch(state, railWalls) {
@@ -3044,7 +3034,7 @@ export function clearVoxelWallsQuiet(state, voxelIndices) {
         const idx = voxelIndices[i];
         if (!clearVoxelWallQuiet(state, idx)) continue;
         changed = true;
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     }
     if (!changed) return null;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
@@ -3091,14 +3081,14 @@ export function applyStampedGridWallsFromSnapshot(state, doc) {
         const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
         if (idx < 0 || idx >= grid.grid.length) continue;
         grid.grid[idx] = clampStampWallHeightLevel(heightLevel, settings);
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     }
     for (let i = 0; i < doc.railWalls.length; i++) {
         const { idx: docIdx, side, heightLevel, thicknessLevel } = doc.railWalls[i];
         const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
         if (idx < 0 || idx >= grid.grid.length) continue;
         setBoundary(grid, idx, side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     }
     if (isEmptyCellBounds(bounds)) return null;
     return bounds;
@@ -3107,14 +3097,14 @@ export function stampVoxelWallAt(state, idx, heightLevel) {
     const grid = state.obstacleGrid;
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     grid.grid[idx] = level;
-    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid));
     return true;
 }
 export function clearVoxelWallAt(state, idx) {
     const grid = state.obstacleGrid;
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
     grid.grid[idx] = 0;
-    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid));
     return true;
 }
 export function setVoxelWallHeightAt(state, idx, heightLevel) {
@@ -3123,7 +3113,7 @@ export function setVoxelWallHeightAt(state, idx, heightLevel) {
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     if (grid.grid[idx] === level) return true;
     grid.grid[idx] = level;
-    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid));
     return true;
 }
 export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
@@ -3131,13 +3121,13 @@ export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
     setBoundary(grid, idx, side, { capHeightLevel: level, thicknessLevel }, true);
-    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid));
     return true;
 }
 export function clearRailWallAt(state, idx, side) {
     if (!clearPrimaryBoundaryAt(state, idx, side, true)) return false;
     const grid = state.obstacleGrid;
-    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid.cols));
+    commitGridWallBatch(state, cellBoundsAtIdx(idx, grid));
     return true;
 }
 export function listPlacedVoxelWalls(grid) {
@@ -3233,7 +3223,7 @@ export function createDeferredGridWallCommit(state) {
         flush() {
             if (!pending.size) return false;
             const bounds = emptyCellBounds();
-            for (const idx of pending) growCellBoundsIdx(bounds, idx, state.obstacleGrid.cols);
+            for (const idx of pending) growCellBoundsIdx(bounds, idx, state.obstacleGrid);
             commitGridWallBatch(state, bounds);
             pending.clear();
             return true;
@@ -3734,7 +3724,7 @@ export function stampGlobalRailMazeBelts(state, floorBelts) {
     for (let i = 0; i < floorBelts.length; i++) {
         const belt = floorBelts[i];
         if (!grid.writeFloorCell(belt.idx, belt.kind, belt.facingIndex)) continue;
-        const cellBounds = cellBoundsAtIdx(belt.idx, grid.cols);
+        const cellBounds = cellBoundsAtIdx(belt.idx, grid);
         bounds = bounds ? unionCellBounds(bounds, cellBounds) : cellBounds;
     }
     if (bounds) FloorBelt.markZoneSubscriptionsDirty(state, bounds);
@@ -3918,7 +3908,7 @@ function clearStaticWallsAndEdgesAtIdx(grid, idx) {
     return cellChanged;
 }
 function clearStaticWallsAndEdgesInBounds(grid, bounds) {
-    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, grid.cols, (idx) => {
+    forEachDenseCellInRect(grid, bounds, (idx) => {
         clearStaticWallsAndEdgesAtIdx(grid, idx);
     });
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
@@ -3937,7 +3927,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         const cy = (cellBounds.minY + cellBounds.maxY) * 0.5;
         if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
         if (!clearStaticWallsAndEdgesAtIdx(grid, idx)) return;
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     });
     if (isEmptyCellBounds(bounds)) return null;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
@@ -3949,7 +3939,7 @@ function eraseWallsInShape(state) {
     const bounds = emptyCellBounds();
     forEachGlobalCellInMapGenBounds(grid, eraseConfig, (idx) => {
         if (!clearStaticWallsAndEdgesAtIdx(grid, idx)) return;
-        growCellBoundsIdx(bounds, idx, grid.cols);
+        growCellBoundsIdx(bounds, idx, grid);
     });
     if (isEmptyCellBounds(bounds)) return null;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);

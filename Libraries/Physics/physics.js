@@ -38,7 +38,6 @@ import {
     getRailWallInfo,
     resolveCellSurfaceProfileId,
     resolveEdgeSurfaceProfileId,
-    cellInRect,
     isRailWallEdge,
     cellIsStaticWall,
     cellEdgeEndpointsIdx,
