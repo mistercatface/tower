@@ -14,7 +14,6 @@ import {
 } from "../Props/props.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 import propCatalog from "../../Assets/props/index.js";
-// --- MERGED FROM imageDataBuffer.js ---
 /** @param {Uint8ClampedArray} data @param {[number, number, number]} rgb */
 export function fillRgbaBuffer(data, rgb) {
     for (let i = 0; i < data.length; i += 4) {
@@ -61,7 +60,6 @@ export function copyRgbTripletsToRgba(rgba, rgbTriplets, numPixels) {
         rgba[rgbaIdx++] = 255;
     }
 }
-// --- MERGED FROM offscreenCanvas.js ---
 const offscreenCanvasPool = new Map();
 let poolCount = 0;
 const POOL_MAX = 4096;
@@ -117,7 +115,6 @@ export function resizeOffscreenCanvas(canvas, width, height) {
     canvas.height = height;
     canvas.getContext("2d").imageSmoothingEnabled = false;
 }
-// --- MERGED FROM CanvasPath.js ---
 /**
  * Low-level Canvas2D path tracing — geometry only, no fill/stroke/style.
  * Call inside ctx.beginPath() (or use helpers that call beginPath for you).
@@ -300,7 +297,6 @@ export function withClip(ctx, buildPath, draw) {
     ctx.restore();
     return true;
 }
-// --- MERGED FROM AffineTexture.js ---
 const WALL_TEXTURE_SEAM_BLEED_PX = WORLD_SURFACE_DEFAULTS.wallTextureBleedPx;
 export function drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y, baseA, baseB, baseC, baseD, baseE, baseF) {
     let ts0_x = s0x;
@@ -515,7 +511,6 @@ export function drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, 
         baseF,
     );
 }
-// --- MERGED FROM maskCompositor.js ---
 /** Default radial stops for omnidirectional vision carve (destination-out). */
 export const VISION_RADIAL_CUTOUT_STOPS = [
     { offset: 0, color: "rgba(255,255,255,1)" },
@@ -577,7 +572,6 @@ export function blitMaskOverlay(ctx, sourceCanvas) {
     ctx.drawImage(sourceCanvas, 0, 0);
     ctx.restore();
 }
-// --- MERGED FROM SpriteCache.js ---
 export class SpriteCache {
     constructor() {
         this.cache = new Map();
@@ -594,7 +588,6 @@ export class SpriteCache {
         this.cache.clear();
     }
 }
-// --- MERGED FROM BakedSpriteCache.js ---
 /**
  * Dispose a cache entry's canvas/bitmap handle correctly.
  * ImageBitmaps must be explicitly closed; OffscreenCanvases go back to the pool.
@@ -677,7 +670,6 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
         },
     };
 }
-// --- MERGED FROM QuantizedSpriteCache.js ---
 const SPRITE_VIEW_STEP = 30;
 const SPRITE_VIEW_LIMIT = 120;
 function packQuantizedViewBucket(dx, dy, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
@@ -970,7 +962,6 @@ export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animF
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }
-// --- MERGED FROM ProgressBar.js ---
 export class ProgressBar {
     constructor(config = {}) {
         this.width = config.width || 20;
@@ -1056,7 +1047,6 @@ export class ProgressBar {
         ctx.closePath();
     }
 }
-// --- MERGED FROM spriteDrawModifier.js ---
 /**
  * Post-bake draw transforms (alpha, clip, scale, position).
  * Applied at ctx.drawImage time — never in quantized sprite cache keys.

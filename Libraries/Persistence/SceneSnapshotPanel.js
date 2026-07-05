@@ -29,7 +29,7 @@ export function mountSceneSnapshotPanel(container, controller) {
                 if (!window.confirm("Replace the current sandbox with this JSON?")) return;
                 try {
                     controller.importSceneSnapshot(textarea.value);
-                    controller.sync();
+                    controller.session.sync();
                 } catch (err) {
                     window.alert(err instanceof Error ? err.message : String(err));
                 }

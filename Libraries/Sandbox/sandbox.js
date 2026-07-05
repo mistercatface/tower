@@ -150,7 +150,6 @@ import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import { markLabViewDirty } from "../../Apps/Editor/ui/preview.js";
 import propCatalog from "../../Assets/props/index.js";
-// --- MERGED FROM sandboxBehaviorConfig.js ---
 /** @param {object} state @param {object | null | undefined} prop @param {object | null | undefined} asset @param {"cueStrike"} behaviorKey */
 export function resolveWorldPropSandboxBehavior(state, prop, asset, behaviorKey) {
     const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop?.id)?.[behaviorKey];
@@ -161,7 +160,6 @@ export function resolveWorldPropInputGateRules(state, prop, asset, behaviorId) {
     const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop?.id)?.inputGates?.[behaviorId];
     return Array.isArray(stamped) ? stamped : [];
 }
-// --- MERGED FROM sandboxCapabilities.js ---
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
@@ -220,9 +218,13 @@ export function listFloorBeltKindOptions() {
     const FLOOR_BELT_KINDS = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
     return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: FloorBelt.formatKindLabel(kind) }));
 }
+function syncSandboxBehaviorById(state, behaviors) {
+    state.sandbox.behaviors = behaviors;
+    state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
+}
 export function resolveSandboxBehaviors(asset, state, prop = null) {
-    const behaviors = state.sandbox?.behaviors ?? [];
-    const byId = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
+    const byId = state.sandbox.behaviorById;
+    if (!byId) throw new Error("resolveSandboxBehaviors requires state.sandbox.behaviorById — mount sandbox controller or call syncSandboxBehaviorById");
     const behaviorOverrides = prop ? state.sandbox.entityMeta.getBehaviorOverrides(prop.id) : null;
     if (behaviorOverrides) {
         const stamped = [];
@@ -242,7 +244,6 @@ export function resolveSandboxBehaviors(asset, state, prop = null) {
         })
         .map((behavior) => behavior.id);
 }
-// --- MERGED FROM inputGates.js ---
 /**
  * @typedef {"self" | "groupWorldProps" | "groupKinetic"} InputGateScope
  * @typedef {"atRest" | "asleep" | "allAtRest" | "allAsleep"} InputGateUntil
@@ -318,7 +319,6 @@ export function evaluateInputGates(behaviorId, prop, asset, state) {
     }
     return { allowed: true };
 }
-// --- MERGED FROM mapGenInspector.js ---
 const BOUNDS_SHAPE_OPTIONS = [
     { value: "rect", label: "Rectangle" },
     { value: "circle", label: "Circle" },
@@ -655,7 +655,6 @@ export function appendMapGenEditor(parent, state, kind, { onGenerated, onPreview
     else if (kind === "railMaze") buildRailMazeGenEditor(parent, state, onPreviewChange, onGenerated, generateRailMaze);
     else buildEraseEditor(parent, state, onPreviewChange, onGenerated, eraseWalls);
 }
-// --- MERGED FROM sandboxPlacedSpawn.js ---
 function assetDefaultFootprintSpan(typeId) {
     const footprint = propCatalog[typeId]?.physics?.localFootprint;
     if (!footprint?.length) return null;
@@ -711,7 +710,6 @@ export function removeSandboxWorldProp(state, prop, spatialFrame) {
     unregisterPropFromCategoryIndexes(state, prop);
     removeWorldPropFromState(state, prop, spatialFrame, state.sandbox.entityMeta);
 }
-// --- MERGED FROM sandboxPlacementOrder.js ---
 export function createSandboxPlacementOrder(state) {
     let nextPlacementSeq = 1;
     const placementSeqByKey = new Map();
@@ -790,14 +788,12 @@ export function createSandboxPlacementOrder(state) {
         },
     };
 }
-// --- MERGED FROM sandboxPropMeta.js ---
 /** @typedef {"off" | "normal" | "debug"} SandboxPathVisual */
 export const SANDBOX_PATH_VISUAL_OFF = "off";
 export const SANDBOX_PATH_VISUAL_NORMAL = "normal";
 export const SANDBOX_PATH_VISUAL_DEBUG = "debug";
 export const SANDBOX_PATH_VISUAL_OPTIONS = [SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG];
 export const SANDBOX_PATH_VISUAL_LABELS = { off: "Off", normal: "Normal", debug: "Debug" };
-// --- MERGED FROM sandboxShapeFamilies.js ---
 export const SANDBOX_PRIMARY_PROP_IDS = ["ball"];
 export const DEFAULT_BALL_SPAWN_RADIUS = 4;
 export function orderSandboxPalettePropIds(propIds) {
@@ -825,7 +821,6 @@ export function assetDefaultBallRadius(asset) {
 export function blockPresetUsesResizableFootprint(propId) {
     return isResizableBoxSpawnAsset(propCatalog[propId]);
 }
-// --- MERGED FROM sandboxSelection.js ---
 export function createSandboxSelection({ isLiveProp }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
@@ -911,7 +906,6 @@ export function selectionPrimaryPropId(sel, isLiveProp) {
     for (const id of sel.ids) if (isLiveProp(id)) return id;
     return null;
 }
-// --- MERGED FROM sandboxScenePlaceables.js ---
 function sceneItem(seq, label, select, category = "") {
     return { seq, label, select, category };
 }
@@ -1110,7 +1104,6 @@ function dispatchSpawnPlaceableAt(state, worldX, worldY, asset, ctx) {
     return false;
 }
 export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail"];
-// --- MERGED FROM sandboxSceneSnapshot.js ---
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, and floor belts.
  *
@@ -1226,7 +1219,6 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     await commitGridNavEdit(state, null, { fullNavSync: true });
     spawnSnapshotProps(state, doc);
 }
-// --- MERGED FROM sandboxSession.js ---
 /** @param {object} state */
 export function createSandboxSession(state) {
     let placePaletteKey = "";
@@ -1737,16 +1729,12 @@ export function createSandboxSession(state) {
         sync: notifyUi,
     };
 }
-// --- MERGED FROM props sandbox behaviors ---
-// --- MERGED FROM cueStrikeBehavior.js ---
 export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
 /** @param {object} state @param {object} prop @param {object} asset */
 function getCueStrikeConfig(state, prop, asset) {
     return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(state, prop, asset, "cueStrike") };
 }
-// --- MERGED FROM dragLaunchFacingBehavior.js ---
 export const DRAG_LAUNCH_FACING_BEHAVIOR_ID = "dragLaunchFacing";
-// --- MERGED FROM spawnerBehavior.js ---
 export const SPAWNER_BEHAVIOR_ID = "spawner";
 /** @param {object} prop @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
 function aimSpawnerFacing(prop, aim) {
@@ -1755,7 +1743,6 @@ function aimSpawnerFacing(prop, aim) {
     prop.angularVelocity = 0;
     prop.strategy.syncCollisionShape?.(prop);
 }
-// --- MERGED FROM spawnerConfig.js ---
 /** @param {object | null | undefined} asset */
 export function isSpawnerProp(asset) {
     return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
@@ -1810,7 +1797,6 @@ export function listSpawnerSpawnPropIds() {
         })
         .sort();
 }
-// --- MERGED FROM spawnAgentChain.js ---
 function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId, resolvePropId }) {
     if (resolvePropId) return resolvePropId(index);
     const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
@@ -1881,7 +1867,6 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }
-// --- MERGED FROM spawnLinkedBallChain.js ---
 function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
 }
@@ -1937,7 +1922,6 @@ export function tryExportLinkedBallChainSpawnGroup(members, meta) {
     const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
     return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor), segmentCount: members.length };
 }
-// --- MERGED FROM spawnPoolRack.js ---
 const PLAYFIELD_W = 80;
 const PLAYFIELD_H = 160;
 const APEX_U = 0.5;
@@ -2034,7 +2018,6 @@ export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
     }
     return cueProp;
 }
-// --- MERGED FROM dragLaunch.js ---
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
@@ -2315,7 +2298,6 @@ export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineCo
     if (!aimLine) return;
     commands.push(overlayAimSegment(aimLine.x1, aimLine.y1, aimLine.x2, aimLine.y2, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3, glowHue: hue }));
 }
-// --- MERGED FROM chainLinks.js ---
 export function isChainLinkBall(prop) {
     if (!prop?.strategy?.isKinetic) return false;
     if (prop.strategy?.canChain) return true;
@@ -2429,7 +2411,6 @@ export function findChainHeadProp(state) {
     const meta = state.sandbox.entityMeta;
     return findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
 }
-// --- MERGED FROM navigation ground nav ---
 export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY) {
     if (inFlight) return null;
     if (pendingTargetReplan) return "targetChange";
@@ -2451,7 +2432,6 @@ function applyGroundNavSandboxReplan(nav, prop, targetX, targetY, state, ctx) {
         return nav.requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, ctx.isVisible), sandboxReason);
     return null;
 }
-// --- MERGED FROM driveGroundNav.js ---
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 export function groundNavArrivedAtTarget(prop, targetWorld, targetCellIdx, grid, stopRadius) {
     const onBelt = FloorBelt.isEntityOnBelt(grid, prop.x, prop.y);
@@ -2497,6 +2477,15 @@ function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
 function createGroundNavBehavior(state, config) {
     const { id, initRun, applyMoveTarget, tickSteering } = config;
     const propRuns = new Map();
+    const activeRunIds = [];
+    const markRunActive = (propId, run) => {
+        if (!run.targetWorld) return;
+        if (activeRunIds.indexOf(propId) === -1) activeRunIds.push(propId);
+    };
+    const markRunInactive = (propId) => {
+        const index = activeRunIds.indexOf(propId);
+        if (index >= 0) activeRunIds.splice(index, 1);
+    };
     const getRun = (prop) => {
         let run = propRuns.get(prop.id);
         if (!run) {
@@ -2505,7 +2494,10 @@ function createGroundNavBehavior(state, config) {
         }
         return run;
     };
-    const clearRun = (run) => config.clearRunTarget(state, run);
+    const clearRun = (prop, run) => {
+        config.clearRunTarget(state, run);
+        markRunInactive(prop.id);
+    };
     const behavior = {
         id,
         onPointerDown(prop, world) {
@@ -2513,6 +2505,7 @@ function createGroundNavBehavior(state, config) {
             if ("dragging" in run) run.dragging = true;
             if ("moveTargetActive" in run) run.moveTargetActive = false;
             applyMoveTarget(state, run, world, prop, true);
+            markRunActive(prop.id, run);
             return true;
         },
         onPointerMove(prop, world) {
@@ -2526,7 +2519,7 @@ function createGroundNavBehavior(state, config) {
             if ("dragging" in run) run.dragging = false;
             if ("moveTargetActive" in run && !run.moveTargetActive) {
                 clearGroundRollDrive(prop);
-                clearRun(run);
+                clearRun(prop, run);
             }
         },
         setMoveTarget(prop, world) {
@@ -2534,6 +2527,7 @@ function createGroundNavBehavior(state, config) {
             if ("dragging" in run) run.dragging = false;
             if ("moveTargetActive" in run) run.moveTargetActive = true;
             applyMoveTarget(state, run, world, prop, true);
+            markRunActive(prop.id, run);
         },
         updateMoveTarget(prop, world) {
             const run = getRun(prop);
@@ -2545,15 +2539,22 @@ function createGroundNavBehavior(state, config) {
             tickSteering(state, prop, getRun(prop), dt);
         },
         tickWorld(dt) {
-            propRuns.forEach((run, propId) => {
-                if (!run.targetWorld) return;
+            for (let i = activeRunIds.length - 1; i >= 0; i--) {
+                const propId = activeRunIds[i];
                 const prop = state.entityRegistry.getLive(propId);
                 if (!prop) {
                     propRuns.delete(propId);
-                    return;
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                const run = propRuns.get(propId);
+                if (!run?.targetWorld) {
+                    activeRunIds.splice(i, 1);
+                    continue;
                 }
                 tickSteering(state, prop, run, dt);
-            });
+                if (!run.targetWorld) activeRunIds.splice(i, 1);
+            }
         },
         getPathOverlay(prop) {
             const run = propRuns.get(prop.id);
@@ -2561,10 +2562,11 @@ function createGroundNavBehavior(state, config) {
         },
         reset() {
             config.onReset(state, propRuns);
+            activeRunIds.length = 0;
         },
     };
     if (config.hasMoveTarget) behavior.hasMoveTarget = (prop) => config.hasMoveTarget(getRun(prop));
-    if (config.clearMoveTarget) behavior.clearMoveTarget = (prop) => config.clearMoveTarget(state, prop, getRun, clearRun);
+    if (config.clearMoveTarget) behavior.clearMoveTarget = (prop) => config.clearMoveTarget(state, prop, getRun, (run) => clearRun(prop, run));
     if (config.getTargetCell) behavior.getTargetCell = (prop) => config.getTargetCell(state, getRun(prop));
     if (config.needsNavRetry) behavior.needsNavRetry = (prop) => config.needsNavRetry(getRun(prop));
     if (config.replanMoveTarget) behavior.replanMoveTarget = (prop) => config.replanMoveTarget(state, getRun(prop), prop);
@@ -2777,7 +2779,6 @@ const HPA_GROUND_NAV_CONFIG = {
         propRuns.clear();
     },
 };
-// --- MERGED FROM groundNavSelectionMenu.js ---
 export const GROUND_NAV_SELECTION_MOVE_IDS = [HPA_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID];
 export function isSandboxNavPropAsset(asset) {
     return sandboxAssetMatchesTagFilter(asset, "nav");
@@ -2825,8 +2826,6 @@ export function createDefaultSandboxBehaviors(state) {
         createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG),
     ];
 }
-// --- MERGED FROM render sandbox tail ---
-// --- MERGED FROM sandboxCameraTarget.js ---
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
 export function findSandboxCameraTargetWorldProp(state, registry) {
     const targetId = state.sandbox.entityMeta.findCameraTargetEntityId();
@@ -2845,7 +2844,6 @@ export function tickSandboxCameraFollow(viewport, state, registry, dtMs) {
     const factor = 1 - Math.exp(-8 * (dtMs / 1000));
     viewport.follow(target.x, target.y, factor);
 }
-// --- MERGED FROM FollowCamera.js ---
 export class FollowCamera {
     constructor(state, { triggerKey = "Tab" } = {}) {
         this.state = state;
@@ -2945,7 +2943,6 @@ export class FollowCamera {
         this._pickResolverFn = null;
     }
 }
-// --- MERGED FROM kineticConstraintOverlays.js ---
 function constraintWireColor(strain) {
     if (strain < 0.05) return "rgba(100, 255, 140, 0.85)";
     if (strain < 0.2) return "rgba(255, 220, 80, 0.9)";
@@ -2971,7 +2968,6 @@ export function appendKineticConstraintOverlayCommands(out, state) {
         appendOverlayWireLink(out, wa.x, wa.y, wb.x, wb.y, color, { lineWidth: 2, dash: [5, 4], endpointRadius: 4 });
     }
 }
-// --- MERGED FROM sandboxOverlayCommands.js ---
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_TILE_CELL_BOUNDS = createAabb();
@@ -3018,7 +3014,6 @@ export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
     if (!marqueeRect) return;
     out.push(overlayAabb(marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
 }
-// --- MERGED FROM SandboxEditor/sandboxPointerGestures.js ---
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
     let groundNav = null;
@@ -3073,7 +3068,6 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
         },
     };
 }
-// --- MERGED FROM SandboxEditor/sandboxDeletePointerTool.js ---
 export function createSandboxDeletePointerTool(state, session) {
     return {
         isActive: () => true,
@@ -3099,7 +3093,6 @@ export function createSandboxDeletePointerTool(state, session) {
         },
     };
 }
-// --- MERGED FROM SandboxEditor/sandboxGroundNavContextMenu.js ---
 export function createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued }) {
     const menu = createContextMenu();
     const issueGroundNav = ({ propIds, behaviorId, world }) => {
@@ -3123,7 +3116,6 @@ export function createSandboxGroundNavContextMenu(state, session, { behaviorById
         },
     };
 }
-// --- MERGED FROM SandboxEditor/sandboxMarqueeTool.js ---
 export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior, selectPropIds }) {
     return createMarqueeSelectTool({
         getCanvas,
@@ -3144,7 +3136,6 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
         },
     });
 }
-// --- MERGED FROM SandboxEditor/sandboxPrimaryPointerTool.js ---
 export function createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
     const behaviors = state.sandbox.behaviors ?? [];
     let lastClickTime = 0;
@@ -3268,7 +3259,6 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
     };
     return { modifierTool, interactTool, gestureTool };
 }
-// --- MERGED FROM SandboxEditor/buildSandboxOverlayCommands.js ---
 export function buildSandboxOverlayCommands({ state, session, spatialFrame, placePreviewWorld, marqueeRect, behaviorById, getPropBehaviorId, resolveBehavior, selectedProp }) {
     const commands = [];
     const viewport = state.viewport;
@@ -3304,7 +3294,6 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
     if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
     return commands;
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxShapeFamilyUi.js ---
 function brightnessToPercent(brightness) {
     return Math.round(brightness * 100);
 }
@@ -3462,7 +3451,6 @@ export function appendShapeFamilySelectedFields(body, selectedProp) {
     else if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
     else if (isBlockFamilyAsset(asset)) appendBlockSelectedFields(body, selectedProp, asset);
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxWorldPropInspector.js ---
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;
     prop.angularVelocity = 0;
@@ -3473,10 +3461,10 @@ function applyWorldPropPosition(prop, { x, y }) {
     if (y != null) prop.y = y;
     if (prop.strategy?.isKinetic) wakeKineticBody(prop);
 }
-export function appendChainLinkInspector(body, chain) {
+function appendChainLinkInspector(body, chain) {
     appendCheckboxField(body, "Chain head", { name: "chainHead", checked: chain.isChainHead(), onChange: (checked) => chain.setChainHead(checked) });
 }
-export function appendSandboxWorldPropInspectorFields(body, prop, { state, onChange }) {
+function appendSandboxWorldPropInspectorFields(body, prop, { state, onChange }) {
     const patch = (apply) => {
         apply();
         onChange();
@@ -3484,7 +3472,6 @@ export function appendSandboxWorldPropInspectorFields(body, prop, { state, onCha
     appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });
     appendNumberField(body, "Facing (°)", { value: Math.round(((prop.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyWorldPropFacing(prop, degrees)) });
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxWallInspector.js ---
 const EDGE_SIDE_OPTIONS = [
     { value: "0", label: formatGridWallEdgeSideLabel(0) },
     { value: "1", label: formatGridWallEdgeSideLabel(1) },
@@ -3558,7 +3545,6 @@ export function appendWallSelectedInspector(body, state, controller, { voxel: se
     }
     return false;
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxPlacePalette.js ---
 export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },
     { id: "shapes", label: "Shapes" },
@@ -3658,7 +3644,6 @@ export function appendSpawnPaletteGrid(parent, items, activeKey, onSelect) {
     }
     parent.appendChild(grid);
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxSelectionPanelUi.js ---
 export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
     const session = controller.session;
     const selection = session.getSelection();
@@ -3689,7 +3674,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
             label: entry.label,
             selected: true,
             onSelect: () => {
-                controller.select({ kind: "prop", ids: [entry.id] });
+                session.select({ kind: "prop", ids: [entry.id] });
                 refreshPanel();
             },
             onRemove: () => {
@@ -3704,7 +3689,6 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
         selection?.kind === "prop" ? "No props in selection." : "Select props on the map.",
     );
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxPropSelectedInspector.js ---
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
@@ -3756,7 +3740,6 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxPlaceableInspectorUi.js ---
 function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
     const session = controller.session;
     appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
@@ -3804,7 +3787,6 @@ if (!INSPECTOR_UI.props) throw new Error("Missing inspector UI for placeable kin
 export function appendSelectionInspector(body, state, controller, inspector, refreshPanel) {
     INSPECTOR_UI[inspector.kind](body, state, controller, inspector.data, refreshPanel);
 }
-// --- MERGED FROM SandboxEditor/ui/sandboxPropSpawnInspector.js ---
 function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
     const session = controller.session;
     const addRow = document.createElement("div");
@@ -3869,14 +3851,13 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
     } else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }
-// --- MERGED FROM SandboxEditor/createSandboxController.js ---
 export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {
-    state.sandbox.behaviors = behaviors;
+    syncSandboxBehaviorById(state, behaviors);
     const session = createSandboxSession(state);
     const cameraCycler = new FollowCamera(state);
     cameraCycler.registerCandidateList(() => session.listPlacedProps());
     cameraCycler.addOnTargetChanged(() => session.sync());
-    const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
+    const behaviorById = state.sandbox.behaviorById;
     let spawnBehaviorId = behaviors[0]?.id ?? "";
     let unbindPointers = null;
     let unbindContextMenu = null;
@@ -4043,9 +4024,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             return countNavPropsInSelection(state, selectionPropIds(sel), entityMeta());
         },
         issueGroundNavToSelection: issueGroundNavToSelected,
-        select: (input) => {
-            session.select(input);
-        },
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
             stampPropBehavior(session.getSelectedProp());
@@ -4076,10 +4054,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.seedPlacementOrderFromState();
             session.sync();
         },
-        getBehaviorByIdMap: () => behaviorById,
-        sync: session.sync,
-        session,
         setUiSync: (fn) => session.setUiSync(fn),
+        session,
         getSpawnBehaviorId: () => spawnBehaviorId,
         setSpawnBehaviorId: (id) => {
             spawnBehaviorId = clampBehaviorId(id, listSpawnBehaviors());

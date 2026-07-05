@@ -9,10 +9,6 @@ import { MinHeap } from "../DataStructures/MinHeap.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-
-
-
-// --- MERGED FROM SurfaceProfileRevision.js ---
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();
 export function getSurfaceProfileRevision(profileId) {
@@ -24,16 +20,12 @@ export function bumpSurfaceProfileRevision(profileId) {
     revisions.set(profileId, rev);
     return rev;
 }
-
-// --- MERGED FROM TileWorkerMessages.js ---
 export const TILE_WORKER_MESSAGE = {
     CONFIGURE_BAKE_CONSTANTS: "configureBakeConstants",
     BAKE_GROUND_CHUNK: "bakeGroundChunk",
     BAKE_WALL_ATLAS: "bakeWallAtlas",
     REGISTER_RUNTIME_PROFILE: "registerRuntimeProfile",
 };
-
-// --- MERGED FROM TileBakeMetrics.js ---
 export const EMPTY_BAKE_TIMING_STATS = {
     sampleCount: 0,
     sampleFillMs: 0,
@@ -132,8 +124,6 @@ export function formatTileBakeMetricsLog(type, metrics, transferMs = 0) {
         ` (${metrics.numPixels}px)`
     );
 }
-
-// --- MERGED FROM SurfaceBakeCacheKeys.js ---
 export function horizontalZCacheTag(zLevel = 0) {
     return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
 }
@@ -183,8 +173,6 @@ export class SurfaceBakeCacheKeys {
         return this.wallAtlasKeyScalars(p1.x, p1.y, p2.x, p2.y, surfaceSeed, profileId, atlasHeight);
     }
 }
-
-// --- MERGED FROM WallFaceColumns.js ---
 export function createWallFaceAxes(p1, p2) {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
@@ -216,8 +204,6 @@ export function wallFaceColumns(p1, p2, cellSize) {
     }
     return columns;
 }
-
-// --- MERGED FROM SurfaceSpatialMap.js ---
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = 0;
 function positiveModulo(value, period) {
     return ((value % period) + period) % period;
@@ -315,8 +301,6 @@ export class SurfaceSpatialMap {
         return { chunkCol, chunkRow, chunkSizePx, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY, centerX: aabbCenterX(bounds), centerY: aabbCenterY(bounds) };
     }
 }
-
-// --- MERGED FROM SurfaceBitmapCache.js ---
 /** LRU cache of baked surface ImageBitmap arrays (world chunks + wall atlases). */
 export class SurfaceBitmapCache {
     constructor(maxEntries = 2046) {
@@ -410,8 +394,6 @@ export class SurfaceBitmapCache {
         else if (existing !== bitmaps) bitmaps.forEach((b) => b.close());
     }
 }
-
-// --- MERGED FROM TileSurfaceWorkerClient.js ---
 export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0, bakeTiming: { ...EMPTY_BAKE_TIMING_STATS } };
 /**
  * Main-thread tile surface bake client — pool, scheduler, profile sync, and request API.
@@ -509,8 +491,6 @@ export class TileSurfaceWorkerClient {
         this._started = false;
     }
 }
-
-// --- MERGED FROM TileWorkerCoordinator.js ---
 /** @type {TileSurfaceWorkerClient | null} */
 let client = null;
 /**
@@ -546,8 +526,6 @@ export const TileWorkerCoordinator = {
         return requireClient().syncBakeConstants(settings);
     },
 };
-
-// --- MERGED FROM TileBakeScheduler.js ---
 export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0 };
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
 function compareJobs(a, b) {
@@ -672,13 +650,9 @@ export class TileBakeScheduler {
         });
     }
 }
-
-// --- MERGED FROM stampWallHeight.js ---
 export function clampStampWallHeightLevel(level, settings) {
     return Math.max(1, Math.min(settings.maxWallHeightLevel, Math.round(level)));
 }
-
-// --- MERGED FROM WorldSurfaceResolution.js ---
 const sProjectedChunkCorners = new Float32Array(8);
 /** @param {number} worldSpan @param {number} surfaceBakeScale */
 export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {
@@ -710,8 +684,6 @@ export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, view
         sProjectedChunkCorners[7],
     );
 }
-
-// --- MERGED FROM WorldSurfacePainter.js ---
 let tileWorkerBakeConstants = null;
 export function installTileWorkerBakeConstants(constants) {
     tileWorkerBakeConstants = constants;
@@ -954,8 +926,6 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
     const canvas = bakeRequestToCanvas({ width: bakeSize, height: bakeSize, startWorldX: minX, startWorldY: minY, seed, paintOptions, profileOrId: profileId }, bakeSession);
     return [canvas];
 }
-
-// --- MERGED FROM HorizontalSurfaceDraw.js ---
 /**
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
  * Elevated-chunk clip helpers live in ChunkDrawPass.js.
@@ -985,8 +955,6 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings
     });
     return any ? canvas : null;
 }
-
-// --- MERGED FROM ChunkDrawPass.js ---
 export function clipChunkToFlatWallFootprints(ctx, obstacleGrid, bounds, zLevel) {
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
@@ -1004,8 +972,6 @@ export function clipChunkToFlatWallFootprints(ctx, obstacleGrid, bounds, zLevel)
         return clippedAny;
     });
 }
-
-// --- MERGED FROM WorldSurfaceEngine.js ---
 /**
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
  */

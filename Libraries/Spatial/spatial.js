@@ -68,7 +68,6 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-// --- MERGED FROM SpatialFrameCore.js ---
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const NEAR_QUERY_BOUNDS = createAabb();
 const EMPTY_WALL_CANDIDATES = [];
@@ -191,7 +190,6 @@ export class SpatialFrameCore {
         return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
 }
-// --- MERGED FROM gridCellTopology.js ---
 export function edgeNeighborIdx(idx, side, cols, rows) {
     if (side === 0) return idx >= cols ? idx - cols : -1;
     if (side === 2) return idx < cols * (rows - 1) ? idx + cols : -1;
@@ -342,7 +340,6 @@ export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCo
             }
         }
 }
-// --- MERGED FROM GridCoords.js ---
 export function worldColAtOrigin(x, minX, cellSize) {
     return Math.floor((x - minX) / cellSize);
 }
@@ -479,7 +476,6 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
         for (let c = cMin; c <= cMax; c++) fn(rowOffset + c);
     }
 }
-// --- MERGED FROM RadialElevationProjection.js ---
 // Viewer-relative radial elevation projection (worldRenderMode: "radial").
 // Elevated points lean away from live viewport.x/y — not fixed 2:1 isometric.
 // Fixed isometric is a separate future mode; do not confuse with this module.
@@ -612,7 +608,6 @@ export function pointOnFrustumInto(out, offset, projection, baseRadius, topRadiu
     out[offset] = centerX + Math.cos(angle) * radius;
     out[offset + 1] = centerY + Math.sin(angle) * radius;
 }
-// --- MERGED FROM shadowProjection.js ---
 const sScreen = { x: 0, y: 0 };
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
 export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {
@@ -646,7 +641,6 @@ export function projectWallShadowQuadScreenInto(out8, viewport, lx, ly, lightZ, 
     out8[7] = sScreen.y;
     return 4;
 }
-// --- MERGED FROM PathGeometry.js ---
 export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
     if (!path || path.length === 0) return { segmentIdx: 0, t: 0, closestX: x, closestY: y, dist: 0 };
     if (path.length === 1) {
@@ -679,7 +673,6 @@ export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
 export function projectOntoPath(x, y, path) {
     return projectOntoPathFrom(path, x, y, 0);
 }
-// --- MERGED FROM boundaryOccupancy.js ---
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
@@ -833,7 +826,6 @@ export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, fr
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
 }
-// --- MERGED FROM CellEdgeStore.js ---
 export function createRailWallEdge(heightDelta, thicknessLevel) {
     return { heightDelta, thicknessLevel };
 }
@@ -1101,7 +1093,6 @@ export class FloorBelt {
         }
     }
 }
-// --- MERGED FROM gridNavEpoch.js ---
 /**
  * Nav invalidation spine
  *
@@ -1162,7 +1153,6 @@ export function bumpFloorOccupancyStampDrawRevision(grid) {
 export function bumpSurfaceMaterialRevision(grid) {
     grid.surfaceMaterialRevision = ((grid.surfaceMaterialRevision ?? 0) + 1) | 0;
 }
-// --- MERGED FROM GridUtils.js ---
 /** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: row * grid.cols + col. */
 /** @typedef {number} LayoutCellIdx Dense index within a {@link CellIndexLayout} rect (local to origin/stride). */
 export function createCellIndexLayout(originCol, originRow, cols, rows) {
@@ -1286,7 +1276,6 @@ export function forEachCardinalNeighborIdx(idx, cols, rows, fn) {
     if (row < rows - 1) fn(idx + cols);
     if (col > 0) fn(idx - 1);
 }
-// --- MERGED FROM navEdgePoolSab.js ---
 export const NAV_EDGE_POOL_SAB_STRIDE = 4;
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function navEdgePoolSabByteLength(refCount) {
@@ -1321,7 +1310,6 @@ function readEdgeFromSab(view, ref, out) {
     out.heightDelta = view.getInt16(base + 0, true);
     out.thicknessLevel = view.getUint8(base + 2) || 1;
 }
-// --- MERGED FROM SurfaceMaterialStore.js ---
 // Surface material ownership resolves from the narrowest owner outward:
 // cell/edge override, then chunk profile, then the active/default profile.
 export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
@@ -1471,7 +1459,6 @@ export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerC
 export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkCol, chunkRow);
 }
-// --- MERGED FROM WorldObstacleGrid.js ---
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
@@ -1972,7 +1959,6 @@ export class WorldObstacleGrid {
         return cellBoundsAtOriginIdxInto(this.cellBoundsScratch, this.minX, this.minY, idx, this.cols, this.cellSize);
     }
 }
-// --- MERGED FROM CellPropIndex.js ---
 /**
  * A generic perceivable prop category system based on obstacle-grid cells.
  * Maps prop instances to the nav-grid aligned bucket grid.
@@ -2119,7 +2105,6 @@ export class CellPropIndex {
         }
     }
 }
-// --- MERGED FROM EntityGrid.js ---
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 let CURRENT_COLLECT_OUT = null;
@@ -2280,7 +2265,6 @@ export class EntityGrid {
         return out;
     }
 }
-// --- MERGED FROM circleAimLinePreview.js ---
 /**
  * Estimate travel distance for a rolling body with initial speed v0 under friction damping.
  *
@@ -2352,7 +2336,6 @@ export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, 
     const lead = circleLeadingPoint(originX, originY, radius, dx, dy);
     return { x1: lead.x, y1: lead.y, x2: originX + dx * (stopDist + radius), y2: originY + dy * (stopDist + radius) };
 }
-// --- MERGED FROM spatialQueries.js ---
 // ==========================================
 // 1. Ray Circle Hit Distance (from circleCast.js)
 // ==========================================
@@ -2530,7 +2513,6 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { o
     }
     return { hit: "none", x: cx, y: cy, dist };
 }
-// --- MERGED FROM SpatialQuery.js ---
 let globalGeneration = 0;
 export class SpatialQuery {
     constructor() {
@@ -2557,7 +2539,6 @@ export class SpatialQuery {
         return this._scratch;
     }
 }
-// --- MERGED FROM wallCandidateBucketSlab.js ---
 const MAX_WALL_BUCKETS = 4096;
 const BUCKET_MASK = MAX_WALL_BUCKETS - 1;
 const EMPTY_STAMP = -1;
@@ -2629,7 +2610,6 @@ export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, rev
     slab.revisionStamp[slot] = revision;
     slab.segments[slot] = segments;
 }
-// --- MERGED FROM gridZoneMembership.js ---
 /** @typedef {{ cells: Set<number> }} GridZoneSubscriptions */
 /**
  * @typedef {object} GridZoneEvent
@@ -2704,7 +2684,6 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
         entity._gridZoneNextKeys = prev;
     }
 }
-// --- MERGED FROM CellKey.js ---
 /**
  * Packed (col, row) key for sparse unbounded grids.
  *
@@ -2746,7 +2725,6 @@ export function worldToSparseCellKey(x, y, cellSize) {
 export function boundsToCellRect(minX, minY, maxX, maxY, cellSize) {
     return { minCol: Math.floor(minX / cellSize), maxCol: Math.floor(maxX / cellSize), minRow: Math.floor(minY / cellSize), maxRow: Math.floor(maxY / cellSize) };
 }
-// --- MERGED FROM CellRect.js ---
 /** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
 export function emptyCellBounds() {
     return { startCol: Infinity, endCol: -Infinity, startRow: Infinity, endRow: -Infinity };
@@ -2821,7 +2799,6 @@ export function forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, cols, fn)
 export function forEachDenseCellInBounds(bounds, cols, fn) {
     forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, fn);
 }
-// --- MERGED FROM gridWallEdit.js ---
 const ENSURE_AABB = createAabb();
 const EDGE_P1 = { x: 0, y: 0 };
 const EDGE_P2 = { x: 0, y: 0 };
@@ -3115,7 +3092,6 @@ export function createDeferredGridWallCommit(state) {
         },
     };
 }
-// --- MERGED FROM gridNavEdit.js ---
 /**
  * Schedule one worker nav resync after grid edits (walls, belts, boundaries).
  * Grid writes must bump the relevant epoch channels before calling this.
@@ -3176,7 +3152,6 @@ export function clearFloorCellNavEdit(state, idx) {
     if (!state.obstacleGrid.clearFloorCell(idx)) return null;
     return commitGridNavEdit(state, idx);
 }
-// --- MERGED FROM mapGenBounds.js ---
 export const MAP_GEN_KINDS = ["cavern", "rail", "railMaze", "erase"];
 export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", railMaze: "#ba68c8", erase: "#f44336" };
 export function createDefaultMapGenBoundsConfig() {
@@ -3359,7 +3334,6 @@ export function registerMapGenBoundsGridExpansionListener(state) {
         }
     };
 }
-// --- MERGED FROM KineticSpatialFrame.js ---
 function writeKineticBodySlabSnapshot(prop) {
     writeStaticKineticSlabSlot(prop);
     writeActiveKineticBodySlabPose(prop);

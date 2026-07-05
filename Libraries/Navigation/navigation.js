@@ -49,7 +49,6 @@ function _removeEdgeByTargetId(edges, targetId) {
 function _removeCellByIdx(cells, idx) {
     for (let i = cells.length - 1; i >= 0; i--) if (cells[i] === idx) cells.splice(i, 1);
 }
-// --- MERGED FROM AStar.js ---
 const STALE_F_EPSILON = 1e-4;
 export class SearchState {
     constructor(size) {
@@ -289,7 +288,6 @@ export class FlatAbstractGraphSearch {
         return 0;
     }
 }
-// --- MERGED FROM VoronoiRegions.js ---
 export class RegionNode {
     constructor(id, idx) {
         this.id = id;
@@ -506,7 +504,6 @@ export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) 
         }
     return adjacencies;
 }
-// --- MERGED FROM hpaReplan.js ---
 export const REPLAN_TARGET_MOVE_PX = 64;
 export const REPLAN_OFF_PATH_COOLDOWN_MS = 250;
 export const REPLAN_PRIORITY_TARGET = 4;
@@ -799,7 +796,6 @@ export function findNearestOpenCellIdx(blocked, cols, rows, idx) {
         }
     return idx;
 }
-// --- MERGED FROM hpaRegionGraph.js ---
 export const REGION_CELL_UNASSIGNED = -1;
 export class HpaRegionGraph {
     constructor(frame, nodesMap = {}, cellToNode = null, nodeIdCounter = 0) {
@@ -1154,7 +1150,6 @@ export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame
     }
     return { nodesMap, cellToNode, nodeIdCounter: nodeCount };
 }
-// --- MERGED FROM NavTopology.js ---
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
@@ -1324,7 +1319,6 @@ export function bakeNavTopologyLocal(grid, damageBounds = null) {
 export function captureNavGridSnapshot(grid, bounds = null) {
     return NavTopology.packSnapshot(grid, bounds);
 }
-// --- MERGED FROM navTopologySab.js ---
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
@@ -1540,7 +1534,6 @@ export function navCanStep(frame, topology, fromIdx, toIdx) {
 export function createNavLocalView(frame, topology) {
     return { canStepIdx: (fromIdx, toIdx) => navCanStep(frame, topology, fromIdx, toIdx) };
 }
-// --- MERGED FROM navSimView.js ---
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
  * @param {import("./GridNavSnapshot.js").GridFrame} frame
@@ -1619,7 +1612,6 @@ export function bindNavSimEdgePool(simView, edgePool) {
 export function bindNavSimGridFrame(simView, frame) {
     simView.frame = frame;
 }
-// --- MERGED FROM navGraph.js ---
 /** @typedef {number} CellIdx */
 export function beltEntryNeighborAtIdx(grid, idx) {
     const sides = FloorBelt.getEntryExitAtIdx(grid, idx);
@@ -1749,7 +1741,6 @@ export function createNavGraphViewWithLocalBake(grid, damageBounds = null) {
     const baked = bakeNavTopologyLocal(grid, damageBounds);
     return createNavGraphView(grid, { cardinalOpen: baked.cardinalOpen, vertexPassability: baked.vertexPassability }, baked.navTopology);
 }
-// --- MERGED FROM HpaPathSession.js ---
 export class HpaPathSession {
     constructor(hpaPathWorker, { frameStartBudget = HPA_REPLAN_FRAME_START_BUDGET, peakInflightCap = HPA_REPLAN_PEAK_INFLIGHT_CAP } = {}) {
         this.worker = hpaPathWorker;
@@ -1884,7 +1875,6 @@ export class HpaPathSession {
         }
     }
 }
-// --- MERGED FROM navSession.js ---
 /**
  * Per-entity navigation session — mutated by path-follow compute and game replan policy.
  */
@@ -2370,7 +2360,6 @@ export class HpaNavSession {
         return { routeCommitFrames: this.routeCommitFrames };
     }
 }
-// --- MERGED FROM GridNavSnapshot.js ---
 /** @typedef {{ minX: number, minY: number, cellSize: number, cols: number, rows: number, key: string }} GridFrame */
 /** Stable id for obstacle-grid frame — resize or origin shift changes this. */
 export function gridNavFrameKey(grid) {
@@ -2398,7 +2387,6 @@ export function snapshotWorldToGrid(frame, x, y) {
 export function snapshotGridToWorld(frame, col, row) {
     return { x: snapshotGridCenterX(frame, col), y: snapshotGridCenterY(frame, row) };
 }
-// --- MERGED FROM neighborGridLayout.js ---
 export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
     directionCount: OCTILE_DIRS_PER_CELL,
     bytesPerCell: OCTILE_NEIGHBOR_BYTES,
@@ -2416,7 +2404,6 @@ export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
         for (let dir = 0; dir < this.directionCount; dir++) neighborGrid[base + dir] = -1;
     },
 });
-// --- MERGED FROM gridBfs.js ---
 export function bfsIndices(seeds, visit) {
     const queue = Array.isArray(seeds) ? seeds : [seeds];
     let head = 0;
@@ -2455,7 +2442,6 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
         if (result !== undefined) return result;
     }
 }
-// --- MERGED FROM GridLayout.js ---
 /** Snap a tile layout so its origin sits on the global nav cell grid (multiples of cellSize). */
 export function snapLayoutOrigin(px, py, cols, rows, cellSize) {
     const totalW = cols * cellSize;
@@ -2465,7 +2451,6 @@ export function snapLayoutOrigin(px, py, cols, rows, cellSize) {
 export function gridCellCenter(offsetX, offsetY, col, row, cellSize) {
     return { x: offsetX + col * cellSize + cellSize / 2, y: offsetY + row * cellSize + cellSize / 2 };
 }
-// --- MERGED FROM NavRuntime.js ---
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
 /** @typedef {import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
@@ -2557,8 +2542,6 @@ export function resolveNavRuntime(state) {
     if (!state?.nav) throw new Error("resolveNavRuntime: state.nav is required");
     return state.nav;
 }
-// --- MERGED FROM flowField.js ---
-// --- MERGED FROM FlowFieldGrid.js ---
 const MAX_CACHE = 512;
 const FLOW_DONE = "flowDone";
 const FLOW_WINDOW_DONE = "flowWindowDone";
@@ -2880,7 +2863,6 @@ export class FlowCacheManager {
         return slot;
     }
 }
-// --- MERGED FROM flowFieldBfs.js ---
 /**
  * BFS flow-field integrated backward from the goal on reverse nav adjacency (octile predecessors).
  *
@@ -2931,7 +2913,6 @@ export function computeFlowField(
     vectorMap.set(localVectorMap);
     if (distancesOut) distancesOut.set(bfsDistances);
 }
-// --- MERGED FROM flowFieldWindow.js ---
 export class FlowFieldWindow {
     constructor(cellSize, width, height) {
         this.frame = createCenteredGridFrame(cellSize, width, height);
@@ -3072,7 +3053,6 @@ export function flowCellBlocked(flowToNavIdx, navBlocked, flowIdx) {
     const navIdx = flowToNavIdx[flowIdx];
     return navIdx < 0 || navBlocked[navIdx] !== 0;
 }
-// --- MERGED FROM sampleFlowDirection.js ---
 const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0.707]);
 const FLOW_DECODE_Y = new Float32Array([-0.707, -1, -0.707, 0, 0, 0, 0.707, 1, 0.707]);
 export function decodeFlowFieldCell(byte) {

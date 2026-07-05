@@ -134,9 +134,9 @@ describe("sandbox editor inspector wiring", () => {
             behaviors: [],
         });
         assert.equal(typeof controller.session.getSelectedProp, "function");
-        controller.select({ kind: "prop", ids: [prop.id] });
+        controller.session.select({ kind: "prop", ids: [prop.id] });
         assert.equal(controller.session.getSelectedProp(), prop);
-        controller.select(null);
+        controller.session.select(null);
         assert.equal(controller.session.getSelectedProp(), null);
     });
 

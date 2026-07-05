@@ -40,32 +40,18 @@ import {
     normalizeXY,
     rotateAngleTowards,
 } from "../Math/math.js";
-import {
-    drawExtrudedConvexPolygon,
-    drawExtrudedCompoundPolygon,
-    drawSphere,
-    createPipeElbowPrimitive,
-    appendOverlayWireLink,
-    overlayAimSegment,
-    overlayCircleFillStroke,
-    overlayCircleStroke,
-    overlaySegment,
-} from "../Render/render.js";
+import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere, createPipeElbowPrimitive } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { transitionEntity } from "../FSM/transition.js";
 import { resolveSandboxFaction } from "../../GameState/SandboxWorldState.js";
-import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
-import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import propCatalog from "../../Assets/props/index.js";
-// --- MERGED FROM propRenderDefaults.js ---
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
 export const propQuantizeSteps = structuredClone(LIBRARY_PROP_QUANTIZE_STEPS);
-// --- MERGED FROM PropCatalog.js ---
 export function formatPropTypeLabel(typeId) {
     return (typeId ?? "prop").replace(/_/g, " ");
 }
@@ -73,10 +59,9 @@ export function formatSandboxSpawnLabel(propId) {
     const asset = propCatalog[propId];
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
-// --- MERGED FROM pipeElbowGeometry.js ---
 const FACING_STEPS = 24;
 /** @param {object} prop @param {object | null | undefined} asset */
-export function getPipeElbowSpec(prop, asset) {
+function getPipeElbowSpec(prop, asset) {
     const cfg = asset?.visuals?.world ?? {};
     const playW = prop._pipeElbowPlayfieldWidth ?? null;
     const scale = playW != null ? playW / 120 : 1;
@@ -93,7 +78,7 @@ export function getPipeElbowSpec(prop, asset) {
  * 3D centerline in local space: vertical (+Z) → elbow in XZ plane → horizontal (+X).
  * @param {ReturnType<typeof getPipeElbowSpec>} spec
  */
-export function buildPipeElbowCenterline3D(spec) {
+function buildPipeElbowCenterline3D(spec) {
     const { riserHeight, bendRadius: R, outletLength } = spec;
     const zArc = riserHeight - R;
     /** @type {{ x: number, y: number, z: number }[]} */
@@ -156,7 +141,6 @@ export function getPipeElbowSpriteCacheKey(prop) {
     const spec = getPipeElbowSpec(prop, asset);
     return `pe_${Math.round(spec.outletLength)}_${Math.round(spec.bendRadius)}_f${quantizeAngleIndex(prop.facing ?? 0, FACING_STEPS)}`;
 }
-// --- MERGED FROM primitives.js ---
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, viewport) => {
@@ -227,7 +211,6 @@ export function createSpherePrimitive(visuals) {
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
 export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive, pipeElbow: createPipeElbowPrimitive };
-// --- MERGED FROM propScale.js ---
 function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
@@ -284,8 +267,6 @@ function setCirclePropRadius(prop, radius) {
         wakeKineticBody(prop);
     }
 }
-// --- MERGED FROM fractureSystem.js ---
-// --- MERGED FROM poxelFracture.js ---
 export const POXEL_TARGET_EDGE = 4;
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const MAX_FRAC_VERTS = 2048;
@@ -809,7 +790,6 @@ export function splitPoxels(poxels, localHitX, localHitY, impactForce = 5) {
     if (components.length === 1) return [poxels];
     return components;
 }
-// --- MERGED FROM chunkFracture.js ---
 // chunks = split connectivity graph; collisionParts = merged axis-aligned sim/draw rects
 export const CHUNK_MIN_CELL = 8;
 export const CHUNK_MAX_CELLS_PER_AXIS = 6;
@@ -1053,7 +1033,6 @@ export function chunkCollisionPartsArea(collisionParts) {
     }
     return area;
 }
-// --- MERGED FROM glassFracture.js ---
 export const GLASS_FRACTURE_IMPACT_THRESHOLD = 6;
 export const GLASS_MIN_SHARD_AREA = 12;
 export const GLASS_MAX_SHARDS_PER_SHATTER = 18;
@@ -1294,7 +1273,6 @@ export function shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10, rand
     const flat = boxLocalFootprint(hx, hy);
     return shatterGlassPolygon(flat, hitX, hitY, impactForce, random);
 }
-// --- MERGED FROM propFracture.js ---
 export const FRACTURE_MIN_PIECE_SIZE = 5;
 export const FRACTURE_IMPACT_THRESHOLD = 12;
 function isGlassFracture(prop) {
@@ -1672,7 +1650,6 @@ export function setPropRadius(prop, radius) {
     else setCirclePropRadius(prop, radius);
 }
 // --- MERGED
-// --- MERGED FROM propStrategy.js ---
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
@@ -1849,7 +1826,7 @@ export class WorldProp {
     needsWallCollision() {
         return isKinematicallyActive(this);
     }
-    update(dt, state, spatialFrame) {
+    tickPropFrame(dt, state, spatialFrame) {
         this.ageMs += dt;
         if (this.strategy.fadeOutMs !== undefined) {
             const fadeOutMs = this.strategy.fadeOutMs;
@@ -1865,20 +1842,25 @@ export class WorldProp {
         }
         if (this._glassFractureCooldown > 0) this._glassFractureCooldown--;
         const asleep = this.isSleeping;
-        if (!asleep) {
-            if (this.strategy.rolls) integratePropMotion(this, dt);
-            else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-            if (this.type === "boid_triangle" || this.type === "snake") {
-                const speed = Math.hypot(this.vx, this.vy);
-                if (speed > 0.1) {
-                    const moveAngle = Math.atan2(this.vy, this.vx);
-                    const turnRadPerSec = Math.PI * 1.5;
-                    const maxStep = turnRadPerSec * (dt / 1000);
-                    this.facing = rotateAngleTowards(this.facing ?? moveAngle, moveAngle, maxStep);
-                }
+        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
+    }
+    tickPropSubstep(dt) {
+        if (this.isSleeping) return;
+        if (this.strategy.rolls) integratePropMotion(this, dt);
+        else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
+        if (this.type === "boid_triangle" || this.type === "snake") {
+            const speed = Math.hypot(this.vx, this.vy);
+            if (speed > 0.1) {
+                const moveAngle = Math.atan2(this.vy, this.vx);
+                const turnRadPerSec = Math.PI * 1.5;
+                const maxStep = turnRadPerSec * (dt / 1000);
+                this.facing = rotateAngleTowards(this.facing ?? moveAngle, moveAngle, maxStep);
             }
         }
-        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
+    }
+    update(dt, state, spatialFrame) {
+        this.tickPropFrame(dt, state, spatialFrame);
+        this.tickPropSubstep(dt);
     }
 }
 const pools = new Map();
@@ -1965,7 +1947,6 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     invalidateBroadphaseBounds(prop);
     if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
 }
-// --- MERGED FROM propVisualAttachments.js ---
 /**
  * Asset-level fixed child visuals. These are render-only and never become
  * WorldProp entities, collision bodies, exported props, or selectable objects.

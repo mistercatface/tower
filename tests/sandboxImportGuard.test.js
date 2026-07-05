@@ -19,12 +19,17 @@ function walkJsFiles(dir, out = []) {
 }
 
 describe("sandbox import guard", () => {
-    for (const rel of ["Libraries/Props/props.js", "Libraries/Render/render.js"]) {
+    for (const rel of ["Libraries/Props/props.js", "Libraries/Render/render.js", "Libraries/Physics/physics.js"]) {
         it(`${rel} must not import sandbox.js`, () => {
             const source = readFileSync(join(root, rel), "utf8");
             assert.equal(forbiddenImport.test(source), false, `${rel} imports sandbox.js — breaks render/props ↔ sandbox cycle isolation`);
         });
     }
+
+    it("render.js must not import props.js (one-way props → render only)", () => {
+        const source = readFileSync(join(root, "Libraries/Render/render.js"), "utf8");
+        assert.equal(/from\s+["'][^"']*Props\/props\.js["']/.test(source), false, "render.js imports props.js — circular dependency");
+    });
 
     it("Apps/Editor must not call session-only APIs on controller (use controller.session)", () => {
         const editorDir = join(root, "Apps", "Editor");

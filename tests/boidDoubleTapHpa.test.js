@@ -75,7 +75,7 @@ describe("boid double tap hpa pathing", () => {
         // Initially, the boid triangle is not selected
         assert.equal(controller.session.getSelectedProp(), null);
         // 1. Select the boid triangle
-        controller.select({ kind: "prop", ids: [prop.id] });
+        controller.session.select({ kind: "prop", ids: [prop.id] });
         assert.equal(controller.session.getSelectedProp(), prop);
         // Verify default active behavior is dragLaunch
         assert.equal(controller.getSelectedBehaviorId(), "dragLaunch");
@@ -110,7 +110,7 @@ describe("boid double tap hpa pathing", () => {
         // The selection should have been changed/cleared from the boid
         assert.notEqual(controller.session.getSelectedProp()?.id, prop.id);
         // Re-select the boid so we can test the drag-launch restoration next
-        controller.select({ kind: "prop", ids: [prop.id] });
+        controller.session.select({ kind: "prop", ids: [prop.id] });
         // 4. Now let's click/drag directly on the boid triangle itself to test drag launch restoration.
         // The boid is at x: 64, y: 64 (world coordinates), so we simulate clicking at x: 64, y: 64.
         eventListeners.pointerdown({ button: 0, clientX: 64, clientY: 64, detail: 1, pointerId: 1, preventDefault() {}, stopPropagation() {} });

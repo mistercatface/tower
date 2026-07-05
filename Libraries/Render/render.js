@@ -69,7 +69,6 @@ import {
     centerReachAabbInto,
 } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
-import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../Props/props.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import {
     collectVoxelWallFacesInAabbFlat,
@@ -104,7 +103,6 @@ const sFlatCapSrc = sScratchQuad7;
 const sScratchQuad = sScratchQuad1; // Safe to reuse sScratchQuad1 since no overlap
 const sScratchChevron = new Float32Array(12);
 const sTemp = new Float32Array(2);
-// --- MERGED FROM WorldSceneTypes.js ---
 /**
  * Draw options for WorldSceneRenderer entry points.
  */
@@ -115,7 +113,6 @@ const sTemp = new Float32Array(2);
  * @property {boolean} [skipWallCaps]
  */
 export {};
-// --- MERGED FROM viewportUtils.js ---
 /**
  * Inverse of the current canvas horizontal scale — multiply line widths, dash lengths,
  * and marker radii so they stay constant in screen pixels after `viewport.apply(ctx)`.
@@ -149,7 +146,6 @@ export function drawAabbHighlight(ctx, aabb, { fill, stroke, lineWidth = 1, dash
     }
     ctx.restore();
 }
-// --- MERGED FROM labMapCaches.js ---
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
 const OVERVIEW_FLOOR_RGB = [12, 14, 18];
@@ -311,7 +307,6 @@ export function rebuildLabMapOverviewCache(state) {
 export function rebuildLabMapCaches(state) {
     rebuildLabMapOverviewCache(state);
 }
-// --- MERGED FROM overlayCacheKeys.js ---
 const OVERLAY_RADIUS_STEP = 0.5;
 const OVERLAY_DIR_STEPS = 16;
 export function quantizeOverlayRadius(r) {
@@ -339,7 +334,6 @@ export function wireEndpointCacheKey(r, fill) {
 export function gridCellHighlightCacheKey(cellSize, tint) {
     return `cs${cellSize}_${tint}`;
 }
-// --- MERGED FROM overlayCommands.js ---
 /** @typedef {{ renderKey: string, customKey: string, worldSpan: number, anchorX?: number, anchorY?: number }} OverlayCacheMeta */
 /** @typedef {{ kind: 'aabb', minX: number, minY: number, maxX: number, maxY: number, fill?: string, stroke?: string, lineWidth?: number, dash?: number[], cache?: OverlayCacheMeta }} OverlayAabbCommand */
 /** @typedef {{ kind: 'circleStroke', cx: number, cy: number, r: number, stroke: string, lineWidth?: number, dash?: number[], cache?: OverlayCacheMeta }} OverlayCircleStrokeCommand */
@@ -411,7 +405,6 @@ export function appendOverlayWireLink(out, x0, y0, x1, y1, color, { lineWidth = 
 export function overlayAimSegment(x1, y1, x2, y2, { color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
     return { kind: "aimSegment", x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };
 }
-// --- MERGED FROM overlayGlyphBake.js ---
 function drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, fill, headLen, headWidth) {
     const tx = -dirY;
     const ty = dirX;
@@ -480,7 +473,6 @@ export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
         drawAabbStyle(ctx, { minX, minY, maxX: minX + w, maxY: minY + h }, cmd);
     }
 }
-// --- MERGED FROM pathOverlayCommands.js ---
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 /** @typedef {Object} PathOverlayData
  * @property {"direct" | "hpa" | "flow"} mode
@@ -596,7 +588,6 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") 
     const end = pathNodes[pathNodes.length - 1];
     out.push(overlayCachedCircleFillStroke(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(10, "rgba(0, 188, 212, 0.85)")));
 }
-// --- MERGED FROM drawOverlayCommands.js ---
 function drawAabbCommand(ctx, cmd) {
     drawAabbStyle(ctx, cmd, cmd);
 }
@@ -697,7 +688,6 @@ export function drawOverlayCommands(ctx, commands, viewport) {
     }
     ctx.restore();
 }
-// --- MERGED FROM drawSphereTextureBand.js ---
 /**
  * Map an image onto a latitudinal band of a rolled sphere (full wrap).
  * Prefer {@link drawSphereTexturePatch} for localized decals such as ball numbers.
@@ -732,7 +722,6 @@ export function drawSphereTextureBand(ctx, prop, viewport, img, options = {}) {
         uvBleed: options.uvBleed,
     });
 }
-// --- MERGED FROM propMesh.js ---
 function ensureFlatProjectedVertScratch(count) {
     if (sFlatProjectedVerts.length < count * 2) sFlatProjectedVerts = new Float32Array(count * 2);
 }
@@ -792,7 +781,6 @@ export function drawPropMeshFace(ctx, prop, viewport, verts3d, fill, stroke, lin
         ctx.stroke();
     }
 }
-// --- MERGED FROM sphereMesh.js ---
 /**
  * Build lat/long sphere mesh resting on the ground, then apply roll orientation.
  * Each face carries normalized UV bounds for texture mapping.
@@ -858,7 +846,6 @@ export function buildSphereMesh(radius, latBands, lonBands, rollQuat) {
     }
     return faces;
 }
-// --- MERGED FROM sphere.js ---
 const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF9800", "#FFFFFF"];
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -901,7 +888,6 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     drawPass(backFaces);
     drawPass(frontFaces);
 }
-// --- MERGED FROM SolidDraw.js ---
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 let sBaseRing = new Float32Array(0);
@@ -1372,7 +1358,6 @@ export function drawExtrudedCompoundPolygon(
     for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "sides" });
     for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "top" });
 }
-// --- MERGED FROM pipeElbow.js ---
 /** @param {number} lx @param {number} ly @param {number} lz @param {number} facing */
 function yawLocal(lx, ly, lz, facing) {
     const cos = Math.cos(facing);
@@ -1476,6 +1461,34 @@ function buildFlangeMesh(radius, height, facing, segments = 10) {
     }
     return mesh;
 }
+function getPipeElbowSpec(prop, asset) {
+    const cfg = asset?.visuals?.world ?? {};
+    const playW = prop._pipeElbowPlayfieldWidth ?? null;
+    const scale = playW != null ? playW / 120 : 1;
+    return {
+        outletLength: cfg.outletLength * scale,
+        bendRadius: cfg.bendRadius * scale,
+        pipeRadius: cfg.pipeRadius * scale,
+        riserHeight: cfg.riserHeight * scale,
+        flangeRadius: cfg.flangeRadius * scale,
+        flangeHeight: cfg.flangeHeight * scale,
+    };
+}
+function buildPipeElbowCenterline3D(spec) {
+    const { riserHeight, bendRadius: R, outletLength } = spec;
+    const zArc = riserHeight - R;
+    const pts = [{ x: 0, y: 0, z: 0 }];
+    const riserSteps = 5;
+    for (let i = 1; i <= riserSteps; i++) pts.push({ x: 0, y: 0, z: (zArc * i) / riserSteps });
+    const arcSteps = 8;
+    for (let i = 1; i <= arcSteps; i++) {
+        const theta = (i / arcSteps) * (Math.PI / 2);
+        pts.push({ x: R - R * Math.cos(theta), y: 0, z: zArc + R * Math.sin(theta) });
+    }
+    const outSteps = 5;
+    for (let i = 1; i <= outSteps; i++) pts.push({ x: R + (outletLength * i) / outSteps, y: 0, z: riserHeight });
+    return pts;
+}
 /** @param {ReturnType<typeof getPipeElbowSpec>} spec @param {number} facing */
 function buildPipeElbowMesh(spec, facing) {
     const centerline = buildPipeElbowCenterline3D(spec);
@@ -1511,7 +1524,6 @@ export function createPipeElbowPrimitive(visuals) {
         drawPipeElbow(ctx, prop, viewport, { colors: resolveVisualOverrideColorTree(prop, visuals.colors), lineWidth: visuals.lineWidth ?? 0.9 });
     };
 }
-// --- MERGED FROM VisibleDrawQueue.js ---
 export const DRAW_KIND_PROP = 1;
 export const DRAW_KIND_VOXEL = 3;
 export const DRAW_KIND_RAIL = 4;
@@ -1618,7 +1630,6 @@ export class VisibleDrawQueue {
         else parallelHeapSort(this.kinds, this.baseIndices, this.depths, this.refs, n);
     }
 }
-// --- MERGED FROM StaticGridWallDraw.js ---
 /**
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
@@ -1685,7 +1696,6 @@ export function invalidateStaticGridWallDrawCache() {
     sGeomCache.wallGridRevision = -1;
     sGeomCache.faces.clear();
 }
-// --- MERGED FROM StaticGridEdgeRailDraw.js ---
 const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new StrideFloatList(RAIL_BOX_STRIDE) };
 function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     const minX = data[base + RAIL_BOX.minX];
@@ -1790,7 +1800,6 @@ export function invalidateStaticGridEdgeRailDrawCache() {
     sBoxCache.wallGridRevision = -1;
     sBoxCache.boxes.clear();
 }
-// --- MERGED FROM ProjectedWallDraw.js ---
 /**
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
@@ -2111,7 +2120,6 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, f
     }
     blitHorizontalCapSampleFlat(ctx, sFlatCapCorners, sFlatCapSrc, capCanvas);
 }
-// --- MERGED FROM drawSphereTexturePatch.js ---
 let sProjectedSphereCellsData = new Float32Array(1024 * 13);
 let sCellIndices = new Int32Array(1024);
 let sRawCellsData = new Float32Array(1024 * 17);
@@ -2240,7 +2248,6 @@ export function drawSphereTexturePatch(ctx, prop, viewport, img, options = {}) {
     gatherTexturedQuadCellsFlat(sProjectedSphereCellsData, projectedCount, img, options.uvBleed ?? 1);
     drawTexturedQuadCellsFlat(ctx, sProjectedSphereCellsData, sCellIndices, projectedCount, img);
 }
-// --- MERGED FROM sphereSurface.js ---
 /**
  * Local sphere vertex resting on the ground (phi=π touches z=0).
  * phi=0 is the top pole; theta is azimuth in the ground plane.
@@ -2455,7 +2462,6 @@ export function tessellateSphereCapQuadsFlat(outData, radius, rollQuat, phiCente
         }
     return count;
 }
-// --- MERGED FROM texturedCells.js ---
 export function gatherTexturedQuadCellsFlat(data, count, img, uvBleed = 2) {
     const iw = img.width;
     const ih = img.height;
@@ -2494,7 +2500,6 @@ export function drawTexturedQuadCellsFlat(ctx, data, indices, count, img) {
         drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y);
     }
 }
-// --- MERGED FROM conveyorDraw.js ---
 const CONVEYOR_BELT_HEIGHT = 0;
 /** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
@@ -2655,7 +2660,6 @@ export function createConveyorDraw(options = {}) {
         ctx.restore();
     };
 }
-// --- MERGED FROM FloatingText.js ---
 let floatingTextCache = null;
 export const FLOATING_TEXT_SPAWN_EVENT = "fx:floatingText";
 export const TextStyles = {
@@ -2740,7 +2744,6 @@ export class FloatingText {
         ctx.restore();
     }
 }
-// --- MERGED FROM WorldSceneRenderer.js ---
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 function drawProjectile(ctx, prop, viewport) {
     const length = 1.0;
@@ -2901,7 +2904,6 @@ export class WorldSceneRenderer {
         }
     }
 }
-// --- MERGED FROM gridStampDrawCache.js ---
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
 function beltDrawForKind(kind) {
@@ -2972,15 +2974,12 @@ export function drawFloorOccupancyBelts(ctx, state, viewport) {
     if (!cached?.belts.length) return;
     drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);
 }
-// --- MERGED FROM losShadow.js ---
-// --- MERGED FROM losShadowDefaults.js ---
 /** Default omnidirectional vision radius in grid tiles. */
 export const LOS_SHADOW_VISION_TILES_DEFAULT = 16;
 /** Viewer height above floor for shadow extrusion, in cell heights (ground-plane light). */
 export const LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT = 1;
 /** Alpha of the dark overlay outside vision. */
 export const LOS_SHADOW_OVERLAY_ALPHA = 0.82;
-// --- MERGED FROM EdgeList.js ---
 const EDGE_STRIDE = 7;
 export class EdgeList {
     constructor(initialCapacity = 64) {
@@ -3009,7 +3008,6 @@ export class EdgeList {
     }
 }
 export { EDGE_STRIDE };
-// --- MERGED FROM losShadowEdges.js ---
 const sEdgeSegmentAabb = createAabb();
 function clampSegmentCoord(a, b, v) {
     const lo = a < b ? a : b;
@@ -3045,7 +3043,6 @@ export function forEachLosShadowQuadInRange(edgeList, lightX, lightY, range, lig
         emitQuad(quadScratch, 4);
     }
 }
-// --- MERGED FROM losShadowOverlay.js ---
 const sEdgeScratch = new EdgeList();
 const sQuadScratch = new Float32Array(8);
 const sLightQueryBounds = createAabb();
@@ -3095,7 +3092,6 @@ export function drawLosShadowOverlay(ctx, viewport, obstacleGrid, options = {}) 
     composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, options);
     blitMaskOverlay(ctx, sOverlayCanvas);
 }
-// --- MERGED FROM railWallShadowEdges.js ---
 const sRailShadowBoxes = new StrideFloatList(RAIL_BOX_STRIDE);
 function pushRailWallBoxCapShadowEdges(data, index, out) {
     const base = index * RAIL_BOX_STRIDE;

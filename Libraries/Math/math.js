@@ -1,7 +1,3 @@
-
-
-
-// --- MERGED FROM Segment2D.js ---
 /** True when segments (ax, ay)–(bx, by) and (cx, cy)–(dx, dy) intersect (inclusive endpoints). */
 export function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
     const d1x = bx - ax;
@@ -110,8 +106,6 @@ export function distanceSqToLineSegment(px, py, vx, vy, wx, wy) {
 export function distanceToLineSegment(px, py, vx, vy, wx, wy) {
     return Math.sqrt(distanceSqToLineSegment(px, py, vx, vy, wx, wy));
 }
-
-// --- MERGED FROM Poly2D.js ---
 const POLYGON_EDGE_EPS_SQ = 1e-10;
 export function rotateXYInto(out, lx, ly, cos, sin) {
     out.x = lx * cos - ly * sin;
@@ -380,8 +374,6 @@ export function reversePolygonWinding(vertices) {
     }
     return reversed;
 }
-
-// --- MERGED FROM Aabb2D.js ---
 /** @typedef {{ minX: number; minY: number; maxX: number; maxY: number }} Aabb2D */
 /** @typedef {'center' | 'circle' | 'aabb'} AabbEntityHitTest */
 /** @returns {Aabb2D} */
@@ -649,9 +641,6 @@ export function flatQuadOverlapAabb(x0, y0, x1, y1, x2, y2, x3, y3, box) {
     const maxY = Math.max(y0, y1, y2, y3);
     return aabbIntersectsScalars(minX, minY, maxX, maxY, box);
 }
-
-
-// --- MERGED FROM Angle.js ---
 export function normalizeAngle(angle) {
     let a = angle % (Math.PI * 2);
     if (a > Math.PI) a -= Math.PI * 2;
@@ -715,8 +704,6 @@ export function rotateAngleTowards(from, to, maxStep) {
     if (Math.abs(diff) <= maxStep) return normalizeAngle(to);
     return normalizeAngle(from + Math.sign(diff) * maxStep);
 }
-
-// --- MERGED FROM Easing.js ---
 /**
  * Penner easing equations for standard easing effects.
  * Each function maps a normalized time (0 to 1) to a normalized progress value (0 to 1).
@@ -800,8 +787,6 @@ export function mirrorEasingForReversedStage(type) {
     }
     return easing;
 }
-
-// --- MERGED FROM Interpolate.js ---
 export function lerp(a, b, t) {
     return a + (b - a) * t;
 }
@@ -818,8 +803,6 @@ export function scaleAtHeight(baseSize, alpha, t) {
 export function labelBandYRange(halfExtent, y0, y1) {
     return { yBot: -halfExtent + halfExtent * 2 * y0, yTop: -halfExtent + halfExtent * 2 * y1 };
 }
-
-// --- MERGED FROM SeededRng.js ---
 /** @param {number} seed */
 export function createSeededRng(seed) {
     let s = seed >>> 0;
@@ -828,8 +811,6 @@ export function createSeededRng(seed) {
         return s / 4294967296;
     };
 }
-
-// --- MERGED FROM Vec2.js ---
 /** @typedef {{ x: number; y: number }} Vec2 */
 // --- Scalar core (zero alloc — use in physics / collision hot paths) ---
 /** @returns {number} */
@@ -898,8 +879,6 @@ export function sub2(a, b) {
 export function scale2(v, s) {
     return vec2(v.x * s, v.y * s);
 }
-
-// --- MERGED FROM Vec3.js ---
 /** @typedef {{ x: number; y: number; z: number }} Vec3 */
 export function vec3(x, y, z) {
     return { x, y, z };
@@ -929,8 +908,6 @@ export function normalize(v) {
     const len = length(v) || 1;
     return scale(v, 1 / len);
 }
-
-// --- MERGED FROM hash.js ---
 /** @param {string} str @returns {number} uint32 FNV-1a hash */
 export function hashString(str) {
     let h = 0x811c9dc5;
@@ -957,7 +934,6 @@ export function mixHash4(a, b, c, d) {
     h = Math.imul(h ^ d, 0x9e3779b1);
     return h >>> 0;
 }
-
 // --- QUATERNION MATH ---
 export function multiplyQuat(a, b) {
     return {
@@ -967,13 +943,11 @@ export function multiplyQuat(a, b) {
         z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
     };
 }
-
 export function axisAngleQuat(ax, ay, az, angle) {
     const half = angle * 0.5;
     const s = Math.sin(half);
     return { w: Math.cos(half), x: ax * s, y: ay * s, z: az * s };
 }
-
 export function normalizeQuat(q) {
     const len = Math.hypot(q.w, q.x, q.y, q.z);
     if (len < 1e-8) {
@@ -989,7 +963,6 @@ export function normalizeQuat(q) {
     q.z /= len;
     return q;
 }
-
 export function rotateVecByQuat(x, y, z, q) {
     const ix = q.w * x + q.y * z - q.z * y;
     const iy = q.w * y + q.z * x - q.x * z;
@@ -997,8 +970,6 @@ export function rotateVecByQuat(x, y, z, q) {
     const iw = -q.x * x - q.y * y - q.z * z;
     return { x: ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y, y: iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z, z: iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x };
 }
-
-
 export const CARDINAL_OFFSETS = [
     { dc: 0, dr: -1 },
     { dc: 1, dr: 0 },

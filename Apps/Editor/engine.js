@@ -39,8 +39,11 @@ function editorKineticContactSideEffects(tick, contacts) {
 function simulationKineticHooks(state) {
     const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? editorKineticContactSideEffects;
     return {
-        updateProp(prop, dt, frame) {
-            prop.update(dt, state, frame);
+        updatePropFrame(prop, dt, frame) {
+            prop.tickPropFrame(dt, state, frame);
+        },
+        updatePropSubstep(prop, subDt) {
+            prop.tickPropSubstep(subDt);
         },
         resolveWalls(entity, frame) {
             const session = state.appLaunch?.session;
@@ -56,10 +59,7 @@ function simulationKineticHooks(state) {
 }
 /** @param {import("./state.js").TileLabGameState} state @param {import("../../Libraries/Spatial/spatial.js").KineticSpatialFrame} frame */
 function kineticTickFromState(state, frame) {
-    return {
-        frame,
-        world: { worldProps: state.worldProps, projectiles: state.projectiles, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox },
-    };
+    return { frame, world: { worldProps: state.worldProps, projectiles: state.projectiles, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
 }
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {

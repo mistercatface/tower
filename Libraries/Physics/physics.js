@@ -46,8 +46,6 @@ import {
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { acquireWorldProp, applyPropBoxFootprint, fracturePropOnImpact, spawnFractureShards } from "../Props/props.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
-// --- MERGED FROM physicsDefaults.js ---
-// --- MERGED FROM physicsDefaults.js ---
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
 export const LIBRARY_PHYSICS_DEFAULTS = {
@@ -95,8 +93,6 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     kineticResting: { normalVelocityEpsilon: 0.05, tangentVelocityEpsilon: 0.05 },
 };
 export const collisionSettings = structuredClone(LIBRARY_COLLISION_DEFAULTS);
-// --- MERGED FROM physicsSlabs.js ---
-// --- MERGED FROM bodyMass.js ---
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
     if (!verts || verts.length < 6) return 0;
@@ -201,7 +197,6 @@ export function inverseMassFromBody(body) {
 export function bodyPinnedForContact(body) {
     return Boolean(body.strategy?.pinned);
 }
-// --- MERGED FROM kineticBodySlab.js ---
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
 export const kineticDynamicSlab = {
@@ -363,8 +358,6 @@ export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
     readSlabIntoBounds(physIdB, SLAB_SCRATCH_B);
     return pairBroadphaseBoundsOverlap(SLAB_SCRATCH_A, SLAB_SCRATCH_B);
 }
-// --- MERGED FROM collisionMath.js ---
-// --- MERGED FROM Shapes.js ---
 export const SHAPE_TYPE_ID = { Circle: 1, Polygon: 2 };
 export class Shape {
     constructor() {
@@ -461,7 +454,6 @@ export class PolygonShape extends Shape {
         return normals;
     }
 }
-// --- MERGED FROM SatCollision.js ---
 const contactA = { x: 0, y: 0 };
 const contactB = { x: 0, y: 0 };
 const closestVertex = { x: 0, y: 0 };
@@ -913,7 +905,6 @@ function satProjectCircle(out, axisX, axisY, cx, cy, shape) {
     out[0] = projection - shape.radius;
     out[1] = projection + shape.radius;
 }
-// --- MERGED FROM penetration.js ---
 /**
  * Position correction along contact normals (no velocity change).
  */
@@ -987,9 +978,7 @@ export function computeCircleWallContact(entity, normalX, normalY, radius) {
 export function computePolygonWallContact(entity, normalX, normalY, overlap, cx = NaN, cy = NaN) {
     return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
 }
-// --- MERGED FROM broadphase.js ---
 const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-// --- MERGED FROM Broadphase.js ---
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
 /** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
 /** @returns {BroadphaseBounds} */
@@ -1084,7 +1073,6 @@ export function pairBroadphaseBoundsOverlap(a, b) {
     if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Obb) return obbObbOverlap(a, b);
     return false;
 }
-// --- MERGED FROM entityBroadphase.js ---
 function kineticActivity() {
     return collisionSettings.kineticActivity;
 }
@@ -1250,8 +1238,6 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (otherActive && primary.id >= other.id) return false;
     return shouldResolveKineticPair(primary, other, overlaps);
 }
-// --- MERGED FROM wallResolution.js ---
-// --- MERGED FROM wallResolution.js ---
 export function kineticBodyOverlapsWallCandidates(body, candidates) {
     if (!candidates.length) return false;
     const parts = getEntityCollisionParts(body);
@@ -1510,11 +1496,11 @@ export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { 
     }
     return { collided, hits };
 }
-// --- MERGED FROM WallCollisionResolver.js ---
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
     for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
 }
+const wallResolveHitsScratch = [];
 export class WallCollisionResolver {
     /**
      * @param {object} entity
@@ -1525,11 +1511,12 @@ export class WallCollisionResolver {
         if (entity._wallResolvedFrame === spatialFrame.frameId) return entity._wallResolvedCollided;
         entity._wallResolvedFrame = spatialFrame.frameId;
         const candidateWalls = spatialFrame.getWallCandidates(entity);
-        /** @type {import("../Spatial/collision/wallResolution.js").WallHit[]} */
-        const hits = entity._wallResolveHits ? entity._wallResolveHits.slice() : [];
+        wallResolveHitsScratch.length = 0;
+        if (entity._wallResolveHits) for (let hi = 0; hi < entity._wallResolveHits.length; hi++) wallResolveHitsScratch.push(entity._wallResolveHits[hi]);
+        const hits = wallResolveHitsScratch;
         if (candidateWalls.length === 0) {
             entity._wallResolvedCollided = hits.length > 0;
-            entity._wallResolveHits = hits.length ? hits : null;
+            entity._wallResolveHits = hits.length ? hits.slice() : null;
             return entity._wallResolvedCollided;
         }
         const wp = entity.strategy?.wallPhysics;
@@ -1544,14 +1531,12 @@ export class WallCollisionResolver {
             if (result.collided) collided = true;
             if (result.hits.length) hits.push(...result.hits);
         }
-        entity._wallResolveHits = hits.length ? hits : null;
+        entity._wallResolveHits = hits.length ? hits.slice() : null;
         if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
         return collided;
     }
 }
-// --- MERGED FROM kineticConstraintSolver.js ---
-// --- MERGED FROM kineticConstraintSolver.js ---
 const LINK_CAPSULE_WALL_PASSES = 4;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
@@ -2257,7 +2242,6 @@ export function measureConstraintSlabMaxError() {
     }
     return max;
 }
-// --- MERGED FROM kineticConstraintGraph.js ---
 function addAdjacencyEdge(adjacency, fromId, toId) {
     let neighbors = adjacency.get(fromId);
     if (!neighbors) {
@@ -2367,7 +2351,6 @@ export function getConstraintIslands(session) {
     cache.islands = islands;
     return islands;
 }
-// --- MERGED FROM kineticConstraints.js ---
 let nextKineticConstraintId = 1;
 export function markKineticConstraintsDirty(session) {
     session.kineticConstraintsDirty = true;
@@ -2484,7 +2467,6 @@ export function kineticPairTopologyStale(spatialFrame) {
     if (!session) return false;
     return gatherGen !== getKineticTopologyGeneration(session);
 }
-// --- MERGED FROM constraintAnchors.js ---
 const distAnchorA = { x: 0, y: 0 };
 const distAnchorB = { x: 0, y: 0 };
 export function worldAnchorFromBody(body, localX, localY, dst) {
@@ -2504,8 +2486,6 @@ export function distanceBetweenAnchors(bodyA, anchorA, bodyB, anchorB) {
     worldAnchorFromBody(bodyB, anchorB.x, anchorB.y, distAnchorB);
     return Math.hypot(distAnchorB.x - distAnchorA.x, distAnchorB.y - distAnchorA.y);
 }
-// --- MERGED FROM kineticContactSolver.js ---
-// --- MERGED FROM kineticContactSolver.js ---
 export const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_FEATURE_STRIDE = 1024;
 const FEATURE_ANGLE_BUCKETS = 32;
@@ -2952,7 +2932,6 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     applyKineticContactWake(contacts, frame);
     for (let i = 0; i < contacts.count; i++) sleepContactBuffer.add(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
 }
-// --- MERGED FROM kineticPairStream.js ---
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
 export function classifyKineticPairTier(bodyA, bodyB) {
     if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_TIER.COMPOUND;
@@ -3141,8 +3120,6 @@ export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
     dynSlab.x[physIdA] -= overlap * (massB / totalMass);
     dynSlab.x[physIdB] += overlap * (massA / totalMass);
 }
-// --- MERGED FROM kineticPhysicsPass.js ---
-// --- MERGED FROM kineticPhysicsPass.js ---
 // Merged from collisionPipeline.js
 function resolveActiveBodyWalls(activeBodies, frame, resolveWalls) {
     for (let i = 0; i < activeBodies.length; i++) {
@@ -3214,11 +3191,12 @@ export function runKineticPhysics(tick, dt, hooks) {
     const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
     let substepsRun = steps;
     const collisionHooks = { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects };
+    for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, frame);
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
-        for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updateProp(world.worldProps[i], subDt, frame);
+        for (let i = 0; i < activeBodies.length; i++) hooks.updatePropSubstep(activeBodies[i], subDt, frame);
         const projectiles = world.projectiles || [];
-        for (let i = projectiles.length - 1; i >= 0; i--) hooks.updateProp(projectiles[i], subDt, frame);
+        for (let i = projectiles.length - 1; i >= 0; i--) hooks.updatePropSubstep(projectiles[i], subDt, frame);
         frame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(tick, collisionHooks);
         const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
@@ -3235,7 +3213,6 @@ export function runKineticPhysics(tick, dt, hooks) {
     world.sandbox?.simulationFrameHooks?.afterPhysics?.(world);
     hooks.afterKineticPhysics?.(tick);
 }
-// --- MERGED FROM motionSubsteps.js ---
 /**
  * Adaptive physics substep count from peak kinetic body displacement this tick.
  * Used by {@link runKineticPhysics}.
@@ -3270,7 +3247,6 @@ export function maxActiveKineticSpeedSq(bodies) {
     }
     return max;
 }
-// --- MERGED FROM kineticIslands.js ---
 function clearBodyIslandFields(body) {
     delete body._kineticLinkNeighbors;
     delete body._kineticIslandPeers;
@@ -3351,7 +3327,6 @@ export function shareKineticIslandSlab(physIdA, physIdB) {
 export function kineticIslandMembers(body) {
     return body._kineticIslandPeers ?? [body];
 }
-// --- MERGED FROM kineticSleep.js ---
 const parent = new Int32Array(MAX_PHYS_BODIES);
 const rank = new Int32Array(MAX_PHYS_BODIES);
 const componentRoot = new Int32Array(MAX_PHYS_BODIES);
@@ -3535,8 +3510,6 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
 }
-// --- MERGED FROM motionDynamics.js ---
-// --- MERGED FROM motionDynamics.js ---
 /**
  * Continuous world acceleration (units/s²) — same semantics as floor belts.
  * Not mass-weighted; instant velocity changes use direct vx/vy writes at contact sites.
@@ -3662,7 +3635,6 @@ export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = colli
     if (p2.vy !== undefined) p2.vy += j * ny * invMass2;
     if (p2.momentOfInertia) p2.angularVelocity += j * cross2 * invI2;
 }
-// --- MERGED FROM WallGeometry.js ---
 export function getWallReach(wall, padding = wall.padding) {
     return (wall.size / 2) * Math.SQRT2 + padding;
 }
@@ -4048,7 +4020,6 @@ export function pushPointFromWalls(x, y, walls, clearance) {
         }
     return { x: px, y: py };
 }
-// --- MERGED FROM circleSweep.js ---
 /**
  * @typedef {object} CircleSegmentSweepHit
  * @property {number} t — distance along ray to moving circle center at first touch
@@ -4142,7 +4113,6 @@ export function sweepCircleAgainstSegments(ox, oy, dx, dy, radius, segments, max
     }
     return best;
 }
-// --- MERGED FROM circleContact.js ---
 /**
  * Circle contact geometry — surface points for casts, previews, and impulse hooks.
  */
@@ -4160,7 +4130,6 @@ export function circlePairContactPoint(centerAx, centerAy, radiusA, centerBx, ce
     if (d < 1e-8) return { x: centerAx + radiusA, y: centerAy };
     return { x: centerAx + nx * radiusA, y: centerAy + ny * radiusA };
 }
-// --- MERGED FROM rollingMotion.js ---
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
 export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL_QUAT) {
@@ -4240,7 +4209,6 @@ export function buildRollOrientKey(rollQuat, steps = 16) {
     const axisBucket = Math.round(((heading + Math.PI) / (Math.PI * 2)) * steps) % steps;
     return `r${angleBucket}_${axisBucket}`;
 }
-// --- MERGED FROM propMotion.js ---
 function resolveRollingFriction(strategy, body) {
     const base = strategy.friction ?? 8;
     const threshold = strategy.lowSpeedFrictionThreshold;
@@ -4319,7 +4287,6 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
-// --- MERGED FROM kineticRollActuator.js ---
 export function snapMoveTargetToCellCenter(grid, world) {
     const idx = grid.worldToIdx(world.x, world.y);
     if (idx === -1) return { world, col: null, row: null };
@@ -4349,7 +4316,6 @@ export function decelerateRoll(prop, config) {
 export function clearGroundRollDrive(prop) {
     delete prop._groundRollDrive;
 }
-// --- MERGED FROM gridWallDamage.js ---
 /** @typedef {{ kind: "voxel", idx: number } | { kind: "rail", idx: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
