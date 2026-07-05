@@ -12,7 +12,7 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavig
 import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";

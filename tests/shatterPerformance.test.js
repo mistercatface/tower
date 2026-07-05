@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry, addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { KineticSession } from "../GameState/KineticSession.js";

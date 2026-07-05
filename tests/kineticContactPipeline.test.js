@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Physics/physics.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Physics/physics.js";

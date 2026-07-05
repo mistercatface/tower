@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
 import { resolveBodyRadius } from "../Libraries/Physics/physics.js";
 import { setPropRadius } from "../Libraries/Props/props.js";

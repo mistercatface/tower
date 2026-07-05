@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";

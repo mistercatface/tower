@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 describe("prop debris fade-out and removal", () => {

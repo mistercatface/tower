@@ -8,7 +8,7 @@ import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getPropRadius, setPropRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 
 const noopDeps = {
     quantizeAngleIndex: (a) => 0,

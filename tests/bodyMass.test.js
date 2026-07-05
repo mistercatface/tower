@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { inverseMassFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, syncKineticRigidBody } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
 describe("bodyMass", () => {

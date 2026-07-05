@@ -93,8 +93,16 @@ import {
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
-import { WorldProp } from "../../Entities/WorldProp.js";
-import { applyPropBoxFootprint, setPropRadius, getPropRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
+import {
+    acquireWorldProp,
+    applyPropBoxFootprint,
+    setPropRadius,
+    getPropRadius,
+    propFootprintHalfExtents,
+    applyCrossPinwheelFootprint,
+    formatPropTypeLabel,
+    formatSandboxSpawnLabel,
+} from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
@@ -692,7 +700,7 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
-    const prop = new WorldProp(worldX, worldY, propTypeId, facing);
+    const prop = acquireWorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
     if (visualOverride != null) stampPropVisualOverride(prop, visualOverride);
@@ -1785,7 +1793,7 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const launchNy = ny ?? outlet.ny;
     const launchPower = power ?? config.maxPower;
     const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
-    const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
+    const spawned = acquireWorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = resolveSandboxFaction(spawnerWorldProp);
     const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
     if (spawnVisualOverride) stampPropVisualOverride(spawned, spawnVisualOverride);
@@ -2011,7 +2019,7 @@ export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
     for (let i = 0; i < layout.length; i++) {
         const entry = layout[i];
         const { dx, dy } = rackOffset(entry.u, entry.v);
-        const prop = new WorldProp(anchorX + dx, anchorY + dy, entry.prop, 0);
+        const prop = acquireWorldProp(anchorX + dx, anchorY + dy, entry.prop, 0);
         prop.faction = faction;
         meta.setSpawnGroupId(prop.id, spawnGroupId);
         meta.setSpawnGroupExportType(prop.id, exportType);

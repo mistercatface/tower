@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { applyPropFractureGeometry, canFracturePropSplit, fracturePropOnImpact, spawnFractureShards, flushDeferredFractures, processKineticContactFractures, impactForceFromContact, queueFractureKineticContact } from "../Libraries/Props/props.js";
 function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { fracturePropOnImpact, impactForceFromContact, splitFootprintIntoComponents, worldHitToPropLocal } from "../Libraries/Props/props.js";
 import { chunkCollisionPartsArea } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";

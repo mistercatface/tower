@@ -6,7 +6,7 @@ import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, c
 import { boxLocalFootprint } from "../Libraries/Math/math.js";
 import { splitPoxels } from "../Libraries/Props/props.js";
 import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/props.js";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import propCatalog from "../Assets/props/index.js";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { inverseMassFromBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";

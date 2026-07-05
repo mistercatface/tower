@@ -17,6 +17,10 @@ import {
     removeKineticConstraint,
     getConnectedBodyIds,
     getConnectedComponentPath,
+    applyVelocityDamping,
+    integratePropMotion,
+    isKinematicallyActive,
+    kineticInertiaFromBody,
 } from "../Physics/physics.js";
 import {
     transformPoint2DInto,
@@ -34,6 +38,7 @@ import {
     closestPointOnLineSegment,
     quantizeCardinalAngle,
     normalizeXY,
+    rotateAngleTowards,
 } from "../Math/math.js";
 import {
     drawExtrudedConvexPolygon,
@@ -50,7 +55,7 @@ import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOver
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
-import { WorldProp } from "../../Entities/WorldProp.js";
+import { transitionEntity } from "../FSM/transition.js";
 import { resolveSandboxFaction } from "../../GameState/SandboxWorldState.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
@@ -278,111 +283,6 @@ function setCirclePropRadius(prop, radius) {
         syncKineticRigidBody(prop);
         wakeKineticBody(prop);
     }
-}
-// --- MERGED FROM worldPropPool.js ---
-const pools = new Map();
-/**
- * Acquire a pooled WorldProp instance or create a new one.
- * Resets critical physical and state properties.
- *
- * @param {number} x
- * @param {number} y
- * @param {string} type
- * @param {number|null} [facing]
- * @returns {WorldProp}
- */
-export function acquireWorldProp(x, y, type, facing = null) {
-    let list = pools.get(type);
-    if (!list) {
-        list = [];
-        pools.set(type, list);
-    }
-    if (list.length > 0) {
-        const prop = list.pop();
-        const asset = propCatalog[type];
-        // Reset spatial properties
-        prop.x = x;
-        prop.y = y;
-        prop.z = 0;
-        prop.isDead = false;
-        // Reset motion state
-        prop.vx = 0;
-        prop.vy = 0;
-        prop.angularVelocity = 0;
-        prop.ageMs = 0;
-        prop._sleepFrames = 0;
-        prop.isSleeping = false;
-        prop.stateTimer = 0;
-        prop.stateData = {};
-        // Reset height
-        prop.height = asset?.visuals?.world?.height ?? 12;
-        // Reset facing / roll quaternions
-        if (prop.strategy?.cardinalFacing) prop.facing = quantizeCardinalAngle(facing ?? 0);
-        else prop.facing = facing ?? Math.random() * Math.PI * 2;
-        if (prop.strategy?.rolls) prop.rollQuat = { ...IDENTITY_ROLL_QUAT };
-        // Clear refs and debris-specific properties
-        prop.chunks = undefined;
-        prop.collisionParts = undefined;
-        prop.snakeFoodValue = undefined;
-        prop._glassFractureCooldown = 0;
-        prop.faction = undefined;
-        prop.shape = undefined;
-        prop.footprintVertices = undefined;
-        prop.footprintArea = undefined;
-        prop.alpha = undefined;
-        prop.wallChunkProfileId = undefined;
-        prop.wallChunkHeightPx = undefined;
-        prop._wallChunkTextures = undefined;
-        prop._wallChunkTextureReady = undefined;
-        initWorldPropShape(prop);
-        // Reset physics / broadphase / neighbor state
-        if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
-        prop._kineticIslandPeers = null;
-        if (prop._neighbors) prop._neighbors.length = 0;
-        prop._neighborsFrameId = -1;
-        delete prop._physId;
-        delete prop._activeSlot;
-        // Re-run FSM state to reset to normal
-        prop.changeState("normal");
-        return prop;
-    }
-    return new WorldProp(x, y, type, facing);
-}
-/**
- * Release a WorldProp instance to the pool if it is a debris type.
- *
- * @param {WorldProp} prop
- */
-export function releaseWorldProp(prop) {
-    if (!prop) return;
-    const type = prop.type;
-    const isDebris = prop.strategy?.fracture?.mode === "glass" || prop.strategy?.fracture?.mode === "chunk";
-    if (!isDebris) return;
-    // Clear shapes/geometries to release heavy arrays
-    prop.shape = undefined;
-    prop.collisionParts = undefined;
-    prop.footprintVertices = undefined;
-    let list = pools.get(type);
-    if (!list) {
-        list = [];
-        pools.set(type, list);
-    }
-    if (list.indexOf(prop) === -1) list.push(prop);
-}
-/**
- * Clear the pool contents (useful for tests or level transition).
- */
-export function clearWorldPropPools() {
-    pools.clear();
-}
-/**
- * Get pool size for a given prop type (useful for tests).
- *
- * @param {string} type
- * @returns {number}
- */
-export function getWorldPropPoolSize(type) {
-    return pools.get(type)?.length ?? 0;
 }
 // --- MERGED FROM fractureSystem.js ---
 // --- MERGED FROM poxelFracture.js ---
@@ -1894,6 +1794,165 @@ export function buildWorldPropStrategyFromAsset(asset) {
             return part;
         });
     return withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });
+}
+let nextWorldPropId = 1;
+const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
+export class WorldProp {
+    constructor(x, y, type, facing = null) {
+        this.id = nextWorldPropId++;
+        this.x = x;
+        this.y = y;
+        this.isDead = false;
+        this.zIndex = 10;
+        this._distSq = 0;
+        this.shape = null;
+        this.type = type;
+        const asset = propCatalog[type];
+        this.strategy = buildWorldPropStrategyFromAsset(asset);
+        this.height = asset?.visuals?.world?.height ?? 12;
+        this.vx = 0;
+        this.vy = 0;
+        this.angularVelocity = 0;
+        if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
+        else this.facing = facing ?? Math.random() * Math.PI * 2;
+        if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
+        initWorldPropShape(this);
+        if (this.strategy.isKinetic) syncKineticRigidBody(this);
+        this.ageMs = 0;
+        this.alpha = undefined;
+        this._sleepFrames = 0;
+        this.isSleeping = false;
+        this.stateTimer = 0;
+        this.stateData = {};
+        this.changeState("normal");
+    }
+    get momentOfInertia() {
+        return kineticInertiaFromBody(this);
+    }
+    changeState(stateName, stateDataInit = null) {
+        if (this.strategy?.isKinetic) wakeKineticBody(this);
+        transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
+    }
+    getCollisionParts() {
+        return getEntityCollisionParts(this);
+    }
+    get angle() {
+        return this.facing;
+    }
+    set angle(val) {
+        this.facing = val;
+    }
+    getRender3DKey() {
+        if (this.currentState?.getRender3DKey) return this.currentState.getRender3DKey(this);
+        return this.strategy.render3DKey;
+    }
+    needsWallCollision() {
+        return isKinematicallyActive(this);
+    }
+    update(dt, state, spatialFrame) {
+        this.ageMs += dt;
+        if (this.strategy.fadeOutMs !== undefined) {
+            const fadeOutMs = this.strategy.fadeOutMs;
+            const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
+            if (this.ageMs >= fadeOutMs + durationMs) {
+                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
+                else this.isDead = true;
+                return;
+            } else if (this.ageMs >= fadeOutMs) {
+                const elapsedFade = this.ageMs - fadeOutMs;
+                this.alpha = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
+            } else this.alpha = 1;
+        }
+        if (this._glassFractureCooldown > 0) this._glassFractureCooldown--;
+        const asleep = this.isSleeping;
+        if (!asleep) {
+            if (this.strategy.rolls) integratePropMotion(this, dt);
+            else applyVelocityDamping(this, dt, { friction: this.strategy.friction });
+            if (this.type === "boid_triangle" || this.type === "snake") {
+                const speed = Math.hypot(this.vx, this.vy);
+                if (speed > 0.1) {
+                    const moveAngle = Math.atan2(this.vy, this.vx);
+                    const turnRadPerSec = Math.PI * 1.5;
+                    const maxStep = turnRadPerSec * (dt / 1000);
+                    this.facing = rotateAngleTowards(this.facing ?? moveAngle, moveAngle, maxStep);
+                }
+            }
+        }
+        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
+    }
+}
+const pools = new Map();
+export function acquireWorldProp(x, y, type, facing = null) {
+    let list = pools.get(type);
+    if (!list) {
+        list = [];
+        pools.set(type, list);
+    }
+    if (list.length > 0) {
+        const prop = list.pop();
+        const asset = propCatalog[type];
+        prop.x = x;
+        prop.y = y;
+        prop.z = 0;
+        prop.isDead = false;
+        prop.vx = 0;
+        prop.vy = 0;
+        prop.angularVelocity = 0;
+        prop.ageMs = 0;
+        prop._sleepFrames = 0;
+        prop.isSleeping = false;
+        prop.stateTimer = 0;
+        prop.stateData = {};
+        prop.height = asset?.visuals?.world?.height ?? 12;
+        if (prop.strategy?.cardinalFacing) prop.facing = quantizeCardinalAngle(facing ?? 0);
+        else prop.facing = facing ?? Math.random() * Math.PI * 2;
+        if (prop.strategy?.rolls) prop.rollQuat = { ...IDENTITY_ROLL_QUAT };
+        prop.chunks = undefined;
+        prop.collisionParts = undefined;
+        prop.snakeFoodValue = undefined;
+        prop._glassFractureCooldown = 0;
+        prop.faction = undefined;
+        prop.shape = undefined;
+        prop.footprintVertices = undefined;
+        prop.footprintArea = undefined;
+        prop.alpha = undefined;
+        prop.wallChunkProfileId = undefined;
+        prop.wallChunkHeightPx = undefined;
+        prop._wallChunkTextures = undefined;
+        prop._wallChunkTextureReady = undefined;
+        initWorldPropShape(prop);
+        if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
+        if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
+        prop._kineticIslandPeers = null;
+        if (prop._neighbors) prop._neighbors.length = 0;
+        prop._neighborsFrameId = -1;
+        delete prop._physId;
+        delete prop._activeSlot;
+        prop.changeState("normal");
+        return prop;
+    }
+    return new WorldProp(x, y, type, facing);
+}
+export function releaseWorldProp(prop) {
+    if (!prop) return;
+    const type = prop.type;
+    const isDebris = prop.strategy?.fracture?.mode === "glass" || prop.strategy?.fracture?.mode === "chunk";
+    if (!isDebris) return;
+    prop.shape = undefined;
+    prop.collisionParts = undefined;
+    prop.footprintVertices = undefined;
+    let list = pools.get(type);
+    if (!list) {
+        list = [];
+        pools.set(type, list);
+    }
+    if (list.indexOf(prop) === -1) list.push(prop);
+}
+export function clearWorldPropPools() {
+    pools.clear();
+}
+export function getWorldPropPoolSize(type) {
+    return pools.get(type)?.length ?? 0;
 }
 export function applyCrossPinwheelFootprint(prop, length, thickness) {
     const halfL = length / 2;

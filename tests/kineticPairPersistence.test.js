@@ -4,7 +4,7 @@ import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { persistedKineticPairBuffer } from "../Libraries/Physics/physics.js";
 import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
-import { WorldProp } from "../Entities/WorldProp.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Physics/physics.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
