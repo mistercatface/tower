@@ -7,10 +7,10 @@ import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { setPropRadius } from "../Libraries/Props/props.js";
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
-    setCirclePropRadius(prop, 7);
+    setPropRadius(prop, 7);
     return prop;
 }
 describe("kinetic narrow phase tiers", () => {

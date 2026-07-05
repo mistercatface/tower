@@ -5,7 +5,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { getCirclePropRadius } from "../Libraries/Props/props.js";
+import { getPropRadius } from "../Libraries/Props/props.js";
 import { propFootprintHalfExtents } from "../Libraries/Props/props.js";
 import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSession.js";
 import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";
@@ -52,7 +52,7 @@ describe("spawn shape family defaults", () => {
         assert.equal(spawnPlaceableAt(state, 64, 64, asset, ctx), true);
         const prop = state.worldProps[0];
         assert.equal(prop.type, "ball");
-        assert.equal(getCirclePropRadius(prop), 6);
+        assert.equal(getPropRadius(prop), 6);
         assert.equal(getPropVisualTint(prop), "#ff0000");
         assert.equal(getPropVisualBrightness(prop), 1.25);
     });

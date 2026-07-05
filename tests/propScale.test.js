@@ -5,7 +5,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
-import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
+import { getPropRadius, setPropRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Entities/WorldProp.js";
@@ -22,23 +22,23 @@ function createPropScaleTestState() {
 }
 
 describe("propScale", () => {
-    it("setCirclePropRadius updates shape, radius, and mass", () => {
+    it("setPropRadius updates shape, radius, and mass", () => {
         const state = createPropScaleTestState();
         const prop = spawnPlacedSandboxProp(state, 80, 80, "ball");
-        assert.equal(getCirclePropRadius(prop), 4);
-        setCirclePropRadius(prop, 2);
-        assert.equal(getCirclePropRadius(prop), 2);
+        assert.equal(getPropRadius(prop), 4);
+        setPropRadius(prop, 2);
+        assert.equal(getPropRadius(prop), 2);
         assert.ok(prop.shape instanceof CircleShape);
         assert.equal(prop.shape.radius, 2);
         assert.ok(prop.mass > 0);
         assert.ok(prop.mass < spawnPlacedSandboxProp(state, 96, 96, "ball").mass);
     });
 
-    it("setPolygonPropBoundingRadius rescales polygon props", () => {
+    it("setPropRadius rescales polygon props", () => {
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
-        const baseline = getPolygonPropBoundingRadius(wedge);
-        setPolygonPropBoundingRadius(wedge, 2);
-        assert.ok(Math.abs(getPolygonPropBoundingRadius(wedge) - 2) < 0.01);
+        const baseline = getPropRadius(wedge);
+        setPropRadius(wedge, 2);
+        assert.ok(Math.abs(getPropRadius(wedge) - 2) < 0.01);
         assert.ok(wedge.shape.vertices.every((val) => Math.abs(val) <= 2.5));
         assert.ok(baseline > 9);
     });
@@ -47,8 +47,8 @@ describe("propScale", () => {
         const state = createPropScaleTestState();
         const a = spawnPlacedSandboxProp(state, 80, 80, "ball");
         const b = spawnPlacedSandboxProp(state, 96, 96, "ball");
-        setCirclePropRadius(a, 2);
-        setCirclePropRadius(b, 2.25);
+        setPropRadius(a, 2);
+        setPropRadius(b, 2.25);
         assert.notEqual(getBaseSpriteCacheKey(a, noopDeps), getBaseSpriteCacheKey(b, noopDeps));
     });
 });

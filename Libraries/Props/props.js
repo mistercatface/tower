@@ -208,7 +208,7 @@ export function createSpherePrimitive(visuals) {
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
 export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive, flipper: createFlipperPrimitive, pipeElbow: createPipeElbowPrimitive };
 // --- MERGED FROM propScale.js ---
-export function getPolygonPropBoundingRadius(prop) {
+function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
     return prop.radius ?? null;
@@ -230,17 +230,17 @@ export function scalePolygonPropFootprint(prop, scale) {
         wakeKineticBody(prop);
     }
 }
-export function setPolygonPropBoundingRadius(prop, boundingRadius) {
+function setPolygonPropBoundingRadius(prop, boundingRadius) {
     const currentRadius = getPolygonPropBoundingRadius(prop);
     if (!currentRadius || currentRadius <= 0) throw new Error(`setPolygonPropBoundingRadius requires a polygon prop with positive radius, got ${currentRadius}`);
     scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
 }
-export function getCirclePropRadius(prop) {
+function getCirclePropRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Circle") return shape.radius;
     return prop.radius ?? null;
 }
-export function setCirclePropRadius(prop, radius) {
+function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
     if (prop.strategy?.syncCollisionShape) {
         prop.strategy.radius = radius;
@@ -1429,7 +1429,7 @@ export function initFractureFootprint(prop) {
     if (!isChunkFracture(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
     applyChunkGeometryToProp(prop, bakeChunkOutline(flatVertsFromShape(prop)));
 }
-function applyFractureGeometryToProp(prop, geometry) {
+export function applyFractureGeometryToProp(prop, geometry) {
     prop.footprintVertices = geometry.footprintVertices;
     prop.footprintArea = geometry.footprintArea;
     prop.radius = geometry.boundingRadius;
@@ -1448,9 +1448,6 @@ export function applyChunkGeometryToProp(prop, geometry) {
     prop.shape = new PolygonShape(geometry.footprintVertices);
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
-}
-export function applyShardGeometryToProp(prop, geometry) {
-    applyFractureGeometryToProp(prop, geometry);
 }
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -1505,7 +1502,7 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
         const worldPos = transformPoint2DInto({ x: 0, y: 0 }, wx, wy, geom.centroid.cx, geom.centroid.cy, cos, sin);
         const shard = acquireWorldProp(worldPos.x, worldPos.y, shardPropId, facing);
         if (geom.collisionParts) applyChunkGeometryToProp(shard, geom);
-        else applyShardGeometryToProp(shard, geom);
+        else applyFractureGeometryToProp(shard, geom);
         shard.faction = faction;
         shard.vx = motion.vx;
         shard.vy = motion.vy;
@@ -1527,7 +1524,7 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     }
     return spawned;
 }
-export function spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+function spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
     const cos = Math.cos(fracture.facing);
     const sin = Math.sin(fracture.facing);
     const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
@@ -1545,7 +1542,7 @@ export function spawnGlassShatterShards(world, sourceProp, fracture, spatialFram
         frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
     });
 }
-export function spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame = null) {
+function spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame = null) {
     return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, sourceProp.type, spatialFrame);
 }
 function splitMeshComponents(cells, localHitX, localHitY, impactForce, forceExplode) {
@@ -1595,7 +1592,7 @@ export function worldHitToPropLocal(prop, worldX, worldY) {
 export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
     return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
 }
-export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
+function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
     const physId = prop._physId;
     const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
@@ -1611,6 +1608,12 @@ export function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     return { debris, originX: wx, originY: wy, facing: propFacing(prop), impactLocal: { x: localHitX, y: localHitY }, impactForce };
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
+    if (prop.shape?.type === "Circle") return fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce);
+    if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
+    return fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce);
+}
+
+function fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     ensureChunkFractureGrid(prop);
     if (!canFracturePropSplit(prop)) return null;
@@ -1625,7 +1628,7 @@ export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const localHitY = -dx * sin + dy * cos;
     return peelSolidFracture(prop, localHitX, localHitY, impactForce);
 }
-export function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
+function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     const physId = prop._physId;
     const wx = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
     const wy = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
@@ -1639,7 +1642,13 @@ export function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactFor
     if (debris.length === 0) return null;
     return { debris, originX: wx, originY: wy, facing: propFacing(prop), impactLocal: { x: localHitX, y: localHitY }, impactForce };
 }
-export function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+export function spawnFractureShards(world, sourceProp, fracture, spatialFrame = null) {
+    if (sourceProp.shape?.type === "Circle") return spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame);
+    if (isGlassFracture(sourceProp)) return spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame);
+    return spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame);
+}
+
+function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
     const cos = Math.cos(fracture.facing);
     const sin = Math.sin(fracture.facing);
     const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
@@ -1735,19 +1744,15 @@ export function flushDeferredFractures(world, spatialFrame) {
             delete prop._pendingEviction;
             if (item.type === "glass") {
                 evictFracturedProp(world, prop, spatialFrame);
-                const shards = spawnGlassShatterShards(world, prop, item.fracture, spatialFrame);
-                for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
             } else if (item.type === "circle") {
                 clearChainLinksForProp(world, prop.id);
                 evictFracturedProp(world, prop, spatialFrame);
-                const shards = spawnCircleShatterShards(world, prop, item.fracture, spatialFrame);
-                for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
             } else {
                 wakeKineticBody(prop);
-                const shards = spawnChunkFractureShards(world, prop, item.fracture, spatialFrame);
-                for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
                 propsToAdmit.push(prop);
             }
+            const shards = spawnFractureShards(world, prop, item.fracture, spatialFrame);
+            for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
             item.prop = null;
             item.fracture = null;
         }
@@ -1785,6 +1790,19 @@ export function processKineticContactFractures(tick, contacts) {
     }
     flushDeferredFractures(tick.world, tick.frame);
 }
+export function getPropRadius(prop) {
+    if (prop.shape?.type === "Polygon") return getPolygonPropBoundingRadius(prop);
+    return getCirclePropRadius(prop);
+}
+export function setPropRadius(prop, radius) {
+    if (prop.shape?.type === "Polygon" && !prop.strategy?.syncCollisionShape) {
+        setPolygonPropBoundingRadius(prop, radius);
+    } else {
+        setCirclePropRadius(prop, radius);
+    }
+}
+
+// --- MERGED
 // --- MERGED FROM propStrategy.js ---
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false };

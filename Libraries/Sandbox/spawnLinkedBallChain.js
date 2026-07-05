@@ -2,7 +2,7 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { addChainLink, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { resolveSandboxFaction, sandboxFactions } from "./sandboxFaction.js";
-import { setCirclePropRadius } from "../Props/props.js";
+import { setPropRadius } from "../Props/props.js";
 import { spawnAgentChain } from "./spawnAgentChain.js";
 function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
@@ -36,7 +36,7 @@ export function growChainSegment(state, tailProp, options) {
     const segmentRadius = options.segmentRadius ?? null;
     const offset = segmentOffset(1, spacing, growDirX, growDirY);
     const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
-    if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
+    if (segmentRadius != null) setPropRadius(segment, segmentRadius);
     if (spawnGroupId) {
         meta.setSpawnGroupId(segment.id, spawnGroupId);
         if (exportType) meta.setSpawnGroupExportType(segment.id, exportType);

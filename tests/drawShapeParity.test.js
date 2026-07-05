@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
 import { resolveBodyRadius } from "../Libraries/Physics/physics.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { setPropRadius } from "../Libraries/Props/props.js";
 import { createPolygonPrimitive } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
@@ -80,7 +80,7 @@ describe("draw shape parity", () => {
     });
     it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
-        setCirclePropRadius(prop, 7);
+        setPropRadius(prop, 7);
         prop.radius = 99;
         assert.equal(prop.shape.radius, 7);
         assert.equal(resolveBodyRadius(prop), 7);
@@ -125,7 +125,7 @@ describe("draw shape parity", () => {
     it("visual attachments scale and offset from parent radius", () => {
         const small = new WorldProp(0, 0, "boid_triangle", 0);
         const large = new WorldProp(0, 0, "boid_triangle", 0);
-        setCirclePropRadius(large, resolveBodyRadius(small) * 2);
+        setPropRadius(large, resolveBodyRadius(small) * 2);
         small.vx = 30;
         large.vx = 30;
         const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(small, { quantizeAngle, quantizeRollQuat, anchorX: 0, anchorY: 0 })).after[0];

@@ -10,7 +10,7 @@ import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js
 import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSession.js";
 import { appendShapeFamilySelectedFields } from "../Libraries/SandboxEditor/ui/sandboxShapeFamilyUi.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { setPropRadius } from "../Libraries/Props/props.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 
 import propCatalog from "../Assets/props/index.js";
@@ -85,7 +85,7 @@ function mockPanelBody() {
 
 function spawnBall(state, x = 64, y = 64) {
     const prop = spawnPlacedSandboxProp(state, x, y, "ball", "neutral");
-    setCirclePropRadius(prop, 5);
+    setPropRadius(prop, 5);
     return prop;
 }
 

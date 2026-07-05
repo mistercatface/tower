@@ -4,7 +4,7 @@ import { CircleShape } from "../Libraries/Physics/physics.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { setPropRadius } from "../Libraries/Props/props.js";
 class MockEntityMeta {
     constructor() {
         this.byEntityId = new Map();
@@ -67,8 +67,8 @@ describe("chain links", () => {
         const b = mockBall(8.4, 0);
         const state = createState([a, b]);
         addChainLink(state, a.id, b.id, 1.05);
-        setCirclePropRadius(a, 3);
-        setCirclePropRadius(b, 3);
+        setPropRadius(a, 3);
+        setPropRadius(b, 3);
         resyncChainLinkRestLengths(state, [a.id, b.id], 1.05);
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });

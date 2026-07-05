@@ -6,7 +6,7 @@ import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/E
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { acquireWorldProp } from "../Props/props.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
-import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/props.js";
+import { fracturePropOnImpact, spawnFractureShards } from "../Props/props.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
 import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";
@@ -194,10 +194,10 @@ export function applyPendingWallDamage(state, wallDamage) {
             const height = prop.height;
             if (prop.strategy?.fracture?.mode === "glass") {
                 removeWorldPropFromState(state, prop, spatialFrame ?? kineticSpatial);
-                const shards = spawnGlassShatterShards(state, prop, fracture, spatialFrame);
+                const shards = spawnFractureShards(state, prop, fracture, spatialFrame);
                 for (let i = 0; i < shards.length; i++) shards[i].height = height;
             } else {
-                const shards = spawnChunkFractureShards(state, prop, fracture, spatialFrame);
+                const shards = spawnFractureShards(state, prop, fracture, spatialFrame);
                 for (let i = 0; i < shards.length; i++) shards[i].height = height;
                 wakeKineticBody(prop);
             }

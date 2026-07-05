@@ -4,7 +4,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { setPropRadius } from "../Libraries/Props/props.js";
 describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
@@ -23,7 +23,7 @@ describe("shape-first props", () => {
     });
     it("ball radius can be resized after spawn", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
-        setCirclePropRadius(prop, 7);
+        setPropRadius(prop, 7);
         assert.equal(prop.shape.type, "Circle");
         assert.equal(prop.shape.type, "Circle");
         assert.equal(prop.shape.radius, 7);

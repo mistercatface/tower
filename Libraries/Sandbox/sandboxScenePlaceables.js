@@ -5,7 +5,7 @@ import { applyFloorCellEdit } from "./gridNavEdit.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
 import { setPropVisualBrightness, setPropVisualTint } from "../Color/visualOverride.js";
-import { setCirclePropRadius } from "../Props/props.js";
+import { setPropRadius } from "../Props/props.js";
 import { applyCrossPinwheelFootprint } from "../Props/props.js";
 import { isBallFamilyAsset, blockPresetUsesResizableFootprint } from "./sandboxShapeFamilies.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -72,7 +72,7 @@ export const PLACEABLE = {
             const placedAsset = propCatalog[propTypeId];
             const halfExtents = blockPresetUsesResizableFootprint(propTypeId) ? ctx.spawnBoxHalfExtents : undefined;
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
-            if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
+            if (spawned && isBallFamilyAsset(placedAsset)) setPropRadius(spawned, ctx.spawnBallRadius);
             if (spawned && propTypeId === "cross_pinwheel") applyCrossPinwheelFootprint(spawned, ctx.spawnCrossLength, ctx.spawnCrossThickness);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
@@ -105,7 +105,7 @@ export const PLACEABLE = {
                     changed = true;
                 }
                 if (patch.ballRadius !== undefined && isBallFamilyAsset(asset)) {
-                    setCirclePropRadius(prop, patch.ballRadius);
+                    setPropRadius(prop, patch.ballRadius);
                     changed = true;
                 }
                 if ((patch.boxWidth !== undefined || patch.boxHeight !== undefined) && blockPresetUsesResizableFootprint(asset)) {

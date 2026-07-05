@@ -1,7 +1,7 @@
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { addChainLink, resolveChainLinkRestLength, setChainHead } from "./chainLinks.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
-import { setCirclePropRadius, setPolygonPropBoundingRadius } from "../Props/props.js";
+import { setPropRadius } from "../Props/props.js";
 function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId, resolvePropId }) {
     if (resolvePropId) return resolvePropId(index);
     const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
@@ -12,8 +12,8 @@ function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     if (headScaleFn) headScaleFn(prop, segmentRadius);
     else if (segmentRadius != null) {
         const shape = prop.shape;
-        if (shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, segmentRadius);
-        else setCirclePropRadius(prop, segmentRadius);
+        if (shape?.type === "Polygon") setPropRadius(prop, segmentRadius);
+        else setPropRadius(prop, segmentRadius);
     }
 }
 export function spawnAgentChain(state, anchorIdx, spec) {

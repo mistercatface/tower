@@ -8,7 +8,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { clearWorldPropPools, getWorldPropPoolSize } from "../Libraries/Props/props.js";
-import { spawnGlassShatterShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/props.js";
+import { spawnFractureShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { fracturePropOnImpact } from "../Libraries/Props/props.js";
 
@@ -56,7 +56,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.ok(fracture);
 
         // Spawn shards
-        const spawned = spawnGlassShatterShards(state, prop, fracture, null);
+        const spawned = spawnFractureShards(state, prop, fracture, null);
         assert.ok(spawned.length >= 2);
         const originalShardIds = spawned.map(s => s.id);
 
@@ -68,7 +68,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.equal(getWorldPropPoolSize("glass_pane"), spawned.length);
 
         // Shatter again and verify same instances are acquired
-        const spawnedAgain = spawnGlassShatterShards(state, prop, fracture, null);
+        const spawnedAgain = spawnFractureShards(state, prop, fracture, null);
         assert.ok(spawnedAgain.length >= 2);
         
         // Identity check: pooled props should have the same IDs (since references are reused)

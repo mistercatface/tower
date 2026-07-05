@@ -1,5 +1,5 @@
 import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
-import { getCirclePropRadius, setCirclePropRadius } from "../../Props/props.js";
+import { getPropRadius, setPropRadius } from "../../Props/props.js";
 import { applyCrossPinwheelFootprint, applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/props.js";
 import { assetDefaultBallRadius, blockPresetUsesResizableFootprint, isBallFamilyAsset, isBlockFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { appendActionRow, appendColorField, appendNumberField } from "../../UI/paramFields.js";
@@ -69,12 +69,12 @@ export function appendShapeFamilySpawnFields(body, controller, spawnId) {
 }
 export function appendBallSelectedFields(body, selectedProp, asset) {
     appendNumberField(body, "Radius", {
-        value: getCirclePropRadius(selectedProp) ?? assetDefaultBallRadius(asset),
+        value: getPropRadius(selectedProp) ?? assetDefaultBallRadius(asset),
         step: 1,
         min: 1,
         max: 32,
         onChange: (radius) => {
-            setCirclePropRadius(selectedProp, radius);
+            setPropRadius(selectedProp, radius);
             markLabViewDirty();
         },
     });

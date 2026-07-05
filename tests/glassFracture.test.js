@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { applyShardGeometryToProp, canFracturePropSplit, fracturePropOnImpact, spawnGlassShatterShards, flushDeferredFractures, processKineticContactFractures, impactForceFromContact, queueFractureKineticContact } from "../Libraries/Props/props.js";
+import { applyFractureGeometryToProp, canFracturePropSplit, fracturePropOnImpact, spawnFractureShards, flushDeferredFractures, processKineticContactFractures, impactForceFromContact, queueFractureKineticContact } from "../Libraries/Props/props.js";
 function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
     const force = impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
     queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force);
@@ -66,8 +66,8 @@ function makeOverlappingGlassShards() {
     const shards = shatterGlassFootprint(20, 14, 0, 0, 40, deterministicRandom);
     const a = new WorldProp(0, 0, "glass_pane", 0);
     const b = new WorldProp(8, 0, "glass_pane", 0);
-    applyShardGeometryToProp(a, shards[0]);
-    applyShardGeometryToProp(b, shards[1] ?? shards[0]);
+    applyFractureGeometryToProp(a, shards[0]);
+    applyFractureGeometryToProp(b, shards[1] ?? shards[0]);
     a._glassFractureCooldown = 0;
     b._glassFractureCooldown = 0;
     a.vx = 120;
@@ -115,7 +115,7 @@ describe("glass fracture", () => {
         prop._physId = 0;
         kineticDynamicSlab.x[0] = 0;
         kineticDynamicSlab.y[0] = 0;
-        applyShardGeometryToProp(prop, big);
+        applyFractureGeometryToProp(prop, big);
         assert.ok(canFracturePropSplit(prop));
         const fracture = fracturePropOnImpact(prop, 0, 0, 25);
         assert.ok(fracture);
@@ -191,7 +191,7 @@ describe("glass fracture", () => {
                 endMembershipBatch() {},
             },
         };
-        spawnGlassShatterShards(state, prop, fracture, { admitKineticProps() {}, admitKineticProp() {}, entityGrid: { remove() {} } });
+        spawnFractureShards(state, prop, fracture, { admitKineticProps() {}, admitKineticProp() {}, entityGrid: { remove() {} } });
         assert.ok(spawned.length >= 2);
         for (const frag of spawned) assert.ok(frag._glassFractureCooldown > 0);
     });
@@ -213,7 +213,7 @@ describe("glass fracture", () => {
         const shards = shatterGlassFootprint(24, 18, 0, 0, 40, deterministicRandom);
         const glass = new WorldProp(0, 0, "glass_pane", 0);
         const crate = new WorldProp(14, 0, "crate", 0);
-        applyShardGeometryToProp(glass, shards[0]);
+        applyFractureGeometryToProp(glass, shards[0]);
         glass._glassFractureCooldown = 0;
         glass.vx = 120;
         crate.vx = -40;
