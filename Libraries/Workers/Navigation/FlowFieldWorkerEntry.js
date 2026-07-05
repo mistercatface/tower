@@ -1,4 +1,4 @@
-import { computeFlowField, rebuildFlowNeighborGrid } from "../../Navigation/flowField.js";
+import { computeFlowField, rebuildFlowNeighborGrid } from "../../Navigation/navigation.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../../Navigation/navigation.js";
 export class FlowBufferManager {
     constructor() {

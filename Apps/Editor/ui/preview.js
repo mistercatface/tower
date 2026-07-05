@@ -10,7 +10,7 @@ import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
 import { drawLabPathDebugOverlay } from "../../../Libraries/Render/render.js";
 import { drawOverlayCommands } from "../../../Libraries/Render/render.js";
-import { drawLosShadowOverlay } from "../../../Libraries/Render/losShadow.js";
+import { drawLosShadowOverlay } from "../../../Libraries/Render/render.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
 /** @type {import("../../../Render/Render.js").SimulationSceneHooks} */
 const editorSceneHooks = {

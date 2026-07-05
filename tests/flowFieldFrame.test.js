@@ -1,4 +1,4 @@
-import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCacheManager, sampleFlowDirection } from "../Libraries/Navigation/flowField.js";
+import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCacheManager, sampleFlowDirection } from "../Libraries/Navigation/navigation.js";
 import { FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

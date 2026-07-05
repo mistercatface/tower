@@ -1,8 +1,7 @@
-import { HpaPathSession } from "../Libraries/Navigation/navigation.js";
+import { HpaPathSession, NavRuntime, resolveNavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 
-import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
 const mockFlowFieldGrid = { invalidateNavTopology() {} };
 /** @type {Set<NavRuntime> | null} */
 let testNavigations = null;
@@ -11,7 +10,7 @@ export function enableTestNavigationTracking() {
 }
 /**
  * @param {import("../Libraries/Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid
- * @param {{ flowFieldGrid?: import("../Libraries/Navigation/flowField.js").FlowFieldGrid | { invalidateNavTopology(): void }, settings?: object }} [options]
+ * @param {{ flowFieldGrid?: import("../Libraries/Navigation/navigation.js").FlowFieldGrid | { invalidateNavTopology(): void }, settings?: object }} [options]
  */
 export function createNavRuntime(obstacleGrid, { flowFieldGrid = mockFlowFieldGrid, settings = {} } = {}) {
     const worker = new HpaPathWorker(HPA_WORKER_URL, obstacleGrid);
@@ -38,5 +37,4 @@ export async function terminateAllWorkerNavigations() {
     testNavigations.clear();
     await Promise.allSettled(pending);
 }
-export { NavRuntime, resolveNavRuntime } from "../Libraries/Navigation/NavRuntime.js";
-export { NavTopology } from "../Libraries/Navigation/navigation.js";
+export { NavRuntime, resolveNavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";
