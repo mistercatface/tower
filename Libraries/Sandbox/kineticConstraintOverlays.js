@@ -1,4 +1,4 @@
-import { appendOverlayWireLink, overlayCachedWireEndpoint } from "../Render/overlays/overlayCommands.js";
+import { appendOverlayWireLink, overlayCachedWireEndpoint } from "../Render/render.js";
 import { distanceBetweenAnchors, worldAnchorFromBody } from "../Physics/physics.js";
 import { listKineticConstraints } from "../Physics/physics.js";
 function constraintWireColor(strain) {

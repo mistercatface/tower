@@ -4,7 +4,7 @@ import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
 import { formatPropTypeLabel } from "../Props/props.js";
-import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
+import { appendOverlayWireLink } from "../Render/render.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
 /** @typedef {WorldPropButtonLinkTarget} ButtonLinkTarget */
 /** @param {object} button */

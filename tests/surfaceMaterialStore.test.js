@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
-import { drawProjectedWallFaceScalars } from "../Libraries/Render/Structure3D/ProjectedWallDraw.js";
+import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
 import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
 
 function createPathOnlyContext() {

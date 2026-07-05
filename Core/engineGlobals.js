@@ -7,7 +7,7 @@ import { setPropPixelSize, resolvePropPixelSize } from "./GamePropPixelSize.js";
 import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../Libraries/Props/props.js";
 import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
-import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
+import { clearPropSpriteCache } from "../Libraries/Canvas/canvas.js";
 const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;
 /** Editor boot — merges editor profile into module-level settings, then wires live worldSurfaces. */

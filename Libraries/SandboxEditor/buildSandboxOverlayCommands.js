@@ -1,4 +1,4 @@
-import { appendPathOverlayCommands } from "../Render/overlays/pathOverlayCommands.js";
+import { appendPathOverlayCommands } from "../Render/render.js";
 import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
 import { appendChainLinkWireOverlayCommands } from "../Sandbox/chainLinks.js";
 import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";

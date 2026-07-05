@@ -10,7 +10,7 @@ import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
 import { processKineticContactFractures } from "../../Libraries/Props/props.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/physics.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
-import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
+import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/render.js";
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spatial/spatial.js";
 import { tickFloorProps } from "../../Libraries/Props/props.js";

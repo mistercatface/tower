@@ -1,6 +1,6 @@
 import { LruMap } from "../DataStructures/LruMap.js";
 import { isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
-import { releaseOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
+import { releaseOffscreenCanvas } from "../Canvas/canvas.js";
 /** LRU cache of baked surface ImageBitmap arrays (world chunks + wall atlases). */
 export class SurfaceBitmapCache {
     constructor(maxEntries = 2046) {
@@ -86,11 +86,7 @@ export class SurfaceBitmapCache {
             return;
         }
         if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) {
-            if (bitmaps) {
-                for (const b of bitmaps) {
-                    if (b && typeof b.close === "function") b.close();
-                }
-            }
+            if (bitmaps) for (const b of bitmaps) if (b && typeof b.close === "function") b.close();
             return;
         }
         const existing = this.peek(key);

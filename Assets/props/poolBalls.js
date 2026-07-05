@@ -1,6 +1,6 @@
-import { drawSphere } from "../../Libraries/Render/Props3D/sphere.js";
-import { drawSphereTexturePatch } from "../../Libraries/Render/SurfaceTexturing/drawSphereTexturePatch.js";
-import { createOffscreenCanvas } from "../../Libraries/Canvas/offscreenCanvas.js";
+import { drawSphere } from "../../Libraries/Render/render.js";
+import { drawSphereTexturePatch } from "../../Libraries/Render/render.js";
+import { createOffscreenCanvas } from "../../Libraries/Canvas/canvas.js";
 import { shadeHex } from "../../Libraries/Color/colorMath.js";
 const POOL_BALL_COLORS = { 1: "#FFD600", 2: "#1565C0", 3: "#D32F2F", 4: "#7B1FA2", 5: "#FF6F00", 6: "#2E7D32", 7: "#8B0000", 8: "#1A1A1A" };
 /** @param {{ kind: "cue" | "solid" | "stripe", number?: number, color?: string }} poolBall */

@@ -1,8 +1,8 @@
 import { resolveSurfaceProfile } from "../../Config/procedural/profiles.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { copyRgbTripletsToRgba } from "../Canvas/imageDataBuffer.js";
-import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
+import { copyRgbTripletsToRgba } from "../Canvas/canvas.js";
+import { createOffscreenCanvas } from "../Canvas/canvas.js";
 import { createWallFaceAxes } from "./WallFaceColumns.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createEmptyBakePhases, createTileBakeMetrics, isTileBakeMetricsEnabled } from "./TileBakeMetrics.js";

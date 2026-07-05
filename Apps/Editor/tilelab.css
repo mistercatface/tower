@@ -1,5 +1,5 @@
 @import url('./lab-shared.css');
-@import url('../../Libraries/Canvas/squareCanvasResize.css');
+@import url('./ui/squareCanvasResize.css');
 @import url('../../Libraries/Viewport/zoomControl.css');
 @import url('../../Libraries/Playback/speedControl.css');
 @import url('./tilelab-shell.css');

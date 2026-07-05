@@ -1,7 +1,7 @@
-import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
+import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/canvas.js";
 import { FloorBelt } from "../Spatial/spatial.js";
 import { floorOccupancyStampDrawCacheKey } from "../Spatial/spatial.js";
-import { createConveyorDraw } from "../Render/conveyorDraw.js";
+import { createConveyorDraw } from "../Render/render.js";
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
 function beltDrawForKind(kind) {

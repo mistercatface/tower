@@ -6,7 +6,7 @@ import {  forEachObstacleGridCellInAabb  } from "../Spatial/spatial.js";
 import { aabbWidth } from "../Math/math.js";
 import {  resolveCellWallHeightAtIdx  } from "../Spatial/spatial.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
-import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";
+import { createOffscreenCanvas } from "../Canvas/canvas.js";
 export function chunkHasBlockedCells(obstacleGrid, bounds) {
     let found = false;
     forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {

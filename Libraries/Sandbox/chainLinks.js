@@ -4,7 +4,7 @@ import { getConnectedBodyIds, getConnectedComponentPath } from "../Physics/physi
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { formatPropTypeLabel } from "../Props/props.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
-import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
+import { appendOverlayWireLink } from "../Render/render.js";
 import propCatalog from "../../Assets/props/index.js";
 export function isChainLinkBall(prop) {
     if (!prop?.strategy?.isKinetic) return false;

@@ -1,4 +1,4 @@
-import { createOffscreenCanvas } from "../Libraries/Canvas/offscreenCanvas.js";
+import { createOffscreenCanvas } from "../Libraries/Canvas/canvas.js";
 export const RenderSprites = {
     floatingText: (text, style, color) => {
         const measureCtx = createOffscreenCanvas(1, 1).getContext("2d");

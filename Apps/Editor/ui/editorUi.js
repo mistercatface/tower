@@ -1,7 +1,7 @@
 import { shippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
-import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
+import { applySquareCanvasResize } from "./squareCanvasResize.js";
 import { initResizer } from "./lab-shared.js";
-import { ensureLabPathDebugCache } from "../../../Libraries/Render/map/labMapCaches.js";
+import { ensureLabPathDebugCache } from "../../../Libraries/Render/render.js";
 import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flushMapOverviewRepaint, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";

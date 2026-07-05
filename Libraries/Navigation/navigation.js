@@ -21,7 +21,7 @@ import {
     worldColAtOrigin,
     worldRowAtOrigin,
 } from "./../Spatial/spatial.js";
-import { FloatingText } from "./../Render/FloatingText.js";
+import { FloatingText } from "../Render/render.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid, clampCellBoundsToGrid, forEachDenseCellInRect } from "../Spatial/spatial.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./../Pathfinding/HpaPathWorker.js";
 import { agentPose } from "./../Agent/index.js";

@@ -1,4 +1,4 @@
-import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";
+import { clearPropSpriteCache } from "../Libraries/Canvas/canvas.js";
 /**
  * Internal bake diameter for radial-elevation props. Target `propPixelSize` applies to small props;
  * larger props automatically bake at full world diameter so nothing is upscaled on blit.

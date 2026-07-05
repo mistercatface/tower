@@ -1,5 +1,5 @@
 import {  forEachObstacleGridCellInAabb  } from "../Spatial/spatial.js";
-import { traceAabbRect, clipToPath } from "../Canvas/CanvasPath.js";
+import { traceAabbRect, clipToPath } from "../Canvas/canvas.js";
 import {  resolveCellWallHeightAtIdx  } from "../Spatial/spatial.js";
 import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel } from "../World/wallGridBake.js";
 export function clipChunkToFlatWallFootprints(ctx, obstacleGrid, bounds, zLevel) {

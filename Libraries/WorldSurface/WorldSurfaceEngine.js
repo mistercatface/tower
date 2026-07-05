@@ -3,7 +3,7 @@
  */
 import { aabbCenterX, aabbCenterY, aabbHeight, aabbWidth, createAabb, intersectAabbOptionalInto } from "../Math/math.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
-import { composeDestinationIn } from "../Canvas/maskCompositor.js";
+import { composeDestinationIn } from "../Canvas/canvas.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";
 import { clipChunkToFlatWallFootprints } from "./ChunkDrawPass.js";
 import { chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
@@ -13,7 +13,7 @@ import { SurfaceSpatialMap } from "./SurfaceSpatialMap.js";
 import { createWallFaceAxes, wallFaceColumns } from "./WallFaceColumns.js";
 import { TileWorkerCoordinator } from "./TileWorkerCoordinator.js";
 import { drawProjectedHorizontalChunkAt, isDrawableBakedSurface } from "./WorldSurfaceResolution.js";
-import {  resolveChunkSurfaceProfileId  } from "../Spatial/spatial.js";
+import { resolveChunkSurfaceProfileId } from "../Spatial/spatial.js";
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 export class WorldSurfaceEngine {
@@ -112,11 +112,7 @@ export class WorldSurfaceEngine {
         bakeFn()
             .then((bitmaps) => {
                 if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) {
-                    if (bitmaps) {
-                        for (const b of bitmaps) {
-                            if (b && typeof b.close === "function") b.close();
-                        }
-                    }
+                    if (bitmaps) for (const b of bitmaps) if (b && typeof b.close === "function") b.close();
                     throw new Error("Invalid or empty bitmaps returned from bake");
                 }
                 this.surfaceCache.commitBake(key, generation, bitmaps);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { addMaskPathFill, blitMaskOverlay, composeDestinationIn, cutOutRadialSoftDisc, fillMaskBase, maskCanvasDestinationIn } from "../Libraries/Canvas/maskCompositor.js";
+import { addMaskPathFill, blitMaskOverlay, composeDestinationIn, cutOutRadialSoftDisc, fillMaskBase, maskCanvasDestinationIn } from "../Libraries/Canvas/canvas.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 describe("fillMaskBase", () => {
     it("clears and fills with source-over", () => {

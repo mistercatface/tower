@@ -1,5 +1,5 @@
 import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
-import { WorldSceneRenderer } from "../Libraries/Render/WorldSceneRenderer.js";
+import { WorldSceneRenderer } from "../Libraries/Render/render.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
 /**

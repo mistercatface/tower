@@ -34,8 +34,8 @@ import {
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
-import { overlaySegment } from "../Render/overlays/overlayCommands.js";
-import { rebuildLabMapCaches } from "../Render/map/labMapCaches.js";
+import { overlaySegment } from "../Render/render.js";
+import { rebuildLabMapCaches } from "../Render/render.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
 export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
 export const DEFAULT_FLOOR_BELT_FORCE = 500;

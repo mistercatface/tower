@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { traceWoundFlatQuad } from "../Libraries/Canvas/CanvasPath.js";
-import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange } from "../Libraries/Render/losShadow/losShadowEdges.js";
-import { composeLosShadowMask, drawLosShadowOverlay } from "../Libraries/Render/losShadow/losShadowOverlay.js";
-import { collectRailWallShadowEdgesInAabb } from "../Libraries/Render/losShadow/railWallShadowEdges.js";
+import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
+import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange } from "../Libraries/Render/losShadow.js";
+import { composeLosShadowMask, drawLosShadowOverlay } from "../Libraries/Render/losShadow.js";
+import { collectRailWallShadowEdgesInAabb } from "../Libraries/Render/losShadow.js";
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
 import {  projectWorldPointToScreenInto  } from "../Libraries/Spatial/spatial.js";
 import {  projectWallShadowQuadScreenInto, shadowGroundContactXY  } from "../Libraries/Spatial/spatial.js";
-import { EdgeList } from "../Libraries/Render/losShadow/EdgeList.js";
+import { EdgeList } from "../Libraries/Render/losShadow.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./losShadowHarness.js";
