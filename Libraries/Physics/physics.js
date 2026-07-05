@@ -43,6 +43,7 @@ import {
     isRailWallEdge,
     cellIsStaticWall,
     cellEdgeEndpointsIdx,
+    RailWallBatch,
 } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { commitFractureResult, acquireWorldProp, applyPropBoxFootprint, fracturePropOnImpact } from "../Props/props.js";
@@ -4431,13 +4432,13 @@ export function applyPendingWallDamage(state, wallDamage) {
     }
     wallDamage.pendingBreaks.clear();
     const voxels = [];
-    const rails = [];
+    const railBatch = new RailWallBatch(Math.max(1, descriptors.length));
     for (const desc of descriptors)
         if (desc.kind === "voxel") voxels.push(desc.idx);
-        else rails.push({ idx: desc.idx, side: desc.side });
+        else railBatch.add(desc.idx, desc.side, 1, 1);
     let commitBounds = null;
-    if (voxels.length || rails.length) {
-        wallDamage.commit.clearWalls({ voxels, rails });
+    if (voxels.length || railBatch.count) {
+        wallDamage.commit.clearWalls({ voxels, rails: railBatch });
         commitBounds = wallDamage.commit.flush();
     }
     const spatialFrame = wallDamage.spatialFrame ?? null;

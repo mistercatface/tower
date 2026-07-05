@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit, commitGridNavEditUnion } from "../Libraries/Spatial/spatial.js";
-import { stampRailWallsBatch } from "../Libraries/Spatial/spatial.js";
+import { stampRailWallsBatch, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 
@@ -62,7 +62,7 @@ describe("gridNavEdit", () => {
     it("stampRailWallsBatch syncs nav once per batch", () => {
         const state = createNavEditTestState();
         state.worldSurfaces.settings = { maxWallHeightLevel: 4 };
-        stampRailWallsBatch(state, [{ idx: 2 + 2 * state.obstacleGrid.cols, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsBatch(state, RailWallBatch.single(2 + 2 * state.obstacleGrid.cols, 0));
         assert.equal(state.syncCount, 1);
     });
 });

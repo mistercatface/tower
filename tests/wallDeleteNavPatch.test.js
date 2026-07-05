@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
-import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit } from "../Libraries/Spatial/spatial.js";
+import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
@@ -49,10 +49,10 @@ describe("wall delete batching (4a)", () => {
     it("clearGridWallsQuiet removes voxel and rail walls without notifying", async () => {
         const state = await createWallDeleteTestState();
         stampVoxelQuiet(state, 2, 2);
-        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 3, 3), side: 1, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 3), 1));
         const bounds = clearGridWallsQuiet(state, {
             voxels: [worldIdxAtCell(state.obstacleGrid,2, 2)],
-            rails: [{ idx: worldIdxAtCell(state.obstacleGrid,3, 3), side: 1 }]
+            rails: RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 3), 1),
         });
         assert.ok(bounds);
         assert.equal(state.notifyCount, 0);
@@ -63,11 +63,11 @@ describe("wall delete batching (4a)", () => {
     it("clearGridWallsBatch deletes voxel and rail in one nav invalidation", async () => {
         const state = await createWallDeleteTestState();
         stampVoxelQuiet(state, 1, 1);
-        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 4, 4), side: 0, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 0));
         state.resetNotifyCount();
         const bounds = clearGridWallsBatch(state, {
             voxels: [worldIdxAtCell(state.obstacleGrid,1, 1)],
-            rails: [{ idx: worldIdxAtCell(state.obstacleGrid,4, 4), side: 0 }]
+            rails: RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 0),
         });
         assert.ok(bounds);
         assert.equal(state.notifyCount, 1);
@@ -78,10 +78,10 @@ describe("wall delete batching (4a)", () => {
     it("deferred commit batches mixed voxel and rail clears into one notify", async () => {
         const state = await createWallDeleteTestState();
         stampVoxelQuiet(state, 5, 5);
-        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 6, 6), side: 2, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 6, 6), 2));
         const commit = createDeferredGridWallCommit(state);
         assert.ok(commit.clearVoxel(worldIdxAtCell(state.obstacleGrid,5, 5)));
-        assert.ok(commit.clearRails([{ idx: worldIdxAtCell(state.obstacleGrid,6, 6), side: 2 }]));
+        assert.ok(commit.clearRails(RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 6, 6), 2)));
         assert.equal(state.notifyCount, 0);
         assert.ok(commit.hasPending);
         assert.ok(commit.flush());
@@ -93,11 +93,11 @@ describe("wall delete batching (4a)", () => {
     it("deferred clearWalls batches voxel and rail in one flush", async () => {
         const state = await createWallDeleteTestState();
         stampVoxelQuiet(state, 2, 6);
-        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 3, 6), side: 1, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 6), 1));
         const commit = createDeferredGridWallCommit(state);
         assert.ok(commit.clearWalls({
             voxels: [worldIdxAtCell(state.obstacleGrid,2, 6)],
-            rails: [{ idx: worldIdxAtCell(state.obstacleGrid,3, 6), side: 1 }]
+            rails: RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 6), 1),
         }));
         assert.equal(state.notifyCount, 0);
         commit.flush();
@@ -131,11 +131,11 @@ describe("wall delete nav patch (4a)", () => {
         const nextCol = 4;
         const idx = worldIdxAtCell(state.obstacleGrid, col, row);
         const nextIdx = worldIdxAtCell(state.obstacleGrid, nextCol, row);
-        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, col, row), side: 1, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, col, row), 1));
         await state.nav.commitEdit(idx);
         assert.equal(grid.canStep(idx, nextIdx, state.nav.topology), false);
         state.resetNotifyCount();
-        clearRailWallsQuiet(state, [{ idx, side: 1 }]);
+        clearRailWallsQuiet(state, RailWallBatch.single(idx, 1));
         await state.nav.commitEdit(idx);
         assert.equal(state.notifyCount, 1);
         assert.equal(grid.canStep(idx, nextIdx, state.nav.topology), true);
@@ -149,7 +149,7 @@ describe("wall delete nav patch (4a)", () => {
         assert.ok(blocked !== null && blocked !== undefined);
         const idxBlocked = blocked;
         stampVoxelQuiet(state, idxBlocked % grid.cols, (idxBlocked / grid.cols) | 0);
-        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 5, 5), side: 1, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 5, 5), 1));
         const idxRail = worldIdxAtCell(state.obstacleGrid, 5, 5);
         const idxNext = worldIdxAtCell(state.obstacleGrid, 6, 5);
         await state.nav.commitEdit(idxBlocked);
@@ -160,7 +160,7 @@ describe("wall delete nav patch (4a)", () => {
         state.resetNotifyCount();
         const bounds = clearGridWallsBatch(state, {
             voxels: [idxBlocked],
-            rails: [{ idx: idxRail, side: 1 }]
+            rails: RailWallBatch.single(idxRail, 1),
         });
         await state.nav.awaitWorkerNavReady();
         assert.equal(state.notifyCount, 1);
