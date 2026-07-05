@@ -4,6 +4,7 @@ import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHos
 import { TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
 import { TILE_WORKER_MESSAGE } from "../Libraries/WorldSurface/worldSurface.js";
 import { TileSurfaceWorkerClient, EMPTY_TILE_BAKE_STATS } from "../Libraries/WorldSurface/worldSurface.js";
+import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 function createMockWorker() {
     return { onmessage: null, onerror: null, postMessage() {}, terminate() {} };
 }
@@ -34,7 +35,7 @@ describe("TileSurfaceWorkerClient", () => {
     });
     it("uses shared tile worker message types for bake requests", async () => {
         const { client, pool, scheduler, posts } = createTestClient();
-        const payload = { profileId: "x", chunkCol: 0, chunkRow: 0, seed: 0 };
+        const payload = { profileId: "x", chunkKey: packChunkKey(0, 0), seed: 0 };
         const promise = client._sendRequest(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, 0);
         await new Promise((resolve) => queueMicrotask(resolve));
         assert.equal(posts[0].type, TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK);

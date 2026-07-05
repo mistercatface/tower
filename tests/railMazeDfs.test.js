@@ -11,8 +11,10 @@ describe("railMazeDfs", () => {
             64,
         );
         assert.ok(rails.length > 80, `expected rail maze walls, got ${rails.length}`);
+        const gridCols = 64;
         for (let i = 0; i < rails.length; i++) {
-            assert.ok(rails[i].row >= 34, `rail row ${rails[i].row} leaked above rail zone`);
+            const row = (rails[i].idx / gridCols) | 0;
+            assert.ok(row >= 34, `rail row ${row} leaked above rail zone`);
             assert.ok(rails[i].side >= 0 && rails[i].side <= 3);
         }
     });
@@ -26,7 +28,7 @@ describe("railMazeDfs", () => {
         assert.equal(rails1.length, rails2.length, "Same seed should generate same number of rails");
         for (let i = 0; i < rails1.length; i++) assert.deepEqual(rails1[i], rails2[i], `Rail mismatch at index ${i}`);
         assert.ok(
-            rails1.length !== rails3.length || rails1.some((r, i) => r.col !== rails3[i].col || r.row !== rails3[i].row || r.side !== rails3[i].side),
+            rails1.length !== rails3.length || rails1.some((r, i) => r.idx !== rails3[i].idx || r.side !== rails3[i].side),
             "Different seeds should produce different mazes",
         );
     });

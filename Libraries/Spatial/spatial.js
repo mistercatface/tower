@@ -351,26 +351,56 @@ export function gridCenterYAtOrigin(row, minY, cellHalfSize) {
 export function cellToChunkCoord(cell, cellsPerChunk) {
     return Math.floor(cell / cellsPerChunk);
 }
+const CHUNK_KEY_STRIDE = 0x400000;
+function zigzagChunk(n) {
+    return n >= 0 ? n * 2 : n * -2 - 1;
+}
+function unzigzagChunk(u) {
+    return u & 1 ? -(u + 1) / 2 : u / 2;
+}
+export function packChunkKey(axis0, axis1) {
+    return zigzagChunk(axis0) * CHUNK_KEY_STRIDE + zigzagChunk(axis1);
+}
+function chunkKeyAxis0(key) {
+    return unzigzagChunk(Math.floor(key / CHUNK_KEY_STRIDE));
+}
+function chunkKeyAxis1(key) {
+    return unzigzagChunk(key % CHUNK_KEY_STRIDE);
+}
+export function cellIdxToChunkKey(idx, gridCols, cellsPerChunk) {
+    return packChunkKey(cellToChunkCoord(idx % gridCols, cellsPerChunk), cellToChunkCoord((idx / gridCols) | 0, cellsPerChunk));
+}
+export function forEachChunkKeyInCellBounds(cellBounds, cellsPerChunk, fn) {
+    const startAxis0 = cellToChunkCoord(cellBounds.startCol, cellsPerChunk);
+    const endAxis0 = cellToChunkCoord(cellBounds.endCol, cellsPerChunk);
+    const startAxis1 = cellToChunkCoord(cellBounds.startRow, cellsPerChunk);
+    const endAxis1 = cellToChunkCoord(cellBounds.endRow, cellsPerChunk);
+    for (let axis1 = startAxis1; axis1 <= endAxis1; axis1++) for (let axis0 = startAxis0; axis0 <= endAxis0; axis0++) fn(packChunkKey(axis0, axis1));
+}
+export function forEachChunkKeyInRange(startKey, endKey, fn) {
+    const startAxis0 = chunkKeyAxis0(startKey);
+    const endAxis0 = chunkKeyAxis0(endKey);
+    const startAxis1 = chunkKeyAxis1(startKey);
+    const endAxis1 = chunkKeyAxis1(endKey);
+    for (let axis1 = startAxis1; axis1 <= endAxis1; axis1++) for (let axis0 = startAxis0; axis0 <= endAxis0; axis0++) fn(packChunkKey(axis0, axis1));
+}
+export function cellBoundsFromStampExtent(originIdx, cols, rows, gridCols, gridRows) {
+    const baseCol = originIdx % gridCols;
+    const baseRow = (originIdx / gridCols) | 0;
+    return { startCol: Math.max(0, baseCol), endCol: Math.min(gridCols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(gridRows - 1, baseRow + rows - 1) };
+}
+export function wrapChunkKey(chunkKey, period) {
+    return packChunkKey(((chunkKeyAxis0(chunkKey) % period) + period) % period, ((chunkKeyAxis1(chunkKey) % period) + period) % period);
+}
+export function chunkKeyBoundsInto(out, gridMinX, gridMinY, chunkKey, chunkSizePx) {
+    return minCornerAabbInto(out, gridMinX + chunkKeyAxis0(chunkKey) * chunkSizePx, gridMinY + chunkKeyAxis1(chunkKey) * chunkSizePx, chunkSizePx, chunkSizePx);
+}
+export function worldToChunkKey(worldX, worldY, gridMinX, gridMinY, chunkSizePx) {
+    return packChunkKey(Math.floor((worldX - gridMinX) / chunkSizePx), Math.floor((worldY - gridMinY) / chunkSizePx));
+}
 export function remapChunkCoord(chunkCoord, cellOffset, cellsPerChunk) {
     return cellToChunkCoord(chunkCoord * cellsPerChunk + cellOffset, cellsPerChunk);
 }
-export function cellBoundsToChunkRange(cellBounds, cellsPerChunk) {
-    return {
-        startCol: cellToChunkCoord(cellBounds.startCol, cellsPerChunk),
-        startRow: cellToChunkCoord(cellBounds.startRow, cellsPerChunk),
-        endCol: cellToChunkCoord(cellBounds.endCol, cellsPerChunk),
-        endRow: cellToChunkCoord(cellBounds.endRow, cellsPerChunk),
-    };
-}
-export function chunkRangeToCellBounds(chunkBounds, cellsPerChunk, gridCols, gridRows) {
-    const startCol = Math.max(0, chunkBounds.startCol * cellsPerChunk);
-    const startRow = Math.max(0, chunkBounds.startRow * cellsPerChunk);
-    const endCol = Math.min(gridCols - 1, (chunkBounds.endCol + 1) * cellsPerChunk - 1);
-    const endRow = Math.min(gridRows - 1, (chunkBounds.endRow + 1) * cellsPerChunk - 1);
-    if (startCol > endCol || startRow > endRow) return null;
-    return { startCol, endCol, startRow, endRow };
-}
-/** Grid centered on a world point with pixel offsets (FlowFieldGrid). */
 export function createCenteredGridFrame(cellSize, width, height, centerX = 0, centerY = 0) {
     const cols = Math.ceil(width / cellSize);
     const rows = Math.ceil(height / cellSize);
@@ -1278,17 +1308,6 @@ function readEdgeFromSab(view, ref, out) {
 // Surface material ownership resolves from the narrowest owner outward:
 // cell/edge override, then chunk profile, then the active/default profile.
 export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
-// Chunk coords are paired into a single numeric Map key (zigzag handles negatives from remap).
-const CHUNK_KEY_STRIDE = 0x400000;
-function zigzagChunk(n) {
-    return n >= 0 ? n * 2 : n * -2 - 1;
-}
-function unzigzagChunk(u) {
-    return u & 1 ? -(u + 1) / 2 : u / 2;
-}
-function chunkProfileKey(chunkCol, chunkRow) {
-    return zigzagChunk(chunkCol) * CHUNK_KEY_STRIDE + zigzagChunk(chunkRow);
-}
 export class SurfaceMaterialStore {
     constructor() {
         this.cellProfileIds = new Map();
@@ -1334,25 +1353,24 @@ export class SurfaceMaterialStore {
         }
         if (snapshot.chunkProfileIds.size > 0 && (!cellsPerChunk || cellsPerChunk <= 0)) throw new Error("Surface material chunk remap requires cellsPerChunk");
         for (const [key, profileId] of snapshot.chunkProfileIds) {
-            const chunkCol = unzigzagChunk(Math.floor(key / CHUNK_KEY_STRIDE));
-            const chunkRow = unzigzagChunk(key % CHUNK_KEY_STRIDE);
-            const newChunkCol = remapChunkCoord(chunkCol, colOffset, cellsPerChunk);
-            const newChunkRow = remapChunkCoord(chunkRow, rowOffset, cellsPerChunk);
-            this.chunkProfileIds.set(chunkProfileKey(newChunkCol, newChunkRow), profileId);
+            const axis0 = chunkKeyAxis0(key);
+            const axis1 = chunkKeyAxis1(key);
+            const newAxis0 = remapChunkCoord(axis0, colOffset, cellsPerChunk);
+            const newAxis1 = remapChunkCoord(axis1, rowOffset, cellsPerChunk);
+            this.chunkProfileIds.set(packChunkKey(newAxis0, newAxis1), profileId);
         }
     }
-    getChunk(chunkCol, chunkRow) {
-        return this.chunkProfileIds.get(chunkProfileKey(chunkCol, chunkRow)) ?? null;
+    getChunkAtKey(chunkKey) {
+        return this.chunkProfileIds.get(chunkKey) ?? null;
     }
-    setChunk(chunkCol, chunkRow, profileId) {
-        this.chunkProfileIds.set(chunkProfileKey(chunkCol, chunkRow), profileId);
+    setChunkAtKey(chunkKey, profileId) {
+        this.chunkProfileIds.set(chunkKey, profileId);
     }
-    clearChunk(chunkCol, chunkRow) {
-        this.chunkProfileIds.delete(chunkProfileKey(chunkCol, chunkRow));
+    clearChunkAtKey(chunkKey) {
+        this.chunkProfileIds.delete(chunkKey);
     }
-    setChunkRange(chunkBounds, profileId) {
-        for (let chunkRow = chunkBounds.startRow; chunkRow <= chunkBounds.endRow; chunkRow++)
-            for (let chunkCol = chunkBounds.startCol; chunkCol <= chunkBounds.endCol; chunkCol++) this.setChunk(chunkCol, chunkRow, profileId);
+    setChunkProfileForCellBounds(cellBounds, cellsPerChunk, profileId) {
+        forEachChunkKeyInCellBounds(cellBounds, cellsPerChunk, (key) => this.setChunkAtKey(key, profileId));
     }
     getCellAtIdx(idx) {
         return this.cellProfileIds.get(idx) ?? null;
@@ -1396,12 +1414,10 @@ export class SurfaceMaterialStore {
     }
 }
 export function resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) {
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return resolveChunkSurfaceProfileId(grid, cellToChunkCoord(col, cellsPerChunk), cellToChunkCoord(row, cellsPerChunk), baseProfileId);
+    return resolveChunkSurfaceProfileIdAtKey(grid, cellIdxToChunkKey(idx, grid.cols, cellsPerChunk), baseProfileId);
 }
 export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
-    if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunk(a, b) ?? baseProfileId;
+    if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunkAtKey(a) ?? baseProfileId;
     if (ownerKind === SURFACE_MATERIAL_OWNER.Cell) {
         const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, a, cellsPerChunk, baseProfileId) : baseProfileId;
         return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
@@ -1423,8 +1439,8 @@ export function resolveEdgeSurfaceProfileId(grid, idx, side, baseProfileId, cell
 export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerChunk = 0) {
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, baseProfileId, cellsPerChunk, 0, 0, 0, face);
 }
-export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
-    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkCol, chunkRow);
+export function resolveChunkSurfaceProfileIdAtKey(grid, chunkKey, baseProfileId) {
+    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkKey);
 }
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
@@ -1845,19 +1861,19 @@ export class WorldObstacleGrid {
         this.surfaceMaterials.clearEdgeMirrored(idx, side);
         bumpSurfaceMaterialRevision(this);
     }
-    setChunkSurfaceProfile(chunkCol, chunkRow, profileId, cellsPerChunk = 0) {
+    setChunkSurfaceProfileAtKey(chunkKey, profileId, cellsPerChunk = 0) {
         if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
-        this.surfaceMaterials.setChunk(chunkCol, chunkRow, profileId);
+        this.surfaceMaterials.setChunkAtKey(chunkKey, profileId);
         bumpSurfaceMaterialRevision(this);
     }
-    clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk = 0) {
+    clearChunkSurfaceProfileAtKey(chunkKey, cellsPerChunk = 0) {
         if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
-        this.surfaceMaterials.clearChunk(chunkCol, chunkRow);
+        this.surfaceMaterials.clearChunkAtKey(chunkKey);
         bumpSurfaceMaterialRevision(this);
     }
-    setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk = 0) {
+    setChunkSurfaceProfileForCellBounds(cellBounds, profileId, cellsPerChunk = 0) {
         if (cellsPerChunk > 0) this.surfaceMaterialCellsPerChunk = cellsPerChunk;
-        this.surfaceMaterials.setChunkRange(chunkBounds, profileId);
+        this.surfaceMaterials.setChunkProfileForCellBounds(cellBounds, cellsPerChunk, profileId);
         bumpSurfaceMaterialRevision(this);
     }
     writeFloorCell(idx, kind, facingIndex) {
@@ -3065,24 +3081,17 @@ export function commitSurfaceMaterialEdit(state, idx) {
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     return idx;
 }
-export function setChunkSurfaceProfileEdit(state, chunkBounds, profileId) {
+export function setChunkSurfaceProfileEdit(state, cellBounds, profileId) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
+    state.obstacleGrid.setChunkSurfaceProfileForCellBounds(cellBounds, profileId, cellsPerChunk);
     commitSurfaceMaterialEdit(state, null);
-    return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
+    return cellBounds;
 }
-export function clearChunkSurfaceProfileEdit(state, chunkBounds) {
+export function clearChunkSurfaceProfileEdit(state, cellBounds) {
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    for (let chunkRow = chunkBounds.startRow; chunkRow <= chunkBounds.endRow; chunkRow++)
-        for (let chunkCol = chunkBounds.startCol; chunkCol <= chunkBounds.endCol; chunkCol++) state.obstacleGrid.clearChunkSurfaceProfile(chunkCol, chunkRow, cellsPerChunk);
+    forEachChunkKeyInCellBounds(cellBounds, cellsPerChunk, (key) => state.obstacleGrid.clearChunkSurfaceProfileAtKey(key, cellsPerChunk));
     commitSurfaceMaterialEdit(state, null);
-    return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
-}
-export function setChunkSurfaceProfileRangeEdit(state, chunkBounds, profileId) {
-    const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    state.obstacleGrid.setChunkSurfaceProfileRange(chunkBounds, profileId, cellsPerChunk);
-    commitSurfaceMaterialEdit(state, null);
-    return chunkRangeToCellBounds(chunkBounds, cellsPerChunk, state.obstacleGrid.cols, state.obstacleGrid.rows);
+    return cellBounds;
 }
 /** Stamp or replace one floor cell and resync nav topology. */
 export function applyFloorCellEdit(state, idx, kind, facingIndex) {

@@ -1,5 +1,5 @@
 import "./nodeCanvasSetup.js";
-import assert from "node:assert/strict";
+import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
 import { computeWallBreakStrength } from "../Libraries/Physics/physics.js";
 import { applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Physics/physics.js";;
@@ -111,7 +111,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
-        state.obstacleGrid.setChunkSurfaceProfile(0, 0, "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
+        state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,3, 3), isStaticGridProxy: true, isEdgeRail: false };
         const entity = { id: 101, type: "crate", vx: 560, vy: 0 };

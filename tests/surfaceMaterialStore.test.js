@@ -4,7 +4,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
-import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
+import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileIdAtKey, resolveEdgeSurfaceProfileId, packChunkKey  } from "../Libraries/Spatial/spatial.js";
 
 function createPathOnlyContext() {
     return {
@@ -128,7 +128,7 @@ describe("surface material stores", () => {
     it("falls back to the chunk profile for walls with no cell override", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
-        grid.setChunkSurfaceProfile(1, 1, "chunk-profile");
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(1, 1), "chunk-profile");
         let capturedProfileId = null;
         const state = {
             obstacleGrid: grid,
@@ -160,30 +160,30 @@ describe("surface material stores", () => {
     it("resolves chunk profiles and supports range assignment", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 128, 128);
-        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
-        grid.setChunkSurfaceProfile(0, 0, "north");
-        grid.setChunkSurfaceProfileRange({ startCol: 0, endCol: 3, startRow: 2, endRow: 3 }, "south");
-        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "north");
-        assert.equal(resolveChunkSurfaceProfileId(grid, 1, 2, "base"), "south");
-        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 1, "base"), "base");
-        grid.clearChunkSurfaceProfile(0, 0);
-        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "north");
+        grid.setChunkSurfaceProfileForCellBounds({ startCol: 0, endCol: 31, startRow: 16, endRow: 31 }, "south", 8);
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "north");
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 2), "base"), "south");
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 1), "base"), "base");
+        grid.clearChunkSurfaceProfileAtKey(packChunkKey(0, 0));
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
     });
 
     it("remaps chunk profiles when grid bounds expand", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 128, 128);
-        grid.setChunkSurfaceProfile(0, 0, "chunk-profile", 8);
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", 8);
         grid.expandToCoverAabb({ minX: -192, minY: -192, maxX: 64, maxY: 64 });
-        assert.equal(resolveChunkSurfaceProfileId(grid, 0, 0, "base"), "base");
-        assert.equal(resolveChunkSurfaceProfileId(grid, 1, 1, "base"), "chunk-profile");
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 1), "base"), "chunk-profile");
     });
 
     it("bumps material revision when chunk profiles change", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
         const revision = grid.surfaceMaterialRevision;
-        grid.setChunkSurfaceProfile(0, 0, "north");
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "north");
         assert.notEqual(grid.surfaceMaterialRevision, revision);
     });
 });

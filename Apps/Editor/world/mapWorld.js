@@ -1,4 +1,4 @@
-import { unionCellBounds } from "../../../Libraries/Spatial/spatial.js";
+import { unionCellBounds, cellBoundsFromStampExtent } from "../../../Libraries/Spatial/spatial.js";
 import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
@@ -185,7 +185,12 @@ export function clearSnakeRegionPaddingStrip(state, paddingCells) {
     const cavernCol = cavernConfig.boundsIdx % grid.cols;
     const cavernRow = (cavernConfig.boundsIdx / grid.cols) | 0;
     const targetRow = cavernRow + topRows;
-    return clearMapGenRectWalkable(state, { boundsMode: "rect", boundsIdx: grid.worldToIdx(grid.gridCenterX(cavernCol), grid.gridCenterY(targetRow)), boundsCols: cavernConfig.boundsCols, boundsRows: padding });
+    return clearMapGenRectWalkable(state, {
+        boundsMode: "rect",
+        boundsIdx: grid.worldToIdx(grid.gridCenterX(cavernCol), grid.gridCenterY(targetRow)),
+        boundsCols: cavernConfig.boundsCols,
+        boundsRows: padding,
+    });
 }
 export async function generateLabRailDfsMaze(state, options = {}) {
     const { railConfig } = state.editor;
@@ -384,48 +389,26 @@ export function applyMapGenSurfaceProfile(state, config, profileId) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces.settings;
     const cellsPerChunk = settings.cellsPerChunk;
-    const chunkOf = (cell) => Math.floor(cell / cellsPerChunk);
     const ext = getMapGenBoundsStampExtent(grid, config);
-    const minC = ext.originIdx % grid.cols;
-    const minR = (ext.originIdx / grid.cols) | 0;
-    const maxC = minC + ext.cols - 1;
-    const maxR = minR + ext.rows - 1;
-    grid.setChunkSurfaceProfileRange({ startCol: chunkOf(minC), endCol: chunkOf(maxC), startRow: chunkOf(minR), endRow: chunkOf(maxR) }, profileId, cellsPerChunk);
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(ext.originIdx, ext.cols, ext.rows, grid.cols, grid.rows), profileId, cellsPerChunk);
     grid.surfaceMaterialRevision++;
 }
 export function applyEditorRegionSurfaceProfiles(state) {
     const grid = state.obstacleGrid;
     const settings = state.worldSurfaces.settings;
     const cellsPerChunk = settings.cellsPerChunk;
-    const chunkOf = (cell) => Math.floor(cell / cellsPerChunk);
     grid.surfaceMaterials.chunkProfileIds.clear();
     grid.surfaceMaterialRevision++;
     const cavern = state.editor.cavernConfig;
     const cavernExt = getMapGenBoundsStampExtent(grid, cavern);
-    const cavernMinC = cavernExt.originIdx % grid.cols;
-    const cavernMinR = (cavernExt.originIdx / grid.cols) | 0;
-    const cavernMaxC = cavernMinC + cavernExt.cols - 1;
-    const cavernMaxR = cavernMinR + cavernExt.rows - 1;
     const cavernProfile = cavern.surfaceProfileId || "tomatoGarden";
-    grid.setChunkSurfaceProfileRange({ startCol: chunkOf(cavernMinC), endCol: chunkOf(cavernMaxC), startRow: chunkOf(cavernMinR), endRow: chunkOf(cavernMaxR) }, cavernProfile, cellsPerChunk);
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(cavernExt.originIdx, cavernExt.cols, cavernExt.rows, grid.cols, grid.rows), cavernProfile, cellsPerChunk);
     const rail = state.editor.railConfig;
     const railExt = getMapGenBoundsStampExtent(grid, rail);
-    const railMinC = railExt.originIdx % grid.cols;
-    const railMinR = (railExt.originIdx / grid.cols) | 0;
-    const railMaxC = railMinC + railExt.cols - 1;
-    const railMaxR = railMinR + railExt.rows - 1;
     const railProfile = rail.surfaceProfileId || "poolTableFelt";
-    grid.setChunkSurfaceProfileRange({ startCol: chunkOf(railMinC), endCol: chunkOf(railMaxC), startRow: chunkOf(railMinR), endRow: chunkOf(railMaxR) }, railProfile, cellsPerChunk);
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(railExt.originIdx, railExt.cols, railExt.rows, grid.cols, grid.rows), railProfile, cellsPerChunk);
     const railMaze = state.editor.railMazeConfig;
     const railMazeExt = getMapGenBoundsStampExtent(grid, railMaze);
-    const railMazeMinC = railMazeExt.originIdx % grid.cols;
-    const railMazeMinR = (railMazeExt.originIdx / grid.cols) | 0;
-    const railMazeMaxC = railMazeMinC + railMazeExt.cols - 1;
-    const railMazeMaxR = railMazeMinR + railMazeExt.rows - 1;
     const railMazeProfile = railMaze.surfaceProfileId || "cyberGrid";
-    grid.setChunkSurfaceProfileRange(
-        { startCol: chunkOf(railMazeMinC), endCol: chunkOf(railMazeMaxC), startRow: chunkOf(railMazeMinR), endRow: chunkOf(railMazeMaxR) },
-        railMazeProfile,
-        cellsPerChunk,
-    );
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(railMazeExt.originIdx, railMazeExt.cols, railMazeExt.rows, grid.cols, grid.rows), railMazeProfile, cellsPerChunk);
 }

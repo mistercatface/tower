@@ -187,21 +187,12 @@ export function planRailMazeCorridorBelts({
     const validation = peeled.validation;
     // Generate beltRails on the lateral edges of each floor belt
     const beltRails = [];
-    const globalCoordsByLocalIdx = new Map();
-    for (let i = 0; i < zoneCells.length; i++) {
-        const cell = zoneCells[i];
-        globalCoordsByLocalIdx.set(cell.idx, { globalCol: cell.globalCol, globalRow: cell.globalRow });
-    }
-    const cols = grid.cols;
     const heightLevel = railConfig.wallHeightLevel ?? 1;
     const thicknessLevel = railConfig.edgeThickness ?? 1;
     for (let i = 0; i < floorBelts.length; i++) {
         const belt = floorBelts[i];
-        const globalCoords = globalCoordsByLocalIdx.get(belt.idx);
-        if (!globalCoords) continue;
-        // Get the lateral rail sides for this belt kind and facing
         const sides = FloorBelt.getRailEdgeSides(belt.kind, belt.facingIndex);
-        for (let s = 0; s < sides.length; s++) beltRails.push({ col: globalCoords.globalCol, row: globalCoords.globalRow, side: sides[s], heightLevel, thicknessLevel });
+        for (let s = 0; s < sides.length; s++) beltRails.push({ idx: belt.idx, side: sides[s], heightLevel, thicknessLevel });
     }
     return { floorBelts, paths, zoneCellCount: zoneCells.length, pathCount: paths.length, mouthExteriorIndices, validation, degreeByIndex, beltRails };
 }

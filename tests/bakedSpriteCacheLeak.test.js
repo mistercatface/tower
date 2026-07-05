@@ -5,6 +5,7 @@ import { acquireOffscreenCanvas } from "../Libraries/Canvas/canvas.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 
 // Ensure global ImageBitmap shim exists for environment
 if (typeof globalThis.ImageBitmap === "undefined") {
@@ -110,7 +111,7 @@ describe("WorldSurfaceEngine Leak Auditing", () => {
             };
             const mockState = { obstacleGrid };
 
-            engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
 
             // Wait for async bake to reject due to invalid width
             await new Promise((resolve) => setTimeout(resolve, 50));

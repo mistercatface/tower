@@ -279,13 +279,9 @@ describe("rail maze corridor belts", () => {
 
         for (let i = 0; i < plan.beltRails.length; i++) {
             const rWall = plan.beltRails[i];
-            const col = grid.worldCol(rWall.col * grid.cellSize);
-            const row = grid.worldRow(rWall.row * grid.cellSize);
-            const idx = col + row * grid.cols;
+            assert.ok(beltSet.has(rWall.idx), "rail wall must be on a belt cell");
 
-            assert.ok(beltSet.has(idx), "rail wall must be on a belt cell");
-
-            const belt = plan.floorBelts.find(b => b.idx === idx);
+            const belt = plan.floorBelts.find(b => b.idx === rWall.idx);
             const lateralSides = FloorBelt.getRailEdgeSides(belt.kind, belt.facingIndex);
             assert.ok(lateralSides.includes(rWall.side), `side ${rWall.side} must be one of the lateral sides: ${lateralSides}`);
         }

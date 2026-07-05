@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
 import { TILE_BAKE_TIER, TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
+import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 
 function createMockWorker() {
     return {
@@ -23,8 +24,7 @@ function createTestPool(poolSize) {
 function chunkPayload(overrides = {}) {
     return {
         profileId: "testProfile",
-        chunkCol: 1,
-        chunkRow: 2,
+        chunkKey: packChunkKey(1, 2),
         seed: 42,
         zLevel: 0,
         centerX: 0,
@@ -75,8 +75,8 @@ describe("TileBakeScheduler", () => {
     it("drops obsolete revision jobs without posting to workers", async () => {
         let revision = 1;
         const { scheduler, pool, posts } = createScheduler(1, () => revision);
-        scheduler.enqueue("bakeGroundChunk", chunkPayload({ chunkCol: 5 }), TILE_BAKE_TIER.STATIC);
-        const queued = scheduler.enqueue("bakeGroundChunk", chunkPayload({ chunkCol: 0 }), TILE_BAKE_TIER.STATIC);
+        scheduler.enqueue("bakeGroundChunk", chunkPayload({ chunkKey: packChunkKey(5, 0) }), TILE_BAKE_TIER.STATIC);
+        const queued = scheduler.enqueue("bakeGroundChunk", chunkPayload({ chunkKey: packChunkKey(0, 0) }), TILE_BAKE_TIER.STATIC);
         revision = 2;
         pool.forEachSlot((index, slot) => {
             slot.busy = false;
@@ -94,7 +94,7 @@ describe("TileBakeScheduler", () => {
         const far = scheduler.enqueue("bakeGroundChunk", chunkPayload({ centerX: 0, centerY: 0 }), TILE_BAKE_TIER.STATIC);
         assert.equal(posts.length, 1);
         assert.equal(posts[0].payload.centerX, 0);
-        const near = scheduler.enqueue("bakeGroundChunk", chunkPayload({ chunkCol: 9, centerX: 200, centerY: 0 }), TILE_BAKE_TIER.STATIC);
+        const near = scheduler.enqueue("bakeGroundChunk", chunkPayload({ chunkKey: packChunkKey(9, 0), centerX: 200, centerY: 0 }), TILE_BAKE_TIER.STATIC);
         assert.notEqual(far, near);
         scheduler.updateFocus(200, 0);
         pool.forEachSlot((index, slot) => {

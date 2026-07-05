@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey } from "../Libraries/WorldSurface/worldSurface.js";
+import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey, WorldSurfaceEngine, TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 import { SurfaceSpatialMap } from "../Libraries/WorldSurface/worldSurface.js";
+import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 globalThis.ImageBitmap = class ImageBitmap { close() {} };
 
 function createSurfaceSpace(overrides = {}) {
@@ -18,21 +19,21 @@ describe("surface tile cutoff", () => {
         const surfaceSpace = createSurfaceSpace();
         const keys = new SurfaceBakeCacheKeys(surfaceSpace);
         assert.equal(surfaceSpace.surfaceTileChunks(), 4);
-        assert.equal(keys.groundChunkKey(0, 0, "test"), keys.groundChunkKey(4, 4, "test"));
-        assert.equal(keys.groundChunkKey(0, 0, "test", 1), keys.groundChunkKey(4, 4, "test", 1));
+        assert.equal(keys.groundChunkKey(packChunkKey(0, 0), "test"), keys.groundChunkKey(packChunkKey(4, 4), "test"));
+        assert.equal(keys.groundChunkKey(packChunkKey(0, 0), "test", 1), keys.groundChunkKey(packChunkKey(4, 4), "test", 1));
     });
 
     it("keeps roof mask and composite keys per real chunk (real geometry, not wrapped)", () => {
         const surfaceSpace = createSurfaceSpace();
         const keys = new SurfaceBakeCacheKeys(surfaceSpace);
-        assert.notEqual(keys.staticRoofMaskKey(0, 0, 1), keys.staticRoofMaskKey(4, 4, 1));
-        assert.notEqual(keys.staticRoofDrawKey(0, 0, "test", 1), keys.staticRoofDrawKey(4, 4, "test", 1));
+        assert.notEqual(keys.staticRoofMaskKey(packChunkKey(0, 0), 1), keys.staticRoofMaskKey(packChunkKey(4, 4), 1));
+        assert.notEqual(keys.staticRoofDrawKey(packChunkKey(0, 0), "test", 1), keys.staticRoofDrawKey(packChunkKey(4, 4), "test", 1));
     });
 
     it("uses wrapped source chunk ids for worker dedupe", () => {
         const base = { profileId: "test", seed: 7, zLevel: 0 };
-        const a = groundChunkWorkerDedupeKey({ ...base, chunkCol: 0, chunkRow: 0, tileChunkCol: 0, tileChunkRow: 0 }, 0);
-        const b = groundChunkWorkerDedupeKey({ ...base, chunkCol: 4, chunkRow: 4, tileChunkCol: 0, tileChunkRow: 0 }, 0);
+        const a = groundChunkWorkerDedupeKey({ ...base, chunkKey: packChunkKey(0, 0), tileChunkKey: packChunkKey(0, 0) }, 0);
+        const b = groundChunkWorkerDedupeKey({ ...base, chunkKey: packChunkKey(4, 4), tileChunkKey: packChunkKey(0, 0) }, 0);
         assert.equal(a, b);
     });
 
@@ -43,9 +44,6 @@ describe("surface tile cutoff", () => {
         assert.deepEqual(atlas.wrappedP2, { x: 16, y: 0 });
     });
 });
-
-import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
-import { TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 
 describe("world surface retry and cooldown", () => {
     it("handles worker bake failure, sets cooldown, and retries after expiration", async () => {
@@ -82,23 +80,23 @@ describe("world surface retry and cooldown", () => {
         
         try {
             // First attempt: should fail and set cooldown
-            const result1 = engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            const result1 = engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
             assert.ok(result1[0].isPlaceholder, "Should initially return a placeholder");
             
             // Wait for promise microtasks to resolve the failure
             await new Promise(resolve => setTimeout(resolve, 0));
             
             // Check that placeholder is evicted (should return null if on cooldown)
-            const result2 = engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            const result2 = engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
             assert.equal(result2, null, "Should return null when on cooldown");
             
             // Fast-forward or force cooldown expiration
-            const key = engine.cacheKeys.groundChunkKey(0, 0, "test_profile", 0);
+            const key = engine.cacheKeys.groundChunkKey(packChunkKey(0, 0), "test_profile", 0);
             engine.bakeCooldowns.set(key, 0); // Expired cooldown
             
             // Try again: should re-attempt bake (callCount increments)
             shouldFail = false;
-            const result3 = engine.getGroundChunkCanvas(0, 0, mockState, 0, null, "test_profile");
+            const result3 = engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
             assert.ok(result3[0].isPlaceholder, "Should return placeholder again on retry");
             
             await new Promise(resolve => setTimeout(resolve, 0));

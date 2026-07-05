@@ -1,4 +1,4 @@
-import { cellToChunkCoord, forEachObstacleGridCellInAabb } from "../Spatial/spatial.js";
+import { cellIdxToChunkKey, forEachObstacleGridCellInAabb } from "../Spatial/spatial.js";
 import { cellInRect } from "../Spatial/spatial.js";
 import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
@@ -7,32 +7,31 @@ import { StrideFloatList } from "./StrideFloatList.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 export const RAIL_BOX = {
-    chunkCol: 0,
-    chunkRow: 1,
-    gridIdx: 2,
-    gridSide: 3,
-    minX: 4,
-    minY: 5,
-    maxX: 6,
-    maxY: 7,
-    innerP1x: 8,
-    innerP1y: 9,
-    innerP2x: 10,
-    innerP2y: 11,
-    outerP1x: 12,
-    outerP1y: 13,
-    outerP2x: 14,
-    outerP2y: 15,
-    inwardX: 16,
-    inwardY: 17,
-    wallBaseZ: 18,
-    wallHeight: 19,
-    wallCapHeight: 20,
-    edgeThickness: 21,
-    cx: 22,
-    cy: 23,
+    chunkKey: 0,
+    gridIdx: 1,
+    gridSide: 2,
+    minX: 3,
+    minY: 4,
+    maxX: 5,
+    maxY: 6,
+    innerP1x: 7,
+    innerP1y: 8,
+    innerP2x: 9,
+    innerP2y: 10,
+    outerP1x: 11,
+    outerP1y: 12,
+    outerP2x: 13,
+    outerP2y: 14,
+    inwardX: 15,
+    inwardY: 16,
+    wallBaseZ: 17,
+    wallHeight: 18,
+    wallCapHeight: 19,
+    edgeThickness: 20,
+    cx: 21,
+    cy: 22,
 };
-export const RAIL_BOX_STRIDE = 24;
+export const RAIL_BOX_STRIDE = 23;
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
@@ -173,10 +172,7 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const inward = railWallInwardNormal(edge);
     railWallSideEndpoints(grid, idx, edge, 0, sP1, sP2);
     const base = recordIndex * RAIL_BOX_STRIDE;
-    const col = idx % cols;
-    const row = (idx / cols) | 0;
-    data[base + RAIL_BOX.chunkCol] = cellToChunkCoord(col, gridSettings.minCellsPerChunk);
-    data[base + RAIL_BOX.chunkRow] = cellToChunkCoord(row, gridSettings.minCellsPerChunk);
+    data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, cols, gridSettings.minCellsPerChunk);
     data[base + RAIL_BOX.gridIdx] = idx;
     data[base + RAIL_BOX.gridSide] = edge;
     data[base + RAIL_BOX.minX] = fp.minX;
@@ -272,11 +268,11 @@ function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex, cols) {
     const bCol = data[b + RAIL_BOX.gridIdx] - bRow * cols;
     if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
         if (aRow !== bRow) return false;
-        if (data[a + RAIL_BOX.chunkCol] !== data[b + RAIL_BOX.chunkCol]) return false;
+        if (data[a + RAIL_BOX.chunkKey] !== data[b + RAIL_BOX.chunkKey]) return false;
         return bCol === aCol + 1;
     }
     if (aCol !== bCol) return false;
-    if (data[a + RAIL_BOX.chunkRow] !== data[b + RAIL_BOX.chunkRow]) return false;
+    if (data[a + RAIL_BOX.chunkKey] !== data[b + RAIL_BOX.chunkKey]) return false;
     return bRow === aRow + 1;
 }
 function compareRailWallBoxRecords(data, aIndex, bIndex, cols) {

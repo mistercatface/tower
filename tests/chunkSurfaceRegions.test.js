@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  resolveChunkSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
+import {  resolveChunkSurfaceProfileIdAtKey, packChunkKey  } from "../Libraries/Spatial/spatial.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
-import { setChunkSurfaceProfileRangeEdit } from "../Libraries/Spatial/spatial.js";
+import { setChunkSurfaceProfileEdit } from "../Libraries/Spatial/spatial.js";
 
 describe("chunk surface regions", () => {
     it("uses different ground and roof cache keys for different chunk profiles", () => {
@@ -13,17 +13,17 @@ describe("chunk surface regions", () => {
         engine.activeSurfaceProfileId = "base";
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 128, 128);
-        grid.setChunkSurfaceProfile(0, 0, "north");
-        grid.setChunkSurfaceProfile(0, 1, "south");
-        const northProfile = resolveChunkSurfaceProfileId(grid, 0, 0, engine.activeSurfaceProfileId);
-        const southProfile = resolveChunkSurfaceProfileId(grid, 0, 1, engine.activeSurfaceProfileId);
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "north");
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 1), "south");
+        const northProfile = resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), engine.activeSurfaceProfileId);
+        const southProfile = resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 1), engine.activeSurfaceProfileId);
         assert.equal(northProfile, "north");
         assert.equal(southProfile, "south");
-        const northGroundKey = engine.cacheKeys.groundChunkKey(0, 0, northProfile, 0);
-        const southGroundKey = engine.cacheKeys.groundChunkKey(0, 1, southProfile, 0);
+        const northGroundKey = engine.cacheKeys.groundChunkKey(packChunkKey(0, 0), northProfile, 0);
+        const southGroundKey = engine.cacheKeys.groundChunkKey(packChunkKey(0, 1), southProfile, 0);
         assert.notEqual(northGroundKey, southGroundKey);
-        const northRoofKey = engine.cacheKeys.staticRoofDrawKey(0, 0, northProfile, 1);
-        const southRoofKey = engine.cacheKeys.staticRoofDrawKey(0, 1, southProfile, 1);
+        const northRoofKey = engine.cacheKeys.staticRoofDrawKey(packChunkKey(0, 0), northProfile, 1);
+        const southRoofKey = engine.cacheKeys.staticRoofDrawKey(packChunkKey(0, 1), southProfile, 1);
         assert.notEqual(northRoofKey, southRoofKey);
     });
 
@@ -33,16 +33,16 @@ describe("chunk surface regions", () => {
         engine.activeSurfaceProfileId = "base";
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 128, 128);
-        grid.setChunkSurfaceProfile(1, 0, "east");
+        grid.setChunkSurfaceProfileAtKey(packChunkKey(1, 0), "east");
         const state = { obstacleGrid: grid };
         const captured = [];
         const originalGetGround = engine.getGroundChunkCanvas.bind(engine);
-        engine.getGroundChunkCanvas = (chunkCol, chunkRow, stateArg, zLevel, boundsSample, profileIdOverride) => {
-            captured.push({ chunkCol, chunkRow, profileIdOverride, zLevel });
+        engine.getGroundChunkCanvas = (chunkKey, stateArg, zLevel, boundsSample, profileIdOverride) => {
+            captured.push({ chunkKey, profileIdOverride, zLevel });
             return [{ isPlaceholder: true }];
         };
         engine._chunkDraw.state = state;
-        engine._fillDrawableGroundChunkCanvas(1, 0, 0);
+        engine._fillDrawableGroundChunkCanvas(packChunkKey(1, 0), 0);
         assert.equal(captured.length, 1);
         assert.equal(captured[0].profileIdOverride, "east");
         captured.length = 0;
@@ -74,10 +74,10 @@ describe("chunk surface regions", () => {
                 },
             },
         };
-        const bounds = setChunkSurfaceProfileRangeEdit(state, { startCol: 1, endCol: 1, startRow: 0, endRow: 1 }, "east");
+        const bounds = setChunkSurfaceProfileEdit(state, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 }, "east");
         assert.deepEqual(bounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
         assert.equal(invalidated.idx, null);
         assert.equal(invalidated.stateArg, grid);
-        assert.equal(resolveChunkSurfaceProfileId(grid, 1, 1, "base"), "east");
+        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 1), "base"), "east");
     });
 });
