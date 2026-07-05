@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
-import { measureGlassShard } from "../Libraries/Props/glassFracture.js";
-import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/chunkFracture.js";
-import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
-import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
+import { measureGlassShard } from "../Libraries/Props/fractureSystem.js";
+import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/fractureSystem.js";
+import { localBoxOutline, splitPoxels } from "../Libraries/Props/fractureSystem.js";
+import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/fractureSystem.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";

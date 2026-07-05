@@ -12,7 +12,7 @@ import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
-import { processKineticContactFractures } from "../Libraries/Props/propFracture.js";
+import { processKineticContactFractures } from "../Libraries/Props/fractureSystem.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 
 function createTestWorld(initialProps, constraints = []) {

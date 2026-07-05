@@ -1,4 +1,4 @@
-import { processKineticContactFractures } from "../../Libraries/Props/propFracture.js";
+import { processKineticContactFractures } from "../../Libraries/Props/fractureSystem.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "../../Libraries/Physics/physics.js";
 import { writebackActiveKineticBodySlab } from "../../Libraries/Physics/physics.js";
 

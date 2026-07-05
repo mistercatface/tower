@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
-import { bakePoxelOutline, buildGeometryFromPoxelParts, localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
+import { bakePoxelOutline, buildGeometryFromPoxelParts, localBoxOutline, splitPoxels } from "../Libraries/Props/fractureSystem.js";
 
 describe("poxel fracture", () => {
     it("bakes multiple poxels from a box outline", () => {

@@ -8,9 +8,9 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { clearWorldPropPools, getWorldPropPoolSize } from "../Libraries/Props/worldPropPool.js";
-import { spawnGlassShatterShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/propFracture.js";
+import { spawnGlassShatterShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/fractureSystem.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { fracturePropOnImpact } from "../Libraries/Props/propFracture.js";
+import { fracturePropOnImpact } from "../Libraries/Props/fractureSystem.js";
 
 function createTestState() {
     const grid = new WorldObstacleGrid(16);

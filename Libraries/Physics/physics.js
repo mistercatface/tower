@@ -2667,12 +2667,22 @@ function appendContact(contacts, pairs, pairIndex, nx, ny, rax, ray, rbx, rby, f
     contacts.dynamic.rby[i] = rby;
     contacts.static.featureA[i] = featureA;
     contacts.static.featureB[i] = featureB;
-    const slab = kineticDynamicSlab;
-    contacts.dynamic.preDvx[i] = slab.vx[contacts.physIdB[i]] - slab.vx[contacts.physIdA[i]];
-    contacts.dynamic.preDvy[i] = slab.vy[contacts.physIdB[i]] - slab.vy[contacts.physIdA[i]];
-    contacts.static.restitution[i] = pairs.static.restitution[pairIndex];
-    contacts.static.friction[i] = pairs.static.friction[pairIndex];
-    contacts.static.warmStartKey[i] = contactWarmStartKeyFromPairKey(pairs.static.warmStartPairKey[pairIndex], featureA, featureB);
+    const dynSlab = kineticDynamicSlab;
+    const statSlab = kineticStaticSlab;
+    contacts.dynamic.preDvx[i] = dynSlab.vx[contacts.physIdB[i]] - dynSlab.vx[contacts.physIdA[i]];
+    contacts.dynamic.preDvy[i] = dynSlab.vy[contacts.physIdB[i]] - dynSlab.vy[contacts.physIdA[i]];
+    const r1 = statSlab.restitution[contacts.physIdA[i]];
+    const r2 = statSlab.restitution[contacts.physIdB[i]];
+    if (r1 !== -1 && r2 !== -1) contacts.static.restitution[i] = (r1 + r2) * 0.5;
+    else contacts.static.restitution[i] = r1 !== -1 ? r1 : r2 !== -1 ? r2 : collisionSettings.restitution.kineticPair;
+    const f1 = statSlab.friction[contacts.physIdA[i]];
+    const f2 = statSlab.friction[contacts.physIdB[i]];
+    if (f1 !== -1 && f2 !== -1) contacts.static.friction[i] = Math.sqrt(f1 * f2);
+    else contacts.static.friction[i] = f1 !== -1 ? f1 : f2 !== -1 ? f2 : collisionSettings.pairFriction;
+    const idA = statSlab.entityId[contacts.physIdA[i]];
+    const idB = statSlab.entityId[contacts.physIdB[i]];
+    const warmStartPairKey = idA < idB ? idA * PAIR_BODY_KEY_SCALE + idB : idB * PAIR_BODY_KEY_SCALE + idA;
+    contacts.static.warmStartKey[i] = contactWarmStartKeyFromPairKey(warmStartPairKey, featureA, featureB);
 }
 function narrowPhaseCircleContact(pairs, pairIndex, contacts) {
     const physIdA = pairs.physIdA[pairIndex];
@@ -2934,12 +2944,7 @@ function createKineticPairBuffer() {
         count: 0,
         physIdA: new Int32Array(MAX_KINETIC_PAIRS),
         physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-        static: {
-            tier: new Uint8Array(MAX_KINETIC_PAIRS),
-            restitution: new Float32Array(MAX_KINETIC_PAIRS),
-            friction: new Float32Array(MAX_KINETIC_PAIRS),
-            warmStartPairKey: new Float64Array(MAX_KINETIC_PAIRS),
-        },
+        static: { tier: new Uint8Array(MAX_KINETIC_PAIRS) },
         reset() {
             this.count = 0;
         },
@@ -2953,24 +2958,7 @@ export function copyKineticPairBuffer(from, to) {
         to.physIdA[i] = from.physIdA[i];
         to.physIdB[i] = from.physIdB[i];
         to.static.tier[i] = from.static.tier[i];
-        to.static.restitution[i] = from.static.restitution[i];
-        to.static.friction[i] = from.static.friction[i];
-        to.static.warmStartPairKey[i] = from.static.warmStartPairKey[i];
     }
-}
-function writePairMaterial(pairs, index, physIdA, physIdB) {
-    const slab = kineticStaticSlab;
-    const r1 = slab.restitution[physIdA];
-    const r2 = slab.restitution[physIdB];
-    if (r1 !== -1 && r2 !== -1) pairs.static.restitution[index] = (r1 + r2) * 0.5;
-    else pairs.static.restitution[index] = r1 !== -1 ? r1 : r2 !== -1 ? r2 : collisionSettings.restitution.kineticPair;
-    const f1 = slab.friction[physIdA];
-    const f2 = slab.friction[physIdB];
-    if (f1 !== -1 && f2 !== -1) pairs.static.friction[index] = Math.sqrt(f1 * f2);
-    else pairs.static.friction[index] = f1 !== -1 ? f1 : f2 !== -1 ? f2 : collisionSettings.pairFriction;
-    const idA = slab.entityId[physIdA];
-    const idB = slab.entityId[physIdB];
-    pairs.static.warmStartPairKey[index] = idA < idB ? idA * PAIR_BODY_KEY_SCALE + idB : idB * PAIR_BODY_KEY_SCALE + idA;
 }
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
@@ -3032,7 +3020,6 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
             pairs.static.tier[idx] = tier;
-            writePairMaterial(pairs, idx, physIdA, physIdB);
             keys.add(key);
             added++;
         }
@@ -3073,7 +3060,6 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
             pairs.static.tier[idx] = tier;
-            writePairMaterial(pairs, idx, physIdA, physIdB);
         }
     }
 }

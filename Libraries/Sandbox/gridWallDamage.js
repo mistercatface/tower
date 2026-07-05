@@ -6,7 +6,7 @@ import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/E
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { acquireWorldProp } from "../Props/worldPropPool.js";
 import { applyPropBoxFootprint } from "../Props/propStrategy.js";
-import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/propFracture.js";
+import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/fractureSystem.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
 import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";
