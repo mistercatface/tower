@@ -1226,6 +1226,8 @@ export function initFractureFootprint(prop) {
     if (!isChunkFracture(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
     applyPropFractureGeometry(prop, bakeChunkOutline(flatVertsFromShape(prop)));
 }
+// Single write site for post-fracture geometry: chunks = connectivity graph cells;
+// collisionParts = merged AABB sim rects; shape = convex hull for broadphase fallback.
 export function applyPropFractureGeometry(prop, geometry) {
     if (geometry.collisionParts) {
         prop.chunks = geometry.chunks;
@@ -1364,11 +1366,14 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
     const sin = Math.sin(entityFacing(prop));
     const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
     const physId = prop._physId;
-    prop.x = mainWorldPos.x;
-    prop.y = mainWorldPos.y;
     if (physId !== undefined && physId !== -1) {
         kineticDynamicSlab.x[physId] = mainWorldPos.x;
         kineticDynamicSlab.y[physId] = mainWorldPos.y;
+        prop.x = kineticDynamicSlab.x[physId];
+        prop.y = kineticDynamicSlab.y[physId];
+    } else {
+        prop.x = mainWorldPos.x;
+        prop.y = mainWorldPos.y;
     }
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
     applyPropFractureGeometry(prop, mainGeom);
@@ -1397,12 +1402,16 @@ function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
 }
 export function fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
-    if (prop.shape?.type === "Circle") return fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce);
-    if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
-    return fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce);
+    const mode = prop.strategy?.fracture?.mode;
+    if (mode === "circle") {
+        if (prop.shape?.type !== "Circle") throw new Error(`fracture.mode "circle" requires Circle shape, got ${prop.shape?.type ?? "none"}`);
+        return fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce);
+    }
+    if (mode === "glass") return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
+    if (mode === "chunk") return fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce);
+    return null;
 }
 function fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce) {
-    if (isGlassFracture(prop)) return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
     ensureChunkFractureGrid(prop);
     if (!canFracturePropSplit(prop)) return null;
     const { impactLocal } = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
@@ -1415,8 +1424,9 @@ function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
     return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
 }
 export function spawnFractureShards(world, sourceProp, fracture, spatialFrame = null) {
-    if (sourceProp.shape?.type === "Circle") return spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame);
-    if (isGlassFracture(sourceProp)) return spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame);
+    const mode = sourceProp.strategy?.fracture?.mode;
+    if (mode === "circle") return spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame);
+    if (mode === "glass") return spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame);
     return spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame);
 }
 function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
@@ -1426,23 +1436,19 @@ function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = nu
 function evictFracturedProp(world, prop, spatialFrame) {
     removeWorldPropFromState(world, prop, spatialFrame);
 }
-const deferredFractures = [];
-let deferredFracturesCount = 0;
-export function queueCircleFracture(prop, hitX, hitY, force) {
-    if (prop._pendingEviction) return false;
-    const fracture = fractureCirclePropOnImpact(prop, hitX, hitY, force);
-    if (!fracture) return false;
-    prop._pendingEviction = true;
-    let item = deferredFractures[deferredFracturesCount];
+function enqueueDeferredFracture(kinetic, prop, fracture, mode) {
+    const deferredFractures = kinetic.deferredFractures;
+    let count = kinetic.deferredFracturesCount;
+    let item = deferredFractures[count];
     if (!item) {
-        item = { type: "circle", prop: null, fracture: null };
-        deferredFractures[deferredFracturesCount] = item;
+        item = { mode: "", retainParent: false, prop: null, fracture: null };
+        deferredFractures[count] = item;
     }
-    item.type = "circle";
+    item.mode = mode;
+    item.retainParent = mode === "chunk";
     item.prop = prop;
     item.fracture = fracture;
-    deferredFracturesCount++;
-    return true;
+    kinetic.deferredFracturesCount = count + 1;
 }
 export function evalFractureRules(prop, other, force) {
     const config = prop.strategy?.fracture;
@@ -1459,52 +1465,45 @@ export function evalFractureRules(prop, other, force) {
     return true;
 }
 export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
-    const { frame, world } = tick;
+    const { world } = tick;
+    const kinetic = world.kinetic;
     for (let i = 0; i < 2; i++) {
         const prop = i === 0 ? bodyA : bodyB;
         const other = i === 0 ? bodyB : bodyA;
         if (prop._physId === undefined) continue;
-        if (evalFractureRules(prop, other, force)) {
-            const mode = prop.strategy?.fracture?.mode;
-            if (mode === "circle") {
-                if (queueCircleFracture(prop, hitX, hitY, force)) return;
-            } else {
-                if (!canFracturePropSplit(prop)) continue;
-                if (prop._glassFractureCooldown > 0) continue;
-                if (isGlassFracture(prop) && isGlassFracture(other)) continue;
-                if (prop._pendingEviction) continue;
-                const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
-                if (!fracture) continue;
-                prop._pendingEviction = true;
-                let item = deferredFractures[deferredFracturesCount];
-                if (!item) {
-                    item = { type: "", prop: null, fracture: null };
-                    deferredFractures[deferredFracturesCount] = item;
-                }
-                item.type = isGlassFracture(prop) ? "glass" : "chunk";
-                item.prop = prop;
-                item.fracture = fracture;
-                deferredFracturesCount++;
-            }
+        if (!evalFractureRules(prop, other, force)) continue;
+        const mode = prop.strategy?.fracture?.mode;
+        if (mode !== "circle") {
+            if (!canFracturePropSplit(prop)) continue;
+            if (prop._glassFractureCooldown > 0) continue;
+            if (mode === "glass" && other.strategy?.fracture?.mode === "glass") continue;
         }
+        if (prop._pendingEviction) continue;
+        const fracture = fracturePropOnImpact(prop, hitX, hitY, force);
+        if (!fracture) continue;
+        prop._pendingEviction = true;
+        enqueueDeferredFracture(kinetic, prop, fracture, mode);
+        return;
     }
 }
 export function flushDeferredFractures(world, spatialFrame, hooks = {}) {
-    if (deferredFracturesCount === 0) return;
+    const kinetic = world.kinetic;
+    const count = kinetic.deferredFracturesCount;
+    if (count === 0) return;
     world.entityRegistry.beginMembershipBatch();
     const propsToAdmit = [];
+    const deferredFractures = kinetic.deferredFractures;
     try {
-        for (let i = 0; i < deferredFracturesCount; i++) {
+        for (let i = 0; i < count; i++) {
             const item = deferredFractures[i];
             const prop = item.prop;
             delete prop._pendingEviction;
-            if (item.type === "glass") evictFracturedProp(world, prop, spatialFrame);
-            else if (item.type === "circle") {
-                hooks.onCircleFracture?.(world, prop);
-                evictFracturedProp(world, prop, spatialFrame);
-            } else {
+            if (item.retainParent) {
                 wakeKineticBody(prop);
                 propsToAdmit.push(prop);
+            } else {
+                if (item.mode === "circle") hooks.onCircleFracture?.(world, prop);
+                evictFracturedProp(world, prop, spatialFrame);
             }
             const shards = spawnFractureShards(world, prop, item.fracture, spatialFrame);
             for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
@@ -1516,7 +1515,7 @@ export function flushDeferredFractures(world, spatialFrame, hooks = {}) {
             else if (spatialFrame?.admitKineticProp) for (let j = 0; j < propsToAdmit.length; j++) spatialFrame.admitKineticProp(propsToAdmit[j], world);
     } finally {
         world.entityRegistry.endMembershipBatch();
-        deferredFracturesCount = 0;
+        kinetic.deferredFracturesCount = 0;
     }
 }
 export function processKineticContactFractures(tick, contacts, hooks = {}) {

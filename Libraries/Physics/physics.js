@@ -4455,15 +4455,11 @@ export function applyPendingWallDamage(state, wallDamage) {
         const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
         if (fracture) {
             const height = prop.height;
-            if (prop.strategy?.fracture?.mode === "glass") {
-                removeWorldPropFromState(state, prop, spatialFrame || undefined);
-                const shards = spawnFractureShards(state, prop, fracture, spatialFrame);
-                for (let i = 0; i < shards.length; i++) shards[i].height = height;
-            } else {
-                const shards = spawnFractureShards(state, prop, fracture, spatialFrame);
-                for (let i = 0; i < shards.length; i++) shards[i].height = height;
-                wakeKineticBody(prop);
-            }
+            const retainParent = prop.strategy?.fracture?.mode === "chunk";
+            if (!retainParent) removeWorldPropFromState(state, prop, spatialFrame || undefined);
+            const shards = spawnFractureShards(state, prop, fracture, spatialFrame);
+            for (let i = 0; i < shards.length; i++) shards[i].height = height;
+            if (retainParent) wakeKineticBody(prop);
         }
     }
     return commitBounds;
