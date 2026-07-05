@@ -1,17 +1,75 @@
-import { clipToAabb, traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, traceQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, GRID_STAMP_RENDER_KEY } from "../Canvas/canvas.js";
-import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustumInto, radiusAtT, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, scaleAtHeight, projectWorldPointInto, projectWorldQuadInto, resolveWallSurfaceProfileId, cellBoundsAtOriginInto, cellInRect, appendGridEdgeOverlayCommand, FloorBelt, floorOccupancyStampDrawCacheKey } from "../Spatial/spatial.js";
+import {
+    clipToAabb,
+    traceAabbRect,
+    fillCircle,
+    strokeSegment,
+    traceSegment,
+    fillClosedPolygon,
+    fillStrokeCircle,
+    strokeCircle,
+    strokeOpenPolyline,
+    traceClosedFlatPolygon,
+    traceFlatQuad,
+    traceQuad,
+    fillRgbaBuffer,
+    fillRgbaRect,
+    strokeAxisLineRgba,
+    createOffscreenCanvas,
+    resizeOffscreenCanvas,
+    OVERLAY_RENDER_KEY,
+    drawCachedOverlayGlyph,
+    drawCachedPropSprite,
+    drawImageQuadFromFlatRingsWithBaseTransform,
+    drawImageTriangleFlatWithBaseTransform,
+    drawImageQuadWithBaseTransformScalars,
+    drawImageTriangleWithBaseTransformScalars,
+    drawImageQuadScalars,
+    SpriteCache,
+    GRID_STAMP_RENDER_KEY,
+} from "../Canvas/canvas.js";
+import {
+    isRailWallEdge,
+    forEachCellEdge,
+    gridNavCacheKey,
+    resolveElevationAlpha,
+    extrudeLocalVertsInto,
+    pointOnFrustumInto,
+    radiusAtT,
+    getHeightSlice,
+    traceVisibleArc,
+    isFaceTowardViewer,
+    isOutwardFaceTowardViewer,
+    createSideGradientAt,
+    projectVertical,
+    scaleAtHeight,
+    projectWorldPointInto,
+    projectWorldQuadInto,
+    resolveWallSurfaceProfileId,
+    cellBoundsAtOriginInto,
+    cellInRect,
+    appendGridEdgeOverlayCommand,
+    FloorBelt,
+    floorOccupancyStampDrawCacheKey,
+} from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXY, lengthXY, rotateXY, pointsAabbOverlapAabb, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { getFlipperSpec, buildPipeElbowCenterline3D, getPipeElbowSpec } from "../Props/props.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
-import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import {
+    collectVoxelWallFacesInAabbFlat,
+    VOXEL_FACE,
+    VOXEL_FACE_STRIDE,
+    collectRailWallBoxesInAabb,
+    RAIL_BOX,
+    RAIL_BOX_STRIDE,
+    flatRailWallCapUvCornersIntoFlat,
+    resolveWallCapHeightPx,
+} from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
-
-
 // --- Consolidated Global Scratch Arrays (GC & Memory Optimization) ---
 const sScratchQuad1 = new Float32Array(8);
 const sScratchQuad2 = new Float32Array(8);
@@ -2983,9 +3041,7 @@ export class WorldSceneRenderer {
         }
     }
 }
-
 // --- MERGED FROM FollowCamera.js ---
-
 /**
  * Handles camera focus targeting, viewport snapping, and cycling
  * without any game-specific (e.g. Snake) logic.
@@ -3005,7 +3061,6 @@ export class FollowCamera {
         this._onTargetChangedCallbacks = new Set();
         this._handleKeyDown = this._handleKeyDown.bind(this);
     }
-
     /**
      * Registers a callback that returns candidate props for cycling.
      * @param {() => object[]} fn
@@ -3013,7 +3068,6 @@ export class FollowCamera {
     registerCandidateList(fn) {
         this._candidateListFn = fn;
     }
-
     /**
      * Registers a custom resolver to map a clicked prop ID to a focus target prop.
      * @param {(propId: string) => object | null} fn
@@ -3021,17 +3075,14 @@ export class FollowCamera {
     registerPickResolver(fn) {
         this._pickResolverFn = fn;
     }
-
     /** @param {(prop: object|null) => void} cb */
     addOnTargetChanged(cb) {
         this._onTargetChangedCallbacks.add(cb);
     }
-
     /** @param {(prop: object|null) => void} cb */
     removeOnTargetChanged(cb) {
         this._onTargetChangedCallbacks.delete(cb);
     }
-
     /**
      * Focuses a target prop, snapping the viewport to it if requested.
      * @param {object|null} prop
@@ -3041,11 +3092,9 @@ export class FollowCamera {
         const oldTarget = this.targetProp;
         if (oldTarget === prop) {
             if (prop && snap) this.state.viewport?.snapTo?.(prop.x, prop.y);
-
             return;
         }
         if (oldTarget) setSandboxCameraTarget(this.state, oldTarget, false);
-
         this.targetProp = prop;
         if (prop) {
             setSandboxCameraTarget(this.state, prop, true);
@@ -3053,12 +3102,10 @@ export class FollowCamera {
         }
         for (const cb of this._onTargetChangedCallbacks) cb(prop);
     }
-
     /** Clears the focus target. */
     clear() {
         this.focus(null);
     }
-
     /**
      * Cycles through candidate props.
      * @param {() => object[]} [getProps] Override candidate getter
@@ -3078,10 +3125,8 @@ export class FollowCamera {
         this.focus(nextProp, true);
         return nextProp;
     }
-
     focusFromPropId(propId) {
         if (!this._candidateListFn && !this._pickResolverFn) return false;
-
         let prop = this.state.entityRegistry.getLive(propId);
         if (!prop) return false;
         if (this._pickResolverFn) {
@@ -3103,7 +3148,6 @@ export class FollowCamera {
         }
         return false;
     }
-
     _handleKeyDown(e) {
         if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
         if (e.code === this.triggerKey) {
@@ -3111,27 +3155,22 @@ export class FollowCamera {
             this.cycle();
         }
     }
-
     bindInput() {
         window.addEventListener("keydown", this._handleKeyDown);
     }
-
     unbindInput() {
         window.removeEventListener("keydown", this._handleKeyDown);
     }
-
     destroy() {
         this.unbindInput();
         this.reset();
     }
-
     reset() {
         this.clear();
         this._candidateListFn = null;
         this._pickResolverFn = null;
     }
 }
-
 // --- MERGED FROM sandboxCameraTarget.js ---
 /** @param {object} state @param {object} prop */
 export function isSandboxCameraTarget(state, prop) {
@@ -3161,7 +3200,6 @@ export function tickSandboxCameraFollow(viewport, state, registry, dtMs) {
     const factor = 1 - Math.exp(-8 * (dtMs / 1000));
     viewport.follow(target.x, target.y, factor);
 }
-
 // --- MERGED FROM kineticConstraintOverlays.js ---
 function constraintWireColor(strain) {
     if (strain < 0.05) return "rgba(100, 255, 140, 0.85)";
@@ -3188,7 +3226,6 @@ export function appendKineticConstraintOverlayCommands(out, state) {
         appendOverlayWireLink(out, wa.x, wa.y, wb.x, wb.y, color, { lineWidth: 2, dash: [5, 4], endpointRadius: 4 });
     }
 }
-
 // --- MERGED FROM sandboxOverlayCommands.js ---
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
@@ -3200,15 +3237,15 @@ function selectionRingRadius(prop) {
     const base = prop.radius ?? 8;
     return base + SELECTION_RING_PAD;
 }
-export function appendSelectionOverlayCommands(out, { selectedProps, showRings, selectedFloorCell = null, selectedVoxelCell = null, selectedRailEdge = null, grid = null }) {
+export function appendSelectionOverlayCommands(out, { selectedProps, showRings, selectedFloorIdx = null, selectedVoxelIdx = null, selectedRailEdge = null, grid = null }) {
     if (!showRings) return;
     for (let i = 0; i < selectedProps.length; i++) {
         const prop = selectedProps[i];
         out.push(overlayCachedSelectionRing(prop.x, prop.y, selectionRingRadius(prop), { stroke: PROP_SELECTION_STROKE, lineWidth: 1, dash: PROP_SELECTION_DASH }));
     }
-    if (selectedFloorCell && grid) {
-        const x = grid.gridCenterX(selectedFloorCell.col);
-        const y = grid.gridCenterY(selectedFloorCell.row);
+    if (selectedFloorIdx != null && grid) {
+        const x = grid.gridCenterXByIdx(selectedFloorIdx);
+        const y = grid.gridCenterYByIdx(selectedFloorIdx);
         out.push(
             overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "floor", {
                 fill: "rgba(120, 200, 255, 0.1)",
@@ -3218,9 +3255,9 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
             }),
         );
     }
-    if (selectedVoxelCell && grid) {
-        const x = grid.gridCenterX(selectedVoxelCell.col);
-        const y = grid.gridCenterY(selectedVoxelCell.row);
+    if (selectedVoxelIdx != null && grid) {
+        const x = grid.gridCenterXByIdx(selectedVoxelIdx);
+        const y = grid.gridCenterYByIdx(selectedVoxelIdx);
         out.push(
             overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid.cellSize, "voxel", {
                 fill: "rgba(255, 152, 0, 0.12)",
@@ -3239,7 +3276,6 @@ export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
 export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
     return entityRegistry.queryView({ bounds: viewport.bounds(tier), kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }
-
 // --- MERGED FROM gridStampDrawCache.js ---
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };

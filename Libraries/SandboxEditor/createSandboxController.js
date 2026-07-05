@@ -330,7 +330,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         listPlacedProps: () => session.listPlacedProps(),
         listPlacedFloorBelts: () => session.listPlacedFloorBelts(),
         rotateSelectedFloorBelt: (steps) => session.rotateSelectedFloorBelt(steps),
-        moveSelectedFloorBeltTo: (col, row) => session.moveSelectedFloorBeltTo(col, row),
+        moveSelectedFloorBeltTo: (targetIdx) => session.moveSelectedFloorBeltTo(targetIdx),
         setSelectedFloorBeltKind: (kind) => session.setSelectedFloorBeltKind(kind),
         deleteSelectedFloorCell: () => session.deleteSelectedFloorCell(),
         getPlacePaletteKey: () => session.getPlacePaletteKey(),

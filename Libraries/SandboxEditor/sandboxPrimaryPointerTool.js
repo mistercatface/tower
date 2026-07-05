@@ -114,10 +114,9 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             }
             if (state.editor.lockSelection) return false;
             const grid = state.obstacleGrid;
-            const col = grid.worldCol(world.x);
-            const row = grid.worldRow(world.y);
-            if (grid.hasFloorOccupancy(col + row * grid.cols)) {
-                session.select({ kind: "floor", col, row });
+            const idx = grid.worldToIdx(world.x, world.y);
+            if (idx !== -1 && grid.hasFloorOccupancy(idx)) {
+                session.select({ kind: "floor", idx });
                 return true;
             }
             return false;

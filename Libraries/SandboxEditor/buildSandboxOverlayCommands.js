@@ -52,9 +52,9 @@ export function buildSandboxOverlayCommands({
     appendSelectionOverlayCommands(commands, {
         selectedProps: visibleSelectedProps,
         showRings: state.editor.showSelectionRings,
-        selectedFloorCell: sel?.kind === "floor" ? { col: sel.col, row: sel.row } : null,
-        selectedVoxelCell: sel?.kind === "voxel" ? { col: sel.col, row: sel.row } : null,
-        selectedRailEdge: sel?.kind === "rail" ? { col: sel.col, row: sel.row, side: sel.side } : null,
+        selectedFloorIdx: sel?.kind === "floor" ? sel.idx : null,
+        selectedVoxelIdx: sel?.kind === "voxel" ? sel.idx : null,
+        selectedRailEdge: sel?.kind === "rail" ? { idx: sel.idx, side: sel.side } : null,
         grid: state.obstacleGrid,
     });
     appendMarqueeOverlayCommands(commands, { marqueeRect });

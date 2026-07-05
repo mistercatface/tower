@@ -901,13 +901,11 @@ export function buildFloorBeltInspectorInfo(state, sel) {
     if (!cell) return null;
     const grid = state.obstacleGrid;
     const { idx } = cell;
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
     if (!cellInRect(idx, grid.cols, grid.rows)) return null;
     if (!(grid.floorKind[idx] !== 0)) return null;
     const kind = grid.floorKind[idx];
     const facingIndex = grid.floorFacing[idx];
-    return { col, row, kind, facingIndex, kindLabel: FloorBelt.formatKindLabel(kind), facingLabel: FloorBelt.formatFacingLabel(facingIndex) };
+    return { idx, kind, facingIndex, kindLabel: FloorBelt.formatKindLabel(kind), facingLabel: FloorBelt.formatFacingLabel(facingIndex) };
 }
 export function buildVoxelWallInspectorInfo(state, sel) {
     const cell = selectionVoxelCell(sel);
@@ -1026,16 +1024,16 @@ function selectionMatchesSelect(selection, select) {
         for (let i = 0; i < select.ids.length; i++) if (!selection.ids.has(select.ids[i])) return false;
         return true;
     }
-    if (selection.kind === "floor" || selection.kind === "voxel") return selection.col === select.col && selection.row === select.row;
-    if (selection.kind === "rail") return selection.col === select.col && selection.row === select.row && selection.side === select.side;
+    if (selection.kind === "floor" || selection.kind === "voxel") return selection.idx === select.idx;
+    if (selection.kind === "rail") return selection.idx === select.idx && selection.side === select.side;
     return false;
 }
 function inspectorResult(kind, data) {
     return data == null ? null : { kind, data };
 }
-function deleteWallSceneItem(session, item) {
-    const edge = item.select;
-    session.deleteWallAt(edge.col, edge.row, edge.side);
+function deleteWallSceneItem(session, item, pickSelection) {
+    pickSelection(item.select);
+    session.deleteSelectedWall();
 }
 export const PLACEABLE = {
     props: {
@@ -1322,10 +1320,7 @@ function expandGridForSnapshot(state, doc) {
     };
     for (let i = 0; i < doc.voxels.length; i++) includeDocIdx(doc.voxels[i].idx);
     for (let i = 0; i < doc.railWalls.length; i++) includeDocIdx(doc.railWalls[i].idx);
-    for (let i = 0; i < doc.floorBelts.length; i++) {
-        const { col, row } = doc.floorBelts[i];
-        includeWorldPoint(col * cellSize + cellHalfSize, row * cellSize + cellHalfSize);
-    }
+    for (let i = 0; i < doc.floorBelts.length; i++) includeDocIdx(doc.floorBelts[i].idx);
     for (let i = 0; i < doc.props.length; i++) includeWorldPoint(doc.props[i].x, doc.props[i].y);
     if (isEmptyAabb(bounds)) return;
     state.obstacleGrid.expandToCoverAabb(bounds);
@@ -1756,9 +1751,9 @@ export function createSandboxSession(state) {
             placement.resetPlacementOrder();
             const props = listPlacedProps().sort((a, b) => a.id - b.id);
             for (let i = 0; i < props.length; i++) placement.touchPropPlacement(props[i].id);
-            for (const entry of listPlacedFloorBelts()) placement.touchFloorPlacement(entry.col, entry.row);
-            for (const entry of listPlacedVoxelWalls(state.obstacleGrid)) placement.touchVoxelPlacement(entry.col, entry.row);
-            for (const entry of listPlacedRailWalls(state.obstacleGrid)) placement.touchEdgePlacement("rail", entry.col, entry.row, entry.side);
+            for (const entry of listPlacedFloorBelts()) placement.touchFloorPlacement(entry.idx);
+            for (const entry of listPlacedVoxelWalls(state.obstacleGrid)) placement.touchVoxelPlacement(entry.idx);
+            for (const entry of listPlacedRailWalls(state.obstacleGrid)) placement.touchEdgePlacement("rail", entry.idx, entry.side);
         },
         ...spawn,
         select: pickSelection,

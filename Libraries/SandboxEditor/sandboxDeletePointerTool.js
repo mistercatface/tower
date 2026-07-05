@@ -17,7 +17,7 @@ export function createSandboxDeletePointerTool(state, session) {
             const idx = grid.worldToIdx(world.x, world.y);
             if (FloorBelt.clearOverlayAt(state, idx)) {
                 const sel = session.getSelection();
-                if (sel?.kind === "floor" && sel.col === idx % grid.cols && sel.row === ((idx / grid.cols) | 0)) session.clearSelection();
+                if (sel?.kind === "floor" && sel.idx === idx) session.clearSelection();
                 session.sync();
                 return true;
             }
