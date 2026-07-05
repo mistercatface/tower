@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
-import { persistedKineticPairBuffer } from "../Libraries/Physics/physics.js";
+import { persistedKineticPairBuffer } from "./harness/kineticPairHarness.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";

@@ -57,7 +57,7 @@ describe("kinetic topology lifecycle", () => {
         assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.frame.entityGrid.entities[glass._physId]?._physId === glass._physId && tick.frame.entityGrid.entities[ball._physId]?._physId === ball._physId) ? { bodyA: tick.frame.entityGrid.entities[glass._physId], bodyB: tick.frame.entityGrid.entities[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(tick.world.worldProps.filter((p) => p.type === "glass_pane").length > 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
+        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 
     it("contact side effects still fracture crate after topology bump", () => {
@@ -101,6 +101,6 @@ describe("kinetic topology lifecycle", () => {
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, { resolveWalls() {}, applyContactSideEffects: processKineticContactFractures });
         assert.ok(tick.world.worldProps.length > 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
+        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 });

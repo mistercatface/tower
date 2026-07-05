@@ -61,10 +61,10 @@ export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFi
 export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     const dc = nc - c;
     const dr = nr - r;
-    if (dc === 1 && dr === 0) return 1;
-    if (dc === -1 && dr === 0) return 3;
-    if (dc === 0 && dr === 1) return 2;
     if (dc === 0 && dr === -1) return 0;
+    if (dc === 1 && dr === 0) return 1;
+    if (dc === 0 && dr === 1) return 2;
+    if (dc === -1 && dr === 0) return 3;
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
@@ -191,21 +191,17 @@ export class SpatialFrameCore {
     }
 }
 export function edgeNeighborIdx(idx, side, cols, rows) {
-    if (side === 0) return idx >= cols ? idx - cols : -1;
-    if (side === 2) return idx < cols * (rows - 1) ? idx + cols : -1;
     const col = idx % cols;
-    if (side === 1) return col < cols - 1 ? idx + 1 : -1;
-    if (side === 3) return col > 0 ? idx - 1 : -1;
-    return -1;
+    const row = (idx / cols) | 0;
+    const { dc, dr } = CARDINAL_OFFSETS[side];
+    const nc = col + dc;
+    const nr = row + dr;
+    if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) return -1;
+    return nr * cols + nc;
 }
 export function edgeNeighbor(col, row, side) {
-    let nc = col;
-    let nr = row;
-    if (side === 0) nr = row - 1;
-    else if (side === 1) nc = col + 1;
-    else if (side === 2) nr = row + 1;
-    else nc = col - 1;
-    return { nc, nr };
+    const { dc, dr } = CARDINAL_OFFSETS[side];
+    return { nc: col + dc, nr: row + dr };
 }
 export function edgeMirrorSide(side) {
     return (side + 2) % 4;
@@ -322,23 +318,27 @@ export function canonicalEdgeCellKeyIdx(grid, idx, side) {
 export function isCanonicalEdgeRepresentativeIdx(grid, idx, side) {
     return packEdgeCellKeyByIdx(grid, idx, side) === canonicalEdgeCellKeyIdx(grid, idx, side);
 }
+function forEachCellInColRowBounds(startCol, endCol, startRow, endRow, cols, fn) {
+    for (let r = startRow; r <= endRow; r++) {
+        const rowOffset = r * cols;
+        for (let c = startCol; c <= endCol; c++) if (fn(c, r, rowOffset + c) === false) return false;
+    }
+}
 export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCol, minRow, maxRow, filter } = {}) {
     if (!grid.cols) return;
     const startCol = minCol ?? 0;
     const endCol = maxCol ?? grid.cols - 1;
     const startRow = minRow ?? 0;
     const endRow = maxRow ?? grid.rows - 1;
-    for (let r = startRow; r <= endRow; r++)
-        for (let c = startCol; c <= endCol; c++) {
-            const cellIdx = r * grid.cols + c;
-            for (let side = 0; side < 4; side++) {
-                if (canonicalOnly && !isCanonicalEdgeRepresentativeIdx(grid, cellIdx, side)) continue;
-                const edge = grid.getCellEdge(cellIdx, side);
-                if (!edge) continue;
-                if (filter && !filter(edge)) continue;
-                if (fn(cellIdx, side, edge) === false) return;
-            }
+    forEachCellInColRowBounds(startCol, endCol, startRow, endRow, grid.cols, (c, r, cellIdx) => {
+        for (let side = 0; side < 4; side++) {
+            if (canonicalOnly && !isCanonicalEdgeRepresentativeIdx(grid, cellIdx, side)) continue;
+            const edge = grid.getCellEdge(cellIdx, side);
+            if (!edge) continue;
+            if (filter && !filter(edge)) continue;
+            if (fn(cellIdx, side, edge) === false) return false;
         }
+    });
 }
 export function worldColAtOrigin(x, minX, cellSize) {
     return Math.floor((x - minX) / cellSize);
@@ -389,7 +389,7 @@ export function centeredGridFrameKey(frame) {
     return `${frame.cols}:${frame.rows}:${frame.cellSize}:${frame.centerX}:${frame.centerY}`;
 }
 export function worldToGridCentered(x, y, centerX, centerY, offsetX, offsetY, cellSize) {
-    return { col: Math.floor((x - centerX + offsetX) / cellSize), row: Math.floor((y - centerY + offsetY) / cellSize) };
+    return worldToGridInCenteredFrame({ centerX, centerY, offsetX, offsetY, cellSize }, x, y);
 }
 export function worldColInCenteredFrame(frame, x) {
     return Math.floor((x - frame.centerX + frame.offsetX) / frame.cellSize);
@@ -407,7 +407,7 @@ export function worldToGridInCenteredFrame(frame, x, y) {
     return { col: worldColInCenteredFrame(frame, x), row: worldRowInCenteredFrame(frame, y) };
 }
 export function gridToWorldCentered(col, row, centerX, centerY, offsetX, offsetY, cellSize) {
-    return { x: col * cellSize + centerX - offsetX + cellSize / 2, y: row * cellSize + centerY - offsetY + cellSize / 2 };
+    return gridToWorldInCenteredFrame({ centerX, centerY, offsetX, offsetY, cellSize }, col, row);
 }
 export function gridToWorldInCenteredFrame(frame, col, row) {
     return { x: gridCenterXInCenteredFrame(frame, col), y: gridCenterYInCenteredFrame(frame, row) };
@@ -465,16 +465,9 @@ export function worldBoundsFromCellOrigin(idx, gridCols, cols, rows, cellSize) {
  * @param {(idx: number) => void} fn
  */
 export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
-    const { minCol, maxCol, minRow, maxRow } = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
-    const cMin = Math.max(0, minCol);
-    const cMax = Math.min(grid.cols - 1, maxCol);
-    const rMin = Math.max(0, minRow);
-    const rMax = Math.min(grid.rows - 1, maxRow);
-    const cols = grid.cols;
-    for (let r = rMin; r <= rMax; r++) {
-        const rowOffset = r * cols;
-        for (let c = cMin; c <= cMax; c++) fn(rowOffset + c);
-    }
+    const rect = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
+    const bounds = clampCellBoundsToGrid({ startCol: rect.minCol, endCol: rect.maxCol, startRow: rect.minRow, endRow: rect.maxRow }, grid.cols, grid.rows);
+    forEachCellInColRowBounds(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, grid.cols, (c, r, idx) => fn(idx));
 }
 // Viewer-relative radial elevation projection (worldRenderMode: "radial").
 // Elevated points lean away from live viewport.x/y — not fixed 2:1 isometric.
@@ -772,25 +765,23 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
     const c1 = bounds ? bounds.endCol : cols - 1;
     const r0 = bounds ? bounds.startRow : 0;
     const r1 = bounds ? bounds.endRow : rows - 1;
-    for (let row = r0; row <= r1; row++)
-        for (let col = c0; col <= c1; col++) {
-            const idx = row * cols + col;
-            if (grid.isBlockedIdx(idx)) {
-                cardinalOpen[idx] = 0;
-                continue;
-            }
-            let mask = 0;
-            forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
-                if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) {
-                    const diff = nIdx - idx;
-                    if (diff === 1) mask |= 1;
-                    else if (diff === cols) mask |= 2;
-                    else if (diff === -1) mask |= 4;
-                    else if (diff === -cols) mask |= 8;
-                }
-            });
-            cardinalOpen[idx] = mask;
+    forEachCellInColRowBounds(c0, c1, r0, r1, cols, (col, row, idx) => {
+        if (grid.isBlockedIdx(idx)) {
+            cardinalOpen[idx] = 0;
+            return;
         }
+        let mask = 0;
+        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+            if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) {
+                const diff = nIdx - idx;
+                if (diff === 1) mask |= 1;
+                else if (diff === cols) mask |= 2;
+                else if (diff === -1) mask |= 4;
+                else if (diff === -cols) mask |= 8;
+            }
+        });
+        cardinalOpen[idx] = mask;
+    });
 }
 export function getCardinalBit(dc, dr) {
     if (dc === 1) return 1;
@@ -2791,10 +2782,7 @@ export function forEachSparseCellInRect(minCol, maxCol, minRow, maxRow, fn) {
 }
 /** Iterate dense grid cells; fn(col, row, cellIndex). */
 export function forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, cols, fn) {
-    for (let r = minRow; r <= maxRow; r++) {
-        const rowOffset = r * cols;
-        for (let c = minCol; c <= maxCol; c++) fn(rowOffset + c);
-    }
+    forEachCellInColRowBounds(minCol, maxCol, minRow, maxRow, cols, (c, r, idx) => fn(idx));
 }
 export function forEachDenseCellInBounds(bounds, cols, fn) {
     forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, fn);

@@ -68,8 +68,8 @@ function makeOverlappingGlassShards() {
     const b = new WorldProp(8, 0, "glass_pane", 0);
     applyPropFractureGeometry(a, shards[0]);
     applyPropFractureGeometry(b, shards[1] ?? shards[0]);
-    a._glassFractureCooldown = 0;
-    b._glassFractureCooldown = 0;
+    a._fractureCooldown = 0;
+    b._fractureCooldown = 0;
     a.vx = 120;
     b.vx = -120;
     assert.ok(satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape));
@@ -193,7 +193,7 @@ describe("glass fracture", () => {
         };
         spawnFractureShards(state, prop, fracture, { admitKineticProps() {}, admitKineticProp() {}, entityGrid: { remove() {} } });
         assert.ok(spawned.length >= 2);
-        for (const frag of spawned) assert.ok(frag._glassFractureCooldown > 0);
+        for (const frag of spawned) assert.ok(frag._fractureCooldown > 0);
     });
     it("glass shard on glass shard does not reproduce on kinetic contact", () => {
         const { a, b } = makeOverlappingGlassShards();
@@ -214,14 +214,14 @@ describe("glass fracture", () => {
         const glass = new WorldProp(0, 0, "glass_pane", 0);
         const crate = new WorldProp(14, 0, "crate", 0);
         applyPropFractureGeometry(glass, shards[0]);
-        glass._glassFractureCooldown = 0;
+        glass._fractureCooldown = 0;
         glass.vx = 120;
         crate.vx = -40;
         const tick = createKineticTestTick([glass, crate]);
         assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, crate.x, crate.y, entityFacing(crate), crate.shape));
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveGlassPropCount(tick.world) > 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
+        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
     it("runCollisionPipeline does not reproduce glass across persisted pair iterations", () => {
         const glass = new WorldProp(0, 0, "glass_pane", 0);
@@ -235,7 +235,7 @@ describe("glass fracture", () => {
         const count = liveGlassPropCount(tick.world);
         assert.ok(count > 2);
         assert.ok(count <= GLASS_MAX_SHARDS_PER_SHATTER + 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._glassFractureCooldown > 0);
+        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
     it("shattered glass shards conserve the total area of the parent shape without gaps", () => {
         const flat = new Float32Array([-16, -16, 16, -16, 16, 16, -16, 16]);

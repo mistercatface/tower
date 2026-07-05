@@ -84,6 +84,7 @@ import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
 import propCatalog from "../../Assets/props/index.js";
+import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 // --- Consolidated Global Scratch Arrays (GC & Memory Optimization) ---
 const sScratchQuad1 = new Float32Array(8);
 const sScratchQuad2 = new Float32Array(8);
@@ -1272,6 +1273,13 @@ export function drawExtrudedConvexPolygon(
         textures,
         faceOrder: "convexCull",
     });
+}
+export function getWallChunkSpriteCacheKey(prop) {
+    if (!prop.wallChunkProfileId) return "";
+    const profileId = prop.wallChunkProfileId;
+    const rev = getSurfaceProfileRevision(profileId);
+    const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
+    return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing) {
     const textures = prop._wallChunkTextures;

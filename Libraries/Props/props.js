@@ -1,4 +1,4 @@
-import { findLiveWorldProp, addWorldPropToState, removeWorldPropFromState, addWorldPropsToState, findWorldPropAtInView, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
+import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import {
     PolygonShape,
     getEntityCollisionParts,
@@ -7,16 +7,11 @@ import {
     invalidateBroadphaseBounds,
     kineticMassFromFootprint,
     wakeKineticBody,
+    pruneKineticConstraintsForBody,
     entityFacing,
     kineticDynamicSlab,
     KINETIC_PAIR_TIER,
     IDENTITY_ROLL_QUAT,
-    massFromBody,
-    addDistanceConstraint,
-    listKineticConstraints,
-    removeKineticConstraint,
-    getConnectedBodyIds,
-    getConnectedComponentPath,
     applyVelocityDamping,
     integratePropMotion,
     isKinematicallyActive,
@@ -37,14 +32,11 @@ import {
     polygonSignedArea2D,
     closestPointOnLineSegment,
     quantizeCardinalAngle,
-    normalizeXY,
     rotateAngleTowards,
 } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
-import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
+import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
-import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
-import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { transitionEntity } from "../FSM/transition.js";
 import { resolveSandboxFaction } from "../../GameState/SandboxWorldState.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -174,12 +166,18 @@ function setCirclePropRadius(prop, radius) {
         wakeKineticBody(prop);
     }
 }
-export const POXEL_TARGET_EDGE = 4;
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
-const MAX_FRAC_VERTS = 2048;
-const MAX_FRAC_TRIS = 4096;
-const FRAC_VERTS = new Float32Array(MAX_FRAC_VERTS * 2);
-const FRAC_TRIS = new Uint16Array(MAX_FRAC_TRIS * 3);
+export function fractureDeterministicRandom(seed) {
+    let h = seed | 0;
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function fractureRandomFromImpact(worldHitX, worldHitY, impactForce, salt = 0) {
+    let call = 0;
+    const base = Math.imul(Math.floor(worldHitX * 1000), 73856093) ^ Math.imul(Math.floor(worldHitY * 1000), 19349663) ^ Math.imul(Math.floor(impactForce * 100), 83492791) ^ salt;
+    return () => fractureDeterministicRandom(base ^ Math.imul(++call, 2654435761));
+}
 function hashV(x, y) {
     return Math.round(x * 10000) + "," + Math.round(y * 10000);
 }
@@ -302,238 +300,6 @@ function buildPoxelData(visualParts) {
         }
     return poxels;
 }
-function triangulatePolygon(vertices) {
-    const count = vertices.length / 2;
-    if (count <= 3) {
-        const res = new Float32Array(vertices.length);
-        for (let i = 0; i < vertices.length; i++) res[i] = vertices[i];
-        return res;
-    }
-    let isConvex = true;
-    let sign = 0;
-    for (let i = 0; i < count; i++) {
-        const p0x = vertices[i * 2];
-        const p0y = vertices[i * 2 + 1];
-        const p1x = vertices[((i + 1) % count) * 2];
-        const p1y = vertices[((i + 1) % count) * 2 + 1];
-        const p2x = vertices[((i + 2) % count) * 2];
-        const p2y = vertices[((i + 2) % count) * 2 + 1];
-        const cross = (p1x - p0x) * (p2y - p1y) - (p1y - p0y) * (p2x - p1x);
-        if (Math.abs(cross) > 0.0001)
-            if (sign === 0) sign = Math.sign(cross);
-            else if (Math.sign(cross) !== sign) {
-                isConvex = false;
-                break;
-            }
-    }
-    if (isConvex) {
-        let cx = 0;
-        let cy = 0;
-        for (let i = 0; i < count; i++) {
-            cx += vertices[i * 2];
-            cy += vertices[i * 2 + 1];
-        }
-        cx /= count;
-        cy /= count;
-        const res = new Float32Array(count * 6);
-        for (let i = 0; i < count; i++) {
-            const p1x = vertices[i * 2];
-            const p1y = vertices[i * 2 + 1];
-            const p2x = vertices[((i + 1) % count) * 2];
-            const p2y = vertices[((i + 1) % count) * 2 + 1];
-            res[i * 6] = p1x;
-            res[i * 6 + 1] = p1y;
-            res[i * 6 + 2] = p2x;
-            res[i * 6 + 3] = p2y;
-            res[i * 6 + 4] = cx;
-            res[i * 6 + 5] = cy;
-        }
-        return res;
-    }
-    const V = [];
-    for (let i = 0; i < count; i++) V.push({ x: vertices[i * 2], y: vertices[i * 2 + 1] });
-    let changed = true;
-    let cleanSafety = 0;
-    while (changed && V.length > 3 && cleanSafety++ < 100) {
-        changed = false;
-        let i = 0;
-        while (i < V.length && V.length > 3) {
-            const prev = (i - 1 + V.length) % V.length;
-            const next = (i + 1) % V.length;
-            const dx1 = V[i].x - V[prev].x;
-            const dy1 = V[i].y - V[prev].y;
-            const dx2 = V[next].x - V[i].x;
-            const dy2 = V[next].y - V[i].y;
-            const len1 = Math.hypot(dx1, dy1);
-            const len2 = Math.hypot(dx2, dy2);
-            if (len1 < 0.0001) {
-                V.splice(i, 1);
-                changed = true;
-                continue;
-            }
-            if (len2 > 0.0001) {
-                const cross = (dx1 * dy2 - dy1 * dx2) / (len1 * len2);
-                const dot = (dx1 * dx2 + dy1 * dy2) / (len1 * len2);
-                if (Math.abs(cross) < 0.005 && dot > 0) {
-                    V.splice(i, 1);
-                    changed = true;
-                    continue;
-                }
-            }
-            i++;
-        }
-    }
-    let area = 0;
-    for (let j = 0; j < V.length; j++) {
-        const k = (j + 1) % V.length;
-        area += V[j].x * V[k].y - V[k].x * V[j].y;
-    }
-    if (area < 0) V.reverse();
-    const flatResult = [];
-    let safety = 0;
-    while (V.length > 3 && safety++ < 2000) {
-        let bestEar = -1;
-        let bestScore = -Infinity;
-        const len = V.length;
-        for (let j = 0; j < len; j++) {
-            const prevIdx = (j - 1 + len) % len;
-            const nextIdx = (j + 1) % len;
-            const A = V[prevIdx];
-            const B = V[j];
-            const C = V[nextIdx];
-            const cross = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
-            if (cross <= 0.00001) continue;
-            let isEar = true;
-            for (let k = 0; k < len; k++) {
-                if (k === prevIdx || k === j || k === nextIdx) continue;
-                const P = V[k];
-                if (P.x < Math.min(A.x, B.x, C.x) || P.x > Math.max(A.x, B.x, C.x) || P.y < Math.min(A.y, B.y, C.y) || P.y > Math.max(A.y, B.y, C.y)) continue;
-                const c1 = (B.x - A.x) * (P.y - A.y) - (B.y - A.y) * (P.x - A.x);
-                const c2 = (C.x - B.x) * (P.y - B.y) - (C.y - B.y) * (P.x - B.x);
-                const c3 = (A.x - C.x) * (P.y - C.y) - (A.y - C.y) * (P.x - C.x);
-                if (c1 >= -0.0001 && c2 >= -0.0001 && c3 >= -0.0001) {
-                    isEar = false;
-                    break;
-                }
-            }
-            if (isEar) {
-                const cutSq = (A.x - C.x) * (A.x - C.x) + (A.y - C.y) * (A.y - C.y);
-                const score = cross / (cutSq * cutSq);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestEar = j;
-                }
-            }
-        }
-        if (bestEar !== -1) {
-            const prevIdx = (bestEar - 1 + len) % len;
-            const nextIdx = (bestEar + 1) % len;
-            flatResult.push(V[prevIdx].x, V[prevIdx].y, V[bestEar].x, V[bestEar].y, V[nextIdx].x, V[nextIdx].y);
-            V.splice(bestEar, 1);
-        } else {
-            let bestI = -1;
-            let maxCross = -Infinity;
-            for (let j = 0; j < len; j++) {
-                const prevIdx = (j - 1 + len) % len;
-                const nextIdx = (j + 1) % len;
-                const A = V[prevIdx];
-                const B = V[j];
-                const C = V[nextIdx];
-                const cross = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
-                if (cross > maxCross) {
-                    maxCross = cross;
-                    bestI = j;
-                }
-            }
-            if (bestI !== -1) {
-                const prevIdx = (bestI - 1 + len) % len;
-                const nextIdx = (bestI + 1) % len;
-                flatResult.push(V[prevIdx].x, V[prevIdx].y, V[bestI].x, V[bestI].y, V[nextIdx].x, V[nextIdx].y);
-                V.splice(bestI, 1);
-            } else break;
-        }
-    }
-    while (V.length >= 3) {
-        flatResult.push(V[0].x, V[0].y, V[1].x, V[1].y, V[2].x, V[2].y);
-        V.splice(1, 1);
-    }
-    const finalRes = new Float32Array(flatResult.length);
-    for (let j = 0; j < flatResult.length; j++) finalRes[j] = flatResult[j];
-    return finalRes;
-}
-function generateVisualFractures(baseTriangles, targetEdgeLen = POXEL_TARGET_EDGE) {
-    let vCount = 0;
-    let tCount = 0;
-    function getVertId(x, y) {
-        for (let i = 0; i < vCount; i++) if (Math.abs(FRAC_VERTS[i * 2] - x) < 0.0001 && Math.abs(FRAC_VERTS[i * 2 + 1] - y) < 0.0001) return i;
-        FRAC_VERTS[vCount * 2] = x;
-        FRAC_VERTS[vCount * 2 + 1] = y;
-        return vCount++;
-    }
-    for (let i = 0; i < baseTriangles.length; i += 6) {
-        FRAC_TRIS[tCount * 3] = getVertId(baseTriangles[i], baseTriangles[i + 1]);
-        FRAC_TRIS[tCount * 3 + 1] = getVertId(baseTriangles[i + 2], baseTriangles[i + 3]);
-        FRAC_TRIS[tCount * 3 + 2] = getVertId(baseTriangles[i + 4], baseTriangles[i + 5]);
-        tCount++;
-    }
-    const targetSq = targetEdgeLen * targetEdgeLen;
-    let safety = 0;
-    while (safety++ < 2000) {
-        let worstTri = -1;
-        let worstEdgeA = -1;
-        let worstEdgeB = -1;
-        let worstScore = 0;
-        for (let i = 0; i < tCount; i++)
-            for (let j = 0; j < 3; j++) {
-                const vA = FRAC_TRIS[i * 3 + j];
-                const vB = FRAC_TRIS[i * 3 + ((j + 1) % 3)];
-                const dx = FRAC_VERTS[vA * 2] - FRAC_VERTS[vB * 2];
-                const dy = FRAC_VERTS[vA * 2 + 1] - FRAC_VERTS[vB * 2 + 1];
-                const dSq = dx * dx + dy * dy;
-                if (dSq > worstScore && dSq > targetSq) {
-                    worstScore = dSq;
-                    worstTri = i;
-                    worstEdgeA = vA;
-                    worstEdgeB = vB;
-                }
-            }
-        if (worstTri === -1) break;
-        const midX = (FRAC_VERTS[worstEdgeA * 2] + FRAC_VERTS[worstEdgeB * 2]) * 0.5;
-        const midY = (FRAC_VERTS[worstEdgeA * 2 + 1] + FRAC_VERTS[worstEdgeB * 2 + 1]) * 0.5;
-        FRAC_VERTS[vCount * 2] = midX;
-        FRAC_VERTS[vCount * 2 + 1] = midY;
-        const midId = vCount++;
-        const origTCount = tCount;
-        for (let i = 0; i < origTCount; i++) {
-            const t0 = FRAC_TRIS[i * 3];
-            const t1 = FRAC_TRIS[i * 3 + 1];
-            const t2 = FRAC_TRIS[i * 3 + 2];
-            const hasA = t0 === worstEdgeA || t1 === worstEdgeA || t2 === worstEdgeA;
-            const hasB = t0 === worstEdgeB || t1 === worstEdgeB || t2 === worstEdgeB;
-            if (hasA && hasB) {
-                const vC = t0 !== worstEdgeA && t0 !== worstEdgeB ? t0 : t1 !== worstEdgeA && t1 !== worstEdgeB ? t1 : t2;
-                const isForward = (t0 === worstEdgeA && t1 === worstEdgeB) || (t1 === worstEdgeA && t2 === worstEdgeB) || (t2 === worstEdgeA && t0 === worstEdgeB);
-                const vStart = isForward ? worstEdgeA : worstEdgeB;
-                const vEnd = isForward ? worstEdgeB : worstEdgeA;
-                FRAC_TRIS[i * 3] = vStart;
-                FRAC_TRIS[i * 3 + 1] = midId;
-                FRAC_TRIS[i * 3 + 2] = vC;
-                FRAC_TRIS[tCount * 3] = midId;
-                FRAC_TRIS[tCount * 3 + 1] = vEnd;
-                FRAC_TRIS[tCount * 3 + 2] = vC;
-                tCount++;
-            }
-        }
-    }
-    const result = new Array(tCount);
-    for (let i = 0; i < tCount; i++) {
-        const t0 = FRAC_TRIS[i * 3];
-        const t1 = FRAC_TRIS[i * 3 + 1];
-        const t2 = FRAC_TRIS[i * 3 + 2];
-        result[i] = { vertices: new Float32Array([FRAC_VERTS[t0 * 2], FRAC_VERTS[t0 * 2 + 1], FRAC_VERTS[t1 * 2], FRAC_VERTS[t1 * 2 + 1], FRAC_VERTS[t2 * 2], FRAC_VERTS[t2 * 2 + 1]]) };
-    }
-    return result;
-}
 function halfExtentsFromFootprint(footprintVertices) {
     let minX = Infinity;
     let maxX = -Infinity;
@@ -575,19 +341,7 @@ function finalizeFootprintGeometry(centeredVerts, visualParts, signedArea, centr
     const boundingRadius = boundingRadiusFromFootprint(centeredVerts);
     return { footprintVertices: centeredVerts, poxels: clonePoxels(poxels), footprintArea, halfExtents, boundingRadius, centroid };
 }
-export function bakePoxelOutline(flatVerts, targetEdgeLen = POXEL_TARGET_EDGE) {
-    const { cx, cy, signedArea } = polygonCentroid2D(flatVerts, SHARED_CENTROID);
-    const count = flatVerts.length / 2;
-    const centeredVerts = new Float32Array(count * 2);
-    for (let i = 0; i < count; i++) {
-        centeredVerts[i * 2] = flatVerts[i * 2] - cx;
-        centeredVerts[i * 2 + 1] = flatVerts[i * 2 + 1] - cy;
-    }
-    const partsVerts = triangulatePolygon(centeredVerts);
-    const visualFractures = generateVisualFractures(partsVerts, targetEdgeLen);
-    return finalizeFootprintGeometry(centeredVerts, visualFractures, signedArea, { cx, cy });
-}
-export function buildGeometryFromPoxelParts(localParts) {
+function buildGeometryFromCellParts(localParts) {
     const { cx, cy } = calculateCentroidOfParts(localParts);
     const opLen = localParts.length;
     const shiftedParts = new Array(opLen);
@@ -905,7 +659,7 @@ function rectGridPartsCeil(hx, hy, maxCellSize) {
     return parts;
 }
 export function buildGeometryFromChunkParts(localParts) {
-    const geom = buildGeometryFromPoxelParts(localParts);
+    const geom = buildGeometryFromCellParts(localParts);
     return withChunkCollisionParts({ footprintVertices: geom.footprintVertices, chunks: geom.poxels, footprintArea: geom.footprintArea, boundingRadius: geom.boundingRadius, centroid: geom.centroid });
 }
 export function buildChunkGeometryAtPropOrigin(localParts) {
@@ -917,13 +671,7 @@ export function bakeChunkOutline(flatVerts) {
     const { hx, hy } = halfExtentsFromFlat(centeredVerts);
     const parts = rectGridParts(hx, hy, cellSizeForBoxExtents(hx, hy));
     const mesh = buildGeometryFromPartsAtOrigin(parts.map((p) => ({ vertices: p.vertices })));
-    return {
-        chunks: mesh.poxels,
-        collisionParts: [new PolygonShape(boxLocalFootprint(hx, hy))],
-        footprintVertices: boxLocalFootprint(hx, hy),
-        boundingRadius: Math.hypot(hx, hy),
-        footprintArea: hx * hy * 4,
-    };
+    return withChunkCollisionParts({ footprintVertices: mesh.footprintVertices, chunks: mesh.poxels, footprintArea: mesh.footprintArea, boundingRadius: mesh.boundingRadius });
 }
 export function chunkCellCount(hx, hy, cellSize = cellSizeForBoxExtents(hx, hy)) {
     const cols = Math.max(1, Math.round((hx * 2) / cellSize));
@@ -1299,7 +1047,7 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
         shard.vx = motion.vx;
         shard.vy = motion.vy;
         shard.angularVelocity = motion.w;
-        shard._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+        shard._fractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
         if (sourceProp.visualOverride !== undefined) shard.visualOverride = { ...sourceProp.visualOverride };
         if (wallChunkProfileId !== undefined) {
             shard.wallChunkProfileId = wallChunkProfileId;
@@ -1316,7 +1064,7 @@ export function spawnShardPropsFromGeometry(world, sourceProp, geometries, shard
     }
     return spawned;
 }
-function applyShardBurstImpulse(fracture, frag, geom) {
+function applyShardBurstImpulse(fracture, frag, geom, random) {
     const cos = Math.cos(fracture.facing);
     const sin = Math.sin(fracture.facing);
     const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
@@ -1329,12 +1077,13 @@ function applyShardBurstImpulse(fracture, frag, geom) {
         frag.vx += (dx / dist) * burst;
         frag.vy += (dy / dist) * burst;
     }
-    frag.angularVelocity += (Math.random() - 0.5) * 0.4;
-    frag._glassFractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+    frag.angularVelocity += (random() - 0.5) * 0.4;
+    frag._fractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
 }
 function spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame = null) {
+    const random = fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
     return spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom) => {
-        applyShardBurstImpulse(fracture, frag, geom);
+        applyShardBurstImpulse(fracture, frag, geom, random);
     });
 }
 function spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
@@ -1397,7 +1146,8 @@ export function impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
 function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
     if (!canFracturePropSplit(prop)) return null;
     const ctx = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
-    const debris = shatterGlassPolygon(flatVertsFromShape(prop), ctx.impactLocal.x, ctx.impactLocal.y, impactForce);
+    const random = fractureRandomFromImpact(worldHitX, worldHitY, impactForce);
+    const debris = shatterGlassPolygon(flatVertsFromShape(prop), ctx.impactLocal.x, ctx.impactLocal.y, impactForce, random);
     if (debris.length < 2) return null;
     return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
 }
@@ -1433,8 +1183,32 @@ function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = nu
     const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" || sourceProp.type === "boid_triangle" ? "snake_shard" : sourceProp.type;
     return spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame);
 }
-function evictFracturedProp(world, prop, spatialFrame) {
-    removeWorldPropFromState(world, prop, spatialFrame);
+export function commitFractureResult(world, prop, fracture, spatialFrame, { retainParent = false, onBeforeEvict = null, height = null, propsToAdmitOut = null } = {}) {
+    if (retainParent) {
+        wakeKineticBody(prop);
+        if (propsToAdmitOut) propsToAdmitOut.push(prop);
+    } else {
+        onBeforeEvict?.(world, prop);
+        if (spatialFrame) removeWorldPropFromState(world, prop, spatialFrame);
+        else {
+            const index = world.worldProps.indexOf(prop);
+            if (index >= 0) world.worldProps.splice(index, 1);
+            world.entityRegistry.unregister(prop);
+            pruneKineticConstraintsForBody(world.kinetic, prop.id);
+            prop.isDead = true;
+            releaseWorldProp(prop);
+        }
+    }
+    const shards = spawnFractureShards(world, prop, fracture, spatialFrame);
+    if (height != null) for (let i = 0; i < shards.length; i++) shards[i].height = height;
+    if (propsToAdmitOut) for (let i = 0; i < shards.length; i++) propsToAdmitOut.push(shards[i]);
+    else {
+        const propsToAdmit = retainParent ? [prop, ...shards] : shards;
+        if (propsToAdmit.length > 0)
+            if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(propsToAdmit, world);
+            else if (spatialFrame?.admitKineticProp) for (let j = 0; j < propsToAdmit.length; j++) spatialFrame.admitKineticProp(propsToAdmit[j], world);
+    }
+    return shards;
 }
 function enqueueDeferredFracture(kinetic, prop, fracture, mode) {
     const deferredFractures = kinetic.deferredFractures;
@@ -1475,7 +1249,7 @@ export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, forc
         const mode = prop.strategy?.fracture?.mode;
         if (mode !== "circle") {
             if (!canFracturePropSplit(prop)) continue;
-            if (prop._glassFractureCooldown > 0) continue;
+            if (prop._fractureCooldown > 0) continue;
             if (mode === "glass" && other.strategy?.fracture?.mode === "glass") continue;
         }
         if (prop._pendingEviction) continue;
@@ -1498,15 +1272,8 @@ export function flushDeferredFractures(world, spatialFrame, hooks = {}) {
             const item = deferredFractures[i];
             const prop = item.prop;
             delete prop._pendingEviction;
-            if (item.retainParent) {
-                wakeKineticBody(prop);
-                propsToAdmit.push(prop);
-            } else {
-                if (item.mode === "circle") hooks.onCircleFracture?.(world, prop);
-                evictFracturedProp(world, prop, spatialFrame);
-            }
-            const shards = spawnFractureShards(world, prop, item.fracture, spatialFrame);
-            for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
+            const onBeforeEvict = item.mode === "circle" ? (w, p) => hooks.onCircleFracture?.(w, p) : null;
+            commitFractureResult(world, prop, item.fracture, spatialFrame, { retainParent: item.retainParent, onBeforeEvict, propsToAdmitOut: propsToAdmit });
             item.prop = null;
             item.fracture = null;
         }
@@ -1627,13 +1394,6 @@ export function resolvePropQuantizeSteps(prop) {
     const view = override?.view ?? defaults.view ?? 30;
     return { facing, view };
 }
-export function getWallChunkSpriteCacheKey(prop) {
-    if (!prop.wallChunkProfileId) return "";
-    const profileId = prop.wallChunkProfileId;
-    const rev = getSurfaceProfileRevision(profileId);
-    const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
-    return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
-}
 export function getBaseSpriteCacheKey(prop, deps) {
     const { quantizeAngleIndex, buildRollOrientKey } = deps;
     let orientKey = "";
@@ -1672,33 +1432,59 @@ export function buildWorldPropStrategyFromAsset(asset) {
 }
 let nextWorldPropId = 1;
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
+function resolvePropSpawnFacing(prop, facing) {
+    if (facing != null) return prop.strategy.cardinalFacing ? quantizeCardinalAngle(facing) : facing;
+    if (prop.strategy.cardinalFacing) return quantizeCardinalAngle(0);
+    return fractureDeterministicRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
+}
+function resetWorldPropInstance(prop, x, y, type, facing = null) {
+    const asset = propCatalog[type];
+    prop.type = type;
+    prop.strategy = buildWorldPropStrategyFromAsset(asset);
+    prop.x = x;
+    prop.y = y;
+    prop.z = 0;
+    prop.isDead = false;
+    prop.vx = 0;
+    prop.vy = 0;
+    prop.angularVelocity = 0;
+    prop.ageMs = 0;
+    prop._sleepFrames = 0;
+    prop.isSleeping = false;
+    prop.stateTimer = 0;
+    prop.stateData = {};
+    prop.height = asset?.visuals?.world?.height ?? 12;
+    prop.facing = resolvePropSpawnFacing(prop, facing);
+    if (prop.strategy.rolls) prop.rollQuat = { ...IDENTITY_ROLL_QUAT };
+    prop.chunks = undefined;
+    prop.collisionParts = undefined;
+    prop.snakeFoodValue = undefined;
+    prop._fractureCooldown = 0;
+    prop.faction = undefined;
+    prop.shape = undefined;
+    prop.footprintVertices = undefined;
+    prop.footprintArea = undefined;
+    prop.alpha = undefined;
+    prop.wallChunkProfileId = undefined;
+    prop.wallChunkHeightPx = undefined;
+    prop._wallChunkTextures = undefined;
+    prop._wallChunkTextureReady = undefined;
+    initWorldPropShape(prop);
+    if (prop.strategy.isKinetic) prop.mass = kineticMassFromFootprint(prop);
+    if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
+    prop._kineticIslandPeers = null;
+    if (prop._neighbors) prop._neighbors.length = 0;
+    prop._neighborsFrameId = -1;
+    delete prop._physId;
+    delete prop._activeSlot;
+}
 export class WorldProp {
     constructor(x, y, type, facing = null) {
         this.id = nextWorldPropId++;
-        this.x = x;
-        this.y = y;
-        this.isDead = false;
         this.zIndex = 10;
         this._distSq = 0;
         this.shape = null;
-        this.type = type;
-        const asset = propCatalog[type];
-        this.strategy = buildWorldPropStrategyFromAsset(asset);
-        this.height = asset?.visuals?.world?.height ?? 12;
-        this.vx = 0;
-        this.vy = 0;
-        this.angularVelocity = 0;
-        if (this.strategy.cardinalFacing) this.facing = quantizeCardinalAngle(facing ?? 0);
-        else this.facing = facing ?? Math.random() * Math.PI * 2;
-        if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
-        initWorldPropShape(this);
-        if (this.strategy.isKinetic) this.mass = kineticMassFromFootprint(this);
-        this.ageMs = 0;
-        this.alpha = undefined;
-        this._sleepFrames = 0;
-        this.isSleeping = false;
-        this.stateTimer = 0;
-        this.stateData = {};
+        resetWorldPropInstance(this, x, y, type, facing);
         this.changeState("normal");
     }
     get momentOfInertia() {
@@ -1738,7 +1524,7 @@ export class WorldProp {
                 this.alpha = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
             } else this.alpha = 1;
         }
-        if (this._glassFractureCooldown > 0) this._glassFractureCooldown--;
+        if (this._fractureCooldown > 0) this._fractureCooldown--;
         const asleep = this.isSleeping;
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
@@ -1770,44 +1556,7 @@ export function acquireWorldProp(x, y, type, facing = null) {
     }
     if (list.length > 0) {
         const prop = list.pop();
-        const asset = propCatalog[type];
-        prop.x = x;
-        prop.y = y;
-        prop.z = 0;
-        prop.isDead = false;
-        prop.vx = 0;
-        prop.vy = 0;
-        prop.angularVelocity = 0;
-        prop.ageMs = 0;
-        prop._sleepFrames = 0;
-        prop.isSleeping = false;
-        prop.stateTimer = 0;
-        prop.stateData = {};
-        prop.height = asset?.visuals?.world?.height ?? 12;
-        if (prop.strategy?.cardinalFacing) prop.facing = quantizeCardinalAngle(facing ?? 0);
-        else prop.facing = facing ?? Math.random() * Math.PI * 2;
-        if (prop.strategy?.rolls) prop.rollQuat = { ...IDENTITY_ROLL_QUAT };
-        prop.chunks = undefined;
-        prop.collisionParts = undefined;
-        prop.snakeFoodValue = undefined;
-        prop._glassFractureCooldown = 0;
-        prop.faction = undefined;
-        prop.shape = undefined;
-        prop.footprintVertices = undefined;
-        prop.footprintArea = undefined;
-        prop.alpha = undefined;
-        prop.wallChunkProfileId = undefined;
-        prop.wallChunkHeightPx = undefined;
-        prop._wallChunkTextures = undefined;
-        prop._wallChunkTextureReady = undefined;
-        initWorldPropShape(prop);
-        if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
-        if (prop._kineticLinkNeighbors) prop._kineticLinkNeighbors.length = 0;
-        prop._kineticIslandPeers = null;
-        if (prop._neighbors) prop._neighbors.length = 0;
-        prop._neighborsFrameId = -1;
-        delete prop._physId;
-        delete prop._activeSlot;
+        resetWorldPropInstance(prop, x, y, type, facing);
         prop.changeState("normal");
         return prop;
     }
@@ -2029,7 +1778,7 @@ export function registerAllPropDrawRecipes() {
         registerPropDrawRecipe(asset);
     }
 }
-Promise.resolve().then(registerAllPropDrawRecipes);
+queueMicrotask(registerAllPropDrawRecipes);
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const floorBeltEffectPass = {
     zIndex: 10.5,
