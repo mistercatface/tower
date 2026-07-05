@@ -17,6 +17,7 @@ import {
     getCardinalBit,
     edgeNeighborIdx,
     FloorBelt,
+    BeltPacked,
     hasLineOfSight,
     worldColAtOrigin,
     worldRowAtOrigin,
@@ -1851,9 +1852,9 @@ export function bindNavSimGridFrame(simView, frame) {
 }
 /** @typedef {number} CellIdx */
 export function beltEntryNeighborAtIdx(grid, idx) {
-    const sides = FloorBelt.getEntryExitAtIdx(grid, idx);
-    if (!sides) return -1;
-    return edgeNeighborIdx(idx, sides.entrySide, grid);
+    const packed = grid.floorPacked[idx];
+    if (!BeltPacked.isValid(packed)) return -1;
+    return edgeNeighborIdx(idx, BeltPacked.entry(packed), grid);
 }
 export function createNavGraphView(grid, baked = null, navTopology = null) {
     const topologyRef = navTopology ?? grid._navTopologyRef;
@@ -1912,13 +1913,13 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = targetY;
         return out;
     }
-    const sides = FloorBelt.getEntryExitAtIdx(grid, targetIdx);
-    if (!sides) {
+    const packed = grid.floorPacked[targetIdx];
+    if (!BeltPacked.isValid(packed)) {
         out.x = targetX;
         out.y = targetY;
         return out;
     }
-    const pt = FloorBelt.getEntryEdgeWorldPoint(grid, targetIdx, sides.entrySide);
+    const pt = FloorBelt.getEntryEdgeWorldPoint(grid, targetIdx, BeltPacked.entry(packed));
     out.x = pt.x;
     out.y = pt.y;
     return out;

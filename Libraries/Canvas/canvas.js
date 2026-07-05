@@ -950,10 +950,10 @@ export function hasSharedGridStampFilmstrip(renderKey, stripKey, halfExtents, zo
     const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom ?? 1, pixelSize);
     return gridStampSpriteCache.get(key) != null;
 }
-export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, packedList, flowAngleForPacked, drawForPacked, frameCount = BELT_FILMSTRIP_FRAMES) {
+export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, packedList, packedCount, flowAngleForPacked, drawForPacked, frameCount = BELT_FILMSTRIP_FRAMES) {
     const halfExtents = { x: cellHalf, y: cellHalf };
     const zoom = viewport.zoom ?? 1;
-    for (let i = 0; i < packedList.length; i++) {
+    for (let i = 0; i < packedCount; i++) {
         const packed = packedList[i];
         const stripKey = `p${packed}`;
         const facing = flowAngleForPacked(packed);

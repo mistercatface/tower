@@ -146,18 +146,83 @@ export class BeltPacked {
     static defaultForSpawn(assetId) {
         return BELT_SPAWN_DEFAULT[assetId] ?? BELT_SPAWN_DEFAULT.floor_belt;
     }
+    static stepSideBetween(fromIdx, toIdx, cols) {
+        const diff = toIdx - fromIdx;
+        if (diff === 1 && (fromIdx + 1) % cols !== 0) return 1;
+        if (diff === -1 && fromIdx % cols !== 0) return 3;
+        if (diff === cols) return 2;
+        if (diff === -cols) return 0;
+        return -1;
+    }
+    static blocksStep(grid, fromIdx, toIdx) {
+        const cols = grid.cols;
+        const stepSide = BeltPacked.stepSideBetween(fromIdx, toIdx, cols);
+        const fromPacked = grid.floorPacked[fromIdx];
+        const toPacked = grid.floorPacked[toIdx];
+        if (!fromPacked && !toPacked) return false;
+        if (stepSide < 0) return true;
+        if (fromPacked && stepSide !== BeltPacked.exit(fromPacked)) return true;
+        if (toPacked && edgeMirrorSide(stepSide) === BeltPacked.exit(toPacked)) return true;
+        return false;
+    }
+    static stepPenalty(currIdx, nIdx, cols, floorPacked) {
+        const packedCurr = floorPacked[currIdx];
+        const packedN = floorPacked[nIdx];
+        if (!packedCurr && !packedN) return 0;
+        let penaltyOut = 0;
+        if (packedCurr) {
+            const side = BeltPacked.stepSideBetween(currIdx, nIdx, cols);
+            if (side === -1) penaltyOut = BELT_STEP_DIAGONAL_PENALTY;
+            else {
+                const entrySide = BeltPacked.entry(packedCurr);
+                const exitSide = BeltPacked.exit(packedCurr);
+                if (side === exitSide) penaltyOut = 0;
+                else if (side === entrySide) penaltyOut = BELT_STEP_AGAINST_FLOW_PENALTY;
+                else penaltyOut = BELT_STEP_LATERAL_PENALTY;
+            }
+        }
+        let penaltyIn = 0;
+        if (packedN) {
+            const sideN = BeltPacked.stepSideBetween(nIdx, currIdx, cols);
+            if (sideN === -1) penaltyIn = BELT_STEP_DIAGONAL_PENALTY;
+            else {
+                const entrySide = BeltPacked.entry(packedN);
+                const exitSide = BeltPacked.exit(packedN);
+                if (sideN === entrySide) penaltyIn = 0;
+                else if (sideN === exitSide) penaltyIn = BELT_STEP_AGAINST_FLOW_PENALTY;
+                else penaltyIn = BELT_STEP_LATERAL_PENALTY;
+            }
+        }
+        return Math.max(penaltyOut, penaltyIn);
+    }
+    static linkOk(idxA, packedA, idxB, packedB, cols, graph) {
+        const exitSide = BeltPacked.exit(packedA);
+        const entrySide = BeltPacked.entry(packedB);
+        const stepSide = BeltPacked.stepSideBetween(idxA, idxB, cols);
+        if (stepSide !== exitSide) return { ok: false, reason: `exit ${exitSide} ≠ step ${stepSide}` };
+        const reverseSide = edgeMirrorSide(stepSide);
+        if (reverseSide !== entrySide) return { ok: false, reason: `entry ${entrySide} ≠ approach ${reverseSide}` };
+        if (!graph.canStepIdx(idxA, idxB)) return { ok: false, reason: `canStep blocked` };
+        if (graph.canStepIdx(idxB, idxA)) return { ok: false, reason: `reverse canStep open` };
+        return { ok: true };
+    }
+    static orientationOptions() {
+        return BELT_ORIENTATION_OPTIONS;
+    }
 }
+const BELT_STEP_AGAINST_FLOW_PENALTY = 20;
+const BELT_STEP_LATERAL_PENALTY = 5;
+const BELT_STEP_DIAGONAL_PENALTY = 8;
 BELT_SPAWN_DEFAULT.floor_belt = BeltPacked.pack(3, 1);
 BELT_SPAWN_DEFAULT.floor_belt_elbow_left = BeltPacked.pack(2, 1);
 BELT_SPAWN_DEFAULT.floor_belt_elbow_right = BeltPacked.pack(0, 1);
-export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
-    const diff = nIdx - idx;
-    if (diff === 1) return 1;
-    if (diff === -1) return 3;
-    if (diff === cols) return 2;
-    if (diff === -cols) return 0;
-    return -1;
-}
+const BELT_ORIENTATION_OPTIONS = Object.freeze(
+    (() => {
+        const out = [];
+        for (let packed = 1; packed < 16; packed++) if (BeltPacked.isValid(packed)) out.push(Object.freeze({ packed, label: BeltPacked.label(packed) }));
+        return out;
+    })(),
+);
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
 }
@@ -809,21 +874,10 @@ export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
 export function boundaryBlocksStep(grid, idx, side) {
     return isRailWallEdge(grid.getCellEdge(idx, side));
 }
-function beltBlocksStepFrom(grid, fromIdx, toIdx) {
-    const cols = grid.cols;
-    const stepSide = gridSideFromCellIdxToNeighborIdx(fromIdx, toIdx, cols);
-    const fromPacked = grid.floorPacked[fromIdx];
-    const toPacked = grid.floorPacked[toIdx];
-    if (!fromPacked && !toPacked) return false;
-    if (stepSide < 0) return true;
-    if (fromPacked && stepSide !== BeltPacked.exit(fromPacked)) return true;
-    if (toPacked && edgeMirrorSide(stepSide) === BeltPacked.exit(toPacked)) return true;
-    return false;
-}
 /** Directional step blocking: belt entry rules + rail-wall edges. */
 export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, fromIdx, toIdx) {
     if (grid.grid[toIdx] !== 0) return true;
-    if (beltBlocksStepFrom(grid, fromIdx, toIdx)) return true;
+    if (BeltPacked.blocksStep(grid, fromIdx, toIdx)) return true;
     const cols = grid.cols;
     const diff = toIdx - fromIdx;
     if (diff === 1) return boundaryBlocksStep(grid, fromIdx, 1);
@@ -951,29 +1005,29 @@ export function cellEdgeSlotOffset(idx, side) {
     return (idx << 2) + side;
 }
 const EMPTY = -1;
-function appendFloorBeltLoadedIdx(grid, idx) {
-    let list = grid._floorBeltLoadedIdx;
-    const count = grid._floorBeltLoadedCount;
-    if (count >= list.length) {
-        const grown = new Uint32Array(Math.max(8, list.length * 2));
-        grown.set(list);
-        list = grid._floorBeltLoadedIdx = grown;
-    }
-    list[count] = idx;
-    grid._floorBeltLoadedCount = count + 1;
-}
-function removeFloorBeltLoadedIdx(grid, idx) {
-    const list = grid._floorBeltLoadedIdx;
-    let count = grid._floorBeltLoadedCount;
-    for (let i = 0; i < count; i++) {
-        if (list[i] !== idx) continue;
-        count--;
-        if (i < count) list[i] = list[count];
-        grid._floorBeltLoadedCount = count;
-        return;
-    }
-}
 export class FloorBelt {
+    static _appendLoadedIdx(grid, idx) {
+        let list = grid._floorBeltLoadedIdx;
+        const count = grid._floorBeltLoadedCount;
+        if (count >= list.length) {
+            const grown = new Uint32Array(Math.max(8, list.length * 2));
+            grown.set(list);
+            list = grid._floorBeltLoadedIdx = grown;
+        }
+        list[count] = idx;
+        grid._floorBeltLoadedCount = count + 1;
+    }
+    static _removeLoadedIdx(grid, idx) {
+        const list = grid._floorBeltLoadedIdx;
+        let count = grid._floorBeltLoadedCount;
+        for (let i = 0; i < count; i++) {
+            if (list[i] !== idx) continue;
+            count--;
+            if (i < count) list[i] = list[count];
+            grid._floorBeltLoadedCount = count;
+            return;
+        }
+    }
     static getEntryEdgeWorldPoint(grid, idx, entrySide) {
         const x = grid.gridCenterXByIdx(idx);
         const y = grid.gridCenterYByIdx(idx);
@@ -990,11 +1044,6 @@ export class FloorBelt {
     static isBeltAtIdx(grid, idx) {
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
         return BeltPacked.isValid(grid.floorPacked[idx]);
-    }
-    static getEntryExitAtIdx(grid, idx) {
-        const packed = FloorBelt.packedAtIdx(grid, idx);
-        if (!BeltPacked.isValid(packed)) return null;
-        return { entrySide: BeltPacked.entry(packed), exitSide: BeltPacked.exit(packed) };
     }
     static isEntityOnBelt(grid, x, y) {
         return FloorBelt.isBeltAtIdx(grid, grid.worldToIdx(x, y));
@@ -1026,7 +1075,6 @@ export class FloorBelt {
         const grid = state.obstacleGrid;
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
         if (!grid.clearFloorCell(idx)) return false;
-        FloorBelt.markZoneSubscriptionsDirty(state);
         return true;
     }
     static listPlacedForSnapshot(grid) {
@@ -1056,7 +1104,6 @@ export class FloorBelt {
         }
         if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
         if (isEmptyCellBounds(bounds)) return null;
-        FloorBelt.markZoneSubscriptionsDirty(state);
         bumpFloorOccupancyStampDrawRevision(grid);
         FloorBelt.recomputeFloorBeltCount(grid);
         return bounds;
@@ -1067,50 +1114,23 @@ export class FloorBelt {
         for (let idx = 0; idx < size; idx++) if (grid.floorPacked[idx] !== 0) count++;
         grid.floorBeltCount = count;
     }
-    static markZoneSubscriptionsDirty(state) {
-        state.sandbox.gridZoneSubscriptionsDirty = true;
-    }
-    static buildZoneSubscriptions(grid) {
-        const cells = new Set();
-        if (!grid.cols) return { cells };
-        const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++) if (grid.floorPacked[idx] !== 0) cells.add(idx);
-        return { cells };
-    }
-    static ensureZoneSubscriptions(state) {
-        if (!state.sandbox.gridZoneSubscriptionsDirty && state.sandbox.gridZoneSubscriptions) return state.sandbox.gridZoneSubscriptions;
-        state.sandbox.gridZoneSubscriptions = FloorBelt.buildZoneSubscriptions(state.obstacleGrid);
-        state.sandbox.gridZoneSubscriptionsDirty = false;
-        return state.sandbox.gridZoneSubscriptions;
-    }
-    static onCellZoneEvent(state, event, phase) {
-        if (phase === "on") return;
-        if (!state.sandbox.beltZoneEvents) state.sandbox.beltZoneEvents = [];
-        state.sandbox.beltZoneEvents.push({ at: state.gameTime, phase, idx: event.idx, entityId: event.entity.id });
-        if (state.sandbox.beltZoneEvents.length > 32) state.sandbox.beltZoneEvents.shift();
-    }
     static tickZones(state, spatialFrame) {
         const grid = state.obstacleGrid;
-        const subscriptions = FloorBelt.ensureZoneSubscriptions(state);
-        if (!subscriptions.cells.size) return;
-        tickGridZoneMembership(spatialFrame, grid, subscriptions, {
+        if (grid.floorBeltCount === 0) return;
+        tickGridZoneMembership(spatialFrame, grid, {
             onEnter(event) {
                 const load = grid._floorBeltLoad[event.idx] + 1;
                 grid._floorBeltLoad[event.idx] = load;
-                if (load === 1) appendFloorBeltLoadedIdx(grid, event.idx);
-                FloorBelt.onCellZoneEvent(state, event, "enter");
+                if (load === 1) FloorBelt._appendLoadedIdx(grid, event.idx);
             },
-            onOn(event) {
-                FloorBelt.onCellZoneEvent(state, event, "on");
-            },
+            onOn() {},
             onExit(event) {
                 const load = grid._floorBeltLoad[event.idx];
                 if (load > 0) {
                     const next = load - 1;
                     grid._floorBeltLoad[event.idx] = next;
-                    if (next === 0) removeFloorBeltLoadedIdx(grid, event.idx);
+                    if (next === 0) FloorBelt._removeLoadedIdx(grid, event.idx);
                 }
-                FloorBelt.onCellZoneEvent(state, event, "exit");
             },
         });
     }
@@ -2046,7 +2066,7 @@ export class WorldObstacleGrid {
             this.floorBeltCount--;
             this._floorBeltLoad[idx] = 0;
             this._floorBeltAnimMs[idx] = 0;
-            removeFloorBeltLoadedIdx(this, idx);
+            FloorBelt._removeLoadedIdx(this, idx);
         }
         this.floorPacked[idx] = packed;
         if ((hadBelt || hasBelt) && prevPacked !== packed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
@@ -2065,7 +2085,7 @@ export class WorldObstacleGrid {
         this.floorPacked[idx] = 0;
         this._floorBeltLoad[idx] = 0;
         this._floorBeltAnimMs[idx] = 0;
-        removeFloorBeltLoadedIdx(this, idx);
+        FloorBelt._removeLoadedIdx(this, idx);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
@@ -2733,7 +2753,6 @@ export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, rev
     slab.revisionStamp[slot] = revision;
     slab.segments[slot] = segments;
 }
-/** @typedef {{ cells: Set<number> }} GridZoneSubscriptions */
 /**
  * @typedef {object} GridZoneEvent
  * @property {"cell"} kind
@@ -2760,22 +2779,20 @@ export function diffGridZoneKeys(prev, next) {
 /**
  * @param {object} entity
  * @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {GridZoneSubscriptions} subscriptions
  * @param {Set<number>} out
  */
-export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
+export function resolveEntityGridZoneKeys(entity, grid, out) {
     out.clear();
     const cellIdx = grid.worldToIdx(entity.x, entity.y);
-    if (cellIdx >= 0 && subscriptions.cells.has(cellIdx)) out.add(cellIdx);
+    if (cellIdx >= 0 && grid.floorPacked[cellIdx] !== 0) out.add(cellIdx);
 }
 /**
  * @param {import("../world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
  * @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {GridZoneSubscriptions} subscriptions
  * @param {GridZoneHandlers} handlers
  */
-export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handlers) {
-    if (!subscriptions.cells.size) return;
+export function tickGridZoneMembership(spatialFrame, grid, handlers) {
+    if (grid.floorBeltCount === 0) return;
     const kineticBodies = spatialFrame._kineticBodies;
     if (!kineticBodies?.length) return;
     for (let i = 0; i < kineticBodies.length; i++) {
@@ -2784,7 +2801,7 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
         if (!entity._gridZoneNextKeys) entity._gridZoneNextKeys = new Set();
         const prev = entity._gridZoneKeys;
         const next = entity._gridZoneNextKeys;
-        resolveEntityGridZoneKeys(entity, grid, subscriptions, next);
+        resolveEntityGridZoneKeys(entity, grid, next);
         const { entered, exited } = diffGridZoneKeys(prev, next);
         for (let j = 0; j < entered.length; j++) {
             const key = entered[j];
@@ -2975,22 +2992,6 @@ export class RailWallBatch {
         return batch;
     }
 }
-function beltLinkOk(idxA, packedA, idxB, packedB, cols, graph) {
-    const exitSide = BeltPacked.exit(packedA);
-    const entrySide = BeltPacked.entry(packedB);
-    const diff = idxB - idxA;
-    let stepSide = -1;
-    if (diff === 1 && (idxA + 1) % cols !== 0) stepSide = 1;
-    else if (diff === -1 && idxA % cols !== 0) stepSide = 3;
-    else if (diff === cols) stepSide = 2;
-    else if (diff === -cols) stepSide = 0;
-    if (stepSide !== exitSide) return { ok: false, reason: `exit ${exitSide} ≠ step ${stepSide}` };
-    const reverseSide = stepSide === 1 ? 3 : stepSide === 3 ? 1 : stepSide === 2 ? 0 : 2;
-    if (reverseSide !== entrySide) return { ok: false, reason: `entry ${entrySide} ≠ approach ${reverseSide}` };
-    if (!graph.canStepIdx(idxA, idxB)) return { ok: false, reason: `canStep blocked` };
-    if (graph.canStepIdx(idxB, idxA)) return { ok: false, reason: `reverse canStep open` };
-    return { ok: true };
-}
 export class BeltPlan {
     constructor() {
         this.cells = new Map();
@@ -3015,14 +3016,14 @@ export class BeltPlan {
             const cells = collectCorridorPathPointIndices(pIdx, prevIdx, nextIdx, width, false, i, collapsed.length, layout);
             let packed;
             if (prevIdx !== undefined && nextIdx !== undefined) {
-                const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
-                const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
+                const entrySide = BeltPacked.stepSideBetween(pIdx, prevIdx, stride);
+                const exitSide = BeltPacked.stepSideBetween(pIdx, nextIdx, stride);
                 packed = BeltPacked.fromSides(entrySide, exitSide);
             } else if (nextIdx !== undefined) {
-                const exitSide = gridSideFromCellIdxToNeighborIdx(pIdx, nextIdx, stride);
+                const exitSide = BeltPacked.stepSideBetween(pIdx, nextIdx, stride);
                 packed = BeltPacked.fromSides(edgeMirrorSide(exitSide), exitSide);
             } else if (prevIdx !== undefined) {
-                const entrySide = gridSideFromCellIdxToNeighborIdx(pIdx, prevIdx, stride);
+                const entrySide = BeltPacked.stepSideBetween(pIdx, prevIdx, stride);
                 packed = BeltPacked.fromSides(entrySide, edgeMirrorSide(entrySide));
             } else packed = BeltPacked.fromSides(3, 1);
             for (let ci = 0; ci < cells.length; ci++) this.cells.set(cells[ci], packed);
@@ -3069,7 +3070,7 @@ export class BeltPlan {
             const b = cellIndices[i + 1];
             const packedA = this.cells.get(a) ?? grid.floorPacked[a];
             const packedB = this.cells.get(b) ?? grid.floorPacked[b];
-            const link = beltLinkOk(a, packedA, b, packedB, cols, graph);
+            const link = BeltPacked.linkOk(a, packedA, b, packedB, cols, graph);
             if (!link.ok) return { ok: false, reason: `cell ${i}: ${link.reason}` };
         }
         return { ok: true };
@@ -3113,7 +3114,6 @@ export class BeltPlan {
             if (!bounds) bounds = emptyCellBounds();
             growCellBoundsIdx(bounds, idx, grid);
         }
-        if (bounds) FloorBelt.markZoneSubscriptionsDirty(state, bounds);
         return { bounds };
     }
     toRailWalls(heightLevel, thicknessLevel) {
@@ -3405,7 +3405,6 @@ export function commitGridNavEdit(state, idx, { invalidateSurfaces = true, fullN
     if (invalidateSurfaces && state.worldSurfaces)
         if (fullNavSync || idx === null) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, grid);
         else state.worldSurfaces.invalidateGridBounds(idx, grid);
-    if (state.sandbox) FloorBelt.markZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     const nav = resolveNavRuntime(state);
     return nav.commitEdit(idx, { fullNavSync });
@@ -3418,7 +3417,6 @@ export function commitGridNavEditUnion(state, ...indices) {
 }
 export function commitSurfaceMaterialEdit(state, idx) {
     if (state.worldSurfaces) state.worldSurfaces.invalidateGridBounds(idx, state.obstacleGrid);
-    if (state.sandbox) FloorBelt.markZoneSubscriptionsDirty(state);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     return idx;
 }
@@ -3790,9 +3788,9 @@ export function beltPathMouthExteriorCells(path, grid) {
     const secondIdx = path[1];
     const endIdx = path[path.length - 1];
     const prevIdx = path[path.length - 2];
-    const startEntrySide = gridSideFromCellIdxToNeighborIdx(secondIdx, startIdx, cols);
+    const startEntrySide = BeltPacked.stepSideBetween(secondIdx, startIdx, cols);
     const entryExteriorIdx = edgeNeighborIdx(startIdx, startEntrySide, grid);
-    const endExitSide = gridSideFromCellIdxToNeighborIdx(prevIdx, endIdx, cols);
+    const endExitSide = BeltPacked.stepSideBetween(prevIdx, endIdx, cols);
     const exitExteriorIdx = edgeNeighborIdx(endIdx, endExitSide, grid);
     return { entryExteriorIdx, exitExteriorIdx };
 }

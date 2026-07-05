@@ -27,9 +27,9 @@ describe("nav step penalty", () => {
     });
     it("conveyor step penalty checks transition directions", async () => {
         const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
+        const { BeltPacked } = await import("../Libraries/Spatial/spatial.js");
         const cols = 5;
         const rows = 3;
-        const { BeltPacked } = await import("../Libraries/Spatial/spatial.js");
         const floorPacked = new Uint8Array(cols * rows);
         const beltIdx = 2 + 1 * cols;
         floorPacked[beltIdx] = BeltPacked.defaultForSpawn("floor_belt");
@@ -38,5 +38,7 @@ describe("nav step penalty", () => {
         assert.equal(eastCost, 0, "Stepping with flow of conveyor should be 0");
         const westCost = penalty.extraCost(beltIdx, 3 + 1 * cols);
         assert.equal(westCost, 20, "Stepping against flow of conveyor should be penalized");
+        assert.equal(BeltPacked.stepPenalty(1 + 1 * cols, beltIdx, cols, floorPacked), 0);
+        assert.equal(BeltPacked.stepPenalty(3 + 1 * cols, beltIdx, cols, floorPacked), 20);
     });
 });

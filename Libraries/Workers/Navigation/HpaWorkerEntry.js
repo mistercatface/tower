@@ -18,48 +18,6 @@ import {
 import { bindNavEdgePoolFromSab, BeltPacked } from "../../Spatial/spatial.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
-const CONVEYOR_AGAINST_FLOW_PENALTY = 20;
-const CONVEYOR_LATERAL_PENALTY = 5;
-const CONVEYOR_DIAGONAL_PENALTY = 8;
-function stepSideFromIdxDiff(diff, fromIdx, cols) {
-    if (diff === 1 && (fromIdx + 1) % cols !== 0) return 1;
-    if (diff === -1 && fromIdx % cols !== 0) return 3;
-    if (diff === cols) return 2;
-    if (diff === -cols) return 0;
-    return -1;
-}
-export function getStepPenalty(currIdx, nIdx, cols, floorPacked) {
-    const packed_curr = floorPacked[currIdx];
-    const packed_n = floorPacked[nIdx];
-    if (!packed_curr && !packed_n) return 0;
-    let penalty_out = 0;
-    if (packed_curr) {
-        const diff = nIdx - currIdx;
-        const side = stepSideFromIdxDiff(diff, currIdx, cols);
-        if (side === -1) penalty_out = CONVEYOR_DIAGONAL_PENALTY;
-        else {
-            const entrySide = BeltPacked.entry(packed_curr);
-            const exitSide = BeltPacked.exit(packed_curr);
-            if (side === exitSide) penalty_out = 0;
-            else if (side === entrySide) penalty_out = CONVEYOR_AGAINST_FLOW_PENALTY;
-            else penalty_out = CONVEYOR_LATERAL_PENALTY;
-        }
-    }
-    let penalty_in = 0;
-    if (packed_n) {
-        const diff_in = currIdx - nIdx;
-        const side_n = stepSideFromIdxDiff(diff_in, nIdx, cols);
-        if (side_n === -1) penalty_in = CONVEYOR_DIAGONAL_PENALTY;
-        else {
-            const entrySide = BeltPacked.entry(packed_n);
-            const exitSide = BeltPacked.exit(packed_n);
-            if (side_n === entrySide) penalty_in = 0;
-            else if (side_n === exitSide) penalty_in = CONVEYOR_AGAINST_FLOW_PENALTY;
-            else penalty_in = CONVEYOR_LATERAL_PENALTY;
-        }
-    }
-    return Math.max(penalty_out, penalty_in);
-}
 export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null) {
     let maxIdx = 0;
     if (keys && keys.length)
@@ -73,7 +31,7 @@ export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null
         extraCost(idx, currIdx) {
             let cost = 0;
             if (costArray && idx < costArray.length) cost += costArray[idx];
-            if (floorPacked && currIdx !== undefined) cost += getStepPenalty(currIdx, idx, cols, floorPacked);
+            if (floorPacked && currIdx !== undefined) cost += BeltPacked.stepPenalty(currIdx, idx, cols, floorPacked);
             return cost;
         },
     };

@@ -128,7 +128,7 @@ import {
     overlayAabb,
     overlayCachedCircleFillStroke,
     queryPropsInView,
-    clearGridStampDrawCaches,
+    FloorBeltDrawCache,
     appendPathOverlayCommands,
 } from "../Render/render.js";
 import {
@@ -205,11 +205,6 @@ export function isResizableBoxSpawnAsset(asset) {
 }
 export function isSingleWorldPropSpawnAsset(asset) {
     return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
-}
-const FLOOR_BELT_PACKED_OPTIONS = [];
-for (let packed = 1; packed < 16; packed++) if (BeltPacked.isValid(packed)) FLOOR_BELT_PACKED_OPTIONS.push({ packed, label: BeltPacked.label(packed) });
-export function listFloorBeltPackedOptions() {
-    return FLOOR_BELT_PACKED_OPTIONS;
 }
 function syncSandboxBehaviorById(state, behaviors) {
     state.sandbox.behaviors = behaviors;
@@ -1156,7 +1151,7 @@ function clearSandboxSceneContent(state) {
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
     state.sandbox.entityMeta.clear();
-    clearGridStampDrawCaches(state);
+    FloorBeltDrawCache.clear(state);
 }
 /** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
 function spawnSnapshotProp(state, entry) {
@@ -1423,7 +1418,6 @@ export function createSandboxSession(state) {
             if (grid.floorPacked[idx] !== 0) {
                 if (!clearFloorCellNavEdit(state, idx)) return false;
             } else if (!grid.clearFloorCell(idx)) return false;
-            else FloorBelt.markZoneSubscriptionsDirty(state);
             placement.forgetFloorPlacement(idx);
             clearSelection();
             return true;
@@ -3722,7 +3716,7 @@ function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
     appendEditorHint(body, `${BeltPacked.label(selectedFloorBelt.packed)}. Change orientation, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
     appendSelectField(body, "Orientation", {
         value: String(selectedFloorBelt.packed),
-        options: FLOOR_BELT_PACKED_OPTIONS.map((option) => ({ value: String(option.packed), label: option.label })),
+        options: BeltPacked.orientationOptions().map((option) => ({ value: String(option.packed), label: option.label })),
         onChange: (value) => {
             session.setSelectedFloorBeltPacked(Number(value));
         },
