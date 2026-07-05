@@ -1,59 +1,11 @@
-import {
-    multiplyQuat,
-    axisAngleQuat,
-    normalizeQuat,
-    rotateVecByQuat,
-    distanceToAabb,
-    rectCorners,
-    rotateXYInto,
-    transformPoint2DInto,
-    distanceSqToLineSegment,
-    rotateXY,
-    normalizeXY,
-    quantizeAngle,
-    clamp,
-    lengthXY,
-    dotXY,
-    addXY,
-    speedSqXY,
-    aabbContains,
-    createAabb,
-    emptyAabbInto,
-    growAabbFromCenterInto,
-    normalizeAngle,
-    cardinalUnitVectorFromAngle,
-    polygonSecondMomentAboutCentroid2D,
-    polygonSignedArea2D,
-    polygonCentroid2D,
-    reversePolygonWinding,
-    findClosestWorldVertexInto,
-    findExtremeVertexInto,
-    findExtremeVertexIndex,
-    findClosestWorldVertexIndex,
-    computeCompoundLocalBounds,
-    convexFootprintHalfExtents,
-    boxLocalFootprint,
-} from "../Math/math.js";
-import {
-    createDeferredGridWallCommit,
-    getVoxelWallInfo,
-    getRailWallInfo,
-    resolveCellSurfaceProfileId,
-    resolveEdgeSurfaceProfileId,
-    isRailWallEdge,
-    cellIsStaticWall,
-    cellEdgeEndpointsIdx,
-    RailWallBatch,
-} from "../Spatial/spatial.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
+import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { commitFractureResult, acquireWorldProp, applyPropBoxFootprint, fracturePropOnImpact } from "../Props/props.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
-export const LIBRARY_PHYSICS_DEFAULTS = {
-    groundNavRoll: { maxSpeed: 180, accel: 600, stopRadius: 6 },
-    groundNavHpa: { stopRadius: 8, pathWaypointArrivalMin: 12, pathWaypointArrivalRadiusFactor: 1.5 },
-};
+export const LIBRARY_PHYSICS_DEFAULTS = { groundNavRoll: { maxSpeed: 180, accel: 600, stopRadius: 6 }, groundNavHpa: { stopRadius: 8, pathWaypointArrivalMin: 12, pathWaypointArrivalRadiusFactor: 1.5 } };
 export const physicsSettings = structuredClone(LIBRARY_PHYSICS_DEFAULTS);
 /** Default collision/render radius when a body omits `radius`. */
 export const LIBRARY_DEFAULT_BODY_RADIUS = 8;
@@ -196,32 +148,8 @@ export function massFromBody(body) {
 }
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
-export const kineticDynamicSlab = {
-    x: new Float32Array(MAX_PHYS_BODIES),
-    y: new Float32Array(MAX_PHYS_BODIES),
-    vx: new Float32Array(MAX_PHYS_BODIES),
-    vy: new Float32Array(MAX_PHYS_BODIES),
-    w: new Float32Array(MAX_PHYS_BODIES),
-    activeSlot: new Int32Array(MAX_PHYS_BODIES),
-    activePhysIds: new Int32Array(MAX_PHYS_BODIES),
-    activePhysCount: 0,
-    islandRoot: new Int32Array(MAX_PHYS_BODIES),
-    bpKind: new Uint8Array(MAX_PHYS_BODIES),
-    r: new Float32Array(MAX_PHYS_BODIES),
-    hx: new Float32Array(MAX_PHYS_BODIES),
-    hy: new Float32Array(MAX_PHYS_BODIES),
-    cos: new Float32Array(MAX_PHYS_BODIES),
-    sin: new Float32Array(MAX_PHYS_BODIES),
-};
-export const kineticStaticSlab = {
-    mass: new Float32Array(MAX_PHYS_BODIES),
-    invMass: new Float32Array(MAX_PHYS_BODIES),
-    invI: new Float32Array(MAX_PHYS_BODIES),
-    pinned: new Uint8Array(MAX_PHYS_BODIES),
-    entityId: new Int32Array(MAX_PHYS_BODIES),
-    restitution: new Float32Array(MAX_PHYS_BODIES),
-    friction: new Float32Array(MAX_PHYS_BODIES),
-};
+export const kineticDynamicSlab = { x: new Float32Array(MAX_PHYS_BODIES), y: new Float32Array(MAX_PHYS_BODIES), vx: new Float32Array(MAX_PHYS_BODIES), vy: new Float32Array(MAX_PHYS_BODIES), w: new Float32Array(MAX_PHYS_BODIES), activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
+export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), pinned: new Uint8Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
@@ -312,7 +240,7 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
     slab.bpKind[physId] = BP_KIND_CIRCLE;
     slab.r[physId] = shape.radius || 0;
 }
-export function writeActiveKineticBodySlabPose(body) {
+function writeActiveKineticBodySlabPose(body) {
     copyBodyPoseToSlab(body, body._physId);
 }
 function copyBodyPoseToSlab(body, physId) {
@@ -352,12 +280,6 @@ export function appendActiveKineticBodySlabPhysId(physId) {
     const slab = kineticDynamicSlab;
     slab.activeSlot[physId] = slab.activePhysCount;
     slab.activePhysIds[slab.activePhysCount++] = physId;
-}
-export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
-    copySlabPoseToBody(physId, spatialFrame.entityGrid.entities[physId]);
-}
-export function writebackKineticBodySlabPhysIds(spatialFrame, physIds) {
-    for (let i = 0; i < physIds.length; i++) writebackKineticBodySlabPhysId(spatialFrame, physIds[i]);
 }
 export function writebackActiveKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) copySlabPoseToBody(bodies[i]._physId, bodies[i]);
@@ -1070,29 +992,22 @@ export function neighborQueryPadForExtent(extent) {
     const pad = kineticActivity().neighborQueryPad;
     return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
 }
-/** @param {object} entity */
-export function neighborQueryPadFor(entity) {
-    return neighborQueryPadForExtent(entityBroadphaseExtent(entity));
-}
 /** Bounds queries with no anchor entity — conservative upper pad. */
 export function maxNeighborQueryPad() {
     return kineticActivity().neighborQueryPad.maxPad;
 }
-function entityCollisionSpan(entity) {
+export function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
     const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
     return lengthXY((bounds.maxX - bounds.minX) * 0.5, (bounds.maxY - bounds.minY) * 0.5);
 }
-export function invalidateBroadphaseBounds(entity) {
+export function markBroadphaseDirty(entity) {
     entity._broadphaseDirty = true;
 }
 export function entityContainedInAabb(entity, outer) {
     entityWorldAabbInto(entityWorldAabbOut, entity);
     return outer.minX <= entityWorldAabbOut.minX && outer.minY <= entityWorldAabbOut.minY && outer.maxX >= entityWorldAabbOut.maxX && outer.maxY >= entityWorldAabbOut.maxY;
-}
-export function entityBroadphaseExtent(entity) {
-    return entityCollisionSpan(entity);
 }
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
@@ -1139,7 +1054,7 @@ export function refreshActiveKineticBodySlabPose(bodies) {
 export function shouldResolveKineticPair(a, b, overlaps) {
     return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
 }
-export function shouldResolveKineticPairSlab(physIdA, physIdB, overlaps) {
+function shouldResolveKineticPairSlab(physIdA, physIdB, overlaps) {
     return overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
 }
 export function allowsKineticCollisionPair(primary, other, overlaps) {
@@ -1171,10 +1086,10 @@ function kineticOverlapsWallCandidates(readPose, body, candidates) {
     }
     return false;
 }
-export function kineticBodyOverlapsWallCandidates(body, candidates) {
+function kineticBodyOverlapsWallCandidates(body, candidates) {
     return kineticOverlapsWallCandidates(() => ({ x: body.x, y: body.y }), body, candidates);
 }
-export function kineticSlabOverlapsWallCandidates(physId, body, candidates) {
+function kineticSlabOverlapsWallCandidates(physId, body, candidates) {
     return kineticOverlapsWallCandidates(() => ({ x: kineticDynamicSlab.x[physId], y: kineticDynamicSlab.y[physId] }), body, candidates);
 }
 export function shouldResolveKineticBodyAgainstWalls(body, candidates) {
@@ -1299,10 +1214,10 @@ function applyStaticSurfaceImpulseCore(motion, normalX, normalY, cx, cy, { resti
     motion.setVelocities(newVx, newVy, newW);
     return approachDot;
 }
-export function applyBodyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, opts = {}) {
+function applyBodyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, opts = {}) {
     return applyStaticSurfaceImpulseCore(createBodyImpulseMotion(body), normalX, normalY, cx, cy, opts);
 }
-export function applySlabStaticSurfaceImpulse(physId, normalX, normalY, cx, cy, opts = {}) {
+function applySlabStaticSurfaceImpulse(physId, normalX, normalY, cx, cy, opts = {}) {
     return applyStaticSurfaceImpulseCore(createSlabImpulseMotion(physId), normalX, normalY, cx, cy, opts);
 }
 export function ensureWallSegmentPolygonShape(segment) {
@@ -1425,10 +1340,7 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
         collided = true;
         const bx = motion.bx;
         const by = motion.by;
-        const contact =
-            shape.type === "Circle"
-                ? computeCircleWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, shape.radius)
-                : computePolygonWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
+        const contact = shape.type === "Circle" ? computeCircleWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, shape.radius) : computePolygonWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
         const bvx = motion.vx;
         const bvy = motion.vy;
         const bw = motion.w;
@@ -1447,7 +1359,7 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
 export function resolveBodyAgainstWallSegments(body, shape, segments, opts = {}) {
     return resolveAgainstWallSegmentsCore(body, shape, segments, createBodyWallMotion(body), opts);
 }
-export function resolveSlabAgainstWallSegments(physId, body, shape, segments, opts = {}) {
+function resolveSlabAgainstWallSegments(physId, body, shape, segments, opts = {}) {
     return resolveAgainstWallSegmentsCore(body, shape, segments, createSlabWallMotion(physId), opts);
 }
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
@@ -1479,9 +1391,7 @@ export class WallCollisionResolver {
         const physId = entity._physId;
         const hasSlab = physId !== undefined && physId !== -1;
         for (let i = 0; i < parts.length; i++) {
-            const result = hasSlab
-                ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig })
-                : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig });
+            const result = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig }) : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig });
             if (result.collided) collided = true;
             if (result.hits.length) hits.push(...result.hits);
         }
@@ -1511,32 +1421,8 @@ export const kineticConstraintSlab = {
     bodyB: new Array(MAX_KINETIC_CONSTRAINTS),
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
-    dynamic: {
-        accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        nx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        ny: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        k: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        error: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    },
-    static: {
-        anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        massA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        massB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-        pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
-        pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
-        capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS),
-    },
+    dynamic: { accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS), nx: new Float32Array(MAX_KINETIC_CONSTRAINTS), ny: new Float32Array(MAX_KINETIC_CONSTRAINTS), rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS), rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS), k: new Float32Array(MAX_KINETIC_CONSTRAINTS), error: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
+    static: { anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), massA: new Float32Array(MAX_KINETIC_CONSTRAINTS), massB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS), pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS), pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS), capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
     entry: new Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
@@ -1983,8 +1869,8 @@ function projectAngleConstraint(slab, index) {
     bodyB.facing = normalizeAngle(facingB - correctionB);
     bodyA.stateTimer = (bodyA.stateTimer ?? 0) + 1;
     bodyB.stateTimer = (bodyB.stateTimer ?? 0) + 1;
-    invalidateBroadphaseBounds(bodyA);
-    invalidateBroadphaseBounds(bodyB);
+    markBroadphaseDirty(bodyA);
+    markBroadphaseDirty(bodyB);
 }
 function projectConstraint(slab, index) {
     if (slab.type[index] === "angle") projectAngleConstraint(slab, index);
@@ -2314,18 +2200,7 @@ export function getKineticConstraintsVersion(session) {
     return session.kineticConstraintsVersion ?? 0;
 }
 export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0, y: 0 }, anchorB = { x: 0, y: 0 }, restLength }) {
-    const constraint = {
-        id: session.nextConstraintId++,
-        type: "distance",
-        bodyAId: bodyA.id,
-        bodyBId: bodyB.id,
-        bodyA,
-        bodyB,
-        anchorA: { x: anchorA.x, y: anchorA.y },
-        anchorB: { x: anchorB.x, y: anchorB.y },
-        restLength,
-        accumulatedImpulse: 0,
-    };
+    const constraint = { id: session.nextConstraintId++, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, anchorA: { x: anchorA.x, y: anchorA.y }, anchorB: { x: anchorB.x, y: anchorB.y }, restLength, accumulatedImpulse: 0 };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
     return constraint;
@@ -2389,14 +2264,7 @@ export function applyKineticConstraintsFromSnapshot(session, entries, propRefsBy
         const type = entry.type ?? "distance";
         let constraint;
         if (type === "angle") constraint = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
-        else
-            constraint = addDistanceConstraint(session, {
-                bodyA: propRefsByIndex[entry.bodyA],
-                bodyB: propRefsByIndex[entry.bodyB],
-                restLength: entry.restLength,
-                anchorA: entry.anchorA,
-                anchorB: entry.anchorB,
-            });
+        else constraint = addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorA: entry.anchorA, anchorB: entry.anchorB });
         constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
     }
 }
@@ -2487,37 +2355,8 @@ const kineticContactBuffer = {
     count: 0,
     physIdA: new Int32Array(MAX_CONTACTS),
     physIdB: new Int32Array(MAX_CONTACTS),
-    dynamic: {
-        nx: new Float32Array(MAX_CONTACTS),
-        ny: new Float32Array(MAX_CONTACTS),
-        rax: new Float32Array(MAX_CONTACTS),
-        ray: new Float32Array(MAX_CONTACTS),
-        rbx: new Float32Array(MAX_CONTACTS),
-        rby: new Float32Array(MAX_CONTACTS),
-        preDvx: new Float32Array(MAX_CONTACTS),
-        preDvy: new Float32Array(MAX_CONTACTS),
-        rAn: new Float32Array(MAX_CONTACTS),
-        rBn: new Float32Array(MAX_CONTACTS),
-        rAt: new Float32Array(MAX_CONTACTS),
-        rBt: new Float32Array(MAX_CONTACTS),
-        jn: new Float32Array(MAX_CONTACTS),
-        jt: new Float32Array(MAX_CONTACTS),
-        resting: new Uint8Array(MAX_CONTACTS),
-    },
-    static: {
-        tier: new Uint8Array(MAX_CONTACTS),
-        invMassA: new Float32Array(MAX_CONTACTS),
-        invMassB: new Float32Array(MAX_CONTACTS),
-        invIA: new Float32Array(MAX_CONTACTS),
-        invIB: new Float32Array(MAX_CONTACTS),
-        kNormal: new Float32Array(MAX_CONTACTS),
-        kTangent: new Float32Array(MAX_CONTACTS),
-        restitution: new Float32Array(MAX_CONTACTS),
-        friction: new Float32Array(MAX_CONTACTS),
-        featureA: new Uint8Array(MAX_CONTACTS),
-        featureB: new Uint8Array(MAX_CONTACTS),
-        warmStartKey: new Float64Array(MAX_CONTACTS),
-    },
+    dynamic: { nx: new Float32Array(MAX_CONTACTS), ny: new Float32Array(MAX_CONTACTS), rax: new Float32Array(MAX_CONTACTS), ray: new Float32Array(MAX_CONTACTS), rbx: new Float32Array(MAX_CONTACTS), rby: new Float32Array(MAX_CONTACTS), preDvx: new Float32Array(MAX_CONTACTS), preDvy: new Float32Array(MAX_CONTACTS), rAn: new Float32Array(MAX_CONTACTS), rBn: new Float32Array(MAX_CONTACTS), rAt: new Float32Array(MAX_CONTACTS), rBt: new Float32Array(MAX_CONTACTS), jn: new Float32Array(MAX_CONTACTS), jt: new Float32Array(MAX_CONTACTS), resting: new Uint8Array(MAX_CONTACTS) },
+    static: { tier: new Uint8Array(MAX_CONTACTS), invMassA: new Float32Array(MAX_CONTACTS), invMassB: new Float32Array(MAX_CONTACTS), invIA: new Float32Array(MAX_CONTACTS), invIB: new Float32Array(MAX_CONTACTS), kNormal: new Float32Array(MAX_CONTACTS), kTangent: new Float32Array(MAX_CONTACTS), restitution: new Float32Array(MAX_CONTACTS), friction: new Float32Array(MAX_CONTACTS), featureA: new Uint8Array(MAX_CONTACTS), featureB: new Uint8Array(MAX_CONTACTS), warmStartKey: new Float64Array(MAX_CONTACTS) },
     reset() {
         this.count = 0;
     },
@@ -3274,9 +3113,6 @@ export function shareKineticIslandSlab(physIdA, physIdB) {
     if (rootA === -1 || rootB === -1) return false;
     return rootA === rootB;
 }
-export function kineticIslandMembers(body) {
-    return body._kineticIslandPeers ?? [body];
-}
 const parent = new Int32Array(MAX_PHYS_BODIES);
 const rank = new Int32Array(MAX_PHYS_BODIES);
 const componentRoot = new Int32Array(MAX_PHYS_BODIES);
@@ -3450,7 +3286,7 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     for (let i = 0; i < islandMembers.length; i++) {
         const prop = islandMembers[i];
         if (!canSleepKinetic(prop)) return false;
-        const extent = entityBroadphaseExtent(prop);
+        const extent = entityCollisionSpan(prop);
         growAabbFromCenterInto(ISLAND_SLEEP_QUERY_BOUNDS, prop.x, prop.y, extent, extent);
     }
     const neighbors = spatialFrame.collectEntitiesInBounds(ISLAND_SLEEP_QUERY_BOUNDS);
@@ -3487,16 +3323,6 @@ export function applyKineticAcceleration(body, ax, ay, dtSec) {
     body.ax += ax;
     body.ay += ay;
     wakeKineticBody(body);
-}
-/**
- * @param {object} body
- * @param {number} angle — radians (cardinal-snapped for belts)
- * @param {number} magnitude — acceleration along facing (units/s²)
- * @param {number} dtSec
- */
-export function applyKineticAccelerationAlongAngle(body, angle, magnitude, dtSec) {
-    const { x, y } = cardinalUnitVectorFromAngle(angle);
-    applyKineticAcceleration(body, x * magnitude, y * magnitude, dtSec);
 }
 /**
  * Velocity and angular drag for coasting / knockback decay (top-down locomotion).
@@ -3695,14 +3521,7 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     if (segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY)) return 0;
     const distA = distanceToAabb(ax, ay, minX, minY, maxX, maxY);
     const distB = distanceToAabb(bx, by, minX, minY, maxX, maxY);
-    let minSq = Math.min(
-        distA * distA,
-        distB * distB,
-        distanceSqToLineSegment(minX, minY, ax, ay, bx, by),
-        distanceSqToLineSegment(maxX, minY, ax, ay, bx, by),
-        distanceSqToLineSegment(maxX, maxY, ax, ay, bx, by),
-        distanceSqToLineSegment(minX, maxY, ax, ay, bx, by),
-    );
+    let minSq = Math.min(distA * distA, distB * distB, distanceSqToLineSegment(minX, minY, ax, ay, bx, by), distanceSqToLineSegment(maxX, minY, ax, ay, bx, by), distanceSqToLineSegment(maxX, maxY, ax, ay, bx, by), distanceSqToLineSegment(minX, maxY, ax, ay, bx, by));
     return Math.sqrt(minSq);
 }
 /** Minimum distance between a path segment and a wall's collision box. */
@@ -3896,8 +3715,7 @@ function approachToSegmentLocal(segment, worldVx, worldVy, out = LOCAL_APPROACH_
 export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segment, { approachX = 0, approachY = 0 } = {}) {
     if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return null;
     const closest = findClosestPointOnPathToWall(ax, ay, bx, by, segment);
-    if (circleSegmentPenetration(closest.x, closest.y, capsuleRadius, segment, approachX, approachY))
-        return { normalX: SEGMENT_PEN[0], normalY: SEGMENT_PEN[1], overlap: SEGMENT_PEN[2], distanceSq: SEGMENT_PEN[3] };
+    if (circleSegmentPenetration(closest.x, closest.y, capsuleRadius, segment, approachX, approachY)) return { normalX: SEGMENT_PEN[0], normalY: SEGMENT_PEN[1], overlap: SEGMENT_PEN[2], distanceSq: SEGMENT_PEN[3] };
     if (closest.dist >= capsuleRadius) return null;
     const wallPoint = closestPointOnSegment(segment, closest.x, closest.y);
     let normalX = closest.x - wallPoint.x;
@@ -4322,17 +4140,7 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
             const row = (target.idx / grid.cols) | 0;
             const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
             const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
-            wallDamage.pendingBreaks.set(key, {
-                target,
-                strength,
-                hit,
-                contactX: cx,
-                contactY: cy,
-                normalX: hit.normalX ?? 0,
-                normalY: hit.normalY ?? 0,
-                sourceSpeed: preSpeed,
-                sourceMass: entity ? (entity.mass ?? 1) : 1,
-            });
+            wallDamage.pendingBreaks.set(key, { target, strength, hit, contactX: cx, contactY: cy, normalX: hit.normalX ?? 0, normalY: hit.normalY ?? 0, sourceSpeed: preSpeed, sourceMass: entity ? (entity.mass ?? 1) : 1 });
         }
     }
 }
@@ -4352,25 +4160,7 @@ export function applyPendingWallDamage(state, wallDamage) {
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
             const profileId = resolveCellSurfaceProfileId(grid, idx, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const wallHeightPx = grid.grid[idx] * grid.cellSize;
-            descriptors.push({
-                kind: "voxel",
-                idx: idx,
-                x: cx,
-                y: cy,
-                angle: 0,
-                width: grid.cellSize,
-                height: grid.cellSize,
-                wallHeight: wallHeightPx,
-                wallChunkProfileId: profileId,
-                wallChunkHeightPx: wallHeightPx,
-                strength: item.strength,
-                contactX: item.contactX ?? cx,
-                contactY: item.contactY ?? cy,
-                normalX: item.normalX,
-                normalY: item.normalY,
-                sourceSpeed: item.sourceSpeed,
-                sourceMass: item.sourceMass ?? 1,
-            });
+            descriptors.push({ kind: "voxel", idx: idx, x: cx, y: cy, angle: 0, width: grid.cellSize, height: grid.cellSize, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
         } else {
             const info = getRailWallInfo(grid, idx, target.side);
             if (!info) continue;
@@ -4383,26 +4173,7 @@ export function applyPendingWallDamage(state, wallDamage) {
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
             const profileId = resolveEdgeSurfaceProfileId(grid, idx, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const wallHeightPx = info.heightLevel * grid.cellSize;
-            descriptors.push({
-                kind: "rail",
-                idx: idx,
-                side: target.side,
-                x: cx,
-                y: cy,
-                angle: angle,
-                width: grid.cellSize,
-                height: info.thicknessLevel ?? 1,
-                wallHeight: wallHeightPx,
-                wallChunkProfileId: profileId,
-                wallChunkHeightPx: wallHeightPx,
-                strength: item.strength,
-                contactX: item.contactX ?? cx,
-                contactY: item.contactY ?? cy,
-                normalX: item.normalX,
-                normalY: item.normalY,
-                sourceSpeed: item.sourceSpeed,
-                sourceMass: item.sourceMass ?? 1,
-            });
+            descriptors.push({ kind: "rail", idx: idx, side: target.side, x: cx, y: cy, angle: angle, width: grid.cellSize, height: info.thicknessLevel ?? 1, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
         }
     }
     wallDamage.pendingBreaks.clear();

@@ -4,7 +4,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
-import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, stampBroadphaseSlabFromEntity, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "../Libraries/Physics/physics.js";
 import { circleCircleContactSlab } from "../Libraries/Physics/physics.js";
 import { circleCircleContact, SAT_RESULT } from "../Libraries/Physics/physics.js";
 
@@ -12,9 +12,7 @@ describe("kinetic body slab", () => {
     it("broadphase slot uses body x/y as circle center", () => {
         const body = mockKineticCircle(12, -4, 9);
         body._physId = 3;
-        writeStaticKineticSlabSlot(body);
-        writeActiveKineticBodySlabPose(body);
-        stampBroadphaseSlabFromEntity(body._physId, body);
+        snapshotKineticBodySlab([body]);
         assert.equal(kineticDynamicSlab.x[3], 12);
         assert.equal(kineticDynamicSlab.y[3], -4);
         assert.equal(kineticDynamicSlab.r[3], 9);

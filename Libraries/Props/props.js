@@ -1,39 +1,6 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import {
-    PolygonShape,
-    getEntityCollisionParts,
-    resolveBodyRadius,
-    CircleShape,
-    invalidateBroadphaseBounds,
-    kineticMassFromFootprint,
-    wakeKineticBody,
-    pruneKineticConstraintsForBody,
-    entityFacing,
-    kineticDynamicSlab,
-    KINETIC_PAIR_TIER,
-    IDENTITY_ROLL_QUAT,
-    applyVelocityDamping,
-    integratePropMotion,
-    isKinematicallyActive,
-    kineticInertiaFromBody,
-} from "../Physics/physics.js";
-import {
-    transformPoint2DInto,
-    ensureFlatVerts,
-    quantizeAngleIndex,
-    scaleFlatVerts,
-    boxLocalFootprint,
-    convexFootprintHalfExtents,
-    vertCount,
-    quantizeAngle,
-    rotateXY,
-    polygonCentroid2D,
-    pointInPolygon,
-    polygonSignedArea2D,
-    closestPointOnLineSegment,
-    quantizeCardinalAngle,
-    rotateAngleTowards,
-} from "../Math/math.js";
+import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody } from "../Physics/physics.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
@@ -69,19 +36,7 @@ export function createPolygonPrimitive(visuals) {
         }
         const baseLineWidth = lineWidth ?? 1.0;
         const resolvedLineWidth = Math.max(0.35, baseLineWidth * scale);
-        const drawOpts = {
-            height,
-            facing: prop.facing,
-            faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top },
-            backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side },
-            bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null,
-            topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side },
-            stroke: tinted.stroke,
-            seamStroke: tinted.seamStroke,
-            lineWidth: resolvedLineWidth,
-            plankTs,
-            topCross,
-        };
+        const drawOpts = { height, facing: prop.facing, faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top }, backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side }, bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null, topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side }, stroke: tinted.stroke, seamStroke: tinted.seamStroke, lineWidth: resolvedLineWidth, plankTs, topCross };
         const parts = getEntityCollisionParts(prop);
         if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });
         else if (parts.length === 1) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[0].vertices });
@@ -93,29 +48,13 @@ export function createSpherePrimitive(visuals) {
         if (shape?.type === "Polygon") {
             const tinted = resolveVisualOverrideColorTree(prop, NEUTRAL_BOX_COLORS);
             const height = prop.height ?? 12;
-            const drawOpts = {
-                height,
-                facing: prop.facing,
-                faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top },
-                backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side },
-                bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null,
-                topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side },
-                stroke: tinted.stroke,
-                seamStroke: tinted.seamStroke,
-                lineWidth: 1.0,
-            };
+            const drawOpts = { height, facing: prop.facing, faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top }, backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side }, bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null, topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side }, stroke: tinted.stroke, seamStroke: tinted.seamStroke, lineWidth: 1.0 };
             const parts = getEntityCollisionParts(prop);
             if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });
             else if (parts.length === 1) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[0].vertices });
             return;
         }
-        drawSphere(ctx, prop, viewport, {
-            baseRadius: resolveBodyRadius(prop, visuals.defaultRadius ?? 7),
-            panelCount: visuals.panelCount,
-            latBands: visuals.latBands,
-            panelColors: resolveVisualOverridePanels(prop, visuals.panels),
-            stroke: visuals.stroke,
-        });
+        drawSphere(ctx, prop, viewport, { baseRadius: resolveBodyRadius(prop, visuals.defaultRadius ?? 7), panelCount: visuals.panelCount, latBands: visuals.latBands, panelColors: resolveVisualOverridePanels(prop, visuals.panels), stroke: visuals.stroke });
     };
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
@@ -136,7 +75,7 @@ export function scalePolygonPropFootprint(prop, scale) {
     if (prop.strategy?.localFootprint) scaleFlatVerts(prop.strategy.localFootprint, scale);
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
-    invalidateBroadphaseBounds(prop);
+    markBroadphaseDirty(prop);
     if (prop.strategy?.isKinetic) {
         prop.mass = kineticMassFromFootprint(prop);
         wakeKineticBody(prop);
@@ -159,7 +98,7 @@ export function setCirclePropRadius(prop, radius) {
     prop.shape = new CircleShape(radius);
     prop.radius = radius;
     if (prop.strategy) prop.strategy.radius = radius;
-    invalidateBroadphaseBounds(prop);
+    markBroadphaseDirty(prop);
     if (prop.strategy?.isKinetic) {
         prop.mass = kineticMassFromFootprint(prop);
         wakeKineticBody(prop);
@@ -987,7 +926,7 @@ export function applyPropFractureGeometry(prop, geometry) {
     prop.footprintArea = geometry.footprintArea;
     prop.radius = geometry.boundingRadius;
     prop.shape = new PolygonShape(geometry.footprintVertices);
-    invalidateBroadphaseBounds(prop);
+    markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
 }
 function clamp(value, min, max) {
@@ -1317,7 +1256,7 @@ export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", rend
 export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
-    invalidateBroadphaseBounds(prop);
+    markBroadphaseDirty(prop);
     if (prop.strategy?.fracture && prop.strategy.fracture.mode !== "glass") initFractureFootprint(prop);
     else if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
 }
@@ -1398,15 +1337,7 @@ export function getBaseSpriteCacheKey(prop, deps) {
 export function getPropStageBakeState(prop, deps) {
     const { quantizeAngle, quantizeRollQuat, anchorX, anchorY } = deps;
     const footprint = propFootprintHalfExtents(prop);
-    return {
-        ...prop,
-        x: prop.x,
-        y: prop.y,
-        radius: prop.radius,
-        halfExtents: footprint,
-        facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing),
-        rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat,
-    };
+    return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: footprint, facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat };
 }
 export function withPropStrategyDefaults(strategy) {
     return { ...PROP_STRATEGY_DEFAULTS, ...strategy };
@@ -1580,7 +1511,7 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     prop.radius = Math.hypot(halfL, halfT);
     prop.crossLength = length;
     prop.crossThickness = thickness;
-    invalidateBroadphaseBounds(prop);
+    markBroadphaseDirty(prop);
     if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
 }
 /**
@@ -1673,22 +1604,7 @@ export function getVisualAttachmentSpriteCacheKey(prop, deps) {
         if (!cfg?.id || !cfg.propId) continue;
         const headingIndex = deps.quantizeAngleIndex(resolveAttachmentHeading(prop, cfg), facingSteps);
         const offset = cfg.offset ?? {};
-        parts.push(
-            [
-                cfg.id,
-                cfg.propId,
-                headingIndex,
-                Math.round((offset.x ?? 0) * 100) / 100,
-                Math.round((offset.y ?? 0) * 100) / 100,
-                cfg.offsetSpace ?? "world",
-                Math.round((cfg.facingOffset ?? 0) * 10000) / 10000,
-                Math.round(normalizeAttachmentScale(cfg.scale) * 100) / 100,
-                Math.round((cfg.radiusScale ?? 0) * 100) / 100,
-                cfg.heading ?? "facing",
-                cfg.layer ?? 0,
-                cfg.inheritTint === true ? visualOverrideCacheKey(prop) : "",
-            ].join(":"),
-        );
+        parts.push([cfg.id, cfg.propId, headingIndex, Math.round((offset.x ?? 0) * 100) / 100, Math.round((offset.y ?? 0) * 100) / 100, cfg.offsetSpace ?? "world", Math.round((cfg.facingOffset ?? 0) * 10000) / 10000, Math.round(normalizeAttachmentScale(cfg.scale) * 100) / 100, Math.round((cfg.radiusScale ?? 0) * 100) / 100, cfg.heading ?? "facing", cfg.layer ?? 0, cfg.inheritTint === true ? visualOverrideCacheKey(prop) : ""].join(":"));
     }
     return parts.length ? parts.join("|") : "";
 }
@@ -1701,16 +1617,7 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const localX = (offset.x ?? 0) * offsetScale;
     const localY = (offset.y ?? 0) * offsetScale;
     const rotated = rotateXY(localX, localY, Math.cos(heading), Math.sin(heading));
-    const prop = {
-        type: cfg.propId,
-        strategy,
-        x: parentProp.x + rotated.x,
-        y: parentProp.y + rotated.y,
-        facing: heading + (cfg.facingOffset ?? 0),
-        height: childAsset.visuals?.world?.height ?? 12,
-        visualOverride: cfg.inheritTint === true && parentProp.visualOverride ? { ...parentProp.visualOverride } : undefined,
-        _visualAttachmentId: cfg.id,
-    };
+    const prop = { type: cfg.propId, strategy, x: parentProp.x + rotated.x, y: parentProp.y + rotated.y, facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: cfg.inheritTint === true && parentProp.visualOverride ? { ...parentProp.visualOverride } : undefined, _visualAttachmentId: cfg.id };
     initWorldPropShape(prop);
     scaleVirtualPropShape(prop, resolveVirtualPropScale(parentProp, prop, cfg));
     return prop;

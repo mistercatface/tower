@@ -1,22 +1,23 @@
 {
-  "editor.tabSize": 4,
-  "editor.insertSpaces": true,
-  "editor.detectIndentation": false,
-  "files.eol": "\n",
-  "files.trimTrailingWhitespace": true,
-  "[javascript]": {
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "prettier.tabWidth": 4,
-  "prettier.printWidth": 200,
-  "prettier.objectWrap": "collapse",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "eslint.format.enable": false,
-  "eslint.useFlatConfig": true,
-  "eslint.validate": ["javascript"]
+    "editor.detectIndentation": false,
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true,
+    "[javascript]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file",
+    "prettier.requireConfig": true,
+    "eslint.format.enable": false,
+    "eslint.useFlatConfig": true,
+    "eslint.validate": ["javascript"],
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit",
+        "source.organizeImports": "never"
+    }
 }

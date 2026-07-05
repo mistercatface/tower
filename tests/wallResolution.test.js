@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { writeActiveKineticBodySlabPose, writeStaticKineticSlabSlot, stampBroadphaseSlabFromEntity } from "../Libraries/Physics/physics.js";
+import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
@@ -65,9 +65,7 @@ describe("polygon wall resolution", () => {
         bar.vx = 0;
         bar.vy = 0;
         bar._physId = 0;
-        writeActiveKineticBodySlabPose(bar);
-        writeStaticKineticSlabSlot(bar);
-        stampBroadphaseSlabFromEntity(bar._physId, bar);
+        snapshotKineticBodySlab([bar]);
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();

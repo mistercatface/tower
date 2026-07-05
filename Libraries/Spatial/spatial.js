@@ -25,8 +25,8 @@ import {
     unionAabb,
 } from "../Math/math.js";
 import {
-    entityBroadphaseExtent,
-    neighborQueryPadFor,
+    entityCollisionSpan,
+    neighborQueryPadForExtent,
     maxNeighborQueryPad,
     circleLeadingPoint,
     minDistanceSegmentToWall,
@@ -37,10 +37,8 @@ import {
     entityFacing,
     wakeKineticBody,
     bumpKineticTopologyGeneration,
-    stampBroadphaseSlabFromEntity,
+    snapshotKineticBodySlab,
     kineticDynamicSlab,
-    writeStaticKineticSlabSlot,
-    writeActiveKineticBodySlabPose,
     clearActiveKineticBodySlab,
     appendActiveKineticBodySlabPhysId,
 } from "../Physics/physics.js";
@@ -304,7 +302,7 @@ export class SpatialFrameCore {
     }
     getWallCandidates(entity) {
         if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
-        return this._wallCandidatesNearWorld(entity.x, entity.y, entityBroadphaseExtent(entity));
+        return this._wallCandidatesNearWorld(entity.x, entity.y, entityCollisionSpan(entity));
     }
     getNeighbors(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighbors;
@@ -351,7 +349,7 @@ export class SpatialFrameCore {
      * @returns {object[]}
      */
     collectEntitiesNear(anchor, exclude = null) {
-        const searchRadius = entityBroadphaseExtent(anchor) + this.entityGrid.maxInsertedExtent + neighborQueryPadFor(anchor);
+        const searchRadius = entityCollisionSpan(anchor) + this.entityGrid.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(anchor));
         centerReachAabbInto(NEAR_QUERY_BOUNDS, anchor.x, anchor.y, searchRadius);
         return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
@@ -627,9 +625,6 @@ export function cellBoundsToWorldBoundsInto(out, bounds, grid) {
     out.maxY = grid.minY + (bounds.endRow + 1) * cellSize;
     return out;
 }
-export function cellBoundsToWorldBounds(bounds, grid) {
-    return cellBoundsToWorldBoundsInto(createAabb(), bounds, grid);
-}
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
@@ -838,9 +833,6 @@ export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
         }
     }
     return { segmentIdx, t, closestX, closestY, dist: Math.sqrt(bestDistSq) };
-}
-export function projectOntoPath(x, y, path) {
-    return projectOntoPathFrom(path, x, y, 0);
 }
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
@@ -1852,7 +1844,7 @@ export class WorldObstacleGrid {
         return out;
     }
     appendStaticWallProxiesNear(entity, out) {
-        return this.appendStaticWallProxiesNearWorld(entity.x, entity.y, entityBroadphaseExtent(entity), out);
+        return this.appendStaticWallProxiesNearWorld(entity.x, entity.y, entityCollisionSpan(entity), out);
     }
     rebuildFixed(centerX, centerY, width, height) {
         const halfW = width * 0.5;
@@ -2192,7 +2184,7 @@ export class EntityGrid {
         entity._gridTileIdx = idx;
         this.entities[entity._physId] = entity;
         this.activeEntities.push(entity);
-        const extent = entityBroadphaseExtent(entity);
+        const extent = entityCollisionSpan(entity);
         if (extent > this.maxInsertedExtent) this.maxInsertedExtent = extent;
         if (idx !== -1) {
             this.entityNext[entity._physId] = this.cellHead[idx];
@@ -2272,7 +2264,7 @@ export class EntityGrid {
     collectNearbyInto(entity, out) {
         out.length = 0;
         this.queryGen++;
-        const searchRadius = entityBroadphaseExtent(entity) + this.maxInsertedExtent + neighborQueryPadFor(entity);
+        const searchRadius = entityCollisionSpan(entity) + this.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(entity));
         centerReachAabbInto(this.queryBoundsScratch, entity.x, entity.y, searchRadius);
         CURRENT_COLLECT_OUT = out;
         this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, COLLECT_NEARBY_PUSH);
@@ -4082,11 +4074,6 @@ export async function generateLabRailMaze(state, options = {}) {
     stampRailMazeBeltsPhase(state, config, options);
     await run.finish(config, config.surfaceProfileId || "cyberGrid", null, { fullNavSync: true });
 }
-function writeKineticBodySlabSnapshot(prop) {
-    writeStaticKineticSlabSlot(prop);
-    writeActiveKineticBodySlabPose(prop);
-    stampBroadphaseSlabFromEntity(prop._physId, prop);
-}
 export class KineticSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {
         super(cellSize);
@@ -4113,7 +4100,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             this.insertEntity(prop, physIdCounter++);
             if (prop.strategy?.isKinetic) {
                 this._kineticBodies.push(prop);
-                writeKineticBodySlabSnapshot(prop);
+                snapshotKineticBodySlab([prop]);
             }
         }
         this._nextPhysId = physIdCounter;
@@ -4138,7 +4125,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this.frameId = (this.frameId + 1) | 0;
         if (prop.strategy?.isKinetic) {
             this.activateKineticBody(prop);
-            writeKineticBodySlabSnapshot(prop);
+            snapshotKineticBodySlab([prop]);
         }
         this.populatedMembershipGen = world.entityRegistry.membershipGen;
         bumpKineticTopologyGeneration(world.kinetic);
@@ -4161,7 +4148,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             prop._neighborsFrameId = -1;
             if (prop.strategy?.isKinetic) {
                 this.activateKineticBody(prop);
-                writeKineticBodySlabSnapshot(prop);
+                snapshotKineticBodySlab([prop]);
             }
             anyAdmitted = true;
         }
@@ -4176,7 +4163,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (!this._obstacleGrid) return [];
             const slabX = kineticDynamicSlab.x[entity._physId];
             const slabY = kineticDynamicSlab.y[entity._physId];
-            return this._wallCandidatesNearWorld(slabX, slabY, entityBroadphaseExtent(entity));
+            return this._wallCandidatesNearWorld(slabX, slabY, entityCollisionSpan(entity));
         }
         return super.getWallCandidates(entity);
     }
@@ -4205,7 +4192,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         prop._activeSlot = active.length;
         active.push(prop);
         appendActiveKineticBodySlabPhysId(prop._physId);
-        writeKineticBodySlabSnapshot(prop);
+        snapshotKineticBodySlab([prop]);
     }
     _removeFromActive(prop) {
         const slot = prop._activeSlot;

@@ -1,136 +1,15 @@
-import {
-    BeltPacked,
-    FloorBelt,
-    migrateMapGenBoundsForMode,
-    syncMapGenBoundsFromPlay,
-    cellIsStaticWall,
-    railWallEdgeAt,
-    getRailWallInfo,
-    cellInRect,
-    getVoxelWallInfo,
-    applyFloorCellEdit,
-    isCanonicalEdgeRepresentativeIdx,
-    commitGridNavEdit,
-    GRID_NAV_EPOCH,
-    bumpGridNavEpoch,
-    applyStampedGridWallsFromSnapshot,
-    clearAllStampedGridWalls,
-    listPlacedRailWalls,
-    listPlacedVoxelWalls,
-    clearFloorCellNavEdit,
-    unionCellBounds,
-    clearRailWallAt,
-    clearVoxelWallAt,
-    ensureObstacleGridAtWorld,
-    hitTestRailWallEdgeAtWorld,
-    stampRailWallAt,
-    setVoxelWallHeightAt,
-    stampVoxelWallAt,
-    computeCircleAimLineSegment,
-    estimateRollingTravelDistance,
-    appendGridEdgeOverlayCommand,
-    formatGridWallEdgeSideLabel,
-} from "../Spatial/spatial.js";
-import {
-    visitLiveWorldProps,
-    addWorldPropToState,
-    removeWorldPropFromState,
-    findLiveWorldProp,
-    addWorldPropsToState,
-    findWorldPropAtInView,
-    queryEntitiesInAabbStrict,
-} from "../../GameState/EntityRegistry.js";
-import {
-    isKinematicallyActive,
-    applyKineticConstraintsFromSnapshot,
-    clearKineticConstraints,
-    collectKineticConstraintsSnapshot,
-    getKineticRollConfig,
-    clearGroundRollDrive,
-    decelerateRoll,
-    steerRollToward,
-    snapMoveTargetToCellCenter,
-    addDistanceConstraint,
-    listKineticConstraints,
-    removeKineticConstraint,
-    getConnectedBodyIds,
-    wakeKineticBody,
-    distanceBetweenAnchors,
-    worldAnchorFromBody,
-    invalidateBroadphaseBounds,
-    kineticDynamicSlab,
-    KINETIC_PAIR_TIER,
-    IDENTITY_ROLL_QUAT,
-    massFromBody,
-    resolveBodyRadius,
-    PolygonShape,
-    physicsSettings,
-    entityContainedInAabb,
-} from "../Physics/physics.js";
-import {
-    appendActionRow,
-    appendEditorHint,
-    appendSelectField,
-    appendColorField,
-    appendNumberField,
-    appendInstanceList,
-    appendCheckboxField,
-    appendEditorSubhead,
-    appendTranslateFields,
-} from "../UI/paramFields.js";
+import { BeltPacked, FloorBelt, migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, computeCircleAimLineSegment, estimateRollingTravelDistance, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel } from "../Spatial/spatial.js";
+import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView, queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
+import { isKinematicallyActive, applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, worldAnchorFromBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
+import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
-import {
-    acquireWorldProp,
-    applyPropBoxFootprint,
-    setCirclePropRadius,
-    getCirclePropRadius,
-    setPolygonPropBoundingRadius,
-    getPolygonPropBoundingRadius,
-    propFootprintHalfExtents,
-    applyCrossPinwheelFootprint,
-    formatPropTypeLabel,
-    formatSandboxSpawnLabel,
-} from "../Props/props.js";
+import { acquireWorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
-import {
-    sampleFlowDirectionInto,
-    buildSabPathOverlayFromProgress,
-    buildSabAbstractPathOverlay,
-    HpaNavSession,
-    snapNavGoalWorldInto,
-    navHasPath,
-    REPLAN_PRIORITY_TARGET,
-    REPLAN_TARGET_MOVE_PX,
-    obstacleReplanAllowed,
-    replanPriorityFor,
-    agentPose,
-} from "../Navigation/navigation.js";
-import {
-    appendOverlayWireLink,
-    overlayAimSegment,
-    overlayCircleFillStroke,
-    overlayCircleStroke,
-    overlaySegment,
-    overlayCachedSelectionRing,
-    overlayGridCellHighlight,
-    overlayAabb,
-    overlayCachedCircleFillStroke,
-    queryPropsInView,
-    FloorBeltDrawCache,
-    appendPathOverlayCommands,
-} from "../Render/render.js";
-import {
-    serializeVisualOverride,
-    stampPropVisualOverride,
-    sampleAssetBaseTintHex,
-    setPropVisualBrightness,
-    setPropVisualTint,
-    clearPropVisualOverride,
-    getPropVisualBrightness,
-    resolvePickerHex,
-} from "../Color/visualOverride.js";
+import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, obstacleReplanAllowed, replanPriorityFor, agentPose } from "../Navigation/navigation.js";
+import { appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment, overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, overlayCachedCircleFillStroke, queryPropsInView, FloorBeltDrawCache, appendPathOverlayCommands } from "../Render/render.js";
+import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
@@ -219,15 +98,7 @@ export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
 export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID]);
-export const SANDBOX_BEHAVIOR_LABELS = {
-    dragLaunch: "Drag launch",
-    dragLaunchWait: "Drag launch (wait for rest)",
-    dragLaunchFacing: "Drag launch (yaw to shot)",
-    spawner: "Spawner",
-    [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)",
-    [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)",
-    [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)",
-};
+export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", dragLaunchWait: "Drag launch (wait for rest)", dragLaunchFacing: "Drag launch (yaw to shot)", spawner: "Spawner", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
@@ -654,13 +525,7 @@ function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, gene
 function buildEraseEditor(panel, state, onPreviewChange, onGenerated, eraseWalls) {
     mapGenBoundInputs.length = 0;
     const { eraseConfig } = state.editor;
-    appendMapGenBoundsControls(
-        panel,
-        eraseConfig,
-        state,
-        "Red overlay on map overview — drag inside to move, drag edges/rings to resize. Clears voxel walls and rail edges in bounds.",
-        onPreviewChange,
-    );
+    appendMapGenBoundsControls(panel, eraseConfig, state, "Red overlay on map overview — drag inside to move, drag edges/rings to resize. Clears voxel walls and rail edges in bounds.", onPreviewChange);
     appendActionRow(
         panel,
         [
@@ -959,15 +824,7 @@ const PLACEABLE = {
                 const grid = state.obstacleGrid;
                 const idx = grid.worldToIdx(worldX, worldY);
                 if (idx === -1) return false;
-                const chain = spawnLinkedBallChain(state, idx, {
-                    headBallType: "snake",
-                    ballType: "ball",
-                    segmentCount: ctx.spawnSnakeLength,
-                    segmentRadius: ctx.spawnBallRadius,
-                    faction: ctx.spawnFaction,
-                    spacing: ctx.spawnBallRadius * 2,
-                    linkSlack: 1.0,
-                });
+                const chain = spawnLinkedBallChain(state, idx, { headBallType: "snake", ballType: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, faction: ctx.spawnFaction, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0 });
                 if (chain && chain.leader) {
                     const visualOverride = ctx.resolveSpawnVisualOverride(propCatalog["snake"]);
                     if (visualOverride) {
@@ -1031,8 +888,7 @@ const PLACEABLE = {
         },
         listSceneItems({ placement, listPlacedFloorBelts }) {
             const items = [];
-            for (const entry of listPlacedFloorBelts())
-                items.push(sceneItem(placement.placementSeq(placement.floorPlacementKey(entry.idx), 2e9 + entry.idx), entry.label, { kind: "floor", idx: entry.idx }, "floor"));
+            for (const entry of listPlacedFloorBelts()) items.push(sceneItem(placement.placementSeq(placement.floorPlacementKey(entry.idx), 2e9 + entry.idx), entry.label, { kind: "floor", idx: entry.idx }, "floor"));
             return items;
         },
     },
@@ -1053,8 +909,7 @@ const PLACEABLE = {
         },
         listSceneItems({ placement }) {
             const items = [];
-            for (const entry of placement.listTrackedVoxelWalls())
-                items.push(sceneItem(placement.placementSeq(placement.voxelPlacementKey(entry.idx), 3e9 + entry.idx), entry.label, { kind: "voxel", idx: entry.idx }, "wall:voxel"));
+            for (const entry of placement.listTrackedVoxelWalls()) items.push(sceneItem(placement.placementSeq(placement.voxelPlacementKey(entry.idx), 3e9 + entry.idx), entry.label, { kind: "voxel", idx: entry.idx }, "wall:voxel"));
             return items;
         },
     },
@@ -1068,15 +923,7 @@ const PLACEABLE = {
         },
         listSceneItems({ placement }) {
             const items = [];
-            for (const entry of placement.listTrackedRailWalls())
-                items.push(
-                    sceneItem(
-                        placement.placementSeq(placement.edgePlacementKey("rail", entry.idx, entry.side), 4e9 + entry.idx + entry.side * 1e8),
-                        entry.label,
-                        { kind: "rail", idx: entry.idx, side: entry.side },
-                        "wall:rail",
-                    ),
-                );
+            for (const entry of placement.listTrackedRailWalls()) items.push(sceneItem(placement.placementSeq(placement.edgePlacementKey("rail", entry.idx, entry.side), 4e9 + entry.idx + entry.side * 1e8), entry.label, { kind: "rail", idx: entry.idx, side: entry.side }, "wall:rail"));
             return items;
         },
     },
@@ -1146,19 +993,7 @@ export function collectSandboxSceneSnapshot(state) {
         if (!isCanonicalEdgeRepresentativeIdx(grid, idx, side)) continue;
         railWalls.push({ idx, side, heightLevel, thicknessLevel });
     }
-    return {
-        schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION,
-        cellSize: grid.cellSize,
-        origin: { minX: grid.minX, minY: grid.minY },
-        cols: grid.cols,
-        rows: grid.rows,
-        voxels,
-        railWalls,
-        floorBelts: FloorBelt.listPlacedForSnapshot(grid),
-        props,
-        kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),
-        chainHeadProp,
-    };
+    return { schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION, cellSize: grid.cellSize, origin: { minX: grid.minX, minY: grid.minY }, cols: grid.cols, rows: grid.rows, voxels, railWalls, floorBelts: FloorBelt.listPlacedForSnapshot(grid), props, kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex), chainHeadProp };
 }
 /** @param {unknown} raw */
 export function parseSandboxSceneSnapshot(raw) {
@@ -1324,21 +1159,7 @@ export function createSandboxSession(state) {
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
         return visualOverride;
     };
-    const spawnCtx = (options = {}) => ({
-        spawnPropId: spawnPropIdFromPalette(),
-        spawnFaction,
-        resolveSpawnPropTypeId: spawnPropIdFromPalette,
-        resolveSpawnVisualOverride,
-        spawnBallRadius: spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]),
-        spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
-        spawnCrossLength,
-        spawnCrossThickness,
-        spawnSnakeLength,
-        pickSelection,
-        notifyUi,
-        placement,
-        selectSpawned: options.selectSpawned !== false,
-    });
+    const spawnCtx = (options = {}) => ({ spawnPropId: spawnPropIdFromPalette(), spawnFaction, resolveSpawnPropTypeId: spawnPropIdFromPalette, resolveSpawnVisualOverride, spawnBallRadius: spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]), spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 }, spawnCrossLength, spawnCrossThickness, spawnSnakeLength, pickSelection, notifyUi, placement, selectSpawned: options.selectSpawned !== false });
     const spawnAt = (worldX, worldY, options = {}) => {
         const asset = propCatalog[spawnPropIdFromPalette()];
         if (!asset) return false;
@@ -1823,24 +1644,7 @@ function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     else if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
 }
 export function spawnAgentChain(state, anchorIdx, spec) {
-    const {
-        headPropId,
-        bodyPropId,
-        leaderPropId,
-        leaderIndex = 0,
-        segmentCount = 2,
-        faction,
-        exportType = null,
-        linkSlack = 1.0,
-        segmentRadius = null,
-        growDirX = -1,
-        growDirY = 0,
-        spacing = null,
-        headScaleFn = null,
-        onSegmentSpawned = null,
-        spawnGroupId = null,
-        resolvePropId = null,
-    } = spec;
+    const { headPropId, bodyPropId, leaderPropId, leaderIndex = 0, segmentCount = 2, faction, exportType = null, linkSlack = 1.0, segmentRadius = null, growDirX = -1, growDirY = 0, spacing = null, headScaleFn = null, onSegmentSpawned = null, spawnGroupId = null, resolvePropId = null } = spec;
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
     const anchorX = grid.gridCenterXByIdx(anchorIdx);
@@ -1883,20 +1687,7 @@ function segmentOffset(index, spacing, growDirX, growDirY) {
     return { x: index * spacing * growDirX, y: index * spacing * growDirY };
 }
 export function spawnLinkedBallChain(state, anchorIdx, options) {
-    return spawnAgentChain(state, anchorIdx, {
-        leaderIndex: 0,
-        headPropId: options.headBallType ?? options.ballType,
-        bodyPropId: options.ballType,
-        segmentCount: options.segmentCount,
-        faction: options.faction,
-        exportType: options.exportType,
-        linkSlack: options.linkSlack,
-        segmentRadius: options.segmentRadius,
-        growDirX: options.growDirX ?? -1,
-        growDirY: options.growDirY ?? 0,
-        spacing: options.spacing,
-        spawnGroupId: options.spawnGroupId,
-    });
+    return spawnAgentChain(state, anchorIdx, { leaderIndex: 0, headPropId: options.headBallType ?? options.ballType, bodyPropId: options.ballType, segmentCount: options.segmentCount, faction: options.faction, exportType: options.exportType, linkSlack: options.linkSlack, segmentRadius: options.segmentRadius, growDirX: options.growDirX ?? -1, growDirY: options.growDirY ?? 0, spacing: options.spacing, spawnGroupId: options.spawnGroupId });
 }
 export function growChainSegment(state, tailProp, options) {
     const spacing = options.spacing;
@@ -1991,16 +1782,7 @@ export function getDragLaunchPreview(aim, config) {
     const startY = aim.startY ?? aim.anchorY;
     const dx = aim.pullX - startX;
     const dy = aim.pullY - startY;
-    return {
-        anchorX: aim.anchorX,
-        anchorY: aim.anchorY,
-        pullX: aim.anchorX + dx,
-        pullY: aim.anchorY + dy,
-        nx: physics.shotNx,
-        ny: physics.shotNy,
-        power: computeLaunchPower(physics.drag, config),
-        drag: physics.drag,
-    };
+    return { anchorX: aim.anchorX, anchorY: aim.anchorY, pullX: aim.anchorX + dx, pullY: aim.anchorY + dy, nx: physics.shotNx, ny: physics.shotNy, power: computeLaunchPower(physics.drag, config), drag: physics.drag };
 }
 /**
  * @param {DragLaunchAim | null | undefined} aim
@@ -2016,8 +1798,7 @@ export function releaseDragLaunch(aim, config) {
     return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
 }
 function dragLaunchMaxRayDist(obstacleGrid) {
-    if (obstacleGrid?.minX != null) 
-        return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
+    if (obstacleGrid?.minX != null) return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
     return 2400;
 }
 /**
@@ -2037,15 +1818,7 @@ export function buildDragLaunchAimLineContext(prop, state) {
 export function getDragLaunchAimLine(preview, aimLineContext) {
     if (!preview || preview.power <= 0 || !aimLineContext) return null;
     const travelDist = estimateRollingTravelDistance(preview.power, aimLineContext.prop?.strategy ?? {});
-    return computeCircleAimLineSegment({
-        originX: preview.anchorX,
-        originY: preview.anchorY,
-        radius: aimLineContext.radius,
-        nx: preview.nx,
-        ny: preview.ny,
-        maxTravelDist: travelDist,
-        maxRayDist: aimLineContext.maxRayDist,
-    });
+    return computeCircleAimLineSegment({ originX: preview.anchorX, originY: preview.anchorY, radius: aimLineContext.radius, nx: preview.nx, ny: preview.ny, maxTravelDist: travelDist, maxRayDist: aimLineContext.maxRayDist });
 }
 /** @param {object} body @param {number} nx @param {number} ny @param {number} power */
 export function applyDragLaunchVelocity(body, nx, ny, power) {
@@ -2119,11 +1892,7 @@ export function dragLaunchAimLineContextForState(state) {
     return (prop) => buildDragLaunchAimLineContext(prop, state);
 }
 function buildDragLaunchBehavior(state, entry) {
-    const spec = {
-        id: entry.id,
-        getConfig: entry.getConfig ? entry.getConfig(state) : dragLaunchConfigForProp,
-        buildAimLineContext: entry.buildAimLineContext ? entry.buildAimLineContext(state) : dragLaunchAimLineContextForState(state),
-    };
+    const spec = { id: entry.id, getConfig: entry.getConfig ? entry.getConfig(state) : dragLaunchConfigForProp, buildAimLineContext: entry.buildAimLineContext ? entry.buildAimLineContext(state) : dragLaunchAimLineContextForState(state) };
     if (entry.canStart) spec.canStart = entry.canStart(state);
     if (entry.onAim) spec.onAim = entry.onAim;
     if (entry.onLaunch) spec.onLaunch = entry.onLaunch(state);
@@ -2327,8 +2096,7 @@ export function sandboxReplanAllowed(reason, isVisible, stuckFrames, stuckReplan
 function applyGroundNavSandboxReplan(nav, prop, targetX, targetY, state, ctx) {
     let sandboxReason = sandboxReplanReason(nav.navState, nav.pendingTargetReplan, ctx.inFlight, targetX, targetY);
     if (sandboxReason === "targetMoved" && !nav.softReplanAllowed(ctx.stuckFrames, ctx.stuckReplanFrames)) sandboxReason = null;
-    if (sandboxReason && sandboxReplanAllowed(sandboxReason, ctx.isVisible, ctx.stuckFrames, ctx.stuckReplanFrames))
-        return nav.requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, ctx.isVisible), sandboxReason);
+    if (sandboxReason && sandboxReplanAllowed(sandboxReason, ctx.isVisible, ctx.stuckFrames, ctx.stuckReplanFrames)) return nav.requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, ctx.isVisible), sandboxReason);
     return null;
 }
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
@@ -2617,16 +2385,7 @@ const HPA_GROUND_NAV_CONFIG = {
             HPA_GROUND_NAV_CONFIG.clearRunTarget(state, run);
             return;
         }
-        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
-            prop,
-            targetWorld: run.targetWorld,
-            nav: run.hpaNav,
-            beltWasOnBelt: run.wasOnBelt,
-            beltHandoffCooldown: run.beltHandoffCooldown,
-            state,
-            dtMs,
-            pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
-        });
+        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({ prop, targetWorld: run.targetWorld, nav: run.hpaNav, beltWasOnBelt: run.wasOnBelt, beltHandoffCooldown: run.beltHandoffCooldown, state, dtMs, pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius) });
         run.wasOnBelt = beltWasOnBelt;
         if (!steering) {
             if (beltWasOnBelt) clearGroundRollDrive(prop);
@@ -2666,8 +2425,7 @@ const HPA_GROUND_NAV_CONFIG = {
             };
         const nav = run.hpaNav.navState;
         const progressIdx = nav.pathProgressIdx;
-        const trace =
-            nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid) : { pathNodes: [] };
+        const trace = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid) : { pathNodes: [] };
         const abstract = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabAbstractPathOverlay(state.nav.worker, nav.pathSlot, nav.pathLen) : null;
         return { mode: "hpa", pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y, abstractPath: abstract?.abstractPath, pathPlanner: abstract?.pathPlanner };
     },
@@ -2716,12 +2474,7 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
     return actions;
 }
 export function createDefaultSandboxBehaviors(state) {
-    return [
-        ...createDragLaunchBehaviors(state),
-        createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG),
-        createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG),
-        createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG),
-    ];
+    return [...createDragLaunchBehaviors(state), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
 }
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
 export function findSandboxCameraTargetWorldProp(state, registry) {
@@ -2884,26 +2637,12 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
     if (selectedFloorIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedFloorIdx);
         const y = grid.gridCenterYByIdx(selectedFloorIdx);
-        out.push(
-            overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "floor", {
-                fill: "rgba(120, 200, 255, 0.1)",
-                stroke: "rgba(120, 200, 255, 0.75)",
-                lineWidth: 1,
-                dash: [4, 3],
-            }),
-        );
+        out.push(overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "floor", { fill: "rgba(120, 200, 255, 0.1)", stroke: "rgba(120, 200, 255, 0.75)", lineWidth: 1, dash: [4, 3] }));
     }
     if (selectedVoxelIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedVoxelIdx);
         const y = grid.gridCenterYByIdx(selectedVoxelIdx);
-        out.push(
-            overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "voxel", {
-                fill: "rgba(255, 152, 0, 0.12)",
-                stroke: "rgba(255, 152, 0, 0.85)",
-                lineWidth: 1,
-                dash: [4, 3],
-            }),
-        );
+        out.push(overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "voxel", { fill: "rgba(255, 152, 0, 0.12)", stroke: "rgba(255, 152, 0, 0.85)", lineWidth: 1, dash: [4, 3] }));
     }
     if (selectedRailEdge && grid) appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
 }
@@ -3024,11 +2763,7 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
         },
         onBoxSelect(bounds) {
             const filter = session.getSelectionTagFilter();
-            const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, {
-                kinds: ["worldProp"],
-                hitTest: "circle",
-                match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter),
-            });
+            const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
             selectPropIds(props.map((prop) => prop.id));
         },
     });
@@ -3063,10 +2798,7 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             if (e.button !== 0) return false;
             const now = e.timeStamp || Date.now();
             const hasClient = e.clientX !== undefined && e.clientY !== undefined;
-            const isDoubleTap =
-                e.detail === 2 ||
-                (now - lastClickTime < 300 &&
-                    (hasClient ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0 : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
+            const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && (hasClient ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0 : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
             let targetBoidId = lastSelectedBoidId;
             if (state.editor.lockSelection) {
                 const boid = state.worldProps.find((p) => p.type === "boid_triangle");
@@ -3177,14 +2909,7 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
             appendPathOverlayCommands(commands, overlay, state.obstacleGrid, visual);
         }
     }
-    appendSelectionOverlayCommands(commands, {
-        selectedProps: visibleSelectedProps,
-        showRings: state.editor.showSelectionRings,
-        selectedFloorIdx: sel?.kind === "floor" ? sel.idx : null,
-        selectedVoxelIdx: sel?.kind === "voxel" ? sel.idx : null,
-        selectedRailEdge: sel?.kind === "rail" ? { idx: sel.idx, side: sel.side } : null,
-        grid: state.obstacleGrid,
-    });
+    appendSelectionOverlayCommands(commands, { selectedProps: visibleSelectedProps, showRings: state.editor.showSelectionRings, selectedFloorIdx: sel?.kind === "floor" ? sel.idx : null, selectedVoxelIdx: sel?.kind === "voxel" ? sel.idx : null, selectedRailEdge: sel?.kind === "rail" ? { idx: sel.idx, side: sel.side } : null, grid: state.obstacleGrid });
     appendMarqueeOverlayCommands(commands, { marqueeRect });
     state.appLaunch?.session?.appendOverlayCommands?.(commands, state, sel);
     const behavior = resolveBehavior();
@@ -3603,8 +3328,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
     if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isBlockFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
-    if (isChainLinkBall(selectedProp))
-        appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
+    if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
     appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
         controller.setSelectedBehaviorId(value);
     });
@@ -3867,14 +3591,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
     const deletePointerTool = createSandboxDeletePointerTool(state, session);
-    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, {
-        stampPropBehavior,
-        blocksPlacement,
-        resolveBehavior,
-        resolveGroundMove,
-        gestures,
-        issueGroundNavToSelected,
-    });
+    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected });
     const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
     const resetBehaviors = () => {
@@ -3975,13 +3692,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
-            unbindPointers = bindCanvasPointers(getCanvas(), {
-                pointerdown: onPointerDown,
-                pointermove: onPointerMove,
-                pointerup: onPointerUp,
-                pointercancel: onPointerUp,
-                pointerleave: onPointerLeave,
-            });
+            unbindPointers = bindCanvasPointers(getCanvas(), { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp, pointerleave: onPointerLeave });
             unbindContextMenu = bindCanvasContextMenu(getCanvas(), (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -4030,17 +3741,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         collectOverlayCommands() {
             const showPlacePreview = placePreviewWorld && !canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode();
-            return buildSandboxOverlayCommands({
-                state,
-                session,
-                spatialFrame: state.spatialFrame,
-                placePreviewWorld: showPlacePreview ? placePreviewWorld : null,
-                marqueeRect: marqueeTool.getMarqueeRect(),
-                behaviorById,
-                getPropBehaviorId,
-                resolveBehavior,
-                selectedProp: session.getSelectedProp(),
-            });
+            return buildSandboxOverlayCommands({ state, session, spatialFrame: state.spatialFrame, placePreviewWorld: showPlacePreview ? placePreviewWorld : null, marqueeRect: marqueeTool.getMarqueeRect(), behaviorById, getPropBehaviorId, resolveBehavior, selectedProp: session.getSelectedProp() });
         },
         tick(dtMs) {
             session.pruneSelection();
