@@ -10,8 +10,8 @@ import {
     recomputeBlockedFromGridFill,
 } from "../Pathfinding/navTopologySab.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
-import {  boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto  } from "../Spatial/spatial.js";
-import {  isNavTopologyReady  } from "../Spatial/spatial.js";
+import { boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto } from "../Spatial/spatial.js";
+import { isNavTopologyReady } from "../Spatial/spatial.js";
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
@@ -93,7 +93,7 @@ export class NavTopology {
         const arena = ensureLocalBakeArena(this.grid);
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
-        const simView = createNavSimView(frame, arena.gridFill, arena.floorKind, arena.floorFacing, arena.edgeSlots, this.grid.edgeStore.pool, arena.vertexPassability);
+        const simView = createNavSimView(frame, arena.gridFill, arena.floorKind, arena.floorFacing, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability);
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
@@ -115,7 +115,7 @@ export class NavTopology {
     static packSnapshot(grid, idx = null) {
         const arena = ensureLocalBakeArena(grid);
         packNavTopologyFromGrid(grid, arena, idx);
-        return { gridFill: arena.gridFill, floorKind: arena.floorKind, floorFacing: arena.floorFacing, edgeSlots: arena.edgeSlots, edgePool: grid.edgeStore.pool };
+        return { gridFill: arena.gridFill, floorKind: arena.floorKind, floorFacing: arena.floorFacing, edgeSlots: arena.edgeSlots, edgePool: grid.cellEdgePool };
     }
     _localArena() {
         return localBakeArenas.get(this.grid) ?? null;

@@ -3,8 +3,8 @@ import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
-import {  FloorBelt  } from "../Spatial/spatial.js";
-import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";;
+import { FloorBelt } from "../Spatial/spatial.js";
+import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
 import { unionCellBounds } from "../DataStructures/CellRect.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -20,7 +20,7 @@ import {
     setVoxelWallHeightAt,
     stampVoxelWallAt,
 } from "./gridWallEdit.js";
-import {  cellIsStaticWall, railWallEdgeAt  } from "../Spatial/spatial.js";
+import { cellIsStaticWall, railWallEdgeAt } from "../Spatial/spatial.js";
 import { createSandboxSelection } from "./sandboxSelection.js";
 import { selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";
 import { createSandboxPlacementOrder } from "./sandboxPlacementOrder.js";
@@ -85,12 +85,12 @@ export function createSandboxSession(state) {
         const placed = [];
         const size = grid.cols * grid.rows;
         for (let idx = 0; idx < size; idx++) {
-            if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
-            const kind = grid.floorStore.kind[idx];
+            if (!(grid.floorKind[idx] !== 0)) continue;
+            const kind = grid.floorKind[idx];
             const index = (counts.get(kind) ?? 0) + 1;
             counts.set(kind, index);
-            const facingLabel = FloorBelt.formatFacingLabel(grid.floorStore.facing[idx]);
-            placed.push({ idx, kind, facingIndex: grid.floorStore.facing[idx], label: `${FloorBelt.formatKindLabel(kind)} #${index} · ${facingLabel}` });
+            const facingLabel = FloorBelt.formatFacingLabel(grid.floorFacing[idx]);
+            placed.push({ idx, kind, facingIndex: grid.floorFacing[idx], label: `${FloorBelt.formatKindLabel(kind)} #${index} · ${facingLabel}` });
         }
         return placed;
     };
@@ -151,7 +151,7 @@ export function createSandboxSession(state) {
             const floorCell = selectionFloorCell(sel());
             if (!floorCell) return false;
             const idx = floorCell.idx;
-            if (!state.obstacleGrid.floorStore.hasAnyAtIdx(idx)) {
+            if (!(state.obstacleGrid.floorKind[idx] !== 0)) {
                 clearSelection();
                 return false;
             }
@@ -172,13 +172,13 @@ export function createSandboxSession(state) {
             const grid = state.obstacleGrid;
             const idx = floorCell.idx;
             if (idx === targetIdx) return true;
-            if (!grid.floorStore.hasAnyAtIdx(idx)) {
+            if (!(grid.floorKind[idx] !== 0)) {
                 clearSelection();
                 return false;
             }
             if (!FloorBelt.canStampAt(state, targetIdx, findGridAnchoredFloorPropAtIdx)) return false;
-            const kind = grid.floorStore.kind[idx];
-            const facingIndex = grid.floorStore.facing[idx];
+            const kind = grid.floorKind[idx];
+            const facingIndex = grid.floorFacing[idx];
             grid.clearFloorCell(idx);
             if (!grid.writeFloorCell(targetIdx, kind, facingIndex)) {
                 grid.writeFloorCell(idx, kind, facingIndex);
@@ -194,12 +194,12 @@ export function createSandboxSession(state) {
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
             const idx = floorCell.idx;
-            if (!grid.floorStore.hasAnyAtIdx(idx)) {
+            if (!(grid.floorKind[idx] !== 0)) {
                 clearSelection();
                 return false;
             }
-            if (grid.floorStore.kind[idx] === kind) return true;
-            applyFloorCellEdit(state, idx, kind, grid.floorStore.facing[idx]);
+            if (grid.floorKind[idx] === kind) return true;
+            applyFloorCellEdit(state, idx, kind, grid.floorFacing[idx]);
             notifyUi();
             return true;
         },
@@ -208,7 +208,7 @@ export function createSandboxSession(state) {
             if (!floorCell) return false;
             const grid = state.obstacleGrid;
             const idx = floorCell.idx;
-            if (grid.floorStore.hasAnyAtIdx(idx)) {
+            if (grid.floorKind[idx] !== 0) {
                 if (!clearFloorCellNavEdit(state, idx)) return false;
             } else if (!grid.clearFloorCell(idx)) return false;
             else FloorBelt.markZoneSubscriptionsDirty(state);

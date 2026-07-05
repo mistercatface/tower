@@ -1,6 +1,6 @@
-import {  FloorBelt  } from "../Spatial/spatial.js";
-import {  cellInRect  } from "../Spatial/spatial.js";
-import {  railWallEdgeAt  } from "../Spatial/spatial.js";
+import { FloorBelt } from "../Spatial/spatial.js";
+import { cellInRect } from "../Spatial/spatial.js";
+import { railWallEdgeAt } from "../Spatial/spatial.js";
 import { getRailWallInfo, getVoxelWallInfo } from "./gridWallEdit.js";
 export function selectionFloorCell(sel) {
     return sel?.kind === "floor" ? { idx: sel.idx } : null;
@@ -27,9 +27,9 @@ export function buildFloorBeltInspectorInfo(state, sel) {
     const col = idx % grid.cols;
     const row = (idx / grid.cols) | 0;
     if (!cellInRect(idx, grid.cols, grid.rows)) return null;
-    if (!grid.floorStore.hasAnyAtIdx(idx)) return null;
-    const kind = grid.floorStore.kind[idx];
-    const facingIndex = grid.floorStore.facing[idx];
+    if (!(grid.floorKind[idx] !== 0)) return null;
+    const kind = grid.floorKind[idx];
+    const facingIndex = grid.floorFacing[idx];
     return { col, row, kind, facingIndex, kindLabel: FloorBelt.formatKindLabel(kind), facingLabel: FloorBelt.formatFacingLabel(facingIndex) };
 }
 export function buildVoxelWallInspectorInfo(state, sel) {

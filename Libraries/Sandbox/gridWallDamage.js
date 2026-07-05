@@ -1,7 +1,7 @@
 import { computeWallBreakStrength } from "../Physics/physics.js";
-import {  cellInRect  } from "../Spatial/spatial.js";
-import {  isRailWallEdge  } from "../Spatial/spatial.js";
-import {  cellIsStaticWall, cellEdgeEndpointsIdx  } from "../Spatial/spatial.js";
+import { cellInRect } from "../Spatial/spatial.js";
+import { isRailWallEdge } from "../Spatial/spatial.js";
+import { cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
 import { createDeferredGridWallCommit } from "./gridWallEdit.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
@@ -10,7 +10,7 @@ import { applyPropBoxFootprint } from "../Props/props.js";
 import { fracturePropOnImpact, spawnFractureShards } from "../Props/props.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
-import {  resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId  } from "../Spatial/spatial.js";
+import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/spatial.js";
 /** @typedef {{ kind: "voxel", idx: number } | { kind: "rail", idx: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
@@ -23,13 +23,12 @@ export function resolveWallDamageTarget(grid, segment) {
     if (segment.isEdgeRail) {
         const side = segment.gridSide;
         if (side == null) return null;
-        const edge = grid.edgeStore.getIdx(idx, side);
+        const edge = grid.getCellEdge(idx, side);
         if (!isRailWallEdge(edge)) return null;
         return { kind: "rail", idx, side };
     }
     return null;
 }
-
 export function getGridWallDamageState(state) {
     return state.sandbox?.gridWallDamage ?? null;
 }

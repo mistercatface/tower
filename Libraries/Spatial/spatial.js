@@ -1,18 +1,63 @@
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "../Math/math.js";
-import { entityBroadphaseExtent, neighborQueryPadFor, maxNeighborQueryPad, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing } from "../Physics/physics.js";
-import { centerReachAabbInto, createAabb, minCornerAabbInto, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing } from "../Math/math.js";
+import {
+    entityBroadphaseExtent,
+    neighborQueryPadFor,
+    maxNeighborQueryPad,
+    circleLeadingPoint,
+    minDistanceSegmentToWall,
+    circleIntersectsSegment,
+    CircleShape,
+    PolygonShape,
+    satCheckCollision,
+    entityFacing,
+} from "../Physics/physics.js";
+import {
+    centerReachAabbInto,
+    createAabb,
+    minCornerAabbInto,
+    angleDelta,
+    radiusAtT,
+    scaleAtHeight,
+    closestPointOnLineSegment,
+    CARDINAL_FACING_STEPS,
+    centeredAabbInto,
+    padAabbInto,
+    lengthXY,
+    centerHalfExtentsAabbInto,
+    boxLocalFootprint,
+    convexFootprintHalfExtents,
+    vertCount,
+    stepCardinalFacing,
+} from "../Math/math.js";
+export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
+export const DEFAULT_FLOOR_BELT_FORCE = 500;
+export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
+    const diff = nIdx - idx;
+    if (diff === 1) return 1;
+    if (diff === -1) return 3;
+    if (diff === cols) return 2;
+    if (diff === -cols) return 0;
+    return -1;
+}
+export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
+    return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
+}
+export function gridSideFromCellToNeighbor(c, r, nc, nr) {
+    const dc = nc - c;
+    const dr = nr - r;
+    if (dc === 1 && dr === 0) return 1;
+    if (dc === -1 && dr === 0) return 3;
+    if (dc === 0 && dr === 1) return 2;
+    if (dc === 0 && dr === -1) return 0;
+    throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
+}
+/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 import { packEdgeCellKey, boundsToCellRect } from "../DataStructures/CellKey.js";
 import { emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
 import { invalidateGridLocalNavBake } from "../Navigation/NavTopology.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
-
 // --- MERGED FROM SpatialFrameCore.js ---
-
-
-
-
-
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const NEAR_QUERY_BOUNDS = createAabb();
 const EMPTY_WALL_CANDIDATES = [];
@@ -135,12 +180,7 @@ export class SpatialFrameCore {
         return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
 }
-
 // --- MERGED FROM gridCellTopology.js ---
-
-
-
-
 export function edgeNeighborIdx(idx, side, cols, rows) {
     if (side === 0) return idx >= cols ? idx - cols : -1;
     if (side === 1) return (idx + 1) % cols !== 0 ? idx + 1 : -1;
@@ -196,7 +236,7 @@ function edgeRailEmitOwner(grid, idx, side) {
 }
 export function railWallEdgeAt(grid, idx, side) {
     if (idx < 0 || idx >= grid.cols * grid.rows) return null;
-    return grid.edgeStore.getIdx(idx, side);
+    return grid.getCellEdge(idx, side);
 }
 export function railWallEdgeShouldEmit(grid, idx, side) {
     if (!railWallEdgeAt(grid, idx, side)) return false;
@@ -283,17 +323,14 @@ export function forEachCellEdge(grid, fn, { canonicalOnly = false, minCol, maxCo
             const cellIdx = r * grid.cols + c;
             for (let side = 0; side < 4; side++) {
                 if (canonicalOnly && !isCanonicalEdgeRepresentativeIdx(grid, cellIdx, side)) continue;
-                const edge = grid.edgeStore.getIdx(cellIdx, side);
+                const edge = grid.getCellEdge(cellIdx, side);
                 if (!edge) continue;
                 if (filter && !filter(edge)) continue;
                 if (fn(cellIdx, side, edge) === false) return;
             }
         }
 }
-
 // --- MERGED FROM GridCoords.js ---
-
-
 export function worldColAtOrigin(x, minX, cellSize) {
     return Math.floor((x - minX) / cellSize);
 }
@@ -430,15 +467,12 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
         for (let c = cMin; c <= cMax; c++) fn(rowOffset + c);
     }
 }
-
 // --- MERGED FROM RadialElevationProjection.js ---
 // Viewer-relative radial elevation projection (worldRenderMode: "radial").
 // Elevated points lean away from live viewport.x/y — not fixed 2:1 isometric.
 // Fixed isometric is a separate future mode; do not confuse with this module.
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
-
-
 export { radiusAtT, scaleAtHeight };
 export function resolveElevationAlpha(height, viewport) {
     const { cameraHeight, perspectiveStrength } = viewport;
@@ -566,9 +600,7 @@ export function pointOnFrustumInto(out, offset, projection, baseRadius, topRadiu
     out[offset] = centerX + Math.cos(angle) * radius;
     out[offset + 1] = centerY + Math.sin(angle) * radius;
 }
-
 // --- MERGED FROM shadowProjection.js ---
-
 const sScreen = { x: 0, y: 0 };
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
 export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {
@@ -602,9 +634,7 @@ export function projectWallShadowQuadScreenInto(out8, viewport, lx, ly, lightZ, 
     out8[7] = sScreen.y;
     return 4;
 }
-
 // --- MERGED FROM PathGeometry.js ---
-
 export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
     if (!path || path.length === 0) return { segmentIdx: 0, t: 0, closestX: x, closestY: y, dist: 0 };
     if (path.length === 1) {
@@ -637,13 +667,7 @@ export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
 export function projectOntoPath(x, y, path) {
     return projectOntoPathFrom(path, x, y, 0);
 }
-
 // --- MERGED FROM boundaryOccupancy.js ---
-
-
-
-
-
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
@@ -652,7 +676,7 @@ export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
         clearBoundaryPrimary(grid, idx, side, bumpRevision);
         return true;
     }
-    grid.edgeStore.writeMirrored(idx, side, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
+    grid.writeMirroredCellEdge(idx, side, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return true;
 }
@@ -660,8 +684,8 @@ export function clearBoundaryPrimary(grid, idx, side, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
-    if (!isRailWallEdge(grid.edgeStore.getIdx(idx, side))) return false;
-    grid.edgeStore.clearMirrored(idx, side);
+    if (!isRailWallEdge(grid.getCellEdge(idx, side))) return false;
+    grid.clearMirroredCellEdge(idx, side);
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return true;
 }
@@ -672,7 +696,7 @@ export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
     return changed;
 }
 export function boundaryBlocksStep(grid, idx, side) {
-    return isRailWallEdge(grid.edgeStore.getIdx(idx, side));
+    return isRailWallEdge(grid.getCellEdge(idx, side));
 }
 function beltBlocksStepFrom(grid, fromIdx, toIdx) {
     const cols = grid.cols;
@@ -797,11 +821,7 @@ export function diagonalStepOpen(cardinalOpen, vertexPassability, cols, rows, fr
     for (let i = 0; i < need.length; i++) if ((mask & need[i]) === 0) return false;
     return true;
 }
-
 // --- MERGED FROM CellEdgeStore.js ---
-
-
-
 export function createRailWallEdge(heightDelta, thicknessLevel) {
     return { heightDelta, thicknessLevel };
 }
@@ -822,196 +842,6 @@ export function cellEdgeSlotOffset(idx, side) {
     return (idx << 2) + side;
 }
 const EMPTY = -1;
-export class CellEdgeStore {
-    constructor() {
-        this.slots = new Int32Array(0);
-        this.pool = [];
-        this.free = [];
-        this.cols = 0;
-        this.rows = 0;
-    }
-    reset(cellCount, cols = 0, rows = 0) {
-        this.cols = cols;
-        this.rows = rows;
-        const expCellCount = cols > 0 && rows > 0 ? cols * rows : cellCount;
-        this.slots = new Int32Array(expCellCount * 4);
-        this.slots.fill(EMPTY);
-        this.pool.length = 0;
-        this.free.length = 0;
-    }
-    remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
-        this.cols = newCols;
-        this.rows = newRows;
-        const newSlots = new Int32Array(newCols * newRows * 4);
-        newSlots.fill(EMPTY);
-        const oldSize = oldCols * oldRows;
-        for (let idx = 0; idx < oldSize; idx++) {
-            const col = idx % oldCols;
-            const row = (idx / oldCols) | 0;
-            const nc = col + colOffset;
-            const nr = row + rowOffset;
-            if (nc >= 0 && nc < newCols && nr >= 0 && nr < newRows) {
-                const newIdx = nc + nr * newCols;
-                if (cellInRect(newIdx, newCols, newRows)) {
-                    for (let side = 0; side < 4; side++) newSlots[(newIdx << 2) + side] = oldSlots[(idx << 2) + side];
-                }
-            }
-        }
-        this.slots = newSlots;
-    }
-    getIdx(idx, side) {
-        const ref = this.slots[(idx << 2) + side];
-        if (ref === EMPTY) return null;
-        return this.pool[ref];
-    }
-    _alloc(edge) {
-        if (this.free.length) {
-            const ref = this.free.pop();
-            const pooled = this.pool[ref];
-            pooled.heightDelta = edge.heightDelta;
-            pooled.thicknessLevel = edge.thicknessLevel;
-            return ref;
-        }
-        const ref = this.pool.length;
-        this.pool.push(edge);
-        return ref;
-    }
-    _free(ref) {
-        this.free.push(ref);
-    }
-    writeMirrored(idx, side, edge) {
-        const cols = this.cols;
-        const rows = this.rows;
-        if (idx < 0 || idx >= cols * rows) return;
-        if (!edge) {
-            this.clearMirrored(idx, side);
-            return;
-        }
-        this.clearMirrored(idx, side);
-        const ref = this._alloc(edge);
-        this.slots[(idx << 2) + side] = ref;
-        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
-        if (nIdx !== -1) this.slots[(nIdx << 2) + edgeMirrorSide(side)] = ref;
-    }
-    clearMirrored(idx, side) {
-        const cols = this.cols;
-        const rows = this.rows;
-        if (idx < 0 || idx >= cols * rows) return;
-        const offset = (idx << 2) + side;
-        const ref = this.slots[offset];
-        if (ref === EMPTY) return;
-        this.slots[offset] = EMPTY;
-        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
-        if (nIdx !== -1) this.slots[(nIdx << 2) + edgeMirrorSide(side)] = EMPTY;
-        this._free(ref);
-    }
-    forEachInAabb(grid, aabb, fn) {
-        forEachObstacleGridCellInAabb(grid, aabb, (idx) => {
-            for (let side = 0; side < 4; side++) {
-                const edge = this.getIdx(idx, side);
-                if (edge) fn(side, idx, edge);
-            }
-        });
-    }
-    collectTopZLevels(grid) {
-        const seen = new Set();
-        const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++)
-            for (let side = 0; side < 4; side++) {
-                const ref = this.slots[(idx << 2) + side];
-                if (ref === EMPTY) continue;
-                const edge = this.pool[ref];
-                seen.add(railWallHeightPx(edge, grid.cellSize, neighborFillLevel(grid, idx, side)));
-            }
-        const out = [...seen];
-        out.sort((a, b) => a - b);
-        return out;
-    }
-    hasAnyAtIdx(idx) {
-        const base = idx << 2;
-        return this.slots[base] !== EMPTY || this.slots[base + 1] !== EMPTY || this.slots[base + 2] !== EMPTY || this.slots[base + 3] !== EMPTY;
-    }
-}
-export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
-    return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
-}
-
-// --- MERGED FROM FloorCell.js ---
-
-
-
-
-
-/** Floor occupancy kinds — walkable cell overlays (belts, pads); not voxelBlock or edgeStore. */
-export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
-const DEFAULT_FLOOR_BELT_FORCE = 500;
-/** Structure-of-arrays store for floor occupancy (belt kind + cardinal facing) per cell. */
-export class FloorCellStore {
-    constructor() {
-        this.kind = new Uint8Array(0);
-        this.facing = new Uint8Array(0);
-    }
-    reset(cellCount) {
-        this.kind = new Uint8Array(cellCount);
-        this.facing = new Uint8Array(cellCount);
-    }
-    remap(oldKind, oldFacing, oldCols, oldRows, colOffset, rowOffset, newCols, newRows) {
-        const newKind = new Uint8Array(newCols * newRows);
-        const newFacing = new Uint8Array(newCols * newRows);
-        const oldSize = oldCols * oldRows;
-        for (let idx = 0; idx < oldSize; idx++) {
-            if (oldKind[idx] === FLOOR_CELL_KIND.None) continue;
-            const row = (idx / oldCols) | 0;
-            const col = idx - row * oldCols;
-            const nc = col + colOffset;
-            const nr = row + rowOffset;
-            if (nc >= 0 && nc < newCols && nr >= 0 && nr < newRows) {
-                const newIdx = nc + nr * newCols;
-                if (cellInRect(newIdx, newCols, newRows)) {
-                    newKind[newIdx] = oldKind[idx];
-                    newFacing[newIdx] = oldFacing[idx];
-                }
-            }
-        }
-        this.kind = newKind;
-        this.facing = newFacing;
-    }
-    hasAnyAtIdx(idx) {
-        return this.kind[idx] !== FLOOR_CELL_KIND.None;
-    }
-    setAtIdx(idx, kind, facingIndex) {
-        this.kind[idx] = kind;
-        this.facing[idx] = facingIndex;
-    }
-    clearAtIdx(idx) {
-        this.kind[idx] = FLOOR_CELL_KIND.None;
-        this.facing[idx] = 0;
-    }
-    hasAny() {
-        const size = this.kind.length;
-        for (let idx = 0; idx < size; idx++) if (this.kind[idx] !== FLOOR_CELL_KIND.None) return true;
-        return false;
-    }
-}
-/** Neighbor cell side index 0=N,1=E,2=S,3=W from `(c,r)` toward `(nc,nr)`. */
-export function gridSideFromCellToNeighbor(c, r, nc, nr) {
-    const dc = nc - c;
-    const dr = nr - r;
-    if (dc === 1 && dr === 0) return 1;
-    if (dc === -1 && dr === 0) return 3;
-    if (dc === 0 && dr === 1) return 2;
-    if (dc === 0 && dr === -1) return 0;
-    throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
-}
-/** Neighbor cell side index 0=N,1=E,2=S,3=W from `idx` toward `nIdx`. */
-export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {
-    const diff = nIdx - idx;
-    if (diff === 1) return 1;
-    if (diff === -1) return 3;
-    if (diff === cols) return 2;
-    if (diff === -cols) return 0;
-    return -1;
-}
 export class FloorBelt {
     static get KIND() {
         return FLOOR_CELL_KIND;
@@ -1067,13 +897,13 @@ export class FloorBelt {
     }
     static getEntryExitAtIdx(grid, idx) {
         if (idx < 0 || idx >= grid.cols * grid.rows) return null;
-        const kind = grid.floorStore.kind[idx];
+        const kind = grid.floorKind[idx];
         if (!FloorBelt.isBelt(kind)) return null;
-        return FloorBelt.getEntryExitSides(kind, grid.floorStore.facing[idx]);
+        return FloorBelt.getEntryExitSides(kind, grid.floorFacing[idx]);
     }
     static isBeltAtIdx(grid, idx) {
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
-        return grid.floorStore.hasAnyAtIdx(idx);
+        return grid.floorKind[idx] !== 0;
     }
     static isEntityOnBelt(grid, x, y) {
         const col = grid.worldCol(x);
@@ -1087,15 +917,15 @@ export class FloorBelt {
         if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return -1;
         const idx = col + row * grid.cols;
         if (!cellInRect(idx, grid.cols, grid.rows)) return -1;
-        if (grid.floorStore.hasAnyAtIdx(idx)) return idx;
+        if (grid.floorKind[idx] !== 0) return idx;
         return -1;
     }
     static rotateOccupantAt(state, occupant, steps = 1, onCommit = null) {
         const grid = state.obstacleGrid;
         const idx = typeof occupant === "number" ? occupant : occupant.col + occupant.row * grid.cols;
-        if (!grid.floorStore.hasAnyAtIdx(idx)) return false;
-        const beltKind = grid.floorStore.kind[idx];
-        const facingIndex = (((grid.floorStore.facing[idx] + steps) % 4) + 4) % 4;
+        if (!(grid.floorKind[idx] !== 0)) return false;
+        const beltKind = grid.floorKind[idx];
+        const facingIndex = (((grid.floorFacing[idx] + steps) % 4) + 4) % 4;
         grid.writeFloorCell(idx, beltKind, facingIndex);
         if (onCommit) onCommit(state, idx);
         return true;
@@ -1120,8 +950,8 @@ export class FloorBelt {
         const size = grid.cols * grid.rows;
         const cellSize = grid.cellSize;
         for (let idx = 0; idx < size; idx++) {
-            if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
-            items.push({ idx, kind: grid.floorStore.kind[idx], facingIndex: grid.floorStore.facing[idx] });
+            if (!(grid.floorKind[idx] !== 0)) continue;
+            items.push({ idx, kind: grid.floorKind[idx], facingIndex: grid.floorFacing[idx] });
         }
         return items;
     }
@@ -1136,11 +966,12 @@ export class FloorBelt {
             if (!FloorBelt.isBelt(kind)) throw new Error(`Invalid floor belt kind: ${kind}`);
             const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
             if (idx < 0 || idx >= grid.cols * grid.rows) continue;
-            const prevKind = grid.floorStore.kind[idx];
-            const prevFacing = grid.floorStore.facing[idx];
+            const prevKind = grid.floorKind[idx];
+            const prevFacing = grid.floorFacing[idx];
             const facing = ((facingIndex % 4) + 4) % 4;
             if (prevKind !== kind || prevFacing !== facing) floorNavChanged = true;
-            grid.floorStore.setAtIdx(idx, kind, facing);
+            grid.floorKind[idx] = kind;
+            grid.floorFacing[idx] = facing;
             growCellBoundsIdx(bounds, idx, grid.cols);
         }
         if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
@@ -1156,7 +987,7 @@ export class FloorBelt {
         const cells = new Set();
         if (!grid.cols) return { cells };
         const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++) if (grid.floorStore.hasAnyAtIdx(idx)) cells.add(idx);
+        for (let idx = 0; idx < size; idx++) if (grid.floorKind[idx] !== 0) cells.add(idx);
         return { cells };
     }
     static ensureZoneSubscriptions(state) {
@@ -1188,7 +1019,7 @@ export class FloorBelt {
     }
     static tickOccupancy(state, spatialFrame, dt, applyAcceleration = null) {
         const grid = state.obstacleGrid;
-        if (!grid.floorStore.hasAny()) return;
+        if (!grid.floorKind.some((k) => k !== 0)) return;
         const kineticBodies = spatialFrame._kineticBodies;
         if (!kineticBodies?.length) return;
         const dtSec = dt / 1000;
@@ -1200,9 +1031,9 @@ export class FloorBelt {
             if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
             const idx = col + row * grid.cols;
             if (!cellInRect(idx, grid.cols, grid.rows)) continue;
-            if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
-            const kind = grid.floorStore.kind[idx];
-            const facingIndex = grid.floorStore.facing[idx];
+            if (!(grid.floorKind[idx] !== 0)) continue;
+            const kind = grid.floorKind[idx];
+            const facingIndex = grid.floorFacing[idx];
             const cx = grid.gridCenterXByIdx(idx);
             const cy = grid.gridCenterYByIdx(idx);
             let ax = 0,
@@ -1259,7 +1090,6 @@ export class FloorBelt {
         }
     }
 }
-
 // --- MERGED FROM gridNavEpoch.js ---
 /**
  * Nav invalidation spine
@@ -1321,7 +1151,6 @@ export function bumpFloorOccupancyStampDrawRevision(grid) {
 export function bumpSurfaceMaterialRevision(grid) {
     grid.surfaceMaterialRevision = ((grid.surfaceMaterialRevision ?? 0) + 1) | 0;
 }
-
 // --- MERGED FROM GridUtils.js ---
 /** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: row * grid.cols + col. */
 /** @typedef {number} LayoutCellIdx Dense index within a {@link CellIndexLayout} rect (local to origin/stride). */
@@ -1375,7 +1204,6 @@ export function gridCellLayout(grid) {
 export function cellInRect(idx, cols, rows) {
     return idx >= 0 && idx < cols * rows;
 }
-
 const GRID_SIDE_NEIGHBOR_LABELS = ["North neighbor", "East neighbor", "South neighbor", "West neighbor"];
 /** Outward unit vector for grid side 0=N, 1=E, 2=S, 3=W. */
 export function gridSideOutwardVector(side) {
@@ -1398,7 +1226,6 @@ const GRID_EDGE_SIDE_FACING = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
 export function gridEdgeSideFacing(side) {
     return GRID_EDGE_SIDE_FACING[side];
 }
-
 export function forEachCardinalNeighbor(col, row, cols, rows, fn) {
     for (const { dc, dr } of CARDINAL_OFFSETS) {
         const nc = col + dc;
@@ -1448,17 +1275,16 @@ export function forEachCardinalNeighborIdx(idx, cols, rows, fn) {
     if (row < rows - 1) fn(idx + cols);
     if (col > 0) fn(idx - 1);
 }
-
 // --- MERGED FROM navEdgePoolSab.js ---
 export const NAV_EDGE_POOL_SAB_STRIDE = 4;
-/** @param {number} refCount */
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function navEdgePoolSabByteLength(refCount) {
     return Math.max(refCount * NAV_EDGE_POOL_SAB_STRIDE, NAV_EDGE_POOL_SAB_STRIDE);
 }
-/** @param {import("./CellEdgeStore.js").CellEdgeStore} store @param {Uint8Array} bytes */
-export function packEdgePoolToSab(store, bytes) {
+/** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid @param {Uint8Array} bytes */
+export function packEdgePoolToSab(grid, bytes) {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const pool = store.pool;
+    const pool = grid.cellEdgePool;
     for (let ref = 0; ref < pool.length; ref++) writeEdgeToSab(view, ref, pool[ref]);
     return pool.length;
 }
@@ -1484,11 +1310,7 @@ function readEdgeFromSab(view, ref, out) {
     out.heightDelta = view.getInt16(base + 0, true);
     out.thicknessLevel = view.getUint8(base + 2) || 1;
 }
-
 // --- MERGED FROM SurfaceMaterialStore.js ---
-
-
-
 // Surface material ownership resolves from the narrowest owner outward:
 // cell/edge override, then chunk profile, then the active/default profile.
 export const SURFACE_MATERIAL_OWNER = { Chunk: 0, Cell: 1, Edge: 2, WallFace: 3 };
@@ -1638,20 +1460,7 @@ export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerC
 export function resolveChunkSurfaceProfileId(grid, chunkCol, chunkRow, baseProfileId) {
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkCol, chunkRow);
 }
-
 // --- MERGED FROM WorldObstacleGrid.js ---
-
-
-
-
-
-
-
-
-
-
-
-
 const EDGE_PROXY_P1 = { x: 0, y: 0 };
 const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
@@ -1665,10 +1474,16 @@ export class WorldObstacleGrid {
         this.cols = 0;
         this.rows = 0;
         this.grid = new Uint8Array(0);
-        this.edgeStore = new CellEdgeStore();
-        this.floorStore = new FloorCellStore();
+        this.cellEdgeSlots = new Int32Array(0);
+        this.cellEdgePool = [];
+        this.cellEdgeFree = [];
+        this.floorKind = new Uint8Array(0);
+        this.floorFacing = new Uint8Array(0);
         this.surfaceMaterials = new SurfaceMaterialStore();
         this.surfaceMaterialCellsPerChunk = 0;
+        this.staticPropBuckets = new SparseBucketGrid();
+        this.staticPropCount = new Uint16Array(0);
+        this.staticPropTotalCount = 0;
         this.wallGridRevision = 0;
         this.surfaceMaterialRevision = 0;
         this._structureZLevelsRevision = -1;
@@ -1683,6 +1498,52 @@ export class WorldObstacleGrid {
         this._navTopologyRef = null;
         this.onBoundsResync = null;
         this.onBoundsExpansion = null;
+    }
+    getCellEdge(idx, side) {
+        const ref = this.cellEdgeSlots[(idx << 2) + side];
+        if (ref === EMPTY) return null;
+        return this.cellEdgePool[ref];
+    }
+    _allocCellEdge(edge) {
+        if (this.cellEdgeFree.length) {
+            const ref = this.cellEdgeFree.pop();
+            const pooled = this.cellEdgePool[ref];
+            pooled.heightDelta = edge.heightDelta;
+            pooled.thicknessLevel = edge.thicknessLevel;
+            return ref;
+        }
+        const ref = this.cellEdgePool.length;
+        this.cellEdgePool.push(edge);
+        return ref;
+    }
+    _freeCellEdge(ref) {
+        this.cellEdgeFree.push(ref);
+    }
+    writeMirroredCellEdge(idx, side, edge) {
+        if (idx < 0 || idx >= this.cols * this.rows) return;
+        if (!edge) {
+            this.clearMirroredCellEdge(idx, side);
+            return;
+        }
+        this.clearMirroredCellEdge(idx, side);
+        const ref = this._allocCellEdge(edge);
+        this.cellEdgeSlots[(idx << 2) + side] = ref;
+        const nIdx = edgeNeighborIdx(idx, side, this.cols, this.rows);
+        if (nIdx !== -1) this.cellEdgeSlots[(nIdx << 2) + edgeMirrorSide(side)] = ref;
+    }
+    clearMirroredCellEdge(idx, side) {
+        if (idx < 0 || idx >= this.cols * this.rows) return;
+        const offset = (idx << 2) + side;
+        const ref = this.cellEdgeSlots[offset];
+        if (ref === EMPTY) return;
+        this.cellEdgeSlots[offset] = EMPTY;
+        const nIdx = edgeNeighborIdx(idx, side, this.cols, this.rows);
+        if (nIdx !== -1) this.cellEdgeSlots[(nIdx << 2) + edgeMirrorSide(side)] = EMPTY;
+        this._freeCellEdge(ref);
+    }
+    hasAnyCellEdgeAtIdx(idx) {
+        const base = idx << 2;
+        return this.cellEdgeSlots[base] !== EMPTY || this.cellEdgeSlots[base + 1] !== EMPTY || this.cellEdgeSlots[base + 2] !== EMPTY || this.cellEdgeSlots[base + 3] !== EMPTY;
     }
     invalidateNavTopology() {
         invalidateGridLocalNavBake(this);
@@ -1706,7 +1567,17 @@ export class WorldObstacleGrid {
             }
         }
         fillOut.sort((a, b) => a - b);
-        const edgeLevels = this.edgeStore.collectTopZLevels(this);
+        const seenEdge = new Set();
+        const gridColsRows = this.cols * this.rows;
+        for (let idx = 0; idx < gridColsRows; idx++)
+            for (let side = 0; side < 4; side++) {
+                const ref = this.cellEdgeSlots[(idx << 2) + side];
+                if (ref === EMPTY) continue;
+                const edge = this.cellEdgePool[ref];
+                seenEdge.add(railWallHeightPx(edge, this.cellSize, neighborFillLevel(this, idx, side)));
+            }
+        const edgeLevels = [...seenEdge];
+        edgeLevels.sort((a, b) => a - b);
         for (let i = 0; i < edgeLevels.length; i++) {
             const px = edgeLevels[i];
             if (!structSeen.has(px)) {
@@ -1854,8 +1725,15 @@ export class WorldObstacleGrid {
         this.rows = Math.ceil(height / this.cellSize);
         const size = this.cols * this.rows;
         this.grid = new Uint8Array(size);
-        this.edgeStore.reset(size, this.cols, this.rows);
-        this.floorStore.reset(size);
+        this.cellEdgeSlots = new Int32Array(size * 4);
+        this.cellEdgeSlots.fill(EMPTY);
+        this.cellEdgePool.length = 0;
+        this.cellEdgeFree.length = 0;
+        this.floorKind = new Uint8Array(size);
+        this.floorFacing = new Uint8Array(size);
+        this.staticPropBuckets.clear();
+        this.staticPropCount = new Uint16Array(size);
+        this.staticPropTotalCount = 0;
         this.surfaceMaterials.reset(this.cols, this.rows);
         bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
@@ -1889,26 +1767,40 @@ export class WorldObstacleGrid {
         this.cols = Math.ceil((newMaxX - newMinX) / this.cellSize);
         this.rows = Math.ceil((newMaxY - newMinY) / this.cellSize);
         const newGrid = new Uint8Array(this.cols * this.rows);
-        const oldSlots = this.edgeStore.slots;
-        const oldFloorKind = this.floorStore.kind;
-        const oldFloorFacing = this.floorStore.facing;
+        const oldSlots = this.cellEdgeSlots;
+        const oldFloorKind = this.floorKind;
+        const oldFloorFacing = this.floorFacing;
         const oldSurfaceMaterials = this.surfaceMaterials.snapshot();
         const oldSize = oldCols * oldRows;
+        const newEdgeSlots = new Int32Array(this.cols * this.rows * 4);
+        newEdgeSlots.fill(EMPTY);
+        const newFloorKind = new Uint8Array(this.cols * this.rows);
+        const newFloorFacing = new Uint8Array(this.cols * this.rows);
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
-            if (level === 0 && !this.edgeStore.hasAnyAtIdx(idx) && !this.floorStore.hasAnyAtIdx(idx) && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx))
-                continue;
+            if (level === 0 && !this.hasAnyCellEdgeAtIdx(idx) && this.floorKind[idx] === 0 && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx)) continue;
             const col = idx % oldCols;
             const row = (idx / oldCols) | 0;
             const nc = col + colOffset;
             const nr = row + rowOffset;
             if (nc >= 0 && nc < this.cols && nr >= 0 && nr < this.rows) {
                 const newIdx = nc + nr * this.cols;
-                if (cellInRect(newIdx, this.cols, this.rows)) newGrid[newIdx] = level;
+                if (cellInRect(newIdx, this.cols, this.rows)) {
+                    newGrid[newIdx] = level;
+                    if (this.floorKind[idx] !== 0) {
+                        newFloorKind[newIdx] = this.floorKind[idx];
+                        newFloorFacing[newIdx] = this.floorFacing[idx];
+                    }
+                    for (let side = 0; side < 4; side++) newEdgeSlots[(newIdx << 2) + side] = this.cellEdgeSlots[(idx << 2) + side];
+                }
             }
         }
-        this.edgeStore.remapSlots(oldSlots, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
-        this.floorStore.remap(oldFloorKind, oldFloorFacing, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows);
+        this.cellEdgeSlots = newEdgeSlots;
+        this.floorKind = newFloorKind;
+        this.floorFacing = newFloorFacing;
+        this.staticPropBuckets.clear();
+        this.staticPropCount = new Uint16Array(this.cols * this.rows);
+        this.staticPropTotalCount = 0;
         this.surfaceMaterials.remap(oldSurfaceMaterials, oldCols, oldRows, colOffset, rowOffset, this.cols, this.rows, this.surfaceMaterialCellsPerChunk);
         this.grid = newGrid;
         if (this.onBoundsExpansion) this.onBoundsExpansion(colOffset, rowOffset, oldCols, oldRows);
@@ -1988,9 +1880,10 @@ export class WorldObstacleGrid {
     }
     writeFloorCell(idx, kind, facingIndex) {
         if (this.isBlockedIdx(idx)) return false;
-        const prevKind = this.floorStore.kind[idx];
-        const prevFacing = this.floorStore.facing[idx];
-        this.floorStore.setAtIdx(idx, kind, facingIndex);
+        const prevKind = this.floorKind[idx];
+        const prevFacing = this.floorFacing[idx];
+        this.floorKind[idx] = kind;
+        this.floorFacing[idx] = facingIndex;
         const floorNavChanged = (FloorBelt.isBelt(prevKind) || FloorBelt.isBelt(kind)) && (prevKind !== kind || prevFacing !== facingIndex);
         if (floorNavChanged) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
         bumpFloorOccupancyStampDrawRevision(this);
@@ -1998,20 +1891,22 @@ export class WorldObstacleGrid {
     }
     hasFloorOccupancy(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
-        return this.floorStore.hasAnyAtIdx(idx);
+        return this.floorKind[idx] !== 0;
     }
     clearFloorCell(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
-        if (!this.floorStore.hasAnyAtIdx(idx)) return false;
-        const kind = this.floorStore.kind[idx];
+        if (!(this.floorKind[idx] !== 0)) return false;
+        const kind = this.floorKind[idx];
         if (FloorBelt.isBelt(kind)) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
-        this.floorStore.clearAtIdx(idx);
+        this.floorKind[idx] = 0;
+        this.floorFacing[idx] = 0;
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
     clearAllFloorCells() {
         const size = this.cols * this.rows;
-        this.floorStore.reset(size);
+        this.floorKind.fill(0);
+        this.floorFacing.fill(0);
         bumpFloorOccupancyStampDrawRevision(this);
     }
     worldCol(x) {
@@ -2066,9 +1961,7 @@ export class WorldObstacleGrid {
         return cellBoundsAtOriginIdxInto(this.cellBoundsScratch, this.minX, this.minY, idx, this.cols, this.cellSize);
     }
 }
-
 // --- MERGED FROM CellPropIndex.js ---
-
 /**
  * A generic perceivable prop category system based on obstacle-grid cells.
  * Maps prop instances to the nav-grid aligned bucket grid.
@@ -2215,14 +2108,9 @@ export class CellPropIndex {
         }
     }
 }
-
 // --- MERGED FROM EntityGrid.js ---
-
-
-
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-
 let CURRENT_COLLECT_OUT = null;
 const COLLECT_NEARBY_PUSH = (other) => {
     CURRENT_COLLECT_OUT.push(other);
@@ -2381,10 +2269,7 @@ export class EntityGrid {
         return out;
     }
 }
-
 // --- MERGED FROM circleAimLinePreview.js ---
-
-
 /**
  * Estimate travel distance for a rolling body with initial speed v0 under friction damping.
  *
@@ -2456,10 +2341,7 @@ export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, 
     const lead = circleLeadingPoint(originX, originY, radius, dx, dy);
     return { x1: lead.x, y1: lead.y, x2: originX + dx * (stopDist + radius), y2: originY + dy * (stopDist + radius) };
 }
-
 // --- MERGED FROM spatialQueries.js ---
-
-
 // ==========================================
 // 1. Ray Circle Hit Distance (from circleCast.js)
 // ==========================================
@@ -2637,7 +2519,6 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { o
     }
     return { hit: "none", x: cx, y: cy, dist };
 }
-
 // --- MERGED FROM SpatialQuery.js ---
 let globalGeneration = 0;
 export class SpatialQuery {
@@ -2665,7 +2546,6 @@ export class SpatialQuery {
         return this._scratch;
     }
 }
-
 // --- MERGED FROM wallCandidateBucketSlab.js ---
 const MAX_WALL_BUCKETS = 4096;
 const BUCKET_MASK = MAX_WALL_BUCKETS - 1;
@@ -2738,15 +2618,7 @@ export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, rev
     slab.revisionStamp[slot] = revision;
     slab.segments[slot] = segments;
 }
-
 // --- MERGED FROM floorShapes.js ---
-
-
-
-
-
-
-
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;
     for (let z = 0; z < shapes.length; z++) {
@@ -2778,7 +2650,6 @@ export function syncFloorPropCollisionShape(prop) {
     }
     prop.radius = prop.shape.getBoundingRadius();
 }
-
 // --- MERGED FROM gridZoneMembership.js ---
 /** @typedef {{ cells: Set<number> }} GridZoneSubscriptions */
 /**
@@ -2854,4 +2725,3 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
         entity._gridZoneNextKeys = prev;
     }
 }
-

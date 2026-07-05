@@ -1,7 +1,7 @@
-import {  edgeNeighborIdx  } from "../Spatial/spatial.js";
-import {  FloorBelt  } from "../Spatial/spatial.js";
-import {  boundaryBlocksStepFrom  } from "../Spatial/spatial.js";
-import {  cellInRect  } from "../Spatial/spatial.js";
+import { edgeNeighborIdx } from "../Spatial/spatial.js";
+import { FloorBelt } from "../Spatial/spatial.js";
+import { boundaryBlocksStepFrom } from "../Spatial/spatial.js";
+import { cellInRect } from "../Spatial/spatial.js";
 import { navCanStep } from "../Pathfinding/navTopologySab.js";
 import { bakeNavTopologyLocal } from "./NavTopology.js";
 /** @typedef {number} CellIdx */
@@ -32,7 +32,7 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
 }
 /** Snap a path goal cell to the belt entry neighbor (belt-mouth approach). */
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
-    if (!FloorBelt.isBelt(grid.floorStore.kind[targetIdx])) return targetIdx;
+    if (!FloorBelt.isBelt(grid.floorKind[targetIdx])) return targetIdx;
     const neighborIdx = beltEntryNeighborAtIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
     if (fromIdx === neighborIdx) return targetIdx;
@@ -68,7 +68,7 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = grid.gridCenterYByIdx(snappedIdx);
         return out;
     }
-    if (!FloorBelt.isBelt(grid.floorStore.kind[targetIdx]) || fromIdx === targetIdx) {
+    if (!FloorBelt.isBelt(grid.floorKind[targetIdx]) || fromIdx === targetIdx) {
         out.x = targetX;
         out.y = targetY;
         return out;
@@ -95,10 +95,10 @@ export function validateBeltChain(graph, cellIndices) {
     for (let i = 0; i < cellIndices.length - 1; i++) {
         const a = cellIndices[i];
         const b = cellIndices[i + 1];
-        const kindA = grid.floorStore.kind[a];
-        const facingA = grid.floorStore.facing[a];
-        const kindB = grid.floorStore.kind[b];
-        const facingB = grid.floorStore.facing[b];
+        const kindA = grid.floorKind[a];
+        const facingA = grid.floorFacing[a];
+        const kindB = grid.floorKind[b];
+        const facingB = grid.floorFacing[b];
         const { exitSide } = FloorBelt.getEntryExitSides(kindA, facingA);
         const { entrySide } = FloorBelt.getEntryExitSides(kindB, facingB);
         const diff = b - a;

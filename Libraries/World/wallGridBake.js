@@ -1,7 +1,7 @@
-import {  cellToChunkCoord, forEachObstacleGridCellInAabb  } from "../Spatial/spatial.js";
-import {  cellInRect  } from "../Spatial/spatial.js";
-import {  railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx  } from "../Spatial/spatial.js";
-import {  railWallCapLevel, railWallHeightPx, railWallThicknessPx  } from "../Spatial/spatial.js";
+import { cellToChunkCoord, forEachObstacleGridCellInAabb } from "../Spatial/spatial.js";
+import { cellInRect } from "../Spatial/spatial.js";
+import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
+import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
 const sP1 = { x: 0, y: 0 };
@@ -376,7 +376,7 @@ export function collectVoxelWallFacesInAabbFlat(grid, bounds, list) {
 export function collectRailWallBoxesInAabb(grid, bounds, out) {
     out.clear();
     forEachObstacleGridCellInAabb(grid, bounds, (idx) => {
-        if (!grid.edgeStore.hasAnyAtIdx(idx)) return;
+        if (!grid.hasAnyCellEdgeAtIdx(idx)) return;
         for (let edge = 0; edge < 4; edge++) {
             out.ensureCapacity(out.length + 1);
             if (writeRailWallBoxRecordInto(out.data, out.length, grid, idx, edge)) out.length++;

@@ -8,11 +8,11 @@ import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Sa
 import { planRailMazeCorridorBelts, stampGlobalRailMazeBelts, stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/math.js";
-import {  forEachObstacleGridCellInAabb  } from "../../../Libraries/Spatial/spatial.js";
-import {  setBoundary  } from "../../../Libraries/Spatial/spatial.js";
-import {  cellIsStaticWallAtIdx  } from "../../../Libraries/Spatial/spatial.js";
-import {  cellInRect  } from "../../../Libraries/Spatial/spatial.js";
-import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../../../Libraries/Spatial/spatial.js";
+import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/spatial.js";
+import { setBoundary } from "../../../Libraries/Spatial/spatial.js";
+import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/spatial.js";
+import { cellInRect } from "../../../Libraries/Spatial/spatial.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/spatial.js";
 import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
 import {
     MAP_GEN_KINDS,
@@ -67,7 +67,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
             grid.grid[idx] = 0;
             cellChanged = true;
         }
-        if (grid.edgeStore.hasAnyAtIdx(idx)) {
+        if (grid.hasAnyCellEdgeAtIdx(idx)) {
             grid.clearCellEdges(idx);
             cellChanged = true;
         }
@@ -98,7 +98,7 @@ function eraseWallsInShape(state) {
             grid.grid[idx] = 0;
             cellChanged = true;
         }
-        if (grid.edgeStore.hasAnyAtIdx(idx)) {
+        if (grid.hasAnyCellEdgeAtIdx(idx)) {
             grid.clearCellEdges(idx);
             cellChanged = true;
         }
@@ -161,7 +161,7 @@ function clearRailStampCellBounds(grid, startCol, endCol, startRow, endRow) {
         for (let c = startCol; c <= endCol; c++) {
             const idx = c + r * grid.cols;
             if (grid.grid[idx] !== 0) grid.grid[idx] = 0;
-            if (grid.edgeStore.hasAnyAtIdx(idx)) grid.clearCellEdges(idx);
+            if (grid.hasAnyCellEdgeAtIdx(idx)) grid.clearCellEdges(idx);
         }
 }
 function clearMapGenRectWalkable(state, config) {
@@ -289,7 +289,7 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
         for (let c = startCol; c <= endCol; c++) {
             const idx = c + r * grid.cols;
             if (grid.grid[idx] !== 0) grid.grid[idx] = 0;
-            if (grid.edgeStore.hasAnyAtIdx(idx)) grid.clearCellEdges(idx);
+            if (grid.hasAnyCellEdgeAtIdx(idx)) grid.clearCellEdges(idx);
         }
     // 4. Stamp Horizontal Edges
     for (let lr = 0; lr < hRows; lr++)

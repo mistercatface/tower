@@ -1,11 +1,11 @@
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { expandRegionDamageBounds } from "./hpaRegionGraph.js";
 import { gridFrameFromGrid } from "./GridNavSnapshot.js";
-import {  gridNavCacheKey, isNavTopologyReady  } from "../Spatial/spatial.js";
+import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/spatial.js";
 import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "./navTopologySab.js";
 import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
-import {  navEdgePoolSabByteLength, packEdgePoolToSab  } from "../Spatial/spatial.js";
+import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/spatial.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 512;
 export const MAX_HPA_ABSTRACT_LEN = 64;
@@ -249,9 +249,9 @@ export class HpaPathWorker {
         this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
     }
     _packNavEdgePoolForWorker(grid) {
-        const refCount = grid.edgeStore.pool.length;
+        const refCount = grid.cellEdgePool.length;
         this._ensureNavEdgePoolSab(refCount);
-        this._edgePoolSabRefs = packEdgePoolToSab(grid.edgeStore, this.navEdgePoolBytes);
+        this._edgePoolSabRefs = packEdgePoolToSab(grid, this.navEdgePoolBytes);
     }
     _syncNavArenaFields() {
         const arena = this._navArena;
@@ -288,7 +288,7 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         if (size <= 0) return;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
-        this._ensureNavBuffers(size, vertCount, Math.max(grid.edgeStore.pool.length, 4), grid.cols, grid.rows);
+        this._ensureNavBuffers(size, vertCount, Math.max(grid.cellEdgePool.length, 4), grid.cols, grid.rows);
     }
     getGridFrame() {
         return this._gridFrame;
@@ -336,7 +336,7 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
         this._inFlightNavCacheKey = gridNavCacheKey(grid);
-        const edgePoolRefs = Math.max(grid.edgeStore.pool.length, 4);
+        const edgePoolRefs = Math.max(grid.cellEdgePool.length, 4);
         this._ensureNavBuffers(size, vertCount, edgePoolRefs, grid.cols, grid.rows);
         const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
         packNavTopologyFromGrid(grid, this._navArena, rebindArena ? null : damageBounds);

@@ -393,8 +393,8 @@ export class HpaPathfindingWorker {
     runReplan(slot, data) {
         const frame = this.topology.requireGridFrame();
         const simView = this.topology.navSimView;
-        const floorKind = simView?.floorStore?.kind ?? null;
-        const floorFacing = simView?.floorStore?.facing ?? null;
+        const floorKind = simView?.floorKind ?? null;
+        const floorFacing = simView?.floorFacing ?? null;
         const stepPenaltyLookup = createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts, floorKind, floorFacing);
         const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
         const baseGraph = this.graph.abstractGraph();

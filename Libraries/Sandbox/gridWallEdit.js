@@ -1,11 +1,11 @@
 import { cellBoundsAtIdx, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 import { centeredAabbInto, createAabb } from "../Math/math.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
-import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Spatial/spatial.js";
-import {  cellInRect  } from "../Spatial/spatial.js";
-import {  isRailWallEdge, railWallCapLevel  } from "../Spatial/spatial.js";
-import {  setBoundary, clearBoundaryPrimary, boundaryBlocksStep  } from "../Spatial/spatial.js";
-import {  cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpointsIdx  } from "../Spatial/spatial.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/spatial.js";
+import { cellInRect } from "../Spatial/spatial.js";
+import { isRailWallEdge, railWallCapLevel } from "../Spatial/spatial.js";
+import { setBoundary, clearBoundaryPrimary, boundaryBlocksStep } from "../Spatial/spatial.js";
+import { cellIsStaticWall, cellIsStaticWallAtIdx, forEachCellEdge, neighborFillLevel, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/stampWallHeight.js";
 import { overlaySegment } from "../Render/overlays/overlayCommands.js";
 const ENSURE_AABB = createAabb();
@@ -237,7 +237,7 @@ export function getVoxelWallInfo(grid, idx) {
     return { idx, heightLevel: grid.grid[idx] };
 }
 export function getRailWallInfo(grid, idx, side) {
-    const edge = grid.edgeStore.getIdx(idx, side);
+    const edge = grid.getCellEdge(idx, side);
     if (!isRailWallEdge(edge)) return null;
     const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
     return { idx, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };

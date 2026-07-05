@@ -1,4 +1,4 @@
-import {  cellEdgeSlotOffset  } from "../Spatial/spatial.js";
+import { cellEdgeSlotOffset } from "../Spatial/spatial.js";
 /**
  * Minimal grid shape for nav topology bake (main packs SABs; worker reads this view).
  * @param {import("./GridNavSnapshot.js").GridFrame} frame
@@ -10,26 +10,22 @@ import {  cellEdgeSlotOffset  } from "../Spatial/spatial.js";
  * @param {Uint8Array} vertexPassability
  */
 export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSlots, edgePool, vertexPassability) {
-    const edgeStore = {
-        slots: edgeSlots,
-        pool: edgePool,
-        getIdx(idx, side) {
-            const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
-            if (ref < 0) return null;
-            return edgeStore.pool[ref];
-        },
-    };
     const simView = {
         frame,
         grid: gridFill,
         vertexPassability,
-        edgeStore,
-        floorStore: {
-            kind: floorKind,
-            facing: floorFacing,
-            hasAnyAtIdx(idx) {
-                return floorKind[idx] !== 0;
-            },
+        cellEdgeSlots: edgeSlots,
+        cellEdgePool: edgePool,
+        floorKind: floorKind,
+        floorFacing: floorFacing,
+        getCellEdge(idx, side) {
+            const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
+            if (ref < 0) return null;
+            return simView.cellEdgePool[ref];
+        },
+        hasAnyCellEdgeAtIdx(idx) {
+            const base = idx << 2;
+            return edgeSlots[base] !== -1 || edgeSlots[base + 1] !== -1 || edgeSlots[base + 2] !== -1 || edgeSlots[base + 3] !== -1;
         },
         isBlocked(col, row) {
             return gridFill[row * frame.cols + col] !== 0;
@@ -75,7 +71,7 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
 }
 /** @param {ReturnType<typeof createNavSimView>} simView @param {object[]} edgePool */
 export function bindNavSimEdgePool(simView, edgePool) {
-    simView.edgeStore.pool = edgePool;
+    simView.cellEdgePool = edgePool;
 }
 /** @param {ReturnType<typeof createNavSimView>} simView @param {import("./GridNavSnapshot.js").GridFrame} frame */
 export function bindNavSimGridFrame(simView, frame) {

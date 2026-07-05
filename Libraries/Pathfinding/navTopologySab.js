@@ -1,7 +1,7 @@
-import {  CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset  } from "../Spatial/spatial.js";
+import { CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset } from "../Spatial/spatial.js";
 import { OCTILE_OFFSETS } from "../Math/math.js";
-import { cellInRect } from "../Spatial/spatial.js";;
-import {  diagonalStepOpen, getCardinalBit  } from "../Spatial/spatial.js";
+import { cellInRect } from "../Spatial/spatial.js";
+import { diagonalStepOpen, getCardinalBit } from "../Spatial/spatial.js";
 import { clampCellBoundsToGrid, forEachDenseCellInBounds, forEachDenseCellInRect, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
@@ -108,28 +108,28 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
         arena.gridFill.set(grid.grid);
-        arena.floorKind.set(grid.floorStore.kind);
-        arena.floorFacing.set(grid.floorStore.facing);
-        arena.edgeSlots.set(grid.edgeStore.slots);
+        arena.floorKind.set(grid.floorKind);
+        arena.floorFacing.set(grid.floorFacing);
+        arena.edgeSlots.set(grid.cellEdgeSlots);
         return;
     }
     if (isBounds)
         forEachDenseCellInBounds(idx, grid.cols, (cellIdx) => {
             arena.gridFill[cellIdx] = grid.grid[cellIdx];
-            arena.floorKind[cellIdx] = grid.floorStore.kind[cellIdx];
-            arena.floorFacing[cellIdx] = grid.floorStore.facing[cellIdx];
+            arena.floorKind[cellIdx] = grid.floorKind[cellIdx];
+            arena.floorFacing[cellIdx] = grid.floorFacing[cellIdx];
             for (let side = 0; side < 4; side++) {
                 const offset = cellEdgeSlotOffset(cellIdx, side);
-                arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
+                arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
             }
         });
     else {
         arena.gridFill[idx] = grid.grid[idx];
-        arena.floorKind[idx] = grid.floorStore.kind[idx];
-        arena.floorFacing[idx] = grid.floorStore.facing[idx];
+        arena.floorKind[idx] = grid.floorKind[idx];
+        arena.floorFacing[idx] = grid.floorFacing[idx];
         for (let side = 0; side < 4; side++) {
             const offset = cellEdgeSlotOffset(idx, side);
-            arena.edgeSlots[offset] = grid.edgeStore.slots[offset];
+            arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
         }
     }
 }

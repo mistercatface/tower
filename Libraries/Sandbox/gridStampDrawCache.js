@@ -1,6 +1,6 @@
 import { drawCachedPropSprite, GRID_STAMP_RENDER_KEY } from "../Canvas/QuantizedSpriteCache.js";
-import {  FloorBelt  } from "../Spatial/spatial.js";
-import {  floorOccupancyStampDrawCacheKey  } from "../Spatial/spatial.js";
+import { FloorBelt } from "../Spatial/spatial.js";
+import { floorOccupancyStampDrawCacheKey } from "../Spatial/spatial.js";
 import { createConveyorDraw } from "../Render/conveyorDraw.js";
 const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
@@ -46,10 +46,10 @@ export function syncFloorOccupancyStampDrawCache(state, grid) {
     const belts = [];
     const size = grid.cols * grid.rows;
     for (let idx = 0; idx < size; idx++) {
-        const kind = grid.floorStore.kind[idx];
-        if (!grid.floorStore.hasAnyAtIdx(idx)) continue;
+        const kind = grid.floorKind[idx];
+        if (!(grid.floorKind[idx] !== 0)) continue;
         const { x, y } = grid.gridToWorldByIdx(idx);
-        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorStore.facing[idx]), cellHalf, kind), x, y });
+        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
     }
     const next = { revision, belts };
     state.sandbox._floorOccupancyStampDrawCache = next;
@@ -67,7 +67,7 @@ function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
 }
 export function drawFloorOccupancyBelts(ctx, state, viewport) {
     const grid = state.obstacleGrid;
-    if (!grid.floorStore.hasAny()) return;
+    if (!grid.floorKind.some((k) => k !== 0)) return;
     const cached = syncFloorOccupancyStampDrawCache(state, grid);
     if (!cached?.belts.length) return;
     drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);

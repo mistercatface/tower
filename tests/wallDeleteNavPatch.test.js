@@ -57,7 +57,7 @@ describe("wall delete batching (4a)", () => {
         assert.ok(bounds);
         assert.equal(state.notifyCount, 0);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(2, 2, state.obstacleGrid.cols)));
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(3, 3, state.obstacleGrid.cols), 1)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(colRowToIndex(3, 3, state.obstacleGrid.cols), 1)));
         terminateWorkerNavigation(state.nav);
     });
     it("clearGridWallsBatch deletes voxel and rail in one nav invalidation", async () => {
@@ -72,7 +72,7 @@ describe("wall delete batching (4a)", () => {
         assert.ok(bounds);
         assert.equal(state.notifyCount, 1);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(1, 1, state.obstacleGrid.cols)));
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(4, 4, state.obstacleGrid.cols), 0)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(colRowToIndex(4, 4, state.obstacleGrid.cols), 0)));
         terminateWorkerNavigation(state.nav);
     });
     it("deferred commit batches mixed voxel and rail clears into one notify", async () => {
@@ -87,7 +87,7 @@ describe("wall delete batching (4a)", () => {
         assert.ok(commit.flush());
         assert.equal(state.notifyCount, 1);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, colRowToIndex(5, 5, state.obstacleGrid.cols)));
-        assert.ok(!isRailWallEdge(state.obstacleGrid.edgeStore.getIdx(colRowToIndex(6, 6, state.obstacleGrid.cols), 2)));
+        assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(colRowToIndex(6, 6, state.obstacleGrid.cols), 2)));
         terminateWorkerNavigation(state.nav);
     });
     it("deferred clearWalls batches voxel and rail in one flush", async () => {
