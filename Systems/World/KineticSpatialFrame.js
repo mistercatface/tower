@@ -35,6 +35,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const worldProps = state.worldProps;
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
+            prop.ax = 0;
+            prop.ay = 0;
             if (prop.strategy?.spatialRole === "trigger") continue;
             this.insertEntity(prop, physIdCounter++);
             if (prop.strategy?.isKinetic) {
@@ -45,6 +47,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const projectiles = state.projectiles || [];
         for (let i = 0; i < projectiles.length; i++) {
             const proj = projectiles[i];
+            proj.ax = 0;
+            proj.ay = 0;
             this.insertEntity(proj, physIdCounter++);
             if (proj.strategy?.isKinetic) {
                 this._kineticBodies.push(proj);

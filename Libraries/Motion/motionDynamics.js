@@ -23,9 +23,10 @@ export function applyAcceleration(body, ax, ay, dtSec) {
  * @param {number} dtSec
  */
 export function applyKineticAcceleration(body, ax, ay, dtSec) {
-    if (!body) return;
+    if (body.ax === undefined || body.ay === undefined) return;
+    body.ax += ax;
+    body.ay += ay;
     wakeKineticBody(body);
-    applyAcceleration(body, ax, ay, dtSec);
 }
 /**
  * @param {object} body
@@ -55,6 +56,10 @@ export function applyKineticAccelerationAlongAngle(body, angle, magnitude, dtSec
  * @param {{ friction?: number, integrateFacing?: boolean, snapSpeed?: number }} [options]
  */
 export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFacing = true, snapSpeed = 1 } = {}) {
+    if (body.ax || body.ay) {
+        body.vx = (body.vx ?? 0) + body.ax * (dtMs / 1000);
+        body.vy = (body.vy ?? 0) + body.ay * (dtMs / 1000);
+    }
     if (body.vx || body.vy) {
         addXY(body, (body.vx ?? 0) * (dtMs / 1000), (body.vy ?? 0) * (dtMs / 1000));
         const dragFactor = Math.exp(-friction * (dtMs / 1000));
