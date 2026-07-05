@@ -1,6 +1,6 @@
+import { sampleFlowDirectionInto } from "../../Navigation/flowField.js";
+import { snapNavGoalWorldInto } from "../../Navigation/navigation.js";
 import { physicsSettings } from "../../Physics/physics.js";
-import { sampleFlowDirectionInto } from "../../Pathfinding/sampleFlowDirection.js";
-import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 import { agentPose } from "../../Agent/index.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";

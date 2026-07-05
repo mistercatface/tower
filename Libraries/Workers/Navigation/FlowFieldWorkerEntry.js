@@ -1,5 +1,4 @@
-import { computeFlowField } from "../../Pathfinding/flowFieldBfs.js";
-import { rebuildFlowNeighborGrid } from "../../Pathfinding/flowFieldWindow.js";
+import { computeFlowField, rebuildFlowNeighborGrid } from "../../Navigation/flowField.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../../Pathfinding/neighborGridLayout.js";
 export class FlowBufferManager {
     constructor() {

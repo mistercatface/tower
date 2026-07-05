@@ -1,3 +1,4 @@
+import { invalidateGridLocalNavBake } from "../Navigation/navigation.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "../Math/math.js";
 import {
     entityBroadphaseExtent,
@@ -54,7 +55,6 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 import { packEdgeCellKey, boundsToCellRect } from "../DataStructures/CellKey.js";
 import { emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
-import { invalidateGridLocalNavBake } from "../Navigation/NavTopology.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 // --- MERGED FROM SpatialFrameCore.js ---

@@ -1,10 +1,10 @@
+import { FlowFieldGrid } from "../Libraries/Navigation/flowField.js";
+import { HpaPathSession } from "../Libraries/Navigation/navigation.js";
 import { gridSettings, worldSpanPx } from "../Config/world.js";
 import { FLOW_FIELD_WORKER_URL, HPA_WORKER_URL, gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { FlowFieldGrid } from "../Libraries/Pathfinding/FlowFieldGrid.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
-import { HpaPathSession } from "../Libraries/Pathfinding/HpaPathSession.js";
 import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";

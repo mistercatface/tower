@@ -1,9 +1,10 @@
+import { findSabPathProgressIdx, computeSabPathSteering } from "../Libraries/Navigation/navigation.js";
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { findSabPathProgressIdx, computeSabPathSteering } from "../Libraries/Pathfinding/navSession.js";
+
 async function createGridWithNav() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);

@@ -1,4 +1,4 @@
-import { FlatGraphView } from "./AStar.js";
+import { FlatGraphView } from "../Navigation/navigation.js";
 export const HPA_PATH_META_FIELDS = 2;
 export const HPA_PATH_META_STRIDE_BYTES = HPA_PATH_META_FIELDS * 4;
 /** @param {SharedArrayBuffer} sabPathMetaPool @param {number} slot */

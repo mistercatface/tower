@@ -1,6 +1,6 @@
+import { NavTopology } from "./navigation.js";
 import { isEmptyCellBounds, unionCellBounds } from "../DataStructures/CellRect.js";
-import {  gridNavCacheKey, isNavTopologyReady  } from "../Spatial/spatial.js";
-import { NavTopology } from "./NavTopology.js";
+import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/spatial.js";
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
 /** @typedef {import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */

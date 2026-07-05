@@ -1,6 +1,7 @@
+import { FlatAbstractGraphSearch, FlatGraphView, FlatGridSearch, SearchState, FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FlatAbstractGraphSearch, FlatGraphView, FlatGridSearch, SearchState, FlatGridView } from "../Libraries/Pathfinding/AStar.js";
+
 
 describe("AStar Engine Search Suite", () => {
     const cols = 5;

@@ -1,12 +1,14 @@
+import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCacheManager, sampleFlowDirection } from "../Libraries/Navigation/flowField.js";
+import { FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame  } from "../Libraries/Spatial/spatial.js";
-import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx } from "../Libraries/Pathfinding/flowFieldWindow.js";
-import { FlowFieldWindow } from "../Libraries/Pathfinding/flowFieldWindow.js";
-import { FlowCacheManager } from "../Libraries/Pathfinding/FlowFieldGrid.js";
-import { sampleFlowDirection } from "../Libraries/Pathfinding/sampleFlowDirection.js";
+
+
+
+
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Pathfinding/neighborGridLayout.js";
-import { FlatGridView } from "../Libraries/Pathfinding/AStar.js";
+
 import { bfsTypedIndices } from "../Libraries/DataStructures/gridBfs.js";
 
 function gridReachabilityBfs(grid, startIdx, targetIdx, blockedFn) {

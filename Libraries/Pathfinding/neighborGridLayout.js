@@ -1,4 +1,4 @@
-import { OCTILE_DIRS_PER_CELL, OCTILE_NEIGHBOR_BYTES, octileNeighborBase, octileNeighborOffset } from "./navTopologySab.js";
+import { OCTILE_DIRS_PER_CELL, OCTILE_NEIGHBOR_BYTES, octileNeighborBase, octileNeighborOffset } from "../Navigation/navigation.js";
 export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
     directionCount: OCTILE_DIRS_PER_CELL,
     bytesPerCell: OCTILE_NEIGHBOR_BYTES,

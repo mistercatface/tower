@@ -1,10 +1,7 @@
+import { navHasPath, REPLAN_PRIORITY_TARGET, HpaNavSession, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, snapNavGoalWorldInto } from "../../Navigation/navigation.js";
 import { physicsSettings } from "../../Physics/physics.js";
-import { navHasPath } from "../../Pathfinding/navSession.js";
-import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplan.js";
-import { HpaNavSession } from "../../Pathfinding/navSession.js";
-import { buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay } from "../../Pathfinding/navSession.js";
 import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
-import {  FloorBelt  } from "../../Spatial/spatial.js";
+import { FloorBelt } from "../../Spatial/spatial.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 export function createHpaGroundNavBehavior(state) {
     const propRuns = new Map();
@@ -163,7 +160,6 @@ export function createHpaGroundNavBehavior(state) {
         },
     };
 }
-import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 /**
  * @param {object} prop

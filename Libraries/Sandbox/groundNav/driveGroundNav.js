@@ -1,6 +1,6 @@
-import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
+import { snapNavGoalWorldInto } from "../../Navigation/navigation.js";
 import { physicsSettings } from "../../Physics/physics.js";
-import {  FloorBelt  } from "../../Spatial/spatial.js";
+import { FloorBelt } from "../../Spatial/spatial.js";
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 /**
  * @param {object} prop
