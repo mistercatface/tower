@@ -451,49 +451,49 @@ export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = sta
     if (filterBoundsConfig) cells = filterWalkableCellsInBounds(cells, state.obstacleGrid, filterBoundsConfig);
     return pickWalkableCell(cells, excludeIndices, rng);
 }
-let railMazePathScratch = new Int32Array(512);
-export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {
-    const { originIdx, cols, strideCols, cellCount: stampCellCount } = stampLayoutFromConfig(grid, railConfig);
-    const gridCols = grid.cols;
-    const cellCountGlobal = gridCols * grid.rows;
-    const globalLayout = gridCellLayout(grid);
-    const walkable = new Uint8Array(cellCountGlobal);
-    forEachStampGlobalIdx(originIdx, cols, strideCols, stampCellCount, grid, railConfig, (idx) => {
-        if (navWalkableIndex.flags[idx] !== 0) walkable[idx] = 1;
-    });
-    const searchState = new SearchState(cellCountGlobal);
-    let reservedGlobalIndices = new Set();
-    const gridView = new FlatGridView(gridCols, grid.rows, {
-        blocked: null,
-        canStep(idx0, idx1) {
-            return walkable[idx1] && !reservedGlobalIndices.has(idx1) && grid.canStep(idx0, idx1, navTopology);
-        },
-    });
-    const gridSearch = new FlatGridSearch(searchState);
-    gridSearch.grid = gridView;
-    gridSearch.gridIdx = gridView.gridIdx;
-    return {
-        globalLayout,
-        gridCols,
-        setReservedGlobalIndices(indices) {
-            reservedGlobalIndices = indices;
-        },
-        findQuery(startIdx, goalIdx, maxPathLen = 512) {
-            if (!walkable[startIdx] || !walkable[goalIdx]) return null;
-            if (reservedGlobalIndices.has(startIdx) || reservedGlobalIndices.has(goalIdx)) return null;
-            if (railMazePathScratch.length < maxPathLen) railMazePathScratch = new Int32Array(maxPathLen);
-            const len = gridSearch.cardinal(startIdx, goalIdx, maxPathLen, railMazePathScratch);
-            if (len === 0) return null;
-            return railMazePathScratch.slice(0, len);
-        },
-    };
-}
-export function findRailMazeNavCorridorPath(pathfinder, startIdx, endIdx, occupiedGlobalIndices, corridorWidth = 1, maxPathLen = 512) {
-    pathfinder.setReservedGlobalIndices(occupiedGlobalIndices);
-    const path = pathfinder.findQuery(startIdx, endIdx, maxPathLen);
-    if (!path || path.length < 2) return null;
-    if (corridorPathHitsOccupied(path, occupiedGlobalIndices, corridorWidth, pathfinder.globalLayout, { interiorOnly: false })) return null;
-    return path;
+export class CorridorPathfinder {
+    constructor(grid, navTopology, railConfig, navWalkableIndex) {
+        const { originIdx, cols, strideCols, cellCount: stampCellCount } = stampLayoutFromConfig(grid, railConfig);
+        this.gridCols = grid.cols;
+        this.globalLayout = gridCellLayout(grid);
+        const cellCountGlobal = this.gridCols * grid.rows;
+        this.walkable = new Uint8Array(cellCountGlobal);
+        forEachStampGlobalIdx(originIdx, cols, strideCols, stampCellCount, grid, railConfig, (idx) => {
+            if (navWalkableIndex.flags[idx] !== 0) this.walkable[idx] = 1;
+        });
+        this.searchState = new SearchState(cellCountGlobal);
+        this.reservedGlobalIndices = new Set();
+        this.pathScratch = new Int32Array(512);
+        const walkable = this.walkable;
+        const reservedGlobalIndices = () => this.reservedGlobalIndices;
+        const gridView = new FlatGridView(this.gridCols, grid.rows, {
+            blocked: null,
+            canStep(idx0, idx1) {
+                return walkable[idx1] && !reservedGlobalIndices().has(idx1) && grid.canStep(idx0, idx1, navTopology);
+            },
+        });
+        this.gridSearch = new FlatGridSearch(this.searchState);
+        this.gridSearch.grid = gridView;
+        this.gridSearch.gridIdx = gridView.gridIdx;
+    }
+    setReserved(indices) {
+        this.reservedGlobalIndices = indices;
+    }
+    findCorridorPath(startIdx, endIdx, occupiedGlobalIndices, corridorWidth = 1, maxPathLen = 512) {
+        this.setReserved(occupiedGlobalIndices);
+        const path = this.findQuery(startIdx, endIdx, maxPathLen);
+        if (!path || path.length < 2) return null;
+        if (corridorPathHitsOccupied(path, occupiedGlobalIndices, corridorWidth, this.globalLayout, { interiorOnly: false })) return null;
+        return path;
+    }
+    findQuery(startIdx, goalIdx, maxPathLen = 512) {
+        if (!this.walkable[startIdx] || !this.walkable[goalIdx]) return null;
+        if (this.reservedGlobalIndices.has(startIdx) || this.reservedGlobalIndices.has(goalIdx)) return null;
+        if (this.pathScratch.length < maxPathLen) this.pathScratch = new Int32Array(maxPathLen);
+        const len = this.gridSearch.cardinal(startIdx, goalIdx, maxPathLen, this.pathScratch);
+        if (len === 0) return null;
+        return this.pathScratch.slice(0, len);
+    }
 }
 const CARDINAL_COSTS = new Float32Array([1, 1, 1, 1]);
 const OCTILE_COSTS = new Float32Array([1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2]);
@@ -1935,34 +1935,6 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
 }
 export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
     return snapNavGoalWorldInto({ x: 0, y: 0 }, grid, fromX, fromY, targetX, targetY);
-}
-/** @param {number[]} cellIndices */
-export function validateBeltChain(graph, cellIndices) {
-    if (cellIndices.length < 2) return { ok: true };
-    const { grid } = graph;
-    const cols = grid.cols;
-    for (let i = 0; i < cellIndices.length - 1; i++) {
-        const a = cellIndices[i];
-        const b = cellIndices[i + 1];
-        const kindA = grid.floorKind[a];
-        const facingA = grid.floorFacing[a];
-        const kindB = grid.floorKind[b];
-        const facingB = grid.floorFacing[b];
-        const { exitSide } = FloorBelt.getEntryExitSides(kindA, facingA);
-        const { entrySide } = FloorBelt.getEntryExitSides(kindB, facingB);
-        const diff = b - a;
-        let stepSide = -1;
-        if (diff === 1 && (a + 1) % cols !== 0) stepSide = 1;
-        else if (diff === -1 && a % cols !== 0) stepSide = 3;
-        else if (diff === cols) stepSide = 2;
-        else if (diff === -cols) stepSide = 0;
-        if (stepSide !== exitSide) return { ok: false, reason: `cell ${i} exit ${exitSide} ≠ step ${stepSide} toward ${i + 1}` };
-        const reverseSide = stepSide === 1 ? 3 : stepSide === 3 ? 1 : stepSide === 2 ? 0 : 2;
-        if (reverseSide !== entrySide) return { ok: false, reason: `cell ${i + 1} entry ${entrySide} ≠ approach ${reverseSide}` };
-        if (!graph.canStepIdx(a, b)) return { ok: false, reason: `canStep blocked ${i}→${i + 1}` };
-        if (graph.canStepIdx(b, a)) return { ok: false, reason: `reverse canStep open ${i + 1}→${i}` };
-    }
-    return { ok: true };
 }
 /** Worker-synced nav topology → graph view (map-gen, vision, belt endpoints). */
 export function createNavGraphViewFromTopology(navTopology) {

@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, FloorBelt, planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
+import { FLOOR_CELL_KIND, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableAt, getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 
 function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
@@ -181,25 +181,20 @@ describe("rail maze corridor belts", () => {
         const seeds = [11, 42, 256, 1337];
         for (let i = 0; i < seeds.length; i++) {
             const { grid, nav, railConfig, navWalkableIndex } = await setupTestGridAndNav(seeds[i]);
-            const plan = planRailMazeCorridorBelts({
-                grid,
-                navTopology: nav.topology,
-                railConfig,
-                navWalkableIndex,
-                mapSeed: seeds[i],
-            });
+            const session = new CorridorBeltSession(grid, nav.topology, railConfig, navWalkableIndex);
+            const result = session.plan({ mapSeed: seeds[i] });
             const expectedPaths = (seeds[i] === 256 || seeds[i] === 1337) ? 3 : (seeds[i] === 11 ? 5 : 8);
-            assert.ok(plan.pathCount >= expectedPaths, `seed ${seeds[i]}: only ${plan.pathCount} corridor paths`);
-            for (let pi = 0; pi < plan.paths.length; pi++) {
-                const len = plan.paths[pi].length;
+            assert.ok(result.pathCount >= expectedPaths, `seed ${seeds[i]}: only ${result.pathCount} corridor paths`);
+            for (let pi = 0; pi < result.paths.length; pi++) {
+                const len = result.paths[pi].length;
                 assert.ok(len >= 6 && len <= 24, `seed ${seeds[i]} path ${pi}: length ${len}`);
             }
             const expectedBelts = seeds[i] === 11 ? 20 : 50;
-            assert.ok(plan.floorBelts.size > expectedBelts, `seed ${seeds[i]}: only ${plan.floorBelts.size} belts`);
+            assert.ok(result.beltPlan.size > expectedBelts, `seed ${seeds[i]}: only ${result.beltPlan.size} belts`);
             let elbows = 0;
-            for (const [idx, spec] of plan.floorBelts) if (FloorBelt.getElbowTurn(spec[0])) elbows++;
+            for (const [idx, spec] of result.beltPlan) if (FloorBelt.getElbowTurn(spec[0])) elbows++;
             assert.ok(elbows > 0, `seed ${seeds[i]}: no elbow belts`);
-            assert.equal(plan.validation.ok, true, `seed ${seeds[i]}: ${plan.validation.error}`);
+            assert.equal(result.validation.ok, true, `seed ${seeds[i]}: ${result.validation.error}`);
             terminateWorkerNavigation(nav);
         }
     });
@@ -212,9 +207,10 @@ describe("rail maze corridor belts", () => {
             const idx = zoneCells[i];
             assert.ok(isNavWalkableAt(navWalkableIndex, idx));
         }
-        const plan = planRailMazeCorridorBelts({ grid, navTopology: nav.topology, railConfig, navWalkableIndex, mapSeed: 42 });
-        assert.equal(plan.validation.ok, true);
-        for (const [idx] of plan.floorBelts) {
+        const session = new CorridorBeltSession(grid, nav.topology, railConfig, navWalkableIndex);
+        const result = session.plan({ mapSeed: 42 });
+        assert.equal(result.validation.ok, true);
+        for (const [idx] of result.beltPlan) {
             assert.ok(isNavWalkableAt(navWalkableIndex, idx));
         }
         terminateWorkerNavigation(nav);
@@ -222,27 +218,21 @@ describe("rail maze corridor belts", () => {
 
     it("generates always unrailed belts and computes beltRails on lateral edges", async () => {
         const { grid, nav, railConfig, navWalkableIndex } = await setupTestGridAndNav(42);
-        const plan = planRailMazeCorridorBelts({
-            grid,
-            navTopology: nav.topology,
-            railConfig,
-            navWalkableIndex,
-            mapSeed: 42,
-        });
+        const session = new CorridorBeltSession(grid, nav.topology, railConfig, navWalkableIndex);
+        const result = session.plan({ mapSeed: 42 });
 
-        // 1. Assert all are unrailed (regular blue belts)
-        assert.ok(plan.floorBelts.size > 0);
+        assert.ok(result.beltPlan.size > 0);
 
-        assert.ok(plan.beltRails.count > 0);
-        const beltSet = new Set(plan.floorBelts.keys());
+        assert.ok(result.beltRails.count > 0);
+        const beltSet = new Set(result.beltPlan.cells.keys());
 
-        for (let i = 0; i < plan.beltRails.count; i++) {
+        for (let i = 0; i < result.beltRails.count; i++) {
             const o = i << 2;
-            const rIdx = plan.beltRails.data[o];
-            const rSide = plan.beltRails.data[o + 1];
+            const rIdx = result.beltRails.data[o];
+            const rSide = result.beltRails.data[o + 1];
             assert.ok(beltSet.has(rIdx), "rail wall must be on a belt cell");
 
-            const spec = plan.floorBelts.get(rIdx);
+            const spec = result.beltPlan.get(rIdx);
             const lateralSides = FloorBelt.getRailEdgeSides(spec[0], spec[1]);
             assert.ok(lateralSides.includes(rSide), `side ${rSide} must be one of the lateral sides: ${lateralSides}`);
         }
