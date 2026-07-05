@@ -192,8 +192,9 @@ function appendContact(contacts, pairs, pairIndex, nx, ny, rax, ray, rbx, rby, f
     contacts.dynamic.rby[i] = rby;
     contacts.static.featureA[i] = featureA;
     contacts.static.featureB[i] = featureB;
-    contacts.dynamic.preDvx[i] = pairs.dynamic.preDvx[pairIndex];
-    contacts.dynamic.preDvy[i] = pairs.dynamic.preDvy[pairIndex];
+    const slab = kineticDynamicSlab;
+    contacts.dynamic.preDvx[i] = slab.vx[contacts.physIdB[i]] - slab.vx[contacts.physIdA[i]];
+    contacts.dynamic.preDvy[i] = slab.vy[contacts.physIdB[i]] - slab.vy[contacts.physIdA[i]];
     contacts.static.restitution[i] = pairs.static.restitution[pairIndex];
     contacts.static.friction[i] = pairs.static.friction[pairIndex];
     contacts.static.warmStartKey[i] = contactWarmStartKeyFromPairKey(pairs.static.warmStartPairKey[pairIndex], featureA, featureB);
@@ -211,7 +212,10 @@ function narrowPhaseCircleContact(pairs, pairIndex, contacts) {
         return;
     }
     separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap);
-    appendContact(contacts, pairs, pairIndex, nx, ny, 0, 0, 0, 0);
+    const slab = kineticDynamicSlab;
+    const rA = slab.r[physIdA];
+    const rB = slab.r[physIdB];
+    appendContact(contacts, pairs, pairIndex, nx, ny, -nx * rA, -ny * rA, nx * rB, ny * rB);
 }
 function narrowPhaseSatContact(spatialFrame, pairs, pairIndex, contacts) {
     const physIdA = pairs.physIdA[pairIndex];
@@ -261,14 +265,6 @@ function precomputeKineticContacts(spatialFrame, contacts) {
         let ray = contacts.dynamic.ray[i];
         let rbx = contacts.dynamic.rbx[i];
         let rby = contacts.dynamic.rby[i];
-        if (contacts.static.tier[i] === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) {
-            const rA = dynSlab.r[physIdA];
-            const rB = dynSlab.r[physIdB];
-            rax = -nx * rA;
-            ray = -ny * rA;
-            rbx = nx * rB;
-            rby = ny * rB;
-        }
         const invMassA = statSlab.invMass[physIdA];
         const invMassB = statSlab.invMass[physIdB];
         const invIA = statSlab.invI[physIdA];
@@ -401,7 +397,6 @@ export function ensureKineticContactPairs(tick, outPairs) {
         session.substepPairsValid = false;
         return ensureKineticContactPairs(tick, outPairs);
     }
-    refreshKineticPairRelativeVelocities(outPairs);
     bumpPairGatherStat(session, "refresh");
     const patchBodies = session.substepPairPatchBodies;
     if (patchBodies?.length) {
@@ -438,7 +433,6 @@ export const sleepContactBuffer = {
 };
 export function resolveKineticContactPassWithPairs(tick, pairs) {
     const frame = tick.frame;
-    refreshKineticPairRelativeVelocities(pairs);
     const contacts = kineticContactBuffer;
     narrowPhaseKineticContacts(frame, pairs, contacts);
     if (contacts.count === 0) return;
@@ -465,7 +459,6 @@ function createKineticPairBuffer() {
         count: 0,
         physIdA: new Int32Array(MAX_KINETIC_PAIRS),
         physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-        dynamic: { preDvx: new Float32Array(MAX_KINETIC_PAIRS), preDvy: new Float32Array(MAX_KINETIC_PAIRS) },
         static: {
             tier: new Uint8Array(MAX_KINETIC_PAIRS),
             restitution: new Float32Array(MAX_KINETIC_PAIRS),
@@ -484,8 +477,6 @@ export function copyKineticPairBuffer(from, to) {
     for (let i = 0; i < from.count; i++) {
         to.physIdA[i] = from.physIdA[i];
         to.physIdB[i] = from.physIdB[i];
-        to.dynamic.preDvx[i] = from.dynamic.preDvx[i];
-        to.dynamic.preDvy[i] = from.dynamic.preDvy[i];
         to.static.tier[i] = from.static.tier[i];
         to.static.restitution[i] = from.static.restitution[i];
         to.static.friction[i] = from.static.friction[i];
@@ -514,18 +505,6 @@ function writePairMaterial(pairs, index, bodyA, bodyB) {
     pairs.static.friction[index] = kineticPairFriction(bodyA, bodyB);
     pairs.static.warmStartPairKey[index] = bodyA.id < bodyB.id ? bodyA.id * PAIR_BODY_KEY_SCALE + bodyB.id : bodyB.id * PAIR_BODY_KEY_SCALE + bodyA.id;
 }
-export function refreshKineticPairRelativeVelocities(pairs) {
-    const slab = kineticDynamicSlab;
-    for (let i = 0; i < pairs.count; i++) {
-        const physIdA = pairs.physIdA[i];
-        const physIdB = pairs.physIdB[i];
-        writePairPreVelocities(pairs, i, physIdA, physIdB, slab);
-    }
-}
-function writePairPreVelocities(pairs, index, physIdA, physIdB, slab = kineticDynamicSlab) {
-    pairs.dynamic.preDvx[index] = slab.vx[physIdB] - slab.vx[physIdA];
-    pairs.dynamic.preDvy[index] = slab.vy[physIdB] - slab.vy[physIdA];
-}
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
 }
@@ -550,8 +529,6 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
         if (write !== i) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
-            pairs.dynamic.preDvx[write] = pairs.dynamic.preDvx[i];
-            pairs.dynamic.preDvy[write] = pairs.dynamic.preDvy[i];
             pairs.static.tier[write] = tier;
             pairs.static.restitution[write] = pairs.static.restitution[i];
             pairs.static.friction[write] = pairs.static.friction[i];
@@ -590,7 +567,6 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            writePairPreVelocities(pairs, idx, physIdA, physIdB, slab);
             pairs.static.tier[idx] = tier;
             writePairMaterial(pairs, idx, primary, neighbor);
             keys.add(key);
@@ -632,7 +608,6 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            writePairPreVelocities(pairs, idx, physIdA, physIdB, slab);
             pairs.static.tier[idx] = tier;
             writePairMaterial(pairs, idx, primary, neighbor);
         }
