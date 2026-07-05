@@ -10,9 +10,9 @@ import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
+import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
-import { processKineticContactFractures } from "../Libraries/Props/fractureSystem.js";
+import { processKineticContactFractures } from "../Libraries/Props/props.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 
 function createTestWorld(initialProps, constraints = []) {

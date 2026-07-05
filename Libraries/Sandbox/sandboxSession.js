@@ -1,4 +1,4 @@
-import { formatPropTypeLabel } from "../Props/PropCatalog.js";
+import { formatPropTypeLabel } from "../Props/props.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";

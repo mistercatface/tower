@@ -1,13 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
-import { measureGlassShard } from "../Libraries/Props/fractureSystem.js";
-import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/fractureSystem.js";
-import { localBoxOutline, splitPoxels } from "../Libraries/Props/fractureSystem.js";
-import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/fractureSystem.js";
+import { measureGlassShard } from "../Libraries/Props/props.js";
+import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/props.js";
+import { localBoxOutline, splitPoxels } from "../Libraries/Props/props.js";
+import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/props.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
+import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import propCatalog from "../Assets/props/index.js";
 describe("chunk fracture", () => {
     it("crate asset uses chunk fracture mode", () => {

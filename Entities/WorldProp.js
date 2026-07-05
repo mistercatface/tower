@@ -2,7 +2,7 @@ import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Physics/physics.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Physics/physics.js";
 import { integratePropMotion } from "../Libraries/Physics/physics.js";
-import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";
+import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/props.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { isKinematicallyActive } from "../Libraries/Physics/physics.js";

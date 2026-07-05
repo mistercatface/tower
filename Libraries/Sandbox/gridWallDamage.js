@@ -4,9 +4,9 @@ import { cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/grid/gridCell
 import { createDeferredGridWallCommit } from "./gridWallEdit.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
-import { acquireWorldProp } from "../Props/worldPropPool.js";
-import { applyPropBoxFootprint } from "../Props/propStrategy.js";
-import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/fractureSystem.js";
+import { acquireWorldProp } from "../Props/props.js";
+import { applyPropBoxFootprint } from "../Props/props.js";
+import { fracturePropOnImpact, spawnChunkFractureShards, spawnGlassShatterShards } from "../Props/props.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { getVoxelWallInfo, getRailWallInfo } from "./gridWallEdit.js";
 import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId } from "../Spatial/grid/SurfaceMaterialStore.js";

@@ -4,7 +4,7 @@ import { WorldProp } from "../Entities/WorldProp.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { inverseMassFromBody, momentOfInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
-import { applyCrossPinwheelFootprint } from "../Libraries/Props/propStrategy.js";
+import { applyCrossPinwheelFootprint } from "../Libraries/Props/props.js";
 
 describe("cross pinwheel prop", () => {
     it("initializes as a pinned compound body", () => {

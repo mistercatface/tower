@@ -2,7 +2,7 @@ import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Physics/physics.js";
 import { getConnectedBodyIds, getConnectedComponentPath } from "../Physics/physics.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { formatPropTypeLabel } from "../Props/PropCatalog.js";
+import { formatPropTypeLabel } from "../Props/props.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";
 import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
 import propCatalog from "../../Assets/props/index.js";

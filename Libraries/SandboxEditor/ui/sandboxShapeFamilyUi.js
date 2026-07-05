@@ -1,6 +1,6 @@
 import { clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint } from "../../Color/visualOverride.js";
-import { getCirclePropRadius, setCirclePropRadius } from "../../Props/propScale.js";
-import { applyCrossPinwheelFootprint, applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/propStrategy.js";
+import { getCirclePropRadius, setCirclePropRadius } from "../../Props/props.js";
+import { applyCrossPinwheelFootprint, applyPropBoxFootprint, propFootprintHalfExtents } from "../../Props/props.js";
 import { assetDefaultBallRadius, blockPresetUsesResizableFootprint, isBallFamilyAsset, isBlockFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
 import { appendActionRow, appendColorField, appendNumberField } from "../../UI/paramFields.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";

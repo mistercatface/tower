@@ -10,7 +10,7 @@ import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js
 import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSession.js";
 import { appendShapeFamilySelectedFields } from "../Libraries/SandboxEditor/ui/sandboxShapeFamilyUi.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 
 import propCatalog from "../Assets/props/index.js";

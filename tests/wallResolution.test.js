@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { writeActiveKineticBodySlabPose, writeStaticKineticSlabSlot, writeBroadphaseFromBounds } from "../Libraries/Physics/physics.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
+import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
 import { KineticSession } from "../GameState/KineticSession.js";

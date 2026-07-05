@@ -1,4 +1,4 @@
-import { formatSandboxSpawnLabel } from "../../../Libraries/Props/PropCatalog.js";
+import { formatSandboxSpawnLabel } from "../../../Libraries/Props/props.js";
 import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
 import { orderSandboxPalettePropIds } from "../../../Libraries/Sandbox/sandboxShapeFamilies.js";
 import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandboxScenePlaceables.js";

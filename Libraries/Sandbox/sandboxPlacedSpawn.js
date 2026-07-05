@@ -2,7 +2,7 @@ import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState, removeWorldPropFromState, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { SANDBOX_DEFAULT_FACTION, resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
-import { applyPropBoxFootprint } from "../Props/propStrategy.js";
+import { applyPropBoxFootprint } from "../Props/props.js";
 import { convexFootprintHalfExtents } from "../Math/math.js";
 import { isGridFloorBeltSpawnAsset, isPoolRackSpawnAsset } from "./sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";

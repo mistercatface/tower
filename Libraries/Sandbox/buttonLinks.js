@@ -3,7 +3,7 @@ import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
-import { formatPropTypeLabel } from "../Props/PropCatalog.js";
+import { formatPropTypeLabel } from "../Props/props.js";
 import { appendOverlayWireLink } from "../Render/overlays/overlayCommands.js";
 /** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
 /** @typedef {WorldPropButtonLinkTarget} ButtonLinkTarget */

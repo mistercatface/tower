@@ -1,4 +1,4 @@
-import { formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
+import { formatSandboxSpawnLabel } from "../../Props/props.js";
 import { sandboxAssetTags } from "../../Sandbox/sandboxCapabilities.js";
 import propCatalog from "../../../Assets/props/index.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [

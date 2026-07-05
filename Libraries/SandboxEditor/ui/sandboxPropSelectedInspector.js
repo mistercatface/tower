@@ -1,4 +1,4 @@
-import { formatSandboxSpawnLabel } from "../../Props/PropCatalog.js";
+import { formatSandboxSpawnLabel } from "../../Props/props.js";
 import { resolveSandboxFaction, SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandboxFaction.js";
 import { getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
 import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";

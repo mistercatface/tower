@@ -11,8 +11,8 @@ import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { setChainHead } from "./chainLinks.js";
-import { setCirclePropRadius } from "../Props/propScale.js";
-import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
+import { setCirclePropRadius } from "../Props/props.js";
+import { applyCrossPinwheelFootprint } from "../Props/props.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Physics/physics.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
 /**

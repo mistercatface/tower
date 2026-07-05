@@ -7,7 +7,7 @@ import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
-import { processKineticContactFractures } from "../../Libraries/Props/fractureSystem.js";
+import { processKineticContactFractures } from "../../Libraries/Props/props.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Sandbox/gridWallDamage.js";
 import { commitGridNavEdit } from "../../Libraries/Sandbox/gridNavEdit.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";

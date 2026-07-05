@@ -1,6 +1,6 @@
 import { boxLocalFootprint } from "../../../Libraries/Math/math.js";
 import { NEUTRAL_BOX_COLORS } from "../shared/neutralCoats.js";
-import { getWallChunkSpriteCacheKey } from "../../../Libraries/Props/propStrategy.js";
+import { getWallChunkSpriteCacheKey } from "../../../Libraries/Props/props.js";
 export default {
     id: "wall_voxel_chunk",
     primitive: "polygon",

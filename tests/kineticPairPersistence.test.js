@@ -6,7 +6,7 @@ import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/P
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { satCheckCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Physics/physics.js";
-import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";

@@ -4,7 +4,7 @@ import { resolvePerspectiveConfig } from "./GamePerspective.js";
 import { activeProceduralDesign, resolveProceduralDesignConfig, resolveProceduralBakeSettings } from "./GameProceduralDesign.js";
 import { collisionSettings, LIBRARY_COLLISION_DEFAULTS, physicsSettings, LIBRARY_PHYSICS_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { setPropPixelSize, resolvePropPixelSize } from "./GamePropPixelSize.js";
-import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../Libraries/Props/propRenderDefaults.js";
+import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../Libraries/Props/props.js";
 import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
 import { clearPropSpriteCache } from "../Libraries/Canvas/QuantizedSpriteCache.js";

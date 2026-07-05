@@ -5,7 +5,7 @@ import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
-import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 
 function largeBall(x, y) {

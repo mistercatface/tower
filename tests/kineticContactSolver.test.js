@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
+import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
@@ -9,7 +9,7 @@ import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from ".
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/math.js";
-import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function pairStillOverlaps(a, b) {
     return satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
 }
