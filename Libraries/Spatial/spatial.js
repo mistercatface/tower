@@ -511,7 +511,6 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
 // Fixed isometric is a separate future mode; do not confuse with this module.
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
-export { radiusAtT, scaleAtHeight };
 export function resolveElevationAlpha(height, viewport) {
     const { cameraHeight, perspectiveStrength } = viewport;
     if (height <= 0 || cameraHeight <= height) return 0;

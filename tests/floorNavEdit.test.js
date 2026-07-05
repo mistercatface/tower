@@ -62,7 +62,7 @@ describe("gridNavEdit", () => {
     it("stampRailWallsBatch syncs nav once per batch", () => {
         const state = createNavEditTestState();
         state.worldSurfaces.settings = { maxWallHeightLevel: 4 };
-        stampRailWallsBatch(state, [{ col: 2, row: 2, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsBatch(state, [{ idx: 2 + 2 * state.obstacleGrid.cols, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
         assert.equal(state.syncCount, 1);
     });
 });

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { inverseMassFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
+import { massFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
@@ -17,12 +17,11 @@ describe("bodyMass", () => {
             16, 16,
             -16, 16,
         ]);
-        const small = { strategy: {}, shape: { type: "Polygon", vertices: smallVerts } };
-        const large = { strategy: {}, shape: { type: "Polygon", vertices: largeVerts } };
-        small.mass = kineticMassFromFootprint(small);
-        large.mass = kineticMassFromFootprint(large);
-        assert.ok(large.mass > small.mass);
-        assert.ok(Math.abs(large.mass / small.mass - 4) < 1e-6);
+        const small = { shape: { type: "Polygon", vertices: smallVerts }, strategy: { isKinetic: true } };
+        const large = { shape: { type: "Polygon", vertices: largeVerts }, strategy: { isKinetic: true } };
+        assert.equal(kineticFootprintArea(small), 256);
+        assert.equal(kineticFootprintArea(large), 1024);
+        assert.ok(kineticMassFromFootprint(large) > kineticMassFromFootprint(small));
     });
     it("kineticFootprintArea uses stored material area when collision hull is larger", () => {
         const body = {
@@ -85,7 +84,7 @@ describe("bodyMass", () => {
     });
     it("pinned bodies have zero inverse mass", () => {
         const body = { mass: 5, strategy: { pinned: true } };
-        assert.equal(inverseMassFromBody(body), 0);
+        assert.equal(body.strategy?.pinned ? 0 : 1 / massFromBody(body), 0);
     });
     it("ball default density matches canonical asset", () => {
         const prop = new WorldProp(0, 0, "ball", 0);

@@ -41,14 +41,12 @@ import {
     resolveElevationAlpha,
     extrudeLocalVertsInto,
     pointOnFrustumInto,
-    radiusAtT,
     getHeightSlice,
     traceVisibleArc,
     isFaceTowardViewer,
     isOutwardFaceTowardViewer,
     createSideGradientAt,
     projectVertical,
-    scaleAtHeight,
     projectWorldPointInto,
     projectWorldQuadInto,
     resolveWallSurfaceProfileId,
@@ -71,6 +69,8 @@ import {
     aabbFromTwoPointsInto,
     distanceSqToAabb,
     centerReachAabbInto,
+    radiusAtT,
+    scaleAtHeight,
 } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";

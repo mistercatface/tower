@@ -6,7 +6,7 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { setPropRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
@@ -78,7 +78,7 @@ function mockPanelBody() {
 
 function spawnBall(state, x = 64, y = 64) {
     const prop = spawnPlacedSandboxProp(state, x, y, "ball", "neutral");
-    setPropRadius(prop, 5);
+    setCirclePropRadius(prop, 5);
     return prop;
 }
 

@@ -192,10 +192,6 @@ export function massFromBody(body) {
     if (body.mass == null) throw new Error("Kinetic body missing mass");
     return body.mass;
 }
-export function inverseMassFromBody(body) {
-    if (body.strategy?.pinned) return 0;
-    return 1 / massFromBody(body);
-}
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
 export const kineticDynamicSlab = {
@@ -265,7 +261,7 @@ export function writeStaticKineticSlabSlot(body) {
     const physId = body._physId;
     const slab = kineticStaticSlab;
     slab.mass[physId] = massFromBody(body);
-    slab.invMass[physId] = inverseMassFromBody(body);
+    slab.invMass[physId] = body.strategy?.pinned ? 0 : 1 / massFromBody(body);
     const moment = body.momentOfInertia;
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.pinned[physId] = body.strategy?.pinned ? 1 : 0;
@@ -1247,7 +1243,7 @@ function createBodyImpulseMotion(body) {
             return body.angularVelocity;
         },
         get invMass() {
-            return inverseMassFromBody(body);
+            return body.strategy?.pinned ? 0 : 1 / massFromBody(body);
         },
         get invI() {
             return body.momentOfInertia ? 1 / body.momentOfInertia : 0;
@@ -1737,8 +1733,8 @@ function appendConstraintEntry(slab, item) {
     }
     slab.static.massA[idx] = massFromBody(bodyA);
     slab.static.massB[idx] = massFromBody(bodyB);
-    slab.static.invMassA[idx] = inverseMassFromBody(bodyA);
-    slab.static.invMassB[idx] = inverseMassFromBody(bodyB);
+    slab.static.invMassA[idx] = bodyA.strategy?.pinned ? 0 : 1 / massFromBody(bodyA);
+    slab.static.invMassB[idx] = bodyB.strategy?.pinned ? 0 : 1 / massFromBody(bodyB);
     slab.static.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
     slab.static.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
     slab.static.pinnedA[idx] = bodyA.strategy?.pinned ? 1 : 0;
@@ -3430,21 +3426,18 @@ const ISLAND_SLEEP_QUERY_BOUNDS = createAabb();
 export function kineticSleepFramesRequired() {
     return collisionSettings.kineticSleep.frames;
 }
-export function isKinetic(entity) {
-    return Boolean(entity?.strategy?.isKinetic);
-}
 function propBlocksSleep(prop) {
     const fn = prop.currentState?.blocksSleep;
     if (fn) return fn.call(prop.currentState);
     return false;
 }
 export function canSleepKinetic(entity) {
-    if (!isKinetic(entity)) return false;
+    if (!entity?.strategy?.isKinetic) return false;
     if (propBlocksSleep(entity)) return false;
     return !isKinematicallyActive(entity);
 }
 export function wakeKineticBody(entity) {
-    if (!isKinetic(entity)) return;
+    if (!entity?.strategy?.isKinetic) return;
     if (!entity.isSleeping && entity._sleepFrames === 0) return;
     entity._sleepFrames = 0;
     entity.isSleeping = false;
@@ -3468,7 +3461,7 @@ export function wakeKineticBody(entity) {
     }
 }
 export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSleepFramesRequired()) {
-    if (!isKinetic(entity)) return;
+    if (!entity?.strategy?.isKinetic) return;
     if (!eligible) {
         entity._sleepFrames = 0;
         entity.isSleeping = false;
@@ -3527,7 +3520,12 @@ export function applyAcceleration(body, ax, ay, dtSec) {
  * @param {number} dtSec
  */
 export function applyKineticAcceleration(body, ax, ay, dtSec) {
-    if (body.ax === undefined || body.ay === undefined) return;
+    if (body.ax === undefined || body.ay === undefined) {
+        body.vx = (body.vx ?? 0) + ax * dtSec;
+        body.vy = (body.vy ?? 0) + ay * dtSec;
+        wakeKineticBody(body);
+        return;
+    }
     body.ax += ax;
     body.ay += ay;
     wakeKineticBody(body);
@@ -4179,9 +4177,6 @@ export function absorbCollisionRollImpulse(body, dtMs) {
     const delta = axisAngleQuat(0, 0, 1, angle);
     body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
 }
-export function integrateRollOrientation(body, dtMs) {
-    integrateGroundRoll(body, dtMs);
-}
 export function quantizeRollQuat(rollQuat, steps = 16) {
     const q = rollQuat ?? IDENTITY_ROLL_QUAT;
     const angle = 2 * Math.acos(clamp(q.w ?? 1, -1, 1));
@@ -4220,7 +4215,7 @@ export function integratePropMotion(body, dtMs) {
     const friction = resolveRollingFriction(strategy, body);
     const snapSpeed = strategy.snapSpeed ?? 1;
     absorbCollisionRollImpulse(body, dtMs);
-    integrateRollOrientation(body, dtMs);
+    integrateGroundRoll(body, dtMs);
     body.angularVelocity = 0;
     applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
 }

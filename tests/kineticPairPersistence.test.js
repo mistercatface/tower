@@ -5,7 +5,7 @@ import { persistedKineticPairBuffer } from "./harness/kineticPairHarness.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
-import { setPropRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, kineticIntegrateHooks, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
@@ -48,7 +48,7 @@ describe("kinetic pair persistence", () => {
     it("warm-starts mixed circle-poly contact across consecutive pipeline passes", () => {
         withCollisionSettings(collisionSettingsForIterations(2), () => {
             const ball = new WorldProp(0, 0, "ball", 0);
-            setPropRadius(ball, 7);
+            setCirclePropRadius(ball, 7);
             const wedge = new WorldProp(10, 0, "tri_wedge", 0);
             wedge.vx = -25;
             assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));

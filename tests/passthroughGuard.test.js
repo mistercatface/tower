@@ -10,6 +10,8 @@ const scanRoots = [
     "Libraries/Sandbox/sandbox.js",
     "Libraries/Props/props.js",
     "Libraries/Physics/physics.js",
+    "Libraries/Spatial/spatial.js",
+    "Libraries/Navigation/navigation.js",
 ];
 
 const deletedPassthroughExports = [
@@ -31,6 +33,25 @@ const deletedPassthroughExports = [
     "kineticTickFromState",
     "worldSimFromState",
     "createKineticTick",
+    "isEntityAtRest",
+    "isEntityAsleep",
+    "removeSandboxWorldProp",
+    "isShapeFamilyAsset",
+    "getPropRadius",
+    "setPropRadius",
+    "inverseMassFromBody",
+    "integrateRollOrientation",
+    "isKinetic",
+    "radiusAtT",
+    "scaleAtHeight",
+    "snapshotWorldCol",
+    "snapshotWorldRow",
+    "sandboxFactions",
+    "SANDBOX_FACTION_OPTIONS",
+    "SANDBOX_DEFAULT_FACTION",
+    "resolveSandboxFaction",
+    "formatSandboxFactionLabel",
+    "mapGenerationCellBounds",
 ];
 
 function walkGameStateJs(dir, out = []) {
@@ -45,7 +66,9 @@ function walkGameStateJs(dir, out = []) {
 function scanDeletedPassthroughs(source, relPath) {
     const offenders = [];
     for (const name of deletedPassthroughExports) {
-        if (new RegExp(`export function ${name}\\b`).test(source)) offenders.push(`${relPath}: deleted passthrough ${name} reintroduced`);
+        if (new RegExp(`\\bexport\\s+(?:function|const|class|let|var)\\s+${name}\\b|\\bexport\\s*\\{[^}]*\\b${name}\\b`).test(source)) {
+            offenders.push(`${relPath}: deleted passthrough ${name} reintroduced`);
+        }
     }
     return offenders;
 }
@@ -62,6 +85,7 @@ describe("passthrough guard", () => {
             offenders.push(...scanDeletedPassthroughs(readFileSync(join(root, rel), "utf8"), rel));
         }
         for (const file of walkGameStateJs(join(root, "GameState"))) {
+            if (file.endsWith("SandboxWorldState.js") || file.replace(/\\/g, "/").endsWith("GameState/SandboxWorldState.js")) continue;
             const rel = file.slice(root.length + 1).replace(/\\/g, "/");
             offenders.push(...scanDeletedPassthroughs(readFileSync(file, "utf8"), rel));
         }

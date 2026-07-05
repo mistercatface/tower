@@ -9,7 +9,7 @@ import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from ".
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/math.js";
-import { setPropRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function pairStillOverlaps(a, b) {
     return satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
 }
@@ -109,7 +109,7 @@ describe("poly-poly kinetic contact", () => {
     });
     it("circle-poly ball and tri wedge separate with normal toward polygon", () => {
         const ball = new WorldProp(0, 0, "ball", 0);
-        setPropRadius(ball, 7);
+        setCirclePropRadius(ball, 7);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         const info = separatePairUntilClear(ball, wedge);
         assert.ok(info);

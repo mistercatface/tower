@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
-import { inverseMassFromBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
+import { massFromBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { applyCrossPinwheelFootprint } from "../Libraries/Props/props.js";
 
 describe("cross pinwheel prop", () => {
@@ -23,7 +23,7 @@ describe("cross pinwheel prop", () => {
         assert.ok(kineticInertiaFromBody(pinwheel) > 0);
 
         // Pinned body should have 0 inverse mass
-        assert.equal(inverseMassFromBody(pinwheel), 0);
+        assert.equal(pinwheel.strategy.pinned ? 0 : 1 / massFromBody(pinwheel), 0);
     });
 
     it("absorbs angular velocity and rotates when hit, but position remains pinned", () => {

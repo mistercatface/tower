@@ -2603,12 +2603,6 @@ export function gridNavFrameKey(grid) {
 export function gridFrameFromGrid(grid) {
     return { minX: grid.minX, minY: grid.minY, cellSize: grid.cellSize, cols: grid.cols, rows: grid.rows, key: gridNavFrameKey(grid) };
 }
-export function snapshotWorldCol(frame, x) {
-    return worldColAtOrigin(x, frame.minX, frame.cellSize);
-}
-export function snapshotWorldRow(frame, y) {
-    return worldRowAtOrigin(y, frame.minY, frame.cellSize);
-}
 export function snapshotGridCenterX(frame, col) {
     return gridCenterXAtOrigin(col, frame.minX, frame.cellSize * 0.5);
 }
@@ -2616,8 +2610,8 @@ export function snapshotGridCenterY(frame, row) {
     return gridCenterYAtOrigin(row, frame.minY, frame.cellSize * 0.5);
 }
 export function snapshotWorldToIdx(frame, x, y) {
-    const col = snapshotWorldCol(frame, x);
-    const row = snapshotWorldRow(frame, y);
+    const col = worldColAtOrigin(x, frame.minX, frame.cellSize);
+    const row = worldRowAtOrigin(y, frame.minY, frame.cellSize);
     if (col < 0 || col >= frame.cols || row < 0 || row >= frame.rows) return -1;
     return row * frame.cols + col;
 }
@@ -3250,8 +3244,8 @@ export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {
         const worldY = row * flowFrame.cellSize + wyBase;
         for (let col = 0; col < cols; col++) {
             const worldX = col * flowFrame.cellSize + wxBase;
-            const navCol = snapshotWorldCol(navFrame, worldX);
-            const navRow = snapshotWorldRow(navFrame, worldY);
+            const navCol = worldColAtOrigin(worldX, navFrame.minX, navFrame.cellSize);
+            const navRow = worldRowAtOrigin(worldY, navFrame.minY, navFrame.cellSize);
             if (navCol >= 0 && navCol < navCols && navRow >= 0 && navRow < navRows) flowToNavIdx[idx] = navRow * navCols + navCol;
             else flowToNavIdx[idx] = -1;
             idx++;

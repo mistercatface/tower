@@ -6,7 +6,6 @@ import {
     SANDBOX_FACTION_OPTIONS,
     formatSandboxFactionLabel,
 } from "../../GameState/SandboxWorldState.js";
-export { sandboxFactions, SANDBOX_FACTION_OPTIONS, SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel };
 import {
     FLOOR_CELL_KIND,
     FloorBelt,
@@ -94,8 +93,10 @@ import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import {
     acquireWorldProp,
     applyPropBoxFootprint,
-    setPropRadius,
-    getPropRadius,
+    setCirclePropRadius,
+    getCirclePropRadius,
+    setPolygonPropBoundingRadius,
+    getPolygonPropBoundingRadius,
     propFootprintHalfExtents,
     applyCrossPinwheelFootprint,
     formatPropTypeLabel,
@@ -253,20 +254,10 @@ export function resolveSandboxBehaviors(asset, state, prop = null) {
  * }} InputGateRule
  * @typedef {{ allowed: boolean, failedRule?: InputGateRule }} InputGateResult
  */
-/** @param {object} entity */
-export function isEntityAtRest(entity) {
-    if (!entity || entity.isDead) return true;
-    return !isKinematicallyActive(entity);
-}
-/** @param {object} entity */
-export function isEntityAsleep(entity) {
-    if (!entity || entity.isDead) return true;
-    return Boolean(entity.isSleeping);
-}
 /** @param {object} entity @param {InputGateUntil} until */
 function entityPassesUntil(entity, until) {
-    if (until === "atRest" || until === "allAtRest") return isEntityAtRest(entity);
-    return isEntityAsleep(entity);
+    if (until === "atRest" || until === "allAtRest") return !entity || entity.isDead || !isKinematicallyActive(entity);
+    return !entity || entity.isDead || Boolean(entity.isSleeping);
 }
 /** @param {object} entity @param {string[] | undefined} excludeStates */
 function isExcludedFromGate(entity, excludeStates) {
@@ -706,10 +697,6 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     addWorldPropToState(state, prop);
     return prop;
 }
-export function removeSandboxWorldProp(state, prop, spatialFrame) {
-    unregisterPropFromCategoryIndexes(state, prop);
-    removeWorldPropFromState(state, prop, spatialFrame, state.sandbox.entityMeta);
-}
 export function createSandboxPlacementOrder(state) {
     let nextPlacementSeq = 1;
     const placementSeqByKey = new Map();
@@ -811,9 +798,6 @@ export function isBallFamilyAsset(asset) {
 }
 export function isBlockFamilyAsset(asset) {
     return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset) && asset.physics?.isKinetic !== false;
-}
-export function isShapeFamilyAsset(asset) {
-    return isBallFamilyAsset(asset) || isBlockFamilyAsset(asset);
 }
 export function assetDefaultBallRadius(asset) {
     return asset?.physics?.radius ?? DEFAULT_BALL_SPAWN_RADIUS;
@@ -967,7 +951,7 @@ const PLACEABLE = {
             const placedAsset = propCatalog[propTypeId];
             const halfExtents = blockPresetUsesResizableFootprint(propTypeId) ? ctx.spawnBoxHalfExtents : undefined;
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
-            if (spawned && isBallFamilyAsset(placedAsset)) setPropRadius(spawned, ctx.spawnBallRadius);
+            if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned && propTypeId === "cross_pinwheel") applyCrossPinwheelFootprint(spawned, ctx.spawnCrossLength, ctx.spawnCrossThickness);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
@@ -1170,7 +1154,11 @@ function expandGridForSnapshot(state, doc) {
 }
 /** @param {object} state */
 function clearSandboxSceneContent(state) {
-    for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i], state.spatialFrame);
+    for (let i = state.worldProps.length - 1; i >= 0; i--) {
+        const prop = state.worldProps[i];
+        unregisterPropFromCategoryIndexes(state, prop);
+        removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
+    }
     clearKineticConstraints(state.kinetic);
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
@@ -1184,7 +1172,9 @@ function spawnSnapshotProp(state, entry) {
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents, entry.visualOverride);
-    if (entry.radius != null) setPropRadius(prop, entry.radius);
+    if (entry.radius != null) 
+        if (prop.shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, entry.radius);
+        else setCirclePropRadius(prop, entry.radius);
     if (prop && entry.type === "cross_pinwheel" && (entry.crossLength != null || entry.crossThickness != null)) applyCrossPinwheelFootprint(prop, entry.crossLength ?? 32, entry.crossThickness ?? 8);
     return prop;
 }
@@ -1297,7 +1287,7 @@ export function createSandboxSession(state) {
     let spawnVisualOverrideBrightness = 1;
     let spawnSnakeLength = 5;
     const resolveSpawnVisualOverride = (asset) => {
-        if (!isShapeFamilyAsset(asset)) return null;
+        if (!isBallFamilyAsset(asset) && !isBlockFamilyAsset(asset)) return null;
         const tint = spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset);
         const visualOverride = { tint };
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
@@ -1323,7 +1313,10 @@ export function createSandboxSession(state) {
         if (!asset) return false;
         return dispatchSpawnPlaceableAt(state, worldX, worldY, asset, spawnCtx(options));
     };
-    const removeProp = (prop) => removeSandboxWorldProp(state, prop, state.spatialFrame);
+    const removeProp = (prop) => {
+        unregisterPropFromCategoryIndexes(state, prop);
+        removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
+    };
     const listSelectedPropEntries = () => {
         pruneSelection();
         const ids = selectionPropIds(sel());
@@ -1717,7 +1710,11 @@ export function createSandboxSession(state) {
             DELETE_BY_SELECT_KIND[item.select.kind](this, item, pickSelection);
         },
         clear() {
-            for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i], state.spatialFrame);
+            for (let i = state.worldProps.length - 1; i >= 0; i--) {
+                const prop = state.worldProps[i];
+                unregisterPropFromCategoryIndexes(state, prop);
+                removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
+            }
             state.obstacleGrid.clearAllFloorCells();
             selection.clearSelection();
             placement.resetPlacementOrder();
@@ -1802,7 +1799,7 @@ function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, 
 }
 function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     if (headScaleFn) headScaleFn(prop, segmentRadius);
-    else if (segmentRadius != null) setPropRadius(prop, segmentRadius);
+    else if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
 }
 export function spawnAgentChain(state, anchorIdx, spec) {
     const {
@@ -1892,7 +1889,7 @@ export function growChainSegment(state, tailProp, options) {
     const segmentRadius = options.segmentRadius ?? null;
     const offset = segmentOffset(1, spacing, growDirX, growDirY);
     const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
-    if (segmentRadius != null) setPropRadius(segment, segmentRadius);
+    if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
     if (spawnGroupId) {
         meta.setSpawnGroupId(segment.id, spawnGroupId);
         if (exportType) meta.setSpawnGroupExportType(segment.id, exportType);
@@ -2214,7 +2211,7 @@ const DRAG_LAUNCH_BEHAVIORS = [
         id: DRAG_LAUNCH_WAIT_BEHAVIOR_ID,
         canStart(state) {
             return (prop) => {
-                if (!isEntityAtRest(prop)) return false;
+                if (prop && !prop.isDead && isKinematicallyActive(prop)) return false;
                 return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, propCatalog[prop?.type], state).allowed;
             };
         },
@@ -3388,8 +3385,8 @@ export function appendShapeFamilySpawnFields(body, controller, spawnId) {
     else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
 }
 export function appendBallSelectedFields(body, selectedProp, asset) {
-    appendShapeFamilyRadiusField(body, getPropRadius(selectedProp) ?? assetDefaultBallRadius(asset), (radius) => {
-        setPropRadius(selectedProp, radius);
+    appendShapeFamilyRadiusField(body, getCirclePropRadius(selectedProp) ?? assetDefaultBallRadius(asset), (radius) => {
+        setCirclePropRadius(selectedProp, radius);
         markLabViewDirty();
     });
     appendShapeFamilyCoatBlock(body, selectedShapeCoatAccessors(selectedProp, asset), selectedProp);
@@ -3694,7 +3691,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
-    if (isShapeFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
+    if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isBlockFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
     if (isChainLinkBall(selectedProp))
         appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
     appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
@@ -3836,7 +3833,7 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
                 markLabViewDirty();
             },
         });
-    } else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
+    } else if (isBallFamilyAsset(spawnAsset) || isBlockFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }
 export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {

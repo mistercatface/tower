@@ -121,7 +121,7 @@ export function createSpherePrimitive(visuals) {
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
 export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive };
-function getPolygonPropBoundingRadius(prop) {
+export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
     return prop.radius ?? null;
@@ -143,17 +143,17 @@ export function scalePolygonPropFootprint(prop, scale) {
         wakeKineticBody(prop);
     }
 }
-function setPolygonPropBoundingRadius(prop, boundingRadius) {
+export function setPolygonPropBoundingRadius(prop, boundingRadius) {
     const currentRadius = getPolygonPropBoundingRadius(prop);
     if (!currentRadius || currentRadius <= 0) throw new Error(`setPolygonPropBoundingRadius requires a polygon prop with positive radius, got ${currentRadius}`);
     scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
 }
-function getCirclePropRadius(prop) {
+export function getCirclePropRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Circle") return shape.radius;
     return prop.radius ?? null;
 }
-function setCirclePropRadius(prop, radius) {
+export function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
     const shape = prop.shape;
     if (shape?.type !== "Circle") throw new Error(`setCirclePropRadius requires a circle prop, got ${shape?.type ?? "none"}`);
@@ -1310,14 +1310,6 @@ export function processKineticContactFractures(tick, contacts, hooks = {}) {
         queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx, ny);
     }
     flushDeferredFractures(tick.world, tick.frame, hooks);
-}
-export function getPropRadius(prop) {
-    if (prop.shape?.type === "Polygon") return getPolygonPropBoundingRadius(prop);
-    return getCirclePropRadius(prop);
-}
-export function setPropRadius(prop, radius) {
-    if (prop.shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, radius);
-    else setCirclePropRadius(prop, radius);
 }
 // --- MERGED
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */

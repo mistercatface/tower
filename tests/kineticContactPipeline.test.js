@@ -4,13 +4,13 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, checkEntityPairCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Physics/physics.js";
-import { setPropRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
-    setPropRadius(prop, 7);
+    setCirclePropRadius(prop, 7);
     return prop;
 }
 

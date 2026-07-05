@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/sandbox.js";
-import { setPropRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { mockBall, resetMockBallIds } from "./harness/kineticTickHarness.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 
@@ -60,8 +60,8 @@ describe("chain links", () => {
         const b = mockBall(8.4, 0);
         const state = createState([a, b]);
         addChainLink(state, a.id, b.id, 1.05);
-        setPropRadius(a, 3);
-        setPropRadius(b, 3);
+        setCirclePropRadius(a, 3);
+        setCirclePropRadius(b, 3);
         resyncChainLinkRestLengths(state, [a.id, b.id], 1.05);
         assert.equal(state.kinetic.kineticConstraints[0].restLength, resolveChainLinkRestLength(a, b, 1.05));
     });

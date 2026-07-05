@@ -1,4 +1,5 @@
 import "./nodeCanvasSetup.js";
+import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
 import { computeWallBreakStrength } from "../Libraries/Physics/physics.js";
@@ -70,7 +71,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         const grid = state.obstacleGrid;
         stampVoxel(grid, 2, 2);
-        stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(grid, 4, 4), side: 1, heightLevel: 1, thicknessLevel: 1 }]);
         const voxelSeg = { gridIdx: worldIdxAtCell(state.obstacleGrid,2, 2), isStaticGridProxy: true, isEdgeRail: false };
         const railSeg = { gridIdx: worldIdxAtCell(state.obstacleGrid,4, 4), gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
         assert.equal(resolveWallDamageTarget(grid, voxelSeg)?.kind, "voxel");
@@ -93,7 +94,7 @@ describe("kinetic wall damage", () => {
     it("one max-power head-on hit destroys a rail wall", async () => {
         const state = await createWallDamageTestState();
         const grid = state.obstacleGrid;
-        stampRailWallsQuiet(state, [{ col: 5, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(grid, 5, 5), side: 0, heightLevel: 1, thicknessLevel: 1 }]);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,5, 5), gridSide: 0, isStaticGridProxy: false, isEdgeRail: true };
         const hit = { approachDot: -560, normalX: 0, normalY: 1, segment };
@@ -153,7 +154,7 @@ describe("kinetic wall damage", () => {
     it("rail wall hit clears edge wall, spawns a rail chunk prop, and fractures it", async () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
-        stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 2, thicknessLevel: 4 }]);
+        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 4, 4), side: 1, heightLevel: 2, thicknessLevel: 4 }]);
         state.obstacleGrid.setEdgeSurfaceProfile(worldIdxAtCell(state.obstacleGrid,4, 4), 1, "edge-profile");
         
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,4, 4), gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
@@ -194,7 +195,7 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         
-        stampRailWallsQuiet(state, [{ col: 4, row: 4, side: 1, heightLevel: 2, thicknessLevel: 4 }]);
+        stampRailWallsQuiet(state, [{ idx: worldIdxAtCell(state.obstacleGrid, 4, 4), side: 1, heightLevel: 2, thicknessLevel: 4 }]);
         
         const ballProp = new WorldProp(14, 8, "ball", 0);
         ballProp.vx = 560;

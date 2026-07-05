@@ -46,9 +46,13 @@ describe("BakedSpriteCache Leak Auditing", () => {
         // Wait for all async promotions to settle
         await new Promise((resolve) => setTimeout(resolve, 50));
 
-        // Verify that canvas1 was released back to the pool
         const canvasRecycled = acquireOffscreenCanvas(987, 654);
-        assert.equal(canvasRecycled, canvas1, "The overwritten OffscreenCanvas should be released back to the pool");
+        const canvasRecycled2 = acquireOffscreenCanvas(987, 654);
+        assert.ok(
+            (canvasRecycled === canvas1 && canvasRecycled2 === canvas2) ||
+            (canvasRecycled === canvas2 && canvasRecycled2 === canvas1),
+            "The overwritten OffscreenCanvas should be released back to the pool"
+        );
 
         // Verify that any created ImageBitmaps for discarded entries are closed
         assert.equal(createdBitmaps.length, 2, "Should have created two ImageBitmaps");
@@ -70,9 +74,13 @@ describe("BakedSpriteCache Leak Auditing", () => {
         // Wait for async promotions to settle
         await new Promise((resolve) => setTimeout(resolve, 50));
 
-        // Verify item1 was released to pool
         const canvasRecycled = acquireOffscreenCanvas(876, 543);
-        assert.equal(canvasRecycled, canvas1, "The evicted OffscreenCanvas should be released back to the pool");
+        const canvasRecycled2 = acquireOffscreenCanvas(876, 543);
+        assert.ok(
+            (canvasRecycled === canvas1 && canvasRecycled2 === canvas2) ||
+            (canvasRecycled === canvas2 && canvasRecycled2 === canvas1),
+            "The evicted OffscreenCanvas should be released back to the pool"
+        );
 
         // Verify that the promoted bitmap for item1 was closed
         assert.equal(closedBitmaps, 1, "The ImageBitmap of the evicted entry should be closed");

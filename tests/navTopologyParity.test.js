@@ -30,7 +30,7 @@ describe("nav topology parity", () => {
         grid.writeFloorCell(4 + 4 * grid.cols, FLOOR_CELL_KIND.Belt, 0);
         grid.writeFloorCell(5 + 4 * grid.cols, FLOOR_CELL_KIND.Belt, 0);
         grid.writeFloorCell(7 + 7 * grid.cols, FLOOR_CELL_KIND.Belt, 1);
-        stampRailWallsQuiet({ obstacleGrid: grid, worldSurfaces: { settings: { maxWallHeightLevel: 4 } } }, [{ col: 3, row: 5, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
+        stampRailWallsQuiet({ obstacleGrid: grid, worldSurfaces: { settings: { maxWallHeightLevel: 4 } } }, [{ idx: 3 + 5 * grid.cols, side: 0, heightLevel: 1, thicknessLevel: 1 }]);
 
         const navigation = await createWorkerNavigation(grid);
         await navigation.awaitWorkerNavReady();
