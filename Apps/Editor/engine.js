@@ -8,6 +8,7 @@ import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
 import { processKineticContactFractures } from "../../Libraries/Props/props.js";
+import { clearChainLinksForProp } from "../../Libraries/Sandbox/sandbox.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/physics.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/render.js";
@@ -33,9 +34,14 @@ function loadGameModeStylesheet() {
     link.href = new URL("./game-mode.css", import.meta.url).href;
     document.head.appendChild(link);
 }
+function editorKineticContactSideEffects(tick, contacts) {
+    processKineticContactFractures(tick, contacts, {
+        onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id),
+    });
+}
 /** @param {import("./state.js").TileLabGameState} state */
 function simulationKineticHooks(state) {
-    const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? processKineticContactFractures;
+    const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? editorKineticContactSideEffects;
     return {
         updateProp(prop, dt, frame) {
             prop.update(dt, state, frame);

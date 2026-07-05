@@ -120,3 +120,7 @@ export function resolveSandboxEntityLinkValue(state, entity, linkField) {
 export function getSandboxEntityMeta(state) {
     return state.sandbox.entityMeta;
 }
+export const SANDBOX_DEFAULT_FACTION = "alpha";
+export function resolveSandboxFaction(actor) {
+    return actor?.faction ?? SANDBOX_DEFAULT_FACTION;
+}

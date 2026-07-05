@@ -1,4 +1,4 @@
-import { getSandboxEntityMeta, resolveSandboxEntityLinkValue } from "../../GameState/sandboxEntityMeta.js";
+import { getSandboxEntityMeta, resolveSandboxEntityLinkValue, resolveSandboxFaction, SANDBOX_DEFAULT_FACTION } from "../../GameState/sandboxEntityMeta.js";
 import {
     FLOOR_CELL_KIND,
     FloorBelt,
@@ -27,10 +27,11 @@ import {
     stampRailWallAt,
     setVoxelWallHeightAt,
     stampVoxelWallAt,
-    floorOccupancyStampDrawCacheKey,
     computeCircleAimLineSegment,
     estimateRollingTravelDistance,
     appendGridEdgeOverlayCommand,
+    formatGridWallEdgeSideLabel,
+    syncFloorPropCollisionShape,
 } from "../Spatial/spatial.js";
 import {
     visitLiveWorldProps,
@@ -38,6 +39,8 @@ import {
     removeWorldPropFromState,
     findLiveWorldProp,
     addWorldPropsToState,
+    findWorldPropAtInView,
+    queryEntitiesInAabbStrict,
 } from "../../GameState/EntityRegistry.js";
 import {
     isKinematicallyActive,
@@ -67,9 +70,10 @@ import {
     resolveBodyRadius,
     PolygonShape,
     physicsSettings,
+    entityContainedInAabb,
 } from "../Physics/physics.js";
 import { gridSettings } from "../../Config/world.js";
-import { appendActionRow, appendEditorHint, appendSelectField } from "../UI/paramFields.js";
+import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
@@ -78,13 +82,30 @@ import {
     applyPropBoxFootprint,
     findGridAnchoredFloorPropAtIdx,
     setPropRadius,
+    getPropRadius,
+    propFootprintHalfExtents,
     applyCrossPinwheelFootprint,
     formatPropTypeLabel,
+    formatSandboxSpawnLabel,
+    getButtonLinks,
+    buttonEffectiveActive,
+    isSustainedSpawnerButtonInputMode,
+    addButtonLink,
+    findButtonLinkTarget,
+    clearButtonLinks,
+    listButtonLinkEndpoints,
+    removeButtonLink,
+    releaseButtonPointerHold,
+    handleButtonPointerDown,
+    hitTestFloorButton,
+    isButtonEntity,
+    isMassButtonInputMode,
+    syncFloorTriggerAabb,
+    appendButtonWireOverlayCommands,
 } from "../Props/props.js";
-import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex } from "../Math/math.js";
+import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
-import { FLIPPER_LAYOUT } from "../../Assets/props/flipper/flipperShared.js";
 import { agentPose } from "../Agent/index.js";
 import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET } from "../Navigation/navigation.js";
 import {
@@ -97,12 +118,19 @@ import {
     overlayGridCellHighlight,
     overlayAabb,
     overlayCachedWireEndpoint,
-    createConveyorDraw,
     queryPropsInView,
+    clearGridStampDrawCaches,
+    appendPathOverlayCommands,
 } from "../Render/render.js";
-import { GRID_STAMP_RENDER_KEY, drawCachedPropSprite } from "../Canvas/canvas.js";
-import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint } from "../Color/visualOverride.js";
+import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { unregisterPropFromCategoryIndexes } from "../../GameState/SandboxWorldState.js";
+import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
+import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
+import { createWireLinkTool } from "../Editor/wireLinkTool.js";
+import { createTwoAnchorWireTool } from "../Editor/twoAnchorWireTool.js";
+import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
+import { createContextMenu } from "../UI/contextMenu.js";
+import { markLabViewDirty } from "../../Apps/Editor/ui/preview.js";
 import propCatalog from "../../Assets/props/index.js";
 // --- MERGED FROM sandboxBehaviorConfig.js ---
 /** @param {object} state @param {object | null | undefined} prop @param {object | null | undefined} asset @param {"cueStrike"} behaviorKey */
@@ -125,7 +153,6 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunchWait: "Drag launch (wait for rest)",
     dragLaunchFacing: "Drag launch (yaw to shot)",
     spawner: "Spawner",
-    flipper: "Flipper",
     cueStrike: "Cue strike",
     [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)",
     [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)",
@@ -199,7 +226,6 @@ export function resolveSandboxBehaviors(asset, state, prop = null) {
 }
 // --- MERGED FROM sandboxFaction.js ---
 export const sandboxFactions = { alpha: "alpha", bravo: "bravo", charlie: "charlie", delta: "delta", echo: "echo" };
-export const SANDBOX_DEFAULT_FACTION = sandboxFactions.alpha;
 export const SANDBOX_FACTION_OPTIONS = [
     { id: sandboxFactions.alpha, label: "Alpha" },
     { id: sandboxFactions.bravo, label: "Bravo" },
@@ -209,9 +235,6 @@ export const SANDBOX_FACTION_OPTIONS = [
 ];
 export function formatSandboxFactionLabel(factionId) {
     return SANDBOX_FACTION_OPTIONS.find((opt) => opt.id === factionId)?.label ?? factionId;
-}
-export function resolveSandboxFaction(actor) {
-    return actor?.faction ?? SANDBOX_DEFAULT_FACTION;
 }
 // --- MERGED FROM inputGates.js ---
 /**
@@ -780,7 +803,7 @@ export function setSandboxPathVisual(state, prop, visual) {
     getSandboxEntityMeta(state).setPathVisual(prop.id, visual);
 }
 // --- MERGED FROM sandboxShapeFamilies.js ---
-export const SANDBOX_PRIMARY_PROP_IDS = ["ball", "flipper_left", "flipper_right"];
+export const SANDBOX_PRIMARY_PROP_IDS = ["ball"];
 export const DEFAULT_BALL_SPAWN_RADIUS = 4;
 export function orderSandboxPalettePropIds(propIds) {
     const available = new Set(propIds);
@@ -951,7 +974,7 @@ export function buildRailWallInspectorInfo(state, sel) {
     return railWallEdgeAt(grid, idx, edge.side) ? getRailWallInfo(grid, idx, edge.side) : null;
 }
 // --- MERGED FROM sandboxSpawnSession.js ---
-export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection, notifyUi, placement }) {
+function buildSandboxSpawnApi({ state, getSpawnPropId, pickSelection, notifyUi, placement }) {
     let spawnFaction = SANDBOX_DEFAULT_FACTION;
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
@@ -1038,6 +1061,9 @@ export function createSandboxSpawnSession(state, { getSpawnPropId, pickSelection
             return spawnAt(state.viewport.x, state.viewport.y);
         },
     };
+}
+export function createSandboxSpawnSession(state, deps) {
+    return buildSandboxSpawnApi({ state, ...deps });
 }
 // --- MERGED FROM sandboxScenePlaceables.js ---
 function sceneItem(seq, label, select, category = "") {
@@ -1433,7 +1459,7 @@ export function createSandboxSession(state) {
         }
         return placed;
     };
-    const spawn = createSandboxSpawnSession(state, { getSpawnPropId: spawnPropIdFromPalette, pickSelection, notifyUi, placement });
+    const spawn = buildSandboxSpawnApi({ state, getSpawnPropId: spawnPropIdFromPalette, pickSelection, notifyUi, placement });
     const removeProp = (prop) => removeSandboxWorldProp(state, prop, state.spatialFrame);
     const listSelectedPropEntries = () => {
         pruneSelection();
@@ -1815,141 +1841,6 @@ export function createDragLaunchFacingBehavior(state) {
     });
 }
 
-// --- MERGED FROM flipperBehavior.js ---
-export const FLIPPER_BEHAVIOR_ID = "flipper";
-const SWING_SPEED_RAD = 20;
-const RETURN_SPEED_RAD = 8;
-const FLIPPER_ANGLE_STEPS = 24;
-/** @param {object} prop */
-export function isFlipperWorldProp(prop) {
-    return Boolean(propCatalog[prop?.type]?.flipper?.side);
-}
-/** @param {object} asset */
-function flipperConfig(asset) {
-    return asset?.flipper ?? {};
-}
-/** @param {object} cfg */
-function resolveFlipperDims(cfg) {
-    return {
-        length: cfg.length ?? FLIPPER_LAYOUT.length,
-        width: cfg.width ?? FLIPPER_LAYOUT.width,
-        height: cfg.height ?? FLIPPER_LAYOUT.height,
-        pivotRadius: cfg.pivotRadius ?? FLIPPER_LAYOUT.pivotRadius,
-    };
-}
-/** @param {object} prop @param {object} asset */
-export function getFlipperSpec(prop, asset) {
-    const cfg = flipperConfig(asset);
-    const dims = resolveFlipperDims(cfg);
-    return {
-        side: cfg.side ?? "left",
-        extendDir: cfg.extendDir ?? 1,
-        length: dims.length,
-        width: dims.width,
-        height: dims.height,
-        pivotRadius: dims.pivotRadius,
-        restAngle: prop._flipperRestAngle ?? cfg.restAngle ?? 0.45,
-        activeAngle: prop._flipperActiveAngle ?? cfg.activeAngle ?? -0.55,
-    };
-}
-/** @param {object | null | undefined} prop @param {{ hold?: boolean }} [options] */
-export function triggerFlipper(prop, { hold = true } = {}) {
-    if (!prop) return;
-    prop._flipperTarget = "active";
-    prop._flipperButtonPressed = hold;
-}
-/** @param {object | null | undefined} prop */
-export function releaseFlipper(prop) {
-    if (!prop) return;
-    prop._flipperTarget = "rest";
-    prop._flipperButtonPressed = false;
-}
-/** @param {object | null | undefined} prop */
-export function isFlipperButtonPressed(prop) {
-    if (!prop) return false;
-    return Boolean(prop._flipperButtonPressed || prop._flipperTarget === "active");
-}
-/** @param {object} prop */
-export function getFlipperSpriteCacheKey(prop) {
-    const asset = propCatalog[prop.type];
-    const cfg = flipperConfig(asset);
-    const spec = getFlipperSpec(prop, asset);
-    const angle = prop._flipperAngle ?? cfg.restAngle ?? 0.45;
-    const active = prop._flipperTarget === "active" || prop._flipperButtonPressed ? 1 : 0;
-    return `${cfg.side ?? "left"}_L${Math.round(spec.length)}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
-}
-/** @param {object} prop */
-export function syncFlipperCollisionShape(prop) {
-    const asset = propCatalog[prop.type];
-    const spec = getFlipperSpec(prop, asset);
-    if (prop._flipperAngle == null) prop._flipperAngle = spec.restAngle;
-    const { length, width, extendDir } = spec;
-    const halfW = width * 0.5;
-    const angle = prop._flipperAngle;
-    const key = `flip_${spec.side}_${angle.toFixed(3)}_${length}_${halfW}`;
-    if (prop._flipperShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
-    const tipR = Math.max(1, halfW * 0.45);
-    prop.shape = new PolygonShape(new Float32Array([0, -halfW, (length - tipR) * extendDir, -tipR, length * extendDir, 0, (length - tipR) * extendDir, tipR, 0, halfW]));
-    prop._collisionFacing = angle;
-    prop._flipperShapeKey = key;
-    return prop.shape;
-}
-/** @param {object} prop @param {object} asset */
-function initFlipperAngle(prop, asset) {
-    if (prop._flipperAngle == null) {
-        prop._flipperAngle = getFlipperSpec(prop, asset).restAngle;
-        prop._flipperTarget = "rest";
-    }
-}
-/** @param {object} prop @param {object} asset @param {number} dt */
-function tickFlipperWorldProp(prop, asset, dt) {
-    initFlipperAngle(prop, asset);
-    const spec = getFlipperSpec(prop, asset);
-    const isActivating = prop._flipperTarget === "active";
-    const target = isActivating ? spec.activeAngle : spec.restAngle;
-    const speed = isActivating ? SWING_SPEED_RAD : RETURN_SPEED_RAD;
-    const dtSec = dt / 1000;
-    const prevAngle = prop._flipperAngle;
-    const diff = target - prevAngle;
-    const maxStep = speed * dtSec;
-    if (Math.abs(diff) <= maxStep) {
-        prop._flipperAngle = target;
-        if (isActivating && !prop._flipperButtonPressed) prop._flipperTarget = "rest";
-    } else prop._flipperAngle = prevAngle + Math.sign(diff) * maxStep;
-    prop._flipperAngVel = (prop._flipperAngle - prevAngle) / dtSec;
-    prop.angularVelocity = prop._flipperAngVel;
-    prop.vx = 0;
-    prop.vy = 0;
-    syncFlipperCollisionShape(prop);
-}
-/** @param {object} state @param {number} dt */
-function tickAllFlippers(state, dt) {
-    const worldProps = state.worldProps;
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead || !isFlipperWorldProp(prop)) continue;
-        const asset = propCatalog[prop.type];
-        if (!asset) continue;
-        tickFlipperWorldProp(prop, asset, dt);
-    }
-}
-/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
-export function createFlipperBehavior(state) {
-    return {
-        id: FLIPPER_BEHAVIOR_ID,
-        supports(_prop, asset) {
-            return asset?.sandbox?.behaviors?.includes(FLIPPER_BEHAVIOR_ID) ?? false;
-        },
-        tickWorld(dt) {
-            tickAllFlippers(state, dt);
-        },
-        onPointerDown: () => false,
-        onPointerMove() {},
-        onPointerUp() {},
-        reset() {},
-    };
-}
-
 // --- MERGED FROM spawnerBehavior.js ---
 export const SPAWNER_BEHAVIOR_ID = "spawner";
 /** @param {object} prop @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
@@ -2026,6 +1917,22 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
     addWorldPropToState(state, spawned);
     return spawned;
+}
+export function tickButtonSpawnerLinks(state, button) {
+    const active = buttonEffectiveActive(state, button);
+    const wasActive = button._spawnerButtonWasActive ?? false;
+    const sustained = isSustainedSpawnerButtonInputMode(button.inputMode);
+    if (active && (sustained || !wasActive)) {
+        const links = getButtonLinks(button);
+        for (let i = 0; i < links.length; i++) {
+            const link = links[i];
+            if (link.type !== "worldProp") continue;
+            const prop = state.entityRegistry.getLive(link.id);
+            if (!prop || !isSpawnerProp(propCatalog[prop.type])) continue;
+            fireSpawner(state, prop);
+        }
+    }
+    button._spawnerButtonWasActive = active;
 }
 /** @returns {string[]} */
 export function listSpawnerSpawnPropIds() {
@@ -3104,7 +3011,6 @@ export function createDefaultSandboxBehaviors(state) {
         createDragLaunchWaitBehavior(state),
         createDragLaunchFacingBehavior(state),
         createSpawnerBehavior(state),
-        createFlipperBehavior(state),
         createCueStrikeBehavior(state),
         createDirectGroundNavBehavior(state),
         createHpaGroundNavBehavior(state),
@@ -3140,6 +3046,106 @@ export function tickSandboxCameraFollow(viewport, state, registry, dtMs) {
     if (!target) return;
     const factor = 1 - Math.exp(-8 * (dtMs / 1000));
     viewport.follow(target.x, target.y, factor);
+}
+// --- MERGED FROM FollowCamera.js ---
+export class FollowCamera {
+    constructor(state, { triggerKey = "Tab" } = {}) {
+        this.state = state;
+        this.triggerKey = triggerKey;
+        this.targetProp = null;
+        this._candidateListFn = null;
+        this._pickResolverFn = null;
+        this._onTargetChangedCallbacks = new Set();
+        this._handleKeyDown = this._handleKeyDown.bind(this);
+    }
+    registerCandidateList(fn) {
+        this._candidateListFn = fn;
+    }
+    registerPickResolver(fn) {
+        this._pickResolverFn = fn;
+    }
+    addOnTargetChanged(cb) {
+        this._onTargetChangedCallbacks.add(cb);
+    }
+    removeOnTargetChanged(cb) {
+        this._onTargetChangedCallbacks.delete(cb);
+    }
+    focus(prop, snap = true) {
+        const oldTarget = this.targetProp;
+        if (oldTarget === prop) {
+            if (prop && snap) this.state.viewport?.snapTo?.(prop.x, prop.y);
+            return;
+        }
+        if (oldTarget) setSandboxCameraTarget(this.state, oldTarget, false);
+        this.targetProp = prop;
+        if (prop) {
+            setSandboxCameraTarget(this.state, prop, true);
+            if (snap) this.state.viewport?.snapTo?.(prop.x, prop.y);
+        }
+        for (const cb of this._onTargetChangedCallbacks) cb(prop);
+    }
+    clear() {
+        this.focus(null);
+    }
+    cycle(getProps) {
+        const fn = getProps || this._candidateListFn;
+        const props = fn ? fn() : [];
+        const validProps = props.filter((p) => p && !p.isDead);
+        if (validProps.length === 0) {
+            this.clear();
+            return null;
+        }
+        const currentIndex = this.targetProp ? validProps.findIndex((p) => p.id === this.targetProp.id) : -1;
+        const nextIndex = (currentIndex + 1) % validProps.length;
+        const nextProp = validProps[nextIndex];
+        this.focus(nextProp, true);
+        return nextProp;
+    }
+    focusFromPropId(propId) {
+        if (!this._candidateListFn && !this._pickResolverFn) return false;
+        let prop = this.state.entityRegistry.getLive(propId);
+        if (!prop) return false;
+        if (this._pickResolverFn) {
+            const resolved = this._pickResolverFn(propId);
+            if (resolved) {
+                if (this.targetProp && this.targetProp.id === resolved.id) return false;
+                this.focus(resolved, true);
+                return true;
+            }
+        }
+        if (this._candidateListFn) {
+            const candidates = this._candidateListFn();
+            const isCandidate = candidates.some((c) => c && c.id === prop.id);
+            if (isCandidate) {
+                if (this.targetProp && this.targetProp.id === prop.id) return false;
+                this.focus(prop, true);
+                return true;
+            }
+        }
+        return false;
+    }
+    _handleKeyDown(e) {
+        if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
+        if (e.code === this.triggerKey) {
+            e.preventDefault();
+            this.cycle();
+        }
+    }
+    bindInput() {
+        window.addEventListener("keydown", this._handleKeyDown);
+    }
+    unbindInput() {
+        window.removeEventListener("keydown", this._handleKeyDown);
+    }
+    destroy() {
+        this.unbindInput();
+        this.reset();
+    }
+    reset() {
+        this.clear();
+        this._candidateListFn = null;
+        this._pickResolverFn = null;
+    }
 }
 // --- MERGED FROM kineticConstraintOverlays.js ---
 function constraintWireColor(strain) {
@@ -3214,74 +3220,1548 @@ export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
     if (!marqueeRect) return;
     out.push(overlayAabb(marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
 }
-// --- MERGED FROM gridStampDrawCache.js ---
-const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
-const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
-function beltDrawForKind(kind) {
-    const turn = FloorBelt.getElbowTurn(kind);
-    if (turn === "left") return beltDrawByTurn.left;
-    if (turn === "right") return beltDrawByTurn.right;
-    return beltDrawByTurn.straight;
+
+// --- MERGED FROM SandboxEditor/sandboxPointerGestures.js ---
+export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
+    let interactionBehavior = null;
+    let groundNav = null;
+    return {
+        hasCapture: () => interactionBehavior != null || groundNav != null,
+        reset() {
+            interactionBehavior = null;
+            groundNav = null;
+        },
+        startPropInteraction(behavior, e) {
+            interactionBehavior = behavior;
+            getCanvas().setPointerCapture(e.pointerId);
+        },
+        startGroundNav(move, world, e) {
+            move.behavior.setMoveTarget(move.prop, world);
+            groundNav = { prop: move.prop, behavior: move.behavior };
+            getCanvas().setPointerCapture(e.pointerId);
+        },
+        capturesPointerMove: () => groundNav != null || interactionBehavior != null,
+        onPointerMove(_world, e) {
+            if (groundNav) {
+                groundNav.behavior.updateMoveTarget(groundNav.prop, clientToWorld(e.clientX, e.clientY));
+                return;
+            }
+            if (!interactionBehavior) return;
+            const prop = session.getSelectedProp();
+            if (!prop) return;
+            interactionBehavior.onPointerMove(prop, clientToWorld(e.clientX, e.clientY), e);
+            e.stopPropagation();
+        },
+        onPointerUp(_world, e) {
+            if (groundNav) {
+                const nav = groundNav;
+                groundNav = null;
+                releasePointerCapture(getCanvas(), e);
+                nav.behavior.updateMoveTarget(nav.prop, clientToWorld(e.clientX, e.clientY));
+                session.sync();
+                return true;
+            }
+            if (!interactionBehavior) return false;
+            const prop = session.getSelectedProp();
+            if (prop) {
+                const world = clientToWorld(e.clientX, e.clientY);
+                interactionBehavior.onPointerMove(prop, world, e);
+                interactionBehavior.onPointerUp(prop, e);
+            }
+            interactionBehavior = null;
+            releasePointerCapture(getCanvas(), e);
+            e.stopPropagation();
+            session.sync();
+            return true;
+        },
+    };
 }
-const floorBeltStampProxyProto = {
-    ageMs: 0,
-    getCustomSpriteCacheKey() {
-        return `k${this.beltKind}`;
-    },
-};
-function createGridCellStampProxy(proto, x, y, cellHalf, init) {
-    const proxy = Object.create(proto);
-    proxy.x = x;
-    proxy.y = y;
-    proxy.radius = cellHalf;
-    proxy.halfExtents = SHARED_HALF_EXTENTS;
-    init(proxy);
-    return proxy;
+
+// --- MERGED FROM SandboxEditor/buttonWireTool.js ---
+export function createButtonWireTool(state, session) {
+    const tool = createWireLinkTool({
+        getEnterCursor: () => ({ x: state.viewport.x, y: state.viewport.y }),
+        onLinkClick(world) {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return;
+            const target = findButtonLinkTarget(state, world.x, world.y, button.id);
+            if (target) addButtonLink(state, button.id, target);
+        },
+        onSync: () => session.sync(),
+    });
+    return {
+        isActive: tool.isActive,
+        blocksPlacement: tool.blocksPlacement,
+        enter: tool.enter,
+        exit: tool.exit,
+        onPointerDown: tool.onPointerDown,
+        onPointerMove: tool.onPointerMove,
+        getCursor: tool.getCursor,
+        startLink() {
+            if (!isButtonEntity(session.getSelectedProp())) return;
+            tool.enter();
+        },
+    };
 }
-function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
-    return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {
-        proxy.facing = facing;
-        proxy.beltKind = kind;
+
+// --- MERGED FROM SandboxEditor/chainLinkWireTool.js ---
+export function createChainLinkWireTool(state, session) {
+    const tool = createTwoAnchorWireTool({
+        getEnterCursor: () => ({ x: state.viewport.x, y: state.viewport.y }),
+        pickAnchor(world) {
+            const prop = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, world.x, world.y);
+            if (!prop || !isChainLinkBall(prop)) return null;
+            return prop.id;
+        },
+        commitLink(fromPropId, toPropId) {
+            return addChainLink(state, fromPropId, toPropId);
+        },
+        onAfterCommit: () => {
+            session.clearSelection();
+            tool.enter();
+        },
+        onSync: () => session.sync(),
+    });
+    return {
+        isActive: tool.isActive,
+        blocksPlacement: tool.blocksPlacement,
+        getFromPropId: tool.getFromAnchorId,
+        getCursor: tool.getCursor,
+        enter: tool.enter,
+        exit: tool.exit,
+        onPointerDown: tool.onPointerDown,
+        onPointerMove: tool.onPointerMove,
+        enterLinkMode() {
+            session.clearSelection();
+            tool.enter();
+        },
+        startLink() {
+            tool.enter();
+        },
+    };
+}
+
+// --- MERGED FROM SandboxEditor/sandboxDeletePointerTool.js ---
+export function createSandboxDeletePointerTool(state, session) {
+    return {
+        isActive: () => true,
+        onPointerDown(world, e) {
+            if (e.button !== 2) return false;
+            if (state.editor.lockSelection) return true;
+            if (session.getSelection()?.kind === "prop") return true;
+            const registry = state.entityRegistry;
+            const hit = findWorldPropAtInView(registry, state.spatialFrame, world.x, world.y);
+            if (hit) {
+                session.deleteProp(hit);
+                return true;
+            }
+            const grid = state.obstacleGrid;
+            const idx = grid.worldToIdx(world.x, world.y);
+            if (FloorBelt.clearOverlayAt(state, idx)) {
+                const sel = session.getSelection();
+                if (sel?.kind === "floor" && sel.idx === idx) session.clearSelection();
+                session.sync();
+                return true;
+            }
+            return false;
+        },
+    };
+}
+
+// --- MERGED FROM SandboxEditor/sandboxGroundNavContextMenu.js ---
+export function createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued }) {
+    const menu = createContextMenu();
+    const issueGroundNav = ({ propIds, behaviorId, world }) => {
+        const moved = issueGroundNavToSelection(state, { propIds, behaviorId, world, behaviorById, entityMeta: entityMeta() });
+        if (moved > 0) onIssued?.();
+        return moved;
+    };
+    return {
+        close: () => menu.close(),
+        isOpen: () => menu.isOpen(),
+        tryOpen(clientX, clientY, world) {
+            const sel = session.getSelection();
+            if (sel?.kind !== "prop") return false;
+            const propIds = selectionPropIds(sel);
+            if (propIds.length === 0) return false;
+            const navCount = countNavPropsInSelection(state, propIds, entityMeta());
+            const items = buildGroundNavSelectionMenuActions({ propIds, world, navCount, issueGroundNav });
+            if (items.length === 0) return false;
+            menu.open(clientX, clientY, items);
+            return true;
+        },
+    };
+}
+
+// --- MERGED FROM SandboxEditor/sandboxMarqueeTool.js ---
+export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior, selectPropIds }) {
+    return createMarqueeSelectTool({
+        getCanvas,
+        canBegin: (e) => e.shiftKey,
+        buildAabbFromDrag: (startWorld, endWorld) => aabbFromTwoPointsInto(aabbScratch, startWorld.x, startWorld.y, endWorld.x, endWorld.y),
+        onClick(world, e) {
+            if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
+            else session.clearSelection();
+        },
+        onBoxSelect(bounds) {
+            const filter = session.getSelectionTagFilter();
+            const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, {
+                kinds: ["worldProp"],
+                hitTest: "circle",
+                match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter),
+            });
+            selectPropIds(props.map((prop) => prop.id));
+        },
     });
 }
-export function clearGridStampDrawCaches(state) {
-    if (!state.sandbox) return;
-    state.sandbox._floorOccupancyStampDrawCache = null;
+
+// --- MERGED FROM SandboxEditor/sandboxPrimaryPointerTool.js ---
+export function createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, exitWireModes, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
+    const behaviors = state.sandbox.behaviors ?? [];
+    let lastClickTime = 0;
+    let lastClickX = 0;
+    let lastClickY = 0;
+    let lastClickClientX = 0;
+    let lastClickClientY = 0;
+    let lastSelectedBoidId = null;
+    let lastSelectedBoidTime = 0;
+    const tryPlaceSpawnAtWorld = (world, options = {}) => {
+        if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
+        if (!session.spawnAt(world.x, world.y, options)) return false;
+        stampPropBehavior(session.getSelectedProp());
+        return true;
+    };
+    const modifierTool = {
+        isActive: () => true,
+        onPointerDown(world, e) {
+            if (e.button !== 0 || (!e.ctrlKey && !e.metaKey)) return false;
+            const hit = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, world.x, world.y);
+            if (hit) return false;
+            return tryPlaceSpawnAtWorld(world, { selectSpawned: false });
+        },
+    };
+    const interactTool = {
+        isActive: () => true,
+        onPointerDown(world, e) {
+            if (e.button !== 0) return false;
+            const now = e.timeStamp || Date.now();
+            const hasClient = e.clientX !== undefined && e.clientY !== undefined;
+            const isDoubleTap =
+                e.detail === 2 ||
+                (now - lastClickTime < 300 &&
+                    (hasClient ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0 : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
+            let targetBoidId = lastSelectedBoidId;
+            if (state.editor.lockSelection) {
+                const boid = state.worldProps.find((p) => p.type === "boid_triangle");
+                if (boid) targetBoidId = boid.id;
+            }
+            if (isDoubleTap && targetBoidId && (state.editor.lockSelection || now - lastSelectedBoidTime < 500)) {
+                exitWireModes();
+                session.select({ kind: "prop", ids: [targetBoidId] });
+                if (issueGroundNavToSelected("rollToCursorHpa", world)) {
+                    lastClickTime = now;
+                    lastClickX = world.x;
+                    lastClickY = world.y;
+                    lastClickClientX = e.clientX ?? 0;
+                    lastClickClientY = e.clientY ?? 0;
+                    return true;
+                }
+            }
+            const selectedPropBeforeClick = session.getSelectedProp();
+            if (selectedPropBeforeClick && selectedPropBeforeClick.type === "boid_triangle") {
+                lastSelectedBoidId = selectedPropBeforeClick.id;
+                lastSelectedBoidTime = now;
+            } else {
+                lastSelectedBoidId = null;
+                lastSelectedBoidTime = 0;
+            }
+            lastClickTime = now;
+            lastClickX = world.x;
+            lastClickY = world.y;
+            lastClickClientX = e.clientX ?? 0;
+            lastClickClientY = e.clientY ?? 0;
+            const floorButton = hitTestFloorButton(state, world.x, world.y);
+            if (floorButton && handleButtonPointerDown(state, floorButton, world)) {
+                session.sync();
+                return true;
+            }
+            for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
+            session.pruneSelection();
+            const registry = state.entityRegistry;
+            const hit = findWorldPropAtInView(registry, state.spatialFrame, world.x, world.y);
+            if (hit) {
+                if (state.editor.lockSelection && !session.isSelected(hit.id)) return "consume";
+                if (state.followCamera?.focusFromPropId(hit.id)) return "consume";
+                if (hit.type === "boid_triangle") {
+                    const entityMeta = getSandboxEntityMeta(state);
+                    const prevId = entityMeta.getActiveBehaviorId(hit.id);
+                    if (prevId && prevId !== "dragLaunch") {
+                        const prevBehavior = behaviors.find((b) => b.id === prevId);
+                        if (prevBehavior?.clearMoveTarget) prevBehavior.clearMoveTarget(hit);
+                    }
+                    entityMeta.setActiveBehaviorId(hit.id, "dragLaunch");
+                }
+                const allowed = resolveSandboxBehaviors(propCatalog[hit.type], state, hit);
+                if (allowed.length > 0) {
+                    if (e.ctrlKey || e.metaKey) {
+                        exitWireModes();
+                        session.togglePropInSelection(hit.id);
+                        return "consume";
+                    }
+                    exitWireModes();
+                    session.select({ kind: "prop", ids: [hit.id] });
+                }
+                const prop = session.getSelectedProp();
+                const behavior = resolveBehavior();
+                if (prop && behavior?.onPointerDown(prop, world, e)) {
+                    gestures.startPropInteraction(behavior, e);
+                    return true;
+                }
+                return "consume";
+            }
+            const groundMove = resolveGroundMove();
+            if (groundMove) {
+                gestures.startGroundNav(groundMove, world, e);
+                session.sync();
+                return true;
+            }
+            if (state.editor.lockSelection) return false;
+            const grid = state.obstacleGrid;
+            const idx = grid.worldToIdx(world.x, world.y);
+            if (idx !== -1 && grid.hasFloorOccupancy(idx)) {
+                session.select({ kind: "floor", idx });
+                return true;
+            }
+            return false;
+        },
+    };
+    const gestureTool = {
+        isActive: () => true,
+        capturesPointerMove: () => gestures.capturesPointerMove(),
+        onPointerMove(_world, e) {
+            gestures.onPointerMove(_world, e);
+        },
+        onPointerUp(world, e) {
+            return gestures.onPointerUp(world, e);
+        },
+    };
+    return { modifierTool, interactTool, gestureTool };
 }
-export function syncFloorOccupancyStampDrawCache(state, grid) {
-    if (!state.sandbox) return null;
-    const revision = floorOccupancyStampDrawCacheKey(grid);
-    const cached = state.sandbox._floorOccupancyStampDrawCache;
-    if (cached?.revision === revision) return cached;
-    const cellHalf = grid.cellHalfSize;
-    SHARED_HALF_EXTENTS.x = cellHalf;
-    SHARED_HALF_EXTENTS.y = cellHalf;
-    const belts = [];
-    const size = grid.cols * grid.rows;
-    for (let idx = 0; idx < size; idx++) {
-        const kind = grid.floorKind[idx];
-        if (!(grid.floorKind[idx] !== 0)) continue;
-        const { x, y } = grid.gridToWorldByIdx(idx);
-        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
+
+// --- MERGED FROM SandboxEditor/buildSandboxOverlayCommands.js ---
+export function buildSandboxOverlayCommands({
+    state,
+    session,
+    spatialFrame,
+    placePreviewWorld,
+    marqueeRect,
+    behaviorById,
+    getPropBehaviorId,
+    buttonWireTool,
+    chainLinkWireTool,
+    resolveBehavior,
+    selectedProp,
+}) {
+    const commands = [];
+    const viewport = state.viewport;
+    const sel = session.getSelection();
+    appendButtonWireOverlayCommands(commands, state, {
+        wireFromPropId: buttonWireTool.isActive() ? (session.getSelectedProp()?.id ?? null) : null,
+        wireCursor: buttonWireTool.isActive() ? buttonWireTool.getCursor() : null,
+    });
+    appendChainLinkWireOverlayCommands(commands, state, {
+        wireFromPropId: chainLinkWireTool.isActive() ? chainLinkWireTool.getFromPropId() : null,
+        wireCursor: chainLinkWireTool.isActive() ? chainLinkWireTool.getCursor() : null,
+    });
+    let visibleSelectedProps = [];
+    if (sel?.kind === "prop") {
+        const selectedIds = new Set(selectionPropIds(sel));
+        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, { tier: "chunks", filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
+        for (let i = 0; i < visibleSelectedProps.length; i++) {
+            const prop = visibleSelectedProps[i];
+            if (!isChainSteeringTarget(state, getSandboxEntityMeta(state), prop.id)) continue;
+            const visual = resolveSandboxPathVisual(state, prop);
+            if (visual === "off") continue;
+            const activeId = getSandboxEntityMeta(state).getActiveBehaviorId(prop.id);
+            const isGroundNav = activeId && GROUND_NAV_BEHAVIOR_IDS.has(activeId);
+            const behavior = (isGroundNav && behaviorById.get(activeId)) || behaviorById.get(getPropBehaviorId(prop));
+            if (!behavior?.getPathOverlay) continue;
+            const overlay = behavior.getPathOverlay(prop);
+            appendPathOverlayCommands(commands, overlay, state.obstacleGrid, visual);
+        }
     }
-    const next = { revision, belts };
-    state.sandbox._floorOccupancyStampDrawCache = next;
-    return next;
+    appendSelectionOverlayCommands(commands, {
+        selectedProps: visibleSelectedProps,
+        showRings: state.editor.showSelectionRings,
+        selectedFloorIdx: sel?.kind === "floor" ? sel.idx : null,
+        selectedVoxelIdx: sel?.kind === "voxel" ? sel.idx : null,
+        selectedRailEdge: sel?.kind === "rail" ? { idx: sel.idx, side: sel.side } : null,
+        grid: state.obstacleGrid,
+    });
+    appendMarqueeOverlayCommands(commands, { marqueeRect });
+    state.appLaunch?.session?.appendOverlayCommands?.(commands, state, sel);
+    const behavior = resolveBehavior();
+    if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
+    return commands;
 }
-function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
-    const animFrame = Math.floor(gameTime / 60) % 8;
-    const belts = cached.belts;
-    for (let i = 0; i < belts.length; i++) {
-        const item = belts[i];
-        if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
-        item.proxy.ageMs = gameTime;
-        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy.beltKind), animFrame);
+
+// --- MERGED FROM SandboxEditor/ui/sandboxShapeFamilyUi.js ---
+function brightnessToPercent(brightness) {
+    return Math.round(brightness * 100);
+}
+function percentToBrightness(percent) {
+    return percent / 100;
+}
+export function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
+    appendColorField(body, "Tint", { value: tint, onChange: onTintChange });
+    appendNumberField(body, "Brightness %", {
+        value: brightnessToPercent(brightness),
+        step: 5,
+        min: 25,
+        max: 200,
+        onChange: (percent) => {
+            onBrightnessChange(percentToBrightness(percent));
+            markLabViewDirty();
+        },
+    });
+}
+export function appendBallSpawnFields(body, controller, spawnAsset) {
+    const session = controller.session;
+    appendNumberField(body, "Radius", { value: session.getSpawnBallRadius(spawnAsset), step: 1, min: 1, max: 32, onChange: (radius) => session.setSpawnBallRadius(radius) });
+    appendCoatFields(body, {
+        tint: session.getSpawnVisualOverrideTint(spawnAsset),
+        brightness: session.getSpawnVisualOverrideBrightness(),
+        onTintChange: (hex) => {
+            session.setSpawnVisualOverrideTint(hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            session.setSpawnVisualOverrideBrightness(brightness);
+            markLabViewDirty();
+        },
+    });
+}
+export function appendBlockSpawnFields(body, controller, spawnAsset) {
+    const session = controller.session;
+    if (blockPresetUsesResizableFootprint(spawnAsset.id)) {
+        appendNumberField(body, "Width", { value: session.getSpawnBoxWidth(), step: 1, min: 6, max: 128, onChange: (width) => session.setSpawnBoxWidth(width) });
+        appendNumberField(body, "Height", { value: session.getSpawnBoxHeight(), step: 1, min: 6, max: 128, onChange: (height) => session.setSpawnBoxHeight(height) });
     }
+    appendCoatFields(body, {
+        tint: session.getSpawnVisualOverrideTint(spawnAsset),
+        brightness: session.getSpawnVisualOverrideBrightness(),
+        onTintChange: (hex) => {
+            session.setSpawnVisualOverrideTint(hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            session.setSpawnVisualOverrideBrightness(brightness);
+            markLabViewDirty();
+        },
+    });
 }
-export function drawFloorOccupancyBelts(ctx, state, viewport) {
-    const grid = state.obstacleGrid;
-    if (!grid.floorKind.some((k) => k !== 0)) return;
-    const cached = syncFloorOccupancyStampDrawCache(state, grid);
-    if (!cached?.belts.length) return;
-    drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);
+export function appendCrossPinwheelSpawnFields(body, controller) {
+    const session = controller.session;
+    appendNumberField(body, "Cross length", { value: session.getSpawnCrossLength(), step: 2, min: 8, max: 128, onChange: (val) => session.setSpawnCrossLength(val) });
+    appendNumberField(body, "Cross thickness", { value: session.getSpawnCrossThickness(), step: 1, min: 2, max: 64, onChange: (val) => session.setSpawnCrossThickness(val) });
+}
+export function appendShapeFamilySpawnFields(body, controller, spawnId) {
+    const spawnAsset = propCatalog[spawnId];
+    if (spawnId === "cross_pinwheel") appendCrossPinwheelSpawnFields(body, controller);
+    else if (isBallFamilyAsset(spawnAsset)) appendBallSpawnFields(body, controller, spawnAsset);
+    else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
+}
+export function appendBallSelectedFields(body, selectedProp, asset) {
+    appendNumberField(body, "Radius", {
+        value: getPropRadius(selectedProp) ?? assetDefaultBallRadius(asset),
+        step: 1,
+        min: 1,
+        max: 32,
+        onChange: (radius) => {
+            setPropRadius(selectedProp, radius);
+            markLabViewDirty();
+        },
+    });
+    appendCoatFields(body, {
+        tint: resolvePickerHex(selectedProp, asset),
+        brightness: getPropVisualBrightness(selectedProp),
+        onTintChange: (hex) => {
+            setPropVisualTint(selectedProp, hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            setPropVisualBrightness(selectedProp, brightness);
+            markLabViewDirty();
+        },
+    });
+    appendActionRow(body, [
+        {
+            label: "Reset coat",
+            onClick: () => {
+                clearPropVisualOverride(selectedProp);
+                markLabViewDirty();
+            },
+        },
+    ]);
+}
+export function appendBlockSelectedFields(body, selectedProp, asset) {
+    if (blockPresetUsesResizableFootprint(asset.id)) {
+        const span = propFootprintHalfExtents(selectedProp);
+        appendNumberField(body, "Width", {
+            value: Math.round(span.x * 2),
+            step: 1,
+            min: 6,
+            max: 128,
+            onChange: (width) => {
+                const next = propFootprintHalfExtents(selectedProp);
+                applyPropBoxFootprint(selectedProp, width / 2, next.y);
+                markLabViewDirty();
+            },
+        });
+        appendNumberField(body, "Height", {
+            value: Math.round(span.y * 2),
+            step: 1,
+            min: 6,
+            max: 128,
+            onChange: (height) => {
+                const next = propFootprintHalfExtents(selectedProp);
+                applyPropBoxFootprint(selectedProp, next.x, height / 2);
+                markLabViewDirty();
+            },
+        });
+    }
+    appendCoatFields(body, {
+        tint: resolvePickerHex(selectedProp, asset),
+        brightness: getPropVisualBrightness(selectedProp),
+        onTintChange: (hex) => {
+            setPropVisualTint(selectedProp, hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            setPropVisualBrightness(selectedProp, brightness);
+            markLabViewDirty();
+        },
+    });
+    appendActionRow(body, [
+        {
+            label: "Reset coat",
+            onClick: () => {
+                clearPropVisualOverride(selectedProp);
+                markLabViewDirty();
+            },
+        },
+    ]);
+}
+export function appendCrossPinwheelSelectedFields(body, selectedProp, asset) {
+    const length = selectedProp.crossLength ?? 32;
+    const thickness = selectedProp.crossThickness ?? 8;
+    appendNumberField(body, "Cross length", {
+        value: length,
+        step: 2,
+        min: 8,
+        max: 128,
+        onChange: (val) => {
+            applyCrossPinwheelFootprint(selectedProp, val, selectedProp.crossThickness ?? 8);
+            markLabViewDirty();
+        },
+    });
+    appendNumberField(body, "Cross thickness", {
+        value: thickness,
+        step: 1,
+        min: 2,
+        max: 64,
+        onChange: (val) => {
+            applyCrossPinwheelFootprint(selectedProp, selectedProp.crossLength ?? 32, val);
+            markLabViewDirty();
+        },
+    });
+    appendCoatFields(body, {
+        tint: resolvePickerHex(selectedProp, asset),
+        brightness: getPropVisualBrightness(selectedProp),
+        onTintChange: (hex) => {
+            setPropVisualTint(selectedProp, hex);
+            markLabViewDirty();
+        },
+        onBrightnessChange: (brightness) => {
+            setPropVisualBrightness(selectedProp, brightness);
+            markLabViewDirty();
+        },
+    });
+    appendActionRow(body, [
+        {
+            label: "Reset coat",
+            onClick: () => {
+                clearPropVisualOverride(selectedProp);
+                markLabViewDirty();
+            },
+        },
+    ]);
+}
+export function appendShapeFamilySelectedFields(body, selectedProp) {
+    if (!selectedProp) return;
+    const asset = propCatalog[selectedProp.type];
+    if (selectedProp.type === "cross_pinwheel") appendCrossPinwheelSelectedFields(body, selectedProp, asset);
+    else if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
+    else if (isBlockFamilyAsset(asset)) appendBlockSelectedFields(body, selectedProp, asset);
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxWorldPropInspector.js ---
+function applyWorldPropFacing(prop, degrees) {
+    prop.facing = (degrees * Math.PI) / 180;
+    prop.angularVelocity = 0;
+    prop.strategy.syncCollisionShape?.(prop);
+}
+function applyWorldPropPosition(prop, { x, y }) {
+    if (x != null) prop.x = x;
+    if (y != null) prop.y = y;
+    if (prop.aabb) syncFloorTriggerAabb(prop);
+    if (prop.strategy?.isKinetic) wakeKineticBody(prop);
+}
+function applyButtonFloorPatch(prop, patch) {
+    if (patch.radius != null) {
+        prop.radius = patch.radius;
+        syncFloorPropCollisionShape(prop);
+        syncFloorTriggerAabb(prop);
+    }
+    if (patch.inputMode != null) {
+        prop.inputMode = patch.inputMode;
+        prop._toggleLatched = false;
+        prop._massWasActive = false;
+        prop._buttonWasActive = false;
+    }
+    if (patch.massThreshold != null) prop.massThreshold = patch.massThreshold;
+    if (patch.invert != null) prop.invert = patch.invert;
+}
+export function appendChainLinkInspector(body, chain) {
+    appendCheckboxField(body, "Chain head", { name: "chainHead", checked: chain.isChainHead(), onChange: (checked) => chain.setChainHead(checked) });
+    const links = chain.listLinks();
+    appendEditorHint(body, links.length ? `${links.length} chain link${links.length === 1 ? "" : "s"}` : "No links — connect consecutive balls for a chain or snake.");
+    if (links.length)
+        appendInstanceList(
+            body,
+            links.map((entry) => ({ label: entry.label, onDelete: () => chain.removeLink(entry.constraintId) })),
+        );
+    const wireActive = chain.isWireActive();
+    appendActionRow(body, [
+        {
+            label: wireActive ? "Click balls to link…" : "Connect link",
+            variant: wireActive ? "primary" : "secondary",
+            onClick: () => {
+                if (wireActive) chain.cancelWire();
+                else chain.startWire();
+            },
+        },
+        ...(links.length ? [{ label: "Clear links", onClick: () => chain.clearLinks() }] : []),
+    ]);
+}
+export function appendButtonWireInspector(body, wire) {
+    const links = wire.listLinks();
+    appendEditorHint(body, links.length ? `${links.length} wire${links.length === 1 ? "" : "s"} connected` : "No wires — link to spawners.");
+    if (links.length)
+        appendInstanceList(
+            body,
+            links.map((entry) => ({
+                label: entry.label,
+                onDelete: () => {
+                    wire.removeLink(entry.target);
+                },
+            })),
+        );
+    const wireActive = wire.isWireActive();
+    appendActionRow(body, [
+        {
+            label: wireActive ? "Click targets to wire…" : "Connect wire",
+            variant: wireActive ? "primary" : "secondary",
+            onClick: () => {
+                if (wireActive) wire.cancelWire();
+                else wire.startWire();
+            },
+        },
+        ...(links.length ? [{ label: "Clear all", onClick: () => wire.clearLinks() }] : []),
+    ]);
+}
+export function appendRoomNodeWireInspector(body, wire) {
+    const links = wire.listLinks();
+    const selectedLinkId = wire.selectedLinkId?.() ?? null;
+    const selectedCorridorIndex = wire.selectedCorridorIndex?.() ?? 0;
+    appendEditorHint(
+        body,
+        links.length
+            ? `${links.length} corridor${links.length === 1 ? "" : "s"} linked — pick one below to edit in Scene or here.`
+            : "No corridor links yet — pick Rail corridor or Empty corridor from Props, then click two room nodes.",
+    );
+    if (links.length)
+        appendInstanceList(
+            body,
+            links.map((entry) => ({
+                label: entry.label,
+                selected: entry.linkId === selectedLinkId && entry.corridorIndex === selectedCorridorIndex,
+                onSelect: wire.selectLink
+                    ? () => {
+                          wire.selectLink(entry.linkId, entry.corridorIndex);
+                      }
+                    : undefined,
+                onDelete: () => {
+                    wire.removeLink(entry.linkId);
+                },
+            })),
+        );
+    if (!wire.startWire) return;
+    const wireActive = wire.isWireActive();
+    appendActionRow(body, [
+        {
+            label: wireActive ? "Click a room node to link…" : "Connect…",
+            variant: wireActive ? "primary" : "secondary",
+            onClick: () => {
+                if (wireActive) wire.cancelWire();
+                else wire.startWire();
+            },
+        },
+        ...(links.length && wire.clearLinks ? [{ label: "Clear all", onClick: () => wire.clearLinks() }] : []),
+    ]);
+}
+export function appendSandboxWorldPropInspectorFields(body, prop, { state, onChange }) {
+    const patch = (apply) => {
+        apply();
+        onChange();
+    };
+    appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });
+    if (isButtonEntity(prop)) {
+        appendNumberField(body, "Radius", { value: prop.radius, step: 0.5, min: 0.5, onChange: (radius) => patch(() => applyButtonFloorPatch(prop, { radius })) });
+        appendSelectField(body, "Input", {
+            value: prop.inputMode,
+            options: [
+                { value: "tap", label: "Tap" },
+                { value: "hold", label: "Hold" },
+                { value: "toggle", label: "Toggle" },
+                { value: "massTap", label: "Mass – Tap" },
+                { value: "massHold", label: "Mass – Hold" },
+                { value: "massToggle", label: "Mass – Toggle" },
+            ],
+            onChange: (inputMode) => patch(() => applyButtonFloorPatch(prop, { inputMode })),
+        });
+        if (isMassButtonInputMode(prop.inputMode))
+            appendNumberField(body, "Mass threshold", { value: prop.massThreshold, step: 0.01, min: 0, onChange: (massThreshold) => patch(() => applyButtonFloorPatch(prop, { massThreshold })) });
+        const invertRow = document.createElement("label");
+        invertRow.className = "param-field";
+        const invertCheck = document.createElement("input");
+        invertCheck.type = "checkbox";
+        setFormFieldName(invertCheck, "buttonInvert");
+        invertCheck.checked = prop.invert;
+        invertCheck.addEventListener("change", () => patch(() => applyButtonFloorPatch(prop, { invert: invertCheck.checked })));
+        invertRow.append("Invert (NOT) ", invertCheck);
+        body.appendChild(invertRow);
+        return;
+    }
+    appendNumberField(body, "Facing (°)", { value: Math.round(((prop.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyWorldPropFacing(prop, degrees)) });
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxWallInspector.js ---
+const EDGE_SIDE_OPTIONS = [
+    { value: "0", label: formatGridWallEdgeSideLabel(0) },
+    { value: "1", label: formatGridWallEdgeSideLabel(1) },
+    { value: "2", label: formatGridWallEdgeSideLabel(2) },
+    { value: "3", label: formatGridWallEdgeSideLabel(3) },
+];
+function maxWallHeightLevel(state) {
+    return state.worldSurfaces.settings.maxWallHeightLevel;
+}
+export function appendRailWallHeightSlider(body, state, heightLevel, onChange) {
+    body.appendChild(new SliderControl("Rail height", 1, maxWallHeightLevel(state), 1, heightLevel, onChange).element);
+}
+export function appendRailWallThicknessSlider(body, controller, thicknessLevel, onChange) {
+    body.appendChild(new SliderControl("Rail thickness", 1, 8, 1, thicknessLevel, onChange).element);
+}
+export function appendWallPlaceParams(body, state, controller, { wallStampMode, inspector }) {
+    const session = controller.session;
+    const selectedVoxelInfo = inspector?.kind === "voxel" ? inspector.data : null;
+    const selectedRailInfo = inspector?.kind === "rail" ? inspector.data : null;
+    appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
+    appendActionRow(body, [{ label: "Add at camera", onClick: () => session.stampWallAtCameraOrigin() }]);
+    const maxHeight = maxWallHeightLevel(state);
+    body.appendChild(
+        new SliderControl("Height", 1, maxHeight, 1, session.getWallHeightLevel(), (val) => {
+            session.setWallHeightLevel(val);
+            if (selectedVoxelInfo) session.setSelectedVoxelWallHeight(val);
+            else if (selectedRailInfo) session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+        }).element,
+    );
+    if (wallStampMode === "rail")
+        body.appendChild(
+            new SliderControl("Thickness", 1, 8, 1, session.getRailThicknessLevel(), (val) => {
+                session.setRailThicknessLevel(val);
+                if (selectedRailInfo) session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
+            }).element,
+        );
+}
+export function appendWallSelectedInspector(body, state, controller, { voxel: selectedVoxelInfo, rail: selectedRailInfo } = {}) {
+    const session = controller.session;
+    if (selectedVoxelInfo) {
+        appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
+        body.appendChild(
+            new SliderControl("Height", 1, maxWallHeightLevel(state), 1, selectedVoxelInfo.heightLevel, (val) => {
+                session.setSelectedVoxelWallHeight(val);
+            }).element,
+        );
+        appendActionRow(body, [{ label: "Delete voxel", onClick: () => session.deleteSelectedWall() }]);
+        return true;
+    }
+    if (selectedRailInfo) {
+        appendEditorHint(body, `Rail wall · ${selectedRailInfo.sideLabel} · height ${selectedRailInfo.heightLevel}.`);
+        appendSelectField(body, "Side", {
+            value: String(selectedRailInfo.side),
+            options: [0, 1, 2, 3].map((side) => ({ value: String(side), label: formatGridWallEdgeSideLabel(side) })),
+            onChange: (value) => {
+                session.setSelectedRailWallSide(Number(value));
+            },
+        });
+        body.appendChild(
+            new SliderControl("Height", 1, maxWallHeightLevel(state), 1, selectedRailInfo.heightLevel, (val) => {
+                session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+            }).element,
+        );
+        body.appendChild(
+            new SliderControl("Thickness", 1, 8, 1, selectedRailInfo.thicknessLevel, (val) => {
+                session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
+            }).element,
+        );
+        appendActionRow(body, [{ label: "Delete rail", onClick: () => session.deleteSelectedWall() }]);
+        return true;
+    }
+    return false;
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxPlacePalette.js ---
+export const SANDBOX_PALETTE_TAG_FILTERS = [
+    { id: "all", label: "All" },
+    { id: "shapes", label: "Shapes" },
+    { id: "nav", label: "Nav" },
+    { id: "gen", label: "Gen" },
+    { id: "rooms", label: "Rooms" },
+];
+const PLACE_PALETTE_TAGS_BY_KEY = { "wall:voxel": ["gen"], "wall:rail": ["gen"], "gen:cavern": ["gen"], "gen:rail": ["gen"], "gen:railMaze": ["gen"], "gen:erase": ["gen"] };
+function resolvePlacePaletteTags(paletteKey, asset = null) {
+    const keyed = PLACE_PALETTE_TAGS_BY_KEY[paletteKey];
+    if (keyed) return keyed;
+    if (paletteKey.startsWith("prop:")) return sandboxAssetTags(asset ?? propCatalog[paletteKey.slice(5)]);
+    return [];
+}
+export function sandboxTagFilterLabel(filterId) {
+    const option = SANDBOX_PALETTE_TAG_FILTERS.find((entry) => entry.id === filterId);
+    return option?.label.toLowerCase() ?? filterId;
+}
+const WALL_STAMP_OPTIONS = [
+    { value: "voxel", label: "Voxel block" },
+    { value: "rail", label: "Rail wall" },
+];
+const WALL_PALETTE_SWATCHES = { voxel: "#78716c", rail: "#57534e" };
+const MAP_GEN_PALETTE_OPTIONS = [
+    { key: "gen:cavern", genKind: "cavern", label: "Cavern generation", swatch: "#ff9800", glyph: "Cv" },
+    { key: "gen:rail", genKind: "rail", label: "Rail wall generation", swatch: "#e040fb", glyph: "Rw" },
+    { key: "gen:railMaze", genKind: "railMaze", label: "Rail maze generation", swatch: "#ba68c8", glyph: "Rz" },
+    { key: "gen:erase", genKind: "erase", label: "Wall eraser", swatch: "#f44336", glyph: "Er" },
+];
+function resolvePropPaletteSwatch(asset) {
+    const colors = asset?.visuals?.colors;
+    return colors?.bodyInspect ?? colors?.top ?? colors?.side ?? "#64748b";
+}
+export function buildPlacePaletteItems(propIds) {
+    const items = [];
+    for (let i = 0; i < propIds.length; i++) {
+        const id = propIds[i];
+        const asset = propCatalog[id];
+        const label = formatSandboxSpawnLabel(id);
+        const key = `prop:${id}`;
+        items.push({ key, kind: "prop", label, swatch: resolvePropPaletteSwatch(asset), glyph: label.slice(0, 2), tags: resolvePlacePaletteTags(key, asset) });
+    }
+    for (let i = 0; i < WALL_STAMP_OPTIONS.length; i++) {
+        const option = WALL_STAMP_OPTIONS[i];
+        const key = `wall:${option.value}`;
+        items.push({ key, kind: "wall", label: option.label, swatch: WALL_PALETTE_SWATCHES[option.value], glyph: option.label.slice(0, 1), tags: resolvePlacePaletteTags(key) });
+    }
+    for (let i = 0; i < MAP_GEN_PALETTE_OPTIONS.length; i++) {
+        const option = MAP_GEN_PALETTE_OPTIONS[i];
+        items.push({ key: option.key, kind: "gen", genKind: option.genKind, label: option.label, swatch: option.swatch, glyph: option.glyph, tags: resolvePlacePaletteTags(option.key) });
+    }
+    items.sort((a, b) => a.label.localeCompare(b.label));
+    return items;
+}
+export function appendSandboxTagFilters(head, activeFilter, onChange, ariaLabel = "Tag filters") {
+    const row = document.createElement("div");
+    row.className = "sandbox-palette-filter-group";
+    row.setAttribute("role", "radiogroup");
+    row.setAttribute("aria-label", ariaLabel);
+    for (let i = 0; i < SANDBOX_PALETTE_TAG_FILTERS.length; i++) {
+        const option = SANDBOX_PALETTE_TAG_FILTERS[i];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sandbox-palette-filter-btn";
+        btn.textContent = option.label;
+        btn.setAttribute("role", "radio");
+        const active = activeFilter === option.id;
+        btn.setAttribute("aria-checked", String(active));
+        btn.classList.toggle("is-active", active);
+        btn.addEventListener("click", () => {
+            if (activeFilter !== option.id) onChange(option.id);
+        });
+        row.appendChild(btn);
+    }
+    head.appendChild(row);
+}
+export function appendSpawnPaletteGrid(parent, items, activeKey, onSelect) {
+    const grid = document.createElement("div");
+    grid.className = "spawn-palette-grid";
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "spawn-palette-tile";
+        btn.setAttribute("aria-pressed", String(item.key === activeKey));
+        if (item.key === activeKey) btn.classList.add("is-active");
+        const icon = document.createElement("div");
+        icon.className = "spawn-palette-icon";
+        icon.style.setProperty("--swatch", item.swatch);
+        icon.textContent = item.glyph;
+        const label = document.createElement("span");
+        label.className = "spawn-palette-label";
+        label.textContent = item.label;
+        btn.append(icon, label);
+        btn.addEventListener("click", () => onSelect(item.key));
+        grid.appendChild(btn);
+    }
+    parent.appendChild(grid);
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxSelectionPanelUi.js ---
+export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
+    const session = controller.session;
+    const selection = session.getSelection();
+    const filter = session.getSelectionTagFilter();
+    const selectedProps = session.listSelectedPropEntries();
+    appendEditorHint(body, "Shift+drag to box-select. Ctrl+click a prop to add or remove it from the selection.");
+    const actions = [
+        {
+            label: filter === "all" ? "Select all props" : `Select all ${sandboxTagFilterLabel(filter)}`,
+            onClick: () => {
+                session.selectAllPropsWithTagFilter(filter);
+                refreshPanel();
+            },
+        },
+    ];
+    if (selection?.kind === "prop" && selectedProps.length > 0)
+        actions.push({
+            label: filter === "all" ? "Filter selection" : `Filter selection to ${sandboxTagFilterLabel(filter)}`,
+            onClick: () => {
+                session.filterPropSelectionToTag(filter);
+                refreshPanel();
+            },
+        });
+    appendActionRow(body, actions);
+    appendInstanceList(
+        body,
+        selectedProps.map((entry) => ({
+            label: entry.label,
+            selected: true,
+            onSelect: () => {
+                controller.select({ kind: "prop", ids: [entry.id] });
+                refreshPanel();
+            },
+            onRemove: () => {
+                session.removePropFromSelection(entry.id);
+                refreshPanel();
+            },
+            onDelete: () => {
+                controller.deletePropById(entry.id);
+                refreshPanel();
+            },
+        })),
+        selection?.kind === "prop" ? "No props in selection." : "Select props on the map.",
+    );
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxPropSelectedInspector.js ---
+function appendFactionSelect(parent, { value, onChange }) {
+    appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
+}
+function appendBehaviorModeField(parent, behaviorIds, value, onChange) {
+    if (behaviorIds.length === 0) return;
+    appendSelectField(parent, "Mode", { value, options: behaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })), onChange });
+}
+export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
+    const behaviorIds = controller.listSelectedBehaviors();
+    appendFactionSelect(body, {
+        value: resolveSandboxFaction(selectedProp),
+        onChange: (faction) => {
+            selectedProp.faction = faction;
+            refreshPanel();
+        },
+    });
+    appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
+    if (isShapeFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
+    if (isButtonEntity(selectedProp))
+        appendButtonWireInspector(body, {
+            listLinks: () => controller.listSelectedButtonLinks(),
+            isWireActive: () => controller.isButtonWireLinkActive(),
+            startWire: () => controller.startButtonWireLink(),
+            cancelWire: () => controller.cancelButtonWireLink(),
+            clearLinks: () => controller.clearSelectedButtonLinks(),
+            removeLink: (target) => controller.removeSelectedButtonLink(target),
+        });
+    if (isChainLinkBall(selectedProp))
+        appendChainLinkInspector(body, {
+            listLinks: () => controller.listSelectedChainLinks(),
+            isWireActive: () => controller.isChainLinkActive(),
+            startWire: () => controller.startChainLink(),
+            cancelWire: () => controller.cancelChainLink(),
+            clearLinks: () => controller.clearSelectedChainLinks(),
+            removeLink: (constraintId) => controller.removeSelectedChainLink(constraintId),
+            isChainHead: () => controller.isSelectedChainHead(),
+            setChainHead: (enabled) => controller.setSelectedChainHead(enabled),
+        });
+    appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
+        controller.setSelectedBehaviorId(value);
+    });
+    const selectedAsset = propCatalog[selectedProp.type];
+    if (isSpawnerProp(selectedAsset)) {
+        const spawnPropIds = listSpawnerSpawnPropIds();
+        if (spawnPropIds.length)
+            appendSelectField(body, "Spawn prop", {
+                value: resolveSpawnerPropId(selectedProp, selectedAsset),
+                options: spawnPropIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) })),
+                onChange: (value) => {
+                    selectedProp.sandboxSpawnerPropId = value;
+                    refreshPanel();
+                },
+            });
+    }
+    appendCheckboxField(body, "Focus", {
+        name: "cameraFocus",
+        checked: controller.isCameraTarget(selectedProp),
+        onChange: (checked) => {
+            controller.setCameraTarget(checked, selectedProp);
+        },
+    });
+    appendSelectField(body, "Path visual", {
+        value: controller.getPathVisual(selectedProp),
+        options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
+        onChange: (value) => {
+            controller.setPathVisual(value, selectedProp);
+        },
+    });
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxPlaceableInspectorUi.js ---
+function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
+    const session = controller.session;
+    appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
+    appendSelectField(body, "Type", {
+        value: String(selectedFloorBelt.kind),
+        options: listFloorBeltKindOptions().map((option) => ({ value: String(option.kind), label: option.label })),
+        onChange: (value) => {
+            session.setSelectedFloorBeltKind(Number(value));
+        },
+    });
+    appendNumberField(body, "Idx", {
+        value: selectedFloorBelt.idx,
+        step: 1,
+        onChange: (idx) => {
+            session.moveSelectedFloorBeltTo(idx);
+        },
+    });
+    appendActionRow(body, [
+        { label: "Rotate left", onClick: () => session.rotateSelectedFloorBelt(-1) },
+        { label: "Rotate right", onClick: () => session.rotateSelectedFloorBelt(1) },
+    ]);
+    appendActionRow(body, [{ label: "Delete belt", onClick: () => session.deleteSelectedFloorCell() }]);
+}
+const INSPECTOR_UI = {
+    props(body, state, controller, data) {
+        const count = data.ids.length;
+        appendEditorHint(body, `${count} props selected.`);
+        appendActionRow(body, [{ label: `Delete ${count} props`, onClick: () => controller.deleteSelectedProps() }]);
+    },
+    prop(body, state, controller, data, refreshPanel) {
+        appendSelectedPropInspector(body, state, controller, data, refreshPanel);
+    },
+    floorBelt(body, state, controller, data) {
+        appendFloorBeltSelectedInspector(body, controller, data);
+    },
+    voxel(body, state, controller, data) {
+        appendWallSelectedInspector(body, state, controller, { voxel: data });
+    },
+    rail(body, state, controller, data) {
+        appendWallSelectedInspector(body, state, controller, { rail: data });
+    },
+};
+for (const key of PLACEABLE_INSPECTOR_KINDS) if (!INSPECTOR_UI[key]) throw new Error(`Missing inspector UI for placeable kind: ${key}`);
+if (!INSPECTOR_UI.props) throw new Error("Missing inspector UI for placeable kind: props");
+export function appendSelectionInspector(body, state, controller, inspector, refreshPanel) {
+    INSPECTOR_UI[inspector.kind](body, state, controller, inspector.data, refreshPanel);
+}
+
+// --- MERGED FROM SandboxEditor/ui/sandboxPropSpawnInspector.js ---
+function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
+    const session = controller.session;
+    const addRow = document.createElement("div");
+    addRow.className = "sandbox-add-row";
+    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset))
+        appendFactionSelect(addRow, {
+            value: session.getSpawnFaction(),
+            onChange: (faction) => {
+                session.setSpawnFaction(faction);
+                refreshPanel();
+            },
+        });
+    const spawnBehaviorIds = controller.listSpawnBehaviors();
+    if (isSingleWorldPropSpawnAsset(spawnAsset) && spawnBehaviorIds.length > 0)
+        appendBehaviorModeField(addRow, spawnBehaviorIds, controller.getSpawnBehaviorId(), (value) => {
+            controller.setSpawnBehaviorId(value);
+        });
+    if (showAddAtCamera) {
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "secondary";
+        addBtn.textContent = "Add at camera";
+        addBtn.addEventListener("click", () => controller.spawnAtCameraOrigin());
+        addRow.appendChild(addBtn);
+    }
+    body.appendChild(addRow);
+}
+export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
+    const session = controller.session;
+    const spawnAsset = propCatalog[spawnId];
+    if (spawnId === "snake") {
+        appendNumberField(body, "Length", {
+            value: session.getSpawnSnakeLength(),
+            step: 1,
+            min: 3,
+            max: 9,
+            onChange: (length) => {
+                session.setSpawnSnakeLength(length);
+            },
+        });
+        appendNumberField(body, "Radius", {
+            value: session.getSpawnBallRadius(spawnAsset),
+            step: 1,
+            min: 1,
+            max: 4,
+            onChange: (radius) => {
+                session.setSpawnBallRadius(Math.max(1, Math.min(4, radius)));
+            },
+        });
+        appendCoatFields(body, {
+            tint: session.getSpawnVisualOverrideTint(spawnAsset),
+            brightness: session.getSpawnVisualOverrideBrightness(),
+            onTintChange: (hex) => {
+                session.setSpawnVisualOverrideTint(hex);
+                markLabViewDirty();
+            },
+            onBrightnessChange: (brightness) => {
+                session.setSpawnVisualOverrideBrightness(brightness);
+                markLabViewDirty();
+            },
+        });
+    } else if (isShapeFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
+    appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
+}
+
+// --- MERGED FROM SandboxEditor/createSandboxController.js ---
+export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {
+    state.sandbox.behaviors = behaviors;
+    const session = createSandboxSession(state);
+    const cameraCycler = new FollowCamera(state);
+    cameraCycler.registerCandidateList(() => session.listPlacedProps());
+    cameraCycler.addOnTargetChanged(() => session.sync());
+    const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
+    let spawnBehaviorId = behaviors[0]?.id ?? "";
+    let unbindPointers = null;
+    let unbindContextMenu = null;
+    let unbindKeyDown = null;
+    let placePreviewWorld = null;
+    const entityMeta = () => getSandboxEntityMeta(state);
+    const spawnAsset = () => propCatalog[session.getSpawnPropId()];
+    const clampBehaviorId = (id, allowed) => {
+        if (allowed.length === 0) return id;
+        return allowed.includes(id) ? id : allowed[0];
+    };
+    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), state, null);
+    const clampSpawnBehavior = () => {
+        spawnBehaviorId = clampBehaviorId(spawnBehaviorId, listSpawnBehaviors());
+    };
+    const listSelectedBehaviors = (prop = session.getSelectedProp()) => {
+        if (!prop) return [];
+        return resolveSandboxBehaviors(propCatalog[prop.type], state, prop);
+    };
+    const getPropBehaviorId = (prop) => {
+        const allowed = listSelectedBehaviors(prop);
+        if (allowed.length === 0) return spawnBehaviorId;
+        return clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed);
+    };
+    const stampPropBehavior = (prop) => {
+        if (!prop) return;
+        const allowed = listSelectedBehaviors(prop);
+        if (allowed.length === 0) return;
+        entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(spawnBehaviorId, allowed));
+    };
+    const MARQUEE_AABB = createAabb();
+    const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
+    const buttonWireTool = createButtonWireTool(state, session);
+    const chainLinkWireTool = createChainLinkWireTool(state, session);
+    const wallPlaceTool = {
+        isActive: () => session.isWallPlaceMode(),
+        blocksPlacement: () => session.isWallPlaceMode(),
+        onPointerDown(world, e) {
+            if (e.button === 2) {
+                session.deleteWallAtWorld(world.x, world.y);
+                return true;
+            }
+            if (e.button !== 0) return false;
+            if (session.pickWallAtWorld(world.x, world.y)) return true;
+            session.stampWallAtWorld(world.x, world.y);
+            return true;
+        },
+    };
+    const blocksPlacement = () =>
+        (buttonWireTool.isActive() && buttonWireTool.blocksPlacement()) ||
+        (chainLinkWireTool.isActive() && chainLinkWireTool.blocksPlacement()) ||
+        (wallPlaceTool.isActive() && wallPlaceTool.blocksPlacement());
+    const exitWireModes = () => {
+        buttonWireTool.exit();
+        chainLinkWireTool.exit();
+    };
+    const dismissEditorFocus = () => {
+        exitWireModes();
+        groundNavContextMenu.close();
+        marqueeTool.cancel();
+        placePreviewWorld = null;
+        session.clearSelection();
+        session.clearPlaceMode();
+        session.sync();
+    };
+    const selectProp = (id) => {
+        exitWireModes();
+        session.select(id == null ? null : { kind: "prop", ids: [id] });
+        const prop = session.getSelectedProp();
+        if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
+            const allowed = listSelectedBehaviors(prop);
+            if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
+        }
+    };
+    const togglePropInSelection = (id) => {
+        exitWireModes();
+        const sel = session.getSelection();
+        const removing = sel?.kind === "prop" && sel.ids.has(id);
+        if (!session.togglePropInSelection(id)) return;
+        if (!removing) {
+            const prop = state.entityRegistry.getLive(id);
+            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
+                const allowed = listSelectedBehaviors(prop);
+                if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
+            }
+        }
+        session.sync();
+    };
+    const selectPropIds = (ids) => {
+        exitWireModes();
+        session.select({ kind: "prop", ids });
+    };
+    const resolveBehavior = () => {
+        const prop = session.getSelectedProp();
+        if (!prop) return null;
+        const allowed = listSelectedBehaviors(prop);
+        const behavior = behaviorById.get(getPropBehaviorId(prop)) ?? null;
+        if (!behavior || !allowed.includes(behavior.id)) return null;
+        return behavior;
+    };
+    const resolveGroundMove = () => {
+        const sel = session.getSelection();
+        if (sel?.kind !== "prop") return null;
+        const prop = resolveGroundNavSteeringProp(state, entityMeta(), selectionPropIds(sel));
+        if (!prop || prop.type === "boid_triangle") return null;
+        const allowed = listSelectedBehaviors(prop);
+        const behavior = behaviorById.get(clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed)) ?? null;
+        if (!behavior?.setMoveTarget || !allowed.includes(behavior.id)) return null;
+        return { prop, behavior };
+    };
+    const issueGroundMove = (move, world) => {
+        move.behavior.setMoveTarget(move.prop, world);
+    };
+    const issueGroundNavToSelected = (behaviorId, world) => {
+        const sel = session.getSelection();
+        if (sel?.kind !== "prop") return 0;
+        const moved = issueGroundNavToSelection(state, { propIds: selectionPropIds(sel), behaviorId, world, behaviorById, entityMeta: entityMeta() });
+        if (moved > 0) session.sync();
+        return moved;
+    };
+    const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
+    const deletePointerTool = createSandboxDeletePointerTool(state, session);
+    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, {
+        stampPropBehavior,
+        blocksPlacement,
+        exitWireModes,
+        resolveBehavior,
+        resolveGroundMove,
+        gestures,
+        issueGroundNavToSelected,
+    });
+    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
+    const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, buttonWireTool, chainLinkWireTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
+    const resetBehaviors = () => {
+        for (const behavior of behaviors) behavior.reset?.();
+        gestures.reset();
+    };
+    const onPointerDown = (e) => {
+        const world = clientToWorld(e.clientX, e.clientY);
+        const down = canvasTools.dispatchPointerDown(world, e);
+        if (down.handled) {
+            if (down.preventDefault) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
+        if (canvasTools.tryBeginPointerDown(world, e)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+    const onPointerMove = (e) => {
+        const world = clientToWorld(e.clientX, e.clientY);
+        canvasTools.dispatchPointerMove(world, e);
+        if (!canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode()) placePreviewWorld = world;
+        if (canvasTools.isDragging()) return;
+    };
+    const onPointerLeave = () => {
+        placePreviewWorld = null;
+    };
+    const onPointerUp = (e) => {
+        releaseButtonPointerHold(state);
+        const world = clientToWorld(e.clientX, e.clientY);
+        if (canvasTools.dispatchPointerUp(world, e)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+    const controller = {
+        deleteSelectedProps: () => {
+            const sel = session.getSelection();
+            if (sel?.kind === "prop") for (const propId of sel.ids) cameraCycler.retarget(propId);
+            session.deleteSelectedProps();
+        },
+        countSelectedNavProps: () => {
+            const sel = session.getSelection();
+            if (sel?.kind !== "prop") return 0;
+            return countNavPropsInSelection(state, selectionPropIds(sel), entityMeta());
+        },
+        issueGroundNavToSelection: issueGroundNavToSelected,
+        select: (input) => {
+            exitWireModes();
+            session.select(input);
+        },
+        startButtonWireLink: () => {
+            chainLinkWireTool.exit();
+            buttonWireTool.startLink();
+        },
+        cancelButtonWireLink: () => buttonWireTool.exit(),
+        isButtonWireLinkActive: () => buttonWireTool.isActive(),
+        startChainLink: () => {
+            buttonWireTool.exit();
+            chainLinkWireTool.startLink();
+        },
+        cancelChainLink: () => chainLinkWireTool.exit(),
+        isChainLinkActive: () => chainLinkWireTool.isActive(),
+        clearSelectedChainLinks: () => {
+            const prop = session.getSelectedProp();
+            if (!prop || !isChainLinkBall(prop)) return;
+            clearChainLinksForProp(state, prop.id);
+            session.sync();
+        },
+        removeSelectedChainLink: (constraintId) => {
+            removeKineticConstraint(state.kinetic, constraintId);
+            session.sync();
+        },
+        listSelectedChainLinks: () => {
+            const prop = session.getSelectedProp();
+            if (!prop || !isChainLinkBall(prop)) return [];
+            return listChainLinkEndpoints(state, prop.id);
+        },
+        setSelectedChainHead: (enabled) => {
+            const prop = session.getSelectedProp();
+            if (!prop || !isChainLinkBall(prop)) return;
+            if (enabled) setChainHead(state, entityMeta(), prop.id);
+            else entityMeta().setChainHead(prop.id, false);
+            session.sync();
+        },
+        isSelectedChainHead: () => {
+            const prop = session.getSelectedProp();
+            return prop ? entityMeta().isChainHead(prop.id) : false;
+        },
+        clearSelectedButtonLinks: () => {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return;
+            clearButtonLinks(state, button.id);
+            session.sync();
+        },
+        removeSelectedButtonLink: (target) => {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return;
+            removeButtonLink(state, button.id, target);
+            session.sync();
+        },
+        listSelectedButtonLinks: () => {
+            const button = session.getSelectedProp();
+            if (!isButtonEntity(button)) return [];
+            return listButtonLinkEndpoints(state, button);
+        },
+        spawnAtCameraOrigin: () => {
+            session.spawnAtCameraOrigin();
+            stampPropBehavior(session.getSelectedProp());
+        },
+        deletePropById: (id) => {
+            cameraCycler.retarget(id);
+            session.deletePropById(id);
+        },
+        setPlacePaletteKey: (key) => {
+            const prevKey = session.getPlacePaletteKey();
+            session.setPlacePaletteKey(key);
+            if (prevKey === key) return;
+            if (key.startsWith("prop:")) {
+                clampSpawnBehavior();
+                const asset = propCatalog[key.slice(5)];
+                if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(assetDefaultBallRadius(asset));
+            }
+        },
+        selectSceneItem: (item) => {
+            exitWireModes();
+            session.selectSceneItem(item);
+        },
+        exportSceneSnapshot: () => JSON.stringify(collectSandboxSceneSnapshot(state), null, 2),
+        importSceneSnapshot(json) {
+            applySandboxSceneSnapshot(state, parseSandboxSceneSnapshot(json));
+            cameraCycler.clear();
+            resetBehaviors();
+            exitWireModes();
+            session.clearSelection();
+            session.seedPlacementOrderFromState();
+            session.sync();
+        },
+        getBehaviorByIdMap: () => behaviorById,
+        sync: session.sync,
+        session,
+        setUiSync: (fn) => session.setUiSync(fn),
+        getSpawnBehaviorId: () => spawnBehaviorId,
+        setSpawnBehaviorId: (id) => {
+            spawnBehaviorId = clampBehaviorId(id, listSpawnBehaviors());
+            session.sync();
+        },
+        listSpawnBehaviors,
+        getSelectedBehaviorId: () => {
+            const prop = session.getSelectedProp();
+            return prop ? getPropBehaviorId(prop) : spawnBehaviorId;
+        },
+        setSelectedBehaviorId: (id) => {
+            const prop = session.getSelectedProp();
+            if (!prop) return;
+            entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(id, listSelectedBehaviors(prop)));
+            session.sync();
+        },
+        listSelectedBehaviors: () => listSelectedBehaviors(),
+        register() {
+            controller.destroy();
+            unbindPointers = bindCanvasPointers(getCanvas(), {
+                pointerdown: onPointerDown,
+                pointermove: onPointerMove,
+                pointerup: onPointerUp,
+                pointercancel: onPointerUp,
+                pointerleave: onPointerLeave,
+            });
+            unbindContextMenu = bindCanvasContextMenu(getCanvas(), (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (state.editor.lockSelection) return;
+                if (session.isWallPlaceMode()) return;
+                const world = clientToWorld(e.clientX, e.clientY);
+                groundNavContextMenu.tryOpen(e.clientX, e.clientY, world);
+            });
+            const onKeyDown = (e) => {
+                if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
+                if (e.code === "Escape") {
+                    if (groundNavContextMenu.isOpen()) {
+                        groundNavContextMenu.close();
+                        e.preventDefault();
+                        return;
+                    }
+                    dismissEditorFocus();
+                    e.preventDefault();
+                    return;
+                }
+                if (!placePreviewWorld || canvasTools.capturesPointerMove() || canvasTools.isDragging() || canvasTools.blocksPlacePreview()) return;
+                if (session.rotateHoveredGridOccupantAtWorld(placePreviewWorld.x, placePreviewWorld.y)) e.preventDefault();
+            };
+            window.addEventListener("keydown", onKeyDown);
+            unbindKeyDown = () => window.removeEventListener("keydown", onKeyDown);
+            cameraCycler.bindInput();
+        },
+        destroy() {
+            unbindKeyDown?.();
+            unbindKeyDown = null;
+            unbindPointers?.();
+            unbindPointers = null;
+            unbindContextMenu?.();
+            unbindContextMenu = null;
+            exitWireModes();
+            groundNavContextMenu.close();
+            marqueeTool.cancel();
+            placePreviewWorld = null;
+            resetBehaviors();
+            session.setUiSync(null);
+            cameraCycler.destroy();
+        },
+        clearBodies() {
+            session.clear();
+            cameraCycler.clear();
+            resetBehaviors();
+        },
+        collectOverlayCommands() {
+            const showPlacePreview = placePreviewWorld && !canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode();
+            return buildSandboxOverlayCommands({
+                state,
+                session,
+                spatialFrame: state.spatialFrame,
+                placePreviewWorld: showPlacePreview ? placePreviewWorld : null,
+                marqueeRect: marqueeTool.getMarqueeRect(),
+                behaviorById,
+                getPropBehaviorId,
+                buttonWireTool,
+                chainLinkWireTool,
+                resolveBehavior,
+                selectedProp: session.getSelectedProp(),
+            });
+        },
+        tick(dtMs) {
+            session.pruneSelection();
+            for (let i = 0; i < behaviors.length; i++) behaviors[i].tickWorld?.(dtMs);
+            const prop = session.getSelectedProp();
+            const behavior = resolveBehavior();
+            if (!prop || !behavior?.tick) return;
+            if (behavior.tickWorld) return;
+            behavior.tick(prop, dtMs);
+        },
+        getPathVisual(prop) {
+            return resolveSandboxPathVisual(state, prop);
+        },
+        setPathVisual(visual, prop) {
+            setSandboxPathVisual(state, prop, visual);
+            session.sync();
+        },
+        isCameraTarget(prop) {
+            return cameraCycler.targetProp?.id === prop.id;
+        },
+        setCameraTarget(enabled, prop) {
+            if (enabled) cameraCycler.focus(prop);
+            else if (cameraCycler.targetProp === prop) cameraCycler.clear();
+            session.sync();
+        },
+    };
+    return controller;
 }

@@ -74,7 +74,6 @@ import {
 } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../Props/props.js";
-import { drawFloorOccupancyBelts, getFlipperSpec, setSandboxCameraTarget } from "../Sandbox/sandbox.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import {
     collectVoxelWallFacesInAabbFlat,
@@ -1398,105 +1397,6 @@ export function drawExtrudedCompoundPolygon(
     for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "base" });
     for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "sides" });
     for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "top" });
-}
-// --- MERGED FROM flipperPaddle.js ---
-/** @param {number} length @param {number} halfW @param {number} height @param {number} facing @param {number} extendDir */
-function buildFlipperPaddleMesh(length, halfW, height, pivotRadius, facing, extendDir) {
-    const R1 = pivotRadius;
-    const R2 = Math.max(1, halfW * 0.45);
-    const D = length - R2;
-    const theta = Math.asin(Math.max(0, Math.min(1, (R1 - R2) / D)));
-    const footprint = [];
-    const startBase = Math.PI / 2 - theta;
-    const endBase = Math.PI * 1.5 + theta;
-    const numBaseSegments = 6;
-    for (let i = 0; i <= numBaseSegments; i++) {
-        const a = startBase + (endBase - startBase) * (i / numBaseSegments);
-        footprint.push({ lx: R1 * Math.cos(a), ly: R1 * Math.sin(a) });
-    }
-    const startTip = -Math.PI / 2 + theta;
-    const endTip = Math.PI / 2 - theta;
-    const numTipSegments = 5;
-    for (let i = 0; i <= numTipSegments; i++) {
-        const a = startTip + (endTip - startTip) * (i / numTipSegments);
-        footprint.push({ lx: D + R2 * Math.cos(a), ly: R2 * Math.sin(a) });
-    }
-    const N = footprint.length;
-    const local = [];
-    for (let p of footprint) local.push({ ...p, z: 0 });
-    for (let p of footprint) local.push({ ...p, z: height });
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
-    const flipX = extendDir < 0;
-    const corners = local.map((v) => {
-        const lx0 = flipX ? -v.lx : v.lx;
-        const r = rotateXY(lx0, v.ly, cos, sin);
-        return { lx: r.x, ly: r.y, z: v.z };
-    });
-    const face = (indices, panel) => {
-        const verts = indices.map((i) => corners[i]);
-        if (flipX) verts.reverse();
-        return { verts, panel, depth: verts.reduce((sum, v) => sum + v.z, 0) / verts.length };
-    };
-    const mesh = [];
-    const bottomIndices = [];
-    for (let i = 0; i < N; i++) bottomIndices.push(N - 1 - i);
-    mesh.push(face(bottomIndices, "bottom"));
-    const topIndices = [];
-    for (let i = 0; i < N; i++) topIndices.push(i + N);
-    mesh.push(face(topIndices, "top"));
-    for (let i = 0; i < N; i++) {
-        const next = (i + 1) % N;
-        let panel = "sideA";
-        if (i < numBaseSegments) panel = "pivot";
-        else if (i === numBaseSegments) panel = "sideA";
-        else if (i > numBaseSegments && i < N - 1) panel = "tip";
-        else panel = "sideB";
-        mesh.push(face([i, next, next + N, i + N], panel));
-    }
-    return mesh;
-}
-/** @param {CanvasRenderingContext2D} ctx @param {object} prop @param {number} px @param {number} py @param {object} options */
-export function drawFlipperPaddle(ctx, prop, viewport, options) {
-    const asset = propCatalog[prop.type];
-    const spec = getFlipperSpec(prop, asset);
-    const length = spec.length;
-    const halfW = spec.width * 0.5;
-    const height = spec.height;
-    const pivotRadius = spec.pivotRadius;
-    const angle = prop._flipperAngle ?? spec.restAngle;
-    const colors = options.colors;
-    const stroke = colors.stroke ?? "#263238";
-    const lineWidth = options.lineWidth ?? 0.9;
-    const mesh = buildFlipperPaddleMesh(length, halfW, height, pivotRadius, angle, spec.extendDir);
-    const panelFill = {
-        bottom: colors.bottom?.mid ?? colors.side.mid,
-        top: colors.top?.mid ?? colors.side.highlight,
-        sideA: colors.side.mid,
-        sideB: colors.side.shadow,
-        tip: colors.tip?.mid ?? colors.side.highlight,
-        pivot: colors.pivot?.mid ?? colors.side.shadow,
-    };
-    const backFaces = [];
-    const frontFaces = [];
-    for (const face of mesh)
-        if (isPropMeshFaceVisible(prop, viewport, face.verts)) frontFaces.push(face);
-        else backFaces.push(face);
-    const drawPass = (faces) => {
-        const sorted = [...faces].sort((a, b) => a.depth - b.depth);
-        for (const face of sorted) drawPropMeshFace(ctx, prop, viewport, face.verts, panelFill[face.panel] ?? colors.side.mid, stroke, lineWidth);
-    };
-    drawPass(backFaces);
-    drawPass(frontFaces);
-}
-/** @param {object} visuals */
-export function createFlipperPrimitive(visuals) {
-    const { world, colors, activeColors } = visuals;
-    return (ctx, prop, viewport) => {
-        const active = prop._flipperTarget === "active" || prop._flipperButtonPressed;
-        const base = active && activeColors ? activeColors : colors;
-        drawFlipperPaddle(ctx, prop, viewport, { world, colors: resolveVisualOverrideColorTree(prop, base), lineWidth: visuals.lineWidth ?? 0.9 });
-    };
 }
 // --- MERGED FROM pipeElbow.js ---
 /** @param {number} lx @param {number} ly @param {number} lz @param {number} facing */
@@ -3065,135 +2965,76 @@ export class WorldSceneRenderer {
         }
     }
 }
-// --- MERGED FROM FollowCamera.js ---
-/**
- * Handles camera focus targeting, viewport snapping, and cycling
- * without any game-specific (e.g. Snake) logic.
- */
-export class FollowCamera {
-    /**
-     * @param {object} state Global game state
-     * @param {object} [options]
-     * @param {string} [options.triggerKey] Keyboard key code to cycle target (defaults to "Tab")
-     */
-    constructor(state, { triggerKey = "Tab" } = {}) {
-        this.state = state;
-        this.triggerKey = triggerKey;
-        this.targetProp = null;
-        this._candidateListFn = null;
-        this._pickResolverFn = null;
-        this._onTargetChangedCallbacks = new Set();
-        this._handleKeyDown = this._handleKeyDown.bind(this);
+// --- MERGED FROM gridStampDrawCache.js ---
+const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
+const beltDrawByTurn = { straight: createConveyorDraw(), left: createConveyorDraw({ turnDirection: "left" }), right: createConveyorDraw({ turnDirection: "right" }) };
+function beltDrawForKind(kind) {
+    const turn = FloorBelt.getElbowTurn(kind);
+    if (turn === "left") return beltDrawByTurn.left;
+    if (turn === "right") return beltDrawByTurn.right;
+    return beltDrawByTurn.straight;
+}
+const floorBeltStampProxyProto = {
+    ageMs: 0,
+    getCustomSpriteCacheKey() {
+        return `k${this.beltKind}`;
+    },
+};
+function createGridCellStampProxy(proto, x, y, cellHalf, init) {
+    const proxy = Object.create(proto);
+    proxy.x = x;
+    proxy.y = y;
+    proxy.radius = cellHalf;
+    proxy.halfExtents = SHARED_HALF_EXTENTS;
+    init(proxy);
+    return proxy;
+}
+function createFloorBeltStampProxy(x, y, facing, cellHalf, kind) {
+    return createGridCellStampProxy(floorBeltStampProxyProto, x, y, cellHalf, (proxy) => {
+        proxy.facing = facing;
+        proxy.beltKind = kind;
+    });
+}
+export function clearGridStampDrawCaches(state) {
+    if (!state.sandbox) return;
+    state.sandbox._floorOccupancyStampDrawCache = null;
+}
+export function syncFloorOccupancyStampDrawCache(state, grid) {
+    if (!state.sandbox) return null;
+    const revision = floorOccupancyStampDrawCacheKey(grid);
+    const cached = state.sandbox._floorOccupancyStampDrawCache;
+    if (cached?.revision === revision) return cached;
+    const cellHalf = grid.cellHalfSize;
+    SHARED_HALF_EXTENTS.x = cellHalf;
+    SHARED_HALF_EXTENTS.y = cellHalf;
+    const belts = [];
+    const size = grid.cols * grid.rows;
+    for (let idx = 0; idx < size; idx++) {
+        const kind = grid.floorKind[idx];
+        if (!(grid.floorKind[idx] !== 0)) continue;
+        const { x, y } = grid.gridToWorldByIdx(idx);
+        if (FloorBelt.isBelt(kind)) belts.push({ proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
     }
-    /**
-     * Registers a callback that returns candidate props for cycling.
-     * @param {() => object[]} fn
-     */
-    registerCandidateList(fn) {
-        this._candidateListFn = fn;
+    const next = { revision, belts };
+    state.sandbox._floorOccupancyStampDrawCache = next;
+    return next;
+}
+function drawCachedFloorOccupancyBelts(ctx, viewport, gameTime, cached) {
+    const animFrame = Math.floor(gameTime / 60) % 8;
+    const belts = cached.belts;
+    for (let i = 0; i < belts.length; i++) {
+        const item = belts[i];
+        if (!viewport.circleInBounds(item.x, item.y, item.proxy.radius, "props")) continue;
+        item.proxy.ageMs = gameTime;
+        drawCachedPropSprite(ctx, item.proxy, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, beltDrawForKind(item.proxy.beltKind), animFrame);
     }
-    /**
-     * Registers a custom resolver to map a clicked prop ID to a focus target prop.
-     * @param {(propId: string) => object | null} fn
-     */
-    registerPickResolver(fn) {
-        this._pickResolverFn = fn;
-    }
-    /** @param {(prop: object|null) => void} cb */
-    addOnTargetChanged(cb) {
-        this._onTargetChangedCallbacks.add(cb);
-    }
-    /** @param {(prop: object|null) => void} cb */
-    removeOnTargetChanged(cb) {
-        this._onTargetChangedCallbacks.delete(cb);
-    }
-    /**
-     * Focuses a target prop, snapping the viewport to it if requested.
-     * @param {object|null} prop
-     * @param {boolean} [snap=true]
-     */
-    focus(prop, snap = true) {
-        const oldTarget = this.targetProp;
-        if (oldTarget === prop) {
-            if (prop && snap) this.state.viewport?.snapTo?.(prop.x, prop.y);
-            return;
-        }
-        if (oldTarget) setSandboxCameraTarget(this.state, oldTarget, false);
-        this.targetProp = prop;
-        if (prop) {
-            setSandboxCameraTarget(this.state, prop, true);
-            if (snap) this.state.viewport?.snapTo?.(prop.x, prop.y);
-        }
-        for (const cb of this._onTargetChangedCallbacks) cb(prop);
-    }
-    /** Clears the focus target. */
-    clear() {
-        this.focus(null);
-    }
-    /**
-     * Cycles through candidate props.
-     * @param {() => object[]} [getProps] Override candidate getter
-     * @returns {object|null} The newly focused target prop
-     */
-    cycle(getProps) {
-        const fn = getProps || this._candidateListFn;
-        const props = fn ? fn() : [];
-        const validProps = props.filter((p) => p && !p.isDead);
-        if (validProps.length === 0) {
-            this.clear();
-            return null;
-        }
-        const currentIndex = this.targetProp ? validProps.findIndex((p) => p.id === this.targetProp.id) : -1;
-        const nextIndex = (currentIndex + 1) % validProps.length;
-        const nextProp = validProps[nextIndex];
-        this.focus(nextProp, true);
-        return nextProp;
-    }
-    focusFromPropId(propId) {
-        if (!this._candidateListFn && !this._pickResolverFn) return false;
-        let prop = this.state.entityRegistry.getLive(propId);
-        if (!prop) return false;
-        if (this._pickResolverFn) {
-            const resolved = this._pickResolverFn(propId);
-            if (resolved) {
-                if (this.targetProp && this.targetProp.id === resolved.id) return false;
-                this.focus(resolved, true);
-                return true;
-            }
-        }
-        if (this._candidateListFn) {
-            const candidates = this._candidateListFn();
-            const isCandidate = candidates.some((c) => c && c.id === prop.id);
-            if (isCandidate) {
-                if (this.targetProp && this.targetProp.id === prop.id) return false;
-                this.focus(prop, true);
-                return true;
-            }
-        }
-        return false;
-    }
-    _handleKeyDown(e) {
-        if (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.matches("textarea, select, input"))) return;
-        if (e.code === this.triggerKey) {
-            e.preventDefault();
-            this.cycle();
-        }
-    }
-    bindInput() {
-        window.addEventListener("keydown", this._handleKeyDown);
-    }
-    unbindInput() {
-        window.removeEventListener("keydown", this._handleKeyDown);
-    }
-    destroy() {
-        this.unbindInput();
-        this.reset();
-    }
-    reset() {
-        this.clear();
-        this._candidateListFn = null;
-        this._pickResolverFn = null;
-    }
+}
+export function drawFloorOccupancyBelts(ctx, state, viewport) {
+    const grid = state.obstacleGrid;
+    if (!grid.floorKind.some((k) => k !== 0)) return;
+    const cached = syncFloorOccupancyStampDrawCache(state, grid);
+    if (!cached?.belts.length) return;
+    drawCachedFloorOccupancyBelts(ctx, viewport, state.gameTime, cached);
 }
 // --- MERGED FROM losShadow.js ---
 // --- MERGED FROM losShadowDefaults.js ---

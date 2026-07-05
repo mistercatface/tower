@@ -4,9 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { createSandboxController } from "../Libraries/SandboxEditor/createSandboxController.js";
-import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { createHpaGroundNavBehavior, createDragLaunchBehavior } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxController, spawnPlacedSandboxProp, createHpaGroundNavBehavior, createDragLaunchBehavior } from "../Libraries/Sandbox/sandbox.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 function createEditorTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
@@ -74,22 +72,22 @@ describe("boid double tap hpa pathing", () => {
         const controller = createSandboxController(state, { getCanvas: () => canvas, clientToWorld: (clientX, clientY) => ({ x: clientX, y: clientY }), behaviors });
         controller.register();
         // Initially, the boid triangle is not selected
-        assert.equal(controller.getSelectedProp(), null);
+        assert.equal(controller.session.getSelectedProp(), null);
         // 1. Select the boid triangle
         controller.select({ kind: "prop", ids: [prop.id] });
-        assert.equal(controller.getSelectedProp(), prop);
+        assert.equal(controller.session.getSelectedProp(), prop);
         // Verify default active behavior is dragLaunch
         assert.equal(controller.getSelectedBehaviorId(), "dragLaunch");
         // 2. Perform a single click on empty ground (e.g. at x: 100, y: 100)
         // Click 1:
         eventListeners.pointerdown({ button: 0, clientX: 100, clientY: 100, detail: 1, preventDefault() {}, stopPropagation() {} });
         // Click 1 will deselect the boid triangle and select the floor (as per standard editor rules)
-        assert.notEqual(controller.getSelectedProp()?.id, prop.id);
+        assert.notEqual(controller.session.getSelectedProp()?.id, prop.id);
         // But since this is a potential double click, the tool remembers the previously selected boid.
         // Let's fire the second click (Click 2) at the same spot within 200ms
         eventListeners.pointerdown({ button: 0, clientX: 100, clientY: 100, detail: 2, preventDefault() {}, stopPropagation() {} });
         // After Click 2, the selection should be restored to the boid triangle, and HPA pathing should be active!
-        assert.equal(controller.getSelectedProp()?.id, prop.id);
+        assert.equal(controller.session.getSelectedProp()?.id, prop.id);
         assert.equal(getSandboxEntityMeta(state).getActiveBehaviorId(prop.id), "rollToCursorHpa");
         // Check that the move target is set
         const hpaBehavior = behaviors.find((b) => b.id === "rollToCursorHpa");
@@ -109,7 +107,7 @@ describe("boid double tap hpa pathing", () => {
         assert.equal(newTarget.col, 22);
         assert.equal(newTarget.row, 22);
         // The selection should have been changed/cleared from the boid
-        assert.notEqual(controller.getSelectedProp()?.id, prop.id);
+        assert.notEqual(controller.session.getSelectedProp()?.id, prop.id);
         // Re-select the boid so we can test the drag-launch restoration next
         controller.select({ kind: "prop", ids: [prop.id] });
         // 4. Now let's click/drag directly on the boid triangle itself to test drag launch restoration.

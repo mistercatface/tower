@@ -1,12 +1,5 @@
 import { formatSandboxSpawnLabel } from "../../../Libraries/Props/props.js";
-import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandbox.js";
-import { orderSandboxPalettePropIds } from "../../../Libraries/Sandbox/sandbox.js";
-import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandbox.js";
-import { appendSelectionInspector } from "../../../Libraries/SandboxEditor/ui/sandboxPlaceableInspectorUi.js";
-import { appendWallPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
-import { appendPropPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxPropSpawnInspector.js";
-import { appendSandboxSelectionPanel } from "../../../Libraries/SandboxEditor/ui/sandboxSelectionPanelUi.js";
-import { buildPlacePaletteItems, appendSandboxTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/SandboxEditor/ui/sandboxPlacePalette.js";
+import { isSandboxSpawnable, sandboxTagsMatchFilter, orderSandboxPalettePropIds, wallPlaceInspector, appendSelectionInspector, appendWallPlaceParams, appendPropPlaceParams, appendSandboxSelectionPanel, buildPlacePaletteItems, appendSandboxTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/Sandbox/sandbox.js";
 import { appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
 import { wrapLabUiSync } from "./preview.js";
@@ -32,10 +25,11 @@ function clearElement(el) {
     el.replaceChildren();
 }
 export function mountSandboxToyUi(container, state, controller) {
+    const session = controller.session;
     let paletteTagFilter = "all";
     const propIds = orderSandboxPalettePropIds(Object.keys(propCatalog).filter((id) => isSandboxSpawnable(propCatalog[id])));
     const bootstrapPaletteItems = buildPlacePaletteItems(propIds);
-    if (!controller.getPlacePaletteKey() && bootstrapPaletteItems.length > 0) {
+    if (!session.getPlacePaletteKey() && bootstrapPaletteItems.length > 0) {
         const firstProp = bootstrapPaletteItems.find((item) => item.kind === "prop") ?? bootstrapPaletteItems[0];
         controller.setPlacePaletteKey(firstProp.key);
     }
@@ -97,9 +91,9 @@ export function mountSandboxToyUi(container, state, controller) {
         sections.selectionHead.appendChild(titleEl);
         appendSandboxTagFilters(
             sections.selectionHead,
-            controller.getSelectionTagFilter(),
+            session.getSelectionTagFilter(),
             (filter) => {
-                controller.setSelectionTagFilter(filter);
+                session.setSelectionTagFilter(filter);
                 refreshPanel();
             },
             "Selection filters",
@@ -121,14 +115,14 @@ export function mountSandboxToyUi(container, state, controller) {
             appendEditorHint(sections.paletteBody, "No props match this filter.");
             return;
         }
-        const paletteKey = controller.getPlacePaletteKey();
+        const paletteKey = session.getPlacePaletteKey();
         if (paletteKey !== "" && !paletteItems.some((item) => item.key === paletteKey)) {
             controller.setPlacePaletteKey(paletteItems[0].key);
             return;
         }
         const activeItem = paletteKey === "" ? null : (paletteItems.find((item) => item.key === paletteKey) ?? paletteItems[0]);
-        const inspector = controller.getSelectionInspector();
-        const wallStampMode = controller.getWallStampMode();
+        const inspector = session.getSelectionInspector();
+        const wallStampMode = session.getWallStampMode();
         refreshPaletteHead();
         clearElement(sections.paletteBody);
         appendSpawnPaletteGrid(sections.paletteBody, paletteItems, paletteKey, (key) => {
@@ -152,13 +146,13 @@ export function mountSandboxToyUi(container, state, controller) {
         clearElement(sections.sceneBody);
         appendInstanceList(
             sections.sceneBody,
-            controller
+            session
                 .listPlacedSceneItems()
                 .map((item) => ({
                     label: item.label,
-                    selected: controller.isSceneItemSelected(item),
+                    selected: session.isSceneItemSelected(item),
                     onSelect: () => controller.selectSceneItem(item),
-                    onDelete: () => controller.deleteSceneItem(item),
+                    onDelete: () => session.deleteSceneItem(item),
                 })),
             "Nothing placed yet.",
         );

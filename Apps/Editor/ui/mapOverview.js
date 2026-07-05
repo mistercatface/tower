@@ -19,7 +19,7 @@ export function flushMapOverviewRepaint(state) {
 }
 /** @param {import("../state.js").TileLabGameState} state @returns {"cavern" | "rail" | "erase" | null} */
 export function activeMapGenKind(state) {
-    const key = state.sandbox.controller?.getPlacePaletteKey();
+    const key = state.sandbox.controller?.session?.getPlacePaletteKey();
     if (key === "gen:cavern") return "cavern";
     if (key === "gen:rail") return "rail";
     if (key === "gen:railMaze") return "railMaze";

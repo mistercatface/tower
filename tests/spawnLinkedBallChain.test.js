@@ -71,8 +71,8 @@ describe("spawnLinkedBallChain", () => {
     it("spawnLinkedBallChain uses headBallType for the first segment only", () => {
         resetKineticConstraintIds(1);
         const state = createChainSpawnTestState();
-        const chain = spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), { ...CHAIN_OPTIONS, headBallType: "flipper_left" });
-        assert.equal(chain.head.type, "flipper_left");
+        const chain = spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), { ...CHAIN_OPTIONS, headBallType: "cross_pinwheel" });
+        assert.equal(chain.head.type, "cross_pinwheel");
         assert.equal(chain.tail.type, CHAIN_OPTIONS.ballType);
     });
     it("spawnLinkedBallChain applies segmentRadius to every member", () => {

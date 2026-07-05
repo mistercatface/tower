@@ -1,6 +1,4 @@
 import ball from "./ball/ball.asset.js";
-import flipper_left from "./flipper/flipperLeft.asset.js";
-import flipper_right from "./flipper/flipperRight.asset.js";
 import crate from "./crate/crate.asset.js";
 import custom_box from "./custom_box/custom_box.asset.js";
 import glass_pane from "./glass_pane/glass_pane.asset.js";
@@ -22,8 +20,6 @@ import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
 import snake_shard from "./snake_shard/snake_shard.asset.js";
 const catalog = {
     ball,
-    flipper_left,
-    flipper_right,
     crate,
     custom_box,
     glass_pane,

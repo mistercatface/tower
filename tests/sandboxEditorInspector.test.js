@@ -4,14 +4,9 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
-import { createSandboxController } from "../Libraries/SandboxEditor/createSandboxController.js";
-import { spawnPlaceableAt } from "../Libraries/Sandbox/sandbox.js";
-import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandbox.js";
-import { appendShapeFamilySelectedFields } from "../Libraries/SandboxEditor/ui/sandboxShapeFamilyUi.js";
+import { createSandboxSession, spawnPlaceableAt, createSandboxSpawnSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
-import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 
 import propCatalog from "../Assets/props/index.js";
 function createEditorTestState() {
@@ -140,11 +135,11 @@ describe("sandbox editor inspector wiring", () => {
             clientToWorld: () => ({ x: 0, y: 0 }),
             behaviors: [],
         });
-        assert.equal(typeof controller.getSelectedProp, "function");
+        assert.equal(typeof controller.session.getSelectedProp, "function");
         controller.select({ kind: "prop", ids: [prop.id] });
-        assert.equal(controller.getSelectedProp(), prop);
+        assert.equal(controller.session.getSelectedProp(), prop);
         controller.select(null);
-        assert.equal(controller.getSelectedProp(), null);
+        assert.equal(controller.session.getSelectedProp(), null);
     });
 
     it("spawn with selectSpawned false leaves selection empty", () => {

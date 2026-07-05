@@ -1,16 +1,15 @@
 import { findLiveWorldProp, addWorldPropToState, removeWorldPropFromState, addWorldPropsToState, findWorldPropAtInView, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, getConnectedComponentPath } from "../Physics/physics.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, stepCardinalFacing, createAabb, normalizeXY } from "../Math/math.js";
-import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere, createFlipperPrimitive, createPipeElbowPrimitive, appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
+import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere, createPipeElbowPrimitive, appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { processFloorShapes, syncFloorPropCollisionShape, computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { resolveSandboxFaction, clearChainLinksForProp } from "../Sandbox/sandbox.js";
+import { resolveSandboxFaction } from "../../GameState/sandboxEntityMeta.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
-import { FLIPPER_LAYOUT } from "../../Assets/props/flipper/flipperShared.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
 
@@ -181,7 +180,7 @@ export function createSpherePrimitive(visuals) {
     };
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
-export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive, flipper: createFlipperPrimitive, pipeElbow: createPipeElbowPrimitive };
+export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive, pipeElbow: createPipeElbowPrimitive };
 // --- MERGED FROM propScale.js ---
 function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
@@ -1706,7 +1705,7 @@ export function queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, forc
         }
     }
 }
-export function flushDeferredFractures(world, spatialFrame) {
+export function flushDeferredFractures(world, spatialFrame, hooks = {}) {
     if (deferredFracturesCount === 0) return;
     world.entityRegistry.beginMembershipBatch();
     const propsToAdmit = [];
@@ -1717,7 +1716,7 @@ export function flushDeferredFractures(world, spatialFrame) {
             delete prop._pendingEviction;
             if (item.type === "glass") evictFracturedProp(world, prop, spatialFrame);
             else if (item.type === "circle") {
-                clearChainLinksForProp(world, prop.id);
+                hooks.onCircleFracture?.(world, prop);
                 evictFracturedProp(world, prop, spatialFrame);
             } else {
                 wakeKineticBody(prop);
@@ -1736,7 +1735,7 @@ export function flushDeferredFractures(world, spatialFrame) {
         deferredFracturesCount = 0;
     }
 }
-export function processKineticContactFractures(tick, contacts) {
+export function processKineticContactFractures(tick, contacts, hooks = {}) {
     if (contacts.count === 0) return;
     const slab = kineticDynamicSlab;
     for (let i = 0; i < contacts.count; i++) {
@@ -1760,7 +1759,7 @@ export function processKineticContactFractures(tick, contacts) {
         const force = impactForceFromContact(relSpeed, bodyA.mass, bodyB.mass);
         queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx, ny);
     }
-    flushDeferredFractures(tick.world, tick.frame);
+    flushDeferredFractures(tick.world, tick.frame, hooks);
 }
 export function getPropRadius(prop) {
     if (prop.shape?.type === "Polygon") return getPolygonPropBoundingRadius(prop);
@@ -2223,13 +2222,14 @@ export function isMassButtonInputMode(inputMode) {
 export function isToggleInputMode(inputMode) {
     return inputMode === "toggle" || inputMode === "massToggle";
 }
+/** @param {object | null | undefined} prop */
+function isSpawnerWorldProp(prop) {
+    const asset = propCatalog[prop?.type];
+    return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
+}
 /** @param {ButtonInputMode} inputMode */
 export function isSustainedSpawnerButtonInputMode(inputMode) {
     return inputMode === "hold" || inputMode === "massHold";
-}
-/** @param {ButtonInputMode} inputMode */
-export function isSustainedFlipperButtonInputMode(inputMode) {
-    return inputMode === "hold" || inputMode === "massHold" || isToggleInputMode(inputMode);
 }
 /** @param {object} state @param {object} button */
 export function buttonOccupantMass(state, button) {
@@ -2309,7 +2309,7 @@ export function clearButtonLinks(state, buttonId) {
 export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
     const prop = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, worldX, worldY);
     if (!prop || prop.id === sourceButtonId) return null;
-    if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop)) return { type: "worldProp", id: prop.id };
+    if (isSpawnerWorldProp(prop)) return { type: "worldProp", id: prop.id };
     return null;
 }
 /** @param {object} state @param {ButtonLinkTarget} target */
@@ -2318,7 +2318,7 @@ export function resolveButtonLinkEndpoint(state, target) {
     const prop = state.entityRegistry.getLive(target.id);
     if (!prop) return null;
     const typeLabel = formatPropTypeLabel(prop.type);
-    const role = isSpawnerWorldProp(prop) ? "spawner" : isFlipperWorldProp(prop) ? "flipper" : typeLabel;
+    const role = isSpawnerWorldProp(prop) ? "spawner" : typeLabel;
     return { target, label: `${role} · #${prop.id}`, x: prop.x, y: prop.y };
 }
 /** @param {object} state @param {object} button */
@@ -2366,52 +2366,8 @@ export function appendButtonWirePreviewCommands(out, state, fromPropId, wireCurs
  * @property {number} [dtSec]
  * @property {{ x: number, y: number }} [world]
  */
-/** @param {object} state @param {import("./buttonLinks.js").ButtonLinkTarget} link @param {object} button */
-function runButtonWorldPropLink(state, link, button) {
-    const prop = state.entityRegistry.getLive(link.id);
-    if (!prop || isSpawnerWorldProp(prop)) return;
-    if (isSustainedFlipperButtonInputMode(button.inputMode)) return;
-    if (button.invert) releaseFlipper(prop);
-    else triggerFlipper(prop, { hold: false });
-}
 /** @param {object} state @param {object} button @param {FloorEffectContext} [ctx] */
-export function runButtonTapLinks(state, button, ctx = {}) {
-    const links = getButtonLinks(button);
-    for (let i = 0; i < links.length; i++) {
-        const link = links[i];
-        if (link.type === "worldProp") runButtonWorldPropLink(state, link, button);
-    }
-}
-/** @param {object} state @param {object} button */
-export function tickButtonSpawnerLinks(state, button) {
-    const active = buttonEffectiveActive(state, button);
-    const wasActive = button._spawnerButtonWasActive ?? false;
-    const sustained = isSustainedSpawnerButtonInputMode(button.inputMode);
-    if (active && (sustained || !wasActive)) {
-        const links = getButtonLinks(button);
-        for (let i = 0; i < links.length; i++) {
-            const link = links[i];
-            if (link.type !== "worldProp") continue;
-            const prop = state.entityRegistry.getLive(link.id);
-            if (!prop || !isSpawnerWorldProp(prop)) continue;
-            fireSpawner(state, prop);
-        }
-    }
-    button._spawnerButtonWasActive = active;
-}
-/** @param {object} state @param {object} button */
-export function syncButtonFlipperLinks(state, button) {
-    const active = buttonEffectiveActive(state, button);
-    const links = getButtonLinks(button);
-    for (let i = 0; i < links.length; i++) {
-        const link = links[i];
-        if (link.type !== "worldProp") continue;
-        const prop = state.entityRegistry.getLive(link.id);
-        if (!prop || isSpawnerWorldProp(prop)) continue;
-        if (active) triggerFlipper(prop);
-        else releaseFlipper(prop);
-    }
-}
+export function runButtonTapLinks(_state, _button, _ctx = {}) {}
 /** @type {Record<string, { run: (state: object, floorProp: object, trigger: FloorTriggerDef, ctx: FloorEffectContext) => void }>} */
 const FLOOR_EFFECTS = {};
 /** @param {object} state @param {object} floorProp @param {FloorTriggerDef} trigger @param {FloorEffectContext} ctx */
@@ -2468,8 +2424,7 @@ function tickFloorButton(state, button) {
         if (massActive && !wasMassActive) button._toggleLatched = !button._toggleLatched;
         button._massWasActive = massActive;
     }
-    if (isSustainedFlipperButtonInputMode(button.inputMode)) syncButtonFlipperLinks(state, button);
-    tickButtonSpawnerLinks(state, button);
+    state.sandbox?.tickButtonSpawnerLinks?.(state, button);
     if (isToggleInputMode(button.inputMode)) {
         button._buttonDrawPressed = isButtonActive(state, button);
         return;
