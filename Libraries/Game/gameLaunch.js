@@ -1,4 +1,4 @@
-import { generateLabRailMaze } from "../../Apps/Editor/world/mapWorld.js";
+import { generateLabRailMaze } from "../Spatial/spatial.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";

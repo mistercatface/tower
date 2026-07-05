@@ -1,5 +1,5 @@
 import { appendMapGenEditor as appendMapGenEditorPanel, refreshMapGenPanelInputs } from "../../../Libraries/Sandbox/sandbox.js";
-import { generateLabCaverns, generateLabRailCaverns, generateLabRailMaze, eraseLabWallsInBounds } from "../world/mapWorld.js";
+import { generateLabCaverns, generateLabRailCaverns, generateLabRailMaze, eraseLabWallsInBounds } from "../../../Libraries/Spatial/spatial.js";
 import { paintMapOverviewFrame } from "./mapOverview.js";
 export { refreshMapGenPanelInputs };
 export function appendMapGenEditor(parent, state, kind, onGenerated) {

@@ -1,5 +1,5 @@
 import { SURFACE_PROFILE_ID } from "../../../Config/procedural/profileIds.js";
-import { initTileLabWorld } from "../world/mapWorld.js";
+import { initTileLabWorld } from "../../../Libraries/Spatial/spatial.js";
 import { mountGameSandbox } from "../world/gameSandbox.js";
 import { fitPlayStageZoom } from "../../../Libraries/Viewport/tileLabViewportLimits.js";
 import { runGameLaunch } from "../../../Libraries/Game/gameLaunch.js";

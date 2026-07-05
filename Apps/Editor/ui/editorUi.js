@@ -7,7 +7,7 @@ import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isShowLabPathDebug } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
-import { initTileLabWorld } from "../world/mapWorld.js";
+import { initTileLabWorld } from "../../../Libraries/Spatial/spatial.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { mountTilelabSandbox } from "../world/tilelabSandbox.js";

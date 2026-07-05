@@ -1,5 +1,6 @@
 import { fillRandomGrid, runCellularAutomata } from "../CA/index.js";
-import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath } from "../Navigation/navigation.js";
+import { withSeededRandom } from "../Random/index.js";
+import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import {
     CARDINAL_OFFSETS,
     OCTILE_OFFSETS,
@@ -20,6 +21,8 @@ import {
     vertCount,
     stepCardinalFacing,
     createSeededRng,
+    padAabb,
+    unionAabb,
 } from "../Math/math.js";
 import {
     entityBroadphaseExtent,
@@ -3881,6 +3884,312 @@ export function registerMapGenBoundsGridExpansionListener(state) {
             migrateMapGenBoundsForMode(grid, config);
         }
     };
+}
+const MAP_GEN_CLEAR_CIRCLE_BOUNDS = createAabb();
+function clearStaticWallsAndEdgesAtIdx(grid, idx) {
+    let cellChanged = false;
+    if (cellIsStaticWallAtIdx(grid, idx)) {
+        grid.grid[idx] = 0;
+        cellChanged = true;
+    }
+    if (grid.hasAnyCellEdgeAtIdx(idx)) {
+        grid.clearCellEdges(idx);
+        cellChanged = true;
+    }
+    return cellChanged;
+}
+function clearStaticWallsAndEdgesInBounds(grid, bounds) {
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, grid.cols, (idx) => {
+        clearStaticWallsAndEdgesAtIdx(grid, idx);
+    });
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    return bounds;
+}
+function stampCellBoundsForConfig(grid, config) {
+    const ext = getMapGenBoundsStampExtent(grid, config);
+    return cellBoundsFromStampExtent(ext.originIdx, ext.cols, ext.rows, grid.cols, grid.rows);
+}
+function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
+    const grid = state.obstacleGrid;
+    centerReachAabbInto(MAP_GEN_CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
+    let startCol = Infinity;
+    let endCol = -1;
+    let startRow = Infinity;
+    let endRow = -1;
+    forEachObstacleGridCellInAabb(grid, MAP_GEN_CLEAR_CIRCLE_BOUNDS, (idx) => {
+        const bounds = grid.getCellBoundsByIdx(idx);
+        const cx = (bounds.minX + bounds.maxX) * 0.5;
+        const cy = (bounds.minY + bounds.maxY) * 0.5;
+        if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
+        if (!clearStaticWallsAndEdgesAtIdx(grid, idx)) return;
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        if (col < startCol) startCol = col;
+        if (col > endCol) endCol = col;
+        if (row < startRow) startRow = row;
+        if (row > endRow) endRow = row;
+    });
+    if (startCol === Infinity) return null;
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    return { startCol, endCol, startRow, endRow };
+}
+function eraseWallsInShape(state) {
+    const grid = state.obstacleGrid;
+    const eraseConfig = state.editor.eraseConfig;
+    let startCol = Infinity;
+    let endCol = -1;
+    let startRow = Infinity;
+    let endRow = -1;
+    forEachGlobalCellInMapGenBounds(grid, eraseConfig, (idx) => {
+        if (!clearStaticWallsAndEdgesAtIdx(grid, idx)) return;
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        if (col < startCol) startCol = col;
+        if (col > endCol) endCol = col;
+        if (row < startRow) startRow = row;
+        if (row > endRow) endRow = row;
+    });
+    if (startCol === Infinity) return null;
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    return { startCol, endCol, startRow, endRow };
+}
+function mergeDonutInnerClear(state, config, damageBounds) {
+    if (config.boundsMode !== "donut") return damageBounds;
+    const grid = state.obstacleGrid;
+    const cellSize = grid.cellSize;
+    const center = getMapGenBoundsCenterWorld(grid, config, cellSize);
+    const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, getInnerRadiusCells(config) * cellSize);
+    return cleared ? unionCellBounds(damageBounds, cleared) : damageBounds;
+}
+export function applyMapGenSurfaceProfile(state, config, profileId) {
+    const grid = state.obstacleGrid;
+    const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
+    const ext = getMapGenBoundsStampExtent(grid, config);
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(ext.originIdx, ext.cols, ext.rows, grid.cols, grid.rows), profileId, cellsPerChunk);
+    grid.surfaceMaterialRevision++;
+}
+export function applyEditorRegionSurfaceProfiles(state) {
+    const grid = state.obstacleGrid;
+    const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
+    grid.surfaceMaterials.chunkProfileIds.clear();
+    grid.surfaceMaterialRevision++;
+    const cavern = state.editor.cavernConfig;
+    const cavernExt = getMapGenBoundsStampExtent(grid, cavern);
+    grid.setChunkSurfaceProfileForCellBounds(
+        cellBoundsFromStampExtent(cavernExt.originIdx, cavernExt.cols, cavernExt.rows, grid.cols, grid.rows),
+        cavern.surfaceProfileId || "tomatoGarden",
+        cellsPerChunk,
+    );
+    const rail = state.editor.railConfig;
+    const railExt = getMapGenBoundsStampExtent(grid, rail);
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(railExt.originIdx, railExt.cols, railExt.rows, grid.cols, grid.rows), rail.surfaceProfileId || "poolTableFelt", cellsPerChunk);
+    const railMaze = state.editor.railMazeConfig;
+    const railMazeExt = getMapGenBoundsStampExtent(grid, railMaze);
+    grid.setChunkSurfaceProfileForCellBounds(
+        cellBoundsFromStampExtent(railMazeExt.originIdx, railMazeExt.cols, railMazeExt.rows, grid.cols, grid.rows),
+        railMaze.surfaceProfileId || "cyberGrid",
+        cellsPerChunk,
+    );
+}
+async function finalizeMapGenRun(state, { config, profileId, damageBounds, fullNavSync = true } = {}) {
+    if (profileId != null) applyMapGenSurfaceProfile(state, config, profileId);
+    await commitGridNavEdit(state, damageBounds ?? null, { fullNavSync });
+    state.floorSeed = state.mapSeed;
+    state.worldSurfaces.clearBakeCache();
+}
+function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, heightLevel, thicknessLevel }) {
+    const ext = getMapGenBoundsStampExtent(grid, config);
+    const originCol = ext.originIdx % grid.cols;
+    const originRow = (ext.originIdx / grid.cols) | 0;
+    const cols = ext.cols;
+    const rows = ext.rows;
+    const cellInBounds = (c, r) => {
+        if (c < 0 || c >= grid.cols || r < 0 || r >= grid.rows) return false;
+        return isIdxInMapGenBounds(config, grid, c + r * grid.cols);
+    };
+    const hCols = cols;
+    const hRows = rows + 1;
+    let hCells = null;
+    withSeededRandom(mapSeed, () => {
+        hCells = fillRandomGrid(hCols, hRows, config.fillChance);
+        hCells = runCellularAutomata(hCols, hRows, hCells, { iterations: config.iterations, scratch: new Uint8Array(hCols * hRows) });
+    });
+    for (let lr = 0; lr < hRows; lr++)
+        for (let lc = 0; lc < hCols; lc++) {
+            const gc = originCol + lc;
+            const gr = originRow + lr;
+            const in1 = cellInBounds(gc, gr - 1);
+            const in2 = cellInBounds(gc, gr);
+            if (!in1 && !in2) hCells[lr * hCols + lc] = 0;
+        }
+    if (openBoundarySides?.north) for (let lc = 0; lc < hCols; lc++) hCells[lc] = 0;
+    if (openBoundarySides?.south) {
+        const lr = hRows - 1;
+        for (let lc = 0; lc < hCols; lc++) hCells[lr * hCols + lc] = 0;
+    }
+    const vCols = cols + 1;
+    const vRows = rows;
+    let vCells = null;
+    withSeededRandom(mapSeed + 1, () => {
+        vCells = fillRandomGrid(vCols, vRows, config.fillChance);
+        vCells = runCellularAutomata(vCols, vRows, vCells, { iterations: config.iterations, scratch: new Uint8Array(vCols * vRows) });
+    });
+    for (let lr = 0; lr < vRows; lr++)
+        for (let lc = 0; lc < vCols; lc++) {
+            const gc = originCol + lc;
+            const gr = originRow + lr;
+            const in1 = cellInBounds(gc - 1, gr);
+            const in2 = cellInBounds(gc, gr);
+            if (!in1 && !in2) vCells[lr * vCols + lc] = 0;
+        }
+    if (openBoundarySides?.west) for (let lr = 0; lr < vRows; lr++) vCells[lr * vCols] = 0;
+    if (openBoundarySides?.east) {
+        const lc = vCols - 1;
+        for (let lr = 0; lr < vRows; lr++) vCells[lr * vCols + lc] = 0;
+    }
+    const bounds = stampCellBoundsForConfig(grid, config);
+    clearStaticWallsAndEdgesInBounds(grid, bounds);
+    for (let lr = 0; lr < hRows; lr++)
+        for (let lc = 0; lc < hCols; lc++) {
+            if (hCells[lr * hCols + lc] !== 1) continue;
+            const col = originCol + lc;
+            const row = originRow + lr;
+            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, row * grid.cols + col, 0, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols)
+                setBoundary(grid, (row - 1) * grid.cols + col, 2, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        }
+    for (let lr = 0; lr < vRows; lr++)
+        for (let lc = 0; lc < vCols; lc++) {
+            if (vCells[lr * vCols + lc] !== 1) continue;
+            const col = originCol + lc;
+            const row = originRow + lr;
+            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, row * grid.cols + col, 3, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows)
+                setBoundary(grid, row * grid.cols + col - 1, 1, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        }
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    return bounds;
+}
+function createMapGenRun(state) {
+    const grid = state.obstacleGrid;
+    return {
+        ensureCoverage(extraAabb) {
+            return ensureLabObstacleGridCoverage(state, extraAabb);
+        },
+        stampCellBounds(config) {
+            return stampCellBoundsForConfig(grid, config);
+        },
+        clearStamp(config) {
+            return clearStaticWallsAndEdgesInBounds(grid, stampCellBoundsForConfig(grid, config));
+        },
+        mergeDonut(config, bounds) {
+            return mergeDonutInnerClear(state, config, bounds);
+        },
+        async finish(config, profileId, damageBounds, opts = {}) {
+            await finalizeMapGenRun(state, { config, profileId, damageBounds, fullNavSync: opts.fullNavSync ?? true });
+        },
+    };
+}
+export async function initTileLabWorld(state) {
+    await applyPlayAreaConfig(state);
+}
+export async function applyPlayAreaConfig(state) {
+    registerMapGenBoundsGridExpansionListener(state);
+    const { viewport, editor } = state;
+    const { playConfig } = editor;
+    const cellSize = state.obstacleGrid.cellSize;
+    for (let i = 0; i < MAP_GEN_KINDS.length; i++) {
+        const kind = MAP_GEN_KINDS[i];
+        const config = getMapGenBoundsConfig(editor, kind);
+        syncMapGenBoundsFromPlay(state.obstacleGrid, viewport, playConfig, config, cellSize, { center: true, syncSizeFromPlay: true });
+        migrateMapGenBoundsForMode(state.obstacleGrid, config);
+    }
+    ensureLabObstacleGridCoverage(state);
+    applyEditorRegionSurfaceProfiles(state);
+    await commitGridNavEdit(state, null, { fullNavSync: true });
+}
+export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
+    const grid = state.obstacleGrid;
+    const cellSize = grid.cellSize;
+    let required = getMapGenBoundsAabb(grid, state.editor.cavernConfig, cellSize);
+    if (extraAabb) required = unionAabb(required, extraAabb);
+    return grid.expandToCoverAabb(padAabb(required, cellSize));
+}
+export async function eraseLabWallsInBounds(state) {
+    const grid = state.obstacleGrid;
+    ensureLabObstacleGridCoverage(state, getMapGenBoundsAabb(grid, state.editor.eraseConfig, grid.cellSize));
+    const damageBounds = eraseWallsInShape(state);
+    if (!damageBounds) return;
+    await commitGridNavEdit(state, damageBounds);
+    state.worldSurfaces.clearBakeCache();
+}
+export async function generateLabCaverns(state, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
+    const { cavernConfig } = state.editor;
+    const grid = state.obstacleGrid;
+    const run = createMapGenRun(state);
+    let stamp = null;
+    withSeededRandom(state.mapSeed, () => {
+        stamp = generateCavernOccupancy(grid, cavernConfig, { openBoundarySides, openBoundaryRows });
+    });
+    run.ensureCoverage();
+    const level = clampStampWallHeightLevel(cavernConfig.wallHeightLevel, state.worldSurfaces.settings);
+    let damageBounds = grid.stampStaticWalls(stamp.originIdx, stamp.cols, stamp.rows, stamp.cells, { additive: true, heightLevel: level });
+    damageBounds = run.mergeDonut(cavernConfig, damageBounds);
+    await run.finish(cavernConfig, cavernConfig.surfaceProfileId || "tomatoGarden", damageBounds, { fullNavSync: true });
+}
+export async function generateLabRailCaverns(state, { openBoundarySides = null } = {}) {
+    const { railConfig } = state.editor;
+    const grid = state.obstacleGrid;
+    const run = createMapGenRun(state);
+    run.ensureCoverage(getMapGenBoundsAabb(grid, railConfig, grid.cellSize));
+    const level = clampStampWallHeightLevel(railConfig.wallHeightLevel, state.worldSurfaces.settings);
+    let damageBounds = stampRailCavernEdgesFromCA(grid, railConfig, state.mapSeed, { openBoundarySides, heightLevel: level, thicknessLevel: railConfig.edgeThickness });
+    damageBounds = run.mergeDonut(railConfig, damageBounds);
+    await run.finish(railConfig, railConfig.surfaceProfileId || "poolTableFelt", damageBounds, { fullNavSync: true });
+}
+export async function generateLabRailMaze(state, options = {}) {
+    registerMapGenBoundsGridExpansionListener(state);
+    const config = options.boundsConfig ?? state.editor.railMazeConfig;
+    const grid = state.obstacleGrid;
+    const run = createMapGenRun(state);
+    run.ensureCoverage(getMapGenBoundsAabb(grid, config, grid.cellSize));
+    const ext = getMapGenBoundsStampExtent(grid, config);
+    const originCol = ext.originIdx % grid.cols;
+    const originRow = (ext.originIdx / grid.cols) | 0;
+    const bounds = run.clearStamp(config);
+    const railWallHeightLevel = options.railWallHeightLevel ?? config.wallHeightLevel;
+    const railWallThicknessLevel = options.railWallThicknessLevel ?? config.edgeThickness;
+    const corridorWidthMin = options.corridorWidthMin ?? config.corridorWidthMin;
+    const corridorWidthMax = options.corridorWidthMax ?? config.corridorWidthMax;
+    const extraLinkRatio = options.extraLinkRatio ?? config.extraLinkRatio;
+    let rails = bakeRailMazeDfs(
+        { originCol, originRow, cols: ext.cols, rows: ext.rows },
+        { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio },
+        state.mapSeed,
+        grid.cols,
+    );
+    if (config.boundsMode !== "rect")
+        rails = rails.filter((wall) => {
+            const idx = wall.idx;
+            const inCell = isIdxInMapGenBounds(config, grid, idx);
+            const nIdx = edgeNeighborIdx(idx, wall.side, grid.cols, grid.rows);
+            const inNeighbor = nIdx >= 0 && isIdxInMapGenBounds(config, grid, nIdx);
+            return inCell || inNeighbor;
+        });
+    stampGlobalRailWalls(state, rails, { commit: false });
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    let damageBounds = run.mergeDonut(config, bounds);
+    await commitGridNavEdit(state, damageBounds);
+    const boundsCol = config.boundsMode === "rect" ? config.boundsIdx % grid.cols : config.centerIdx % grid.cols;
+    const boundsRow = config.boundsMode === "rect" ? (config.boundsIdx / grid.cols) | 0 : (config.centerIdx / grid.cols) | 0;
+    const centerCol = config.boundsMode === "rect" ? boundsCol + Math.floor(config.boundsCols / 2) : boundsCol;
+    const centerRow = config.boundsMode === "rect" ? boundsRow + Math.floor(config.boundsRows / 2) : boundsRow;
+    const floodSeedBounds = options.floodSeedBounds ?? { boundsMode: "rect", boundsIdx: grid.worldToIdx(grid.gridCenterX(centerCol), grid.gridCenterY(centerRow)), boundsCols: 1, boundsRows: 1 };
+    const navWalkableIndex = options.navWalkableIndex ?? getNavWalkableCellIndex(state, config, floodSeedBounds);
+    const beltPlan = planRailMazeCorridorBelts({ grid, navTopology: state.nav.topology, railConfig: config, navWalkableIndex, mapSeed: state.mapSeed });
+    stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
+    stampGlobalRailWalls(state, beltPlan.beltRails, { commit: false });
+    await run.finish(config, config.surfaceProfileId || "cyberGrid", null, { fullNavSync: true });
 }
 function writeKineticBodySlabSnapshot(prop) {
     writeStaticKineticSlabSlot(prop);
