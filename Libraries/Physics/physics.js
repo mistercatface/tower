@@ -28,6 +28,8 @@ import {
     reversePolygonWinding,
     findClosestWorldVertexInto,
     findExtremeVertexInto,
+    findExtremeVertexIndex,
+    findClosestWorldVertexIndex,
     computeCompoundLocalBounds,
     convexFootprintHalfExtents,
     boxLocalFootprint,
@@ -221,8 +223,19 @@ export const kineticStaticSlab = {
 };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
-const SLAB_SCRATCH_A = { kind: 1, cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
-const SLAB_SCRATCH_B = { kind: 1, cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
+export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
+    const slab = kineticDynamicSlab;
+    if (slab.bpKind[physIdA] === BP_KIND_CIRCLE && slab.bpKind[physIdB] === BP_KIND_CIRCLE) return pairCircleCircleOverlapSlab(physIdA, physIdB);
+    const a =
+        slab.bpKind[physIdA] === BP_KIND_CIRCLE
+            ? { kind: BROADPHASE_KIND.Circle, cx: slab.x[physIdA], cy: slab.y[physIdA], r: slab.r[physIdA] }
+            : { kind: BROADPHASE_KIND.Obb, cx: slab.x[physIdA], cy: slab.y[physIdA], hx: slab.hx[physIdA], hy: slab.hy[physIdA], cos: slab.cos[physIdA], sin: slab.sin[physIdA] };
+    const b =
+        slab.bpKind[physIdB] === BP_KIND_CIRCLE
+            ? { kind: BROADPHASE_KIND.Circle, cx: slab.x[physIdB], cy: slab.y[physIdB], r: slab.r[physIdB] }
+            : { kind: BROADPHASE_KIND.Obb, cx: slab.x[physIdB], cy: slab.y[physIdB], hx: slab.hx[physIdB], hy: slab.hy[physIdB], cos: slab.cos[physIdB], sin: slab.sin[physIdB] };
+    return pairBroadphaseBoundsOverlap(a, b);
+}
 export function writeBroadphaseFromBounds(physId, bounds) {
     const slab = kineticDynamicSlab;
     if (bounds.kind === BROADPHASE_KIND.Circle) {
@@ -301,35 +314,12 @@ export function clampActiveKineticBodySlabSpeed(maxSpeed) {
         slab.vy[physId] = (vy / speed) * maxSpeed;
     }
 }
-function readSlabIntoBounds(physId, out) {
-    const slab = kineticDynamicSlab;
-    out.cx = slab.x[physId];
-    out.cy = slab.y[physId];
-    if (slab.bpKind[physId] === BP_KIND_CIRCLE) {
-        out.kind = BROADPHASE_KIND.Circle;
-        out.r = slab.r[physId];
-        return out;
-    }
-    out.kind = BROADPHASE_KIND.Obb;
-    out.hx = slab.hx[physId];
-    out.hy = slab.hy[physId];
-    out.cos = slab.cos[physId];
-    out.sin = slab.sin[physId];
-    return out;
-}
 export function pairCircleCircleOverlapSlab(physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     const dx = slab.x[physIdA] - slab.x[physIdB];
     const dy = slab.y[physIdA] - slab.y[physIdB];
     const radii = slab.r[physIdA] + slab.r[physIdB];
     return dx * dx + dy * dy < radii * radii;
-}
-export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
-    const slab = kineticDynamicSlab;
-    if (slab.bpKind[physIdA] === BP_KIND_CIRCLE && slab.bpKind[physIdB] === BP_KIND_CIRCLE) return pairCircleCircleOverlapSlab(physIdA, physIdB);
-    readSlabIntoBounds(physIdA, SLAB_SCRATCH_A);
-    readSlabIntoBounds(physIdB, SLAB_SCRATCH_B);
-    return pairBroadphaseBoundsOverlap(SLAB_SCRATCH_A, SLAB_SCRATCH_B);
 }
 export const SHAPE_TYPE_ID = { Circle: 1, Polygon: 2 };
 export class Shape {
@@ -427,9 +417,6 @@ export class PolygonShape extends Shape {
         return normals;
     }
 }
-const contactA = { x: 0, y: 0 };
-const contactB = { x: 0, y: 0 };
-const closestVertex = { x: 0, y: 0 };
 const MANIFOLD_MAX_POINTS = 2;
 const clipX = new Float32Array(4);
 const clipY = new Float32Array(4);
@@ -441,7 +428,6 @@ export const SAT_RESULT = new Float32Array(25);
 const SAT_BEST_RESULT = new Float32Array(25);
 const PROJ_A = new Float32Array(2);
 const PROJ_B = new Float32Array(2);
-const posScratch = { x: 0, y: 0 };
 function findEdgeMostAligned(normals, cos, sin, axisX, axisY, wantMax) {
     let bestDot = wantMax ? -Infinity : Infinity;
     let bestIndex = 0;
@@ -553,28 +539,30 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const refEdgeNext = (refEdgeIndex + 1) % refCount;
     const sideEdgeA = (refEdgeIndex + refCount - 1) % refCount;
     const sideEdgeB = refEdgeNext;
-    transformPoint2DInto(contactA, refX, refY, refShape.vertices[refEdgeIndex * 2], refShape.vertices[refEdgeIndex * 2 + 1], refCos, refSin);
-    transformPoint2DInto(contactB, refX, refY, refShape.vertices[refEdgeNext * 2], refShape.vertices[refEdgeNext * 2 + 1], refCos, refSin);
-    worldEdgeNormalInto(closestVertex, refShape.normals, sideEdgeA, refCos, refSin);
-    const sideANx = -closestVertex.x;
-    const sideANy = -closestVertex.y;
-    const sideAOffset = sideANx * contactA.x + sideANy * contactA.y;
-    worldEdgeNormalInto(closestVertex, refShape.normals, sideEdgeB, refCos, refSin);
-    const sideBNx = -closestVertex.x;
-    const sideBNy = -closestVertex.y;
-    const sideBOffset = sideBNx * contactB.x + sideBNy * contactB.y;
+    const refVerts = refShape.vertices;
+    const edgeAx = refX + refVerts[refEdgeIndex * 2] * refCos - refVerts[refEdgeIndex * 2 + 1] * refSin;
+    const edgeAy = refY + refVerts[refEdgeIndex * 2] * refSin + refVerts[refEdgeIndex * 2 + 1] * refCos;
+    const edgeBx = refX + refVerts[refEdgeNext * 2] * refCos - refVerts[refEdgeNext * 2 + 1] * refSin;
+    const edgeBy = refY + refVerts[refEdgeNext * 2] * refSin + refVerts[refEdgeNext * 2 + 1] * refCos;
+    const sideANx = -(refShape.normals[sideEdgeA * 2] * refCos - refShape.normals[sideEdgeA * 2 + 1] * refSin);
+    const sideANy = -(refShape.normals[sideEdgeA * 2] * refSin + refShape.normals[sideEdgeA * 2 + 1] * refCos);
+    const sideAOffset = sideANx * edgeAx + sideANy * edgeAy;
+    const sideBNx = -(refShape.normals[sideEdgeB * 2] * refCos - refShape.normals[sideEdgeB * 2 + 1] * refSin);
+    const sideBNy = -(refShape.normals[sideEdgeB * 2] * refSin + refShape.normals[sideEdgeB * 2 + 1] * refCos);
+    const sideBOffset = sideBNx * edgeBx + sideBNy * edgeBy;
     const incidentEdge = findEdgeMostAligned(incShape.normals, incCos, incSin, refFaceNx, refFaceNy, true);
     const incCount = incShape.vertices.length / 2;
     const incEdgeNext = (incidentEdge + 1) % incCount;
-    transformPoint2DInto(closestVertex, incX, incY, incShape.vertices[incidentEdge * 2], incShape.vertices[incidentEdge * 2 + 1], incCos, incSin);
-    const incX0 = closestVertex.x;
-    const incY0 = closestVertex.y;
-    transformPoint2DInto(closestVertex, incX, incY, incShape.vertices[incEdgeNext * 2], incShape.vertices[incEdgeNext * 2 + 1], incCos, incSin);
-    let clipCount = clipContactSegmentToHalfPlane(incX0, incY0, closestVertex.x, closestVertex.y, sideANx, sideANy, sideAOffset);
+    const incVerts = incShape.vertices;
+    const incX0 = incX + incVerts[incidentEdge * 2] * incCos - incVerts[incidentEdge * 2 + 1] * incSin;
+    const incY0 = incY + incVerts[incidentEdge * 2] * incSin + incVerts[incidentEdge * 2 + 1] * incCos;
+    const incX1 = incX + incVerts[incEdgeNext * 2] * incCos - incVerts[incEdgeNext * 2 + 1] * incSin;
+    const incY1 = incY + incVerts[incEdgeNext * 2] * incSin + incVerts[incEdgeNext * 2 + 1] * incCos;
+    let clipCount = clipContactSegmentToHalfPlane(incX0, incY0, incX1, incY1, sideANx, sideANy, sideAOffset);
     if (clipCount === 0) return null;
     clipCount = clipContactSegmentInPlaceToHalfPlane(sideBNx, sideBNy, sideBOffset);
     if (clipCount === 0) return null;
-    const frontOffset = refFaceNx * contactA.x + refFaceNy * contactA.y;
+    const frontOffset = refFaceNx * edgeAx + refFaceNy * edgeAy;
     clipCount = clipContactSegmentInPlaceToHalfPlane(refFaceNx, refFaceNy, frontOffset);
     if (clipCount === 0) return null;
     let pointCount = 0;
@@ -738,16 +726,20 @@ function satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     if (pointCount == null) {
         const cosB = Math.cos(angleB);
         const sinB = Math.sin(angleB);
-        posScratch.x = xB;
-        posScratch.y = yB;
-        const featureB = findExtremeVertexInto(contactB, shapeB.vertices, posScratch, cosB, sinB, minNormalX, minNormalY, false);
+        const featureB = findExtremeVertexIndex(shapeB.vertices, xB, yB, cosB, sinB, minNormalX, minNormalY, false);
         const cosA = Math.cos(angleA);
         const sinA = Math.sin(angleA);
-        posScratch.x = xA;
-        posScratch.y = yA;
-        const featureA = findExtremeVertexInto(contactA, shapeA.vertices, posScratch, cosA, sinA, minNormalX, minNormalY, true);
-        const cx = (contactA.x + contactB.x) / 2;
-        const cy = (contactA.y + contactB.y) / 2;
+        const featureA = findExtremeVertexIndex(shapeA.vertices, xA, yA, cosA, sinA, minNormalX, minNormalY, true);
+        const vertsA = shapeA.vertices;
+        const vertsB = shapeB.vertices;
+        const ai = featureA * 2;
+        const bi = featureB * 2;
+        const contactAx = xA + vertsA[ai] * cosA - vertsA[ai + 1] * sinA;
+        const contactAy = yA + vertsA[ai] * sinA + vertsA[ai + 1] * cosA;
+        const contactBx = xB + vertsB[bi] * cosB - vertsB[bi + 1] * sinB;
+        const contactBy = yB + vertsB[bi] * sinB + vertsB[bi + 1] * cosB;
+        const cx = (contactAx + contactBx) / 2;
+        const cy = (contactAy + contactBy) / 2;
         SAT_RESULT[0] = minOverlap;
         SAT_RESULT[1] = minNormalX;
         SAT_RESULT[2] = minNormalY;
@@ -793,11 +785,12 @@ function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, angle
         satProjectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, anglePoly);
     };
     if (!satMinOverlapOnAxes(polyShape.normals, cosP, sinP, projectCirclePolyPair, overlapState)) return false;
-    posScratch.x = pxPoly;
-    posScratch.y = pyPoly;
-    const featureB = findClosestWorldVertexInto(closestVertex, polyShape.vertices, posScratch, cosP, sinP, cxCircle, cyCircle);
-    const dx = closestVertex.x - cxCircle;
-    const dy = closestVertex.y - cyCircle;
+    const featureB = findClosestWorldVertexIndex(polyShape.vertices, pxPoly, pyPoly, cosP, sinP, cxCircle, cyCircle);
+    const vi = featureB * 2;
+    const closestVx = pxPoly + polyShape.vertices[vi] * cosP - polyShape.vertices[vi + 1] * sinP;
+    const closestVy = pyPoly + polyShape.vertices[vi] * sinP + polyShape.vertices[vi + 1] * cosP;
+    const dx = closestVx - cxCircle;
+    const dy = closestVy - cyCircle;
     if (dx !== 0 || dy !== 0) {
         const len = Math.sqrt(dx * dx + dy * dy);
         const nX = dx / len;
@@ -936,7 +929,6 @@ export function computeCircleWallContact(entity, normalX, normalY, radius) {
 export function computePolygonWallContact(entity, normalX, normalY, overlap, cx = NaN, cy = NaN) {
     return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
 }
-const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
 /** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
 /** @returns {BroadphaseBounds} */
@@ -975,7 +967,7 @@ function circleObbOverlap(circle, obb) {
 }
 export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle = 0) {
     if (parts.length <= 1) return broadphaseBoundsFromShapeInto(out, parts[0], cx, cy, angle);
-    const bounds = computeCompoundLocalBounds(parts, COMPOUND_BOUNDS_SCRATCH);
+    const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
     const hx = (bounds.maxX - bounds.minX) * 0.5;
     const hy = (bounds.maxY - bounds.minY) * 0.5;
     const localCx = (bounds.minX + bounds.maxX) * 0.5;
@@ -1053,7 +1045,7 @@ export function createBroadphaseSnapshot() {
 function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
-    const bounds = computeCompoundLocalBounds(parts, COMPOUND_BOUNDS_SCRATCH);
+    const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
     return lengthXY((bounds.maxX - bounds.minX) * 0.5, (bounds.maxY - bounds.minY) * 0.5);
 }
 function ensureBroadphaseCache(entity) {
@@ -1064,15 +1056,14 @@ export function invalidateBroadphaseBounds(entity) {
     entity._broadphaseDirty = true;
     if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
-const ENTITY_AABB_SCRATCH = createAabb();
-export function entityBroadphaseAabbInto(out, entity) {
+export function entityContainedInAabb(entity, outer) {
     const bb = getBroadphaseBounds(entity);
     if (bb.kind === BROADPHASE_KIND.Circle) {
-        out.minX = bb.cx - bb.r;
-        out.minY = bb.cy - bb.r;
-        out.maxX = bb.cx + bb.r;
-        out.maxY = bb.cy + bb.r;
-        return out;
+        const minX = bb.cx - bb.r;
+        const minY = bb.cy - bb.r;
+        const maxX = bb.cx + bb.r;
+        const maxY = bb.cy + bb.r;
+        return outer.minX <= minX && outer.minY <= minY && outer.maxX >= maxX && outer.maxY >= maxY;
     }
     const cos = bb.cos;
     const sin = bb.sin;
@@ -1095,15 +1086,7 @@ export function entityBroadphaseAabbInto(out, entity) {
             if (wy < minY) minY = wy;
             if (wy > maxY) maxY = wy;
         }
-    out.minX = minX;
-    out.minY = minY;
-    out.maxX = maxX;
-    out.maxY = maxY;
-    return out;
-}
-export function entityContainedInAabb(entity, outer) {
-    entityBroadphaseAabbInto(ENTITY_AABB_SCRATCH, entity);
-    return aabbContains(outer, ENTITY_AABB_SCRATCH);
+    return outer.minX <= minX && outer.minY <= minY && outer.maxX >= maxX && outer.maxY >= maxY;
 }
 export function getBroadphaseBounds(entity) {
     ensureBroadphaseCache(entity);
@@ -1355,7 +1338,6 @@ export function ensureWallSegmentPolygonShape(segment) {
     return segment.shape;
 }
 const EMPTY_WALL_HITS = [];
-const wallBestScratch = { normalX: 0, normalY: 0, overlap: 0, cx: 0, cy: 0, segment: null };
 function createBodyWallMotion(body) {
     const impulse = createBodyImpulseMotion(body);
     return {
@@ -1425,7 +1407,12 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
     const wantHits = wallBreakConfig != null;
     const hits = wantHits ? [] : EMPTY_WALL_HITS;
     const radius = shape.getBoundingRadius();
-    const best = wallBestScratch;
+    let bestNormalX = 0;
+    let bestNormalY = 0;
+    let bestOverlap = 0;
+    let bestCx = NaN;
+    let bestCy = NaN;
+    let bestSegment = null;
     for (let pass = 0; pass < passes; pass++) {
         let hasBest = false;
         for (const seg of segments) {
@@ -1449,13 +1436,13 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
                 overlap = SAT_RESULT[0];
                 satCollisionFound = true;
             } else continue;
-            if (!hasBest || overlap > best.overlap) {
-                best.normalX = normalX;
-                best.normalY = normalY;
-                best.overlap = overlap;
-                best.cx = satCollisionFound ? SAT_RESULT[3] : NaN;
-                best.cy = satCollisionFound ? SAT_RESULT[4] : NaN;
-                best.segment = seg;
+            if (!hasBest || overlap > bestOverlap) {
+                bestNormalX = normalX;
+                bestNormalY = normalY;
+                bestOverlap = overlap;
+                bestCx = satCollisionFound ? SAT_RESULT[3] : NaN;
+                bestCy = satCollisionFound ? SAT_RESULT[4] : NaN;
+                bestSegment = seg;
                 hasBest = true;
             }
         }
@@ -1465,20 +1452,20 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
         const by = motion.by;
         const contact =
             shape.type === "Circle"
-                ? computeCircleWallContact({ x: bx, y: by }, best.normalX, best.normalY, shape.radius)
-                : computePolygonWallContact({ x: bx, y: by }, best.normalX, best.normalY, best.overlap, best.cx, best.cy);
+                ? computeCircleWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, shape.radius)
+                : computePolygonWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
         const bvx = motion.vx;
         const bvy = motion.vy;
         const bw = motion.w;
-        const approachDot = dotXY(bvx - bw * (contact.cy - by), bvy + bw * (contact.cx - bx), best.normalX, best.normalY);
+        const approachDot = dotXY(bvx - bw * (contact.cy - by), bvy + bw * (contact.cx - bx), bestNormalX, bestNormalY);
         if (wallBreakConfig && preSpeed > 0 && computeWallBreakStrength(preSpeed, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength) {
-            hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
-            motion.applyStaticSurfaceImpulse(best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
+            hits.push({ approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX: contact.cx, contactY: contact.cy });
+            motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contact.cx, contact.cy, { restitution, friction });
             break;
         }
-        motion.applyPositionCorrection(best.normalX, best.normalY, best.overlap);
-        motion.applyStaticSurfaceImpulse(best.normalX, best.normalY, contact.cx, contact.cy, { restitution, friction });
-        if (wantHits) hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
+        motion.applyPositionCorrection(bestNormalX, bestNormalY, bestOverlap);
+        motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contact.cx, contact.cy, { restitution, friction });
+        if (wantHits) hits.push({ approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX: contact.cx, contactY: contact.cy });
     }
     return { collided, hits };
 }
@@ -2981,8 +2968,6 @@ function hasPairHash(key) {
         idx = (idx + 1) % PAIR_HASH_CAPACITY;
     }
 }
-const seenPrimaryScratch = new Uint8Array(MAX_PHYS_BODIES);
-const seenPrimaryScratchIds = new Int32Array(MAX_PHYS_BODIES);
 export function compactSubstepKineticPairs(spatialFrame, pairs) {
     if (kineticPairTopologyStale(spatialFrame)) {
         pairs.count = 0;
@@ -3013,13 +2998,15 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     for (let i = 0; i < pairs.count; i++) addPairHash(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
     let added = 0;
     let seenCount = 0;
+    const seenPrimary = spatialFrame._patchPrimarySeen;
+    const seenPrimaryIds = spatialFrame._patchPrimarySeenIds;
     for (let i = 0; i < bodies.length; i++) {
         const primary = bodies[i];
         const physIdA = primary._physId;
         if (physIdA === undefined) continue;
-        if (seenPrimaryScratch[physIdA]) continue;
-        seenPrimaryScratch[physIdA] = 1;
-        seenPrimaryScratchIds[seenCount++] = physIdA;
+        if (seenPrimary[physIdA]) continue;
+        seenPrimary[physIdA] = 1;
+        seenPrimaryIds[seenCount++] = physIdA;
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
@@ -3031,7 +3018,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) {
-                for (let k = 0; k < seenCount; k++) seenPrimaryScratch[seenPrimaryScratchIds[k]] = 0;
+                for (let k = 0; k < seenCount; k++) seenPrimary[seenPrimaryIds[k]] = 0;
                 return added;
             }
             const idx = pairs.count++;
@@ -3042,7 +3029,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             added++;
         }
     }
-    for (let k = 0; k < seenCount; k++) seenPrimaryScratch[seenPrimaryScratchIds[k]] = 0;
+    for (let k = 0; k < seenCount; k++) seenPrimary[seenPrimaryIds[k]] = 0;
     return added;
 }
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
@@ -4277,8 +4264,8 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
 }
 export function snapMoveTargetToCellCenter(grid, world) {
     const idx = grid.worldToIdx(world.x, world.y);
-    if (idx === -1) return { world, idx: null };
-    return { world: grid.gridToWorldByIdx(idx), idx };
+    if (idx === -1) return { worldX: world.x, worldY: world.y, idx: null };
+    return { worldX: grid.gridCenterXByIdx(idx), worldY: grid.gridCenterYByIdx(idx), idx };
 }
 export function getKineticRollConfig(prop, overrides = null) {
     let base = prop._cachedRollBaseConfig;

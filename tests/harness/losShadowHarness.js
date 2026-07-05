@@ -11,8 +11,7 @@ export function makeTestObstacleGrid(cols, rows, cellSize = 16) {
 export function stampWallRect(grid, col0, row0, cols, rows, heightLevel = 1) {
     const cells = new Uint8Array(cols * rows);
     cells.fill(1);
-    const layout = { originIdx: col0 + row0 * grid.cols, gridCols: grid.cols, gridRows: grid.rows, strideCols: cols, cellCount: cols * rows };
-    grid.stampStaticWalls(layout, cells, { additive: true, heightLevel });
+    grid.stampStaticWalls(col0 + row0 * grid.cols, grid.cols, grid.rows, cols, cols * rows, cells, { additive: true, heightLevel });
 }
 
 export function stampRailWallEdge(grid, col, row, side, capHeightLevel = 1, thicknessLevel = 1) {

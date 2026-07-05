@@ -109,20 +109,26 @@ describe("hpa ground nav replan policy", () => {
         const session = new HpaNavSession();
         Object.assign(session.navState, { pathSlot: 0, pathLen: 2, topologyKey: "", lastOffPathReplan: -999 });
         const prop = { x: 16, y: 160, radius: 2 };
-        const target = grid.gridToWorldByIdx(5 + 4 * grid.cols);
+        const targetIdx = 5 + 4 * grid.cols;
+        const targetX = grid.gridCenterXByIdx(targetIdx);
+        const targetY = grid.gridCenterYByIdx(targetIdx);
         const pathSettings = { pathWaypointArrival: 1, arrivalDistance: 4, pathOffPathDistance: 4 };
 
-        session.update(prop, target.x, target.y, state, 300, pathSettings);
+        session.update(prop, targetX, targetY, state, 300, pathSettings);
         assert.equal(replans, 0);
 
-        for (let i = 0; i < 5; i++) session.update(prop, target.x, target.y, state, 300, pathSettings);
+        for (let i = 0; i < 5; i++) session.update(prop, targetX, targetY, state, 300, pathSettings);
         assert.equal(replans, 1);
     });
     it("records accepted route diagnostics when a path result is applied", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
-        const start = grid.gridToWorldByIdx(2 + 3 * grid.cols);
-        const target = grid.gridToWorldByIdx(4 + 3 * grid.cols);
+        const startIdx = 2 + 3 * grid.cols;
+        const targetIdx = 4 + 3 * grid.cols;
+        const startX = grid.gridCenterXByIdx(startIdx);
+        const startY = grid.gridCenterYByIdx(startIdx);
+        const targetX = grid.gridCenterXByIdx(targetIdx);
+        const targetY = grid.gridCenterYByIdx(targetIdx);
         const nav = createNavState();
         nav.pendingReplanReason = "offPath";
         const worker = {
@@ -133,10 +139,10 @@ describe("hpa ground nav replan policy", () => {
         };
         const request = new HpaReplanRequest({
             obstacleGrid: grid,
-            startX: start.x,
-            startY: start.y,
-            targetX: target.x,
-            targetY: target.y,
+            startX,
+            startY,
+            targetX,
+            targetY,
             graphEpoch: 1,
             topologyKey: "topology-a",
             navTopology: null,
@@ -148,8 +154,8 @@ describe("hpa ground nav replan policy", () => {
         assert.equal(nav.lastAcceptedRouteReason, "offPath");
         assert.equal(nav.lastAcceptedPathLen, 2);
         assert.equal(nav.lastAcceptedProgressIdx, 1);
-        assert.equal(nav.lastAcceptedTargetX, target.x);
-        assert.equal(nav.lastAcceptedTargetY, target.y);
+        assert.equal(nav.lastAcceptedTargetX, targetX);
+        assert.equal(nav.lastAcceptedTargetY, targetY);
         assert.equal(nav.pendingReplanReason, null);
     });
 });

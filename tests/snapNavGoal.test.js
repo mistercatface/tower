@@ -19,13 +19,17 @@ describe("snapNavGoal", () => {
         grid.rebuildFixed(64, 64, 128, 128);
         const cols = grid.cols;
         grid.writeFloorCell(2 + 2 * cols, FLOOR_CELL_KIND.Belt, 0);
-        const from = grid.gridToWorldByIdx(0);
-        const target = grid.gridToWorldByIdx(2 + 2 * cols);
-        const snappedWorld = snapNavGoalWorld(grid, from.x, from.y, target.x, target.y);
-        const entryIdx = snapNavGoalCellIndex(grid, 0, 2 + 2 * cols);
-        const entryWorld = grid.gridToWorldByIdx(entryIdx);
-        assert.equal(snappedWorld.x, entryWorld.x);
-        assert.equal(snappedWorld.y, entryWorld.y);
+        const fromX = grid.gridCenterXByIdx(0);
+        const fromY = grid.gridCenterYByIdx(0);
+        const targetIdx = 2 + 2 * cols;
+        const targetX = grid.gridCenterXByIdx(targetIdx);
+        const targetY = grid.gridCenterYByIdx(targetIdx);
+        const snappedWorld = snapNavGoalWorld(grid, fromX, fromY, targetX, targetY);
+        const entryIdx = snapNavGoalCellIndex(grid, 0, targetIdx);
+        const entryX = grid.gridCenterXByIdx(entryIdx);
+        const entryY = grid.gridCenterYByIdx(entryIdx);
+        assert.equal(snappedWorld.x, entryX);
+        assert.equal(snappedWorld.y, entryY);
     });
     it("canStep requires worker topology", () => {
         const grid = new WorldObstacleGrid(16);

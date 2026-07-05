@@ -178,6 +178,42 @@ export function convexFootprintHalfExtents(vertices) {
     }
     return { x: hx, y: hy };
 }
+export function findExtremeVertexIndex(vertices, posX, posY, cos, sin, axisX, axisY, findMax = true) {
+    let bestProj = findMax ? -Infinity : Infinity;
+    let bestIndex = 0;
+    const count = vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        const lx = vertices[i];
+        const ly = vertices[i + 1];
+        const vx = posX + lx * cos - ly * sin;
+        const vy = posY + lx * sin + ly * cos;
+        const proj = vx * axisX + vy * axisY;
+        if (findMax ? proj > bestProj : proj < bestProj) {
+            bestProj = proj;
+            bestIndex = i / 2;
+        }
+    }
+    return bestIndex;
+}
+export function findClosestWorldVertexIndex(vertices, posX, posY, cos, sin, targetX, targetY) {
+    let bestDistSq = Infinity;
+    let bestIndex = 0;
+    const count = vertices.length;
+    for (let i = 0; i < count; i += 2) {
+        const lx = vertices[i];
+        const ly = vertices[i + 1];
+        const vx = posX + lx * cos - ly * sin;
+        const vy = posY + lx * sin + ly * cos;
+        const dx = targetX - vx;
+        const dy = targetY - vy;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestIndex = i / 2;
+        }
+    }
+    return bestIndex;
+}
 export function findExtremeVertexInto(out, vertices, pos, cos, sin, axisX, axisY, findMax = true) {
     let bestProj = findMax ? -Infinity : Infinity;
     let bestIndex = 0;
@@ -970,19 +1006,9 @@ export function rotateVecByQuat(x, y, z, q) {
     const iw = -q.x * x - q.y * y - q.z * z;
     return { x: ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y, y: iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z, z: iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x };
 }
-export const CARDINAL_OFFSETS = [
-    { dc: 0, dr: -1 },
-    { dc: 1, dr: 0 },
-    { dc: 0, dr: 1 },
-    { dc: -1, dr: 0 },
-];
-export const OCTILE_OFFSETS = [
-    { dc: 0, dr: -1, cost: 1 },
-    { dc: 1, dr: 0, cost: 1 },
-    { dc: 0, dr: 1, cost: 1 },
-    { dc: -1, dr: 0, cost: 1 },
-    { dc: 1, dr: -1, cost: Math.SQRT2 },
-    { dc: 1, dr: 1, cost: Math.SQRT2 },
-    { dc: -1, dr: 1, cost: Math.SQRT2 },
-    { dc: -1, dr: -1, cost: Math.SQRT2 },
-];
+export const CARDINAL_DCOL = Int8Array.from([0, 1, 0, -1]);
+export const CARDINAL_DR = Int8Array.from([-1, 0, 1, 0]);
+export const OCTILE_DCOL = Int8Array.from([0, 1, 0, -1, 1, 1, -1, -1]);
+export const OCTILE_DR = Int8Array.from([-1, 0, 1, 0, -1, 1, 1, -1]);
+export const OCTILE_STEP_COST = Float32Array.from([1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2]);
+export const OCTILE_DIR_COUNT = 8;

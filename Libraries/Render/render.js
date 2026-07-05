@@ -217,18 +217,21 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const { nodeIdx, nodeCount } = debugView;
     for (let i = 0; i < nodeCount; i++) {
         const idx = nodeIdx[i];
-        const world = debugView.gridToWorldByIdx(idx);
+        const wx = debugView.gridCenterXByIdx(idx);
+        const wy = debugView.gridCenterYByIdx(idx);
         ctx.fillStyle = "#00e5ff";
-        fillCircle(ctx, world.x, world.y, 4);
+        fillCircle(ctx, wx, wy, 4);
     }
     for (const edge of debugView.edges) {
         const idxA = nodeIdx[edge.sourceIdx];
         const idxB = nodeIdx[edge.targetIdx];
-        const a = debugView.gridToWorldByIdx(idxA);
-        const b = debugView.gridToWorldByIdx(idxB);
+        const ax = debugView.gridCenterXByIdx(idxA);
+        const ay = debugView.gridCenterYByIdx(idxA);
+        const bx = debugView.gridCenterXByIdx(idxB);
+        const by = debugView.gridCenterYByIdx(idxB);
         ctx.strokeStyle = "#ff9800";
         ctx.lineWidth = 2.5;
-        strokeSegment(ctx, a.x, a.y, b.x, b.y);
+        strokeSegment(ctx, ax, ay, bx, by);
     }
     return { canvas, minX, minY, maxX, maxY };
 }
@@ -2854,7 +2857,8 @@ export function syncFloorOccupancyStampDrawCache(state, grid, viewport = null) {
     for (let idx = 0; idx < size; idx++) {
         const kind = grid.floorKind[idx];
         if (!(grid.floorKind[idx] !== 0)) continue;
-        const { x, y } = grid.gridToWorldByIdx(idx);
+        const x = grid.gridCenterXByIdx(idx);
+        const y = grid.gridCenterYByIdx(idx);
         if (FloorBelt.isBelt(kind)) belts.push({ idx, proxy: createFloorBeltStampProxy(x, y, FloorBelt.getFacingAngle(grid.floorFacing[idx]), cellHalf, kind), x, y });
     }
     const next = { revision, belts };

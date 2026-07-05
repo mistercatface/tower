@@ -231,8 +231,10 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.sandbox.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampVoxel(state.obstacleGrid, 6, 6);
-        const cellCenter = state.obstacleGrid.gridToWorldByIdx(worldIdxAtCell(state.obstacleGrid,6, 6));
-        const ball = new WorldProp(cellCenter.x - 6, cellCenter.y, "ball", 0);
+        const cellIdx = worldIdxAtCell(state.obstacleGrid, 6, 6);
+        const cellX = state.obstacleGrid.gridCenterXByIdx(cellIdx);
+        const cellY = state.obstacleGrid.gridCenterYByIdx(cellIdx);
+        const ball = new WorldProp(cellX - 6, cellY, "ball", 0);
         ball.vx = 560;
         ball.vy = 0;
         const candidates = [];

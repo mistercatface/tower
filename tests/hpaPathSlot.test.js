@@ -21,8 +21,10 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 4 },
         ];
         const worker = mockHpaPathWorker(path, grid);
-        const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
-        const idx = findSabPathProgressIdx(start.x, start.y, worker, 0, path.length, grid, navTopology);
+        const startIdx = 4 + 4 * grid.cols;
+        const startX = grid.gridCenterXByIdx(startIdx);
+        const startY = grid.gridCenterYByIdx(startIdx);
+        const idx = findSabPathProgressIdx(startX, startY, worker, 0, path.length, grid, navTopology);
         assert.ok(idx >= 1);
         terminateWorkerNavigation(navigation);
     });
@@ -34,9 +36,13 @@ describe("hpaPathSlot", () => {
             { col: 6, row: 4 },
         ];
         const worker = mockHpaPathWorker(path, grid);
-        const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
-        const target = grid.gridToWorldByIdx(6 + 4 * grid.cols);
-        const steering = computeSabPathSteering({ x: start.x, y: start.y }, worker, 0, path.length, target.x, target.y, grid, navTopology, {
+        const startIdx = 4 + 4 * grid.cols;
+        const targetIdx = 6 + 4 * grid.cols;
+        const startX = grid.gridCenterXByIdx(startIdx);
+        const startY = grid.gridCenterYByIdx(startIdx);
+        const targetX = grid.gridCenterXByIdx(targetIdx);
+        const targetY = grid.gridCenterYByIdx(targetIdx);
+        const steering = computeSabPathSteering({ x: startX, y: startY }, worker, 0, path.length, targetX, targetY, grid, navTopology, {
             pathWaypointArrival: 16,
             arrivalDistance: 8,
             pathOffPathDistance: 48,
@@ -53,11 +59,13 @@ describe("hpaPathSlot", () => {
             { col: 5, row: 5 },
         ];
         const worker = mockHpaPathWorker(path, grid);
-        const start = grid.gridToWorldByIdx(4 + 4 * grid.cols);
-        const corner = grid.gridToWorldByIdx(5 + 4 * grid.cols);
-        const target = grid.gridToWorldByIdx(5 + 5 * grid.cols);
+        const startIdx = 4 + 4 * grid.cols;
+        const targetIdx = 5 + 5 * grid.cols;
+        const startX = grid.gridCenterXByIdx(startIdx);
+        const startY = grid.gridCenterYByIdx(startIdx);
+        const targetX = grid.gridCenterXByIdx(targetIdx);
+        const targetY = grid.gridCenterYByIdx(targetIdx);
 
-        // Max speed 100, accel 200
         const settings = {
             pathWaypointArrival: 16,
             arrivalDistance: 8,
@@ -66,14 +74,13 @@ describe("hpaPathSlot", () => {
             accel: 200,
         };
 
-        // When starting at (4, 4), which is 16 pixels from corner (5, 4)
         const steeringCorner = computeSabPathSteering(
-            { x: start.x, y: start.y },
+            { x: startX, y: startY },
             worker,
             0,
             path.length,
-            target.x,
-            target.y,
+            targetX,
+            targetY,
             grid,
             navTopology,
             settings
@@ -81,15 +88,14 @@ describe("hpaPathSlot", () => {
         
         assert.ok(steeringCorner.desiredSpeed < 100, `Expected slowdown near corner, got ${steeringCorner.desiredSpeed}`);
 
-        // When close to target (5, 5) - e.g. at (5, 4.8), 3.2 pixels away
-        const nearTarget = { x: target.x, y: target.y - 3.2 };
+        const nearTarget = { x: targetX, y: targetY - 3.2 };
         const steeringArrival = computeSabPathSteering(
             nearTarget,
             worker,
             0,
             path.length,
-            target.x,
-            target.y,
+            targetX,
+            targetY,
             grid,
             navTopology,
             settings

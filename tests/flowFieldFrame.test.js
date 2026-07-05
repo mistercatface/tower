@@ -2,7 +2,7 @@ import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCach
 import { FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCenteredFrame  } from "../Libraries/Spatial/spatial.js";
+import {  createCenteredGridFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, worldColInCenteredFrame, worldRowInCenteredFrame  } from "../Libraries/Spatial/spatial.js";
 
 
 
@@ -31,8 +31,10 @@ function gridReachabilityBfs(grid, startIdx, targetIdx, blockedFn) {
 describe("flow field centered grid frame", () => {
     it("converts between world and flow cells", () => {
         const frame = createCenteredGridFrame(16, 64, 64, 100, 200);
-        const world = gridToWorldInCenteredFrame(frame, 2, 1);
-        assert.deepEqual(worldToGridInCenteredFrame(frame, world.x, world.y), { col: 2, row: 1 });
+        const worldX = gridCenterXInCenteredFrame(frame, 2);
+        const worldY = gridCenterYInCenteredFrame(frame, 1);
+        assert.equal(worldColInCenteredFrame(frame, worldX), 2);
+        assert.equal(worldRowInCenteredFrame(frame, worldY), 1);
     });
 
     it("maps flow cells into nav frame cells", () => {
@@ -95,11 +97,13 @@ describe("flow field centered grid frame", () => {
                 posts.push({ slot, payload });
             },
         };
-        const target = window.gridToWorldIdx(2 + 2 * window.cols);
+        const targetIdx = 2 + 2 * window.cols;
+        const targetX = window.gridCenterXByIdx(targetIdx);
+        const targetY = window.gridCenterYByIdx(targetIdx);
 
-        const shortSlot = cache.getOrRequestSlot(target.x, target.y, 2, protocol);
-        const longSlot = cache.getOrRequestSlot(target.x, target.y, 999999, protocol);
-        const shortSlotAgain = cache.getOrRequestSlot(target.x, target.y, 2, protocol);
+        const shortSlot = cache.getOrRequestSlot(targetX, targetY, 2, protocol);
+        const longSlot = cache.getOrRequestSlot(targetX, targetY, 999999, protocol);
+        const shortSlotAgain = cache.getOrRequestSlot(targetX, targetY, 2, protocol);
 
         assert.notEqual(shortSlot, longSlot);
         assert.equal(shortSlotAgain, shortSlot);

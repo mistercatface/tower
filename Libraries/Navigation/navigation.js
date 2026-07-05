@@ -1,6 +1,6 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS, circleIntersectsAabb, createAabb } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
 import {
     manhattanDistanceIdx,
     octileDistanceIdx,
@@ -23,7 +23,7 @@ import {
     cellBoundsForGrid,
     forEachDenseCellInBounds,
     padCellIdxToGrid,
-    padCellBoundsToGrid,
+    padCellBoundsInPlace,
     forEachDenseCellInRect,
     gridNavCacheKey,
     centeredGridFrameKey,
@@ -41,7 +41,6 @@ import {
     forEachStampGlobalIdx,
     gridCellLayout,
     corridorPathHitsOccupied,
-    neighborGridDims,
 } from "../Spatial/spatial.js";
 import { FloatingText } from "../Render/render.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
@@ -149,15 +148,15 @@ export class FlatGridSearch {
         this._grid = g;
         if (g) this.cols = g.cols;
     }
-    getOffsets(policyOffsets, cols) {
+    getOffsets(cardinal, cols) {
         if (this._lastCols !== cols) {
             this._lastCols = cols;
             this._cardinalDidx = new Int32Array(4);
-            for (let i = 0; i < 4; i++) this._cardinalDidx[i] = CARDINAL_OFFSETS[i].dc + CARDINAL_OFFSETS[i].dr * cols;
+            for (let i = 0; i < 4; i++) this._cardinalDidx[i] = CARDINAL_DCOL[i] + CARDINAL_DR[i] * cols;
             this._octileDidx = new Int32Array(8);
-            for (let i = 0; i < 8; i++) this._octileDidx[i] = OCTILE_OFFSETS[i].dc + OCTILE_OFFSETS[i].dr * cols;
+            for (let i = 0; i < 8; i++) this._octileDidx[i] = OCTILE_DCOL[i] + OCTILE_DR[i] * cols;
         }
-        return policyOffsets === CARDINAL_OFFSETS ? this._cardinalDidx : this._octileDidx;
+        return cardinal ? this._cardinalDidx : this._octileDidx;
     }
     manhattanDistance(idx0, idx1) {
         return manhattanDistanceIdx(idx0, idx1, this.cols);
@@ -214,7 +213,7 @@ export class FlatGridSearch {
         } else {
             const grid = this.grid;
             const cols = grid.cols;
-            const offsets = this.getOffsets(maxDirs === 4 ? CARDINAL_OFFSETS : OCTILE_OFFSETS, cols);
+            const offsets = this.getOffsets(maxDirs === 4, cols);
             const edgeCosts = maxDirs === 4 ? CARDINAL_COSTS : OCTILE_COSTS;
             while (globalOpenSet.size > 0) {
                 const currIdx = globalOpenSet.pop();
@@ -270,7 +269,8 @@ export function createNavWalkableCandidateMask(grid, cells, reuse = null) {
     return mask;
 }
 export function createNavWalkableReachedMask(grid, reuse = null) {
-    const { cols, rows } = neighborGridDims(grid);
+    const cols = grid.cols;
+    const rows = grid.rows;
     const size = cols * rows;
     return reuse && reuse.length === size ? reuse : new Uint8Array(size);
 }
@@ -339,7 +339,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
         return walkable;
     });
     const seen = new Set(cache.candidates);
-    forEachDenseCellInRect(grid, patchBounds, (idx) => {
+    forEachDenseCellInRect(grid, patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, (idx) => {
         if (!isIdxInMapGenBounds(boundsConfig, grid, idx)) {
             cache.candidateMask[idx] = 0;
             return;
@@ -355,7 +355,7 @@ function updateNavWalkableCandidatesInPatch(state, cache, patchBounds) {
     });
 }
 function writeNavWalkableFlagsInRect(flags, grid, cells, patchBounds) {
-    forEachDenseCellInRect(grid, patchBounds, (idx) => {
+    forEachDenseCellInRect(grid, patchBounds.startCol, patchBounds.endCol, patchBounds.startRow, patchBounds.endRow, (idx) => {
         flags[idx] = 0;
     });
     for (let i = 0; i < cells.length; i++) flags[cells[i]] = 1;
@@ -363,7 +363,10 @@ function writeNavWalkableFlagsInRect(flags, grid, cells, patchBounds) {
 function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const grid = state.obstacleGrid;
     const navTopology = state.nav.topology;
-    const patchBounds = typeof idx === "object" && idx !== null ? padCellBoundsToGrid(idx, grid, 2) : padCellIdxToGrid(idx, grid, 2);
+    const patchBounds =
+        typeof idx === "object" && idx !== null
+            ? padCellBoundsInPlace({ startCol: idx.startCol, endCol: idx.endCol, startRow: idx.startRow, endRow: idx.endRow }, grid, 2)
+            : padCellIdxToGrid(idx, grid, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
@@ -450,15 +453,15 @@ export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = sta
 }
 let railMazePathScratch = new Int32Array(512);
 export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {
-    const layout = stampLayoutFromConfig(grid, railConfig);
+    const { originIdx, cols, strideCols, cellCount: stampCellCount } = stampLayoutFromConfig(grid, railConfig);
     const gridCols = grid.cols;
-    const cellCount = gridCols * grid.rows;
+    const cellCountGlobal = gridCols * grid.rows;
     const globalLayout = gridCellLayout(grid);
-    const walkable = new Uint8Array(cellCount);
-    forEachStampGlobalIdx(layout, grid, railConfig, (idx) => {
+    const walkable = new Uint8Array(cellCountGlobal);
+    forEachStampGlobalIdx(originIdx, cols, strideCols, stampCellCount, grid, railConfig, (idx) => {
         if (navWalkableIndex.flags[idx] !== 0) walkable[idx] = 1;
     });
-    const searchState = new SearchState(cellCount);
+    const searchState = new SearchState(cellCountGlobal);
     let reservedGlobalIndices = new Set();
     const gridView = new FlatGridView(gridCols, grid.rows, {
         blocked: null,
@@ -568,7 +571,10 @@ export function computeDistanceTransform(grid, frame, distToWall = null) {
         const currDist = distances[currIdx];
         const col = currIdx % cols;
         const row = (currIdx / cols) | 0;
-        for (const { dc, dr, cost } of OCTILE_OFFSETS) {
+        for (let i = 0; i < OCTILE_DIR_COUNT; i++) {
+            const dc = OCTILE_DCOL[i];
+            const dr = OCTILE_DR[i];
+            const cost = OCTILE_STEP_COST[i];
             const nc = col + dc;
             const nr = row + dr;
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
@@ -1027,7 +1033,8 @@ export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startIdx, ta
     return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
 }
 export function findNearestOpenCellIdx(blocked, grid, idx) {
-    const { cols, rows } = neighborGridDims(grid);
+    const cols = grid.cols;
+    const rows = grid.rows;
     if (blocked[idx] === 0) return idx;
     const c0 = idx % cols;
     const cellCount = cols * rows;
@@ -1139,7 +1146,7 @@ export class HpaRegionGraph {
 }
 export function expandRegionDamageBounds(idxOrBounds, frame, padding = 12) {
     if (typeof idxOrBounds === "number") return padCellIdxToGrid(idxOrBounds, frame, padding);
-    return padCellBoundsToGrid(idxOrBounds, frame, padding);
+    return padCellBoundsInPlace({ startCol: idxOrBounds.startCol, endCol: idxOrBounds.endCol, startRow: idxOrBounds.startRow, endRow: idxOrBounds.endRow }, frame, padding);
 }
 function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     if (!nodeA || !nodeB || nodeA.id === nodeB.id) return false;
@@ -1713,11 +1720,12 @@ export function buildOctileNeighborsFromTopologyBounds(blocked, cardinalOpen, ve
         const row = (idx / cols) | 0;
         const base = octileNeighborBase(idx);
         if (blocked[idx]) {
-            for (let i = 0; i < OCTILE_OFFSETS.length; i++) octileNeighbors[base + i] = -1;
+            for (let i = 0; i < OCTILE_DIR_COUNT; i++) octileNeighbors[base + i] = -1;
             return;
         }
-        for (let i = 0; i < OCTILE_OFFSETS.length; i++) {
-            const { dc, dr } = OCTILE_OFFSETS[i];
+        for (let i = 0; i < OCTILE_DIR_COUNT; i++) {
+            const dc = OCTILE_DCOL[i];
+            const dr = OCTILE_DR[i];
             const nc = col + dc;
             const nr = row + dr;
             if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) {
@@ -1744,7 +1752,7 @@ export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePr
     const grid = { cols, rows };
     if (!targetBounds) octilePredecessors.fill(-1);
     else
-        forEachDenseCellInRect(grid, targetBounds, (idx) => {
+        forEachDenseCellInRect(grid, targetBounds.startCol, targetBounds.endCol, targetBounds.startRow, targetBounds.endRow, (idx) => {
             const base = octileNeighborBase(idx);
             for (let i = 0; i < OCTILE_DIRS_PER_CELL; i++) octilePredecessors[base + i] = -1;
         });
@@ -2970,8 +2978,11 @@ export class FlowFieldGrid {
     containsWorldPoint(x, y) {
         return this.window.containsWorldPoint(x, y);
     }
-    gridToWorldIdx(idx) {
-        return this.window.gridToWorldIdx(idx);
+    gridCenterXByIdx(idx) {
+        return this.window.gridCenterXByIdx(idx);
+    }
+    gridCenterYByIdx(idx) {
+        return this.window.gridCenterYByIdx(idx);
     }
     getCellBoundsByIdx(idx) {
         return this.window.getCellBoundsByIdx(idx);
@@ -3115,10 +3126,11 @@ export function computeFlowField(
             for (let i = 0; i < neighborLayout.directionCount; i++) {
                 const nIdx = neighborGrid[neighborLayout.cellOffset(idx, i)];
                 if (nIdx !== -1 && bfsDistances[nIdx] === -1 && !isBlocked(nIdx)) {
-                    const offset = OCTILE_OFFSETS[i];
+                    const dc = OCTILE_DCOL[i];
+                    const dr = OCTILE_DR[i];
                     bfsDistances[nIdx] = currentDist + 1;
                     bfsQueue[tail++] = nIdx;
-                    localVectorMap[nIdx] = -offset.dc + 1 + (-offset.dr + 1) * 3;
+                    localVectorMap[nIdx] = -dc + 1 + (-dr + 1) * 3;
                 }
             }
         }
@@ -3183,6 +3195,12 @@ export class FlowFieldWindow {
     gridCenterY(row) {
         return gridCenterYInCenteredFrame(this.frame, row);
     }
+    gridCenterXByIdx(idx) {
+        return this.gridCenterX(idx % this.cols);
+    }
+    gridCenterYByIdx(idx) {
+        return this.gridCenterY((idx / this.cols) | 0);
+    }
     worldToIdx(x, y) {
         const col = this.worldCol(x);
         const row = this.worldRow(y);
@@ -3194,11 +3212,6 @@ export class FlowFieldWindow {
     }
     containsWorldPoint(x, y) {
         return this.worldToIdx(x, y) >= 0;
-    }
-    gridToWorldIdx(idx) {
-        const col = idx % this.cols;
-        const row = (idx / this.cols) | 0;
-        return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
     }
     getCellBoundsByIdx(idx) {
         return getCellBoundsInCenteredFrameInto(this.cellBounds, this.frame, idx);

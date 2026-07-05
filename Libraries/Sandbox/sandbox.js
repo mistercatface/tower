@@ -1821,10 +1821,11 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     } = spec;
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
-    const anchorWorld = grid.gridToWorldByIdx(anchorIdx);
+    const anchorX = grid.gridCenterXByIdx(anchorIdx);
+    const anchorY = grid.gridCenterYByIdx(anchorIdx);
     const props = [];
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
-    const firstProp = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, resolveSegmentPropId(0, propSpec), faction);
+    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec), faction);
     applySegmentRadius(firstProp, segmentRadius, headScaleFn);
     props.push(firstProp);
     if (onSegmentSpawned) onSegmentSpawned(firstProp, 0);
@@ -2618,7 +2619,7 @@ const FLOW_GROUND_NAV_CONFIG = {
     },
     applyMoveTarget(state, run, world, prop) {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
-        run.targetWorld = snapped.world;
+        run.targetWorld = { x: snapped.worldX, y: snapped.worldY };
         const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
         state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.nav.settings.recenterThreshold);
     },
@@ -2677,7 +2678,7 @@ const HPA_GROUND_NAV_CONFIG = {
         const snapped = snapMoveTargetToCellCenter(grid, world);
         const nextIdx = snapped.idx;
         const cellChanged = nextIdx !== run.targetCellIdx;
-        run.targetWorld = snapped.world;
+        run.targetWorld = { x: snapped.worldX, y: snapped.worldY };
         run.targetCellIdx = nextIdx;
         if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
     },

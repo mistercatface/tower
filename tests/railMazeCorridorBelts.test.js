@@ -112,7 +112,10 @@ async function setupTestGridAndNav(seed) {
     };
 
     const rails = bakeRailMazeDfs(
-        { originIdx: 0, gridCols: cols, gridRows: rows, strideCols: cols, cellCount: cols * rows },
+        0,
+        cols,
+        cols,
+        cols * rows,
         { railWallHeightLevel: 1, railWallThicknessLevel: 2, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
         seed,
     );
@@ -141,7 +144,7 @@ async function setupTestGridAndNav(seed) {
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
         const memberIndices = [1, 4, 5, 6];
-        const layout = { originIdx: 0, gridCols: 4, gridRows: 3, strideCols: 4, cellCount: 12 };
+        const layout = { originIdx: 0, cols: 4, rows: 3, strideCols: 4, cellCount: 12 };
         const memberSet = new Set(memberIndices);
         const neighborAtIdx = (idx) => {
             const out = [];

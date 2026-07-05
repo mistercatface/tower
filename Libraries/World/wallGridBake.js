@@ -1,4 +1,4 @@
-import { cellIdxToChunkKey, forEachObstacleGridCellInAabb } from "../Spatial/spatial.js";
+import { cellIdxToChunkKey, forEachObstacleGridCellInAabb, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
 import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
@@ -38,12 +38,6 @@ export function voxelWallFaceVisible(neighborCap, faceHeight) {
 export function voxelWallFaceBaseZ(neighborCap, faceHeight) {
     if (neighborCap == null || faceHeight <= neighborCap) return 0;
     return neighborCap;
-}
-export function railWallInwardNormal(edge) {
-    if (edge === 0) return { x: 0, y: 1 };
-    if (edge === 1) return { x: -1, y: 0 };
-    if (edge === 2) return { x: 0, y: -1 };
-    return { x: 1, y: 0 };
 }
 export function railWallTopZAt(grid, idx, side) {
     const edge = railWallEdgeAt(grid, idx, side);
@@ -168,7 +162,6 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     if (edgeHeight <= 0) return false;
     if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return false;
     const fp = railWallFootprintAabb(grid, idx, edge);
-    const inward = railWallInwardNormal(edge);
     railWallSideEndpoints(grid, idx, edge, 0, sP1, sP2);
     const base = recordIndex * RAIL_BOX_STRIDE;
     data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, grid, gridSettings.minCellsPerChunk);
@@ -187,8 +180,8 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     data[base + RAIL_BOX.outerP1y] = sP1.y;
     data[base + RAIL_BOX.outerP2x] = sP2.x;
     data[base + RAIL_BOX.outerP2y] = sP2.y;
-    data[base + RAIL_BOX.inwardX] = inward.x;
-    data[base + RAIL_BOX.inwardY] = inward.y;
+    data[base + RAIL_BOX.inwardX] = -GRID_SIDE_NX[edge];
+    data[base + RAIL_BOX.inwardY] = -GRID_SIDE_NY[edge];
     data[base + RAIL_BOX.wallBaseZ] = voxelWallFaceBaseZ(neighborCap, edgeHeight);
     data[base + RAIL_BOX.wallHeight] = edgeHeight - data[base + RAIL_BOX.wallBaseZ];
     data[base + RAIL_BOX.wallCapHeight] = edgeHeight;
