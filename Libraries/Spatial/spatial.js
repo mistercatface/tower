@@ -199,10 +199,6 @@ export function edgeNeighborIdx(idx, side, cols, rows) {
     if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) return -1;
     return nr * cols + nc;
 }
-export function edgeNeighbor(col, row, side) {
-    const { dc, dr } = CARDINAL_OFFSETS[side];
-    return { nc: col + dc, nr: row + dr };
-}
 export function edgeMirrorSide(side) {
     return (side + 2) % 4;
 }
@@ -901,23 +897,18 @@ export class FloorBelt {
         return grid.floorKind[idx] !== 0;
     }
     static isEntityOnBelt(grid, x, y) {
-        const col = grid.worldCol(x);
-        const row = grid.worldRow(y);
-        return FloorBelt.isBeltAtIdx(grid, col + row * grid.cols);
+        return FloorBelt.isBeltAtIdx(grid, grid.worldToIdx(x, y));
     }
     static pickRotatableOccupantAtWorld(state, worldX, worldY) {
         const grid = state.obstacleGrid;
-        const col = grid.worldCol(worldX);
-        const row = grid.worldRow(worldY);
-        if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return -1;
-        const idx = col + row * grid.cols;
-        if (!cellInRect(idx, grid.cols, grid.rows)) return -1;
+        const idx = grid.worldToIdx(worldX, worldY);
+        if (idx < 0) return -1;
         if (grid.floorKind[idx] !== 0) return idx;
         return -1;
     }
     static rotateOccupantAt(state, occupant, steps = 1, onCommit = null) {
         const grid = state.obstacleGrid;
-        const idx = typeof occupant === "number" ? occupant : occupant.col + occupant.row * grid.cols;
+        const idx = occupant;
         if (!(grid.floorKind[idx] !== 0)) return false;
         const beltKind = grid.floorKind[idx];
         const facingIndex = (((grid.floorFacing[idx] + steps) % 4) + 4) % 4;
@@ -1040,11 +1031,8 @@ export class FloorBelt {
         const force = DEFAULT_FLOOR_BELT_FORCE;
         for (let i = 0; i < kineticBodies.length; i++) {
             const entity = kineticBodies[i];
-            const col = grid.worldCol(entity.x);
-            const row = grid.worldRow(entity.y);
-            if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
-            const idx = col + row * grid.cols;
-            if (!cellInRect(idx, grid.cols, grid.rows)) continue;
+            const idx = grid.worldToIdx(entity.x, entity.y);
+            if (idx < 0) continue;
             if (!(grid.floorKind[idx] !== 0)) continue;
             const kind = grid.floorKind[idx];
             const facingIndex = grid.floorFacing[idx];
@@ -1172,15 +1160,6 @@ export function createCellIndexLayout(originCol, originRow, cols, rows) {
 export function layoutCellRows(layout) {
     return layout.cellCount / layout.strideCols;
 }
-export function layoutContainsAbsCell(layout, col, row) {
-    return col >= layout.originCol && col < layout.originCol + layout.strideCols && row >= layout.originRow && row < layout.originRow + layoutCellRows(layout);
-}
-export function layoutAbsToLocalCell(layout, col, row) {
-    return { col: col - layout.originCol, row: row - layout.originRow };
-}
-export function layoutLocalToAbsCell(layout, col, row) {
-    return { col: col + layout.originCol, row: row + layout.originRow };
-}
 /** Dense index for absolute (col, row) within a bounded layout rect. */
 export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
     return (absRow - originRow) * strideCols + (absCol - originCol);
@@ -1225,11 +1204,6 @@ export function gridSideOutwardVector(side) {
     return { x: -1, y: 0 };
 }
 /** Neighbor cell reached by stepping outward across side. */
-export function gridSideNeighborCell(col, row, side) {
-    const { dc, dr } = CARDINAL_OFFSETS[side];
-    return { col: col + dc, row: row + dr };
-}
-/** @param {number} side */
 export function formatGridSideNeighborLabel(side) {
     return GRID_SIDE_NEIGHBOR_LABELS[side] ?? `Side ${side} neighbor`;
 }
@@ -1237,26 +1211,6 @@ const GRID_EDGE_SIDE_FACING = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
 /** Facing radians for grid edge side 0=N, 1=E, 2=S, 3=W. */
 export function gridEdgeSideFacing(side) {
     return GRID_EDGE_SIDE_FACING[side];
-}
-export function forEachCardinalNeighbor(col, row, cols, rows, fn) {
-    for (const { dc, dr } of CARDINAL_OFFSETS) {
-        const nc = col + dc;
-        const nr = row + dr;
-        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-            const nIdx = nr * cols + nc;
-            if (cellInRect(nIdx, cols, rows)) fn(nc, nr, nIdx);
-        }
-    }
-}
-export function forEachOctileNeighbor(col, row, cols, rows, fn) {
-    for (const { dc, dr, cost } of OCTILE_OFFSETS) {
-        const nc = col + dc;
-        const nr = row + dr;
-        if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
-            const nIdx = nr * cols + nc;
-            if (cellInRect(nIdx, cols, rows)) fn(nc, nr, nIdx, cost);
-        }
-    }
 }
 export function makeAdjacencyKey(idA, idB) {
     return idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
@@ -1441,17 +1395,19 @@ export class SurfaceMaterialStore {
         );
     }
 }
-export function resolveChunkBaseProfileId(grid, col, row, cellsPerChunk, baseProfileId) {
+export function resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) {
+    const col = idx % grid.cols;
+    const row = (idx / grid.cols) | 0;
     return resolveChunkSurfaceProfileId(grid, cellToChunkCoord(col, cellsPerChunk), cellToChunkCoord(row, cellsPerChunk), baseProfileId);
 }
 export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
     if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunk(a, b) ?? baseProfileId;
     if (ownerKind === SURFACE_MATERIAL_OWNER.Cell) {
-        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, a % grid.cols, (a / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
+        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, a, cellsPerChunk, baseProfileId) : baseProfileId;
         return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
     }
     if (ownerKind === SURFACE_MATERIAL_OWNER.WallFace) {
-        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, face.gridIdx % grid.cols, (face.gridIdx / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
+        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, face.gridIdx, cellsPerChunk, baseProfileId) : baseProfileId;
         if (face.isEdgeRail) return grid.surfaceMaterials.getEdgeByIdx(face.gridIdx, face.gridSide) ?? chunkBase;
         return grid.surfaceMaterials.getCellAtIdx(face.gridIdx) ?? chunkBase;
     }
@@ -1461,7 +1417,7 @@ export function resolveCellSurfaceProfileId(grid, idx, baseProfileId, cellsPerCh
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, baseProfileId, cellsPerChunk, idx);
 }
 export function resolveEdgeSurfaceProfileId(grid, idx, side, baseProfileId, cellsPerChunk = 0) {
-    const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileId(grid, idx % grid.cols, (idx / grid.cols) | 0, cellsPerChunk, baseProfileId) : baseProfileId;
+    const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) : baseProfileId;
     return grid.surfaceMaterials.getEdgeByIdx(idx, side) ?? chunkBase;
 }
 export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerChunk = 0) {
@@ -1973,9 +1929,6 @@ export class WorldObstacleGrid {
     idx(col, row) {
         return row * this.cols + col;
     }
-    worldToGrid(x, y) {
-        return { col: this.worldCol(x), row: this.worldRow(y) };
-    }
     gridToWorldByIdx(idx) {
         return { x: this.gridCenterXByIdx(idx), y: this.gridCenterYByIdx(idx) };
     }
@@ -2084,50 +2037,6 @@ export class CellPropIndex {
     countAtIdx(idx) {
         if (idx < 0 || idx >= this.count.length) return 0;
         return this.count[idx];
-    }
-    countAtCell(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return 0;
-        return this.count[col + row * this.cols];
-    }
-    forEachItemInCell(col, row, fn) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
-        const idx = col + row * this.cols;
-        if (this.count[idx] === 0) return;
-        const list = this.buckets.peek(idx);
-        if (!list) return;
-        for (let i = 0; i < list.length; i++) fn(list[i]);
-    }
-    /**
-     * Returns a read-only live reference to the items in the cell. Do not mutate.
-     * @param {number} col
-     * @param {number} row
-     * @returns {ReadonlyArray<object>}
-     */
-    itemsInCell(col, row) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return [];
-        const idx = col + row * this.cols;
-        return this.buckets.peek(idx) ?? [];
-    }
-    nearestItemInCell(col, row, x, y, accept, context) {
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
-        const idx = col + row * this.cols;
-        if (this.count[idx] === 0) return null;
-        const list = this.buckets.peek(idx);
-        if (!list) return null;
-        let nearest = null;
-        let bestDistSq = Infinity;
-        for (let i = 0; i < list.length; i++) {
-            const prop = list[i];
-            if (!accept(prop, context)) continue;
-            const dx = prop.x - x;
-            const dy = prop.y - y;
-            const distSq = dx * dx + dy * dy;
-            if (distSq < bestDistSq) {
-                bestDistSq = distSq;
-                nearest = prop;
-            }
-        }
-        return nearest;
     }
     syncBounds(grid) {
         if (this.cols === grid.cols && this.rows === grid.rows && this.cellSize === grid.cellSize && this.minX === grid.minX && this.minY === grid.minY) return;
@@ -2685,16 +2594,8 @@ export function diffGridZoneKeys(prev, next) {
  */
 export function resolveEntityGridZoneKeys(entity, grid, subscriptions, out) {
     out.clear();
-    const { x, y } = entity;
-    const radius = entity.radius ?? 0;
-    const band = radius + grid.cellSize * 0.12;
-    const col = grid.worldCol(x);
-    const row = grid.worldRow(y);
-    let cellIdx = -1;
-    if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) {
-        cellIdx = row * grid.cols + col;
-        if (subscriptions.cells.has(cellIdx)) out.add(cellIdx);
-    }
+    const cellIdx = grid.worldToIdx(entity.x, entity.y);
+    if (cellIdx >= 0 && subscriptions.cells.has(cellIdx)) out.add(cellIdx);
 }
 /**
  * @param {import("../world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
@@ -2891,7 +2792,8 @@ export function stampRailWallsQuiet(state, railWalls) {
     const bounds = emptyCellBounds();
     for (let i = 0; i < railWalls.length; i++) {
         const wall = railWalls[i];
-        const idx = wall.idx !== undefined ? wall.idx : wall.col + wall.row * grid.cols;
+        const idx = wall.idx;
+        if (idx === undefined) continue;
         const col = idx % grid.cols;
         const row = (idx / grid.cols) | 0;
         if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) continue;
@@ -3269,19 +3171,13 @@ export function applyMapGenShapeMask(grid, cells, cols, rows, config, originIdx)
         }
 }
 export function centerMapGenBoundsOnViewport(grid, viewport, config, cellSize) {
-    const colOffset = Math.round(grid.minX / cellSize);
-    const rowOffset = Math.round(grid.minY / cellSize);
     if (config.boundsMode === "rect") {
         const minX = viewport.x - (config.boundsCols * cellSize) / 2;
         const minY = viewport.y - (config.boundsRows * cellSize) / 2;
-        const c = Math.round(minX / cellSize) - colOffset;
-        const r = Math.round(minY / cellSize) - rowOffset;
-        config.boundsIdx = grid.idx(c, r);
+        config.boundsIdx = grid.worldToIdx(minX + cellSize * 0.5, minY + cellSize * 0.5);
         return;
     }
-    const c = Math.round(viewport.x / cellSize) - colOffset;
-    const r = Math.round(viewport.y / cellSize) - rowOffset;
-    config.centerIdx = grid.idx(c, r);
+    config.centerIdx = grid.worldToIdx(viewport.x, viewport.y);
 }
 export function syncMapGenBoundsSizeFromPlayArea(playConfig, config) {
     if (config.boundsMode === "rect") {
@@ -3297,14 +3193,14 @@ export function migrateMapGenBoundsForMode(grid, config) {
         const boundsRow = (config.boundsIdx / grid.cols) | 0;
         const centerCol = boundsCol + Math.floor(config.boundsCols / 2);
         const centerRow = boundsRow + Math.floor(config.boundsRows / 2);
-        config.centerIdx = grid.idx(centerCol, centerRow);
+        config.centerIdx = grid.worldToIdx(grid.gridCenterX(centerCol), grid.gridCenterY(centerRow));
         config.outerRadiusCells = Math.max(1, Math.round(Math.min(config.boundsCols, config.boundsRows) / 2));
         return;
     }
     const r = Math.max(1, config.outerRadiusCells);
     const centerCol = config.centerIdx % grid.cols;
     const centerRow = (config.centerIdx / grid.cols) | 0;
-    config.boundsIdx = grid.idx(centerCol - r, centerRow - r);
+    config.boundsIdx = grid.worldToIdx(grid.gridCenterX(centerCol - r), grid.gridCenterY(centerRow - r));
     config.boundsCols = r * 2;
     config.boundsRows = r * 2;
     if (config.boundsMode === "donut") config.donutThicknessCells = Math.max(1, Math.min(config.donutThicknessCells, config.outerRadiusCells - 1));
@@ -3364,11 +3260,11 @@ export function registerMapGenBoundsGridExpansionListener(state) {
             if (config.boundsMode === "rect") {
                 const oldCol = config.boundsIdx % oldCols;
                 const oldRow = (config.boundsIdx / oldCols) | 0;
-                config.boundsIdx = grid.idx(oldCol + colOffset, oldRow + rowOffset);
+                config.boundsIdx = grid.worldToIdx(grid.gridCenterX(oldCol + colOffset), grid.gridCenterY(oldRow + rowOffset));
             } else {
                 const oldCol = config.centerIdx % oldCols;
                 const oldRow = (config.centerIdx / oldCols) | 0;
-                config.centerIdx = grid.idx(oldCol + colOffset, oldRow + rowOffset);
+                config.centerIdx = grid.worldToIdx(grid.gridCenterX(oldCol + colOffset), grid.gridCenterY(oldRow + rowOffset));
             }
             migrateMapGenBoundsForMode(grid, config);
         }

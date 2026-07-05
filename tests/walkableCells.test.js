@@ -5,7 +5,7 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js
 import { collectWalkableCells, collectNavWalkableCells, createNavWalkableAccess, getNavWalkableCellIndex, getNavWalkableCells, isNavWalkableCellAt, patchNavWalkableCellIndex, pickWalkableCell, pickNavWalkableCell, pickRandomWalkableCell, isNavWalkableAt, isNavWalkableCell } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { colRowToIndex } from "./harness/testGridUtils.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  GRID_NAV_EPOCH, bumpGridNavEpoch, gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 async function createWalkableCellsTestState(config) {
     const grid = new WorldObstacleGrid(16);
@@ -22,10 +22,10 @@ describe("walkableCells", () => {
         const state = await createWalkableCellsTestState(config);
         const blockedCol = 3;
         const blockedRow = 4;
-        state.obstacleGrid.grid[colRowToIndex(blockedCol, blockedRow, state.obstacleGrid.cols)] = 1;
+        state.obstacleGrid.grid[worldIdxAtCell(state.obstacleGrid,blockedCol, blockedRow)] = 1;
         const open = collectWalkableCells(state);
         assert.ok(open.length > 0);
-        assert.ok(!open.includes(colRowToIndex(blockedCol, blockedRow, state.obstacleGrid.cols)));
+        assert.ok(!open.includes(worldIdxAtCell(state.obstacleGrid,blockedCol, blockedRow)));
         terminateWorkerNavigation(state.nav);
     });
     it("collectNavWalkableCells skips blocked voxels", async () => {
@@ -34,9 +34,9 @@ describe("walkableCells", () => {
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
-        state.obstacleGrid.grid[colRowToIndex(3, 3, state.obstacleGrid.cols)] = 1;
+        state.obstacleGrid.grid[worldIdxAtCell(state.obstacleGrid,3, 3)] = 1;
         collectNavWalkableCells(state);
-        assert.ok(!isNavWalkableCellAt(state, colRowToIndex(3, 3, state.obstacleGrid.cols)));
+        assert.ok(!isNavWalkableCellAt(state, worldIdxAtCell(state.obstacleGrid,3, 3)));
         terminateWorkerNavigation(state.nav);
     });
     it("collectNavWalkableCells rebakes when navigation epoch changes", async () => {
@@ -47,12 +47,12 @@ describe("walkableCells", () => {
         const state = await createWalkableCellsTestState(config);
         collectNavWalkableCells(state);
         const before = getNavWalkableCells(state).length;
-        state.obstacleGrid.grid[colRowToIndex(2, 2, state.obstacleGrid.cols)] = 1;
+        state.obstacleGrid.grid[worldIdxAtCell(state.obstacleGrid,2, 2)] = 1;
         bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
         await state.nav.commitEdit({ startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
         collectNavWalkableCells(state);
         assert.ok(getNavWalkableCells(state).length <= before);
-        assert.ok(!isNavWalkableCellAt(state, colRowToIndex(2, 2, state.obstacleGrid.cols)));
+        assert.ok(!isNavWalkableCellAt(state, worldIdxAtCell(state.obstacleGrid,2, 2)));
         terminateWorkerNavigation(state.nav);
     });
     it("stores nav-walkable cells in a dense flag grid", async () => {
@@ -111,14 +111,16 @@ describe("walkableCells", () => {
         terminateWorkerNavigation(state.nav);
     });
     it("pickWalkableCell respects exclude indices", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 8 * 16, 8 * 16);
         const cells = [
-            colRowToIndex(1, 1, 8),
-            colRowToIndex(2, 2, 8),
-            colRowToIndex(3, 3, 8),
+            worldIdxAtCell(grid, 1, 1),
+            worldIdxAtCell(grid, 2, 2),
+            worldIdxAtCell(grid, 3, 3),
         ];
-        const excludeIndices = new Set([colRowToIndex(2, 2, 8)]);
+        const excludeIndices = new Set([worldIdxAtCell(grid, 2, 2)]);
         const picked = pickWalkableCell(cells, 8, excludeIndices, () => 0.9);
-        assert.equal(picked, colRowToIndex(3, 3, 8));
+        assert.equal(picked, worldIdxAtCell(grid, 3, 3));
     });
     it("pickRandomWalkableCell returns null when every cell is excluded", async () => {
         const config = createDefaultMapGenBoundsConfig();

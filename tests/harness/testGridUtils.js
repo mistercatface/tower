@@ -1,3 +1,3 @@
-export function colRowToIndex(col, row, cols) {
-    return row * cols + col;
+export function worldIdxAtCell(grid, col, row) {
+    return grid.worldToIdx(grid.gridCenterX(col), grid.gridCenterY(row));
 }

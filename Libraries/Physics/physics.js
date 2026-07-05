@@ -4285,10 +4285,8 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
 }
 export function snapMoveTargetToCellCenter(grid, world) {
     const idx = grid.worldToIdx(world.x, world.y);
-    if (idx === -1) return { world, col: null, row: null };
-    const col = idx % grid.cols;
-    const row = (idx / grid.cols) | 0;
-    return { world: grid.gridToWorldByIdx(idx), col, row };
+    if (idx === -1) return { world, idx: null };
+    return { world: grid.gridToWorldByIdx(idx), idx };
 }
 export function getKineticRollConfig(prop, overrides = null) {
     let base = prop._cachedRollBaseConfig;

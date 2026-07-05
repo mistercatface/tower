@@ -299,7 +299,7 @@ export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {
     const gridRails = [];
     for (let i = 0; i < rails.length; i++) {
         const wall = rails[i];
-        const idx = grid.worldToIdx(wall.col * cellSize + grid.cellHalfSize, wall.row * cellSize + grid.cellHalfSize);
+        const idx = wall.idx;
         if (idx < 0 || idx >= grid.grid.length) continue;
         gridRails.push({ idx, side: wall.side, heightLevel: wall.heightLevel, thicknessLevel: wall.thicknessLevel });
     }

@@ -95,7 +95,7 @@ describe("flow field centered grid frame", () => {
                 posts.push({ slot, payload });
             },
         };
-        const target = window.gridToWorld(2, 2);
+        const target = window.gridToWorldIdx(2 + 2 * window.cols);
 
         const shortSlot = cache.getOrRequestSlot(target.x, target.y, 2, protocol);
         const longSlot = cache.getOrRequestSlot(target.x, target.y, 999999, protocol);

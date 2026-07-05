@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 
 
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 describe("hpa ground nav replan policy", () => {
     it("obstacleEpochReplanDue when path topology lags grid", () => {
@@ -83,7 +84,7 @@ describe("hpa ground nav replan policy", () => {
         const worker = {
             releaseOwnedPathSlot() {},
             pathIdx(_slot, i) {
-                return i === 0 ? grid.idx(4, 4) : grid.idx(5, 4);
+                return i === 0 ? worldIdxAtCell(grid, 4, 4) : worldIdxAtCell(grid, 5, 4);
             },
         };
         const state = {
@@ -127,7 +128,7 @@ describe("hpa ground nav replan policy", () => {
         const worker = {
             releaseOwnedPathSlot() {},
             pathIdx(_slot, i) {
-                return i === 0 ? grid.idx(2, 3) : grid.idx(4, 3);
+                return i === 0 ? worldIdxAtCell(grid, 2, 3) : worldIdxAtCell(grid, 4, 3);
             },
         };
         const request = new HpaReplanRequest({

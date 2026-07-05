@@ -9,7 +9,7 @@ import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Libraries/Spatial/spatial.js";
-import { colRowToIndex } from "./harness/testGridUtils.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("node worker shim", () => {
     it("runs HpaPathWorker nav topology sync", async () => {
@@ -54,7 +54,7 @@ describe("node worker shim", () => {
         grid.rebuildFixed(0, 0, 512, 512);
         const nav = await createWorkerNavigation(grid);
         const revision0 = nav.topology.wallRevision;
-        grid.grid[colRowToIndex(8, 8, grid.cols)] = 1;
+        grid.grid[worldIdxAtCell(grid, 8, 8)] = 1;
         bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
         await nav.commitEdit({ startCol: 7, endCol: 9, startRow: 7, endRow: 9 });
         assert.ok(nav.topology.wallRevision > revision0);
@@ -67,8 +67,8 @@ describe("node worker shim", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
         const navigation = await createWorkerNavigation(grid);
-        const start = grid.gridToWorldByIdx(colRowToIndex(2, 2, grid.cols));
-        const target = grid.gridToWorldByIdx(colRowToIndex(10, 10, grid.cols));
+        const start = grid.gridToWorldByIdx(worldIdxAtCell(grid, 2, 2));
+        const target = grid.gridToWorldByIdx(worldIdxAtCell(grid, 10, 10));
         const request = buildReplanParams(grid, start.x, start.y, target.x, target.y, navigation, null);
 
         const navState1 = createNavState();

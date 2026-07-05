@@ -359,10 +359,12 @@ function mapGenIdxRow(idx, cols) {
     return (idx / cols) | 0;
 }
 function mapGenIdxWithCol(idx, grid, col) {
-    return grid.idx(Math.round(col), mapGenIdxRow(idx, grid.cols));
+    const row = (idx / grid.cols) | 0;
+    return grid.worldToIdx(grid.gridCenterX(Math.round(col)), grid.gridCenterY(row));
 }
 function mapGenIdxWithRow(idx, grid, row) {
-    return grid.idx(mapGenIdxCol(idx, grid.cols), Math.round(row));
+    const col = idx % grid.cols;
+    return grid.worldToIdx(grid.gridCenterX(col), grid.gridCenterY(Math.round(row)));
 }
 function appendMapGenIdxColRowFields(parent, grid, config, idxKey, colLabel, rowLabel, addBound) {
     addBound(
@@ -1901,9 +1903,8 @@ export function growChainSegment(state, tailProp, options) {
 export function linkedChainOccupiedCellIndices(members, grid) {
     const indices = new Set();
     for (let i = 0; i < members.length; i++) {
-        const col = grid.worldCol(members[i].x);
-        const row = grid.worldRow(members[i].y);
-        indices.add(row * grid.cols + col);
+        const idx = grid.worldToIdx(members[i].x, members[i].y);
+        if (idx >= 0) indices.add(idx);
     }
     return indices;
 }
@@ -2557,7 +2558,7 @@ function createGroundNavBehavior(state, config) {
     };
     if (config.hasMoveTarget) behavior.hasMoveTarget = (prop) => config.hasMoveTarget(getRun(prop));
     if (config.clearMoveTarget) behavior.clearMoveTarget = (prop) => config.clearMoveTarget(state, prop, getRun, (run) => clearRun(prop, run));
-    if (config.getTargetCell) behavior.getTargetCell = (prop) => config.getTargetCell(state, getRun(prop));
+    if (config.getTargetCellIdx) behavior.getTargetCellIdx = (prop) => config.getTargetCellIdx(state, getRun(prop));
     if (config.needsNavRetry) behavior.needsNavRetry = (prop) => config.needsNavRetry(getRun(prop));
     if (config.replanMoveTarget) behavior.replanMoveTarget = (prop) => config.replanMoveTarget(state, getRun(prop), prop);
     if (config.getLocomotionStatus) behavior.getLocomotionStatus = (prop) => config.getLocomotionStatus(getRun(prop));
@@ -2678,7 +2679,7 @@ const HPA_GROUND_NAV_CONFIG = {
     applyMoveTarget(state, run, world, prop, forceReset) {
         const grid = state.obstacleGrid;
         const snapped = snapMoveTargetToCellCenter(grid, world);
-        const nextIdx = snapped.col != null ? snapped.col + snapped.row * grid.cols : null;
+        const nextIdx = snapped.idx;
         const cellChanged = nextIdx !== run.targetCellIdx;
         run.targetWorld = snapped.world;
         run.targetCellIdx = nextIdx;
@@ -2726,10 +2727,8 @@ const HPA_GROUND_NAV_CONFIG = {
         if (vx === 0 && vy === 0) return;
         steerRollToward(prop, vx, vy, config, steering?.desiredSpeed);
     },
-    getTargetCell(state, run) {
-        if (!run.targetWorld || run.targetCellIdx == null) return null;
-        const grid = state.obstacleGrid;
-        return { col: run.targetCellIdx % grid.cols, row: (run.targetCellIdx / grid.cols) | 0 };
+    getTargetCellIdx(state, run) {
+        return run.targetCellIdx;
     },
     needsNavRetry(run) {
         if (!run.targetWorld) return true;

@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { colRowToIndex } from "./harness/testGridUtils.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 
@@ -17,7 +17,7 @@ const CHAIN_OPTIONS = {
 };
 
 function stampBlockedCell(grid, col, row) {
-    grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
+    grid.grid[worldIdxAtCell(grid, col, row)] = 1;
 }
 
 function createNarrowCorridorState() {
@@ -33,8 +33,8 @@ function createNarrowCorridorState() {
 
 function segmentCenterInBlockedCell(state, prop) {
     const grid = state.obstacleGrid;
-    const { col, row } = grid.worldToGrid(prop.x, prop.y);
-    return grid.grid[colRowToIndex(col, row, grid.cols)] !== 0;
+    const idx = grid.worldToIdx(prop.x, prop.y);
+    return grid.grid[idx] !== 0;
 }
 
 function countSegmentsInBlockedCells(state, headId) {
@@ -50,7 +50,7 @@ function countSegmentsInBlockedCells(state, headId) {
 describe("chainVsWallGrowth (v1 accepted: tail clip on grow)", () => {
     it("v1 documents tail overlap when growth pushes segment centers into blocked corridor cells", () => {
         const state = createNarrowCorridorState();
-        const chain = spawnLinkedBallChain(state, colRowToIndex(5, 7, state.obstacleGrid.cols), CHAIN_OPTIONS);
+        const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 5, 7), CHAIN_OPTIONS);
         let tail = chain.tail;
         const growCount = 10;
         for (let i = 0; i < growCount; i++) tail = growChainSegment(state, tail, CHAIN_OPTIONS);

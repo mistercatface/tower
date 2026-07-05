@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { colRowToIndex } from "./harness/testGridUtils.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
 import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileId, resolveEdgeSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
@@ -29,14 +29,14 @@ describe("surface material stores", () => {
     it("resolve to the base profile unless a sparse override exists", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        const idx = colRowToIndex(1, 1, grid.cols);
+        const idx = worldIdxAtCell(grid,1, 1);
         assert.equal(resolveCellSurfaceProfileId(grid, idx, "base"), "base");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(1, 1, grid.cols), 2, "base"), "base");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 1), 2, "base"), "base");
         grid.setCellSurfaceProfileAtIdx(idx, "cell-profile");
         grid.setEdgeSurfaceProfile(idx, 2, "edge-profile");
         assert.equal(resolveCellSurfaceProfileId(grid, idx, "base"), "cell-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(1, 1, grid.cols), 2, "base"), "edge-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(1, 2, grid.cols), 0, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 1), 2, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 2), 0, "base"), "edge-profile");
     });
 
     it("material revisions do not change nav topology keys", () => {
@@ -44,7 +44,7 @@ describe("surface material stores", () => {
         grid.rebuildFixed(0, 0, 64, 64);
         const navKey = gridNavCacheKey(grid);
         const materialRevision = grid.surfaceMaterialRevision;
-        grid.setEdgeSurfaceProfile(colRowToIndex(1, 1, grid.cols), 0, "rust");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 0, "rust");
         assert.equal(gridNavCacheKey(grid), navKey);
         assert.notEqual(grid.surfaceMaterialRevision, materialRevision);
     });
@@ -52,17 +52,17 @@ describe("surface material stores", () => {
     it("remaps material-only cells and edges when grid bounds expand", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 32, 32);
-        grid.setCellSurfaceProfileAtIdx(colRowToIndex(0, 0, grid.cols), "cell-profile");
-        grid.setEdgeSurfaceProfile(colRowToIndex(1, 1, grid.cols), 2, "edge-profile");
+        grid.setCellSurfaceProfileAtIdx(worldIdxAtCell(grid,0, 0), "cell-profile");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 2, "edge-profile");
         grid.expandToCoverAabb({ minX: -32, minY: -16, maxX: 16, maxY: 16 });
-        assert.equal(resolveCellSurfaceProfileId(grid, colRowToIndex(1, 0, grid.cols), "base"), "cell-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, colRowToIndex(2, 1, grid.cols), 2, "base"), "edge-profile");
+        assert.equal(resolveCellSurfaceProfileId(grid, worldIdxAtCell(grid,1, 0), "base"), "cell-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,2, 1), 2, "base"), "edge-profile");
     });
 
     it("uses resolved edge profile ids for rail wall atlas selection", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        grid.setEdgeSurfaceProfile(colRowToIndex(1, 1, grid.cols), 1, "edge-profile");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 1, "edge-profile");
         let capturedProfileId = null;
         const state = {
             obstacleGrid: grid,
@@ -80,7 +80,7 @@ describe("surface material stores", () => {
             gridCol: 1,
             gridRow: 1,
             gridSide: 1,
-            gridIdx: colRowToIndex(1, 1, grid.cols),
+            gridIdx: worldIdxAtCell(grid,1, 1),
             isEdgeRail: true,
             wallHeight: 16,
             wallBaseZ: 0,
@@ -94,9 +94,9 @@ describe("surface material stores", () => {
     it("uses resolved cell profile ids for voxel wall atlas selection", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        const idx = colRowToIndex(1, 1, grid.cols);
+        const idx = worldIdxAtCell(grid,1, 1);
         grid.setCellSurfaceProfileAtIdx(idx, "cell-profile");
-        grid.setEdgeSurfaceProfile(colRowToIndex(1, 1, grid.cols), 1, "edge-profile");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 1, "edge-profile");
         let capturedProfileId = null;
         const state = {
             obstacleGrid: grid,
@@ -146,7 +146,7 @@ describe("surface material stores", () => {
             gridCol: 9,
             gridRow: 9,
             gridSide: 1,
-            gridIdx: colRowToIndex(9, 9, grid.cols),
+            gridIdx: worldIdxAtCell(grid,9, 9),
             isEdgeRail: false,
             wallHeight: 16,
             wallBaseZ: 0,

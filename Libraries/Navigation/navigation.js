@@ -5,7 +5,6 @@ import {
     manhattanDistanceIdx,
     octileDistanceIdx,
     makeAdjacencyKey,
-    forEachCardinalNeighbor,
     forEachCardinalNeighborIdx,
     boundaryBlocksStepFrom,
     recomputeNavCardinalOpenInto,
@@ -83,8 +82,8 @@ export class FlatGridView {
     idx(col, row) {
         return row * this.cols + col;
     }
-    contains(col, row) {
-        return col >= 0 && col < this.cols && row >= 0 && row < this.rows;
+    containsIdx(idx) {
+        return idx >= 0 && idx < this.cellCount;
     }
     canStep(idx0, idx1) {
         if (idx0 < 0 || idx0 >= this.cellCount || idx1 < 0 || idx1 >= this.cellCount) return false;
@@ -305,22 +304,21 @@ export function computeDistanceTransform(grid, frame, distToWall = null) {
     for (let i = 0; i < size; i++)
         if (grid[i]) {
             distances[i] = 0;
-            const col = i % cols;
-            const row = (i / cols) | 0;
-            queue.push(col, row);
+            queue.push(i);
         }
-    bfsColRowQueue(queue, (c, r, enqueue) => {
-        const currIdx = r * cols + c;
+    bfsIndices(queue, (currIdx, enqueue) => {
         const currDist = distances[currIdx];
+        const col = currIdx % cols;
+        const row = (currIdx / cols) | 0;
         for (const { dc, dr, cost } of OCTILE_OFFSETS) {
-            const nc = c + dc;
-            const nr = r + dr;
+            const nc = col + dc;
+            const nr = row + dr;
             if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
                 const nIdx = nr * cols + nc;
                 const nextDist = currDist + cost;
                 if (nextDist < distances[nIdx]) {
                     distances[nIdx] = nextDist;
-                    enqueue(nc, nr);
+                    enqueue(nIdx);
                 }
             }
         }
@@ -715,13 +713,11 @@ export class HpaReplanRequest {
         const grid = this.obstacleGrid;
         const cols = grid.cols;
         const rows = grid.rows;
-        let startCol = Math.max(0, Math.min(cols - 1, grid.worldCol(this.startX)));
-        let startRow = Math.max(0, Math.min(rows - 1, grid.worldRow(this.startY)));
-        let targetCol = Math.max(0, Math.min(cols - 1, grid.worldCol(this.targetX)));
-        let targetRow = Math.max(0, Math.min(rows - 1, grid.worldRow(this.targetY)));
-        let startIdx = startCol + startRow * cols;
+        let startIdx = grid.worldToIdx(this.startX, this.startY);
+        if (startIdx < 0) startIdx = 0;
         startIdx = findNearestOpenCellIdx(grid.grid, cols, rows, startIdx);
-        let targetIdx = targetCol + targetRow * cols;
+        let targetIdx = grid.worldToIdx(this.targetX, this.targetY);
+        if (targetIdx < 0) targetIdx = 0;
         targetIdx = findNearestOpenCellIdx(grid.grid, cols, rows, targetIdx);
         const snappedIdx = snapNavGoalCellIndex(grid, startIdx, targetIdx);
         globalReplanPayload.startIdx = startIdx;
@@ -738,19 +734,13 @@ export class HpaReplanRequest {
                 const grid = this.obstacleGrid;
                 const cols = grid.cols;
                 const rows = grid.rows;
-                const startCol = grid.worldCol(this.startX);
-                const startRow = grid.worldRow(this.startY);
-                const targetCol = grid.worldCol(this.targetX);
-                const targetRow = grid.worldRow(this.targetY);
+                const startIdx = grid.worldToIdx(this.startX, this.startY);
+                const targetIdx = grid.worldToIdx(this.targetX, this.targetY);
                 let errorMsg = "Unreachable";
-                if (startCol < 0 || startCol >= cols || startRow < 0 || startRow >= rows) errorMsg = "Start out of bounds";
-                else if (targetCol < 0 || targetCol >= cols || targetRow < 0 || targetRow >= rows) errorMsg = "Target out of bounds";
-                else {
-                    const startIdx = startCol + startRow * cols;
-                    const targetIdx = targetCol + targetRow * cols;
-                    if (grid.isBlockedIdx(startIdx)) errorMsg = "Start blocked";
-                    else if (grid.isBlockedIdx(targetIdx)) errorMsg = "Target blocked";
-                }
+                if (startIdx < 0) errorMsg = "Start out of bounds";
+                else if (targetIdx < 0) errorMsg = "Target out of bounds";
+                else if (grid.isBlockedIdx(startIdx)) errorMsg = "Start blocked";
+                else if (grid.isBlockedIdx(targetIdx)) errorMsg = "Target blocked";
                 FloatingText.spawn(this.state, this.targetX, this.targetY, errorMsg, "#ff3333");
             }
             return;
@@ -1021,8 +1011,7 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
 }
 function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY) {
     const { cols, rows } = frame;
-    const { col, row } = snapshotWorldToGrid(frame, seedWorldX, seedWorldY);
-    const seedIdx = row * cols + col;
+    const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
     const startIdx = findNearestOpenCellIdx(blocked, cols, rows, seedIdx);
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;
@@ -1512,14 +1501,6 @@ export function buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePr
         }
     }
 }
-/** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology @param {number} col @param {number} row */
-export function navIsBlocked(frame, topology, col, row) {
-    const { cols, rows } = frame;
-    if (col < 0 || col >= cols || row < 0 || row >= rows) return true;
-    const idx = row * cols + col;
-    if (!cellInRect(idx, cols, rows)) return true;
-    return topology.blocked[idx] !== 0;
-}
 /** @param {import("./GridNavSnapshot.js").GridFrame} frame @param {NavTopology} topology */
 export function navCanStep(frame, topology, fromIdx, toIdx) {
     if (fromIdx < 0 || toIdx < 0) return false;
@@ -1561,9 +1542,6 @@ export function createNavSimView(frame, gridFill, floorKind, floorFacing, edgeSl
         hasAnyCellEdgeAtIdx(idx) {
             const base = idx << 2;
             return edgeSlots[base] !== -1 || edgeSlots[base + 1] !== -1 || edgeSlots[base + 2] !== -1 || edgeSlots[base + 3] !== -1;
-        },
-        isBlocked(col, row) {
-            return gridFill[row * frame.cols + col] !== 0;
         },
         isBlockedIdx(idx) {
             if (idx < 0 || idx >= gridFill.length) return true;
@@ -1652,24 +1630,18 @@ export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
  * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
  */
 export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) {
-    const cols = grid.cols;
-    const rows = grid.rows;
-    const fromCol = grid.worldCol(fromX);
-    const fromRow = grid.worldRow(fromY);
-    const targetCol = grid.worldCol(targetX);
-    const targetRow = grid.worldRow(targetY);
-    if (targetCol < 0 || targetCol >= cols || targetRow < 0 || targetRow >= rows) {
+    const fromIdx = grid.worldToIdx(fromX, fromY);
+    const targetIdx = grid.worldToIdx(targetX, targetY);
+    if (targetIdx < 0) {
         out.x = targetX;
         out.y = targetY;
         return out;
     }
-    const targetIdx = targetCol + targetRow * cols;
-    if (!cellInRect(targetIdx, cols, rows)) {
+    if (!cellInRect(targetIdx, grid.cols, grid.rows)) {
         out.x = targetX;
         out.y = targetY;
         return out;
     }
-    const fromIdx = fromCol + fromRow * cols;
     const snappedIdx = snapNavGoalCellIndex(grid, fromIdx, targetIdx);
     if (snappedIdx !== targetIdx) {
         out.x = grid.gridCenterXByIdx(snappedIdx);
@@ -1952,8 +1924,7 @@ function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, g
  */
 export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTopology) {
     if (pathLen <= 0) return 0;
-    const cols = grid.cols;
-    const hereIdx = grid.worldCol(x) + grid.worldRow(y) * cols;
+    const hereIdx = grid.worldToIdx(x, y);
     let idx = 0;
     for (let i = 0; i < pathLen; i++) if (worker.pathIdx(slot, i) === hereIdx) idx = i + 1;
     if (idx >= pathLen) idx = pathLen - 1;
@@ -2006,11 +1977,16 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
     }
     const first = pathNodes[0];
     if (first && Math.hypot(first.x - x, first.y - y) > 1) {
-        const aCol = grid.worldCol(x);
-        const aRow = grid.worldRow(y);
-        const bCol = grid.worldCol(first.x);
-        const bRow = grid.worldRow(first.y);
-        if (Math.abs(aCol - bCol) <= 1 && Math.abs(aRow - bRow) <= 1) pathNodes.unshift({ x, y });
+        const aIdx = grid.worldToIdx(x, y);
+        const bIdx = grid.worldToIdx(first.x, first.y);
+        if (aIdx >= 0 && bIdx >= 0) {
+            const cols = grid.cols;
+            const aCol = aIdx % cols;
+            const aRow = (aIdx / cols) | 0;
+            const bCol = bIdx % cols;
+            const bRow = (bIdx / cols) | 0;
+            if (Math.abs(aCol - bCol) <= 1 && Math.abs(aRow - bRow) <= 1) pathNodes.unshift({ x, y });
+        }
     }
     return { pathNodes };
 }
@@ -2203,7 +2179,7 @@ const tempEvaluator = new PathSteeringEvaluator();
 export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
     const x = pose.x;
     const y = pose.y;
-    const bodyIdx = grid.worldCol(x) + grid.worldRow(y) * grid.cols;
+    const bodyIdx = grid.worldToIdx(x, y);
     // Initialize evaluator and resolve wall clearance first so we can use its properties
     tempEvaluator.init(pose, worker, slot, pathLen, grid, settings);
     tempEvaluator.resolveClearanceRadius();
@@ -2381,10 +2357,15 @@ export function snapshotGridCenterX(frame, col) {
 export function snapshotGridCenterY(frame, row) {
     return gridCenterYAtOrigin(row, frame.minY, frame.cellSize * 0.5);
 }
-export function snapshotWorldToGrid(frame, x, y) {
-    return { col: snapshotWorldCol(frame, x), row: snapshotWorldRow(frame, y) };
+export function snapshotWorldToIdx(frame, x, y) {
+    const col = snapshotWorldCol(frame, x);
+    const row = snapshotWorldRow(frame, y);
+    if (col < 0 || col >= frame.cols || row < 0 || row >= frame.rows) return -1;
+    return row * frame.cols + col;
 }
-export function snapshotGridToWorld(frame, col, row) {
+export function snapshotGridToWorldIdx(frame, idx) {
+    const col = idx % frame.cols;
+    const row = (idx / frame.cols) | 0;
     return { x: snapshotGridCenterX(frame, col), y: snapshotGridCenterY(frame, row) };
 }
 export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
@@ -2415,17 +2396,6 @@ export function bfsIndices(seeds, visit) {
     }
     return queue;
 }
-export function bfsColRowQueue(queue, visit) {
-    let head = 0;
-    while (head < queue.length) {
-        const col = queue[head++];
-        const row = queue[head++];
-        visit(col, row, (nc, nr) => {
-            queue.push(nc, nr);
-        });
-    }
-    return queue;
-}
 export function bfsTypedIndices(startIdx, gridSize, visit) {
     const visited = new Uint8Array(gridSize);
     const queue = new Int32Array(gridSize);
@@ -2447,9 +2417,6 @@ export function snapLayoutOrigin(px, py, cols, rows, cellSize) {
     const totalW = cols * cellSize;
     const totalH = rows * cellSize;
     return { offsetX: Math.round((px - totalW / 2) / cellSize) * cellSize, offsetY: Math.round((py - totalH / 2) / cellSize) * cellSize };
-}
-export function gridCellCenter(offsetX, offsetY, col, row, cellSize) {
-    return { x: offsetX + col * cellSize + cellSize / 2, y: offsetY + row * cellSize + cellSize / 2 };
 }
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
 /** @typedef {import("../Pathfinding/FlowFieldGrid.js").FlowFieldGrid} FlowFieldGrid */
@@ -2707,12 +2674,9 @@ export class FlowFieldGrid {
         return new Uint8Array(this.sabFlowPool, slot * size, size);
     }
     readFlowStepsAt(slot, worldX, worldY) {
-        const col = this.window.worldCol(worldX);
-        const row = this.window.worldRow(worldY);
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return null;
-        const idx = row * this.cols + col;
-        const dist = this.flowDistPool[slot * this.cols * this.rows + idx];
-        return dist >= 0 ? dist : null;
+        const idx = this.window.worldToIdx(worldX, worldY);
+        if (idx < 0) return null;
+        return this.readFlowStepsAtIdx(slot, idx);
     }
     readFlowStepsAtIdx(slot, idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return null;
@@ -2751,14 +2715,14 @@ export class FlowFieldGrid {
         this.invalidateNavTopology();
         this.invalidateFlowSlots();
     }
-    worldToGrid(x, y) {
-        return this.window.worldToGrid(x, y);
+    worldToIdx(x, y) {
+        return this.window.worldToIdx(x, y);
     }
     containsWorldPoint(x, y) {
         return this.window.containsWorldPoint(x, y);
     }
-    gridToWorld(col, row) {
-        return this.window.gridToWorld(col, row);
+    gridToWorldIdx(idx) {
+        return this.window.gridToWorldIdx(idx);
     }
     getCellBoundsByIdx(idx) {
         return this.window.getCellBoundsByIdx(idx);
@@ -2850,15 +2814,15 @@ export class FlowCacheManager {
     }
     getOrRequestSlot(targetX, targetY, range, protocol) {
         if (!this.window.ready) return null;
-        const targetCol = this.window.worldCol(targetX);
-        const targetRow = this.window.worldRow(targetY);
-        if (targetCol < 0 || targetCol >= this.window.cols || targetRow < 0 || targetRow >= this.window.rows) return null;
-        const targetIdx = targetRow * this.window.cols + targetCol;
+        const targetIdx = this.window.worldToIdx(targetX, targetY);
+        if (targetIdx < 0) return null;
         const normalizedRange = Number.isFinite(range) ? range | 0 : 999999;
         let slot = this.findSlot(targetIdx, normalizedRange);
         if (slot === -1) {
             slot = this.allocateSlot(targetIdx, normalizedRange);
-            protocol.postSlot(slot, { type: "updateFlow", tx: targetCol, ty: targetRow, range: normalizedRange });
+            const tx = targetIdx % this.window.cols;
+            const ty = (targetIdx / this.window.cols) | 0;
+            protocol.postSlot(slot, { type: "updateFlow", tx, ty, range: normalizedRange });
         } else this.markUsed(slot);
         return slot;
     }
@@ -2970,15 +2934,21 @@ export class FlowFieldWindow {
     gridCenterY(row) {
         return gridCenterYInCenteredFrame(this.frame, row);
     }
-    worldToGrid(x, y) {
-        return { col: this.worldCol(x), row: this.worldRow(y) };
-    }
-    containsWorldPoint(x, y) {
+    worldToIdx(x, y) {
         const col = this.worldCol(x);
         const row = this.worldRow(y);
-        return col >= 0 && col < this.cols && row >= 0 && row < this.rows;
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
+        return row * this.cols + col;
     }
-    gridToWorld(col, row) {
+    containsIdx(idx) {
+        return idx >= 0 && idx < this.cols * this.rows;
+    }
+    containsWorldPoint(x, y) {
+        return this.worldToIdx(x, y) >= 0;
+    }
+    gridToWorldIdx(idx) {
+        const col = idx % this.cols;
+        const row = (idx / this.cols) | 0;
         return { x: this.gridCenterX(col), y: this.gridCenterY(row) };
     }
     getCellBoundsByIdx(idx) {
@@ -2992,20 +2962,20 @@ export class FlowFieldWindow {
     }
 }
 export class FlowFieldRequest {
-    constructor(targetCol, targetRow, targetIdx, range) {
-        this.targetCol = targetCol;
-        this.targetRow = targetRow;
+    constructor(targetIdx, range, cols) {
         this.targetIdx = targetIdx;
         this.range = range;
+        this.cols = cols;
     }
     static fromWorld(flowWindow, targetX, targetY, range = 999999) {
-        const targetCol = flowWindow.worldCol(targetX);
-        const targetRow = flowWindow.worldRow(targetY);
-        if (targetCol < 0 || targetCol >= flowWindow.cols || targetRow < 0 || targetRow >= flowWindow.rows) return null;
-        return new FlowFieldRequest(targetCol, targetRow, targetRow * flowWindow.cols + targetCol, range);
+        const targetIdx = flowWindow.worldToIdx(targetX, targetY);
+        if (targetIdx < 0) return null;
+        return new FlowFieldRequest(targetIdx, range, flowWindow.cols);
     }
     toWorkerPayload() {
-        return { type: "updateFlow", tx: this.targetCol, ty: this.targetRow, range: this.range };
+        const tx = this.targetIdx % this.cols;
+        const ty = (this.targetIdx / this.cols) | 0;
+        return { type: "updateFlow", tx, ty, range: this.range };
     }
 }
 export function rebuildFlowToNavIdx(flowToNavIdx, flowFrame, navFrame) {

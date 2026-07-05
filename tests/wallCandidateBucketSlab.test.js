@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { colRowToIndex } from "./harness/testGridUtils.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  SpatialFrameCore  } from "../Libraries/Spatial/spatial.js";
 import { 
     commitWallCandidateBucket,
@@ -14,7 +14,7 @@ import {
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 
 function stampBlockedCell(grid, col, row) {
-    grid.grid[colRowToIndex(col, row, grid.cols)] = 1;
+    grid.grid[worldIdxAtCell(grid, col, row)] = 1;
 }
 
 describe("wall candidate bucket slab", () => {

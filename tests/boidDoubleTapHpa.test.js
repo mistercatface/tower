@@ -5,6 +5,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxController, spawnPlacedSandboxProp, createDefaultSandboxBehaviors, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/sandbox.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 function createEditorTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
     const grid = new WorldObstacleGrid(16);
@@ -51,7 +52,7 @@ describe("boid double tap hpa pathing", () => {
         // Spawn the boid triangle prop
         const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "neutral");
         // Write a floor cell at col: 22, row: 22 to ensure Click 1 changes selection to floor
-        const cellIdx = state.obstacleGrid.idx(22, 22);
+        const cellIdx = worldIdxAtCell(state.obstacleGrid, 22, 22);
         state.obstacleGrid.writeFloorCell(cellIdx, 1, 0); // 1 = FLOOR_CELL_KIND.Belt
         // Setup mock canvas with listener recording
         const eventListeners = {};
@@ -93,20 +94,16 @@ describe("boid double tap hpa pathing", () => {
         // Check that the move target is set
         const hpaBehavior = behaviors.find((b) => b.id === "rollToCursorHpa");
         assert.ok(hpaBehavior.hasMoveTarget(prop));
-        const target = hpaBehavior.getTargetCell(prop);
-        // Grid cell at x: 100, y: 100 on 16px grid is col: 22, row: 22
-        assert.equal(target.col, 22);
-        assert.equal(target.row, 22);
+        const targetIdx = hpaBehavior.getTargetCellIdx(prop);
+        assert.equal(targetIdx, worldIdxAtCell(state.obstacleGrid, 22, 22));
         // 3. Verify a subsequent single click on the ground does NOT update the path, and deselects the boid instead
         // Write another floor cell at col: 23, row: 23 (x: 116, y: 116)
-        const cellIdx2 = state.obstacleGrid.idx(23, 23);
+        const cellIdx2 = worldIdxAtCell(state.obstacleGrid, 23, 23);
         state.obstacleGrid.writeFloorCell(cellIdx2, 1, 0);
         eventListeners.pointerdown({ button: 0, clientX: 116, clientY: 116, detail: 1, pointerId: 1, preventDefault() {}, stopPropagation() {} });
         eventListeners.pointerup({ clientX: 116, clientY: 116, pointerId: 1, preventDefault() {}, stopPropagation() {} });
-        // The target cell should remain col: 22, row: 22 (no update)
-        const newTarget = hpaBehavior.getTargetCell(prop);
-        assert.equal(newTarget.col, 22);
-        assert.equal(newTarget.row, 22);
+        const newTargetIdx = hpaBehavior.getTargetCellIdx(prop);
+        assert.equal(newTargetIdx, worldIdxAtCell(state.obstacleGrid, 22, 22));
         // The selection should have been changed/cleared from the boid
         assert.notEqual(controller.session.getSelectedProp()?.id, prop.id);
         // Re-select the boid so we can test the drag-launch restoration next

@@ -3,6 +3,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 
 async function createGridWithNav() {
@@ -14,7 +15,7 @@ async function createGridWithNav() {
 function mockWorker(path, grid) {
     return {
         pathIdx(_slot, i) {
-            return grid.idx(path[i].col, path[i].row);
+            return worldIdxAtCell(grid, path[i].col, path[i].row);
         },
     };
 }

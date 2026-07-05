@@ -9,7 +9,7 @@ import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
-import { colRowToIndex } from "./harness/testGridUtils.js";
+import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 function createSnapshotTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -41,7 +41,7 @@ function applyPhysicsSnapshot(state, doc) {
 describe("sandboxSceneSnapshot physics", () => {
     it("collectSandboxSceneSnapshot exports flat props, constraints, and chain head index", () => {
         const state = createSnapshotTestState();
-        spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), {
+        spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
             segmentCount: 4,
             spacing: 16,
             ballType: "ball",
@@ -62,7 +62,7 @@ describe("sandboxSceneSnapshot physics", () => {
         const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball");
         const tintHex = hueToPickerHex(135);
         setPropVisualTint(tinted, tintHex);
-        spawnLinkedBallChain(state, colRowToIndex(10, 10, state.obstacleGrid.cols), {
+        spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
             segmentCount: 4,
             spacing: 16,
             ballType: "ball",

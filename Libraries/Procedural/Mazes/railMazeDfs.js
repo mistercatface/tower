@@ -1,5 +1,5 @@
 import { createSeededRng } from "../../Math/math.js";
-export function bakeRailMazeDfs(stampBounds, options, mapSeed) {
+export function bakeRailMazeDfs(stampBounds, options, mapSeed, gridCols) {
     const cols = stampBounds.cols;
     const rows = stampBounds.rows;
     const originCol = stampBounds.originCol;
@@ -56,7 +56,7 @@ export function bakeRailMazeDfs(stampBounds, options, mapSeed) {
     const thicknessLevel = options.railWallThicknessLevel ?? 1;
     const walls = [];
     const pushWall = (c, r, side) => {
-        walls.push({ col: c + originCol, row: r + originRow, side, heightLevel, thicknessLevel });
+        walls.push({ idx: (originRow + r) * gridCols + (originCol + c), side, heightLevel, thicknessLevel });
     };
     for (let r = 0; r < rows; r++) {
         const ly = Math.min(numY - 1, Math.floor(r / W_c));

@@ -82,7 +82,7 @@ export function applyMapGenBoundsDrag(grid, mode, dxWorld, dyWorld, config) {
             boundsRow += Math.round(config.boundsRows - nextRows);
             config.boundsRows = nextRows;
         }
-        config.boundsIdx = grid.idx(boundsCol, boundsRow);
+        config.boundsIdx = grid.worldToIdx(grid.gridCenterX(boundsCol), grid.gridCenterY(boundsRow));
         migrateMapGenBoundsForMode(grid, config);
         return;
     }
@@ -91,7 +91,7 @@ export function applyMapGenBoundsDrag(grid, mode, dxWorld, dyWorld, config) {
         let centerRow = (config.centerIdx / cols) | 0;
         centerCol += Math.round(dxCells);
         centerRow += Math.round(dyCells);
-        config.centerIdx = grid.idx(centerCol, centerRow);
+        config.centerIdx = grid.worldToIdx(grid.gridCenterX(centerCol), grid.gridCenterY(centerRow));
     } else if (mode === "resize-outer") {
         const delta = Math.round((dxCells + dyCells) * 0.5);
         config.outerRadiusCells = Math.max(1, config.outerRadiusCells + delta);
