@@ -9,7 +9,7 @@ import { FloorBelt } from "../../Spatial/spatial.js";
 import { gridSettings } from "../../../Config/world.js";
 import { stampRailWallsQuiet } from "../../Sandbox/gridWallEdit.js";
 import { commitGridNavEdit } from "../../Sandbox/gridNavEdit.js";
-import { cellBoundsAtIdx, unionCellBounds } from "../../DataStructures/CellRect.js";
+import { cellBoundsAtIdx, unionCellBounds } from "../../Spatial/spatial.js";
 import { isNavWalkableAt } from "./walkableCells.js";
 import { beltFootprintIndices, tryValidateBeltChains } from "./beltChainValidation.js";
 import { gridSideFromCellIdxToNeighborIdx } from "../../Spatial/spatial.js";

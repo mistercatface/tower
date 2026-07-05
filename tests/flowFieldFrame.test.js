@@ -7,9 +7,9 @@ import {  createCenteredGridFrame, gridToWorldInCenteredFrame, worldToGridInCent
 
 
 
-import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Pathfinding/neighborGridLayout.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Navigation/navigation.js";
 
-import { bfsTypedIndices } from "../Libraries/DataStructures/gridBfs.js";
+import { bfsTypedIndices } from "../Libraries/Navigation/navigation.js";
 
 function gridReachabilityBfs(grid, startIdx, targetIdx, blockedFn) {
     if (startIdx === targetIdx) return true;

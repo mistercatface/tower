@@ -55,8 +55,8 @@ export function resolveFloorBeltKindFromSpawnAsset(asset) {
     if (kind === "elbowRight") return FLOOR_CELL_KIND.BeltElbowRight;
     return FLOOR_CELL_KIND.Belt;
 }
-const FLOOR_BELT_KINDS = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
 export function listFloorBeltKindOptions() {
+    const FLOOR_BELT_KINDS = [FLOOR_CELL_KIND.Belt, FLOOR_CELL_KIND.BeltElbowLeft, FLOOR_CELL_KIND.BeltElbowRight];
     return FLOOR_BELT_KINDS.map((kind) => ({ kind, label: FloorBelt.formatKindLabel(kind) }));
 }
 export function resolveSandboxBehaviors(asset, state, prop = null) {

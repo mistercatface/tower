@@ -53,8 +53,8 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-import { packEdgeCellKey, boundsToCellRect } from "../DataStructures/CellKey.js";
-import { emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, forEachDenseCellInRect } from "../DataStructures/CellRect.js";
+
+
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 // --- MERGED FROM SpatialFrameCore.js ---
@@ -2724,4 +2724,125 @@ export function tickGridZoneMembership(spatialFrame, grid, subscriptions, handle
         entity._gridZoneKeys = next;
         entity._gridZoneNextKeys = prev;
     }
+}
+
+// --- MERGED FROM CellKey.js ---
+
+/**
+ * Packed (col, row) key for sparse unbounded grids.
+ *
+ * World AABB → cell index range uses minCol/maxCol/minRow/maxRow (see boundsToCellRect).
+ * Wall bake / obstacle patches use startCol/endCol/startRow/endRow — same indices as {@link CellBounds} in CellRect.js.
+ */
+export const KEY_STRIDE = 65536;
+const EDGE_KEY_STRIDE = KEY_STRIDE * KEY_STRIDE;
+/** Keys at or above this value are packed edge zone ids (`packEdgeCellKey`). */
+export const EDGE_ZONE_KEY_MIN = EDGE_KEY_STRIDE;
+export function packCellKey(col, row) {
+    return col + row * KEY_STRIDE;
+}
+/** Sparse health for railWall edges — side encoded above cell row/col key space. */
+export function packEdgeCellKey(col, row, side) {
+    return packCellKey(col, row) + (side + 1) * EDGE_KEY_STRIDE;
+}
+export function unpackCellKey(key) {
+    return { col: key % KEY_STRIDE, row: (key / KEY_STRIDE) | 0 };
+}
+/** @param {number} key from `packEdgeCellKey` */
+export function unpackEdgeCellKey(key) {
+    const side = (key / EDGE_KEY_STRIDE) | 0;
+    const cellKey = key - side * EDGE_KEY_STRIDE;
+    return { ...unpackCellKey(cellKey), side: side - 1 };
+}
+/** @param {number} key */
+export function isEdgeZoneKey(key) {
+    return key >= EDGE_ZONE_KEY_MIN;
+}
+export function worldToCell(x, y, cellSize) {
+    return { col: Math.floor(x / cellSize), row: Math.floor(y / cellSize) };
+}
+export function worldToSparseCellKey(x, y, cellSize) {
+    const col = Math.floor(x / cellSize);
+    const row = Math.floor(y / cellSize);
+    return packCellKey(col, row);
+}
+export function boundsToCellRect(minX, minY, maxX, maxY, cellSize) {
+    return { minCol: Math.floor(minX / cellSize), maxCol: Math.floor(maxX / cellSize), minRow: Math.floor(minY / cellSize), maxRow: Math.floor(maxY / cellSize) };
+}
+
+// --- MERGED FROM CellRect.js ---
+
+/** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
+export function emptyCellBounds() {
+    return { startCol: Infinity, endCol: -Infinity, startRow: Infinity, endRow: -Infinity };
+}
+/** @param {CellBounds} bounds */
+export function isEmptyCellBounds(bounds) {
+    return bounds.startCol === Infinity;
+}
+/** @param {CellBounds} bounds @param {number} cols @param {number} rows @returns {CellBounds} */
+export function clampCellBoundsToGrid(bounds, cols, rows) {
+    return { startCol: Math.max(0, bounds.startCol), endCol: Math.min(cols - 1, bounds.endCol), startRow: Math.max(0, bounds.startRow), endRow: Math.min(rows - 1, bounds.endRow) };
+}
+export function cellBoundsForGrid(cols, rows) {
+    return { startCol: 0, endCol: cols - 1, startRow: 0, endRow: rows - 1 };
+}
+export function padCellBoundsToGrid(bounds, cols, rows, padding = 0) {
+    return {
+        startCol: Math.max(0, bounds.startCol - padding),
+        endCol: Math.min(cols - 1, bounds.endCol + padding),
+        startRow: Math.max(0, bounds.startRow - padding),
+        endRow: Math.min(rows - 1, bounds.endRow + padding),
+    };
+}
+export function padCellIdxToGrid(idx, cols, rows, padding = 0) {
+    return {
+        startCol: Math.max(0, (idx % cols) - padding),
+        endCol: Math.min(cols - 1, (idx % cols) + padding),
+        startRow: Math.max(0, ((idx / cols) | 0) - padding),
+        endRow: Math.min(rows - 1, ((idx / cols) | 0) + padding),
+    };
+}
+export function growCellBoundsIdx(bounds, idx, cols) {
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    if (col < bounds.startCol) bounds.startCol = col;
+    if (col > bounds.endCol) bounds.endCol = col;
+    if (row < bounds.startRow) bounds.startRow = row;
+    if (row > bounds.endRow) bounds.endRow = row;
+    return bounds;
+}
+export function cellBoundsAtIdx(idx, cols) {
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    return { startCol: col, endCol: col, startRow: row, endRow: row };
+}
+/** @param {CellBounds | null} a @param {CellBounds | null} b @returns {CellBounds | null} */
+export function unionCellBounds(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    return { startCol: Math.min(a.startCol, b.startCol), endCol: Math.max(a.endCol, b.endCol), startRow: Math.min(a.startRow, b.startRow), endRow: Math.max(a.endRow, b.endRow) };
+}
+/** @param {(CellBounds | null)[]} parts @returns {CellBounds | null} */
+export function unionCellBoundsList(parts) {
+    let out = null;
+    for (let i = 0; i < parts.length; i++) out = unionCellBounds(out, parts[i]);
+    return out;
+}
+/** Iterate sparse grid cells; fn(col, row, packedKey). */
+export function forEachSparseCellInRect(minCol, maxCol, minRow, maxRow, fn) {
+    for (let r = minRow; r <= maxRow; r++) {
+        const rowKey = r * KEY_STRIDE;
+        for (let c = minCol; c <= maxCol; c++) fn(c, r, c + rowKey);
+    }
+}
+/** Iterate dense grid cells; fn(col, row, cellIndex). */
+export function forEachDenseCellInRect(minCol, maxCol, minRow, maxRow, cols, fn) {
+    for (let r = minRow; r <= maxRow; r++) {
+        const rowOffset = r * cols;
+        for (let c = minCol; c <= maxCol; c++) fn(rowOffset + c);
+    }
+}
+export function forEachDenseCellInBounds(bounds, cols, fn) {
+    forEachDenseCellInRect(bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, cols, fn);
 }

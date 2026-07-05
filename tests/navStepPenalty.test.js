@@ -5,7 +5,7 @@ describe("nav step penalty", () => {
     it("local A* routes around a heavily penalized cell", async () => {
         const { FlatGridSearch, SearchState, FlatGridView } = await import("../Libraries/Navigation/navigation.js");
         const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
-        const { packCellKey } = await import("../Libraries/DataStructures/CellKey.js");
+        const { packCellKey } = await import("../Libraries/Spatial/spatial.js");
 
         const cols = 5;
         const rows = 3;

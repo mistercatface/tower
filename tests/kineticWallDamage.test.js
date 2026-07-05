@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { computeWallBreakStrength } from "../Libraries/Physics/physics.js";
-import { applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Sandbox/gridWallDamage.js";;
+import { applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Physics/physics.js";;
 import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";

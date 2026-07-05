@@ -11,6 +11,7 @@ import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { EntityRegistry } from "./EntityRegistry.js";
 import { KineticSession } from "./KineticSession.js";
 import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";
+import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 60, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };
 export class SharedGameState {
     constructor() {
@@ -34,6 +35,7 @@ export class SharedGameState {
         this.projectiles = [];
         this.entityRegistry = new EntityRegistry();
         this.kinetic = new KineticSession();
+        this.spatialFrame = kineticSpatial;
         this.wallResolver = new WallCollisionResolver();
         this.obstacleGrid.rebuildFixed(0, 0, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows));
         void this.nav.commitEdit(null, { fullNavSync: true });

@@ -1,12 +1,11 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { createTwoAnchorWireTool } from "../Editor/twoAnchorWireTool.js";
 import { addChainLink, isChainLinkBall } from "../Sandbox/chainLinks.js";
 export function createChainLinkWireTool(state, session) {
     const tool = createTwoAnchorWireTool({
         getEnterCursor: () => ({ x: state.viewport.x, y: state.viewport.y }),
         pickAnchor(world) {
-            const prop = findWorldPropAtInView(state.entityRegistry, kineticSpatial, world.x, world.y);
+            const prop = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, world.x, world.y);
             if (!prop || !isChainLinkBall(prop)) return null;
             return prop.id;
         },

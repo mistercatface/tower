@@ -14,7 +14,6 @@ import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js
 import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
 import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
 import { createAabb } from "../Math/math.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
@@ -460,7 +459,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             return buildSandboxOverlayCommands({
                 state,
                 session,
-                spatialFrame: kineticSpatial,
+                spatialFrame: state.spatialFrame,
                 placePreviewWorld: showPlacePreview ? placePreviewWorld : null,
                 marqueeRect: marqueeTool.getMarqueeRect(),
                 behaviorById,

@@ -84,7 +84,7 @@ function expandGridForSnapshot(state, doc) {
 }
 /** @param {object} state */
 function clearSandboxSceneContent(state) {
-    for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
+    for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i], state.spatialFrame);
     clearKineticConstraints(state.kinetic);
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });

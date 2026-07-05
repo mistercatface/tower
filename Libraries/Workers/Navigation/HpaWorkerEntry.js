@@ -17,7 +17,7 @@ import {
 } from "../../Navigation/navigation.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
-import { packCellKey, KEY_STRIDE } from "../../DataStructures/CellKey.js";
+import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
 import { FloorBelt } from "../../Spatial/spatial.js";
 const CONVEYOR_AGAINST_FLOW_PENALTY = 20;
 const CONVEYOR_LATERAL_PENALTY = 5;

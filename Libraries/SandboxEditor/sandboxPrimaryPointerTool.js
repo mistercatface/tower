@@ -1,5 +1,4 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
@@ -23,7 +22,7 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
         isActive: () => true,
         onPointerDown(world, e) {
             if (e.button !== 0 || (!e.ctrlKey && !e.metaKey)) return false;
-            const hit = findWorldPropAtInView(state.entityRegistry, kineticSpatial, world.x, world.y);
+            const hit = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, world.x, world.y);
             if (hit) return false;
             return tryPlaceSpawnAtWorld(world, { selectSpawned: false });
         },
@@ -34,9 +33,10 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             if (e.button !== 0) return false;
             const now = e.timeStamp || Date.now();
             const hasClient = e.clientX !== undefined && e.clientY !== undefined;
-            const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && (hasClient
-                ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0
-                : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
+            const isDoubleTap =
+                e.detail === 2 ||
+                (now - lastClickTime < 300 &&
+                    (hasClient ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0 : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
             let targetBoidId = lastSelectedBoidId;
             if (state.editor.lockSelection) {
                 const boid = state.worldProps.find((p) => p.type === "boid_triangle");
@@ -75,7 +75,7 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             for (let i = 0; i < behaviors.length; i++) if (behaviors[i].tryCanvasInput?.(world, e)) return true;
             session.pruneSelection();
             const registry = state.entityRegistry;
-            const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
+            const hit = findWorldPropAtInView(registry, state.spatialFrame, world.x, world.y);
             if (hit) {
                 if (state.editor.lockSelection && !session.isSelected(hit.id)) return "consume";
                 if (state.followCamera?.focusFromPropId(hit.id)) return "consume";

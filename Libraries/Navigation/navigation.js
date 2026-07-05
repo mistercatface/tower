@@ -18,11 +18,13 @@ import {
     edgeNeighborIdx,
     FloorBelt,
     hasLineOfSight,
+    worldColAtOrigin,
+    worldRowAtOrigin,
 } from "./../Spatial/spatial.js";
-import { bfsColRowQueue, bfsIndices } from "./../DataStructures/gridBfs.js";
+
 import { FloatingText } from "./../Render/FloatingText.js";
-import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid, clampCellBoundsToGrid, forEachDenseCellInRect } from "./../DataStructures/CellRect.js";
-import { snapshotWorldToGrid, gridFrameFromGrid } from "./../Pathfinding/GridNavSnapshot.js";
+import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid, clampCellBoundsToGrid, forEachDenseCellInRect } from "../Spatial/spatial.js";
+
 import { MAX_HPA_REPLAN_SLOTS } from "./../Pathfinding/HpaPathWorker.js";
 import { agentPose } from "./../Agent/index.js";
 import { resolveBodyRadius } from "./../Physics/physics.js";
@@ -2360,5 +2362,96 @@ export class HpaNavSession {
     }
     getCommitStatus() {
         return { routeCommitFrames: this.routeCommitFrames };
+    }
+}
+
+// --- MERGED FROM GridNavSnapshot.js ---
+
+/** @typedef {{ minX: number, minY: number, cellSize: number, cols: number, rows: number, key: string }} GridFrame */
+/** Stable id for obstacle-grid frame — resize or origin shift changes this. */
+export function gridNavFrameKey(grid) {
+    return `${grid.cols}:${grid.rows}:${grid.minX}:${grid.minY}:${grid.cellSize}`;
+}
+/** @param {{ minX: number, minY: number, cellSize: number, cols: number, rows: number }} grid */
+export function gridFrameFromGrid(grid) {
+    return { minX: grid.minX, minY: grid.minY, cellSize: grid.cellSize, cols: grid.cols, rows: grid.rows, key: gridNavFrameKey(grid) };
+}
+export function snapshotWorldCol(frame, x) {
+    return worldColAtOrigin(x, frame.minX, frame.cellSize);
+}
+export function snapshotWorldRow(frame, y) {
+    return worldRowAtOrigin(y, frame.minY, frame.cellSize);
+}
+export function snapshotGridCenterX(frame, col) {
+    return gridCenterXAtOrigin(col, frame.minX, frame.cellSize * 0.5);
+}
+export function snapshotGridCenterY(frame, row) {
+    return gridCenterYAtOrigin(row, frame.minY, frame.cellSize * 0.5);
+}
+export function snapshotWorldToGrid(frame, x, y) {
+    return { col: snapshotWorldCol(frame, x), row: snapshotWorldRow(frame, y) };
+}
+export function snapshotGridToWorld(frame, col, row) {
+    return { x: snapshotGridCenterX(frame, col), y: snapshotGridCenterY(frame, row) };
+}
+
+// --- MERGED FROM neighborGridLayout.js ---
+
+export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
+    directionCount: OCTILE_DIRS_PER_CELL,
+    bytesPerCell: OCTILE_NEIGHBOR_BYTES,
+    bufferByteLength(cellCount) {
+        return cellCount * this.bytesPerCell;
+    },
+    cellBase(cellIdx) {
+        return octileNeighborBase(cellIdx);
+    },
+    cellOffset(cellIdx, dirIdx) {
+        return octileNeighborOffset(cellIdx, dirIdx);
+    },
+    clearCell(neighborGrid, cellIdx) {
+        const base = this.cellBase(cellIdx);
+        for (let dir = 0; dir < this.directionCount; dir++) neighborGrid[base + dir] = -1;
+    },
+});
+
+// --- MERGED FROM gridBfs.js ---
+
+export function bfsIndices(seeds, visit) {
+    const queue = Array.isArray(seeds) ? seeds : [seeds];
+    let head = 0;
+    while (head < queue.length) {
+        const idx = queue[head++];
+        visit(idx, (nIdx) => {
+            queue.push(nIdx);
+        });
+    }
+    return queue;
+}
+export function bfsColRowQueue(queue, visit) {
+    let head = 0;
+    while (head < queue.length) {
+        const col = queue[head++];
+        const row = queue[head++];
+        visit(col, row, (nc, nr) => {
+            queue.push(nc, nr);
+        });
+    }
+    return queue;
+}
+export function bfsTypedIndices(startIdx, gridSize, visit) {
+    const visited = new Uint8Array(gridSize);
+    const queue = new Int32Array(gridSize);
+    let head = 0;
+    let tail = 0;
+    visited[startIdx] = 1;
+    queue[tail++] = startIdx;
+    while (head < tail) {
+        const idx = queue[head++];
+        const result = visit(idx, visited, (nIdx) => {
+            visited[nIdx] = 1;
+            queue[tail++] = nIdx;
+        });
+        if (result !== undefined) return result;
     }
 }

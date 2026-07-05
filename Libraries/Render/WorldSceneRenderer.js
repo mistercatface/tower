@@ -53,7 +53,7 @@ function drawProjectile(ctx, prop, viewport) {
 }
 import { drawFloorOccupancyBelts } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
+
 const matchDebris = (p) => p.strategy?.renderMode === "debris";
 const DEBRIS_QUERY_OPTIONS = { filterId: "debris", match: matchDebris };
 const matchFloor = (p) => p.strategy?.renderMode === "floor";
@@ -97,14 +97,14 @@ export class WorldSceneRenderer {
         this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     drawDebrisProps(ctx, state, viewport, options = {}) {
-        const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, DEBRIS_QUERY_OPTIONS);
+        const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, DEBRIS_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) this._drawProp(ctx, props[i], viewport);
     }
     drawFloorProps(ctx, state, viewport) {
         drawFloorOccupancyBelts(ctx, state, viewport);
         const q = this.visibleDrawQueue;
         q.clear();
-        const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, FLOOR_QUERY_OPTIONS);
+        const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, FLOOR_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
             const distSq = (prop.x - viewport.x) ** 2 + (prop.y - viewport.y) ** 2;
@@ -114,7 +114,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < q.length; i++) this._drawProp(ctx, q.refs[i], viewport);
     }
     _appendVisible3dProps(state, viewport) {
-        const props = queryPropsInView(state.entityRegistry, viewport, kineticSpatial, THREE_D_QUERY_OPTIONS);
+        const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, THREE_D_QUERY_OPTIONS);
         for (let i = 0; i < props.length; i++) {
             const p = props[i];
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;

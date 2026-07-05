@@ -6,7 +6,7 @@ import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { FloorBelt } from "../Spatial/spatial.js";
 import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";
 import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
-import { unionCellBounds } from "../DataStructures/CellRect.js";
+import { unionCellBounds } from "../Spatial/spatial.js";
 import propCatalog from "../../Assets/props/index.js";
 import {
     clearRailWallAt,
@@ -95,7 +95,7 @@ export function createSandboxSession(state) {
         return placed;
     };
     const spawn = createSandboxSpawnSession(state, { getSpawnPropId: spawnPropIdFromPalette, pickSelection, notifyUi, placement });
-    const removeProp = (prop) => removeSandboxWorldProp(state, prop);
+    const removeProp = (prop) => removeSandboxWorldProp(state, prop, state.spatialFrame);
     const listSelectedPropEntries = () => {
         pruneSelection();
         const ids = selectionPropIds(sel());
@@ -422,7 +422,7 @@ export function createSandboxSession(state) {
             removeSceneItem(this, item, pickSelection);
         },
         clear() {
-            for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i]);
+            for (let i = state.worldProps.length - 1; i >= 0; i--) removeSandboxWorldProp(state, state.worldProps[i], state.spatialFrame);
             state.obstacleGrid.clearAllFloorCells();
             selection.clearSelection();
             placement.resetPlacementOrder();

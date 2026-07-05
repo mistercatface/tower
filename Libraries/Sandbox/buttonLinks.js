@@ -1,5 +1,5 @@
 import { findWorldPropAtInView, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
+
 import { isFlipperWorldProp } from "./behaviors/flipperBehavior.js";
 import { isButtonEntity } from "./buttonInput.js";
 import { isSpawnerWorldProp } from "./spawnerConfig.js";
@@ -53,7 +53,7 @@ export function clearButtonLinks(state, buttonId) {
  * @param {number} sourceButtonId
  */
 export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
-    const prop = findWorldPropAtInView(state.entityRegistry, kineticSpatial, worldX, worldY);
+    const prop = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, worldX, worldY);
     if (!prop || prop.id === sourceButtonId) return null;
     if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop)) return { type: "worldProp", id: prop.id };
     return null;

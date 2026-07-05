@@ -1,6 +1,5 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
-import {  FloorBelt  } from "../Spatial/spatial.js";
+import { FloorBelt } from "../Spatial/spatial.js";
 export function createSandboxDeletePointerTool(state, session) {
     return {
         isActive: () => true,
@@ -9,7 +8,7 @@ export function createSandboxDeletePointerTool(state, session) {
             if (state.editor.lockSelection) return true;
             if (session.getSelection()?.kind === "prop") return true;
             const registry = state.entityRegistry;
-            const hit = findWorldPropAtInView(registry, kineticSpatial, world.x, world.y);
+            const hit = findWorldPropAtInView(registry, state.spatialFrame, world.x, world.y);
             if (hit) {
                 session.deleteProp(hit);
                 return true;

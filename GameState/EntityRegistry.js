@@ -1,7 +1,6 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
 import { pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/math.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/math.js";
 import { distanceSqToLineSegment } from "../Libraries/Math/math.js";
@@ -392,7 +391,8 @@ export function addWorldPropsToState(world, props) {
     }
 }
 /** @param {object} world @param {object} prop @param {object} [spatialFrame] @param {object | null} [entityMeta] */
-export function removeWorldPropFromState(world, prop, spatialFrame = kineticSpatial, entityMeta = null) {
+export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta = null) {
+    if (!spatialFrame) throw new Error("spatialFrame must be provided to removeWorldPropFromState");
     const index = world.worldProps.indexOf(prop);
     if (index >= 0) world.worldProps.splice(index, 1);
     world.entityRegistry.unregister(prop);

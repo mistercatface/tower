@@ -2,7 +2,7 @@ import { sampleFlowDirectionInto } from "../../Navigation/flowField.js";
 import { snapNavGoalWorldInto } from "../../Navigation/navigation.js";
 import { physicsSettings } from "../../Physics/physics.js";
 import { agentPose } from "../../Agent/index.js";
-import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
+import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../../Physics/physics.js";
 import { FLOW_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 const FLOW_OVERLAY_DIR_SCRATCH = { x: 0, y: 0 };
 const FLOW_DIR_SCRATCH = { x: 0, y: 0 };

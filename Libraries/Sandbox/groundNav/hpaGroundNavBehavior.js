@@ -1,6 +1,6 @@
 import { navHasPath, REPLAN_PRIORITY_TARGET, HpaNavSession, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, snapNavGoalWorldInto } from "../../Navigation/navigation.js";
 import { physicsSettings } from "../../Physics/physics.js";
-import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../kineticRollActuator.js";
+import { getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive } from "../../Physics/physics.js";
 import { FloorBelt } from "../../Spatial/spatial.js";
 import { HPA_GROUND_NAV_BEHAVIOR_ID } from "../sandboxCapabilities.js";
 export function createHpaGroundNavBehavior(state) {

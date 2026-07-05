@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
-import { clearGroundRollDrive, decelerateRoll, getKineticRollConfig, steerRollToward } from "../Libraries/Sandbox/kineticRollActuator.js";;
+import { clearGroundRollDrive, decelerateRoll, getKineticRollConfig, steerRollToward } from "../Libraries/Physics/physics.js";;
 import { integratePropMotion } from "../Libraries/Physics/physics.js";
 
 function mockRollingProp(overrides = {}) {

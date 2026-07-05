@@ -11,9 +11,9 @@ import {
     worldRowInCenteredFrame,
 } from "./../Spatial/spatial.js";
 import { PathfindingWorkerClient } from "./../Workers/PathfindingWorkerClient.js";
-import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./../Pathfinding/neighborGridLayout.js";
+import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "./navigation.js";
 import { OCTILE_OFFSETS, circleIntersectsAabb, createAabb } from "./../Math/math.js";
-import { snapshotWorldCol, snapshotWorldRow } from "./../Pathfinding/GridNavSnapshot.js";
+import { snapshotWorldCol, snapshotWorldRow } from "./navigation.js";
 // --- MERGED FROM FlowFieldGrid.js ---
 const MAX_CACHE = 512;
 const FLOW_DONE = "flowDone";

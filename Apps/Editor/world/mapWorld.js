@@ -1,4 +1,4 @@
-import { unionCellBounds } from "../../../Libraries/DataStructures/CellRect.js";
+import { unionCellBounds } from "../../../Libraries/Spatial/spatial.js";
 import { gridSettings } from "../../../Config/world.js";
 import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";

@@ -4,7 +4,7 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/Surfa
 import { invalidateStaticGridEdgeRailDrawCache } from "../../../Libraries/Render/Structure3D/StaticGridEdgeRailDraw.js";
 import { invalidateStaticGridWallDrawCache } from "../../../Libraries/Render/Structure3D/StaticGridWallDraw.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { floorPropEffectPass } from "../../../Libraries/Sandbox/floorProps.js";
+import { floorPropEffectPass } from "../../../Libraries/Props/props.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";

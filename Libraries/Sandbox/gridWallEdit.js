@@ -1,4 +1,4 @@
-import { cellBoundsAtIdx, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
+import { cellBoundsAtIdx, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../Spatial/spatial.js";
 import { centeredAabbInto, createAabb } from "../Math/math.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/spatial.js";
