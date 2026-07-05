@@ -2982,9 +2982,6 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
             pairs.static.tier[write] = tier;
-            pairs.static.restitution[write] = pairs.static.restitution[i];
-            pairs.static.friction[write] = pairs.static.friction[i];
-            pairs.static.warmStartPairKey[write] = pairs.static.warmStartPairKey[i];
         }
         write++;
     }
