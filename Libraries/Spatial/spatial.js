@@ -194,9 +194,10 @@ export class SpatialFrameCore {
 // --- MERGED FROM gridCellTopology.js ---
 export function edgeNeighborIdx(idx, side, cols, rows) {
     if (side === 0) return idx >= cols ? idx - cols : -1;
-    if (side === 1) return (idx + 1) % cols !== 0 ? idx + 1 : -1;
     if (side === 2) return idx < cols * (rows - 1) ? idx + cols : -1;
-    if (side === 3) return idx % cols !== 0 ? idx - 1 : -1;
+    const col = idx % cols;
+    if (side === 1) return col < cols - 1 ? idx + 1 : -1;
+    if (side === 3) return col > 0 ? idx - 1 : -1;
     return -1;
 }
 export function edgeNeighbor(col, row, side) {

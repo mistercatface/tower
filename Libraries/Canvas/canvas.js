@@ -3,11 +3,17 @@ import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex, clamp } from "../Math/math.js";
 import { buildRollOrientKey, quantizeRollQuat, resolveBodyRadius } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
+import {
+    resolvePropQuantizeSteps,
+    getBaseSpriteCacheKey,
+    getPropStageBakeState,
+    propFootprintHalfExtents,
+    getVisualAttachmentSpriteCacheKey,
+    resolveVisualAttachmentBakeRadius,
+    resolveVisualAttachmentProps,
+} from "../Props/props.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 import propCatalog from "../../Assets/props/index.js";
-
-
 // --- MERGED FROM imageDataBuffer.js ---
 /** @param {Uint8ClampedArray} data @param {[number, number, number]} rgb */
 export function fillRgbaBuffer(data, rgb) {
@@ -55,7 +61,6 @@ export function copyRgbTripletsToRgba(rgba, rgbTriplets, numPixels) {
         rgba[rgbaIdx++] = 255;
     }
 }
-
 // --- MERGED FROM offscreenCanvas.js ---
 const offscreenCanvasPool = new Map();
 let poolCount = 0;
@@ -112,7 +117,6 @@ export function resizeOffscreenCanvas(canvas, width, height) {
     canvas.height = height;
     canvas.getContext("2d").imageSmoothingEnabled = false;
 }
-
 // --- MERGED FROM CanvasPath.js ---
 /**
  * Low-level Canvas2D path tracing — geometry only, no fill/stroke/style.
@@ -296,7 +300,6 @@ export function withClip(ctx, buildPath, draw) {
     ctx.restore();
     return true;
 }
-
 // --- MERGED FROM AffineTexture.js ---
 const WALL_TEXTURE_SEAM_BLEED_PX = WORLD_SURFACE_DEFAULTS.wallTextureBleedPx;
 export function drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y, baseA, baseB, baseC, baseD, baseE, baseF) {
@@ -512,7 +515,6 @@ export function drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, 
         baseF,
     );
 }
-
 // --- MERGED FROM maskCompositor.js ---
 /** Default radial stops for omnidirectional vision carve (destination-out). */
 export const VISION_RADIAL_CUTOUT_STOPS = [
@@ -575,7 +577,6 @@ export function blitMaskOverlay(ctx, sourceCanvas) {
     ctx.drawImage(sourceCanvas, 0, 0);
     ctx.restore();
 }
-
 // --- MERGED FROM SpriteCache.js ---
 export class SpriteCache {
     constructor() {
@@ -593,7 +594,6 @@ export class SpriteCache {
         this.cache.clear();
     }
 }
-
 // --- MERGED FROM BakedSpriteCache.js ---
 /**
  * Dispose a cache entry's canvas/bitmap handle correctly.
@@ -634,7 +634,17 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
         set(key, sourceCanvas, meta = {}) {
             const existing = cache.peek(key);
             if (existing) disposeEntry(existing);
-            const entry = { canvas: sourceCanvas, _isBitmap: false, bakeScale: meta.bakeScale ?? 1, anchorX: meta.anchorX ?? 0, anchorY: meta.anchorY ?? 0, ...meta };
+            const bakeScale = meta.bakeScale ?? 1;
+            const entry = {
+                canvas: sourceCanvas,
+                _isBitmap: false,
+                bakeScale,
+                anchorX: meta.anchorX ?? 0,
+                anchorY: meta.anchorY ?? 0,
+                drawW: sourceCanvas.width / bakeScale,
+                drawH: sourceCanvas.height / bakeScale,
+                ...meta,
+            };
             cache.set(key, entry);
             // Asynchronously promote to a GPU-resident ImageBitmap so that
             // subsequent ctx.drawImage calls are zero-copy.
@@ -667,17 +677,19 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
         },
     };
 }
-
 // --- MERGED FROM QuantizedSpriteCache.js ---
 const SPRITE_VIEW_STEP = 30;
 const SPRITE_VIEW_LIMIT = 120;
 function packQuantizedViewBucket(dx, dy, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
-    const keyDx = Math.round(clamp(dx, -limit, limit) / step);
-    const keyDy = Math.round(clamp(dy, -limit, limit) / step);
+    const clampedX = dx < -limit ? -limit : dx > limit ? limit : dx;
+    const clampedY = dy < -limit ? -limit : dy > limit ? limit : dy;
+    const keyDx = Math.round(clampedX / step);
+    const keyDy = Math.round(clampedY / step);
     return ((keyDx + 32) << 6) | (keyDy + 32);
 }
 function quantizedViewAxisOffset(offset, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
-    return Math.round(clamp(offset, -limit, limit) / step) * step;
+    const clamped = offset < -limit ? -limit : offset > limit ? limit : offset;
+    return Math.round(clamped / step) * step;
 }
 const SPRITE_KEY_INTERN_MAX = 0xfffff;
 const spriteKeyIntern = new Map();
@@ -769,8 +781,8 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null)
     const anchorX = sprite.anchorX ?? 0;
     const anchorY = sprite.anchorY ?? 0;
     const canvas = sprite.canvas ?? sprite;
-    const drawW = canvas.width / bakeScale;
-    const drawH = canvas.height / bakeScale;
+    const drawW = sprite.drawW ?? canvas.width / bakeScale;
+    const drawH = sprite.drawH ?? canvas.height / bakeScale;
     // Fast path for 99% of sprites that have no modifier — avoid any optional-chain reads.
     if (!modifier) {
         ctx.drawImage(canvas, worldX - anchorX, worldY - anchorY, drawW, drawH);
@@ -964,7 +976,6 @@ export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animF
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
 }
-
 // --- MERGED FROM ProgressBar.js ---
 export class ProgressBar {
     constructor(config = {}) {
@@ -1051,7 +1062,6 @@ export class ProgressBar {
         ctx.closePath();
     }
 }
-
 // --- MERGED FROM spriteDrawModifier.js ---
 /**
  * Post-bake draw transforms (alpha, clip, scale, position).
