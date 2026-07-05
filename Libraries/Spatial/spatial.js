@@ -379,6 +379,7 @@ export function cellIdxToChunkKey(idx, gridCols, cellsPerChunk) {
     return packChunkKey(cellToChunkCoord(idx % gridCols, cellsPerChunk), cellToChunkCoord((idx / gridCols) | 0, cellsPerChunk));
 }
 export function forEachChunkKeyInCellBounds(cellBounds, cellsPerChunk, fn) {
+    if (!cellsPerChunk || cellsPerChunk <= 0) return;
     const startAxis0 = cellToChunkCoord(cellBounds.startCol, cellsPerChunk);
     const endAxis0 = cellToChunkCoord(cellBounds.endCol, cellsPerChunk);
     const startAxis1 = cellToChunkCoord(cellBounds.startRow, cellsPerChunk);
