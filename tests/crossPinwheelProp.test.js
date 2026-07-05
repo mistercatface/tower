@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
-import { inverseMassFromBody, momentOfInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
+import { inverseMassFromBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { applyCrossPinwheelFootprint } from "../Libraries/Props/props.js";
 
 describe("cross pinwheel prop", () => {
@@ -20,7 +20,7 @@ describe("cross pinwheel prop", () => {
 
         // Mass and inertia should be correctly populated
         assert.ok(pinwheel.mass > 0);
-        assert.ok(momentOfInertiaFromBody(pinwheel) > 0);
+        assert.ok(kineticInertiaFromBody(pinwheel) > 0);
 
         // Pinned body should have 0 inverse mass
         assert.equal(inverseMassFromBody(pinwheel), 0);

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/sandbox.js";
+import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/sandbox.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
 class MockEntityMeta {
     constructor() {
@@ -104,7 +105,7 @@ describe("chain links", () => {
         assert.ok(addChainLink(state, head.id, wedge.id, 1.05));
         assert.equal(state.kinetic.kineticConstraints.length, 1);
     });
-    it("getChainMemberIds walks transitive links", () => {
+    it("getConnectedBodyIds walks transitive links", () => {
         resetKineticConstraintIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(20, 0);
@@ -112,7 +113,7 @@ describe("chain links", () => {
         const state = createState([a, b, c]);
         addChainLink(state, a.id, b.id);
         addChainLink(state, b.id, c.id);
-        const members = getChainMemberIds(state, b.id).sort((x, y) => x - y);
+        const members = getConnectedBodyIds(state.kinetic, b.id).sort((x, y) => x - y);
         assert.deepEqual(
             members,
             [a.id, b.id, c.id].sort((x, y) => x - y),

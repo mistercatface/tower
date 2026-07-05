@@ -5,7 +5,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget, createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
+import { isChainSteeringTarget, createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import propCatalog from "../Assets/props/index.js";
 
 function createSnakeSpawnTestState(cols = 32, rows = 32) {

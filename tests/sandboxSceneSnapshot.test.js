@@ -6,7 +6,8 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
+import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
@@ -89,7 +90,7 @@ describe("sandboxSceneSnapshot physics", () => {
         assert.ok(tintedProp);
         const head = fresh.worldProps.find((prop) => freshMeta.isChainHead(prop.id));
         assert.ok(head);
-        assert.equal(getChainMemberIds(fresh, head.id).length, 4);
+        assert.equal(getConnectedBodyIds(fresh.kinetic, head.id).length, 4);
         assert.ok(isChainSteeringTarget(fresh, freshMeta, head.id));
     });
 });

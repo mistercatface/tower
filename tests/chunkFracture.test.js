@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { measureGlassShard } from "../Libraries/Props/props.js";
 import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/props.js";
-import { localBoxOutline, splitPoxels } from "../Libraries/Props/props.js";
+import { boxLocalFootprint } from "../Libraries/Math/math.js";
+import { splitPoxels } from "../Libraries/Props/props.js";
 import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/props.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
@@ -15,13 +16,13 @@ describe("chunk fracture", () => {
         assert.equal(propCatalog["custom_box"].physics.fracture.mode, "chunk");
     });
     it("bakes rectilinear chunk grid from a box outline", () => {
-        const geom = bakeChunkOutline(localBoxOutline(8, 8));
+        const geom = bakeChunkOutline(boxLocalFootprint(8, 8));
         assert.ok(geom.chunks.length > 1);
         assert.ok(geom.footprintArea > 0);
         assert.equal(chunkCellCount(8, 8), geom.chunks.length);
     });
     it("chunk cells are axis-aligned rectangles not triangles", () => {
-        const geom = bakeChunkOutline(localBoxOutline(8, 8));
+        const geom = bakeChunkOutline(boxLocalFootprint(8, 8));
         for (const chunk of geom.chunks) {
             assert.equal(chunk.vertices.length, 8);
             const metrics = measureGlassShard(chunk.vertices);
@@ -29,7 +30,7 @@ describe("chunk fracture", () => {
         }
     });
     it("buildGeometryFromChunkParts produces convex collision parts", () => {
-        const crate = bakeChunkOutline(localBoxOutline(8, 8));
+        const crate = bakeChunkOutline(boxLocalFootprint(8, 8));
         const subset = crate.chunks.slice(0, 2).map((chunk) => ({ vertices: chunk.vertices }));
         const frag = buildGeometryFromChunkParts(subset);
         assert.ok(frag.collisionParts.length >= 1);
@@ -37,7 +38,7 @@ describe("chunk fracture", () => {
         assert.equal(frag.collisionParts[0].vertices.length / 2, 4);
     });
     it("splitPoxels breaks chunk connectivity on a strong center hit", () => {
-        const geom = bakeChunkOutline(localBoxOutline(8, 8));
+        const geom = bakeChunkOutline(boxLocalFootprint(8, 8));
         const components = splitPoxels(geom.chunks, 0, 0, 80);
         assert.ok(components.length > 1);
     });
@@ -79,7 +80,7 @@ describe("chunk fracture", () => {
         assert.ok(Math.abs(prop.y - 52.666) < 0.01);
     });
     it("mergeChunkCollisionRects covers concave L-shapes with multiple axis-aligned boxes", () => {
-        const geom = bakeChunkOutline(localBoxOutline(16, 16));
+        const geom = bakeChunkOutline(boxLocalFootprint(16, 16));
         const components = splitPoxels(geom.chunks, 14, 14, 80);
         assert.ok(components.length > 1);
         const parentRects = mergeChunkCollisionRects(components[0]);
@@ -116,7 +117,7 @@ describe("chunk fracture", () => {
     it("large custom box scales chunk cell size and count", () => {
         const cell = cellSizeForBoxExtents(64, 64);
         assert.ok(cell >= 8);
-        const geom = bakeChunkOutline(localBoxOutline(64, 64));
+        const geom = bakeChunkOutline(boxLocalFootprint(64, 64));
         assert.ok(geom.chunks.length >= 16);
         assert.ok(geom.chunks.length <= 100);
     });

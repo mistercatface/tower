@@ -1,8 +1,8 @@
-import {  gridNavCacheKey, isNavTopologyReady  } from "../../Spatial/spatial.js";
-import {  cellInRect  } from "../../Spatial/spatial.js";
+import { gridNavCacheKey, isNavTopologyReady } from "../../Spatial/spatial.js";
+import { cellInRect } from "../../Spatial/spatial.js";
 import { isIdxInMapGenBounds } from "../../Spatial/spatial.js";
 import { padCellIdxToGrid, padCellBoundsToGrid, forEachDenseCellInRect } from "../../Spatial/spatial.js";
-import {  forEachCardinalNeighborIdx  } from "../../Spatial/spatial.js";
+import { forEachCardinalNeighborIdx } from "../../Spatial/spatial.js";
 /** @typedef {{ flags: Uint8Array, cols: number, rows: number }} NavWalkableIndex */
 export function isNavWalkableAt(index, idx) {
     if (idx < 0 || idx >= index.flags.length) return false;
@@ -205,9 +205,6 @@ export function getNavWalkableCellIndex(state, boundsConfig = state.editor.caver
 }
 export function getNavWalkableCells(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     return getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
-}
-export function isNavWalkableCellAtIndex(navWalkableIndex, idx) {
-    return isNavWalkableAt(navWalkableIndex, idx);
 }
 export function isNavWalkableCellAt(state, idx, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     const index = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);

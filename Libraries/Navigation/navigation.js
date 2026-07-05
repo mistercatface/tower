@@ -1427,9 +1427,6 @@ export function growNavTopologyVertexSab(arena, vertCount) {
     arena.sabVertexPassability = new SharedArrayBuffer(vertBytes);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
 }
-export function expandNavTopologyBakeBounds(bounds, cols, rows, padding = 1) {
-    return padCellBoundsToGrid(bounds, cols, rows, padding);
-}
 export function packNavTopologyFromGrid(grid, arena, idx = null) {
     const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {

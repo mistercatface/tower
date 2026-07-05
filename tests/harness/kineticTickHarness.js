@@ -1,6 +1,4 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
-import { createKineticTick } from "../../GameState/KineticTick.js";
-import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab } from "../../Libraries/Physics/physics.js";
 import { CircleShape } from "../../Libraries/Physics/physics.js";
@@ -98,7 +96,7 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
 export function createKineticTestTick(initialProps, options = {}) {
     const world = createKineticTestWorld(initialProps, options);
     const frame = setupKineticTestFrame(initialProps, options.cellSize);
-    return createKineticTick(frame, world);
+    return { frame, world };
 }
 
 export function attachKineticTestTickFromState(state, props, cellSize = state.obstacleGrid?.cellSize ?? 16) {
@@ -112,5 +110,8 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     frame._nextPhysId = props.length;
     snapshotKineticBodySlab(frame._kineticBodies);
     frame.syncActiveKineticBodies();
-    return createKineticTick(frame, worldSimFromState(state));
+    return {
+        frame,
+        world: { worldProps: state.worldProps, projectiles: state.projectiles, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox },
+    };
 }

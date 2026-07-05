@@ -6,7 +6,8 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
+import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,
@@ -38,7 +39,7 @@ function segmentCenterInBlockedCell(state, prop) {
 }
 
 function countSegmentsInBlockedCells(state, headId) {
-    const ids = getChainMemberIds(state, headId);
+    const ids = getConnectedBodyIds(state.kinetic, headId);
     let count = 0;
     for (let i = 0; i < ids.length; i++) {
         const prop = state.entityRegistry.getLive(ids[i]);
@@ -55,7 +56,7 @@ describe("chainVsWallGrowth (v1 accepted: tail clip on grow)", () => {
         let tail = chain.tail;
         const growCount = 10;
         for (let i = 0; i < growCount; i++) tail = growChainSegment(state, tail, CHAIN_OPTIONS);
-        assert.equal(getChainMemberIds(state, chain.head.id).length, CHAIN_OPTIONS.segmentCount + growCount);
+        assert.equal(getConnectedBodyIds(state.kinetic, chain.head.id).length, CHAIN_OPTIONS.segmentCount + growCount);
         assert.ok(segmentCenterInBlockedCell(state, tail), "tail center should land in a blocked east-cap cell in this fixture");
         assert.ok(countSegmentsInBlockedCells(state, chain.head.id) >= 1);
     });

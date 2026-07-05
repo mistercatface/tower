@@ -6,7 +6,7 @@ import {
     SANDBOX_FACTION_OPTIONS,
     formatSandboxFactionLabel,
 } from "../../GameState/SandboxWorldState.js";
-export { sandboxFactions, SANDBOX_FACTION_OPTIONS, SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel } from "../../GameState/SandboxWorldState.js";
+export { sandboxFactions, SANDBOX_FACTION_OPTIONS, SANDBOX_DEFAULT_FACTION, resolveSandboxFaction, formatSandboxFactionLabel };
 import {
     FLOOR_CELL_KIND,
     FloorBelt,
@@ -1752,10 +1752,6 @@ function aimSpawnerFacing(prop, aim) {
 export function isSpawnerProp(asset) {
     return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
 }
-/** @param {object | null | undefined} prop */
-export function isSpawnerWorldProp(prop) {
-    return isSpawnerProp(propCatalog[prop?.type]);
-}
 /** @param {object | null | undefined} prop @param {object | null | undefined} asset */
 export function resolveSpawnerPropId(prop, asset) {
     return prop?.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
@@ -2287,18 +2283,6 @@ export function createDragLaunchBehaviors(state) {
 export function createDragLaunchBehavior(state) {
     return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[0]);
 }
-export function createDragLaunchWaitBehavior(state) {
-    return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[1]);
-}
-export function createDragLaunchFacingBehavior(state) {
-    return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[2]);
-}
-export function createCueStrikeBehavior(state) {
-    return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[3]);
-}
-export function createSpawnerBehavior(state) {
-    return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[4]);
-}
 export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
     const preview = getDragLaunchPreview(aim, config);
     if (!preview) return;
@@ -2344,11 +2328,8 @@ export function isChainSteeringTarget(state, entityMeta, propId) {
     if (!prop || prop.isDead) return false;
     return isChainLinkBall(prop);
 }
-export function getChainMemberIds(state, propId) {
-    return getConnectedBodyIds(state.kinetic, propId);
-}
 export function setChainHead(state, entityMeta, propId) {
-    const members = getChainMemberIds(state, propId);
+    const members = getConnectedBodyIds(state.kinetic, propId);
     for (let i = 0; i < members.length; i++) entityMeta.setChainHead(members[i], false);
     entityMeta.setChainHead(propId, true);
 }
@@ -2788,12 +2769,6 @@ const HPA_GROUND_NAV_CONFIG = {
         propRuns.clear();
     },
 };
-export function createDirectGroundNavBehavior(state) {
-    return createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG);
-}
-export function createFlowGroundNavBehavior(state) {
-    return createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG);
-}
 // --- MERGED FROM groundNavSelectionMenu.js ---
 export const GROUND_NAV_SELECTION_MOVE_IDS = [HPA_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID];
 export function isSandboxNavPropAsset(asset) {
@@ -2834,11 +2809,13 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
     }
     return actions;
 }
-export function createHpaGroundNavBehavior(state) {
-    return createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG);
-}
 export function createDefaultSandboxBehaviors(state) {
-    return [...createDragLaunchBehaviors(state), createDirectGroundNavBehavior(state), createHpaGroundNavBehavior(state), createFlowGroundNavBehavior(state)];
+    return [
+        ...createDragLaunchBehaviors(state),
+        createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG),
+        createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG),
+        createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG),
+    ];
 }
 // --- MERGED FROM render sandbox tail ---
 // --- MERGED FROM sandboxCameraTarget.js ---

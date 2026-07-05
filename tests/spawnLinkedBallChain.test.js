@@ -5,7 +5,8 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
+import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 function createChainSpawnTestState(cols = 32, rows = 32) {
@@ -26,7 +27,7 @@ describe("spawnLinkedBallChain", () => {
         assert.ok(!meta.isChainHead(chain.tail.id));
         assert.ok(isChainSteeringTarget(state, meta, chain.head.id));
         assert.ok(!isChainSteeringTarget(state, meta, chain.tail.id));
-        const members = getChainMemberIds(state, chain.head.id).sort((a, b) => a - b);
+        const members = getConnectedBodyIds(state.kinetic, chain.head.id).sort((a, b) => a - b);
         assert.deepEqual(
             members,
             chain.members.map((prop) => prop.id).sort((a, b) => a - b),

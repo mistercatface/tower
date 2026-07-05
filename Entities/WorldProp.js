@@ -6,7 +6,7 @@ import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Librarie
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { isKinematicallyActive } from "../Libraries/Physics/physics.js";
-import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Physics/physics.js";
+import { kineticInertiaFromBody, syncKineticRigidBody } from "../Libraries/Physics/physics.js";
 import { wakeKineticBody } from "../Libraries/Physics/physics.js";
 import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/math.js";
 import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
@@ -37,7 +37,7 @@ export class WorldProp extends Entity {
         this.changeState("normal");
     }
     get momentOfInertia() {
-        return momentOfInertiaFromBody(this);
+        return kineticInertiaFromBody(this);
     }
     changeState(stateName, stateDataInit = null) {
         if (this.strategy?.isKinetic) wakeKineticBody(this);

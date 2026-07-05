@@ -6,7 +6,6 @@ import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
 import { KineticSession } from "../GameState/KineticSession.js";
-import { createKineticTick } from "../GameState/KineticTick.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
@@ -81,7 +80,7 @@ describe("polygon wall resolution", () => {
             entityRegistry: { getLive: (id) => (id === bar.id ? bar : null) },
             kinetic: session,
         };
-        runCollisionPipeline(createKineticTick(frame, world), { resolveWalls: (entity) => resolver.resolve(entity, frame), kineticIterations: 1 });
+        runCollisionPipeline({ frame, world }, { resolveWalls: (entity) => resolver.resolve(entity, frame), kineticIterations: 1 });
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("wall hit wakes a sleeping polygon", () => {

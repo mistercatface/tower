@@ -787,9 +787,6 @@ function finalizeFootprintGeometry(centeredVerts, visualParts, signedArea, centr
     const boundingRadius = boundingRadiusFromFootprint(centeredVerts);
     return { footprintVertices: centeredVerts, poxels: clonePoxels(poxels), footprintArea, halfExtents, boundingRadius, centroid };
 }
-export function localBoxOutline(halfX, halfY) {
-    return boxLocalFootprint(halfX, halfY);
-}
 export function bakePoxelOutline(flatVerts, targetEdgeLen = POXEL_TARGET_EDGE) {
     const { cx, cy, signedArea } = polygonCentroid2D(flatVerts, SHARED_CENTROID);
     const count = flatVerts.length / 2;
@@ -1434,7 +1431,7 @@ export function canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
 function ensureChunkFractureGrid(prop) {
     if (prop.chunks?.length !== 1) return;
     const geom = subdivideSingleChunkAtMinCell(prop.chunks[0]);
-    if (geom) applyChunkGeometryToProp(prop, geom);
+    if (geom) applyPropFractureGeometry(prop, geom);
 }
 function flatVertsFromShape(prop) {
     return prop.shape.vertices;
@@ -1442,9 +1439,9 @@ function flatVertsFromShape(prop) {
 export function initFractureFootprint(prop) {
     if (isGlassFracture(prop)) return;
     if (!isChunkFracture(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
-    applyChunkGeometryToProp(prop, bakeChunkOutline(flatVertsFromShape(prop)));
+    applyPropFractureGeometry(prop, bakeChunkOutline(flatVertsFromShape(prop)));
 }
-function applyPropFractureGeometry(prop, geometry) {
+export function applyPropFractureGeometry(prop, geometry) {
     if (geometry.collisionParts) {
         prop.chunks = geometry.chunks;
         prop.collisionParts = geometry.collisionParts;
@@ -1458,12 +1455,6 @@ function applyPropFractureGeometry(prop, geometry) {
     prop.shape = new PolygonShape(geometry.footprintVertices);
     invalidateBroadphaseBounds(prop);
     syncKineticRigidBody(prop);
-}
-export function applyFractureGeometryToProp(prop, geometry) {
-    applyPropFractureGeometry(prop, geometry);
-}
-export function applyChunkGeometryToProp(prop, geometry) {
-    applyPropFractureGeometry(prop, geometry);
 }
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -1598,7 +1589,7 @@ function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
         kineticDynamicSlab.y[physId] = mainWorldPos.y;
     }
     const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
-    applyChunkGeometryToProp(prop, mainGeom);
+    applyPropFractureGeometry(prop, mainGeom);
     return { debris, originX: origin.x, originY: origin.y, facing: propFacing(prop) };
 }
 export function worldHitToPropLocal(prop, worldX, worldY) {

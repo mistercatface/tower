@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { createSandboxController, spawnPlacedSandboxProp, createHpaGroundNavBehavior, createDragLaunchBehavior } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxController, spawnPlacedSandboxProp, createDefaultSandboxBehaviors, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/sandbox.js";
 function createEditorTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
     const grid = new WorldObstacleGrid(16);
@@ -66,7 +66,9 @@ describe("boid double tap hpa pathing", () => {
             releasePointerCapture() {},
         };
         // Setup behaviors
-        const behaviors = [createDragLaunchBehavior(state), createHpaGroundNavBehavior(state)];
+        const allBehaviors = createDefaultSandboxBehaviors(state);
+        const behaviorById = new Map(allBehaviors.map((behavior) => [behavior.id, behavior]));
+        const behaviors = [behaviorById.get("dragLaunch"), behaviorById.get(HPA_GROUND_NAV_BEHAVIOR_ID)];
         // Setup controller
         const controller = createSandboxController(state, { getCanvas: () => canvas, clientToWorld: (clientX, clientY) => ({ x: clientX, y: clientY }), behaviors });
         controller.register();
