@@ -1,6 +1,6 @@
 import { createWireLinkTool } from "../Editor/wireLinkTool.js";
-import { addButtonLink, findButtonLinkTarget } from "../Sandbox/buttonLinks.js";
-import { isButtonEntity } from "../Sandbox/buttonInput.js";
+import { addButtonLink, findButtonLinkTarget } from "../Props/props.js";
+import { isButtonEntity } from "../Props/props.js";
 export function createButtonWireTool(state, session) {
     const tool = createWireLinkTool({
         getEnterCursor: () => ({ x: state.viewport.x, y: state.viewport.y }),

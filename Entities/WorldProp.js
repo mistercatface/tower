@@ -9,7 +9,7 @@ import { isKinematicallyActive } from "../Libraries/Physics/physics.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Physics/physics.js";
 import { wakeKineticBody } from "../Libraries/Physics/physics.js";
 import {  initFloorTriggerProp  } from "../Libraries/Props/props.js";
-import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
+import { initFloorButtonProp } from "../Libraries/Props/props.js";
 import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/math.js";
 import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";

@@ -1,7 +1,7 @@
 import { wakeKineticBody } from "../../Physics/physics.js";
 import { syncFloorTriggerAabb } from "../../Props/props.js";
 import { syncFloorPropCollisionShape } from "../../Spatial/spatial.js";;
-import { isButtonEntity, isMassButtonInputMode } from "../../Sandbox/buttonInput.js";
+import { isButtonEntity, isMassButtonInputMode } from "../../Props/props.js";
 import { appendActionRow, appendCheckboxField, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";
 import { setFormFieldName } from "../../UI/Component.js";
 /** @param {object} prop @param {number} degrees */

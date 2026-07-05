@@ -1,8 +1,8 @@
-import { PLACEABLE_INSPECTOR_KINDS } from "../../Sandbox/sandboxScenePlaceables.js";
+import { PLACEABLE_INSPECTOR_KINDS } from "../../Sandbox/sandbox.js";
 import { appendWallSelectedInspector } from "./sandboxWallInspector.js";
 import { appendSelectedPropInspector } from "./sandboxPropSelectedInspector.js";
 import { appendActionRow, appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
-import { listFloorBeltKindOptions } from "../../Sandbox/sandboxCapabilities.js";
+import { listFloorBeltKindOptions } from "../../Sandbox/sandbox.js";
 function appendFloorBeltSelectedInspector(body, controller, selectedFloorBelt) {
     appendEditorHint(body, `${selectedFloorBelt.kindLabel} · facing ${selectedFloorBelt.facingLabel}. Change type, idx, or rotation below. Move is blocked when the target has a wall or belt.`);
     appendSelectField(body, "Type", {

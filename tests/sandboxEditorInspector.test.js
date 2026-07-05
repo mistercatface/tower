@@ -4,14 +4,14 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { createSandboxSession } from "../Libraries/Sandbox/sandboxSession.js";
+import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import { createSandboxController } from "../Libraries/SandboxEditor/createSandboxController.js";
-import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";
-import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSession.js";
+import { spawnPlaceableAt } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandbox.js";
 import { appendShapeFamilySelectedFields } from "../Libraries/SandboxEditor/ui/sandboxShapeFamilyUi.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
-import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
+import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 
 import propCatalog from "../Assets/props/index.js";
 function createEditorTestState() {

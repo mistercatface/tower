@@ -1,12 +1,12 @@
 import { appendPathOverlayCommands } from "../Render/render.js";
-import { appendButtonWireOverlayCommands } from "../Sandbox/buttonLinks.js";
-import { appendChainLinkWireOverlayCommands } from "../Sandbox/chainLinks.js";
-import { appendKineticConstraintOverlayCommands } from "../Sandbox/kineticConstraintOverlays.js";
-import { appendMarqueeOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
-import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
-import { resolveSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
-import { isChainSteeringTarget } from "../Sandbox/chainLinks.js";
-import { GROUND_NAV_BEHAVIOR_IDS } from "../Sandbox/sandboxCapabilities.js";
+import { appendButtonWireOverlayCommands } from "../Props/props.js";
+import { appendChainLinkWireOverlayCommands } from "../Props/props.js";
+import { appendKineticConstraintOverlayCommands } from "../Render/render.js";
+import { appendMarqueeOverlayCommands, appendSelectionOverlayCommands, queryPropsInView } from "../Render/render.js";
+import { selectionPropIds } from "../Sandbox/sandbox.js";
+import { resolveSandboxPathVisual } from "../Sandbox/sandbox.js";
+import { isChainSteeringTarget } from "../Props/props.js";
+import { GROUND_NAV_BEHAVIOR_IDS } from "../Sandbox/sandbox.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 export function buildSandboxOverlayCommands({
     state,

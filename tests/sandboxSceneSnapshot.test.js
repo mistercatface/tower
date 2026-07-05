@@ -6,12 +6,12 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
-import { collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../Libraries/Sandbox/sandboxSceneSnapshot.js";
-import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
+import { getChainMemberIds, isChainSteeringTarget, setChainHead } from "../Libraries/Props/props.js";
+import { collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../Libraries/Sandbox/sandbox.js";
+import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
-import { spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { spawnLinkedBallChain } from "../Libraries/Props/props.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 
 function createSnapshotTestState(cols = 32, rows = 32) {

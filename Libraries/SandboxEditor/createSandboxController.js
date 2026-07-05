@@ -1,9 +1,9 @@
-import { assetDefaultBallRadius, isBallFamilyAsset } from "../Sandbox/sandboxShapeFamilies.js";
+import { assetDefaultBallRadius, isBallFamilyAsset } from "../Sandbox/sandbox.js";
 import { bindCanvasPointers, bindCanvasContextMenu } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
-import { createSandboxSession } from "../Sandbox/sandboxSession.js";
-import { clearButtonLinks, listButtonLinkEndpoints, removeButtonLink } from "../Sandbox/buttonLinks.js";
-import { isButtonEntity } from "../Sandbox/buttonInput.js";
+import { createSandboxSession } from "../Sandbox/sandbox.js";
+import { clearButtonLinks, listButtonLinkEndpoints, removeButtonLink } from "../Props/props.js";
+import { isButtonEntity } from "../Props/props.js";
 import { createButtonWireTool } from "./buttonWireTool.js";
 import { createChainLinkWireTool } from "./chainLinkWireTool.js";
 import { createSandboxMarqueeTool } from "./sandboxMarqueeTool.js";
@@ -11,19 +11,19 @@ import { createSandboxGroundNavContextMenu } from "./sandboxGroundNavContextMenu
 import { createSandboxDeletePointerTool } from "./sandboxDeletePointerTool.js";
 import { createSandboxPointerGestures } from "./sandboxPointerGestures.js";
 import { createSandboxPrimaryPointerTools } from "./sandboxPrimaryPointerTool.js";
-import { releaseButtonPointerHold } from "../Sandbox/floorButtons.js";
-import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandboxSceneSnapshot.js";
+import { releaseButtonPointerHold } from "../Props/props.js";
+import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSceneSnapshot } from "../Sandbox/sandbox.js";
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
-import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
+import { resolveSandboxBehaviors } from "../Sandbox/sandbox.js";
 import { createAabb } from "../Math/math.js";
-import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
-import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
-import { FollowCamera } from "../Sandbox/FollowCamera.js";
+import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandbox.js";
+import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Render/render.js";
+import { FollowCamera } from "../Render/render.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { removeKineticConstraint } from "../Physics/physics.js";
-import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Sandbox/chainLinks.js";
-import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/groundNavSelectionMenu.js";
-import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";
+import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Props/props.js";
+import { countNavPropsInSelection, issueGroundNavToSelection } from "../Navigation/navigation.js";
+import { selectionPropIds } from "../Sandbox/sandbox.js";
 import propCatalog from "../../Assets/props/index.js";
 /**
  * @param {object} state

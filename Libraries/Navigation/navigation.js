@@ -1,37 +1,17 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "../Math/math.js";
-import {
-    manhattanDistanceIdx,
-    octileDistanceIdx,
-    makeAdjacencyKey,
-    forEachCardinalNeighbor,
-    forEachCardinalNeighborIdx,
-    boundaryBlocksStepFrom,
-    recomputeNavCardinalOpenInto,
-    recomputeVertexPassabilityInto,
-    isNavTopologyReady,
-    CELL_EDGE_SLOT_BYTES,
-    cellEdgeSlotOffset,
-    cellInRect,
-    diagonalStepOpen,
-    getCardinalBit,
-    edgeNeighborIdx,
-    FloorBelt,
-    hasLineOfSight,
-    worldColAtOrigin,
-    worldRowAtOrigin,
-    cellBoundsForGrid,
-    forEachDenseCellInBounds,
-    padCellIdxToGrid,
-    padCellBoundsToGrid,
-    clampCellBoundsToGrid,
-    forEachDenseCellInRect,
-} from "../Spatial/spatial.js";
+import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighbor, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, FloorBelt, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid, clampCellBoundsToGrid, forEachDenseCellInRect } from "../Spatial/spatial.js";
 import { FloatingText } from "../Render/render.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
 import { agentPose } from "../Agent/index.js";
-import { resolveBodyRadius } from "../Physics/physics.js";
+import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 import { resolveNavRuntime } from "./NavRuntime.js";
+import { DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, getSandboxBehaviorLabel, sandboxAssetMatchesTagFilter, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Sandbox/sandbox.js";
+import { sampleFlowDirectionInto } from "./flowField.js";
+import { isChainSteeringTarget } from "../Props/props.js";
+import propCatalog from "../../Assets/props/index.js";
+
+
 function _removeEdgeByTargetId(edges, targetId) {
     for (let i = edges.length - 1; i >= 0; i--) if (edges[i].targetId === targetId) edges.splice(i, 1);
 }
@@ -2472,3 +2452,490 @@ export function snapLayoutOrigin(px, py, cols, rows, cellSize) {
 export function gridCellCenter(offsetX, offsetY, col, row, cellSize) {
     return { x: offsetX + col * cellSize + cellSize / 2, y: offsetY + row * cellSize + cellSize / 2 };
 }
+
+// --- MERGED FROM directGroundNavBehavior.js ---
+export function createDirectGroundNavBehavior(state) {
+    const propRuns = new Map();
+    const getRun = (prop) => {
+        let run = propRuns.get(prop.id);
+        if (!run) {
+            run = { targetWorld: null, unitDragActive: false, moveTargetActive: false };
+            propRuns.set(prop.id, run);
+        }
+        return run;
+    };
+    const clearRunTarget = (run) => {
+        run.targetWorld = null;
+        run.unitDragActive = false;
+        run.moveTargetActive = false;
+    };
+    const tickProp = (prop, run, dt) => {
+        if (!run.targetWorld || (!run.unitDragActive && !run.moveTargetActive)) return;
+        const config = getKineticRollConfig(prop);
+        const dx = run.targetWorld.x - prop.x;
+        const dy = run.targetWorld.y - prop.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < config.stopRadius) {
+            if (run.moveTargetActive) {
+                clearGroundRollDrive(prop);
+                clearRunTarget(run);
+                return;
+            }
+            decelerateRoll(prop, config);
+            return;
+        }
+        steerRollToward(prop, dx / dist, dy / dist, config);
+    };
+    return {
+        id: DIRECT_GROUND_NAV_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            const run = getRun(prop);
+            run.unitDragActive = true;
+            run.moveTargetActive = false;
+            run.targetWorld = { x: world.x, y: world.y };
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = getRun(prop);
+            if (!run.unitDragActive) return;
+            run.targetWorld = { x: world.x, y: world.y };
+        },
+        onPointerUp(prop) {
+            const run = getRun(prop);
+            run.unitDragActive = false;
+            if (!run.moveTargetActive) {
+                clearGroundRollDrive(prop);
+                clearRunTarget(run);
+            }
+        },
+        setMoveTarget(prop, world) {
+            const run = getRun(prop);
+            run.unitDragActive = false;
+            run.moveTargetActive = true;
+            run.targetWorld = { x: world.x, y: world.y };
+        },
+        updateMoveTarget(prop, world) {
+            const run = getRun(prop);
+            if (!run.moveTargetActive || !run.targetWorld) return;
+            run.targetWorld = { x: world.x, y: world.y };
+        },
+        hasMoveTarget(prop) {
+            const run = getRun(prop);
+            return run.moveTargetActive && run.targetWorld != null;
+        },
+        clearMoveTarget(prop) {
+            clearGroundRollDrive(prop);
+            clearRunTarget(getRun(prop));
+        },
+        tick(prop, dt) {
+            tickProp(prop, getRun(prop), dt);
+        },
+        tickWorld(dt) {
+            propRuns.forEach((run, propId) => {
+                if (!run.targetWorld || (!run.unitDragActive && !run.moveTargetActive)) return;
+                const prop = state.entityRegistry.getLive(propId);
+                if (!prop) {
+                    propRuns.delete(propId);
+                    return;
+                }
+                tickProp(prop, run, dt);
+            });
+        },
+        getPathOverlay(prop) {
+            const run = propRuns.get(prop.id);
+            if (!run?.targetWorld || (!run.unitDragActive && !run.moveTargetActive)) return null;
+            return {
+                mode: "direct",
+                pathNodes: [
+                    { x: prop.x, y: prop.y },
+                    { x: run.targetWorld.x, y: run.targetWorld.y },
+                ],
+            };
+        },
+        reset() {
+            propRuns.clear();
+        },
+    };
+}
+
+// --- MERGED FROM driveGroundNav.js ---
+const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
+/**
+ * @param {object} prop
+ * @param {{ x: number, y: number }} targetWorld
+ * @param {number | null} targetCellCol
+ * @param {number | null} targetCellRow
+ * @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
+ * @param {number} stopRadius
+ */
+export function groundNavArrivedAtTarget(prop, targetWorld, targetCellCol, targetCellRow, grid, stopRadius) {
+    const onBelt = FloorBelt.isEntityOnBelt(grid, prop.x, prop.y);
+    const targetOnBelt = targetCellCol != null && targetCellRow != null && FloorBelt.isBeltAtIdx(grid, targetCellCol + targetCellRow * grid.cols);
+    const dist = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
+    return dist <= stopRadius && (!targetOnBelt || onBelt);
+}
+const HPA_PATH_SETTINGS_SCRATCH = {};
+/** @param {object} state @param {object} prop @param {number} stopRadius */
+export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
+    const hpaNav = physicsSettings.groundNavHpa;
+    const settings = Object.assign(HPA_PATH_SETTINGS_SCRATCH, state.nav.settings);
+    settings.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor);
+    settings.arrivalDistance = stopRadius;
+    return settings;
+}
+/**
+ * HPA ground-nav tick — belt handoff + session replan/steer loop.
+ * @param {{
+ *   prop: object,
+ *   targetWorld: { x: number, y: number },
+ *   targetCellCol?: number | null,
+ *   targetCellRow?: number | null,
+ *   nav: ReturnType<import("./hpaGroundNavSession.js").createHpaGroundNavSession>,
+ *   beltWasOnBelt: boolean,
+ *   beltHandoffCooldown?: { frames: number },
+ *   state: object,
+ *   dtMs: number,
+ *   pathSettings: object,
+ * }} opts
+ * @returns {{ vx: number, vy: number, steering: object | null, replanReason: string | null, beltWasOnBelt: boolean }}
+ */
+export function driveGroundNav({ prop, targetWorld, targetCellCol = null, targetCellRow = null, nav, beltWasOnBelt, beltHandoffCooldown, state, dtMs, pathSettings }) {
+    const grid = state.obstacleGrid;
+    if (FloorBelt.isEntityOnBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
+    const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
+    if (beltWasOnBelt) {
+        const cooldownFrames = beltHandoffCooldown.frames;
+        if (cooldownFrames > 0) {
+            beltHandoffCooldown.frames = cooldownFrames - 1;
+            return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: false };
+        }
+        nav.reset(state);
+        nav.replan(prop, steerTarget.x, steerTarget.y, state);
+        beltHandoffCooldown.frames = state.nav.settings.stuckReplanFrames;
+        return { vx: 0, vy: 0, steering: null, replanReason: "beltHandoff", beltWasOnBelt: false };
+    }
+    const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings);
+    return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason, beltWasOnBelt: false };
+}
+
+// --- MERGED FROM flowGroundNavBehavior.js ---
+const FLOW_OVERLAY_DIR_SCRATCH = { x: 0, y: 0 };
+const FLOW_DIR_SCRATCH = { x: 0, y: 0 };
+function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
+    const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
+    if (!flowField) return null;
+    const dir = sampleFlowDirectionInto(FLOW_DIR_SCRATCH, pose.x, pose.y, flowField, flowFieldGrid.frame);
+    if (!dir) return null;
+    return { desiredX: dir.x, desiredY: dir.y };
+}
+export function createFlowGroundNavBehavior(state) {
+    const propRuns = new Map();
+    const getRun = (prop) => {
+        let run = propRuns.get(prop.id);
+        if (!run) {
+            run = { targetWorld: null, dragging: false, lastTopologyKey: "" };
+            propRuns.set(prop.id, run);
+        }
+        return run;
+    };
+    const clearRunTarget = (run) => {
+        run.targetWorld = null;
+        run.dragging = false;
+        run.lastTopologyKey = "";
+    };
+    const applyMoveTarget = (run, world) => {
+        const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
+        run.targetWorld = snapped.world;
+    };
+    const resolveSteerTarget = (run, prop) => snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+    const syncFlowWindow = (prop, steerTarget) => {
+        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.nav.settings.recenterThreshold);
+    };
+    const tickProp = (prop, run, dt) => {
+        if (!run.targetWorld) return;
+        const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
+        const steerTarget = resolveSteerTarget(run, prop);
+        const flowFieldGrid = state.flowFieldGrid;
+        const topologyKey = state.nav.topologyKey();
+        if (topologyKey !== run.lastTopologyKey) {
+            run.lastTopologyKey = topologyKey;
+            flowFieldGrid.refresh();
+        }
+        syncFlowWindow(prop, steerTarget);
+        const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
+        if (distToTarget <= config.stopRadius) {
+            clearGroundRollDrive(prop);
+            clearRunTarget(run);
+            return;
+        }
+        const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);
+        if (!steering) return;
+        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
+    };
+    return {
+        id: FLOW_GROUND_NAV_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            const run = getRun(prop);
+            run.dragging = true;
+            applyMoveTarget(run, world);
+            syncFlowWindow(prop, resolveSteerTarget(run, prop));
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = getRun(prop);
+            if (!run.dragging || !run.targetWorld) return;
+            applyMoveTarget(run, world);
+            syncFlowWindow(prop, resolveSteerTarget(run, prop));
+        },
+        onPointerUp(prop) {
+            getRun(prop).dragging = false;
+        },
+        setMoveTarget(prop, world) {
+            const run = getRun(prop);
+            run.dragging = false;
+            applyMoveTarget(run, world);
+            if (!run.targetWorld) return;
+            syncFlowWindow(prop, resolveSteerTarget(run, prop));
+        },
+        updateMoveTarget(prop, world) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            applyMoveTarget(run, world);
+            syncFlowWindow(prop, resolveSteerTarget(run, prop));
+        },
+        tick(prop, dt) {
+            tickProp(prop, getRun(prop), dt);
+        },
+        tickWorld(dt) {
+            propRuns.forEach((run, propId) => {
+                if (!run.targetWorld) return;
+                const prop = state.entityRegistry.getLive(propId);
+                if (!prop) {
+                    propRuns.delete(propId);
+                    return;
+                }
+                tickProp(prop, run, dt);
+            });
+        },
+        getPathOverlay(prop) {
+            const run = propRuns.get(prop.id);
+            if (!run?.targetWorld) return null;
+            const steerTarget = resolveSteerTarget(run, prop);
+            const flowField = state.flowFieldGrid.getReadyFlowField(steerTarget.x, steerTarget.y);
+            let dirX = null;
+            let dirY = null;
+            if (flowField) {
+                const dir = sampleFlowDirectionInto(FLOW_OVERLAY_DIR_SCRATCH, prop.x, prop.y, flowField, state.flowFieldGrid.frame);
+                if (dir) {
+                    dirX = dir.x;
+                    dirY = dir.y;
+                }
+            }
+            return { mode: "flow", propX: prop.x, propY: prop.y, propRadius: prop.radius ?? 8, dirX, dirY, targetX: steerTarget.x, targetY: steerTarget.y };
+        },
+        reset() {
+            propRuns.clear();
+        },
+    };
+}
+
+// --- MERGED FROM groundNavSelectionMenu.js ---
+export const GROUND_NAV_SELECTION_MOVE_IDS = [HPA_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID];
+export function isSandboxNavPropAsset(asset) {
+    return sandboxAssetMatchesTagFilter(asset, "nav");
+}
+export function countNavPropsInSelection(state, propIds, entityMeta = null) {
+    let count = 0;
+    for (let i = 0; i < propIds.length; i++) {
+        const prop = state.entityRegistry.getLive(propIds[i]);
+        if (!prop || prop.isDead) continue;
+        if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
+        if (entityMeta && !isChainSteeringTarget(state, entityMeta, prop.id)) continue;
+        count++;
+    }
+    return count;
+}
+export function issueGroundNavToSelection(state, { propIds, behaviorId, world, behaviorById, entityMeta }) {
+    const behavior = behaviorById.get(behaviorId);
+    if (!behavior?.setMoveTarget) return 0;
+    let moved = 0;
+    for (let i = 0; i < propIds.length; i++) {
+        const prop = state.entityRegistry.getLive(propIds[i]);
+        if (!prop || prop.isDead) continue;
+        if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
+        if (!isChainSteeringTarget(state, entityMeta, prop.id)) continue;
+        entityMeta.setActiveBehaviorId(prop.id, behaviorId);
+        behavior.setMoveTarget(prop, world);
+        moved++;
+    }
+    return moved;
+}
+export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, issueGroundNav }) {
+    if (navCount === 0) return [];
+    const actions = [];
+    for (let i = 0; i < GROUND_NAV_SELECTION_MOVE_IDS.length; i++) {
+        const behaviorId = GROUND_NAV_SELECTION_MOVE_IDS[i];
+        actions.push({ label: `${getSandboxBehaviorLabel(behaviorId)} (${navCount})`, onClick: () => issueGroundNav({ propIds, behaviorId, world }) });
+    }
+    return actions;
+}
+
+// --- MERGED FROM hpaGroundNavBehavior.js ---
+export function createHpaGroundNavBehavior(state) {
+    const propRuns = new Map();
+    const getRun = (prop) => {
+        let run = propRuns.get(prop.id);
+        if (!run) {
+            run = { targetWorld: null, targetCellCol: null, targetCellRow: null, dragging: false, wasOnBelt: false, beltHandoffCooldown: { frames: 0 }, hpaNav: new HpaNavSession() };
+            propRuns.set(prop.id, run);
+        }
+        return run;
+    };
+    const clearRunTarget = (run, state) => {
+        run.targetWorld = null;
+        run.targetCellCol = null;
+        run.targetCellRow = null;
+        run.dragging = false;
+        run.wasOnBelt = false;
+        run.beltHandoffCooldown.frames = 0;
+        run.hpaNav.reset(state);
+    };
+    const releaseMoveTarget = (prop, run) => {
+        clearGroundRollDrive(prop);
+        clearRunTarget(run, state);
+    };
+    const applyMoveTarget = (run, world, forceReset = false) => {
+        const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
+        const cellChanged = snapped.col !== run.targetCellCol || snapped.row !== run.targetCellRow;
+        run.targetWorld = snapped.world;
+        run.targetCellCol = snapped.col;
+        run.targetCellRow = snapped.row;
+        if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
+    };
+    /** @param {number} dtMs */
+    const tickProp = (prop, run, dtMs) => {
+        if (!run.targetWorld) return;
+        const grid = state.obstacleGrid;
+        const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
+        if (groundNavArrivedAtTarget(prop, run.targetWorld, run.targetCellCol, run.targetCellRow, grid, config.stopRadius)) {
+            releaseMoveTarget(prop, run);
+            return;
+        }
+        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({
+            prop,
+            targetWorld: run.targetWorld,
+            targetCellCol: run.targetCellCol,
+            targetCellRow: run.targetCellRow,
+            nav: run.hpaNav,
+            beltWasOnBelt: run.wasOnBelt,
+            beltHandoffCooldown: run.beltHandoffCooldown,
+            state,
+            dtMs: dtMs,
+            pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius),
+        });
+        run.wasOnBelt = beltWasOnBelt;
+        if (!steering) {
+            if (beltWasOnBelt) clearGroundRollDrive(prop);
+            return;
+        }
+        if (vx === 0 && vy === 0) return;
+        steerRollToward(prop, vx, vy, config, steering?.desiredSpeed);
+    };
+    return {
+        id: HPA_GROUND_NAV_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            const run = getRun(prop);
+            run.dragging = true;
+            applyMoveTarget(run, world, true);
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = getRun(prop);
+            if (!run.dragging || !run.targetWorld) return;
+            applyMoveTarget(run, world);
+        },
+        onPointerUp(prop) {
+            getRun(prop).dragging = false;
+        },
+        setMoveTarget(prop, world) {
+            const run = getRun(prop);
+            run.dragging = false;
+            applyMoveTarget(run, world, true);
+        },
+        updateMoveTarget(prop, world) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            applyMoveTarget(run, world);
+        },
+        hasMoveTarget(prop) {
+            return getRun(prop).targetWorld != null;
+        },
+        getTargetCell(prop) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return null;
+            return { col: run.targetCellCol, row: run.targetCellRow };
+        },
+        needsNavRetry(prop) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return true;
+            if (run.hpaNav.isRoutePending()) return false;
+            return !navHasPath(run.hpaNav.navState);
+        },
+        replanMoveTarget(prop, state) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            run.hpaNav.replan(prop, run.targetWorld.x, run.targetWorld.y, state, REPLAN_PRIORITY_TARGET);
+        },
+        getLocomotionStatus(prop) {
+            const run = getRun(prop);
+            const nav = run.hpaNav.navState;
+            return { hasRoute: navHasPath(nav), replanPending: run.hpaNav.isRoutePending(), stuckFrames: nav.stuckFrames, pathLen: nav.pathLen };
+        },
+        clearMoveTarget(prop) {
+            clearGroundRollDrive(prop);
+            clearRunTarget(getRun(prop), state);
+        },
+        tick(prop, dtMs) {
+            tickProp(prop, getRun(prop), dtMs);
+        },
+        tickWorld(dtMs) {
+            propRuns.forEach((run, propId) => {
+                if (!run.targetWorld) return;
+                const prop = state.entityRegistry.getLive(propId);
+                if (!prop) {
+                    propRuns.delete(propId);
+                    return;
+                }
+                tickProp(prop, run, dtMs);
+            });
+        },
+        getPathOverlay(prop) {
+            const run = propRuns.get(prop.id);
+            if (!run?.targetWorld) return null;
+            const grid = state.obstacleGrid;
+            if (FloorBelt.isEntityOnBelt(grid, prop.x, prop.y))
+                return {
+                    mode: "direct",
+                    pathNodes: [
+                        { x: prop.x, y: prop.y },
+                        { x: run.targetWorld.x, y: run.targetWorld.y },
+                    ],
+                    targetX: run.targetWorld.x,
+                    targetY: run.targetWorld.y,
+                };
+            const nav = run.hpaNav.navState;
+            const progressIdx = nav.pathProgressIdx;
+            const trace =
+                nav.pathLen > 0 && nav.pathSlot >= 0
+                    ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid)
+                    : { pathNodes: [] };
+            const abstract = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabAbstractPathOverlay(state.nav.worker, nav.pathSlot, nav.pathLen) : null;
+            return { mode: "hpa", pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y, abstractPath: abstract?.abstractPath, pathPlanner: abstract?.pathPlanner };
+        },
+        reset() {
+            propRuns.forEach((run) => run.hpaNav.reset(state));
+            propRuns.clear();
+        },
+    };
+}
+

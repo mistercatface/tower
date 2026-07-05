@@ -1,50 +1,12 @@
 import { invalidateGridLocalNavBake } from "../Navigation/navigation.js";
-import {
-    CARDINAL_OFFSETS,
-    OCTILE_OFFSETS,
-    centerReachAabbInto,
-    createAabb,
-    minCornerAabbInto,
-    angleDelta,
-    radiusAtT,
-    scaleAtHeight,
-    closestPointOnLineSegment,
-    CARDINAL_FACING_STEPS,
-    centeredAabbInto,
-    padAabbInto,
-    lengthXY,
-    centerHalfExtentsAabbInto,
-    boxLocalFootprint,
-    convexFootprintHalfExtents,
-    vertCount,
-    stepCardinalFacing,
-} from "../Math/math.js";
-import {
-    entityBroadphaseExtent,
-    neighborQueryPadFor,
-    maxNeighborQueryPad,
-    circleLeadingPoint,
-    minDistanceSegmentToWall,
-    circleIntersectsSegment,
-    CircleShape,
-    PolygonShape,
-    satCheckCollision,
-    entityFacing,
-    wakeKineticBody,
-    bumpKineticTopologyGeneration,
-    getBroadphaseBounds,
-    appendActiveKineticBodySlabPhysId,
-    clearActiveKineticBodySlab,
-    kineticDynamicSlab,
-    writeActiveKineticBodySlabPose,
-    writeBroadphaseFromBounds,
-    writeStaticKineticSlabSlot,
-} from "../Physics/physics.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS, centerReachAabbInto, createAabb, minCornerAabbInto, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing } from "../Math/math.js";
+import { entityBroadphaseExtent, neighborQueryPadFor, maxNeighborQueryPad, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, getBroadphaseBounds, appendActiveKineticBodySlabPhysId, clearActiveKineticBodySlab, kineticDynamicSlab, writeActiveKineticBodySlabPose, writeBroadphaseFromBounds, writeStaticKineticSlabSlot } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { resolveNavRuntime } from "../Navigation/NavRuntime.js";
+
 export const FLOOR_CELL_KIND = { None: 0, Belt: 1, BeltElbowLeft: 2, BeltElbowRight: 3 };
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 export function gridSideFromCellIdxToNeighborIdx(idx, nIdx, cols) {

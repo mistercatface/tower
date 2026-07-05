@@ -7,7 +7,7 @@ import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Phy
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology } from "../Libraries/Physics/physics.js";
 ;
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
-import { removeChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
+import { removeChainLinkBetween } from "../Libraries/Props/props.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";

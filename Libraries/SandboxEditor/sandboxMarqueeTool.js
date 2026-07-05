@@ -1,6 +1,6 @@
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
-import { sandboxAssetMatchesTagFilter } from "../Sandbox/sandboxCapabilities.js";
+import { sandboxAssetMatchesTagFilter } from "../Sandbox/sandbox.js";
 import { aabbFromTwoPointsInto } from "../Math/math.js";
 import { entityContainedInAabb } from "../Physics/physics.js";
 import propCatalog from "../../Assets/props/index.js";

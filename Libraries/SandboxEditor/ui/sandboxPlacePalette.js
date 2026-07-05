@@ -1,5 +1,5 @@
 import { formatSandboxSpawnLabel } from "../../Props/props.js";
-import { sandboxAssetTags } from "../../Sandbox/sandboxCapabilities.js";
+import { sandboxAssetTags } from "../../Sandbox/sandbox.js";
 import propCatalog from "../../../Assets/props/index.js";
 export const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },

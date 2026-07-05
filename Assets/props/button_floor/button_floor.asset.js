@@ -1,5 +1,6 @@
-import { DEFAULT_BUTTON_FLOOR_RADIUS } from "../../../Libraries/Sandbox/buttonFloorDefaults.js";
-import { DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD } from "../../../Libraries/Sandbox/buttonInput.js";
+export const DEFAULT_BUTTON_FLOOR_RADIUS = 8;
+export const DEFAULT_BUTTON_INPUT_MODE = "tap";
+export const DEFAULT_BUTTON_MASS_THRESHOLD = 0;
 import { createButtonFloorDraw } from "../../../Libraries/Render/render.js";
 export default {
     id: "button_floor",

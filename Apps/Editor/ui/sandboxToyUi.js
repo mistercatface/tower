@@ -1,7 +1,7 @@
 import { formatSandboxSpawnLabel } from "../../../Libraries/Props/props.js";
-import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandboxCapabilities.js";
-import { orderSandboxPalettePropIds } from "../../../Libraries/Sandbox/sandboxShapeFamilies.js";
-import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandboxScenePlaceables.js";
+import { isSandboxSpawnable, sandboxTagsMatchFilter } from "../../../Libraries/Sandbox/sandbox.js";
+import { orderSandboxPalettePropIds } from "../../../Libraries/Sandbox/sandbox.js";
+import { wallPlaceInspector } from "../../../Libraries/Sandbox/sandbox.js";
 import { appendSelectionInspector } from "../../../Libraries/SandboxEditor/ui/sandboxPlaceableInspectorUi.js";
 import { appendWallPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxWallInspector.js";
 import { appendPropPlaceParams } from "../../../Libraries/SandboxEditor/ui/sandboxPropSpawnInspector.js";

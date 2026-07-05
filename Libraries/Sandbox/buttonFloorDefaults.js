@@ -1,1 +1,0 @@
-export const DEFAULT_BUTTON_FLOOR_RADIUS = 8;

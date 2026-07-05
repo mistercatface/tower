@@ -5,8 +5,8 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/chainLinks.js";
-import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";
+import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Props/props.js";
+import { spawnPlaceableAt } from "../Libraries/Sandbox/sandbox.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";
 import propCatalog from "../Assets/props/index.js";
 

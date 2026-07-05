@@ -1,9 +1,9 @@
 import propCatalog from "../../../Assets/props/index.js";
-import { isGridFloorBeltSpawnAsset, isSingleWorldPropSpawnAsset, getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
+import { isGridFloorBeltSpawnAsset, isSingleWorldPropSpawnAsset, getSandboxBehaviorLabel } from "../../Sandbox/sandbox.js";
 import { appendEditorHint, appendNumberField, appendSelectField } from "../../UI/paramFields.js";
-import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandboxFaction.js";
+import { SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandbox.js";
 import { appendShapeFamilySpawnFields, appendCoatFields } from "./sandboxShapeFamilyUi.js";
-import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
+import { isShapeFamilyAsset } from "../../Sandbox/sandbox.js";
 import { markLabViewDirty } from "../../../Apps/Editor/ui/preview.js";
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });

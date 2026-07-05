@@ -6,8 +6,8 @@ import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { getChainMemberIds } from "../Libraries/Sandbox/chainLinks.js";
-import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/spawnLinkedBallChain.js";
+import { getChainMemberIds } from "../Libraries/Props/props.js";
+import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Props/props.js";
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,

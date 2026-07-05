@@ -11,6 +11,7 @@ import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel, chunkHasStaticR
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 
 
+
 // --- MERGED FROM SurfaceProfileRevision.js ---
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();

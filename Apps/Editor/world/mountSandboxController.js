@@ -1,13 +1,13 @@
 import { canvasClientToWorld } from "../../../Libraries/Input/canvasPointer.js";
 import { createSandboxController } from "../../../Libraries/SandboxEditor/createSandboxController.js";
-import { createCueStrikeBehavior } from "../../../Libraries/Sandbox/behaviors/cueStrikeBehavior.js";
-import { createDragLaunchFacingBehavior } from "../../../Libraries/Sandbox/behaviors/dragLaunchFacingBehavior.js";
-import { createFlipperBehavior } from "../../../Libraries/Sandbox/behaviors/flipperBehavior.js";
-import { createDirectGroundNavBehavior } from "../../../Libraries/Sandbox/groundNav/directGroundNavBehavior.js";
-import { createFlowGroundNavBehavior } from "../../../Libraries/Sandbox/groundNav/flowGroundNavBehavior.js";
-import { createHpaGroundNavBehavior } from "../../../Libraries/Sandbox/groundNav/hpaGroundNavBehavior.js";
-import { createSpawnerBehavior } from "../../../Libraries/Sandbox/behaviors/spawnerBehavior.js";
-import { createDragLaunchBehavior, createDragLaunchWaitBehavior } from "../../../Libraries/Sandbox/dragLaunch.js";
+import { createCueStrikeBehavior } from "../../../Libraries/Props/props.js";
+import { createDragLaunchFacingBehavior } from "../../../Libraries/Props/props.js";
+import { createFlipperBehavior } from "../../../Libraries/Props/props.js";
+import { createDirectGroundNavBehavior } from "../../../Libraries/Navigation/navigation.js";
+import { createFlowGroundNavBehavior } from "../../../Libraries/Navigation/navigation.js";
+import { createHpaGroundNavBehavior } from "../../../Libraries/Navigation/navigation.js";
+import { createSpawnerBehavior } from "../../../Libraries/Props/props.js";
+import { createDragLaunchBehavior, createDragLaunchWaitBehavior } from "../../../Libraries/Props/props.js";
 function createSandboxBehaviors(state) {
     return [
         createDragLaunchBehavior(state),

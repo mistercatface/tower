@@ -1,20 +1,20 @@
-import { findLiveWorldProp, addWorldPropToState, removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT } from "../Physics/physics.js";
-import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, stepCardinalFacing } from "../Math/math.js";
-import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../Render/render.js";
-import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
+import { findLiveWorldProp, addWorldPropToState, removeWorldPropFromState, addWorldPropsToState, findWorldPropAtInView, visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
+import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, getConnectedComponentPath } from "../Physics/physics.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, stepCardinalFacing, createAabb, normalizeXY } from "../Math/math.js";
+import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere, createFlipperPrimitive, createPipeElbowPrimitive, appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
+import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
-import { processFloorShapes } from "../Spatial/spatial.js";
-import { tickFloorButtons } from "../Sandbox/floorButtons.js";
-import { runFloorEffect } from "../Sandbox/floorEffects.js";
-import { drawSphere } from "../Render/render.js";
-import { createFlipperPrimitive } from "../Render/render.js";
-import { createPipeElbowPrimitive } from "../Render/render.js";
+import { processFloorShapes, syncFloorPropCollisionShape, computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
-import { clearChainLinksForProp } from "../Sandbox/chainLinks.js";
+import { resolveSandboxFaction, sandboxFactions, evaluateInputGates, isEntityAtRest, resolveWorldPropSandboxBehavior, isSandboxSpawnable, sandboxAssetMatchesTagFilter, spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
+import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
+import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
+import { FLIPPER_LAYOUT } from "../../Assets/props/flipper/flipperShared.js";
+import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
+
+
 // --- MERGED FROM propRenderDefaults.js ---
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
@@ -2205,3 +2205,1140 @@ export const floorPropEffectPass = {
         renderer.render3D.drawFloorProps(ctx, state, viewport);
     },
 };
+
+// --- MERGED FROM buttonFloorDefaults.js ---
+export { DEFAULT_BUTTON_FLOOR_RADIUS, DEFAULT_BUTTON_INPUT_MODE, DEFAULT_BUTTON_MASS_THRESHOLD } from "../../Assets/props/button_floor/button_floor.asset.js";
+
+// --- MERGED FROM buttonInput.js ---
+/** @typedef {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} ButtonInputMode */
+/** @param {object | null | undefined} entity */
+export function isButtonEntity(entity) {
+    return entity?.buttonLinks != null;
+}
+/** @param {ButtonInputMode} inputMode */
+export function isMassButtonInputMode(inputMode) {
+    return inputMode === "massTap" || inputMode === "massHold" || inputMode === "massToggle";
+}
+/** @param {ButtonInputMode} inputMode */
+export function isToggleInputMode(inputMode) {
+    return inputMode === "toggle" || inputMode === "massToggle";
+}
+/** @param {ButtonInputMode} inputMode */
+export function isSustainedSpawnerButtonInputMode(inputMode) {
+    return inputMode === "hold" || inputMode === "massHold";
+}
+/** @param {ButtonInputMode} inputMode */
+export function isSustainedFlipperButtonInputMode(inputMode) {
+    return inputMode === "hold" || inputMode === "massHold" || isToggleInputMode(inputMode);
+}
+/** @param {object} state @param {object} button */
+export function buttonOccupantMass(state, button) {
+    let total = 0;
+    for (const entityId of button._occupants) {
+        const prop = state.entityRegistry.get(entityId);
+        if (!prop || prop.isDead) continue;
+        total += massFromBody(prop);
+    }
+    return total;
+}
+/** @param {object} state @param {object} button */
+export function isMassOverThreshold(state, button) {
+    return buttonOccupantMass(state, button) > button.massThreshold;
+}
+/** @param {object} state @param {object} button */
+export function isButtonActive(state, button) {
+    if (isToggleInputMode(button.inputMode)) return Boolean(button._toggleLatched);
+    if (isMassButtonInputMode(button.inputMode)) return isMassOverThreshold(state, button);
+    return Boolean(button._pointerHeld);
+}
+/** @param {object} state @param {object} button */
+export function buttonEffectiveActive(state, button) {
+    const active = isButtonActive(state, button);
+    return button.invert ? !active : active;
+}
+
+// --- MERGED FROM buttonLinks.js ---
+
+/** @typedef {{ type: "worldProp", id: number }} WorldPropButtonLinkTarget */
+/** @typedef {WorldPropButtonLinkTarget} ButtonLinkTarget */
+/** @param {object} button */
+export function getButtonLinks(button) {
+    return button.buttonLinks;
+}
+/** @param {object} button @param {ButtonLinkTarget[]} links */
+function setButtonLinks(button, links) {
+    button.buttonLinks = links.map((link) => ({ ...link }));
+}
+/** @param {ButtonLinkTarget} a @param {ButtonLinkTarget} b */
+function sameButtonLink(a, b) {
+    if (a.type !== b.type) return false;
+    return a.id === b.id;
+}
+/** @param {object} state @param {number} buttonId @param {ButtonLinkTarget} target */
+export function addButtonLink(state, buttonId, target) {
+    const button = state.entityRegistry.getLive(buttonId);
+    if (!isButtonEntity(button)) return false;
+    const links = getButtonLinks(button);
+    if (links.some((link) => sameButtonLink(link, target))) return true;
+    setButtonLinks(button, [...links, target]);
+    return true;
+}
+/** @param {object} state @param {number} buttonId @param {ButtonLinkTarget} target */
+export function removeButtonLink(state, buttonId, target) {
+    const button = state.entityRegistry.getLive(buttonId);
+    if (!isButtonEntity(button)) return false;
+    setButtonLinks(
+        button,
+        getButtonLinks(button).filter((link) => !sameButtonLink(link, target)),
+    );
+    return true;
+}
+/** @param {object} state @param {number} buttonId */
+export function clearButtonLinks(state, buttonId) {
+    const button = state.entityRegistry.getLive(buttonId);
+    if (!isButtonEntity(button)) return false;
+    button.buttonLinks = [];
+    return true;
+}
+/**
+ * @param {object} state
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} sourceButtonId
+ */
+export function findButtonLinkTarget(state, worldX, worldY, sourceButtonId) {
+    const prop = findWorldPropAtInView(state.entityRegistry, state.spatialFrame, worldX, worldY);
+    if (!prop || prop.id === sourceButtonId) return null;
+    if (isFlipperWorldProp(prop) || isSpawnerWorldProp(prop)) return { type: "worldProp", id: prop.id };
+    return null;
+}
+/** @param {object} state @param {ButtonLinkTarget} target */
+export function resolveButtonLinkEndpoint(state, target) {
+    if (target.type !== "worldProp") return null;
+    const prop = state.entityRegistry.getLive(target.id);
+    if (!prop) return null;
+    const typeLabel = formatPropTypeLabel(prop.type);
+    const role = isSpawnerWorldProp(prop) ? "spawner" : isFlipperWorldProp(prop) ? "flipper" : typeLabel;
+    return { target, label: `${role} · #${prop.id}`, x: prop.x, y: prop.y };
+}
+/** @param {object} state @param {object} button */
+export function listButtonLinkEndpoints(state, button) {
+    /** @type {{ target: ButtonLinkTarget, label: string, x: number, y: number }[]} */
+    const endpoints = [];
+    const links = getButtonLinks(button);
+    for (let i = 0; i < links.length; i++) {
+        const endpoint = resolveButtonLinkEndpoint(state, links[i]);
+        if (endpoint) endpoints.push(endpoint);
+    }
+    return endpoints;
+}
+/** @param {object} state @param {(button: object) => void} visit */
+export function forEachButtonEntity(state, visit) {
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (!isButtonEntity(prop)) return;
+        visit(prop);
+    });
+}
+export function appendButtonWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
+    forEachButtonEntity(state, (button) => {
+        const endpoints = listButtonLinkEndpoints(state, button);
+        const color = button.id === wireFromPropId ? "#FFB74D" : "#FF7043";
+        for (let j = 0; j < endpoints.length; j++) {
+            const endpoint = endpoints[j];
+            appendOverlayWireLink(out, button.x, button.y, endpoint.x, endpoint.y, color);
+        }
+    });
+    if (wireFromPropId != null && wireCursor) appendButtonWirePreviewCommands(out, state, wireFromPropId, wireCursor);
+}
+export function appendButtonWirePreviewCommands(out, state, fromPropId, wireCursor) {
+    const from = state.entityRegistry.getLive(fromPropId);
+    if (!from) return;
+    appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#FFB74D", { live: true });
+}
+
+// --- MERGED FROM floorEffects.js ---
+/** @typedef {{ when?: FloorTriggerWhen, effect: string, force?: number, forceX?: number, forceY?: number }} FloorTriggerDef */
+/** @typedef {"enter" | "exit" | "occupied" | "empty"} FloorTriggerWhen */
+/**
+ * @typedef {object} FloorEffectContext
+ * @property {object} [entity]
+ * @property {number} [entityId]
+ * @property {number} [dtSec]
+ * @property {{ x: number, y: number }} [world]
+ */
+/** @param {object} state @param {import("./buttonLinks.js").ButtonLinkTarget} link @param {object} button */
+function runButtonWorldPropLink(state, link, button) {
+    const prop = state.entityRegistry.getLive(link.id);
+    if (!prop || isSpawnerWorldProp(prop)) return;
+    if (isSustainedFlipperButtonInputMode(button.inputMode)) return;
+    if (button.invert) releaseFlipper(prop);
+    else triggerFlipper(prop, { hold: false });
+}
+/** @param {object} state @param {object} button @param {FloorEffectContext} [ctx] */
+export function runButtonTapLinks(state, button, ctx = {}) {
+    const links = getButtonLinks(button);
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        if (link.type === "worldProp") runButtonWorldPropLink(state, link, button);
+    }
+}
+/** @param {object} state @param {object} button */
+export function tickButtonSpawnerLinks(state, button) {
+    const active = buttonEffectiveActive(state, button);
+    const wasActive = button._spawnerButtonWasActive ?? false;
+    const sustained = isSustainedSpawnerButtonInputMode(button.inputMode);
+    if (active && (sustained || !wasActive)) {
+        const links = getButtonLinks(button);
+        for (let i = 0; i < links.length; i++) {
+            const link = links[i];
+            if (link.type !== "worldProp") continue;
+            const prop = state.entityRegistry.getLive(link.id);
+            if (!prop || !isSpawnerWorldProp(prop)) continue;
+            fireSpawner(state, prop);
+        }
+    }
+    button._spawnerButtonWasActive = active;
+}
+/** @param {object} state @param {object} button */
+export function syncButtonFlipperLinks(state, button) {
+    const active = buttonEffectiveActive(state, button);
+    const links = getButtonLinks(button);
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        if (link.type !== "worldProp") continue;
+        const prop = state.entityRegistry.getLive(link.id);
+        if (!prop || isSpawnerWorldProp(prop)) continue;
+        if (active) triggerFlipper(prop);
+        else releaseFlipper(prop);
+    }
+}
+/** @type {Record<string, { run: (state: object, floorProp: object, trigger: FloorTriggerDef, ctx: FloorEffectContext) => void }>} */
+const FLOOR_EFFECTS = {};
+/** @param {object} state @param {object} floorProp @param {FloorTriggerDef} trigger @param {FloorEffectContext} ctx */
+export function runFloorEffect(state, floorProp, trigger, ctx) {
+    const effect = FLOOR_EFFECTS[trigger.effect];
+    if (!effect) throw new Error(`Unknown floor effect "${trigger.effect}"`);
+    effect.run(state, floorProp, trigger, ctx);
+}
+
+// --- MERGED FROM floorButtons.js ---
+const POINTER_HIT_PADDING = 4;
+export function initFloorButtonProp(prop) {
+    prop._occupants = new Set();
+    prop._nextOccupants = new Set();
+    prop.buttonLinks = prop.strategy.buttonLinks.map((link) => ({ ...link }));
+    prop.inputMode = prop.strategy.inputMode;
+    prop.massThreshold = prop.strategy.massThreshold;
+    prop.invert = prop.strategy.invert === true;
+    prop._toggleLatched = false;
+    prop.aabb = createAabb();
+    syncFloorPropCollisionShape(prop);
+    syncFloorTriggerAabb(prop);
+}
+export function hitTestFloorButton(state, wx, wy, padding = POINTER_HIT_PADDING) {
+    let hit = null;
+    visitLiveWorldProps(state.worldProps, (prop) => {
+        if (!isButtonEntity(prop)) return;
+        if (Math.hypot(wx - prop.x, wy - prop.y) <= prop.radius + padding) hit = prop;
+    });
+    return hit;
+}
+export function handleButtonPointerDown(state, button, world) {
+    if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode)) return false;
+    if (button.inputMode === "toggle") {
+        button._toggleLatched = !button._toggleLatched;
+        return true;
+    }
+    button._pointerHeld = true;
+    if (button.inputMode === "tap" && button.invert) return true;
+    runButtonTapLinks(state, button, { world });
+    return true;
+}
+export function releaseButtonPointerHold(state) {
+    visitLiveWorldProps(state.worldProps, (button) => {
+        if (!isButtonEntity(button) || isMassButtonInputMode(button.inputMode) || button.inputMode === "toggle") return;
+        if (button.inputMode === "tap" && button.invert) runButtonTapLinks(state, button);
+        button._pointerHeld = false;
+    });
+}
+function tickFloorButton(state, button) {
+    if (button.inputMode === "massToggle") {
+        const massActive = isMassOverThreshold(state, button);
+        const wasMassActive = button._massWasActive ?? false;
+        if (massActive && !wasMassActive) button._toggleLatched = !button._toggleLatched;
+        button._massWasActive = massActive;
+    }
+    if (isSustainedFlipperButtonInputMode(button.inputMode)) syncButtonFlipperLinks(state, button);
+    tickButtonSpawnerLinks(state, button);
+    if (isToggleInputMode(button.inputMode)) {
+        button._buttonDrawPressed = isButtonActive(state, button);
+        return;
+    }
+    const active = isButtonActive(state, button);
+    const wasActive = button._buttonWasActive ?? false;
+    if (button.inputMode === "massTap" && active && !wasActive) runButtonTapLinks(state, button);
+    button._buttonWasActive = active;
+    button._buttonDrawPressed = active;
+}
+export function tickFloorButtons(state, spatialFrame) {
+    const massButtons = [];
+    const buttons = [];
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !isButtonEntity(prop)) continue;
+        buttons.push(prop);
+        if (isMassButtonInputMode(prop.inputMode)) massButtons.push(prop);
+    }
+    if (!buttons.length) return;
+    if (massButtons.length) processFloorShapes(spatialFrame, massButtons, { onEnter() {}, onExit() {} });
+    for (let i = 0; i < buttons.length; i++) tickFloorButton(state, buttons[i]);
+}
+
+// --- MERGED FROM cueStrikeBehavior.js ---
+export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
+/** @param {object} state @param {object} prop @param {object} asset */
+function getCueStrikeConfig(state, prop, asset) {
+    return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(state, prop, asset, "cueStrike") };
+}
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
+export function createCueStrikeBehavior(state) {
+    return createDragLaunchInteraction({
+        id: CUE_STRIKE_BEHAVIOR_ID,
+        getConfig: (prop) => getCueStrikeConfig(state, prop, propCatalog[prop.type]),
+        canStart(prop) {
+            return evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, propCatalog[prop.type], state).allowed;
+        },
+        onLaunch(prop, shot) {
+            applyCueStrikeCollision(prop, shot);
+        },
+        buildAimLineContext(prop) {
+            return buildCueStrikeAimLineContext(prop, state);
+        },
+        resolveAimLine: getCueStrikeAimLine,
+    });
+}
+
+// --- MERGED FROM dragLaunchFacingBehavior.js ---
+export const DRAG_LAUNCH_FACING_BEHAVIOR_ID = "dragLaunchFacing";
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
+export function createDragLaunchFacingBehavior(state) {
+    return createDragLaunchInteraction({
+        id: DRAG_LAUNCH_FACING_BEHAVIOR_ID,
+        getConfig: (prop) => getDragLaunchConfig(propCatalog[prop.type]),
+        buildAimLineContext: dragLaunchAimLineContextForState(state),
+        onLaunch(prop, shot) {
+            prop.facing = Math.atan2(shot.ny, shot.nx);
+            prop.angularVelocity = 0;
+            prop.strategy.syncCollisionShape?.(prop);
+            applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
+        },
+    });
+}
+
+// --- MERGED FROM flipperBehavior.js ---
+export const FLIPPER_BEHAVIOR_ID = "flipper";
+const SWING_SPEED_RAD = 20;
+const RETURN_SPEED_RAD = 8;
+const FLIPPER_ANGLE_STEPS = 24;
+/** @param {object} prop */
+export function isFlipperWorldProp(prop) {
+    return Boolean(propCatalog[prop?.type]?.flipper?.side);
+}
+/** @param {object} asset */
+function flipperConfig(asset) {
+    return asset?.flipper ?? {};
+}
+/** @param {object} cfg */
+function resolveFlipperDims(cfg) {
+    return {
+        length: cfg.length ?? FLIPPER_LAYOUT.length,
+        width: cfg.width ?? FLIPPER_LAYOUT.width,
+        height: cfg.height ?? FLIPPER_LAYOUT.height,
+        pivotRadius: cfg.pivotRadius ?? FLIPPER_LAYOUT.pivotRadius,
+    };
+}
+/** @param {object} prop @param {object} asset */
+export function getFlipperSpec(prop, asset) {
+    const cfg = flipperConfig(asset);
+    const dims = resolveFlipperDims(cfg);
+    return {
+        side: cfg.side ?? "left",
+        extendDir: cfg.extendDir ?? 1,
+        length: dims.length,
+        width: dims.width,
+        height: dims.height,
+        pivotRadius: dims.pivotRadius,
+        restAngle: prop._flipperRestAngle ?? cfg.restAngle ?? 0.45,
+        activeAngle: prop._flipperActiveAngle ?? cfg.activeAngle ?? -0.55,
+    };
+}
+/** @param {object | null | undefined} prop @param {{ hold?: boolean }} [options] */
+export function triggerFlipper(prop, { hold = true } = {}) {
+    if (!prop) return;
+    prop._flipperTarget = "active";
+    prop._flipperButtonPressed = hold;
+}
+/** @param {object | null | undefined} prop */
+export function releaseFlipper(prop) {
+    if (!prop) return;
+    prop._flipperTarget = "rest";
+    prop._flipperButtonPressed = false;
+}
+/** @param {object | null | undefined} prop */
+export function isFlipperButtonPressed(prop) {
+    if (!prop) return false;
+    return Boolean(prop._flipperButtonPressed || prop._flipperTarget === "active");
+}
+/** @param {object} prop */
+export function getFlipperSpriteCacheKey(prop) {
+    const asset = propCatalog[prop.type];
+    const cfg = flipperConfig(asset);
+    const spec = getFlipperSpec(prop, asset);
+    const angle = prop._flipperAngle ?? cfg.restAngle ?? 0.45;
+    const active = prop._flipperTarget === "active" || prop._flipperButtonPressed ? 1 : 0;
+    return `${cfg.side ?? "left"}_L${Math.round(spec.length)}_a${quantizeAngleIndex(angle, FLIPPER_ANGLE_STEPS)}_${active}`;
+}
+/** @param {object} prop */
+export function syncFlipperCollisionShape(prop) {
+    const asset = propCatalog[prop.type];
+    const spec = getFlipperSpec(prop, asset);
+    if (prop._flipperAngle == null) prop._flipperAngle = spec.restAngle;
+    const { length, width, extendDir } = spec;
+    const halfW = width * 0.5;
+    const angle = prop._flipperAngle;
+    const key = `flip_${spec.side}_${angle.toFixed(3)}_${length}_${halfW}`;
+    if (prop._flipperShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
+    const tipR = Math.max(1, halfW * 0.45);
+    prop.shape = new PolygonShape(new Float32Array([0, -halfW, (length - tipR) * extendDir, -tipR, length * extendDir, 0, (length - tipR) * extendDir, tipR, 0, halfW]));
+    prop._collisionFacing = angle;
+    prop._flipperShapeKey = key;
+    return prop.shape;
+}
+/** @param {object} prop @param {object} asset */
+function initFlipperAngle(prop, asset) {
+    if (prop._flipperAngle == null) {
+        prop._flipperAngle = getFlipperSpec(prop, asset).restAngle;
+        prop._flipperTarget = "rest";
+    }
+}
+/** @param {object} prop @param {object} asset @param {number} dt */
+function tickFlipperWorldProp(prop, asset, dt) {
+    initFlipperAngle(prop, asset);
+    const spec = getFlipperSpec(prop, asset);
+    const isActivating = prop._flipperTarget === "active";
+    const target = isActivating ? spec.activeAngle : spec.restAngle;
+    const speed = isActivating ? SWING_SPEED_RAD : RETURN_SPEED_RAD;
+    const dtSec = dt / 1000;
+    const prevAngle = prop._flipperAngle;
+    const diff = target - prevAngle;
+    const maxStep = speed * dtSec;
+    if (Math.abs(diff) <= maxStep) {
+        prop._flipperAngle = target;
+        if (isActivating && !prop._flipperButtonPressed) prop._flipperTarget = "rest";
+    } else prop._flipperAngle = prevAngle + Math.sign(diff) * maxStep;
+    prop._flipperAngVel = (prop._flipperAngle - prevAngle) / dtSec;
+    prop.angularVelocity = prop._flipperAngVel;
+    prop.vx = 0;
+    prop.vy = 0;
+    syncFlipperCollisionShape(prop);
+}
+/** @param {object} state @param {number} dt */
+function tickAllFlippers(state, dt) {
+    const worldProps = state.worldProps;
+    for (let i = 0; i < worldProps.length; i++) {
+        const prop = worldProps[i];
+        if (prop.isDead || !isFlipperWorldProp(prop)) continue;
+        const asset = propCatalog[prop.type];
+        if (!asset) continue;
+        tickFlipperWorldProp(prop, asset, dt);
+    }
+}
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
+export function createFlipperBehavior(state) {
+    return {
+        id: FLIPPER_BEHAVIOR_ID,
+        supports(_prop, asset) {
+            return asset?.sandbox?.behaviors?.includes(FLIPPER_BEHAVIOR_ID) ?? false;
+        },
+        tickWorld(dt) {
+            tickAllFlippers(state, dt);
+        },
+        onPointerDown: () => false,
+        onPointerMove() {},
+        onPointerUp() {},
+        reset() {},
+    };
+}
+
+// --- MERGED FROM spawnerBehavior.js ---
+export const SPAWNER_BEHAVIOR_ID = "spawner";
+/** @param {object} prop @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
+function aimSpawnerFacing(prop, aim) {
+    if (aim?.shotNx == null || aim.shotNy == null) return;
+    prop.facing = Math.atan2(aim.shotNy, aim.shotNx);
+    prop.angularVelocity = 0;
+    prop.strategy.syncCollisionShape?.(prop);
+}
+/** @param {object} state @returns {import("../sandboxCapabilities.js").SandboxBehavior} */
+export function createSpawnerBehavior(state) {
+    return {
+        ...createDragLaunchInteraction({
+            id: SPAWNER_BEHAVIOR_ID,
+            getConfig: (prop) => getSpawnerDragConfig(prop, propCatalog[prop.type]),
+            buildAimLineContext: dragLaunchAimLineContextForState(state),
+            onAim: aimSpawnerFacing,
+            onLaunch(prop, shot) {
+                fireSpawner(state, prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
+            },
+        }),
+        supports(_prop, asset) {
+            return isSpawnerProp(asset);
+        },
+    };
+}
+
+// --- MERGED FROM spawnerConfig.js ---
+/** @param {object | null | undefined} asset */
+export function isSpawnerProp(asset) {
+    return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
+}
+/** @param {object | null | undefined} prop */
+export function isSpawnerWorldProp(prop) {
+    return isSpawnerProp(propCatalog[prop?.type]);
+}
+/** @param {object | null | undefined} prop @param {object | null | undefined} asset */
+export function resolveSpawnerPropId(prop, asset) {
+    return prop?.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
+}
+/** @param {object | null | undefined} prop @param {object | null | undefined} asset */
+export function getSpawnerDragConfig(_prop, asset) {
+    const overrides = asset?.sandbox?.spawner?.dragLaunch;
+    return { ...DRAG_LAUNCH_DEFAULTS, ...(overrides && typeof overrides === "object" ? overrides : {}) };
+}
+/** @param {object} prop @param {object | null | undefined} asset */
+export function getSpawnerOutletWorld(prop, asset) {
+    const resolver = asset?.sandbox?.spawner?.getOutletWorld;
+    if (typeof resolver === "function") return resolver(prop, asset);
+    const facing = prop.facing ?? 0;
+    const reach = prop.radius ?? 8;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    return { x: prop.x + cos * reach, y: prop.y + sin * reach, nx: cos, ny: sin };
+}
+/**
+ * @param {object} state
+ * @param {object} spawnerWorldProp
+ * @param {{ power?: number, nx?: number, ny?: number }} [options]
+ */
+export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
+    const asset = propCatalog[spawnerWorldProp.type];
+    if (!isSpawnerProp(asset)) return null;
+    const config = getSpawnerDragConfig(spawnerWorldProp, asset);
+    const outlet = getSpawnerOutletWorld(spawnerWorldProp, asset);
+    const launchNx = nx ?? outlet.nx;
+    const launchNy = ny ?? outlet.ny;
+    const launchPower = power ?? config.maxPower;
+    const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
+    const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
+    spawned.faction = resolveSandboxFaction(spawnerWorldProp);
+    const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
+    if (spawnVisualOverride) stampPropVisualOverride(spawned, spawnVisualOverride);
+    applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
+    addWorldPropToState(state, spawned);
+    return spawned;
+}
+/** @returns {string[]} */
+export function listSpawnerSpawnPropIds() {
+    return Object.keys(propCatalog)
+        .filter((id) => {
+            const asset = propCatalog[id];
+            return isSandboxSpawnable(asset) && !isSpawnerProp(asset);
+        })
+        .sort();
+}
+
+// --- MERGED FROM spawnAgentChain.js ---
+function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId, resolvePropId }) {
+    if (resolvePropId) return resolvePropId(index);
+    const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
+    if (index === leaderIndex) return leaderId;
+    return bodyPropId ?? headPropId ?? leaderId;
+}
+function applySegmentRadius(prop, segmentRadius, headScaleFn) {
+    if (headScaleFn) headScaleFn(prop, segmentRadius);
+    else if (segmentRadius != null) {
+        const shape = prop.shape;
+        if (shape?.type === "Polygon") setPropRadius(prop, segmentRadius);
+        else setPropRadius(prop, segmentRadius);
+    }
+}
+export function spawnAgentChain(state, anchorIdx, spec) {
+    const {
+        headPropId,
+        bodyPropId,
+        leaderPropId,
+        leaderIndex = 0,
+        segmentCount = 2,
+        faction,
+        exportType = null,
+        linkSlack = 1.0,
+        segmentRadius = null,
+        growDirX = -1,
+        growDirY = 0,
+        spacing = null,
+        headScaleFn = null,
+        onSegmentSpawned = null,
+        spawnGroupId = null,
+        resolvePropId = null,
+    } = spec;
+    const grid = state.obstacleGrid;
+    const meta = getSandboxEntityMeta(state);
+    const anchorWorld = grid.gridToWorldByIdx(anchorIdx);
+    const props = [];
+    const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
+    const firstProp = spawnPlacedSandboxProp(state, anchorWorld.x, anchorWorld.y, resolveSegmentPropId(0, propSpec), faction);
+    applySegmentRadius(firstProp, segmentRadius, headScaleFn);
+    props.push(firstProp);
+    if (onSegmentSpawned) onSegmentSpawned(firstProp, 0);
+    let lastProp = firstProp;
+    for (let i = 1; i < segmentCount; i++) {
+        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec), faction);
+        applySegmentRadius(bodyProp, segmentRadius, null);
+        if (onSegmentSpawned) onSegmentSpawned(bodyProp, i);
+        const dist = spacing ?? resolveChainLinkRestLength(lastProp, bodyProp, linkSlack);
+        bodyProp.x = lastProp.x + growDirX * dist;
+        bodyProp.y = lastProp.y + growDirY * dist;
+        props.push(bodyProp);
+        lastProp = bodyProp;
+    }
+    const leader = props[leaderIndex];
+    const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
+    for (let i = 0; i < props.length; i++) {
+        meta.setSpawnGroupId(props[i].id, resolvedGroupId);
+        if (exportType) meta.setSpawnGroupExportType(props[i].id, exportType);
+    }
+    meta.setSpawnGroupAnchor(leader.id);
+    for (let i = 0; i < props.length - 1; i++) {
+        const a = props[i];
+        const b = props[i + 1];
+        const segDist = Math.hypot(b.x - a.x, b.y - a.y);
+        const restLength = spacing != null ? segDist * linkSlack : segDist;
+        addChainLink(state, a.id, b.id, linkSlack, restLength);
+    }
+    setChainHead(state, meta, leader.id);
+    return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
+}
+
+// --- MERGED FROM spawnLinkedBallChain.js ---
+function segmentOffset(index, spacing, growDirX, growDirY) {
+    return { x: index * spacing * growDirX, y: index * spacing * growDirY };
+}
+export function spawnLinkedBallChain(state, anchorIdx, options) {
+    return spawnAgentChain(state, anchorIdx, {
+        leaderIndex: 0,
+        headPropId: options.headBallType ?? options.ballType,
+        bodyPropId: options.ballType,
+        segmentCount: options.segmentCount,
+        faction: options.faction ?? sandboxFactions.alpha,
+        exportType: options.exportType,
+        linkSlack: options.linkSlack,
+        segmentRadius: options.segmentRadius,
+        growDirX: options.growDirX ?? -1,
+        growDirY: options.growDirY ?? 0,
+        spacing: options.spacing,
+        spawnGroupId: options.spawnGroupId,
+    });
+}
+export function growChainSegment(state, tailProp, options) {
+    const spacing = options.spacing;
+    const ballType = options.ballType;
+    const growDirX = options.growDirX ?? -1;
+    const growDirY = options.growDirY ?? 0;
+    const faction = options.faction ?? resolveSandboxFaction(tailProp);
+    const exportType = options.exportType ?? null;
+    const meta = getSandboxEntityMeta(state);
+    const spawnGroupId = options.spawnGroupId ?? meta.getSpawnGroupId(tailProp.id);
+    const linkSlack = options.linkSlack ?? 1;
+    const segmentRadius = options.segmentRadius ?? null;
+    const offset = segmentOffset(1, spacing, growDirX, growDirY);
+    const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
+    if (segmentRadius != null) setPropRadius(segment, segmentRadius);
+    if (spawnGroupId) {
+        meta.setSpawnGroupId(segment.id, spawnGroupId);
+        if (exportType) meta.setSpawnGroupExportType(segment.id, exportType);
+    }
+    addChainLink(state, tailProp.id, segment.id, linkSlack);
+    return segment;
+}
+export function linkedChainOccupiedCellIndices(members, grid) {
+    const indices = new Set();
+    for (let i = 0; i < members.length; i++) {
+        const col = grid.worldCol(members[i].x);
+        const row = grid.worldRow(members[i].y);
+        indices.add(row * grid.cols + col);
+    }
+    return indices;
+}
+export function tryExportLinkedBallChainSpawnGroup(members, meta) {
+    const exportType = meta.getSpawnGroupExportType(members[0].id);
+    if (!exportType) return null;
+    const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
+    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor), segmentCount: members.length };
+}
+
+// --- MERGED FROM spawnPoolRack.js ---
+const PLAYFIELD_W = 80;
+const PLAYFIELD_H = 160;
+const APEX_U = 0.5;
+const APEX_V = 0.2933012701892219;
+const CUE_BEHAVIOR_OVERRIDES = {
+    cueStrike: { minDrag: 0.75, maxPull: 18.75, pullScale: 0.5, minPower: 4, maxPower: 800, powerCurve: 2.5 },
+    inputGates: {
+        cueStrike: [
+            { scope: "self", until: "atRest" },
+            { scope: "groupWorldProps", link: "spawnGroupId", until: "allAtRest" },
+        ],
+    },
+};
+/** @typedef {{ prop: string, u: number, v: number }} RackBallPlacement */
+/** @type {RackBallPlacement[]} */
+const RACK_9BALL = [
+    { prop: "pool_cue_ball", u: 0.5, v: 0.75 },
+    { prop: "pool_ball_1", u: 0.5, v: 0.2933012701892219 },
+    { prop: "pool_ball_2", u: 0.45, v: 0.25 },
+    { prop: "pool_ball_3", u: 0.55, v: 0.25 },
+    { prop: "pool_ball_4", u: 0.4, v: 0.20669872981077808 },
+    { prop: "pool_ball_9", u: 0.5, v: 0.20669872981077808 },
+    { prop: "pool_ball_5", u: 0.6, v: 0.20669872981077808 },
+    { prop: "pool_ball_7", u: 0.45, v: 0.16339745962155616 },
+    { prop: "pool_ball_8", u: 0.55, v: 0.16339745962155616 },
+    { prop: "pool_ball_6", u: 0.5, v: 0.12009618943233424 },
+];
+/** @type {RackBallPlacement[]} */
+const RACK_8BALL = [
+    { prop: "pool_cue_ball", u: 0.5, v: 0.75 },
+    { prop: "pool_ball_1", u: 0.5, v: 0.2933012701892219 },
+    { prop: "pool_ball_10", u: 0.45, v: 0.25 },
+    { prop: "pool_ball_2", u: 0.55, v: 0.25 },
+    { prop: "pool_ball_11", u: 0.4, v: 0.20669872981077808 },
+    { prop: "pool_ball_8", u: 0.5, v: 0.20669872981077808 },
+    { prop: "pool_ball_3", u: 0.6, v: 0.20669872981077808 },
+    { prop: "pool_ball_12", u: 0.35, v: 0.16339745962155616 },
+    { prop: "pool_ball_4", u: 0.45, v: 0.16339745962155616 },
+    { prop: "pool_ball_13", u: 0.55, v: 0.16339745962155616 },
+    { prop: "pool_ball_5", u: 0.65, v: 0.16339745962155616 },
+    { prop: "pool_ball_6", u: 0.3, v: 0.12009618943233424 },
+    { prop: "pool_ball_14", u: 0.4, v: 0.12009618943233424 },
+    { prop: "pool_ball_7", u: 0.5, v: 0.12009618943233424 },
+    { prop: "pool_ball_15", u: 0.6, v: 0.12009618943233424 },
+    { prop: "pool_ball_9", u: 0.7, v: 0.12009618943233424 },
+];
+/** @param {number} u @param {number} v */
+function rackOffset(u, v) {
+    return { dx: (u - APEX_U) * PLAYFIELD_W, dy: (v - APEX_V) * PLAYFIELD_H };
+}
+/**
+ * @param {object} state
+ * @param {number} anchorX — foot spot / apex ball (ball 1) world X
+ * @param {number} anchorY
+ * @param {"8ball" | "9ball"} variant
+ * @param {string} faction
+ */
+/** @param {"8ball" | "9ball"} variant */
+function poolRackExportType(variant) {
+    return variant === "9ball" ? "pool_rack_9ball" : "pool_rack_8ball";
+}
+/**
+ * @param {object[]} members
+ * @param {import("../../GameState/sandboxEntityMeta.js").SandboxEntityMetaStore} meta
+ * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
+ */
+export function tryExportPoolRackSpawnGroup(members, meta) {
+    const exportType = meta.getSpawnGroupExportType(members[0].id);
+    if (!exportType) return null;
+    const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
+    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor) };
+}
+export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
+    const layout = variant === "9ball" ? RACK_9BALL : RACK_8BALL;
+    const spawnGroupId = `poolRack:${Date.now()}`;
+    const exportType = poolRackExportType(variant);
+    const meta = getSandboxEntityMeta(state);
+    let cueProp = null;
+    for (let i = 0; i < layout.length; i++) {
+        const entry = layout[i];
+        const { dx, dy } = rackOffset(entry.u, entry.v);
+        const prop = new WorldProp(anchorX + dx, anchorY + dy, entry.prop, 0);
+        prop.faction = faction;
+        meta.setSpawnGroupId(prop.id, spawnGroupId);
+        meta.setSpawnGroupExportType(prop.id, exportType);
+        if (entry.prop === "pool_ball_1") meta.setSpawnGroupAnchor(prop.id);
+        if (entry.prop === "pool_cue_ball") {
+            meta.setBehaviorOverrides(prop.id, CUE_BEHAVIOR_OVERRIDES);
+            meta.setActiveBehaviorId(prop.id, CUE_STRIKE_BEHAVIOR_ID);
+            cueProp = prop;
+        }
+        wakeKineticBody(prop);
+        addWorldPropToState(state, prop);
+    }
+    return cueProp;
+}
+
+// --- MERGED FROM dragLaunch.js ---
+/** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
+/** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
+export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
+/** @param {object | null | undefined} asset */
+export function isSandboxProp(asset) {
+    const sandbox = asset?.sandbox;
+    return sandbox === true || (sandbox != null && typeof sandbox === "object");
+}
+/** @param {object | null | undefined} asset */
+export function getDragLaunchConfig(asset) {
+    const entry = asset?.sandbox?.dragLaunch;
+    const overrides = entry === true ? {} : entry && typeof entry === "object" ? entry : {};
+    return { ...DRAG_LAUNCH_DEFAULTS, ...overrides };
+}
+/** @param {number} anchorX @param {number} anchorY @param {number} [startX] @param {number} [startY] @returns {DragLaunchAim} */
+export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
+    return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
+}
+/** @param {DragLaunchAim} aim @param {DragLaunchConfig} config */
+function resolveDragAimPhysics(aim, config) {
+    const startX = aim.startX ?? aim.anchorX;
+    const startY = aim.startY ?? aim.anchorY;
+    const dx = aim.pullX - startX;
+    const dy = aim.pullY - startY;
+    const { nx, ny, len: drag } = normalizeXY(dx, dy);
+    if (drag < 0.5) {
+        if (aim.shotNx == null || aim.shotNy == null) return null;
+        return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag: 0, pullBack: 0 };
+    }
+    aim.shotNx = -nx;
+    aim.shotNy = -ny;
+    const pullBack = Math.min(config.maxPull, drag * config.pullScale);
+    return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag, pullBack };
+}
+/** @param {number} drag @param {DragLaunchConfig} config @returns {number} 0–1 pull amount after minDrag */
+export function resolveDragLaunchPullRatio(drag, config) {
+    if (drag < config.minDrag) return 0;
+    const maxFingerDrag = config.maxPull / config.pullScale;
+    const span = Math.max(0.001, maxFingerDrag - config.minDrag);
+    return Math.min(1, (drag - config.minDrag) / span);
+}
+/** @param {number} drag @param {DragLaunchConfig} config */
+function computeLaunchPower(drag, config) {
+    const pullRatio = resolveDragLaunchPullRatio(drag, config);
+    if (pullRatio <= 0) return 0;
+    const exponent = config.powerCurve ?? 1;
+    const curved = exponent === 1 ? pullRatio : Math.pow(pullRatio, exponent);
+    const minPower = config.minPower;
+    const maxPower = config.maxPower;
+    return minPower + curved * (maxPower - minPower);
+}
+/** @param {DragLaunchAim | null | undefined} aim @param {number} pullX @param {number} pullY @param {DragLaunchConfig} config */
+export function updateDragLaunchAim(aim, pullX, pullY, config) {
+    if (!aim?.active) return null;
+    aim.pullX = pullX;
+    aim.pullY = pullY;
+    return resolveDragAimPhysics(aim, config);
+}
+/** @param {DragLaunchAim | null | undefined} aim @param {DragLaunchConfig} config */
+export function getDragLaunchPreview(aim, config) {
+    if (!aim?.active) return null;
+    const physics = resolveDragAimPhysics(aim, config);
+    if (!physics || aim.shotNx == null || aim.shotNy == null) return null;
+    const startX = aim.startX ?? aim.anchorX;
+    const startY = aim.startY ?? aim.anchorY;
+    const dx = aim.pullX - startX;
+    const dy = aim.pullY - startY;
+    return {
+        anchorX: aim.anchorX,
+        anchorY: aim.anchorY,
+        pullX: aim.anchorX + dx,
+        pullY: aim.anchorY + dy,
+        nx: physics.shotNx,
+        ny: physics.shotNy,
+        power: computeLaunchPower(physics.drag, config),
+        drag: physics.drag,
+    };
+}
+/**
+ * @param {DragLaunchAim | null | undefined} aim
+ * @param {DragLaunchConfig} config
+ * @returns {{ anchorX: number, anchorY: number, nx: number, ny: number, power: number } | null}
+ */
+export function releaseDragLaunch(aim, config) {
+    if (!aim?.active) return null;
+    const physics = resolveDragAimPhysics(aim, config);
+    if (!physics || physics.drag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return null;
+    const power = computeLaunchPower(physics.drag, config);
+    if (power <= 0) return null;
+    return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
+}
+/**
+ * @param {object} prop
+ * @param {object | null | undefined} state
+ */
+export function buildDragLaunchAimLineContext(prop, state) {
+    if (!state || !prop) return null;
+    const grid = state.obstacleGrid;
+    const maxRayDist = resolveCueStrikeMaxRayDist({ obstacleGrid: grid });
+    return { prop, radius: prop.radius, maxRayDist };
+}
+/**
+ * @param {ReturnType<typeof getDragLaunchPreview>} preview
+ * @param {ReturnType<typeof buildDragLaunchAimLineContext>} aimLineContext
+ */
+export function getDragLaunchAimLine(preview, aimLineContext) {
+    if (!preview || preview.power <= 0 || !aimLineContext) return null;
+    const travelDist = estimateRollingTravelDistance(preview.power, aimLineContext.prop?.strategy ?? {});
+    return computeCircleAimLineSegment({
+        originX: preview.anchorX,
+        originY: preview.anchorY,
+        radius: aimLineContext.radius,
+        nx: preview.nx,
+        ny: preview.ny,
+        maxTravelDist: travelDist,
+        maxRayDist: aimLineContext.maxRayDist,
+    });
+}
+/** @param {object} body @param {number} nx @param {number} ny @param {number} power */
+export function applyDragLaunchVelocity(body, nx, ny, power) {
+    body.vx = nx * power;
+    body.vy = ny * power;
+    if (body.strategy?.rolls) {
+        const r = body.radius || 8;
+        body.angularVelocity = (power / r) * 0.12;
+    }
+    wakeKineticBody(body);
+}
+/**
+ * Shared pointer-drag aim + launch for sandbox behaviors.
+ *
+ * @param {{
+ *   id: string,
+ *   getConfig?: (prop: object) => DragLaunchConfig,
+ *   canStart?: (prop: object, world: { x: number, y: number }) => boolean,
+ *   onLaunch?: (prop: object, shot: { anchorX: number, anchorY: number, nx: number, ny: number, power: number }) => void,
+ *   onAim?: (prop: object, aim: DragLaunchAim) => void,
+ *   buildAimLineContext?: (prop: object) => ReturnType<typeof buildDragLaunchAimLineContext>,
+ *   resolveAimLine?: typeof getDragLaunchAimLine,
+ * }} spec
+ * @returns {import("./sandboxCapabilities.js").SandboxBehavior}
+ */
+export function createDragLaunchInteraction(spec) {
+    /** @type {DragLaunchAim | null} */
+    let aim = null;
+    const buildCtx = spec.buildAimLineContext ?? (() => null);
+    const resolveLine = spec.resolveAimLine ?? getDragLaunchAimLine;
+    return {
+        id: spec.id,
+        onPointerDown(prop, world, _e) {
+            if (spec.canStart && !spec.canStart(prop, world)) return false;
+            wakeKineticBody(prop);
+            aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
+            spec.onAim?.(prop, aim);
+            return true;
+        },
+        onPointerMove(prop, world, _e) {
+            if (!aim?.active) return;
+            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
+            spec.onAim?.(prop, aim);
+        },
+        onPointerUp(prop, _e) {
+            if (!aim?.active) return;
+            const shot = releaseDragLaunch(aim, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
+            aim = null;
+            if (!shot) return;
+            if (spec.onLaunch) spec.onLaunch(prop, shot);
+            else applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
+        },
+        appendOverlayCommands(commands, prop) {
+            if (!aim?.active) return;
+            appendDragLaunchOverlayCommands(commands, aim, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop), buildCtx(prop), resolveLine);
+        },
+        reset() {
+            aim = null;
+        },
+    };
+}
+export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
+export const DRAG_LAUNCH_WAIT_BEHAVIOR_ID = "dragLaunchWait";
+/** @param {object} prop */
+function dragLaunchConfigForProp(prop) {
+    return getDragLaunchConfig(propCatalog[prop?.type]);
+}
+/** @param {object} state @returns {(prop: object) => ReturnType<typeof buildDragLaunchAimLineContext>} */
+export function dragLaunchAimLineContextForState(state) {
+    return (prop) => buildDragLaunchAimLineContext(prop, state);
+}
+/** @param {object} state @returns {import("./sandboxCapabilities.js").SandboxBehavior} */
+export function createDragLaunchBehavior(state) {
+    return createDragLaunchInteraction({ id: DRAG_LAUNCH_BEHAVIOR_ID, getConfig: dragLaunchConfigForProp, buildAimLineContext: dragLaunchAimLineContextForState(state) });
+}
+/** @param {object} state @returns {import("./sandboxCapabilities.js").SandboxBehavior} */
+export function createDragLaunchWaitBehavior(state) {
+    return createDragLaunchInteraction({
+        id: DRAG_LAUNCH_WAIT_BEHAVIOR_ID,
+        getConfig: dragLaunchConfigForProp,
+        buildAimLineContext: dragLaunchAimLineContextForState(state),
+        canStart(prop) {
+            if (!isEntityAtRest(prop)) return false;
+            return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, propCatalog[prop?.type], state).allowed;
+        },
+    });
+}
+export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
+    const preview = getDragLaunchPreview(aim, config);
+    if (!preview) return;
+    const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
+    const hue = 180 - ratio * 180;
+    const startX = aim?.startX ?? preview.anchorX;
+    const startY = aim?.startY ?? preview.anchorY;
+    const maxFingerDrag = config.maxPull / config.pullScale;
+    commands.push(overlayCircleStroke(startX, startY, maxFingerDrag, { stroke: `hsla(${hue}, 90%, 55%, 0.15)`, lineWidth: 1, dash: [4, 4] }));
+    if (aim && aim.pullX != null && aim.pullY != null) {
+        commands.push(overlaySegment(startX, startY, aim.pullX, aim.pullY, { stroke: `hsla(${hue}, 90%, 55%, 0.12)`, lineWidth: 1, dash: [3, 3] }));
+        commands.push(overlayCircleFillStroke(aim.pullX, aim.pullY, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
+    }
+    if (Math.hypot(startX - preview.anchorX, startY - preview.anchorY) > 0.1) {
+        commands.push(overlayCircleStroke(startX, startY, 5, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 1.5 }));
+        commands.push(overlayCircleFillStroke(startX, startY, 1.5, { fill: `hsla(${hue}, 90%, 55%, 0.65)`, stroke: `hsla(${hue}, 90%, 55%, 0.65)`, lineWidth: 1 }));
+    }
+    commands.push(overlaySegment(preview.pullX, preview.pullY, preview.anchorX, preview.anchorY, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 2, dash: [6, 4] }));
+    commands.push(overlayCircleStroke(preview.anchorX, preview.anchorY, 7, { stroke: `hsla(${hue}, 100%, 60%, 0.85)`, lineWidth: 2 }));
+    if (preview.power <= 0) return;
+    const aimLine = resolveAimLine(preview, aimLineContext);
+    if (!aimLine) return;
+    commands.push(overlayAimSegment(aimLine.x1, aimLine.y1, aimLine.x2, aimLine.y2, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3, glowHue: hue }));
+}
+
+// --- MERGED FROM chainLinks.js ---
+export function isChainLinkBall(prop) {
+    if (!prop?.strategy?.isKinetic) return false;
+    if (prop.strategy?.canChain) return true;
+    return sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav");
+}
+export function hasChainMembership(state, propId) {
+    const list = listKineticConstraints(state.kinetic);
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.bodyAId === propId || entry.bodyBId === propId) return true;
+    }
+    return false;
+}
+export function isChainSteeringTarget(state, entityMeta, propId) {
+    if (entityMeta.isChainHead(propId)) return true;
+    if (hasChainMembership(state, propId)) return false;
+    const prop = state.entityRegistry.getLive(propId);
+    if (!prop || prop.isDead) return false;
+    return isChainLinkBall(prop);
+}
+export function getChainMemberIds(state, propId) {
+    return getConnectedBodyIds(state.kinetic, propId);
+}
+export function setChainHead(state, entityMeta, propId) {
+    const members = getChainMemberIds(state, propId);
+    for (let i = 0; i < members.length; i++) entityMeta.setChainHead(members[i], false);
+    entityMeta.setChainHead(propId, true);
+}
+export function hasChainLinkBetween(state, bodyAId, bodyBId) {
+    const list = listKineticConstraints(state.kinetic);
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if ((entry.bodyAId === bodyAId && entry.bodyBId === bodyBId) || (entry.bodyAId === bodyBId && entry.bodyBId === bodyAId)) return true;
+    }
+    return false;
+}
+export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
+    const list = listKineticConstraints(state.kinetic);
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if ((entry.bodyAId === bodyAId && entry.bodyBId === bodyBId) || (entry.bodyAId === bodyBId && entry.bodyBId === bodyAId)) return entry;
+    }
+    return null;
+}
+export function getOrderedChainMemberIds(state, headId) {
+    return getConnectedComponentPath(state.kinetic, headId);
+}
+export function removeChainLinkBetween(state, bodyAId, bodyBId) {
+    const entry = findDistanceConstraintBetween(state, bodyAId, bodyBId);
+    if (!entry) return false;
+    removeKineticConstraint(state.kinetic, entry.id);
+    return true;
+}
+export function clearChainLinksForMembers(state, memberIds) {
+    const members = new Set(memberIds);
+    const list = listKineticConstraints(state.kinetic);
+    for (let i = list.length - 1; i >= 0; i--) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if (members.has(entry.bodyAId) && members.has(entry.bodyBId)) removeKineticConstraint(state.kinetic, entry.id);
+    }
+}
+export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
+    if (fromPropId === toPropId) return false;
+    const bodyA = state.entityRegistry.getLive(fromPropId);
+    const bodyB = state.entityRegistry.getLive(toPropId);
+    if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
+    if (hasChainLinkBetween(state, fromPropId, toPropId)) return true;
+    const restLength = restLengthOverride != null ? restLengthOverride : resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
+    addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
+    return true;
+}
+export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
+    return (bodyA.radius + bodyB.radius) * linkSlack;
+}
+export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
+    const members = new Set(memberIds);
+    const list = listKineticConstraints(state.kinetic);
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if (!members.has(entry.bodyAId) || !members.has(entry.bodyBId)) continue;
+        const bodyA = entry.bodyA;
+        const bodyB = entry.bodyB;
+        if (bodyA.isDead || bodyB.isDead) continue;
+        entry.restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
+    }
+}
+export function listChainLinkEndpoints(state, propId) {
+    const list = listKineticConstraints(state.kinetic);
+    const endpoints = [];
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance") continue;
+        if (entry.bodyAId !== propId && entry.bodyBId !== propId) continue;
+        const target = entry.bodyAId === propId ? entry.bodyB : entry.bodyA;
+        if (target.isDead) continue;
+        endpoints.push({ constraintId: entry.id, targetId: target.id, label: `${formatPropTypeLabel(target.type)} · #${target.id}`, x: target.x, y: target.y });
+    }
+    return endpoints;
+}
+export function clearChainLinksForProp(state, propId) {
+    const list = listKineticConstraints(state.kinetic);
+    for (let i = list.length - 1; i >= 0; i--) {
+        const entry = list[i];
+        if (entry.bodyAId === propId || entry.bodyBId === propId) removeKineticConstraint(state.kinetic, entry.id);
+    }
+}
+export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
+    for (let i = 0; i < propIds.length; i++) if (entityMeta.isChainHead(propIds[i])) return state.entityRegistry.getLive(propIds[i]);
+    for (let i = 0; i < propIds.length; i++) if (isChainSteeringTarget(state, entityMeta, propIds[i])) return state.entityRegistry.getLive(propIds[i]);
+    return null;
+}
+export function findChainHeadProp(state) {
+    const meta = getSandboxEntityMeta(state);
+    return findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
+}
+export function appendChainLinkWireOverlayCommands(out, state, { wireFromPropId = null, wireCursor = null } = {}) {
+    if (wireFromPropId != null && wireCursor) {
+        const from = state.entityRegistry.getLive(wireFromPropId);
+        if (from) appendOverlayWireLink(out, from.x, from.y, wireCursor.x, wireCursor.y, "#81D4FA", { live: true, lineWidth: 2, dash: [5, 4] });
+    }
+}

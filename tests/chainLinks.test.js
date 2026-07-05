@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
-import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
+import { addChainLink, getChainMemberIds, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Props/props.js";
 import { setPropRadius } from "../Libraries/Props/props.js";
 class MockEntityMeta {
     constructor() {

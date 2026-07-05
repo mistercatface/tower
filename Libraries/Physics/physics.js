@@ -1,39 +1,9 @@
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat } from "../Math/math.js";
-import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo } from "../Spatial/spatial.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
+import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, cellInRect, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { acquireWorldProp, applyPropBoxFootprint, fracturePropOnImpact, spawnFractureShards } from "../Props/props.js";
-import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, cellInRect, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
-import {
-    distanceToAabb,
-    rectCorners,
-    rotateXYInto,
-    transformPoint2DInto,
-    distanceSqToLineSegment,
-    rotateXY,
-    normalizeXY,
-    quantizeAngle,
-    clamp,
-    lengthXY,
-    dotXY,
-    addXY,
-    speedSqXY,
-    aabbContains,
-    createAabb,
-    emptyAabbInto,
-    growAabbFromCenterInto,
-    normalizeAngle,
-    cardinalUnitVectorFromAngle,
-    polygonSecondMomentAboutCentroid2D,
-    polygonSignedArea2D,
-    polygonCentroid2D,
-    reversePolygonWinding,
-    findClosestWorldVertexInto,
-    findExtremeVertexInto,
-    computeCompoundLocalBounds,
-    convexFootprintHalfExtents,
-    boxLocalFootprint,
-} from "../Math/math.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
+
 // --- MERGED FROM physicsDefaults.js ---
 // --- MERGED FROM physicsDefaults.js ---
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */

@@ -7,8 +7,8 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getPropRadius } from "../Libraries/Props/props.js";
 import { propFootprintHalfExtents } from "../Libraries/Props/props.js";
-import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandboxSpawnSession.js";
-import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";
+import { createSandboxSpawnSession } from "../Libraries/Sandbox/sandbox.js";
+import { spawnPlaceableAt } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 
 import propCatalog from "../Assets/props/index.js";

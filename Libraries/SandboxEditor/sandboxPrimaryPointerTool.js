@@ -1,6 +1,6 @@
 import { findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { handleButtonPointerDown, hitTestFloorButton } from "../Sandbox/floorButtons.js";
-import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
+import { handleButtonPointerDown, hitTestFloorButton } from "../Props/props.js";
+import { resolveSandboxBehaviors } from "../Sandbox/sandbox.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import propCatalog from "../../Assets/props/index.js";
 export function createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, exitWireModes, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {

@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
+import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getPropRadius, setPropRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";

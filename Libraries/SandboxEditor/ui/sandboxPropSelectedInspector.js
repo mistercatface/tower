@@ -1,13 +1,13 @@
 import { formatSandboxSpawnLabel } from "../../Props/props.js";
-import { resolveSandboxFaction, SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandboxFaction.js";
-import { getSandboxBehaviorLabel } from "../../Sandbox/sandboxCapabilities.js";
-import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Sandbox/spawnerConfig.js";
+import { resolveSandboxFaction, SANDBOX_DEFAULT_FACTION, SANDBOX_FACTION_OPTIONS } from "../../Sandbox/sandbox.js";
+import { getSandboxBehaviorLabel } from "../../Sandbox/sandbox.js";
+import { isSpawnerProp, listSpawnerSpawnPropIds, resolveSpawnerPropId } from "../../Props/props.js";
 import { appendSandboxWorldPropInspectorFields, appendButtonWireInspector, appendChainLinkInspector } from "./sandboxWorldPropInspector.js";
 import { appendShapeFamilySelectedFields } from "./sandboxShapeFamilyUi.js";
-import { isShapeFamilyAsset } from "../../Sandbox/sandboxShapeFamilies.js";
-import { isButtonEntity } from "../../Sandbox/buttonInput.js";
-import { isChainLinkBall } from "../../Sandbox/chainLinks.js";
-import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandboxPropMeta.js";
+import { isShapeFamilyAsset } from "../../Sandbox/sandbox.js";
+import { isButtonEntity } from "../../Props/props.js";
+import { isChainLinkBall } from "../../Props/props.js";
+import { SANDBOX_PATH_VISUAL_LABELS, SANDBOX_PATH_VISUAL_OPTIONS } from "../../Sandbox/sandbox.js";
 import { appendCheckboxField, appendSelectField, appendEditorSubhead } from "../../UI/paramFields.js";
 import propCatalog from "../../../Assets/props/index.js";
 function appendFactionSelect(parent, { value, onChange }) {
