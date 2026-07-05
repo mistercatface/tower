@@ -4,7 +4,7 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { getChainMemberIds, isChainSteeringTarget } from "../Libraries/Sandbox/chainLinks.js";
 import { spawnPlaceableAt } from "../Libraries/Sandbox/sandboxScenePlaceables.js";
 import { getSandboxEntityMeta } from "../GameState/sandboxEntityMeta.js";

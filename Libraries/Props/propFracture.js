@@ -5,9 +5,9 @@ import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D }
 import { syncKineticRigidBody } from "../Motion/bodyMass.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
 import { kineticDynamicSlab } from "../Spatial/collision/kineticBodySlab.js";
-import { kineticPairBodyAt, KINETIC_PAIR_TIER } from "../Spatial/collision/kineticPairStream.js";
+import { kineticPairBodyAt, KINETIC_PAIR_TIER } from "../Spatial/collision/kineticContactSolver.js";
 import { PolygonShape } from "../Spatial/collision/Shapes.js";
-import { wakeKineticBody } from "../Motion/kineticSleep.js";
+import { wakeKineticBody } from "../Motion/kineticPhysicsPass.js";
 import { splitPoxels } from "./poxelFracture.js";
 import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts, chunkNeedsMinCellSubdivide, subdivideSingleChunkAtMinCell } from "./chunkFracture.js";
 import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon, wedgePolygonIntersection } from "./glassFracture.js";

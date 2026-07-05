@@ -7,7 +7,7 @@ import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { isKinematicallyActive } from "../Libraries/Spatial/collision/entityBroadphase.js";
 import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Motion/bodyMass.js";
-import { wakeKineticBody } from "../Libraries/Motion/kineticSleep.js";
+import { wakeKineticBody } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/Angle.js";

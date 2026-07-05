@@ -1,6 +1,6 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
-import { wakeKineticBody } from "../../Libraries/Motion/kineticSleep.js";
-import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticConstraints.js";
+import { wakeKineticBody } from "../../Libraries/Motion/kineticPhysicsPass.js";
+import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticConstraintSolver.js";
 import { getBroadphaseBounds, entityBroadphaseExtent } from "../../Libraries/Spatial/collision/entityBroadphase.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import {

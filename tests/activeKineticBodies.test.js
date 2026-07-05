@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Motion/physicsDefaults.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
-import { advanceKineticSleep } from "../Libraries/Motion/kineticSleep.js";
+import { advanceKineticSleep } from "../Libraries/Motion/kineticPhysicsPass.js";
 import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
 import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
 import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";

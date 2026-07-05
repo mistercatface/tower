@@ -1,5 +1,5 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { pruneKineticConstraintsForBody } from "../Libraries/Motion/kineticConstraints.js";
+import { pruneKineticConstraintsForBody } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";

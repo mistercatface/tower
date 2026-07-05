@@ -1,12 +1,21 @@
 import { distanceSqToSegment, getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
-import { satCheckCollision, entityFacing, SAT_RESULT, getEntityCollisionParts } from "./SatCollision.js";
+import {
+    satCheckCollision,
+    entityFacing,
+    SAT_RESULT,
+    getEntityCollisionParts,
+    applyPositionCorrection,
+    applySlabPositionCorrection,
+    computeCircleWallContact,
+    computePolygonWallContact,
+} from "./SatCollision.js";
 import { PolygonShape } from "./Shapes.js";
 import { boxLocalFootprint } from "../../Math/Poly2D.js";
-import { applyPositionCorrection, applySlabPositionCorrection, computeCircleWallContact, computePolygonWallContact } from "./penetration.js";
 import { kineticDynamicSlab, kineticStaticSlab } from "./kineticBodySlab.js";
 import { inverseMassFromBody } from "../../Motion/bodyMass.js";
 import { computeWallBreakStrength } from "../../Sandbox/gridWallDamage.js";
 import { dotXY } from "../../Math/Vec2.js";
+import { wakeKineticBody } from "../../Motion/kineticPhysicsPass.js";
 export function kineticBodyOverlapsWallCandidates(body, candidates) {
     if (!candidates.length) return false;
     const parts = getEntityCollisionParts(body);
@@ -264,4 +273,44 @@ export function resolveSlabAgainstWallSegments(physId, body, shape, segments, { 
         if (wantHits) hits.push({ approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, contactX: contact.cx, contactY: contact.cy });
     }
     return { collided, hits };
+}
+// --- MERGED FROM WallCollisionResolver.js ---
+/** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
+export function invalidateWallResolveCache(...entities) {
+    for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
+}
+export class WallCollisionResolver {
+    /**
+     * @param {object} entity
+     * @param {{ frameId: number, getWallCandidates: (entity: object) => object[] }} spatialFrame
+     * @returns {boolean}
+     */
+    resolve(entity, spatialFrame, preSpeed = 0, wallBreakConfig = null) {
+        if (entity._wallResolvedFrame === spatialFrame.frameId) return entity._wallResolvedCollided;
+        entity._wallResolvedFrame = spatialFrame.frameId;
+        const candidateWalls = spatialFrame.getWallCandidates(entity);
+        /** @type {import("../Spatial/collision/wallResolution.js").WallHit[]} */
+        const hits = entity._wallResolveHits ? entity._wallResolveHits.slice() : [];
+        if (candidateWalls.length === 0) {
+            entity._wallResolvedCollided = hits.length > 0;
+            entity._wallResolveHits = hits.length ? hits : null;
+            return entity._wallResolvedCollided;
+        }
+        const wp = entity.strategy?.wallPhysics;
+        const parts = entity.getCollisionParts?.() ?? [entity.shape];
+        let collided = hits.length > 0;
+        const physId = entity._physId;
+        const hasSlab = physId !== undefined && physId !== -1;
+        for (let i = 0; i < parts.length; i++) {
+            const result = hasSlab
+                ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig })
+                : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig });
+            if (result.collided) collided = true;
+            if (result.hits.length) hits.push(...result.hits);
+        }
+        entity._wallResolveHits = hits.length ? hits : null;
+        if (collided) wakeKineticBody(entity);
+        entity._wallResolvedCollided = collided;
+        return collided;
+    }
 }

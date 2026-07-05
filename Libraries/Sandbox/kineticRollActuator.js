@@ -1,5 +1,5 @@
 import { applyKineticAcceleration } from "../Motion/motionDynamics.js";
-import { wakeKineticBody } from "../Motion/kineticSleep.js";
+import { wakeKineticBody } from "../Motion/kineticPhysicsPass.js";
 import { physicsSettings } from "../Motion/physicsDefaults.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 export function snapMoveTargetToCellCenter(grid, world) {

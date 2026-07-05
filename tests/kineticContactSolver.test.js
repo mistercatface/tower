@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
-import { separateAlongNormal } from "../Libraries/Spatial/collision/penetration.js";
+import { separateAlongNormal } from "../Libraries/Spatial/collision/SatCollision.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";

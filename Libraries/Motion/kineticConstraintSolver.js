@@ -1,14 +1,13 @@
 import { collisionSettings } from "./physicsDefaults.js";
 import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "./bodyMass.js";
-import { worldAnchorFromBody, worldAnchorFromSlab } from "./constraintAnchors.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
-import { getEntityCollisionParts } from "../Spatial/collision/SatCollision.js";
-import { applyPositionCorrection, applySlabPositionCorrection } from "../Spatial/collision/penetration.js";
-import { ensureKineticIslandPlan } from "./kineticIslands.js";
-import { wakeKineticBody } from "./kineticSleep.js";
+import { getEntityCollisionParts, applyPositionCorrection, applySlabPositionCorrection } from "../Spatial/collision/SatCollision.js";
+import { ensureKineticIslandPlan, wakeKineticBody } from "./kineticPhysicsPass.js";
 import { kineticDynamicSlab, kineticStaticSlab, writeActiveKineticBodySlabPose, writebackKineticBodySlabPhysIds, separateAlongNormalSlab } from "../Spatial/collision/kineticBodySlab.js";
 import { normalizeAngle } from "../Math/Angle.js";
 import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
+import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
+import { transformPoint2DInto } from "../Math/Poly2D.js";
 const LINK_CAPSULE_WALL_PASSES = 4;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
@@ -62,7 +61,6 @@ export const kineticConstraintSlab = {
         this.groupCount = 0;
     },
 };
-import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
 const constraintPhysSyncSeen = new Set();
 const constraintBridgePhysIds = [];
 const orderBodyByPhysId = new Array(MAX_PHYS_BODIES);
@@ -714,4 +712,255 @@ export function measureConstraintSlabMaxError() {
         if (error > max) max = error;
     }
     return max;
+}
+
+// --- MERGED FROM kineticConstraintGraph.js ---
+function addAdjacencyEdge(adjacency, fromId, toId) {
+    let neighbors = adjacency.get(fromId);
+    if (!neighbors) {
+        neighbors = [];
+        adjacency.set(fromId, neighbors);
+    }
+    neighbors.push(toId);
+}
+function buildAdjacency(session) {
+    const list = listKineticConstraints(session);
+    const adjacency = new Map();
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        addAdjacencyEdge(adjacency, entry.bodyAId, entry.bodyBId);
+        addAdjacencyEdge(adjacency, entry.bodyBId, entry.bodyAId);
+    }
+    return adjacency;
+}
+function getGraphCache(session) {
+    const version = getKineticConstraintsVersion(session);
+    let cache = session._kineticConstraintGraphCache;
+    if (!cache || cache.version !== version) {
+        cache = { version, adjacency: buildAdjacency(session), paths: new Map(), connectedIds: new Map(), islands: null };
+        session._kineticConstraintGraphCache = cache;
+    }
+    return cache;
+}
+export function getKineticConstraintGraph(session) {
+    return getGraphCache(session).adjacency;
+}
+export function getConnectedBodyIds(session, bodyId) {
+    const cache = getGraphCache(session);
+    if (cache.connectedIds.has(bodyId)) return cache.connectedIds.get(bodyId);
+    const adjacency = cache.adjacency;
+    const members = new Set([bodyId]);
+    const stack = [bodyId];
+    while (stack.length > 0) {
+        const current = stack.pop();
+        const neighbors = adjacency.get(current);
+        if (!neighbors) continue;
+        for (let i = 0; i < neighbors.length; i++) {
+            const next = neighbors[i];
+            if (!members.has(next)) {
+                members.add(next);
+                stack.push(next);
+            }
+        }
+    }
+    const result = [...members];
+    for (let i = 0; i < result.length; i++) cache.connectedIds.set(result[i], result);
+    return result;
+}
+export function getConnectedComponentPath(session, endpointId) {
+    const cache = getGraphCache(session);
+    if (cache.paths.has(endpointId)) return cache.paths.get(endpointId);
+    const adjacency = cache.adjacency;
+    const ordered = [endpointId];
+    const visited = new Set([endpointId]);
+    let current = endpointId;
+    while (true) {
+        const neighbors = adjacency.get(current);
+        let next = null;
+        if (neighbors)
+            for (let i = 0; i < neighbors.length; i++)
+                if (!visited.has(neighbors[i])) {
+                    next = neighbors[i];
+                    break;
+                }
+        if (next == null) break;
+        ordered.push(next);
+        visited.add(next);
+        current = next;
+    }
+    cache.paths.set(endpointId, ordered);
+    return ordered;
+}
+export function areBodiesConnected(session, bodyAId, bodyBId) {
+    if (bodyAId === bodyBId) return true;
+    return getConnectedBodyIds(session, bodyAId).includes(bodyBId);
+}
+export function getConstraintIslands(session) {
+    const cache = getGraphCache(session);
+    if (cache.islands) return cache.islands;
+    const adjacency = cache.adjacency;
+    const seen = new Set();
+    const islands = [];
+    for (const startId of adjacency.keys()) {
+        if (seen.has(startId)) continue;
+        const island = [];
+        const stack = [startId];
+        seen.add(startId);
+        while (stack.length > 0) {
+            const current = stack.pop();
+            island.push(current);
+            const neighbors = adjacency.get(current);
+            if (!neighbors) continue;
+            for (let i = 0; i < neighbors.length; i++) {
+                const next = neighbors[i];
+                if (!seen.has(next)) {
+                    seen.add(next);
+                    stack.push(next);
+                }
+            }
+        }
+        islands.push(island);
+    }
+    cache.islands = islands;
+    return islands;
+}
+
+// --- MERGED FROM kineticConstraints.js ---
+let nextKineticConstraintId = 1;
+export function markKineticConstraintsDirty(session) {
+    session.kineticConstraintsDirty = true;
+    session.kineticConstraintsVersion = (session.kineticConstraintsVersion ?? 0) + 1;
+    bumpKineticTopologyGeneration(session);
+}
+export function getKineticConstraintsVersion(session) {
+    return session.kineticConstraintsVersion ?? 0;
+}
+export function resetKineticConstraintIds(startId = 1) {
+    nextKineticConstraintId = startId;
+}
+export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0, y: 0 }, anchorB = { x: 0, y: 0 }, restLength }) {
+    const constraint = {
+        id: nextKineticConstraintId++,
+        type: "distance",
+        bodyAId: bodyA.id,
+        bodyBId: bodyB.id,
+        bodyA,
+        bodyB,
+        anchorA: { x: anchorA.x, y: anchorA.y },
+        anchorB: { x: anchorB.x, y: anchorB.y },
+        restLength,
+        accumulatedImpulse: 0,
+    };
+    session.kineticConstraints.push(constraint);
+    markKineticConstraintsDirty(session);
+    return constraint;
+}
+export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
+    const constraint = { id: nextKineticConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, referenceAngle, accumulatedImpulse: 0 };
+    session.kineticConstraints.push(constraint);
+    markKineticConstraintsDirty(session);
+    return constraint;
+}
+export function removeKineticConstraint(session, constraintId) {
+    const list = session.kineticConstraints;
+    const index = list.findIndex((entry) => entry.id === constraintId);
+    if (index >= 0) {
+        list.splice(index, 1);
+        markKineticConstraintsDirty(session);
+    }
+}
+export function clearKineticConstraints(session) {
+    if (session.kineticConstraints.length === 0) return;
+    session.kineticConstraints.length = 0;
+    markKineticConstraintsDirty(session);
+}
+export function pruneKineticConstraintsForBody(session, bodyId) {
+    const list = session.kineticConstraints;
+    let changed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
+        const entry = list[i];
+        if (entry.bodyAId === bodyId || entry.bodyBId === bodyId) {
+            list.splice(i, 1);
+            changed = true;
+        }
+    }
+    if (changed) markKineticConstraintsDirty(session);
+}
+export function listKineticConstraints(session) {
+    return session.kineticConstraints;
+}
+export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
+    const entries = [];
+    const list = listKineticConstraints(session);
+    for (let i = 0; i < list.length; i++) {
+        const constraint = list[i];
+        const bodyA = propIdToIndex.get(constraint.bodyAId);
+        const bodyB = propIdToIndex.get(constraint.bodyBId);
+        if (bodyA == null || bodyB == null) continue;
+        const entry = { type: constraint.type ?? "distance", bodyA, bodyB, accumulatedImpulse: constraint.accumulatedImpulse };
+        if (constraint.type === "angle") entry.referenceAngle = constraint.referenceAngle;
+        else {
+            entry.restLength = constraint.restLength;
+            entry.anchorA = { x: constraint.anchorA.x, y: constraint.anchorA.y };
+            entry.anchorB = { x: constraint.anchorB.x, y: constraint.anchorB.y };
+        }
+        entries.push(entry);
+    }
+    return entries;
+}
+export function applyKineticConstraintsFromSnapshot(session, entries, propRefsByIndex) {
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const type = entry.type ?? "distance";
+        let constraint;
+        if (type === "angle") constraint = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
+        else
+            constraint = addDistanceConstraint(session, {
+                bodyA: propRefsByIndex[entry.bodyA],
+                bodyB: propRefsByIndex[entry.bodyB],
+                restLength: entry.restLength,
+                anchorA: entry.anchorA,
+                anchorB: entry.anchorB,
+            });
+        constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
+    }
+}
+
+export function getKineticTopologyGeneration(session) {
+    return session.kineticTopologyGeneration ?? 0;
+}
+export function bumpKineticTopologyGeneration(session) {
+    session.kineticTopologyGeneration = getKineticTopologyGeneration(session) + 1;
+}
+export function stampKineticPairGatherTopology(spatialFrame, session) {
+    spatialFrame._kineticPairGatherTopologyGen = getKineticTopologyGeneration(session);
+    spatialFrame._kineticTopologySession = session;
+}
+export function kineticPairTopologyStale(spatialFrame) {
+    const gatherGen = spatialFrame._kineticPairGatherTopologyGen;
+    if (gatherGen === undefined) return false;
+    const session = spatialFrame._kineticTopologySession;
+    if (!session) return false;
+    return gatherGen !== getKineticTopologyGeneration(session);
+}
+
+// --- MERGED FROM constraintAnchors.js ---
+const distAnchorA = { x: 0, y: 0 };
+const distAnchorB = { x: 0, y: 0 };
+export function worldAnchorFromBody(body, localX, localY, dst) {
+    const angle = body.facing ?? body.angle ?? 0;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return transformPoint2DInto(dst, body.x, body.y, localX, localY, cos, sin);
+}
+export function worldAnchorFromSlab(body, physId, localX, localY, slab, dst) {
+    const angle = body.facing ?? body.angle ?? 0;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return transformPoint2DInto(dst, slab.x[physId], slab.y[physId], localX, localY, cos, sin);
+}
+export function distanceBetweenAnchors(bodyA, anchorA, bodyB, anchorB) {
+    worldAnchorFromBody(bodyA, anchorA.x, anchorA.y, distAnchorA);
+    worldAnchorFromBody(bodyB, anchorB.x, anchorB.y, distAnchorB);
+    return Math.hypot(distAnchorB.x - distAnchorA.x, distAnchorB.y - distAnchorA.y);
 }

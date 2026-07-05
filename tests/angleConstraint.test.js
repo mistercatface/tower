@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { addAngleConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraints.js";
+import { addAngleConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Motion/kineticConstraintSolver.js";
 import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";

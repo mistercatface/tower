@@ -1,5 +1,5 @@
 import { cardinalUnitVectorFromAngle } from "../Math/Angle.js";
-import { wakeKineticBody } from "./kineticSleep.js";
+import { wakeKineticBody } from "./kineticPhysicsPass.js";
 import { addXY, lengthXY, dotXY } from "../Math/Vec2.js";
 import { collisionSettings } from "./physicsDefaults.js";
 /**

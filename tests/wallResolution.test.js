@@ -8,7 +8,7 @@ import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from ".
 import { KineticSession } from "../GameState/KineticSession.js";
 import { createKineticTick } from "../GameState/KineticTick.js";
 import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
-import { WallCollisionResolver } from "../Libraries/Motion/WallCollisionResolver.js";
+import { WallCollisionResolver } from "../Libraries/Spatial/collision/wallResolution.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 function mockWallSegment(x, y, size = 16) {
     return { x, y, size, width: size, height: size, angle: 0, isDead: false };
