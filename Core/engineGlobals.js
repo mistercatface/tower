@@ -6,7 +6,7 @@ import { collisionSettings, LIBRARY_COLLISION_DEFAULTS, physicsSettings, LIBRARY
 import { setPropPixelSize, resolvePropPixelSize } from "./GamePropPixelSize.js";
 import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../Libraries/Props/props.js";
 import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
-import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 import { clearPropSpriteCache } from "../Libraries/Canvas/canvas.js";
 const EDITOR_DEFAULT_SURFACE_PROFILE_ID = SURFACE_PROFILE_ID.tomatoGarden;
 let workersConfigured = false;

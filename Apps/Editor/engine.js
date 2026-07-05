@@ -3,7 +3,7 @@ import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
 import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
-import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
+import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { kineticTickFromState } from "../../GameState/KineticTick.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";

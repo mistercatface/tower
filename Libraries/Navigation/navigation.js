@@ -1,5 +1,5 @@
-import { IdxMinHeap } from "./../DataStructures/MinHeap.js";
-import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "./../Math/math.js";
+import { IdxMinHeap } from "../DataStructures/MinHeap.js";
+import { CARDINAL_OFFSETS, OCTILE_OFFSETS } from "../Math/math.js";
 import {
     manhattanDistanceIdx,
     octileDistanceIdx,
@@ -20,19 +20,24 @@ import {
     hasLineOfSight,
     worldColAtOrigin,
     worldRowAtOrigin,
-} from "./../Spatial/spatial.js";
+    cellBoundsForGrid,
+    forEachDenseCellInBounds,
+    padCellIdxToGrid,
+    padCellBoundsToGrid,
+    clampCellBoundsToGrid,
+    forEachDenseCellInRect,
+} from "../Spatial/spatial.js";
 import { FloatingText } from "../Render/render.js";
-import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid, clampCellBoundsToGrid, forEachDenseCellInRect } from "../Spatial/spatial.js";
-import { MAX_HPA_REPLAN_SLOTS } from "./../Pathfinding/HpaPathWorker.js";
-import { agentPose } from "./../Agent/index.js";
-import { resolveBodyRadius } from "./../Physics/physics.js";
+import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
+import { agentPose } from "../Agent/index.js";
+import { resolveBodyRadius } from "../Physics/physics.js";
+import { resolveNavRuntime } from "./NavRuntime.js";
 function _removeEdgeByTargetId(edges, targetId) {
     for (let i = edges.length - 1; i >= 0; i--) if (edges[i].targetId === targetId) edges.splice(i, 1);
 }
 function _removeCellByIdx(cells, idx) {
     for (let i = cells.length - 1; i >= 0; i--) if (cells[i] === idx) cells.splice(i, 1);
 }
-import { resolveNavRuntime } from "./NavRuntime.js";
 // --- MERGED FROM AStar.js ---
 const STALE_F_EPSILON = 1e-4;
 export class SearchState {
@@ -2456,4 +2461,14 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
         });
         if (result !== undefined) return result;
     }
+}
+// --- MERGED FROM GridLayout.js ---
+/** Snap a tile layout so its origin sits on the global nav cell grid (multiples of cellSize). */
+export function snapLayoutOrigin(px, py, cols, rows, cellSize) {
+    const totalW = cols * cellSize;
+    const totalH = rows * cellSize;
+    return { offsetX: Math.round((px - totalW / 2) / cellSize) * cellSize, offsetY: Math.round((py - totalH / 2) / cellSize) * cellSize };
+}
+export function gridCellCenter(offsetX, offsetY, col, row, cellSize) {
+    return { x: offsetX + col * cellSize + cellSize / 2, y: offsetY + row * cellSize + cellSize / 2 };
 }

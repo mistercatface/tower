@@ -1,7 +1,7 @@
 import { registerRuntimeSurfaceProfile } from "../../Config/procedural/profiles.js";
-import { bakeGroundChunkCanvases, bakeWallAtlasCanvases, BakeSession, installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/WorldSurfacePainter.js";
-import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/TileBakeMetrics.js";
-import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/TileWorkerMessages.js";
+import { bakeGroundChunkCanvases, bakeWallAtlasCanvases, BakeSession, installTileWorkerBakeConstants } from "../../Libraries/WorldSurface/worldSurface.js";
+import { formatTileBakeMetricsLog, setTileBakeMetricsEnabled, isTileBakeMetricsEnabled } from "../../Libraries/WorldSurface/worldSurface.js";
+import { TILE_WORKER_MESSAGE } from "../../Libraries/WorldSurface/worldSurface.js";
 export class TileSurfaceWorker {
     constructor() {
         this.bakeSession = new BakeSession();

@@ -6,12 +6,12 @@ import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
-import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
+import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { EntityRegistry } from "./EntityRegistry.js";
 import { KineticSession } from "./KineticSession.js";
 import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";
-import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
+import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 60, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };
 export class SharedGameState {
     constructor() {

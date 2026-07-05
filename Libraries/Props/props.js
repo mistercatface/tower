@@ -10,15 +10,11 @@ import { runFloorEffect } from "../Sandbox/floorEffects.js";
 import { drawSphere } from "../Render/render.js";
 import { createFlipperPrimitive } from "../Render/render.js";
 import { createPipeElbowPrimitive } from "../Render/render.js";
-import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
+import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { clearChainLinksForProp } from "../Sandbox/chainLinks.js";
 import propCatalog from "../../Assets/props/index.js";
-
-
-
-
 // --- MERGED FROM propRenderDefaults.js ---
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
@@ -2079,7 +2075,6 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
     }
     return radius;
 }
-
 // --- MERGED FROM gridFloorProp.js ---
 export function syncFloorTriggerAabb(prop) {
     const shape = prop.shape;
@@ -2142,7 +2137,6 @@ export function rotateCardinalFloorProp(prop, steps = 1) {
 export function findGridAnchoredFloorPropAtIdx(worldProps, idx, exceptPropId = -1) {
     return findLiveWorldProp(worldProps, (prop) => prop.strategy?.gridAnchored && prop.id !== exceptPropId && prop.gridIdx === idx);
 }
-
 export function registerPropDrawRecipe(asset) {
     if (asset.physics?.renderMode === "none") {
         asset.drawRecipe = () => {};
@@ -2167,10 +2161,7 @@ export function registerAllPropDrawRecipes() {
     }
 }
 Promise.resolve().then(registerAllPropDrawRecipes);
-
-
 // --- MERGED FROM floorProps.js ---
-
 /** @param {object} state @param {import("../Spatial/world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame @param {number} dt */
 export function tickFloorProps(state, spatialFrame, dt) {
     tickFloorButtons(state, spatialFrame);

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SeededNoise2D } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
-import { EMPTY_BAKE_TIMING_STATS, TileBakeMetricsAccumulator, createNoiseProfileSnapshot, setTileBakeMetricsEnabled } from "../Libraries/WorldSurface/TileBakeMetrics.js";
-import { TileBakeScheduler } from "../Libraries/WorldSurface/TileBakeScheduler.js";
+import { EMPTY_BAKE_TIMING_STATS, TileBakeMetricsAccumulator, createNoiseProfileSnapshot, setTileBakeMetricsEnabled } from "../Libraries/WorldSurface/worldSurface.js";
+import { TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
 
 describe("tile bake metrics", () => {

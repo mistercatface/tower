@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
-import { TILE_BAKE_TIER, TileBakeScheduler } from "../Libraries/WorldSurface/TileBakeScheduler.js";
+import { TILE_BAKE_TIER, TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
 
 function createMockWorker() {
     return {

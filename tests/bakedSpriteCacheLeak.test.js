@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it, before } from "node:test";
 import { createBakedSpriteCache } from "../Libraries/Canvas/canvas.js";
 import { acquireOffscreenCanvas } from "../Libraries/Canvas/canvas.js";
-import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
+import { TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 
 // Ensure global ImageBitmap shim exists for environment

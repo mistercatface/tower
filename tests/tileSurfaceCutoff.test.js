@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey } from "../Libraries/WorldSurface/SurfaceBakeCacheKeys.js";
-import { SurfaceSpatialMap } from "../Libraries/WorldSurface/SurfaceSpatialMap.js";
+import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey } from "../Libraries/WorldSurface/worldSurface.js";
+import { SurfaceSpatialMap } from "../Libraries/WorldSurface/worldSurface.js";
 globalThis.ImageBitmap = class ImageBitmap { close() {} };
 
 function createSurfaceSpace(overrides = {}) {
@@ -44,8 +44,8 @@ describe("surface tile cutoff", () => {
     });
 });
 
-import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { TileWorkerCoordinator } from "../Libraries/WorldSurface/TileWorkerCoordinator.js";
+import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
+import { TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
 
 describe("world surface retry and cooldown", () => {
     it("handles worker bake failure, sets cooldown, and retries after expiration", async () => {

@@ -1,7 +1,7 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { createKineticTick } from "../../GameState/KineticTick.js";
 import { worldSimFromState } from "../../GameState/WorldSim.js";
-import { KineticSpatialFrame } from "../../Systems/World/KineticSpatialFrame.js";
+import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab } from "../../Libraries/Physics/physics.js";
 import { CircleShape } from "../../Libraries/Physics/physics.js";
 

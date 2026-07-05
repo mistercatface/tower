@@ -1,6 +1,6 @@
 import { registerRuntimeSurfaceProfile } from "../../../Config/procedural/profiles.js";
-import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/TileWorkerCoordinator.js";
-import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/SurfaceProfileRevision.js";
+import { TileWorkerCoordinator } from "../../../Libraries/WorldSurface/worldSurface.js";
+import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/worldSurface.js";
 import { invalidateStaticGridEdgeRailDrawCache } from "../../../Libraries/Render/render.js";
 import { invalidateStaticGridWallDrawCache } from "../../../Libraries/Render/render.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";

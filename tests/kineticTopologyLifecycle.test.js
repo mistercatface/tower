@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
+import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Physics/physics.js";

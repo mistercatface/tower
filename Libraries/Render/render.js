@@ -63,6 +63,25 @@ import { SpriteCache } from "../Canvas/canvas.js";
 import { drawFloorOccupancyBelts } from "../Sandbox/gridStampDrawCache.js";
 import { queryPropsInView } from "../Sandbox/sandboxOverlayCommands.js";
 import propCatalog from "../../Assets/props/index.js";
+// --- Consolidated Global Scratch Arrays (GC & Memory Optimization) ---
+const sScratchQuad1 = new Float32Array(8);
+const sScratchQuad2 = new Float32Array(8);
+const sScratchQuad3 = new Float32Array(8);
+const sScratchQuad4 = new Float32Array(8);
+const sScratchQuad5 = new Float32Array(8);
+const sScratchQuad6 = new Float32Array(8);
+const sScratchQuad7 = new Float32Array(8);
+let sFlatProjectedVerts = sScratchQuad1;
+const sPinwheelLocalVerts = new Float32Array(24);
+const sBandQuad = sScratchQuad2;
+const sBoxFootprint = sScratchQuad3;
+const sSubdivQuad = sScratchQuad4;
+const sFlatCapCorners = sScratchQuad5;
+const sFlatCapUv = sScratchQuad6;
+const sFlatCapSrc = sScratchQuad7;
+const sScratchQuad = sScratchQuad1; // Safe to reuse sScratchQuad1 since no overlap
+const sScratchChevron = new Float32Array(12);
+const sTemp = new Float32Array(2);
 // --- MERGED FROM WorldSceneTypes.js ---
 /**
  * Draw options for WorldSceneRenderer entry points.
@@ -713,7 +732,6 @@ export function drawSphereTextureBand(ctx, prop, viewport, img, options = {}) {
     });
 }
 // --- MERGED FROM propMesh.js ---
-let sFlatProjectedVerts = new Float32Array(8);
 function ensureFlatProjectedVertScratch(count) {
     if (sFlatProjectedVerts.length < count * 2) sFlatProjectedVerts = new Float32Array(count * 2);
 }
@@ -885,9 +903,6 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
 // --- MERGED FROM SolidDraw.js ---
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
-const sPinwheelLocalVerts = new Float32Array(24);
-const sBandQuad = new Float32Array(8);
-const sBoxFootprint = new Float32Array(8);
 let sBaseRing = new Float32Array(0);
 let sTopRing = new Float32Array(0);
 let sCapSrcRing = new Float32Array(0);
@@ -1880,10 +1895,6 @@ export function invalidateStaticGridEdgeRailDrawCache() {
  */
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-const sSubdivQuad = new Float32Array(8);
-const sFlatCapCorners = new Float32Array(8);
-const sFlatCapUv = new Float32Array(8);
-const sFlatCapSrc = new Float32Array(8);
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
 function wallFaceKindIndex(atlasFaceId) {
     switch (atlasFaceId) {
@@ -2608,9 +2619,6 @@ export function createButtonFloorDraw() {
     };
 }
 // --- MERGED FROM conveyorDraw.js ---
-const sScratchQuad = new Float32Array(8);
-const sScratchChevron = new Float32Array(12);
-const sTemp = new Float32Array(2);
 const CONVEYOR_BELT_HEIGHT = 0;
 /** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {

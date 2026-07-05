@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PromiseWorkerPoolHost } from "../Libraries/Workers/PromiseWorkerPoolHost.js";
-import { TileBakeScheduler } from "../Libraries/WorldSurface/TileBakeScheduler.js";
-import { TILE_WORKER_MESSAGE } from "../Libraries/WorldSurface/TileWorkerMessages.js";
-import { TileSurfaceWorkerClient, EMPTY_TILE_BAKE_STATS } from "../Libraries/WorldSurface/TileSurfaceWorkerClient.js";
+import { TileBakeScheduler } from "../Libraries/WorldSurface/worldSurface.js";
+import { TILE_WORKER_MESSAGE } from "../Libraries/WorldSurface/worldSurface.js";
+import { TileSurfaceWorkerClient, EMPTY_TILE_BAKE_STATS } from "../Libraries/WorldSurface/worldSurface.js";
 function createMockWorker() {
     return { onmessage: null, onerror: null, postMessage() {}, terminate() {} };
 }

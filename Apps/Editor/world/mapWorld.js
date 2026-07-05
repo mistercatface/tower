@@ -13,7 +13,7 @@ import { setBoundary } from "../../../Libraries/Spatial/spatial.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/spatial.js";
 import { cellInRect } from "../../../Libraries/Spatial/spatial.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../../../Libraries/Spatial/spatial.js";
-import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/stampWallHeight.js";
+import { clampStampWallHeightLevel } from "../../../Libraries/WorldSurface/worldSurface.js";
 import {
     MAP_GEN_KINDS,
     applyMapGenShapeMask,

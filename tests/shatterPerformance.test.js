@@ -3,7 +3,7 @@ import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry, addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";

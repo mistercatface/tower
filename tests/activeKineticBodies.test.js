@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
+import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
