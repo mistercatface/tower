@@ -40,7 +40,7 @@ import {
     normalizeXY,
     rotateAngleTowards,
 } from "../Math/math.js";
-import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere, createPipeElbowPrimitive } from "../Render/render.js";
+import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
@@ -58,88 +58,6 @@ export function formatPropTypeLabel(typeId) {
 export function formatSandboxSpawnLabel(propId) {
     const asset = propCatalog[propId];
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
-}
-const FACING_STEPS = 24;
-/** @param {object} prop @param {object | null | undefined} asset */
-function getPipeElbowSpec(prop, asset) {
-    const cfg = asset?.visuals?.world ?? {};
-    const playW = prop._pipeElbowPlayfieldWidth ?? null;
-    const scale = playW != null ? playW / 120 : 1;
-    return {
-        outletLength: cfg.outletLength * scale,
-        bendRadius: cfg.bendRadius * scale,
-        pipeRadius: cfg.pipeRadius * scale,
-        riserHeight: cfg.riserHeight * scale,
-        flangeRadius: cfg.flangeRadius * scale,
-        flangeHeight: cfg.flangeHeight * scale,
-    };
-}
-/**
- * 3D centerline in local space: vertical (+Z) → elbow in XZ plane → horizontal (+X).
- * @param {ReturnType<typeof getPipeElbowSpec>} spec
- */
-function buildPipeElbowCenterline3D(spec) {
-    const { riserHeight, bendRadius: R, outletLength } = spec;
-    const zArc = riserHeight - R;
-    /** @type {{ x: number, y: number, z: number }[]} */
-    const pts = [{ x: 0, y: 0, z: 0 }];
-    const riserSteps = 5;
-    for (let i = 1; i <= riserSteps; i++) pts.push({ x: 0, y: 0, z: (zArc * i) / riserSteps });
-    const arcSteps = 8;
-    for (let i = 1; i <= arcSteps; i++) {
-        const theta = (i / arcSteps) * (Math.PI / 2);
-        pts.push({ x: R - R * Math.cos(theta), y: 0, z: zArc + R * Math.sin(theta) });
-    }
-    const outSteps = 5;
-    for (let i = 1; i <= outSteps; i++) pts.push({ x: R + (outletLength * i) / outSteps, y: 0, z: riserHeight });
-    return pts;
-}
-/** @param {ReturnType<typeof getPipeElbowSpec>} spec */
-export function buildPipeElbowCollisionFootprint(spec) {
-    const endX = spec.bendRadius + spec.outletLength;
-    const baseR = spec.flangeRadius;
-    const mouthR = spec.pipeRadius * 1.15;
-    const arcSeg = 6;
-    /** @type {{ x: number, y: number }[]} */
-    const pts = [];
-    for (let i = 0; i <= arcSeg; i++) {
-        const a = Math.PI * 0.5 + (Math.PI * i) / arcSeg;
-        pts.push({ x: baseR * Math.cos(a), y: baseR * Math.sin(a) });
-    }
-    for (let i = 0; i <= arcSeg; i++) {
-        const a = -Math.PI * 0.5 + (Math.PI * i) / arcSeg;
-        pts.push({ x: endX + mouthR * Math.cos(a), y: mouthR * Math.sin(a) });
-    }
-    return pts;
-}
-/** @param {object} prop */
-export function syncPipeElbowCollisionShape(prop) {
-    const asset = propCatalog[prop.type];
-    const spec = getPipeElbowSpec(prop, asset);
-    const footprint = buildPipeElbowCollisionFootprint(spec);
-    const key = footprint.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
-    prop._collisionFacing = prop.facing ?? 0;
-    if (prop._pipeElbowShapeKey === key && prop.shape?.type === "Polygon") return prop.shape;
-    prop.shape = new PolygonShape(ensureFlatVerts(footprint));
-    prop._pipeElbowShapeKey = key;
-    return prop.shape;
-}
-/** @param {object} prop @param {object | null | undefined} asset */
-export function getPipeElbowOutletWorld(prop, asset) {
-    const spec = getPipeElbowSpec(prop, asset);
-    const centerline = buildPipeElbowCenterline3D(spec);
-    const end = centerline[centerline.length - 1];
-    const facing = prop.facing ?? 0;
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
-    const world = transformPoint2DInto({ x: 0, y: 0 }, prop.x, prop.y, end.x, end.y, cos, sin);
-    return { x: world.x, y: world.y, nx: cos, ny: sin };
-}
-/** @param {object} prop */
-export function getPipeElbowSpriteCacheKey(prop) {
-    const asset = propCatalog[prop.type];
-    const spec = getPipeElbowSpec(prop, asset);
-    return `pe_${Math.round(spec.outletLength)}_${Math.round(spec.bendRadius)}_f${quantizeAngleIndex(prop.facing ?? 0, FACING_STEPS)}`;
 }
 export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
@@ -210,7 +128,7 @@ export function createSpherePrimitive(visuals) {
     };
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
-export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive, pipeElbow: createPipeElbowPrimitive };
+export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive };
 function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
@@ -245,17 +163,6 @@ function getCirclePropRadius(prop) {
 }
 function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
-    if (prop.strategy?.syncCollisionShape) {
-        prop.strategy.radius = radius;
-        prop.strategy.syncCollisionShape(prop);
-        prop.stateTimer = (prop.stateTimer ?? 0) + 1;
-        invalidateBroadphaseBounds(prop);
-        if (prop.strategy?.isKinetic) {
-            prop.mass = kineticMassFromFootprint(prop);
-            wakeKineticBody(prop);
-        }
-        return;
-    }
     const shape = prop.shape;
     if (shape?.type !== "Circle") throw new Error(`setCirclePropRadius requires a circle prop, got ${shape?.type ?? "none"}`);
     prop.shape = new CircleShape(radius);
@@ -1646,7 +1553,7 @@ export function getPropRadius(prop) {
     return getCirclePropRadius(prop);
 }
 export function setPropRadius(prop, radius) {
-    if (prop.shape?.type === "Polygon" && !prop.strategy?.syncCollisionShape) setPolygonPropBoundingRadius(prop, radius);
+    if (prop.shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, radius);
     else setCirclePropRadius(prop, radius);
 }
 // --- MERGED
@@ -1660,11 +1567,6 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     else if (prop.strategy?.isKinetic) syncKineticRigidBody(prop);
 }
 export function initWorldPropShape(prop) {
-    if (typeof prop.strategy.syncCollisionShape === "function") {
-        prop.strategy.syncCollisionShape(prop);
-        if (!prop.collisionParts?.length) prop.radius = prop.shape.getBoundingRadius();
-        return;
-    }
     if (prop.strategy.collisionParts) {
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
             if (typeof part.getBoundingRadius === "function") return part;

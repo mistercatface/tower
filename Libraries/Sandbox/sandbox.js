@@ -1741,7 +1741,6 @@ function aimSpawnerFacing(prop, aim) {
     if (aim?.shotNx == null || aim.shotNy == null) return;
     prop.facing = Math.atan2(aim.shotNy, aim.shotNx);
     prop.angularVelocity = 0;
-    prop.strategy.syncCollisionShape?.(prop);
 }
 /** @param {object | null | undefined} asset */
 export function isSpawnerProp(asset) {
@@ -2233,7 +2232,6 @@ const DRAG_LAUNCH_BEHAVIORS = [
             return (prop, shot) => {
                 prop.facing = Math.atan2(shot.ny, shot.nx);
                 prop.angularVelocity = 0;
-                prop.strategy.syncCollisionShape?.(prop);
                 applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
             };
         },
@@ -3454,7 +3452,6 @@ export function appendShapeFamilySelectedFields(body, selectedProp) {
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;
     prop.angularVelocity = 0;
-    prop.strategy.syncCollisionShape?.(prop);
 }
 function applyWorldPropPosition(prop, { x, y }) {
     if (x != null) prop.x = x;

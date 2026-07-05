@@ -183,7 +183,6 @@ export function kineticInertiaFromBody(body) {
     return (m * r * r) / 2;
 }
 export function syncKineticRigidBody(body) {
-    body.strategy?.syncCollisionShape?.(body);
     body.mass = kineticMassFromFootprint(body);
 }
 export function massFromBody(body) {
@@ -606,7 +605,6 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
 }
 export function entityFacing(entity) {
     if (entity == null) return 0;
-    if (entity._collisionFacing != null) return entity._collisionFacing;
     return entity.facing ?? entity.angle ?? 0;
 }
 const EMPTY_ARRAY = [];
