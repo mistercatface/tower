@@ -1006,40 +1006,24 @@ export function cellEdgeSlotOffset(idx, side) {
 }
 const EMPTY = -1;
 export class FloorBelt {
-    static _appendLoadedIdx(grid, idx) {
-        let list = grid._floorBeltLoadedIdx;
-        const count = grid._floorBeltLoadedCount;
-        if (count >= list.length) {
-            const grown = new Uint32Array(Math.max(8, list.length * 2));
-            grown.set(list);
-            list = grid._floorBeltLoadedIdx = grown;
-        }
-        list[count] = idx;
-        grid._floorBeltLoadedCount = count + 1;
-    }
-    static _removeLoadedIdx(grid, idx) {
-        const list = grid._floorBeltLoadedIdx;
-        let count = grid._floorBeltLoadedCount;
-        for (let i = 0; i < count; i++) {
-            if (list[i] !== idx) continue;
-            count--;
-            if (i < count) list[i] = list[count];
-            grid._floorBeltLoadedCount = count;
-            return;
-        }
-    }
-    static getEntryEdgeWorldPoint(grid, idx, entrySide) {
+    static getEntryEdgeWorldPointInto(out, grid, idx, entrySide) {
         const x = grid.gridCenterXByIdx(idx);
         const y = grid.gridCenterYByIdx(idx);
         const inset = grid.cellSize * 0.35;
-        if (entrySide === 0) return { x, y: y - inset };
-        if (entrySide === 1) return { x: x + inset, y };
-        if (entrySide === 2) return { x, y: y + inset };
-        return { x: x - inset, y };
-    }
-    static packedAtIdx(grid, idx) {
-        if (idx < 0 || idx >= grid.cols * grid.rows) return BeltPacked.EMPTY;
-        return grid.floorPacked[idx];
+        if (entrySide === 0) {
+            out.x = x;
+            out.y = y - inset;
+        } else if (entrySide === 1) {
+            out.x = x + inset;
+            out.y = y;
+        } else if (entrySide === 2) {
+            out.x = x;
+            out.y = y + inset;
+        } else {
+            out.x = x - inset;
+            out.y = y;
+        }
+        return out;
     }
     static isBeltAtIdx(grid, idx) {
         if (idx < 0 || idx >= grid.cols * grid.rows) return false;
@@ -1105,46 +1089,13 @@ export class FloorBelt {
         if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
         if (isEmptyCellBounds(bounds)) return null;
         bumpFloorOccupancyStampDrawRevision(grid);
-        FloorBelt.recomputeFloorBeltCount(grid);
+        let beltCount = 0;
+        const beltSize = grid.cols * grid.rows;
+        for (let beltIdx = 0; beltIdx < beltSize; beltIdx++) if (grid.floorPacked[beltIdx] !== 0) beltCount++;
+        grid.floorBeltCount = beltCount;
         return bounds;
     }
-    static recomputeFloorBeltCount(grid) {
-        let count = 0;
-        const size = grid.cols * grid.rows;
-        for (let idx = 0; idx < size; idx++) if (grid.floorPacked[idx] !== 0) count++;
-        grid.floorBeltCount = count;
-    }
-    static tickZones(state, spatialFrame) {
-        const grid = state.obstacleGrid;
-        if (grid.floorBeltCount === 0) return;
-        tickGridZoneMembership(spatialFrame, grid, {
-            onEnter(event) {
-                const load = grid._floorBeltLoad[event.idx] + 1;
-                grid._floorBeltLoad[event.idx] = load;
-                if (load === 1) FloorBelt._appendLoadedIdx(grid, event.idx);
-            },
-            onOn() {},
-            onExit(event) {
-                const load = grid._floorBeltLoad[event.idx];
-                if (load > 0) {
-                    const next = load - 1;
-                    grid._floorBeltLoad[event.idx] = next;
-                    if (next === 0) FloorBelt._removeLoadedIdx(grid, event.idx);
-                }
-            },
-        });
-    }
-    static tickAnim(state, dt) {
-        const grid = state.obstacleGrid;
-        if (grid.floorBeltCount === 0) return;
-        const list = grid._floorBeltLoadedIdx;
-        const count = grid._floorBeltLoadedCount;
-        for (let i = 0; i < count; i++) {
-            const idx = list[i];
-            grid._floorBeltAnimMs[idx] += dt;
-        }
-    }
-    static tickOccupancy(state, spatialFrame, dt, applyAcceleration = null) {
+    static tick(state, spatialFrame, dt, applyAcceleration = null) {
         const grid = state.obstacleGrid;
         if (grid.floorBeltCount === 0) return;
         const kineticBodies = spatialFrame._kineticBodies;
@@ -1206,6 +1157,33 @@ export class FloorBelt {
             }
             if (applyAcceleration) applyAcceleration(entity, ax, ay, dtSec);
         }
+    }
+    static syncAnimFromBodies(state, spatialFrame, dt) {
+        const grid = state.obstacleGrid;
+        if (grid.floorBeltCount === 0) return;
+        let list = grid._floorBeltLoadedIdx;
+        const load = grid._floorBeltLoad;
+        const prevCount = grid._floorBeltLoadedCount;
+        for (let i = 0; i < prevCount; i++) load[list[i]] = 0;
+        let write = 0;
+        const kineticBodies = spatialFrame._kineticBodies;
+        if (kineticBodies?.length)
+            for (let i = 0; i < kineticBodies.length; i++) {
+                const entity = kineticBodies[i];
+                const idx = grid.worldToIdx(entity.x, entity.y);
+                if (idx < 0 || !grid.floorPacked[idx]) continue;
+                if (load[idx] === 0) {
+                    if (write >= list.length) {
+                        const grown = new Uint32Array(Math.max(8, list.length * 2));
+                        grown.set(list.subarray(0, write));
+                        list = grid._floorBeltLoadedIdx = grown;
+                    }
+                    list[write++] = idx;
+                }
+                load[idx]++;
+            }
+        grid._floorBeltLoadedCount = write;
+        for (let i = 0; i < write; i++) grid._floorBeltAnimMs[list[i]] += dt;
     }
 }
 export function corridorPerpendicularOffsets(width) {
@@ -2066,7 +2044,6 @@ export class WorldObstacleGrid {
             this.floorBeltCount--;
             this._floorBeltLoad[idx] = 0;
             this._floorBeltAnimMs[idx] = 0;
-            FloorBelt._removeLoadedIdx(this, idx);
         }
         this.floorPacked[idx] = packed;
         if ((hadBelt || hasBelt) && prevPacked !== packed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
@@ -2085,7 +2062,6 @@ export class WorldObstacleGrid {
         this.floorPacked[idx] = 0;
         this._floorBeltLoad[idx] = 0;
         this._floorBeltAnimMs[idx] = 0;
-        FloorBelt._removeLoadedIdx(this, idx);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
@@ -2144,108 +2120,6 @@ export class WorldObstacleGrid {
         const minX = this.minX + (idx % cols) * this.cellSize;
         const minY = this.minY + ((idx / cols) | 0) * this.cellSize;
         return minCornerAabb(minX, minY, this.cellSize, this.cellSize);
-    }
-}
-/**
- * A generic perceivable prop category system based on obstacle-grid cells.
- * Maps prop instances to the nav-grid aligned bucket grid.
- */
-export class CellPropIndex {
-    constructor() {
-        this.buckets = new SparseBucketGrid();
-        this.count = new Uint16Array(0);
-        this.minX = 0;
-        this.minY = 0;
-        this.cols = 0;
-        this.rows = 0;
-        this.cellSize = 16;
-        this._totalCount = 0;
-    }
-    _propToCellIdx(prop) {
-        if (!this.cols || !this.rows) return -1;
-        const col = Math.floor((prop.x - this.minX) / this.cellSize);
-        const row = Math.floor((prop.y - this.minY) / this.cellSize);
-        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
-        return col + row * this.cols;
-    }
-    register(prop) {
-        if (prop._cellIndexCell !== undefined && prop._cellIndexCell !== -1) return;
-        const idx = this._propToCellIdx(prop);
-        prop._cellIndexCell = idx;
-        if (idx !== -1) {
-            this.buckets.push(idx, prop);
-            this.count[idx]++;
-            this._totalCount++;
-        }
-    }
-    unregister(prop) {
-        const idx = prop._cellIndexCell;
-        if (idx !== undefined && idx !== -1)
-            if (this.buckets.removeFrom(idx, prop)) {
-                this.count[idx]--;
-                this._totalCount--;
-            }
-        prop._cellIndexCell = -1;
-    }
-    reconcile(prop) {
-        if (prop._cellIndexCell === undefined) return;
-        const newIdx = this._propToCellIdx(prop);
-        if (prop._cellIndexCell === newIdx) return;
-        this.unregister(prop);
-        this.register(prop);
-    }
-    totalCount() {
-        return this._totalCount;
-    }
-    findNearest(x, y, accept = null) {
-        let nearest = null;
-        let bestDistSq = Infinity;
-        for (const list of this.buckets.cells.values())
-            for (let i = 0; i < list.length; i++) {
-                const item = list[i];
-                if (accept && !accept(item)) continue;
-                const dx = item.x - x;
-                const dy = item.y - y;
-                const distSq = dx * dx + dy * dy;
-                if (distSq < bestDistSq) {
-                    bestDistSq = distSq;
-                    nearest = item;
-                }
-            }
-        return nearest;
-    }
-    findFirst(accept = null) {
-        for (const list of this.buckets.cells.values())
-            for (let i = 0; i < list.length; i++) {
-                const item = list[i];
-                if (!accept || accept(item)) return item;
-            }
-        return null;
-    }
-    forEachRegistered(fn) {
-        for (const list of this.buckets.cells.values()) for (let i = 0; i < list.length; i++) if (fn(list[i]) === true) return;
-    }
-    countAtIdx(idx) {
-        if (idx < 0 || idx >= this.count.length) return 0;
-        return this.count[idx];
-    }
-    syncBounds(grid) {
-        if (this.cols === grid.cols && this.rows === grid.rows && this.cellSize === grid.cellSize && this.minX === grid.minX && this.minY === grid.minY) return;
-        this.minX = grid.minX;
-        this.minY = grid.minY;
-        this.cols = grid.cols;
-        this.rows = grid.rows;
-        this.cellSize = grid.cellSize;
-        const allProps = [];
-        for (const list of this.buckets.cells.values()) for (let i = 0; i < list.length; i++) allProps.push(list[i]);
-        this.buckets.clear();
-        this.count = new Uint16Array(this.cols * this.rows);
-        this._totalCount = 0;
-        for (let i = 0; i < allProps.length; i++) {
-            const prop = allProps[i];
-            prop._cellIndexCell = -1; // reset before registering
-            this.register(prop);
-        }
     }
 }
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
@@ -2752,69 +2626,6 @@ export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, rev
     slab.frameStamp[slot] = frameId;
     slab.revisionStamp[slot] = revision;
     slab.segments[slot] = segments;
-}
-/**
- * @typedef {object} GridZoneEvent
- * @property {"cell"} kind
- * @property {number} key
- * @property {object} entity
- * @property {number} idx
- */
-/**
- * @typedef {object} GridZoneHandlers
- * @property {(event: GridZoneEvent) => void} onEnter
- * @property {(event: GridZoneEvent) => void} onOn
- * @property {(event: GridZoneEvent) => void} onExit
- */
-/** @param {Set<number>} prev @param {Set<number>} next */
-export function diffGridZoneKeys(prev, next) {
-    /** @type {number[]} */
-    const entered = [];
-    /** @type {number[]} */
-    const exited = [];
-    for (const key of next) if (!prev.has(key)) entered.push(key);
-    for (const key of prev) if (!next.has(key)) exited.push(key);
-    return { entered, exited };
-}
-/**
- * @param {object} entity
- * @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {Set<number>} out
- */
-export function resolveEntityGridZoneKeys(entity, grid, out) {
-    out.clear();
-    const cellIdx = grid.worldToIdx(entity.x, entity.y);
-    if (cellIdx >= 0 && grid.floorPacked[cellIdx] !== 0) out.add(cellIdx);
-}
-/**
- * @param {import("../world/SpatialFrameCore.js").SpatialFrameCore} spatialFrame
- * @param {import("../grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {GridZoneHandlers} handlers
- */
-export function tickGridZoneMembership(spatialFrame, grid, handlers) {
-    if (grid.floorBeltCount === 0) return;
-    const kineticBodies = spatialFrame._kineticBodies;
-    if (!kineticBodies?.length) return;
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const entity = kineticBodies[i];
-        if (!entity._gridZoneKeys) entity._gridZoneKeys = new Set();
-        if (!entity._gridZoneNextKeys) entity._gridZoneNextKeys = new Set();
-        const prev = entity._gridZoneKeys;
-        const next = entity._gridZoneNextKeys;
-        resolveEntityGridZoneKeys(entity, grid, next);
-        const { entered, exited } = diffGridZoneKeys(prev, next);
-        for (let j = 0; j < entered.length; j++) {
-            const key = entered[j];
-            handlers.onEnter({ kind: "cell", key, entity, idx: key });
-        }
-        for (const key of next) handlers.onOn({ kind: "cell", key, entity, idx: key });
-        for (let j = 0; j < exited.length; j++) {
-            const key = exited[j];
-            handlers.onExit({ kind: "cell", key, entity, idx: key });
-        }
-        entity._gridZoneKeys = next;
-        entity._gridZoneNextKeys = prev;
-    }
 }
 /**
  * Packed (col, row) key for sparse unbounded grids.

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";

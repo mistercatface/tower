@@ -3150,7 +3150,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = c
 }
 export function runKineticPhysics(tick, dt, hooks) {
     const world = tick.world;
-    world.sandbox?.simulationFrameHooks?.beforePhysics?.(world);
+    world.simulationFrameHooks?.beforePhysics?.(world);
     const frame = tick.frame;
     const session = world.kinetic;
     ensureKineticIslandPlan(session, frame._kineticBodies);
@@ -3187,7 +3187,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     session.motionSubstepStats = { substepsRun, substepsPlanned: steps };
     advanceKineticSleepIslands(frame, session);
     frame.syncActiveKineticBodies();
-    world.sandbox?.simulationFrameHooks?.afterPhysics?.(world);
+    world.simulationFrameHooks?.afterPhysics?.(world);
     hooks.afterKineticPhysics?.(tick);
 }
 /**
@@ -4309,7 +4309,7 @@ export function resolveWallDamageTarget(grid, segment) {
     return null;
 }
 export function getGridWallDamageState(state) {
-    return state.sandbox?.gridWallDamage ?? null;
+    return state.gridWallDamage;
 }
 export function createGridWallDamage(state, config) {
     return { config, pendingBreaks: new Map(), commit: createDeferredGridWallCommit(state), spatialFrame: null };

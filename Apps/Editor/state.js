@@ -1,5 +1,5 @@
 import { SharedGameState } from "../../GameState/SharedGameState.js";
-import { SandboxWorldState } from "../../GameState/SandboxWorldState.js";
+import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { Viewport } from "../../Libraries/Viewport/Viewport.js";
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { TileLabEditorState } from "./TileLabEditorState.js";

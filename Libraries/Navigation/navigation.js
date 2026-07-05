@@ -407,7 +407,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
         const seeded = filterWalkableCellsInBounds(candidates, grid, floodSeedBounds);
         if (seeded.length) seedCells = seeded;
     }
-    const prior = state.sandbox._navWalkableCellsCache;
+    const prior = state.editor.navWalkableCellsCache;
     const cache = ensureNavWalkableBuffers(
         { navCacheKey, boundsConfig, floodSeedBounds, cells: [], flags: prior?.flags, candidateMask: prior?.candidateMask, reachedMask: prior?.reachedMask, cols: prior?.cols, rows: prior?.rows },
         grid,
@@ -420,7 +420,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
     cache.candidates = candidates;
     cache.candidateMask = candidateMask;
     cache.reachedMask = reachedMask;
-    state.sandbox._navWalkableCellsCache = cache;
+    state.editor.navWalkableCellsCache = cache;
     return cache;
 }
 function navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds) {
@@ -428,7 +428,7 @@ function navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds) 
 }
 export function getNavWalkableCellIndex(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     const navCacheKey = navWalkableCacheKey(state);
-    const cache = state.sandbox._navWalkableCellsCache;
+    const cache = state.editor.navWalkableCellsCache;
     if (navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds)) return cache;
     return bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);
 }
@@ -437,7 +437,7 @@ export function isNavWalkableCellAt(state, idx, boundsConfig = state.editor.cave
     return isNavWalkableAt(index, idx);
 }
 export function patchNavWalkableCellIndex(state, idx = null) {
-    const cache = state.sandbox._navWalkableCellsCache;
+    const cache = state.editor.navWalkableCellsCache;
     if (!cache?.boundsConfig) return null;
     if (idx === null || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
     return patchNavWalkableCellIndexRegion(state, cache, idx);
@@ -1919,9 +1919,7 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = targetY;
         return out;
     }
-    const pt = FloorBelt.getEntryEdgeWorldPoint(grid, targetIdx, BeltPacked.entry(packed));
-    out.x = pt.x;
-    out.y = pt.y;
+    FloorBelt.getEntryEdgeWorldPointInto(out, grid, targetIdx, BeltPacked.entry(packed));
     return out;
 }
 export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {

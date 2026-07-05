@@ -1,12 +1,28 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
+import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { createWorkerNavigation } from "../WorkerNavigationFactory.js";
+
+export function createSandboxSessionState(overrides = {}) {
+    return {
+        sandbox: new SandboxWorldState(),
+        editor: { cavernConfig: overrides.cavernConfig ?? null, navWalkableCellsCache: null },
+        gridWallDamage: null,
+        simulationFrameHooks: null,
+        ...overrides,
+    };
+}
 
 export async function createNavWalkableTestState(config) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, config.boundsCols * 16, config.boundsRows * 16);
     const nav = await createWorkerNavigation(grid);
-    return { obstacleGrid: grid, editor: { cavernConfig: config }, sandbox: {}, nav };
+    return {
+        obstacleGrid: grid,
+        editor: { cavernConfig: config, navWalkableCellsCache: null },
+        sandbox: new SandboxWorldState(),
+        nav,
+    };
 }
 
 export function createRailStampTestState(grid) {

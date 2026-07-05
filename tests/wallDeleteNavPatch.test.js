@@ -10,6 +10,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { getNavWalkableCellIndex, isNavWalkableCellAt, patchNavWalkableCellIndex, pickNavWalkableCell } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
+import { createSandboxSessionState } from "./harness/stateFactories.js";
 async function createWallDeleteTestState() {
     const config = createDefaultMapGenBoundsConfig();
     config.boundsIdx = 0;
@@ -25,9 +26,8 @@ async function createWallDeleteTestState() {
         return baseCommitEdit(damageBounds, options);
     };
     const state = {
+        ...createSandboxSessionState({ cavernConfig: config }),
         obstacleGrid: grid,
-        editor: { cavernConfig: config },
-        sandbox: {},
         worldSurfaces: { settings: gameWorldSurfaceSettings, invalidateGridBounds: () => {} },
         nav: navigation,
         get notifyCount() {

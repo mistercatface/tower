@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";

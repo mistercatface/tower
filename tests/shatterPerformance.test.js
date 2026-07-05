@@ -5,7 +5,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
+import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { spawnFractureShards, queueFractureKineticContact, flushDeferredFractures } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";

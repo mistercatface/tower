@@ -4,7 +4,7 @@ import { createSandboxController, createDefaultSandboxBehaviors } from "../../..
 export function mountSandboxController(state, { playMode = false } = {}) {
     if (playMode) state.editor.showSelectionRings = false;
     else
-        state.sandbox.simulationFrameHooks = {
+        state.simulationFrameHooks = {
             beforePhysics() {
                 state.nav.session.beginFrame();
             },

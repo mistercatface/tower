@@ -34,6 +34,8 @@ export class SharedGameState {
         this.kinetic = new KineticSession();
         this.spatialFrame = kineticSpatial;
         this.wallResolver = new WallCollisionResolver();
+        this.gridWallDamage = null;
+        this.simulationFrameHooks = null;
         this.obstacleGrid.rebuildFixed(0, 0, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows));
         void this.nav.commitEdit(null, { fullNavSync: true });
     }

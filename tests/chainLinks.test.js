@@ -2,39 +2,15 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead } from "../Libraries/Sandbox/sandbox.js";
+import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { mockBall, resetMockBallIds } from "./harness/kineticTickHarness.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 
-class MockEntityMeta {
-    constructor() {
-        this.byEntityId = new Map();
-    }
-    get(entityId) {
-        return this.byEntityId.get(entityId) ?? null;
-    }
-    ensure(entityId) {
-        let meta = this.byEntityId.get(entityId);
-        if (!meta) {
-            meta = {};
-            this.byEntityId.set(entityId, meta);
-        }
-        return meta;
-    }
-    isChainHead(entityId) {
-        return this.get(entityId)?.chainHead === true;
-    }
-    setChainHead(entityId, head = true) {
-        if (head) this.ensure(entityId).chainHead = true;
-        else if (this.get(entityId)) this.get(entityId).chainHead = false;
-    }
-}
-
 function createState(props) {
     return {
         kinetic: createKineticSession(),
-        sandbox: { entityMeta: new MockEntityMeta() },
+        sandbox: { entityMeta: new SandboxEntityMetaStore() },
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];

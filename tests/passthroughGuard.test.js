@@ -46,11 +46,6 @@ const deletedPassthroughExports = [
     "scaleAtHeight",
     "snapshotWorldCol",
     "snapshotWorldRow",
-    "sandboxFactions",
-    "SANDBOX_FACTION_OPTIONS",
-    "SANDBOX_DEFAULT_FACTION",
-    "resolveSandboxFaction",
-    "formatSandboxFactionLabel",
     "mapGenerationCellBounds",
 ];
 
@@ -85,7 +80,6 @@ describe("passthrough guard", () => {
             offenders.push(...scanDeletedPassthroughs(readFileSync(join(root, rel), "utf8"), rel));
         }
         for (const file of walkGameStateJs(join(root, "GameState"))) {
-            if (file.endsWith("SandboxWorldState.js") || file.replace(/\\/g, "/").endsWith("GameState/SandboxWorldState.js")) continue;
             const rel = file.slice(root.length + 1).replace(/\\/g, "/");
             offenders.push(...scanDeletedPassthroughs(readFileSync(file, "utf8"), rel));
         }

@@ -59,17 +59,16 @@ function simulationKineticHooks(state) {
 }
 /** @param {import("./state.js").TileLabGameState} state @param {import("../../Libraries/Spatial/spatial.js").KineticSpatialFrame} frame */
 function kineticTickFromState(state, frame) {
-    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
+    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks } };
 }
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
     const spatialFrame = kineticSpatial.begin(state);
-    FloorBelt.tickOccupancy(state, spatialFrame, simDt, applyKineticAcceleration);
+    FloorBelt.tick(state, spatialFrame, simDt, applyKineticAcceleration);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
-    FloorBelt.tickZones(state, spatialFrame);
-    FloorBelt.tickAnim(state, simDt);
+    FloorBelt.syncAnimFromBodies(state, spatialFrame, simDt);
     FloatingText.updateAll(state, simDt);
 }
 export function createEditorApp(options = {}) {
@@ -103,7 +102,7 @@ export function createEditorApp(options = {}) {
         document.head.appendChild(link);
     }
     installEditorDefaults(state);
-    state.sandbox.gridWallDamage = createGridWallDamage(state, { minBreakStrength: 0.1, referenceMaxSpeed: 560, minStrikeSpeed: 28 });
+    state.gridWallDamage = createGridWallDamage(state, { minBreakStrength: 0.1, referenceMaxSpeed: 560, minStrikeSpeed: 28 });
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), {
         eventBus: events,

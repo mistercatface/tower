@@ -38,8 +38,11 @@ import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } fr
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { transitionEntity } from "../FSM/transition.js";
-import { resolveSandboxFaction } from "../../GameState/SandboxWorldState.js";
 import propCatalog from "../../Assets/props/index.js";
+const SANDBOX_DEFAULT_FACTION = "alpha";
+function resolveSandboxFaction(actor) {
+    return actor?.faction ?? SANDBOX_DEFAULT_FACTION;
+}
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -1508,7 +1511,7 @@ export class WorldProp {
             const fadeOutMs = this.strategy.fadeOutMs;
             const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
             if (this.ageMs >= fadeOutMs + durationMs) {
-                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
+                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox.entityMeta);
                 else this.isDead = true;
                 return;
             } else if (this.ageMs >= fadeOutMs) {

@@ -25,5 +25,6 @@ export class TileLabEditorState {
         this.showMapOverview = true;
         this.showSelectionRings = false;
         this.lockSelection = false;
+        this.navWalkableCellsCache = null;
     }
 }

@@ -1,12 +1,4 @@
 import {
-    resolveSandboxEntityLinkValue,
-    resolveSandboxFaction,
-    SANDBOX_DEFAULT_FACTION,
-    sandboxFactions,
-    SANDBOX_FACTION_OPTIONS,
-    formatSandboxFactionLabel,
-} from "../../GameState/SandboxWorldState.js";
-import {
     BeltPacked,
     FloorBelt,
     migrateMapGenBoundsForMode,
@@ -141,13 +133,119 @@ import {
     getPropVisualBrightness,
     resolvePickerHex,
 } from "../Color/visualOverride.js";
-import { unregisterPropFromCategoryIndexes } from "../../GameState/SandboxWorldState.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import { markLabViewDirty } from "../../Apps/Editor/ui/preview.js";
 import propCatalog from "../../Assets/props/index.js";
+export class SandboxEntityMetaStore {
+    constructor() {
+        this.byEntityId = new Map();
+        this.cameraTargetId = null;
+    }
+    get(entityId) {
+        return this.byEntityId.get(entityId) ?? null;
+    }
+    ensure(entityId) {
+        let meta = this.byEntityId.get(entityId);
+        if (!meta) {
+            meta = {};
+            this.byEntityId.set(entityId, meta);
+        }
+        return meta;
+    }
+    delete(entityId) {
+        if (this.cameraTargetId === entityId) this.cameraTargetId = null;
+        this.byEntityId.delete(entityId);
+    }
+    clear() {
+        this.byEntityId.clear();
+        this.cameraTargetId = null;
+    }
+    getActiveBehaviorId(entityId) {
+        return this.get(entityId)?.activeBehaviorId;
+    }
+    setActiveBehaviorId(entityId, behaviorId) {
+        this.ensure(entityId).activeBehaviorId = behaviorId;
+    }
+    getBehaviorOverrides(entityId) {
+        return this.get(entityId)?.behaviorOverrides;
+    }
+    setBehaviorOverrides(entityId, overrides) {
+        this.ensure(entityId).behaviorOverrides = overrides;
+    }
+    isCameraTarget(entityId) {
+        return this.cameraTargetId === entityId;
+    }
+    setCameraTarget(entityId, enabled) {
+        if (enabled) this.cameraTargetId = entityId;
+        else if (this.cameraTargetId === entityId) this.cameraTargetId = null;
+    }
+    findCameraTargetEntityId() {
+        return this.cameraTargetId;
+    }
+    setPathVisual(entityId, visual) {
+        this.ensure(entityId).pathVisual = visual;
+    }
+    getPathVisual(entityId) {
+        return this.get(entityId)?.pathVisual;
+    }
+    getSpawnGroupId(entityId) {
+        return this.get(entityId)?.spawnGroupId;
+    }
+    setSpawnGroupId(entityId, spawnGroupId) {
+        this.ensure(entityId).spawnGroupId = spawnGroupId;
+    }
+    getSpawnGroupExportType(entityId) {
+        return this.get(entityId)?.spawnGroupExportType;
+    }
+    setSpawnGroupExportType(entityId, exportType) {
+        this.ensure(entityId).spawnGroupExportType = exportType;
+    }
+    isSpawnGroupAnchor(entityId) {
+        return this.get(entityId)?.spawnGroupAnchor === true;
+    }
+    setSpawnGroupAnchor(entityId, anchor = true) {
+        this.ensure(entityId).spawnGroupAnchor = anchor;
+    }
+    isChainHead(entityId) {
+        return this.get(entityId)?.chainHead === true;
+    }
+    setChainHead(entityId, head = true) {
+        if (head) this.ensure(entityId).chainHead = true;
+        else if (this.get(entityId)) this.get(entityId).chainHead = false;
+    }
+}
+export const sandboxFactions = { alpha: "alpha", bravo: "bravo", charlie: "charlie", delta: "delta", echo: "echo" };
+export const SANDBOX_DEFAULT_FACTION = sandboxFactions.alpha;
+export const SANDBOX_FACTION_OPTIONS = [
+    { id: sandboxFactions.alpha, label: "Alpha" },
+    { id: sandboxFactions.bravo, label: "Bravo" },
+    { id: sandboxFactions.charlie, label: "Charlie" },
+    { id: sandboxFactions.delta, label: "Delta" },
+    { id: sandboxFactions.echo, label: "Echo" },
+];
+export function resolveSandboxFaction(actor) {
+    return actor?.faction ?? SANDBOX_DEFAULT_FACTION;
+}
+export function formatSandboxFactionLabel(factionId) {
+    return SANDBOX_FACTION_OPTIONS.find((opt) => opt.id === factionId)?.label ?? factionId;
+}
+export function resolveSandboxEntityLinkValue(state, entity, linkField) {
+    const meta = state.sandbox.entityMeta;
+    if (entity?.id == null) return entity?.[linkField];
+    if (linkField === "spawnGroupId") return meta.getSpawnGroupId(entity.id);
+    return entity[linkField];
+}
+export class SandboxWorldState {
+    constructor() {
+        this.entityMeta = new SandboxEntityMetaStore();
+        this.controller = null;
+        this.behaviorById = null;
+        this.floorBeltDrawCache = null;
+    }
+}
 /** @param {object} state @param {object | null | undefined} prop @param {object | null | undefined} asset @param {"cueStrike"} behaviorKey */
 export function resolveWorldPropSandboxBehavior(state, prop, asset, behaviorKey) {
     const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop?.id)?.[behaviorKey];
@@ -207,7 +305,6 @@ export function isSingleWorldPropSpawnAsset(asset) {
     return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
 }
 function syncSandboxBehaviorById(state, behaviors) {
-    state.sandbox.behaviors = behaviors;
     state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
 }
 export function resolveSandboxBehaviors(asset, state, prop = null) {
@@ -1144,7 +1241,6 @@ function expandGridForSnapshot(state, doc) {
 function clearSandboxSceneContent(state) {
     for (let i = state.worldProps.length - 1; i >= 0; i--) {
         const prop = state.worldProps[i];
-        unregisterPropFromCategoryIndexes(state, prop);
         removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
     }
     clearKineticConstraints(state.kinetic);
@@ -1301,7 +1397,6 @@ export function createSandboxSession(state) {
         return dispatchSpawnPlaceableAt(state, worldX, worldY, asset, spawnCtx(options));
     };
     const removeProp = (prop) => {
-        unregisterPropFromCategoryIndexes(state, prop);
         removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
     };
     const listSelectedPropEntries = () => {
@@ -1697,7 +1792,6 @@ export function createSandboxSession(state) {
         clear() {
             for (let i = state.worldProps.length - 1; i >= 0; i--) {
                 const prop = state.worldProps[i];
-                unregisterPropFromCategoryIndexes(state, prop);
                 removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
             }
             state.obstacleGrid.clearAllFloorCells();
@@ -1960,7 +2054,7 @@ function poolRackExportType(variant) {
 }
 /**
  * @param {object[]} members
- * @param {import("../../GameState/SandboxWorldState.js").SandboxEntityMetaStore} meta
+ * @param {SandboxEntityMetaStore} meta
  * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
  */
 export function tryExportPoolRackSpawnGroup(members, meta) {
@@ -3109,7 +3203,7 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
     });
 }
 export function createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
-    const behaviors = state.sandbox.behaviors ?? [];
+    const behaviors = state.sandbox.behaviorById ? [...state.sandbox.behaviorById.values()] : [];
     let lastClickTime = 0;
     let lastClickX = 0;
     let lastClickY = 0;

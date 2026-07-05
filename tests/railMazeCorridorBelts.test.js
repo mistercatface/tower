@@ -2,7 +2,8 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BeltPacked, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
-import { isNavWalkableAt, getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
+import { getNavWalkableCellIndex, isNavWalkableAt, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
+import { createSandboxSessionState } from "./harness/stateFactories.js";
 
 function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
     return undirectedPairIndex(aIdx, bIdx, cellCount);
@@ -121,10 +122,9 @@ async function setupTestGridAndNav(seed) {
     );
 
     const state = {
+        ...createSandboxSessionState(),
         obstacleGrid: grid,
         nav,
-        sandbox: {},
-        editor: {},
         worldSurfaces: {
             settings: {
                 maxWallHeightLevel: 9,
@@ -135,7 +135,7 @@ async function setupTestGridAndNav(seed) {
     await commitGridNavEdit(state, null, { invalidateSurfaces: false, fullNavSync: true });
 
     const floodSeedBounds = { boundsMode: "rect", boundsIdx: 32 + 32 * cols, boundsCols: 1, boundsRows: 1 };
-    const walkableState = { obstacleGrid: grid, nav, sandbox: {}, editor: { cavernConfig: railConfig } };
+    const walkableState = { ...createSandboxSessionState({ cavernConfig: railConfig }), obstacleGrid: grid, nav };
     const navWalkableIndex = getNavWalkableCellIndex(walkableState, railConfig, floodSeedBounds);
 
     return { grid, nav, railConfig, navWalkableIndex };
