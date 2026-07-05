@@ -4,8 +4,15 @@ import { SHAPE_TYPE_ID, getEntityCollisionParts, entityFacing } from "./collisio
 import { collisionSettings } from "./physicsDefaults.js";
 import { aabbContains, createAabb } from "../Math/Aabb2D.js";
 import { lengthXY, speedSqXY } from "../Math/Vec2.js";
-import { BP_KIND_CIRCLE, kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "./physicsSlabs.js";
-
+import {
+    BP_KIND_CIRCLE,
+    kineticDynamicSlab,
+    pairBroadphaseOverlapSlab,
+    pairCircleCircleOverlapSlab,
+    writeBroadphaseFromBounds,
+    writeStaticKineticSlabSlot,
+    writeActiveKineticBodySlabPose,
+} from "./physicsSlabs.js";
 // --- MERGED FROM Broadphase.js ---
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
 /** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
@@ -43,7 +50,6 @@ function circleObbOverlap(circle, obb) {
     if (len > 1e-6) if (intervalsSeparatedCircleObb(dx / len, dy / len, circle, obb)) return false;
     return true;
 }
-
 export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle = 0) {
     if (parts.length <= 1) return broadphaseBoundsFromShapeInto(out, parts[0], cx, cy, angle);
     const bounds = computeCompoundLocalBounds(parts, COMPOUND_BOUNDS_SCRATCH);
@@ -102,7 +108,6 @@ export function pairBroadphaseBoundsOverlap(a, b) {
     if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Obb) return obbObbOverlap(a, b);
     return false;
 }
-
 // --- MERGED FROM entityBroadphase.js ---
 function kineticActivity() {
     return collisionSettings.kineticActivity;
@@ -123,7 +128,6 @@ export function maxNeighborQueryPad() {
 export function createBroadphaseSnapshot() {
     return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
 }
-
 function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
@@ -259,4 +263,3 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (otherActive && primary.id >= other.id) return false;
     return shouldResolveKineticPair(primary, other, overlaps);
 }
-

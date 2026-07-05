@@ -128,4 +128,3 @@ export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = colli
     if (p2.vy !== undefined) p2.vy += j * ny * invMass2;
     if (p2.momentOfInertia) p2.angularVelocity += j * cross2 * invI2;
 }
-

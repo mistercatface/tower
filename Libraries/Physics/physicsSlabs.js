@@ -2,7 +2,6 @@ import { collisionSettings } from "./physicsDefaults.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D } from "../Math/Poly2D.js";
 import { createBroadphaseBounds, pairBroadphaseBoundsOverlap, BROADPHASE_KIND } from "./broadphase.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
-
 // --- MERGED FROM bodyMass.js ---
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
@@ -111,7 +110,6 @@ export function momentOfInertiaFromBody(body) {
 export function bodyPinnedForContact(body) {
     return Boolean(body.strategy?.pinned);
 }
-
 // --- MERGED FROM kineticBodySlab.js ---
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
@@ -183,8 +181,6 @@ export function appendActiveKineticBodySlabPhysId(physId) {
     slab.activeSlot[physId] = slab.activePhysCount;
     slab.activePhysIds[slab.activePhysCount++] = physId;
 }
-
-
 export function writebackKineticBodySlabPhysId(spatialFrame, physId) {
     const slab = kineticDynamicSlab;
     const body = spatialFrame.entityGrid.entities[physId];
@@ -270,4 +266,3 @@ export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
     readSlabIntoBounds(physIdB, SLAB_SCRATCH_B);
     return pairBroadphaseBoundsOverlap(SLAB_SCRATCH_A, SLAB_SCRATCH_B);
 }
-

@@ -613,8 +613,6 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
         }
     }
 }
-
-
 export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
     const dynSlab = kineticDynamicSlab;
     const statSlab = kineticStaticSlab;
@@ -639,7 +637,6 @@ export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
     dynSlab.x[physIdB] += nx * overlap * (massA / totalMass);
     dynSlab.y[physIdB] += ny * overlap * (massA / totalMass);
 }
-
 export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
     const dynSlab = kineticDynamicSlab;
     const statSlab = kineticStaticSlab;

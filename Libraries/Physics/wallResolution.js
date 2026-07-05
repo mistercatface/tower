@@ -1,5 +1,15 @@
 import { distanceSqToSegment, getCircleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
-import { satCheckCollision, entityFacing, SAT_RESULT, getEntityCollisionParts, applyPositionCorrection, applySlabPositionCorrection, computeCircleWallContact, computePolygonWallContact, PolygonShape } from "./collisionMath.js";
+import {
+    satCheckCollision,
+    entityFacing,
+    SAT_RESULT,
+    getEntityCollisionParts,
+    applyPositionCorrection,
+    applySlabPositionCorrection,
+    computeCircleWallContact,
+    computePolygonWallContact,
+    PolygonShape,
+} from "./collisionMath.js";
 import { boxLocalFootprint } from "../Math/Poly2D.js";
 import { kineticDynamicSlab, kineticStaticSlab, inverseMassFromBody } from "./physicsSlabs.js";
 import { computeWallBreakStrength } from "../Sandbox/gridWallDamage.js";
@@ -304,4 +314,3 @@ export class WallCollisionResolver {
         return collided;
     }
 }
-

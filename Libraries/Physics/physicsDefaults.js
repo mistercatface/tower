@@ -46,4 +46,3 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     kineticResting: { normalVelocityEpsilon: 0.05, tangentVelocityEpsilon: 0.05 },
 };
 export const collisionSettings = structuredClone(LIBRARY_COLLISION_DEFAULTS);
-

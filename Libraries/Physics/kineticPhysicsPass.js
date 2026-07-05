@@ -1,6 +1,12 @@
 import { collisionSettings } from "./physicsDefaults.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
-import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab, getKineticConstraintGraph, getKineticConstraintsVersion } from "./kineticConstraintSolver.js";
+import {
+    gatherKineticConstraintSlab,
+    measureConstraintSlabMaxError,
+    resolveGatheredKineticConstraintSlab,
+    getKineticConstraintGraph,
+    getKineticConstraintsVersion,
+} from "./kineticConstraintSolver.js";
 import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer, persistedKineticPairBuffer } from "./kineticContactSolver.js";
 import { refreshActiveKineticBodySlabPose, entityBroadphaseExtent, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "./broadphase.js";
 import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab, kineticDynamicSlab } from "./physicsSlabs.js";
@@ -101,7 +107,6 @@ export function runKineticPhysics(tick, dt, hooks) {
     world.sandbox?.simulationFrameHooks?.afterPhysics?.(world);
     hooks.afterKineticPhysics?.(tick);
 }
-
 // --- MERGED FROM motionSubsteps.js ---
 /**
  * Adaptive physics substep count from peak kinetic body displacement this tick.
@@ -125,7 +130,6 @@ export function countMotionSubsteps(dtMs, bodies, { maxStepPx = 4, maxSubsteps =
     if (maxDisp <= 1e-6) return 1;
     return Math.min(maxSubsteps, Math.max(1, Math.ceil(maxDisp / maxStepPx)));
 }
-
 /** @param {object[] | null | undefined} bodies */
 export function maxActiveKineticSpeedSq(bodies) {
     let max = 0;
@@ -138,7 +142,6 @@ export function maxActiveKineticSpeedSq(bodies) {
     }
     return max;
 }
-
 // --- MERGED FROM kineticIslands.js ---
 function clearBodyIslandFields(body) {
     delete body._kineticLinkNeighbors;
@@ -214,7 +217,6 @@ export function shareKineticIsland(bodyA, bodyB) {
 export function kineticIslandMembers(body) {
     return body._kineticIslandPeers ?? [body];
 }
-
 // --- MERGED FROM kineticSleep.js ---
 const parent = new Int32Array(MAX_PHYS_BODIES);
 const rank = new Int32Array(MAX_PHYS_BODIES);
@@ -399,4 +401,3 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
 }
-

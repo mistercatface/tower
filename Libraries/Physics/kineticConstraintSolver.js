@@ -714,7 +714,6 @@ export function measureConstraintSlabMaxError() {
     }
     return max;
 }
-
 // --- MERGED FROM kineticConstraintGraph.js ---
 function addAdjacencyEdge(adjacency, fromId, toId) {
     let neighbors = adjacency.get(fromId);
@@ -825,7 +824,6 @@ export function getConstraintIslands(session) {
     cache.islands = islands;
     return islands;
 }
-
 // --- MERGED FROM kineticConstraints.js ---
 let nextKineticConstraintId = 1;
 export function markKineticConstraintsDirty(session) {
@@ -926,7 +924,6 @@ export function applyKineticConstraintsFromSnapshot(session, entries, propRefsBy
         constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
     }
 }
-
 export function getKineticTopologyGeneration(session) {
     return session.kineticTopologyGeneration ?? 0;
 }
@@ -944,7 +941,6 @@ export function kineticPairTopologyStale(spatialFrame) {
     if (!session) return false;
     return gatherGen !== getKineticTopologyGeneration(session);
 }
-
 // --- MERGED FROM constraintAnchors.js ---
 const distAnchorA = { x: 0, y: 0 };
 const distAnchorB = { x: 0, y: 0 };
@@ -965,4 +961,3 @@ export function distanceBetweenAnchors(bodyA, anchorA, bodyB, anchorB) {
     worldAnchorFromBody(bodyB, anchorB.x, anchorB.y, distAnchorB);
     return Math.hypot(distAnchorB.x - distAnchorA.x, distAnchorB.y - distAnchorA.y);
 }
-

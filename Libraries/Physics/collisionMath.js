@@ -1,7 +1,6 @@
 import { polygonSignedArea2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, rotateXY, rotateXYInto, transformPoint2DInto } from "../Math/Poly2D.js";
 import { dotXY, addXY } from "../Math/Vec2.js";
 import { kineticDynamicSlab } from "./physicsSlabs.js";
-
 // --- MERGED FROM Shapes.js ---
 export const SHAPE_TYPE_ID = { Circle: 1, Polygon: 2 };
 export class Shape {
@@ -99,7 +98,6 @@ export class PolygonShape extends Shape {
         return normals;
     }
 }
-
 // --- MERGED FROM SatCollision.js ---
 const contactA = { x: 0, y: 0 };
 const contactB = { x: 0, y: 0 };
@@ -626,4 +624,3 @@ export function computeCircleWallContact(entity, normalX, normalY, radius) {
 export function computePolygonWallContact(entity, normalX, normalY, overlap, cx = NaN, cy = NaN) {
     return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
 }
-
