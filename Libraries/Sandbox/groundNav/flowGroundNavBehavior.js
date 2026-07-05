@@ -1,4 +1,4 @@
-import { physicsSettings } from "../../Motion/physicsDefaults.js";
+import { physicsSettings } from "../../Physics/physicsDefaults.js";
 import { sampleFlowDirectionInto } from "../../Pathfinding/sampleFlowDirection.js";
 import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
 import { agentPose } from "../../Agent/index.js";

@@ -1,5 +1,5 @@
 import { boxLocalFootprint } from "../Math/Poly2D.js";
-import { PolygonShape } from "../Spatial/collision/Shapes.js";
+import { PolygonShape } from "../Physics/collisionMath.js";
 import { buildGeometryFromPartsAtOrigin, buildGeometryFromPoxelParts } from "./poxelFracture.js";
 // chunks = split connectivity graph; collisionParts = merged axis-aligned sim/draw rects
 export const CHUNK_MIN_CELL = 8;

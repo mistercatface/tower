@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { PolygonShape } from "../Libraries/Physics/collisionMath.js";
 import { bakePoxelOutline, buildGeometryFromPoxelParts, localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
 
 describe("poxel fracture", () => {

@@ -2,8 +2,8 @@ import { createKineticSession } from "../../GameState/KineticSession.js";
 import { createKineticTick } from "../../GameState/KineticTick.js";
 import { worldSimFromState } from "../../GameState/WorldSim.js";
 import { KineticSpatialFrame } from "../../Systems/World/KineticSpatialFrame.js";
-import { snapshotKineticBodySlab } from "../../Libraries/Spatial/collision/entityBroadphase.js";
-import { CircleShape } from "../../Libraries/Spatial/collision/Shapes.js";
+import { snapshotKineticBodySlab } from "../../Libraries/Physics/broadphase.js";
+import { CircleShape } from "../../Libraries/Physics/collisionMath.js";
 
 export const noop = () => {};
 export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop };

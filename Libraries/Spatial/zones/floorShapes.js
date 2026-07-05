@@ -1,8 +1,8 @@
-import { CircleShape, PolygonShape } from "../collision/Shapes.js";
-import { satCheckCollision, entityFacing } from "../collision/SatCollision.js";
+import { CircleShape, PolygonShape } from "../../Physics/collisionMath.js";
+import { satCheckCollision, entityFacing } from "../../Physics/collisionMath.js";
 import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import { boxLocalFootprint, convexFootprintHalfExtents, vertCount } from "../../Math/Poly2D.js";
-import { neighborQueryPadFor } from "../collision/entityBroadphase.js";
+import { neighborQueryPadFor } from "../../Physics/broadphase.js";
 import { stepCardinalFacing } from "../../Math/Angle.js";
 import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {

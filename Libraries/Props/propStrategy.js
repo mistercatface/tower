@@ -1,9 +1,9 @@
 import { propQuantizeSteps } from "./propRenderDefaults.js";
 import { initFractureFootprint } from "./propFracture.js";
 import { boxLocalFootprint, convexFootprintHalfExtents, ensureFlatVerts, vertCount } from "../Math/Poly2D.js";
-import { syncKineticRigidBody } from "../Motion/bodyMass.js";
-import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
-import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
+import { syncKineticRigidBody } from "../Physics/physicsSlabs.js";
+import { invalidateBroadphaseBounds } from "../Physics/broadphase.js";
+import { CircleShape, PolygonShape } from "../Physics/collisionMath.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */

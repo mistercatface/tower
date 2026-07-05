@@ -1,5 +1,5 @@
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../../Render/Props3D/SolidDraw.js";
-import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
+import { getEntityCollisionParts } from "../../Physics/collisionMath.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import { ensureFlatVerts } from "../../Math/Poly2D.js";
 import propCatalog from "../../../Assets/props/index.js";

@@ -1,21 +1,11 @@
-import { distanceSqToSegment, getCircleSegmentPenetration } from "../geometry/WallGeometry.js";
-import {
-    satCheckCollision,
-    entityFacing,
-    SAT_RESULT,
-    getEntityCollisionParts,
-    applyPositionCorrection,
-    applySlabPositionCorrection,
-    computeCircleWallContact,
-    computePolygonWallContact,
-} from "../../Physics/collisionMath.js";
-import { PolygonShape } from "../../Physics/collisionMath.js";
-import { boxLocalFootprint } from "../../Math/Poly2D.js";
-import { kineticDynamicSlab, kineticStaticSlab } from "../../Physics/physicsSlabs.js";
-import { inverseMassFromBody } from "../../Physics/physicsSlabs.js";
-import { computeWallBreakStrength } from "../../Sandbox/gridWallDamage.js";
-import { dotXY } from "../../Math/Vec2.js";
-import { wakeKineticBody } from "../../Physics/kineticPhysicsPass.js";
+import { distanceSqToSegment, getCircleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
+import { satCheckCollision, entityFacing, SAT_RESULT, getEntityCollisionParts, applyPositionCorrection, applySlabPositionCorrection, computeCircleWallContact, computePolygonWallContact, PolygonShape } from "./collisionMath.js";
+import { boxLocalFootprint } from "../Math/Poly2D.js";
+import { kineticDynamicSlab, kineticStaticSlab, inverseMassFromBody } from "./physicsSlabs.js";
+import { computeWallBreakStrength } from "../Sandbox/gridWallDamage.js";
+import { dotXY } from "../Math/Vec2.js";
+import { wakeKineticBody } from "./kineticPhysicsPass.js";
+// --- MERGED FROM wallResolution.js ---
 export function kineticBodyOverlapsWallCandidates(body, candidates) {
     if (!candidates.length) return false;
     const parts = getEntityCollisionParts(body);
@@ -314,3 +304,4 @@ export class WallCollisionResolver {
         return collided;
     }
 }
+

@@ -1,11 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { getBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Physics/broadphase.js";
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
-import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose, activeBodiesMatchKineticSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
-import { pairBroadphaseBoundsOverlap } from "../Libraries/Spatial/collision/Broadphase.js";
-import { circleCircleContactSlab } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { circleCircleContact, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
+import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose, activeBodiesMatchKineticSlab } from "../Libraries/Physics/physicsSlabs.js";
+import { pairBroadphaseBoundsOverlap } from "../Libraries/Physics/broadphase.js";
+import { circleCircleContactSlab } from "../Libraries/Physics/kineticContactSolver.js";
+import { circleCircleContact, SAT_RESULT } from "../Libraries/Physics/collisionMath.js";
 
 describe("kinetic body slab", () => {
     it("broadphase slot uses body x/y as circle center", () => {

@@ -1,5 +1,5 @@
 import { computeCompoundLocalBounds, convexFootprintHalfExtents } from "../../Math/Poly2D.js";
-import { SHAPE_TYPE_ID } from "./Shapes.js";
+import { SHAPE_TYPE_ID } from "../../Physics/collisionMath.js";
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
 /** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
 /** @returns {BroadphaseBounds} */

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraintSolver.js";
+import { resetKineticConstraintIds } from "../Libraries/Physics/kineticConstraintSolver.js";
 import { addChainLink, hasChainLinkBetween } from "../Libraries/Sandbox/chainLinks.js";
 import { createKineticTestTick, mockKineticCircle, resetMockKineticCircleIds } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";

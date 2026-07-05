@@ -1,8 +1,8 @@
 import { resolveVisualOverridePanels, resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
-import { resolveBodyRadius } from "../../Motion/physicsDefaults.js";
+import { resolveBodyRadius } from "../../Physics/physicsDefaults.js";
 import { drawSphere } from "../../Render/Props3D/sphere.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../../Render/Props3D/SolidDraw.js";
-import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
+import { getEntityCollisionParts } from "../../Physics/collisionMath.js";
 import { NEUTRAL_BOX_COLORS } from "../../../Assets/props/shared/neutralCoats.js";
 export function createSpherePrimitive(visuals) {
     return (ctx, prop, viewport) => {

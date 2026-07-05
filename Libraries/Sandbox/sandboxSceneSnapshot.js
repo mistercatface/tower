@@ -13,7 +13,7 @@ import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSand
 import { setChainHead } from "./chainLinks.js";
 import { setCirclePropRadius } from "../Props/propScale.js";
 import { applyCrossPinwheelFootprint } from "../Props/propStrategy.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Motion/kineticConstraintSolver.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Physics/kineticConstraintSolver.js";
 import { SANDBOX_DEFAULT_FACTION } from "../Sandbox/sandboxFaction.js";
 /**
  * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, and floor belts.

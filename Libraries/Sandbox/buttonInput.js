@@ -1,4 +1,4 @@
-import { massFromBody } from "../Motion/bodyMass.js";
+import { massFromBody } from "../Physics/physicsSlabs.js";
 /** @typedef {"tap" | "hold" | "toggle" | "massTap" | "massHold" | "massToggle"} ButtonInputMode */
 export const DEFAULT_BUTTON_INPUT_MODE = /** @type {ButtonInputMode} */ ("tap");
 export const DEFAULT_BUTTON_MASS_THRESHOLD = 0;

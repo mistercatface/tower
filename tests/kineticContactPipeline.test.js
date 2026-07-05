@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
-import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { KINETIC_PAIR_TIER } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { satCheckCollision, checkEntityPairCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Physics/collisionMath.js";
+import { gatherKineticContactPairs, kineticContactBuffer, resolveKineticContactPassWithPairs } from "../Libraries/Physics/kineticContactSolver.js";
+import { KINETIC_PAIR_TIER } from "../Libraries/Physics/kineticContactSolver.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 

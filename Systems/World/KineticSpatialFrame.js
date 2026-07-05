@@ -1,7 +1,7 @@
 import { SpatialFrameCore } from "../../Libraries/Spatial/world/SpatialFrameCore.js";
-import { wakeKineticBody } from "../../Libraries/Motion/kineticPhysicsPass.js";
-import { bumpKineticTopologyGeneration } from "../../Libraries/Motion/kineticConstraintSolver.js";
-import { getBroadphaseBounds, entityBroadphaseExtent } from "../../Libraries/Spatial/collision/entityBroadphase.js";
+import { wakeKineticBody } from "../../Libraries/Physics/kineticPhysicsPass.js";
+import { bumpKineticTopologyGeneration } from "../../Libraries/Physics/kineticConstraintSolver.js";
+import { getBroadphaseBounds, entityBroadphaseExtent } from "../../Libraries/Physics/broadphase.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import {
     appendActiveKineticBodySlabPhysId,
@@ -10,7 +10,7 @@ import {
     writeActiveKineticBodySlabPose,
     writeBroadphaseFromBounds,
     writeStaticKineticSlabSlot,
-} from "../../Libraries/Spatial/collision/kineticBodySlab.js";
+} from "../../Libraries/Physics/physicsSlabs.js";
 function writeKineticBodySlabSnapshot(prop) {
     writeStaticKineticSlabSlot(prop);
     writeActiveKineticBodySlabPose(prop);

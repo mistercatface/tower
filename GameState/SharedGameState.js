@@ -7,7 +7,7 @@ import { NavRuntime } from "../Libraries/Navigation/NavRuntime.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { WallCollisionResolver } from "../Libraries/Spatial/collision/wallResolution.js";
+import { WallCollisionResolver } from "../Libraries/Physics/wallResolution.js";
 import { EntityRegistry } from "./EntityRegistry.js";
 import { KineticSession } from "./KineticSession.js";
 import { FollowCamera } from "../Libraries/Sandbox/FollowCamera.js";

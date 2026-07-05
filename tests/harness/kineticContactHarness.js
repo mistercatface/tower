@@ -1,6 +1,6 @@
 import { processKineticContactFractures } from "../../Libraries/Props/propFracture.js";
-import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "../../Libraries/Spatial/collision/kineticContactSolver.js";
-import { writebackActiveKineticBodySlab } from "../../Libraries/Spatial/collision/kineticBodySlab.js";
+import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer } from "../../Libraries/Physics/kineticContactSolver.js";
+import { writebackActiveKineticBodySlab } from "../../Libraries/Physics/physicsSlabs.js";
 
 /** Single-shot contact resolve for tests (gather once, solve once). */
 export function resolveKineticContactPass(tick) {

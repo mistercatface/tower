@@ -1,7 +1,8 @@
 import { cardinalUnitVectorFromAngle } from "../Math/Angle.js";
-import { wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
+import { wakeKineticBody } from "./kineticPhysicsPass.js";
 import { addXY, lengthXY, dotXY } from "../Math/Vec2.js";
-import { collisionSettings } from "../Physics/physicsDefaults.js";
+import { collisionSettings } from "./physicsDefaults.js";
+// --- MERGED FROM motionDynamics.js ---
 /**
  * Continuous world acceleration (units/s²) — same semantics as floor belts.
  * Not mass-weighted; instant velocity changes use direct vx/vy writes at contact sites.
@@ -127,3 +128,4 @@ export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = colli
     if (p2.vy !== undefined) p2.vy += j * ny * invMass2;
     if (p2.momentOfInertia) p2.angularVelocity += j * cross2 * invI2;
 }
+

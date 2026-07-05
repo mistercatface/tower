@@ -1,6 +1,6 @@
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
 import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
-import { entityBroadphaseExtent, maxNeighborQueryPad, neighborQueryPadFor } from "../collision/entityBroadphase.js";
+import { entityBroadphaseExtent, maxNeighborQueryPad, neighborQueryPadFor } from "../../Physics/broadphase.js";
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 import { MAX_ENTITIES } from "../../../Core/engineLimits.js";

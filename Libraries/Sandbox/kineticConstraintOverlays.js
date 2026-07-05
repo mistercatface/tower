@@ -1,6 +1,6 @@
 import { appendOverlayWireLink, overlayCachedWireEndpoint } from "../Render/overlays/overlayCommands.js";
-import { distanceBetweenAnchors, worldAnchorFromBody } from "../Motion/kineticConstraintSolver.js";
-import { listKineticConstraints } from "../Motion/kineticConstraintSolver.js";
+import { distanceBetweenAnchors, worldAnchorFromBody } from "../Physics/kineticConstraintSolver.js";
+import { listKineticConstraints } from "../Physics/kineticConstraintSolver.js";
 function constraintWireColor(strain) {
     if (strain < 0.05) return "rgba(100, 255, 140, 0.85)";
     if (strain < 0.2) return "rgba(255, 220, 80, 0.9)";

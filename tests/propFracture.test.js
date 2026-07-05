@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { fracturePropOnImpact, impactForceFromContact, splitFootprintIntoComponents, worldHitToPropLocal } from "../Libraries/Props/propFracture.js";
 import { chunkCollisionPartsArea } from "../Libraries/Props/chunkFracture.js";
-import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { getEntityCollisionParts } from "../Libraries/Spatial/collision/SatCollision.js";
+import { getEntityCollisionParts } from "../Libraries/Physics/collisionMath.js";
 
 describe("prop impact fracture", () => {
     it("worldHitToPropLocal maps world hits into prop space", () => {

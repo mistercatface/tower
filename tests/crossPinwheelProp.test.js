@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
-import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
-import { inverseMassFromBody, momentOfInertiaFromBody, kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
+import { runKineticPhysics } from "../Libraries/Physics/kineticPhysicsPass.js";
+import { inverseMassFromBody, momentOfInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physicsSlabs.js";
 import { applyCrossPinwheelFootprint } from "../Libraries/Props/propStrategy.js";
 
 describe("cross pinwheel prop", () => {

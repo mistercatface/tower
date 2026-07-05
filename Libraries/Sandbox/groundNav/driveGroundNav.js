@@ -1,5 +1,5 @@
 import { snapNavGoalWorldInto } from "../../Navigation/navGraph.js";
-import { physicsSettings } from "../../Motion/physicsDefaults.js";
+import { physicsSettings } from "../../Physics/physicsDefaults.js";
 import { FloorBelt } from "../../Spatial/grid/FloorCell.js";
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 /**

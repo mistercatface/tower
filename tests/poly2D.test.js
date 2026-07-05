@@ -107,7 +107,7 @@ describe("Poly2D.reversePolygonWinding", () => {
         assert.deepEqual(Array.from(reversed), [0, 10, 10, 10, 10, 0, 0, 0]);
     });
 });
-import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { PolygonShape } from "../Libraries/Physics/collisionMath.js";
 describe("PolygonShape winding order enforcement", () => {
     it("preserves counter-clockwise winding", () => {
         const ccw = new Float32Array([0, 0, 10, 0, 10, 10, 0, 10]);

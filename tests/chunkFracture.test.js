@@ -1,12 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { PolygonShape } from "../Libraries/Physics/collisionMath.js";
 import { measureGlassShard } from "../Libraries/Props/glassFracture.js";
 import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/chunkFracture.js";
 import { localBoxOutline, splitPoxels } from "../Libraries/Props/poxelFracture.js";
 import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/propFracture.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
 import propCatalog from "../Assets/props/index.js";
 describe("chunk fracture", () => {

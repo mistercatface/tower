@@ -7,7 +7,7 @@ import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.j
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";
 import { getCirclePropRadius, getPolygonPropBoundingRadius, setCirclePropRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/propScale.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/propStrategy.js";
-import { CircleShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { CircleShape } from "../Libraries/Physics/collisionMath.js";
 import { WorldProp } from "../Entities/WorldProp.js";
 
 const noopDeps = {

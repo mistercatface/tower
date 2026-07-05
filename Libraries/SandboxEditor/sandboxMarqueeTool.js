@@ -2,7 +2,7 @@ import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { sandboxAssetMatchesTagFilter } from "../Sandbox/sandboxCapabilities.js";
 import { aabbFromTwoPointsInto } from "../Math/Aabb2D.js";
-import { entityContainedInAabb } from "../Spatial/collision/entityBroadphase.js";
+import { entityContainedInAabb } from "../Physics/broadphase.js";
 import propCatalog from "../../Assets/props/index.js";
 export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior, selectPropIds }) {
     return createMarqueeSelectTool({

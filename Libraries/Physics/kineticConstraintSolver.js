@@ -1,13 +1,14 @@
-import { collisionSettings } from "../Physics/physicsDefaults.js";
-import { bodyPinnedForContact, inverseMassFromBody, massFromBody } from "../Physics/physicsSlabs.js";
+import { collisionSettings } from "./physicsDefaults.js";
+import { bodyPinnedForContact, inverseMassFromBody, massFromBody, kineticDynamicSlab, kineticStaticSlab, writeActiveKineticBodySlabPose, writebackKineticBodySlabPhysIds } from "./physicsSlabs.js";
+import { separateAlongNormalSlab } from "./kineticContactSolver.js";
 import { getLinkCapsuleSegmentPenetration } from "../Spatial/geometry/WallGeometry.js";
-import { getEntityCollisionParts, applyPositionCorrection, applySlabPositionCorrection } from "../Physics/collisionMath.js";
-import { ensureKineticIslandPlan, wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
-import { kineticDynamicSlab, kineticStaticSlab, writeActiveKineticBodySlabPose, writebackKineticBodySlabPhysIds, separateAlongNormalSlab } from "../Physics/physicsSlabs.js";
+import { getEntityCollisionParts, applyPositionCorrection, applySlabPositionCorrection } from "./collisionMath.js";
+import { ensureKineticIslandPlan, wakeKineticBody } from "./kineticPhysicsPass.js";
 import { normalizeAngle } from "../Math/Angle.js";
-import { invalidateBroadphaseBounds } from "../Physics/broadphase.js";
+import { invalidateBroadphaseBounds } from "./broadphase.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
 import { transformPoint2DInto } from "../Math/Poly2D.js";
+// --- MERGED FROM kineticConstraintSolver.js ---
 const LINK_CAPSULE_WALL_PASSES = 4;
 /** Reused per-island wall candidate list — cleared at the start of each awake island. */
 const islandLinkWallCandidates = [];
@@ -964,3 +965,4 @@ export function distanceBetweenAnchors(bodyA, anchorA, bodyB, anchorB) {
     worldAnchorFromBody(bodyB, anchorB.x, anchorB.y, distAnchorB);
     return Math.hypot(distAnchorB.x - distAnchorA.x, distAnchorB.y - distAnchorA.y);
 }
+

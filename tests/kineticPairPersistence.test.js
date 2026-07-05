@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { runCollisionPipeline } from "../Libraries/Motion/kineticPhysicsPass.js";
-import { persistedKineticPairBuffer } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
-import { snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
+import { runCollisionPipeline } from "../Libraries/Physics/kineticPhysicsPass.js";
+import { persistedKineticPairBuffer } from "../Libraries/Physics/kineticContactSolver.js";
+import { activeBodiesMatchKineticSlab, kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
+import { snapshotKineticBodySlab } from "../Libraries/Physics/broadphase.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { satCheckCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
+import { satCheckCollision, checkEntityPairCollisionAt, entityFacing } from "../Libraries/Physics/collisionMath.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraintSolver.js";
-import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
+import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/kineticConstraintSolver.js";
+import { runKineticPhysics } from "../Libraries/Physics/kineticPhysicsPass.js";
 import { createKineticTestTick, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { collisionSettingsForIterations, withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 

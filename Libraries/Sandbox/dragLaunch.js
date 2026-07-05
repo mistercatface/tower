@@ -1,6 +1,6 @@
 import { normalizeXY } from "../Math/Vec2.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
-import { wakeKineticBody } from "../Motion/kineticPhysicsPass.js";
+import { wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/query/circleAimLinePreview.js";
 import { evaluateInputGates, isEntityAtRest } from "./inputGates.js";

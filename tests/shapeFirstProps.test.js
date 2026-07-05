@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
-import { kineticFootprintArea } from "../Libraries/Motion/bodyMass.js";
+import { kineticFootprintArea } from "../Libraries/Physics/physicsSlabs.js";
 import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 describe("shape-first props", () => {

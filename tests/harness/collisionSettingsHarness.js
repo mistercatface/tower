@@ -1,4 +1,4 @@
-import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../../Libraries/Motion/physicsDefaults.js";
+import { collisionSettings, LIBRARY_COLLISION_DEFAULTS } from "../../Libraries/Physics/physicsDefaults.js";
 import { mergeObjectTree, replaceRecordContents } from "../../Libraries/Config/mergeConfig.js";
 
 export const COLLISION_NO_EARLY_OUT = { velocityEpsilonSq: -1, constraintErrorEpsilon: -1, contactImpulseEpsilon: -1 };

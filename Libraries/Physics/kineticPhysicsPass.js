@@ -1,13 +1,14 @@
-import { collisionSettings } from "../Physics/physicsDefaults.js";
+import { collisionSettings } from "./physicsDefaults.js";
 import { applyGroundRollDrive } from "../Sandbox/kineticRollActuator.js";
-import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab, getKineticConstraintGraph, getKineticConstraintsVersion } from "../Physics/kineticConstraintSolver.js";
-import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer, persistedKineticPairBuffer } from "../Physics/kineticContactSolver.js";
-import { refreshActiveKineticBodySlabPose, entityBroadphaseExtent, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "../Physics/broadphase.js";
-import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab, kineticDynamicSlab } from "../Physics/physicsSlabs.js";
-import { shouldResolveKineticBodyAgainstWalls } from "../Physics/wallResolution.js";
+import { gatherKineticConstraintSlab, measureConstraintSlabMaxError, resolveGatheredKineticConstraintSlab, getKineticConstraintGraph, getKineticConstraintsVersion } from "./kineticConstraintSolver.js";
+import { ensureKineticContactPairs, resolveKineticContactPassWithPairs, kineticContactBuffer, sleepContactBuffer, persistedKineticPairBuffer } from "./kineticContactSolver.js";
+import { refreshActiveKineticBodySlabPose, entityBroadphaseExtent, isKinematicallyActive, pairBroadphaseOverlapSnapshotted } from "./broadphase.js";
+import { clampActiveKineticBodySlabSpeed, writebackActiveKineticBodySlab, kineticDynamicSlab } from "./physicsSlabs.js";
+import { shouldResolveKineticBodyAgainstWalls } from "./wallResolution.js";
 import { lengthXY } from "../Math/Vec2.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
 import { createAabb, emptyAabbInto, growAabbFromCenterInto } from "../Math/Aabb2D.js";
+// --- MERGED FROM kineticPhysicsPass.js ---
 // Merged from collisionPipeline.js
 function resolveActiveBodyWalls(activeBodies, frame, resolveWalls) {
     for (let i = 0; i < activeBodies.length; i++) {
@@ -398,3 +399,4 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
 }
+

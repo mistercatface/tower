@@ -1,4 +1,4 @@
-import { PolygonShape } from "../../Spatial/collision/Shapes.js";
+import { PolygonShape } from "../../Physics/collisionMath.js";
 import { quantizeAngleIndex } from "../../Math/Angle.js";
 import { FLIPPER_LAYOUT } from "../../../Assets/props/flipper/flipperShared.js";
 import propCatalog from "../../../Assets/props/index.js";

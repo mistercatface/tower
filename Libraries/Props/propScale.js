@@ -1,7 +1,7 @@
-import { CircleShape, PolygonShape } from "../Spatial/collision/Shapes.js";
-import { invalidateBroadphaseBounds } from "../Spatial/collision/entityBroadphase.js";
-import { kineticMassFromFootprint, syncKineticRigidBody } from "../Motion/bodyMass.js";
-import { wakeKineticBody } from "../Motion/kineticPhysicsPass.js";
+import { CircleShape, PolygonShape } from "../Physics/collisionMath.js";
+import { invalidateBroadphaseBounds } from "../Physics/broadphase.js";
+import { kineticMassFromFootprint, syncKineticRigidBody } from "../Physics/physicsSlabs.js";
+import { wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
 import { scaleFlatVerts } from "../Math/Poly2D.js";
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;

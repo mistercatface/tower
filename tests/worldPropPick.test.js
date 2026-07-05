@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PolygonShape } from "../Libraries/Spatial/collision/Shapes.js";
+import { PolygonShape } from "../Libraries/Physics/collisionMath.js";
 import { worldPropContainsPoint } from "../GameState/EntityRegistry.js";
 function boxProp(x, y, hx, hy, facing = 0) {
     return {

@@ -1,5 +1,5 @@
 import { EntityGrid } from "../indexes/EntityGrid.js";
-import { entityBroadphaseExtent, neighborQueryPadFor } from "../collision/entityBroadphase.js";
+import { entityBroadphaseExtent, neighborQueryPadFor } from "../../Physics/broadphase.js";
 import { SpatialQuery } from "../query/SpatialQuery.js";
 import { centerReachAabbInto, createAabb } from "../../Math/Aabb2D.js";
 import {

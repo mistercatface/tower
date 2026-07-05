@@ -1,18 +1,109 @@
-import { collisionSettings } from "../../Physics/physicsDefaults.js";
-import { computeCompoundLocalBounds } from "../../Math/Poly2D.js";
-import { aabbContains, createAabb } from "../../Math/Aabb2D.js";
-import { lengthXY, speedSqXY } from "../../Math/Vec2.js";
-import { broadphaseBoundsFromCollisionPartsInto, broadphaseBoundsFromShapeInto, createBroadphaseBounds, pairBroadphaseBoundsOverlap, BROADPHASE_KIND } from "../../Physics/broadphase.js";
-import {
-    BP_KIND_CIRCLE,
-    kineticDynamicSlab,
-    pairBroadphaseOverlapSlab,
-    pairCircleCircleOverlapSlab,
-    writeBroadphaseFromBounds,
-    writeStaticKineticSlabSlot,
-    writeActiveKineticBodySlabPose,
-} from "../../Physics/physicsSlabs.js";
-import { getEntityCollisionParts, entityFacing } from "../../Physics/collisionMath.js";
+const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+import { computeCompoundLocalBounds, convexFootprintHalfExtents } from "../Math/Poly2D.js";
+import { SHAPE_TYPE_ID, getEntityCollisionParts, entityFacing } from "./collisionMath.js";
+import { collisionSettings } from "./physicsDefaults.js";
+import { aabbContains, createAabb } from "../Math/Aabb2D.js";
+import { lengthXY, speedSqXY } from "../Math/Vec2.js";
+import { BP_KIND_CIRCLE, kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "./physicsSlabs.js";
+
+// --- MERGED FROM Broadphase.js ---
+export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
+/** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
+/** @returns {BroadphaseBounds} */
+export function createBroadphaseBounds() {
+    return { kind: BROADPHASE_KIND.Circle, cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
+}
+function intervalsSeparatedObbObb(ax, ay, a, b) {
+    const ca = a.cx * ax + a.cy * ay;
+    const ra = a.hx * Math.abs(a.cos * ax + a.sin * ay) + a.hy * Math.abs(-a.sin * ax + a.cos * ay);
+    const cb = b.cx * ax + b.cy * ay;
+    const rb = b.hx * Math.abs(b.cos * ax + b.sin * ay) + b.hy * Math.abs(-b.sin * ax + b.cos * ay);
+    return Math.abs(ca - cb) > ra + rb;
+}
+function obbObbOverlap(a, b) {
+    if (intervalsSeparatedObbObb(a.cos, a.sin, a, b)) return false;
+    if (intervalsSeparatedObbObb(-a.sin, a.cos, a, b)) return false;
+    if (intervalsSeparatedObbObb(b.cos, b.sin, a, b)) return false;
+    if (intervalsSeparatedObbObb(-b.sin, b.cos, a, b)) return false;
+    return true;
+}
+function intervalsSeparatedCircleObb(ax, ay, circle, obb) {
+    const cc = circle.cx * ax + circle.cy * ay;
+    const rc = circle.r;
+    const cb = obb.cx * ax + obb.cy * ay;
+    const rb = obb.hx * Math.abs(obb.cos * ax + obb.sin * ay) + obb.hy * Math.abs(-obb.sin * ax + obb.cos * ay);
+    return Math.abs(cc - cb) > rc + rb;
+}
+function circleObbOverlap(circle, obb) {
+    if (intervalsSeparatedCircleObb(obb.cos, obb.sin, circle, obb)) return false;
+    if (intervalsSeparatedCircleObb(-obb.sin, obb.cos, circle, obb)) return false;
+    const dx = circle.cx - obb.cx;
+    const dy = circle.cy - obb.cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len > 1e-6) if (intervalsSeparatedCircleObb(dx / len, dy / len, circle, obb)) return false;
+    return true;
+}
+
+export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle = 0) {
+    if (parts.length <= 1) return broadphaseBoundsFromShapeInto(out, parts[0], cx, cy, angle);
+    const bounds = computeCompoundLocalBounds(parts, COMPOUND_BOUNDS_SCRATCH);
+    const hx = (bounds.maxX - bounds.minX) * 0.5;
+    const hy = (bounds.maxY - bounds.minY) * 0.5;
+    const localCx = (bounds.minX + bounds.maxX) * 0.5;
+    const localCy = (bounds.minY + bounds.maxY) * 0.5;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    out.kind = BROADPHASE_KIND.Obb;
+    out.cx = cx + localCx * cos - localCy * sin;
+    out.cy = cy + localCx * sin + localCy * cos;
+    out.cos = cos;
+    out.sin = sin;
+    out.hx = hx;
+    out.hy = hy;
+    return out;
+}
+export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
+    if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+        out.kind = BROADPHASE_KIND.Circle;
+        out.cx = cx;
+        out.cy = cy;
+        out.r = shape.radius;
+        return out;
+    }
+    if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
+        out.kind = BROADPHASE_KIND.Obb;
+        out.cx = cx;
+        out.cy = cy;
+        out.cos = Math.cos(angle);
+        out.sin = Math.sin(angle);
+        const span = convexFootprintHalfExtents(shape.vertices);
+        out.hx = span.x;
+        out.hy = span.y;
+        return out;
+    }
+    out.kind = BROADPHASE_KIND.Circle;
+    out.cx = cx;
+    out.cy = cy;
+    out.r = shape.radius || 0;
+    return out;
+}
+export function broadphaseBoundsFromShape(shape, cx, cy, angle = 0) {
+    return broadphaseBoundsFromShapeInto(createBroadphaseBounds(), shape, cx, cy, angle);
+}
+export function pairBroadphaseBoundsOverlap(a, b) {
+    if (a.kind === BROADPHASE_KIND.Circle && b.kind === BROADPHASE_KIND.Circle) {
+        const dx = a.cx - b.cx;
+        const dy = a.cy - b.cy;
+        const radii = a.r + b.r;
+        return dx * dx + dy * dy < radii * radii;
+    }
+    if (a.kind === BROADPHASE_KIND.Circle && b.kind === BROADPHASE_KIND.Obb) return circleObbOverlap(a, b);
+    if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Circle) return circleObbOverlap(b, a);
+    if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Obb) return obbObbOverlap(a, b);
+    return false;
+}
+
+// --- MERGED FROM entityBroadphase.js ---
 function kineticActivity() {
     return collisionSettings.kineticActivity;
 }
@@ -32,7 +123,7 @@ export function maxNeighborQueryPad() {
 export function createBroadphaseSnapshot() {
     return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
 }
-const COMPOUND_BOUNDS_SCRATCH = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
 function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
@@ -168,3 +259,4 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (otherActive && primary.id >= other.id) return false;
     return shouldResolveKineticPair(primary, other, overlaps);
 }
+

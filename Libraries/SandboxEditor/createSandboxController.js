@@ -21,7 +21,7 @@ import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandb
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { FollowCamera } from "../Sandbox/FollowCamera.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
-import { removeKineticConstraint } from "../Motion/kineticConstraintSolver.js";
+import { removeKineticConstraint } from "../Physics/kineticConstraintSolver.js";
 import { clearChainLinksForProp, isChainLinkBall, listChainLinkEndpoints, resolveGroundNavSteeringProp, setChainHead } from "../Sandbox/chainLinks.js";
 import { countNavPropsInSelection, issueGroundNavToSelection } from "../Sandbox/groundNav/groundNavSelectionMenu.js";
 import { selectionPropIds } from "../Sandbox/sandboxSelectionInspectors.js";

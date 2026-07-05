@@ -1,11 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Spatial/collision/SatCollision.js";
-import { separateAlongNormal } from "../Libraries/Spatial/collision/SatCollision.js";
-import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticContactSolver.js";
-import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
+import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/collisionMath.js";
+import { separateAlongNormal } from "../Libraries/Physics/collisionMath.js";
+import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSnapshotted, snapshotKineticBodySlab } from "../Libraries/Physics/broadphase.js";
+import { gatherKineticCandidatePairs, kineticPairBodyAt, kineticPairBuffer } from "../Libraries/Physics/kineticContactSolver.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 function separatePairUntilClear(a, b, maxPasses = 8) {

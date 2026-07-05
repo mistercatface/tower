@@ -1,15 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
-import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Motion/kineticConstraintSolver.js";
-import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Motion/kineticPhysicsPass.js";
-import { kineticDynamicSlab } from "../Libraries/Spatial/collision/kineticBodySlab.js";
-import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Motion/kineticPhysicsPass.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Motion/physicsDefaults.js";
-import { snapshotKineticBodySlab } from "../Libraries/Spatial/collision/entityBroadphase.js";
-import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Spatial/collision/kineticContactSolver.js";
+import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/kineticConstraintSolver.js";
+import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Physics/kineticPhysicsPass.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
+import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Physics/kineticPhysicsPass.js";
+import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physicsDefaults.js";
+import { snapshotKineticBodySlab } from "../Libraries/Physics/broadphase.js";
+import { gatherKineticCandidatePairs, kineticPairBuffer } from "../Libraries/Physics/kineticContactSolver.js";
 import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
-import { runKineticPhysics } from "../Libraries/Motion/kineticPhysicsPass.js";
+import { runKineticPhysics } from "../Libraries/Physics/kineticPhysicsPass.js";
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 

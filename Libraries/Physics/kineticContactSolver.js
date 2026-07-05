@@ -1,12 +1,12 @@
-import { collisionSettings } from "../../Physics/physicsDefaults.js";
-import { invalidateWallResolveCache } from "../../Physics/wallResolution.js";
-import { kineticPairTopologyStale, stampKineticPairGatherTopology } from "../../Physics/kineticConstraintSolver.js";
-import { refreshActiveKineticBodySlabPose, allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "../../Physics/broadphase.js";
-import { kineticDynamicSlab, kineticStaticSlab, separateAlongNormalSlab, separateCoincidentCircleSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "../../Physics/physicsSlabs.js";
-import { COINCIDENT_CIRCLE_EPS, checkEntityPairCollisionAt, SAT_RESULT } from "../../Physics/collisionMath.js";
-import { MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS, MAX_ENTITIES as MAX_PHYS_BODIES } from "../../../Core/engineLimits.js";
-import { SHAPE_TYPE_ID } from "../../Physics/collisionMath.js";
-import { shareKineticIsland } from "../../Physics/kineticPhysicsPass.js";
+import { collisionSettings } from "./physicsDefaults.js";
+import { invalidateWallResolveCache } from "./wallResolution.js";
+import { kineticPairTopologyStale, stampKineticPairGatherTopology } from "./kineticConstraintSolver.js";
+import { refreshActiveKineticBodySlabPose, allowsKineticCollisionPair, isKinematicallyActive, shouldResolveKineticPair } from "./broadphase.js";
+import { kineticDynamicSlab, kineticStaticSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "./physicsSlabs.js";
+import { COINCIDENT_CIRCLE_EPS, checkEntityPairCollisionAt, SAT_RESULT, SHAPE_TYPE_ID } from "./collisionMath.js";
+import { MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS, MAX_ENTITIES as MAX_PHYS_BODIES } from "../../Core/engineLimits.js";
+import { shareKineticIsland } from "./kineticPhysicsPass.js";
+// --- MERGED FROM kineticContactSolver.js ---
 export const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_FEATURE_STRIDE = 1024;
 const FEATURE_ANGLE_BUCKETS = 32;
@@ -612,4 +612,51 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             writePairMaterial(pairs, idx, primary, neighbor);
         }
     }
+}
+
+
+export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
+    const dynSlab = kineticDynamicSlab;
+    const statSlab = kineticStaticSlab;
+    const pinnedA = statSlab.pinned[physIdA];
+    const pinnedB = statSlab.pinned[physIdB];
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        dynSlab.x[physIdB] += nx * overlap;
+        dynSlab.y[physIdB] += ny * overlap;
+        return;
+    }
+    if (pinnedB) {
+        dynSlab.x[physIdA] -= nx * overlap;
+        dynSlab.y[physIdA] -= ny * overlap;
+        return;
+    }
+    const massA = statSlab.mass[physIdA];
+    const massB = statSlab.mass[physIdB];
+    const totalMass = massA + massB;
+    dynSlab.x[physIdA] -= nx * overlap * (massB / totalMass);
+    dynSlab.y[physIdA] -= ny * overlap * (massB / totalMass);
+    dynSlab.x[physIdB] += nx * overlap * (massA / totalMass);
+    dynSlab.y[physIdB] += ny * overlap * (massA / totalMass);
+}
+
+export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
+    const dynSlab = kineticDynamicSlab;
+    const statSlab = kineticStaticSlab;
+    const pinnedA = statSlab.pinned[physIdA];
+    const pinnedB = statSlab.pinned[physIdB];
+    if (pinnedA && pinnedB) return;
+    if (pinnedA) {
+        dynSlab.x[physIdB] += overlap;
+        return;
+    }
+    if (pinnedB) {
+        dynSlab.x[physIdA] -= overlap;
+        return;
+    }
+    const massA = statSlab.mass[physIdA];
+    const massB = statSlab.mass[physIdB];
+    const totalMass = massA + massB;
+    dynSlab.x[physIdA] -= overlap * (massB / totalMass);
+    dynSlab.x[physIdB] += overlap * (massA / totalMass);
 }

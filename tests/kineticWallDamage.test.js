@@ -12,9 +12,9 @@ import { patchNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkabl
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { WallCollisionResolver } from "../Libraries/Spatial/collision/wallResolution.js";
-import { satCheckCollision, entityFacing } from "../Libraries/Spatial/collision/SatCollision.js";
-import { ensureWallSegmentPolygonShape } from "../Libraries/Spatial/collision/wallResolution.js";
+import { WallCollisionResolver } from "../Libraries/Physics/wallResolution.js";
+import { satCheckCollision, entityFacing } from "../Libraries/Physics/collisionMath.js";
+import { ensureWallSegmentPolygonShape } from "../Libraries/Physics/wallResolution.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);

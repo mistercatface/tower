@@ -12,7 +12,7 @@ import {
 } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { traceClosedFlatPolygon, traceFlatQuad, traceQuad, traceSegment } from "../../Canvas/CanvasPath.js";
 import { drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform } from "../../Canvas/AffineTexture.js";
-import { getEntityCollisionParts } from "../../Spatial/collision/SatCollision.js";
+import { getEntityCollisionParts } from "../../Physics/collisionMath.js";
 export const DEFAULT_PROP_HEIGHT = 14;
 export const RADIAL_SEGMENTS = 14;
 const sPinwheelLocalVerts = new Float32Array(24);
