@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { closestPointOnLineSegment, distanceSegmentToSegment, distanceSqToLineSegment, distanceToLineSegment, segmentIntersectionPoint, segmentsIntersect } from "../Libraries/Math/Segment2D.js";
+import { closestPointOnLineSegment, distanceSegmentToSegment, distanceSqToLineSegment, distanceToLineSegment, segmentIntersectionPoint, segmentsIntersect } from "../Libraries/Math/math.js";
 import { assertNear, assertPointNear, seg } from "./mathHarness.js";
 describe("Segment2D.segmentsIntersect", () => {
     it("crossing diagonals", () => {

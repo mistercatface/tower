@@ -1,5 +1,5 @@
 import { cellBoundsAtIdx, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, unionCellBounds, padCellBoundsToGrid } from "../DataStructures/CellRect.js";
-import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
+import { centeredAabbInto, createAabb } from "../Math/math.js";
 import { commitGridNavEdit } from "./gridNavEdit.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/grid/gridNavEpoch.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";

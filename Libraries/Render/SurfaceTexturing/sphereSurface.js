@@ -1,4 +1,4 @@
-import { transformRollVertex } from "../../Props/rollingMotion.js";
+import { transformRollVertex } from "../../Physics/physics.js";
 /**
  * Local sphere vertex resting on the ground (phi=π touches z=0).
  * phi=0 is the top pole; theta is azimuth in the ground plane.

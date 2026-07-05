@@ -5,7 +5,7 @@
 import { drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars } from "../../Canvas/AffineTexture.js";
 import { resolveElevationAlpha, projectWorldPointInto, projectWorldQuadInto } from "../../Spatial/elevation/RadialElevationProjection.js";
 import { flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx, RAIL_BOX } from "../../World/wallGridBake.js";
-import { pointsAabbOverlapAabb, flatQuadOverlapAabb } from "../../Math/Aabb2D.js";
+import { pointsAabbOverlapAabb, flatQuadOverlapAabb } from "../../Math/math.js";
 import { traceClosedFlatPolygon, traceFlatQuad } from "../../Canvas/CanvasPath.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
 import { resolveWallSurfaceProfileId } from "../../Spatial/grid/SurfaceMaterialStore.js";

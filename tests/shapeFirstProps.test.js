@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { WorldProp } from "../Entities/WorldProp.js";
 import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/propStrategy.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
-import { polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
+import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {

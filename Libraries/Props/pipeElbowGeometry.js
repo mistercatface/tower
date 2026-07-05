@@ -1,6 +1,6 @@
 import { PolygonShape } from "../Physics/physics.js";
-import { transformPoint2DInto, ensureFlatVerts } from "../Math/Poly2D.js";
-import { quantizeAngleIndex } from "../Math/Angle.js";
+import { transformPoint2DInto, ensureFlatVerts } from "../Math/math.js";
+import { quantizeAngleIndex } from "../Math/math.js";
 import propCatalog from "../../Assets/props/index.js";
 const FACING_STEPS = 24;
 /** @param {object} prop @param {object | null | undefined} asset */

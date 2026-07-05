@@ -1,5 +1,5 @@
 import { cellInRect } from "../../Spatial/grid/GridUtils.js";
-import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/Aabb2D.js";
+import { centerReachAabbInto, createAabb, padAabbInto } from "../../Math/math.js";
 import { entityBroadphaseExtent, maxNeighborQueryPad, neighborQueryPadFor } from "../../Physics/physics.js";
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */

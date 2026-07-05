@@ -1,4 +1,4 @@
-import { hashSaltString } from "../../Math/hash.js";
+import { hashSaltString } from "../../Math/math.js";
 function lcg(seed) {
     let s = seed;
     return function () {

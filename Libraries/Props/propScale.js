@@ -2,7 +2,7 @@ import { CircleShape, PolygonShape } from "../Physics/physics.js";
 import { invalidateBroadphaseBounds } from "../Physics/physics.js";
 import { kineticMassFromFootprint, syncKineticRigidBody } from "../Physics/physics.js";
 import { wakeKineticBody } from "../Physics/physics.js";
-import { scaleFlatVerts } from "../Math/Poly2D.js";
+import { scaleFlatVerts } from "../Math/math.js";
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") return shape.getBoundingRadius();

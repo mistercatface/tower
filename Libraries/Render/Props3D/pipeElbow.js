@@ -1,6 +1,6 @@
 import { buildPipeElbowCenterline3D, getPipeElbowSpec } from "../../Props/pipeElbowGeometry.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
-import { rotateXY } from "../../Math/Poly2D.js";
+import { rotateXY } from "../../Math/math.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 import propCatalog from "../../../Assets/props/index.js";
 /** @param {number} lx @param {number} ly @param {number} lz @param {number} facing */

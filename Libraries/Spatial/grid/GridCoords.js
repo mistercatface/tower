@@ -1,5 +1,5 @@
 import { boundsToCellRect } from "../../DataStructures/CellKey.js";
-import { createAabb, minCornerAabbInto } from "../../Math/Aabb2D.js";
+import { createAabb, minCornerAabbInto } from "../../Math/math.js";
 export function worldColAtOrigin(x, minX, cellSize) {
     return Math.floor((x - minX) / cellSize);
 }

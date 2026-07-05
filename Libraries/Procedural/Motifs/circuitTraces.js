@@ -1,5 +1,5 @@
-import { rotateXY } from "../../Math/Poly2D.js";
-import { distanceToLineSegment } from "../../Math/Segment2D.js";
+import { rotateXY } from "../../Math/math.js";
+import { distanceToLineSegment } from "../../Math/math.js";
 import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * Grid-aligned continuous circuit traces. When warped, they snake organically.

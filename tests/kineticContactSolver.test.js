@@ -8,7 +8,7 @@ import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
-import { dotXY } from "../Libraries/Math/Vec2.js";
+import { dotXY } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/propScale.js";
 function pairStillOverlaps(a, b) {
     return satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);

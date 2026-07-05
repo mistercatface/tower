@@ -1,4 +1,4 @@
-import { rotateXY, transformPoint2DInto } from "../Math/Poly2D.js";
+import { rotateXY, transformPoint2DInto } from "../Math/math.js";
 import { drawBox } from "./Props3D/SolidDraw.js";
 import { projectPropVertexScalarsInto } from "./Props3D/propMesh.js";
 import { getCanvasLineScale } from "./common/viewportUtils.js";

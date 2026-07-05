@@ -1,5 +1,5 @@
 import { projectWorldPointInto } from "../../Spatial/iso/IsometricProjection.js";
-import { createAabb, expandPointsAabbInto } from "../../Math/Aabb2D.js";
+import { createAabb, expandPointsAabbInto } from "../../Math/math.js";
 import { traceClosedPolygon } from "../../Canvas/CanvasPath.js";
 import { drawProjectedWallFace } from "../../Render/Structure3D/ProjectedWallDraw.js";
 /** @typedef {import("../../Render/Structure3D/WallDrawContext.js").WallDrawContext} WallDrawContext */

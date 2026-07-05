@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
-import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Spatial/geometry/WallGeometry.js";
+import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 
 const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });

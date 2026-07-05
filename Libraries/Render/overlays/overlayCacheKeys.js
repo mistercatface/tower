@@ -1,4 +1,4 @@
-import { quantizeAngleIndex } from "../../Math/Angle.js";
+import { quantizeAngleIndex } from "../../Math/math.js";
 const OVERLAY_RADIUS_STEP = 0.5;
 const OVERLAY_DIR_STEPS = 16;
 export function quantizeOverlayRadius(r) {

@@ -1,7 +1,7 @@
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../Render/Props3D/SolidDraw.js";
 import { getEntityCollisionParts, resolveBodyRadius } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels } from "../Color/visualOverride.js";
-import { ensureFlatVerts } from "../Math/Poly2D.js";
+import { ensureFlatVerts } from "../Math/math.js";
 import propCatalog from "../../Assets/props/index.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { drawSphere } from "../Render/Props3D/sphere.js";

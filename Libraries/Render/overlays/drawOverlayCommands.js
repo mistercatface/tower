@@ -1,6 +1,6 @@
 import { drawCachedOverlayGlyph } from "../../Canvas/QuantizedSpriteCache.js";
 import { fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, strokeSegment, traceAabbRect } from "../../Canvas/CanvasPath.js";
-import { lengthXY, normalizeXY } from "../../Math/Vec2.js";
+import { lengthXY, normalizeXY } from "../../Math/math.js";
 import { bakeOverlayCommand } from "./overlayGlyphBake.js";
 function drawArrowHead(ctx, x, y, dirX, dirY, fill, headLen, headWidth) {
     const tx = -dirY;

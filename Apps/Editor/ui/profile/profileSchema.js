@@ -1,4 +1,4 @@
-import { EASING_OPTIONS } from "../../../../Libraries/Math/Easing.js";
+import { EASING_OPTIONS } from "../../../../Libraries/Math/math.js";
 import { BLEND_OPTIONS } from "../../../../Libraries/Procedural/util/blend.js";
 import { MOTIF_TYPES } from "../../../../Libraries/Procedural/MotifRegistry.js";
 export { EASING_OPTIONS, BLEND_OPTIONS, MOTIF_TYPES };

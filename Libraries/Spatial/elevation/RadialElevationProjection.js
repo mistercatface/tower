@@ -3,8 +3,8 @@
 // Fixed isometric is a separate future mode; do not confuse with this module.
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
-import { angleDelta } from "../../Math/Angle.js";
-import { radiusAtT, scaleAtHeight } from "../../Math/Interpolate.js";
+import { angleDelta } from "../../Math/math.js";
+import { radiusAtT, scaleAtHeight } from "../../Math/math.js";
 export { radiusAtT, scaleAtHeight };
 export function resolveElevationAlpha(height, viewport) {
     const { cameraHeight, perspectiveStrength } = viewport;

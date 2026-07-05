@@ -1,4 +1,4 @@
-import { createAabb, minCornerAabbInto } from "../Math/Aabb2D.js";
+import { createAabb, minCornerAabbInto } from "../Math/math.js";
 import { worldBoundsFromCellOriginInto } from "../Spatial/grid/GridCoords.js";
 export const MAP_GEN_KINDS = ["cavern", "rail", "railMaze", "erase"];
 export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", railMaze: "#ba68c8", erase: "#f44336" };

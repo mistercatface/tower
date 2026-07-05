@@ -1,4 +1,4 @@
-import { normalizeXY } from "../../Math/Vec2.js";
+import { normalizeXY } from "../../Math/math.js";
 import { overlayCachedArrowHead, overlayCachedFlowDirectionArrow, overlayCachedPathDebugNode, overlayCachedPathDestination, overlayCachedSelectionRing, overlayCircleStroke, overlayPolyline } from "./overlayCommands.js";
 /** @typedef {"normal" | "debug"} PathOverlayVisual */
 /** @typedef {Object} PathOverlayData

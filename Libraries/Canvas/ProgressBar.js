@@ -1,4 +1,4 @@
-import { clamp } from "../Math/Interpolate.js";
+import { clamp } from "../Math/math.js";
 import { createOffscreenCanvas } from "./offscreenCanvas.js";
 export class ProgressBar {
     constructor(config = {}) {

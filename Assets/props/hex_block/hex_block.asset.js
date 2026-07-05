@@ -1,4 +1,4 @@
-import { regularConvexPolygonFootprint } from "../../../Libraries/Math/Poly2D.js";
+import { regularConvexPolygonFootprint } from "../../../Libraries/Math/math.js";
 import { NEUTRAL_BOX_COLORS } from "../shared/neutralCoats.js";
 export default {
     id: "hex_block",

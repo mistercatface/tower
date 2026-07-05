@@ -1,4 +1,4 @@
-import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto } from "../Math/Aabb2D.js";
+import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto } from "../Math/math.js";
 import { cellBoundsToWorldBoundsInto } from "../Spatial/grid/GridCoords.js";
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = 0;
 function positiveModulo(value, period) {

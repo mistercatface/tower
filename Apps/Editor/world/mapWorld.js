@@ -7,7 +7,7 @@ import { generateCavernOccupancy } from "../../../Libraries/Procedural/Mazes/cav
 import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Sandbox/gridNavEdit.js";
 import { planRailMazeCorridorBelts, stampGlobalRailMazeBelts, stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
-import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/Aabb2D.js";
+import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/math.js";
 import { forEachObstacleGridCellInAabb } from "../../../Libraries/Spatial/grid/GridCoords.js";
 import { setBoundary } from "../../../Libraries/Spatial/grid/boundaryOccupancy.js";
 import { cellIsStaticWallAtIdx } from "../../../Libraries/Spatial/grid/gridCellTopology.js";

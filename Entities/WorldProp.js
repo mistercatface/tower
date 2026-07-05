@@ -1,7 +1,7 @@
 import { Entity } from "./Entity.js";
 import { applyVelocityDamping } from "../Libraries/Physics/physics.js";
-import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
-import { integratePropMotion } from "../Libraries/Props/propMotion.js";
+import { IDENTITY_ROLL_QUAT } from "../Libraries/Physics/physics.js";
+import { integratePropMotion } from "../Libraries/Physics/physics.js";
 import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
@@ -10,7 +10,7 @@ import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Phys
 import { wakeKineticBody } from "../Libraries/Physics/physics.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
-import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/Angle.js";
+import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/math.js";
 import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });

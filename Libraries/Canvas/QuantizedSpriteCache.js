@@ -1,10 +1,10 @@
-import { quantizeAngle, quantizeAngleIndex } from "../Math/Angle.js";
+import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
 import propCatalog from "../../Assets/props/index.js";
 import { prepModifiedBlit, resolveSpriteDrawModifier } from "../Render/spriteDrawModifier.js";
 import { acquireOffscreenCanvas } from "./offscreenCanvas.js";
 import { createBakedSpriteCache } from "./BakedSpriteCache.js";
-import { clamp } from "../Math/Interpolate.js";
-import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
+import { clamp } from "../Math/math.js";
+import { buildRollOrientKey, quantizeRollQuat } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolveBodyRadius } from "../Physics/physics.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";

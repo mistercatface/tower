@@ -1,4 +1,4 @@
-import { boxLocalFootprint } from "../../../Libraries/Math/Poly2D.js";
+import { boxLocalFootprint } from "../../../Libraries/Math/math.js";
 export default {
     id: "custom_box",
     primitive: "polygon",

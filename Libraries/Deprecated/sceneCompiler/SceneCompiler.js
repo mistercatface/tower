@@ -1,5 +1,5 @@
 import { RenderableWallFace, RenderableRoofCap } from "./Renderables.js";
-import { getSegmentFootprintCorners } from "../../Spatial/geometry/WallGeometry.js";
+import { getSegmentFootprintCorners } from "../../Physics/physics.js";
 import { resolveSegmentWallHeightPx } from "../../World/wallGridCells.js";
 export class SceneCompiler {
     /**

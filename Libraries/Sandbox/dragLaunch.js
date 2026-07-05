@@ -1,4 +1,4 @@
-import { normalizeXY } from "../Math/Vec2.js";
+import { normalizeXY } from "../Math/math.js";
 import { resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import { wakeKineticBody } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/overlays/overlayCommands.js";

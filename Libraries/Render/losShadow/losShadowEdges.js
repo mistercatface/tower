@@ -1,4 +1,4 @@
-import { aabbFromTwoPointsInto, createAabb, distanceSqToAabb } from "../../Math/Aabb2D.js";
+import { aabbFromTwoPointsInto, createAabb, distanceSqToAabb } from "../../Math/math.js";
 import { projectWallShadowQuadScreenInto } from "../../Spatial/elevation/shadowProjection.js";
 import { EDGE_STRIDE } from "./EdgeList.js";
 const sEdgeSegmentAabb = createAabb();

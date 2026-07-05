@@ -1,6 +1,6 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
-import { IDENTITY_ROLL_QUAT } from "./rollingMotion.js";
-import { quantizeCardinalAngle } from "../Math/Angle.js";
+import { IDENTITY_ROLL_QUAT } from "../Physics/physics.js";
+import { quantizeCardinalAngle } from "../Math/math.js";
 import { initWorldPropShape } from "./propStrategy.js";
 import propCatalog from "../../Assets/props/index.js";
 const pools = new Map();

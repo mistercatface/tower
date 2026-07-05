@@ -1,5 +1,5 @@
 import { resolveBodyRadius } from "../../Physics/physics.js";
-import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
+import { IDENTITY_ROLL_QUAT } from "../../Physics/physics.js";
 import { buildSphereMesh } from "./sphereMesh.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";
 const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF9800", "#FFFFFF"];

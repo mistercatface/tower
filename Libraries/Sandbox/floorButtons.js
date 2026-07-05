@@ -1,4 +1,4 @@
-import { createAabb } from "../Math/Aabb2D.js";
+import { createAabb } from "../Math/math.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
 import { processFloorShapes, syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../Spatial/zones/floorShapes.js";
 import { isButtonActive, isButtonEntity, isMassButtonInputMode, isMassOverThreshold, isSustainedFlipperButtonInputMode, isToggleInputMode } from "./buttonInput.js";

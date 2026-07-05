@@ -9,7 +9,7 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { createKineticTick } from "../GameState/KineticTick.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
-import { dotXY } from "../Libraries/Math/Vec2.js";
+import { dotXY } from "../Libraries/Math/math.js";
 function mockWallSegment(x, y, size = 16) {
     return { x, y, size, width: size, height: size, angle: 0, isDead: false };
 }

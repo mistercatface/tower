@@ -1,4 +1,4 @@
-import { centeredAabbInto, createAabb } from "../Math/Aabb2D.js";
+import { centeredAabbInto, createAabb } from "../Math/math.js";
 import { cellBoundsAtOriginInto } from "../Spatial/grid/GridCoords.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 import { appendGridEdgeOverlayCommand } from "./gridWallEdit.js";

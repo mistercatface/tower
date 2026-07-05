@@ -1,5 +1,5 @@
 import { resolveBodyRadius } from "../../Physics/physics.js";
-import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
+import { IDENTITY_ROLL_QUAT } from "../../Physics/physics.js";
 import { projectPropVertexScalarsInto } from "../Props3D/propMesh.js";
 import { tessellateSphereCapQuadsFlat, tessellateSphereQuadsFlat } from "./sphereSurface.js";
 import { drawTexturedQuadCellsFlat, gatherTexturedQuadCellsFlat } from "./texturedCells.js";

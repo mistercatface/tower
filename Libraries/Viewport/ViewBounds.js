@@ -1,4 +1,4 @@
-import { aabbOverlap, centerHalfExtentsAabbInto, circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
+import { aabbOverlap, centerHalfExtentsAabbInto, circleIntersectsAabb, createAabb } from "../Math/math.js";
 export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
 /** @typedef {"clip" | "props" | "structure" | "chunks"} ViewBoundsTier */
 const VIEW_BOUNDS_TIER_ORDER = ["clip", "props", "structure", "chunks"];

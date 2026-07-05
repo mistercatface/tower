@@ -1,4 +1,4 @@
-import { circleLeadingPoint } from "../geometry/circleContact.js";
+import { circleLeadingPoint } from "../../Physics/physics.js";
 import { rayCircleHitDistance, castSteppedCircleRay } from "./spatialQueries.js";
 /**
  * Estimate travel distance for a rolling body with initial speed v0 under friction damping.

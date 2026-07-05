@@ -9,7 +9,7 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
     flushDeferredFractures(tick.world, tick.frame);
 }
 import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT, measureGlassShard, minShardAreaForPolygon, shatterGlassFootprint, shatterGlassPolygon } from "../Libraries/Props/fractureSystem.js";
-import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
+import { transformPoint2DInto } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";

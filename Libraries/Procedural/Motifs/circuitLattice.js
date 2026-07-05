@@ -1,4 +1,4 @@
-import { rotateXY } from "../../Math/Poly2D.js";
+import { rotateXY } from "../../Math/math.js";
 import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.

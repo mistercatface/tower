@@ -3,7 +3,7 @@
  * Elevated-chunk clip helpers live in ChunkDrawPass.js.
  */
 import { forEachObstacleGridCellInAabb } from "../Spatial/grid/GridCoords.js";
-import { aabbWidth } from "../Math/Aabb2D.js";
+import { aabbWidth } from "../Math/math.js";
 import { resolveCellWallHeightAtIdx } from "../Spatial/grid/gridCellTopology.js";
 import { bakePixelsForWorldSpan } from "./WorldSurfaceResolution.js";
 import { createOffscreenCanvas } from "../Canvas/offscreenCanvas.js";

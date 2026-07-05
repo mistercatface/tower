@@ -1,4 +1,4 @@
-import { CARDINAL_FACING_STEPS } from "../../Math/Angle.js";
+import { CARDINAL_FACING_STEPS } from "../../Math/math.js";
 import { cellInRect } from "./GridUtils.js";
 import { emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds } from "../../DataStructures/CellRect.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision } from "./gridNavEpoch.js";

@@ -1,5 +1,5 @@
 import { addCorridorPathToOccupied, buildCorridorBeltsFromPaths } from "./railMazeCorridorFootprint.js";
-import { createSeededRng } from "../../Math/SeededRng.js";
+import { createSeededRng } from "../../Math/math.js";
 import { forEachGlobalCellInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
 import { CARDINAL_OFFSETS, cellInRect, gridCellLayout, layoutAbsCellIndex, forEachCardinalNeighborIdx } from "../../Spatial/grid/GridUtils.js";
 import { edgeMirrorSide, edgeNeighborIdx } from "../../Spatial/grid/gridCellTopology.js";

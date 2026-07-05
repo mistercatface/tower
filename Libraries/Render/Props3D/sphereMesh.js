@@ -1,5 +1,5 @@
 import { sphereLocalVertex } from "../SurfaceTexturing/sphereSurface.js";
-import { transformRollVertex } from "../../Props/rollingMotion.js";
+import { transformRollVertex } from "../../Physics/physics.js";
 /**
  * Build lat/long sphere mesh resting on the ground, then apply roll orientation.
  * Each face carries normalized UV bounds for texture mapping.

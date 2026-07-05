@@ -1,5 +1,5 @@
-import { minDistanceSegmentToWall, circleIntersectsSegment } from "../geometry/WallGeometry.js";
-import { lengthXY } from "../../Math/Vec2.js";
+import { minDistanceSegmentToWall, circleIntersectsSegment } from "../../Physics/physics.js";
+import { lengthXY } from "../../Math/math.js";
 // ==========================================
 // 1. Ray Circle Hit Distance (from circleCast.js)
 // ==========================================

@@ -1,4 +1,4 @@
-import { createSeededRng } from "../../Math/SeededRng.js";
+import { createSeededRng } from "../../Math/math.js";
 export function bakeRailMazeDfs(stampBounds, options, mapSeed) {
     const cols = stampBounds.cols;
     const rows = stampBounds.rows;

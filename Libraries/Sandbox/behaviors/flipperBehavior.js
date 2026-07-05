@@ -1,5 +1,5 @@
 import { PolygonShape } from "../../Physics/physics.js";
-import { quantizeAngleIndex } from "../../Math/Angle.js";
+import { quantizeAngleIndex } from "../../Math/math.js";
 import { FLIPPER_LAYOUT } from "../../../Assets/props/flipper/flipperShared.js";
 import propCatalog from "../../../Assets/props/index.js";
 export const FLIPPER_BEHAVIOR_ID = "flipper";

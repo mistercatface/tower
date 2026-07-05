@@ -1,9 +1,9 @@
 import { CircleShape, PolygonShape } from "../../Physics/physics.js";
 import { satCheckCollision, entityFacing } from "../../Physics/physics.js";
-import { centerHalfExtentsAabbInto, createAabb } from "../../Math/Aabb2D.js";
-import { boxLocalFootprint, convexFootprintHalfExtents, vertCount } from "../../Math/Poly2D.js";
+import { centerHalfExtentsAabbInto, createAabb } from "../../Math/math.js";
+import { boxLocalFootprint, convexFootprintHalfExtents, vertCount } from "../../Math/math.js";
 import { neighborQueryPadFor } from "../../Physics/physics.js";
-import { stepCardinalFacing } from "../../Math/Angle.js";
+import { stepCardinalFacing } from "../../Math/math.js";
 import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 export function processFloorShapes(spatialFrame, shapes, { onEnter, onExit }) {
     if (!shapes.length) return;

@@ -1,4 +1,4 @@
-import { closestPointOnLineSegment } from "../../Math/Segment2D.js";
+import { closestPointOnLineSegment } from "../../Math/math.js";
 export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
     if (!path || path.length === 0) return { segmentIdx: 0, t: 0, closestX: x, closestY: y, dist: 0 };
     if (path.length === 1) {

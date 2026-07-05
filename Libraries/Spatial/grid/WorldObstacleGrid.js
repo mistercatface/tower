@@ -5,7 +5,7 @@ import { CellEdgeStore } from "./CellEdgeStore.js";
 import { SurfaceMaterialStore } from "./SurfaceMaterialStore.js";
 import { FloorBelt, FloorCellStore } from "./FloorCell.js";
 import { clearAllBoundariesAtCell, setBoundary, boundaryBlocksStepFrom } from "./boundaryOccupancy.js";
-import { centeredAabbInto, createAabb } from "../../Math/Aabb2D.js";
+import { centeredAabbInto, createAabb } from "../../Math/math.js";
 import { worldColAtOrigin, worldRowAtOrigin, gridCenterXAtOrigin, gridCenterYAtOrigin, cellBoundsAtOriginInto, cellBoundsAtOriginIdxInto, cellBoundsToWorldBoundsInto } from "./GridCoords.js";
 import { invalidateGridLocalNavBake } from "../../Navigation/NavTopology.js";
 import { GRID_NAV_EPOCH, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision, bumpSurfaceMaterialRevision } from "./gridNavEpoch.js";

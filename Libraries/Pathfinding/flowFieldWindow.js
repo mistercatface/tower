@@ -1,4 +1,4 @@
-import { circleIntersectsAabb, createAabb } from "../Math/Aabb2D.js";
+import { circleIntersectsAabb, createAabb } from "../Math/math.js";
 import {
     centeredGridFrameKey,
     createCenteredGridFrame,

@@ -16,7 +16,7 @@ import { applySandboxSceneSnapshot, collectSandboxSceneSnapshot, parseSandboxSce
 import { buildSandboxOverlayCommands } from "./buildSandboxOverlayCommands.js";
 import { kineticSpatial } from "../../Systems/World/KineticSpatialFrame.js";
 import { resolveSandboxBehaviors } from "../Sandbox/sandboxCapabilities.js";
-import { createAabb } from "../Math/Aabb2D.js";
+import { createAabb } from "../Math/math.js";
 import { resolveSandboxPathVisual, setSandboxPathVisual } from "../Sandbox/sandboxPropMeta.js";
 import { isSandboxCameraTarget, setSandboxCameraTarget } from "../Sandbox/sandboxCameraTarget.js";
 import { FollowCamera } from "../Sandbox/FollowCamera.js";

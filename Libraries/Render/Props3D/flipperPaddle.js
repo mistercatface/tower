@@ -1,4 +1,4 @@
-import { rotateXY } from "../../Math/Poly2D.js";
+import { rotateXY } from "../../Math/math.js";
 import { getFlipperSpec } from "../../Sandbox/behaviors/flipperBehavior.js";
 import { resolveVisualOverrideColorTree } from "../../Color/visualOverride.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";

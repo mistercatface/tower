@@ -1,7 +1,7 @@
 /**
  * Procedural world-surface bake cache: static ground chunks + wall atlases (frame 0 only).
  */
-import { aabbCenterX, aabbCenterY, aabbHeight, aabbWidth, createAabb, intersectAabbOptionalInto } from "../Math/Aabb2D.js";
+import { aabbCenterX, aabbCenterY, aabbHeight, aabbWidth, createAabb, intersectAabbOptionalInto } from "../Math/math.js";
 import { SurfaceBitmapCache } from "./SurfaceBitmapCache.js";
 import { composeDestinationIn } from "../Canvas/maskCompositor.js";
 import { chunkHasBlockedCells, buildStaticRoofMaskCanvas } from "./HorizontalSurfaceDraw.js";

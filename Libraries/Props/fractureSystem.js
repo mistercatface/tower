@@ -1,6 +1,6 @@
-import { polygonCentroid2D, boxLocalFootprint, pointInPolygon, polygonSignedArea2D, transformPoint2DInto, convexFootprintHalfExtents } from "../Math/Poly2D.js";
+import { polygonCentroid2D, boxLocalFootprint, pointInPolygon, polygonSignedArea2D, transformPoint2DInto, convexFootprintHalfExtents } from "../Math/math.js";
 import { PolygonShape, syncKineticRigidBody, invalidateBroadphaseBounds, kineticDynamicSlab, kineticPairBodyAt, KINETIC_PAIR_TIER, wakeKineticBody } from "../Physics/physics.js";
-import { closestPointOnLineSegment } from "../Math/Segment2D.js";
+import { closestPointOnLineSegment } from "../Math/math.js";
 import { addWorldPropToState, removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";

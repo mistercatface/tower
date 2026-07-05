@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hashSaltString } from "../Libraries/Math/hash.js";
+import { hashSaltString } from "../Libraries/Math/math.js";
 import { writeSeededFeatureCell } from "../Libraries/Procedural/Fields/SeededFeatureHash.js";
 import { voronoiEdgeMetric } from "../Libraries/Procedural/Fields/VoronoiEdge.js";
 

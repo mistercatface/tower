@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/Poly2D.js";
+import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {

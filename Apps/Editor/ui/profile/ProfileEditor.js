@@ -6,7 +6,7 @@ import { setFormFieldName } from "../../../../Libraries/UI/Component.js";
 import { renderPipelineListUi } from "../../../../Libraries/UI/pipelineListUi.js";
 import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.js";
 import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
-import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/Easing.js";
+import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/math.js";
 import { BLEND_OPTIONS, EASING_OPTIONS, LAYER_OPTIONS, MOTIF_TYPES, PALETTE_FIELDS, WARP_FIELDS, getAnimatableMotifFields, isContextMotif } from "./profileSchema.js";
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
 let editorState = null;

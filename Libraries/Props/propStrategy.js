@@ -1,6 +1,6 @@
 import { propQuantizeSteps } from "./propRenderDefaults.js";
 import { initFractureFootprint } from "./fractureSystem.js";
-import { boxLocalFootprint, convexFootprintHalfExtents, ensureFlatVerts, vertCount } from "../Math/Poly2D.js";
+import { boxLocalFootprint, convexFootprintHalfExtents, ensureFlatVerts, vertCount } from "../Math/math.js";
 import { syncKineticRigidBody } from "../Physics/physics.js";
 import { invalidateBroadphaseBounds } from "../Physics/physics.js";
 import { CircleShape, PolygonShape } from "../Physics/physics.js";

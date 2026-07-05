@@ -1,4 +1,4 @@
-import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/Aabb2D.js";
+import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/math.js";
 import { isCanonicalEdgeRepresentativeIdx } from "../Spatial/grid/gridCellTopology.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
 import { FloorBelt } from "../Spatial/grid/FloorCell.js";
