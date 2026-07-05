@@ -37,13 +37,12 @@ import {
     entityFacing,
     wakeKineticBody,
     bumpKineticTopologyGeneration,
-    getBroadphaseBounds,
-    appendActiveKineticBodySlabPhysId,
-    clearActiveKineticBodySlab,
+    stampBroadphaseSlabFromEntity,
     kineticDynamicSlab,
-    writeActiveKineticBodySlabPose,
-    writeBroadphaseFromBounds,
     writeStaticKineticSlabSlot,
+    writeActiveKineticBodySlabPose,
+    clearActiveKineticBodySlab,
+    appendActiveKineticBodySlabPhysId,
 } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -4086,7 +4085,7 @@ export async function generateLabRailMaze(state, options = {}) {
 function writeKineticBodySlabSnapshot(prop) {
     writeStaticKineticSlabSlot(prop);
     writeActiveKineticBodySlabPose(prop);
-    writeBroadphaseFromBounds(prop._physId, getBroadphaseBounds(prop));
+    stampBroadphaseSlabFromEntity(prop._physId, prop);
 }
 export class KineticSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {

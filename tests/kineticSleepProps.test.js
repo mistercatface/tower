@@ -5,7 +5,7 @@ import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physic
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Physics/physics.js";
-import { isRotatingEntity, pairBroadphaseOverlap, shouldResolveKineticPair } from "../Libraries/Physics/physics.js";
+import { isRotatingEntity, pairBroadphaseOverlapSlab, shouldResolveKineticPair, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
@@ -76,8 +76,12 @@ describe("kinetic sleep on proof props", () => {
         const a = new WorldProp(0, 0, "crate", 0);
         const b = new WorldProp(0, 14, "crate", 0);
         separatePairUntilClear(a, b);
-        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlap(a, b)) === false);
+        a._physId = 0;
+        b._physId = 1;
+        snapshotKineticBodySlab([a, b]);
+        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlapSlab(a._physId, b._physId)) === false);
         a.vx = 10;
-        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlap(a, b)));
+        snapshotKineticBodySlab([a, b]);
+        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlapSlab(a._physId, b._physId)));
     });
 });

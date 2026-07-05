@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
-import { allowsKineticCollisionPair, pairBroadphaseOverlap, pairBroadphaseOverlapSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { allowsKineticCollisionPair, pairBroadphaseOverlapSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { createKineticPairBuffer } from "./harness/kineticBufferHarness.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
@@ -36,24 +36,25 @@ function pairKeys(pairs, spatialFrame) {
     return keys;
 }
 describe("kinetic pair stream", () => {
-    it("snapshotted broadphase overlap matches live bounds query", () => {
+    it("snapshotted broadphase overlap detects touching circles", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
         snapshotKineticBodySlab([a, b]);
-        assert.equal(pairBroadphaseOverlapSlab(a._physId, b._physId), pairBroadphaseOverlap(a, b));
+        assert.ok(pairBroadphaseOverlapSlab(a._physId, b._physId));
     });
-    it("slab-backed pair policy matches live bounds overlap", () => {
+    it("slab-backed pair policy resolves resting overlap only when mover is active", () => {
         const rest = mockKineticCircle(0, 0, 10, 0, 0);
         const mover = mockKineticCircle(18, 0, 10, 20, 0);
         rest._physId = 0;
         mover._physId = 1;
         snapshotKineticBodySlab([rest, mover]);
-        assert.equal(
-            allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSlab(rest._physId, mover._physId)),
-            allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlap(rest, mover)),
-        );
+        assert.ok(allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSlab(rest._physId, mover._physId)));
+        rest.vx = 0;
+        mover.vx = 0;
+        snapshotKineticBodySlab([rest, mover]);
+        assert.equal(allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSlab(rest._physId, mover._physId)), false);
     });
     it("resting overlapping circles emit no candidate pairs", () => {
         const a = mockKineticCircle(0, 0, 10, 0, 0);

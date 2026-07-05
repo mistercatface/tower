@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getBroadphaseBounds, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { WorldProp } from "../Libraries/Props/props.js";
+import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
-import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, writeBroadphaseFromBounds, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "../Libraries/Physics/physics.js";
-import { pairBroadphaseBoundsOverlap } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab, stampBroadphaseSlabFromEntity, writeStaticKineticSlabSlot, writeActiveKineticBodySlabPose } from "../Libraries/Physics/physics.js";
 import { circleCircleContactSlab } from "../Libraries/Physics/physics.js";
 import { circleCircleContact, SAT_RESULT } from "../Libraries/Physics/physics.js";
 
@@ -14,20 +14,29 @@ describe("kinetic body slab", () => {
         body._physId = 3;
         writeStaticKineticSlabSlot(body);
         writeActiveKineticBodySlabPose(body);
-        writeBroadphaseFromBounds(body._physId, getBroadphaseBounds(body));
+        stampBroadphaseSlabFromEntity(body._physId, body);
         assert.equal(kineticDynamicSlab.x[3], 12);
         assert.equal(kineticDynamicSlab.y[3], -4);
         assert.equal(kineticDynamicSlab.r[3], 9);
     });
 
-    it("slab overlap matches object overlap after snapshot", () => {
+    it("slab overlap detects overlapping circles after snapshot", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
         snapshotKineticBodySlab([a, b]);
-        assert.equal(pairCircleCircleOverlapSlab(0, 1), pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds));
-        assert.equal(pairBroadphaseOverlapSlab(0, 1), pairBroadphaseBoundsOverlap(a.broadphaseBounds, b.broadphaseBounds));
+        assert.ok(pairCircleCircleOverlapSlab(0, 1));
+        assert.ok(pairBroadphaseOverlapSlab(0, 1));
+    });
+
+    it("slab overlap detects circle against crate OBB", () => {
+        const ball = mockKineticCircle(0, 0, 10);
+        const crate = new WorldProp(18, 0, "crate", 0);
+        ball._physId = 0;
+        crate._physId = 1;
+        snapshotKineticBodySlab([ball, crate]);
+        assert.ok(pairBroadphaseOverlapSlab(0, 1));
     });
 
     it("snapshotKineticBodySlab fills kinematic and broadphase columns", () => {

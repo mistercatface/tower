@@ -49,6 +49,7 @@ for (const hot of hotDirs) {
         }
         if (/\bconst [A-Z][A-Z0-9_]*_SCRATCH\b/.test(src)) warnings.push({ file: relPath, kind: "module-scratch", symbol: "const *_SCRATCH" });
         if (/return \{ x:/.test(src) || /return \{ col:/.test(src)) warnings.push({ file: relPath, kind: "pair-return", symbol: "return { x|col" });
+        if (/\.push\(\{/.test(src)) warnings.push({ file: relPath, kind: "push-object", symbol: ".push({" });
     }
 }
 
@@ -67,6 +68,13 @@ const legacy = [
     { pattern: /wallBestScratch/, label: "wallBestScratch" },
     { pattern: /\bposScratch\b/, label: "posScratch" },
     { pattern: /COMPOUND_BOUNDS_SCRATCH/, label: "COMPOUND_BOUNDS_SCRATCH" },
+    { pattern: /pairBroadphaseBoundsOverlap/, label: "pairBroadphaseBoundsOverlap" },
+    { pattern: /\bpairBroadphaseOverlap\b/, label: "pairBroadphaseOverlap" },
+    { pattern: /getBroadphaseBounds/, label: "getBroadphaseBounds" },
+    { pattern: /writeBroadphaseFromBounds/, label: "writeBroadphaseFromBounds" },
+    { pattern: /broadphaseBounds/, label: "broadphaseBounds" },
+    { pattern: /getCircleSegmentPenetration/, label: "getCircleSegmentPenetration" },
+    { pattern: /manifoldPoints/, label: "manifoldPoints" },
 ];
 
 for (const { pattern, label } of legacy) {

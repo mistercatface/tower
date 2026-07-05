@@ -224,31 +224,93 @@ export const kineticStaticSlab = {
 };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
+function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
+    const slab = kineticDynamicSlab;
+    const aCos = slab.cos[physIdA];
+    const aSin = slab.sin[physIdA];
+    const bCos = slab.cos[physIdB];
+    const bSin = slab.sin[physIdB];
+    const ca = slab.x[physIdA] * ax + slab.y[physIdA] * ay;
+    const ra = slab.hx[physIdA] * Math.abs(aCos * ax + aSin * ay) + slab.hy[physIdA] * Math.abs(-aSin * ax + aCos * ay);
+    const cb = slab.x[physIdB] * ax + slab.y[physIdB] * ay;
+    const rb = slab.hx[physIdB] * Math.abs(bCos * ax + bSin * ay) + slab.hy[physIdB] * Math.abs(-bSin * ax + bCos * ay);
+    return Math.abs(ca - cb) > ra + rb;
+}
+function obbObbOverlapSlab(physIdA, physIdB) {
+    const slab = kineticDynamicSlab;
+    if (intervalsSeparatedObbObbSlab(slab.cos[physIdA], slab.sin[physIdA], physIdA, physIdB)) return false;
+    if (intervalsSeparatedObbObbSlab(-slab.sin[physIdA], slab.cos[physIdA], physIdA, physIdB)) return false;
+    if (intervalsSeparatedObbObbSlab(slab.cos[physIdB], slab.sin[physIdB], physIdA, physIdB)) return false;
+    if (intervalsSeparatedObbObbSlab(-slab.sin[physIdB], slab.cos[physIdB], physIdA, physIdB)) return false;
+    return true;
+}
+function intervalsSeparatedCircleObbSlab(ax, ay, physIdCircle, physIdObb) {
+    const slab = kineticDynamicSlab;
+    const cc = slab.x[physIdCircle] * ax + slab.y[physIdCircle] * ay;
+    const rc = slab.r[physIdCircle];
+    const obbCos = slab.cos[physIdObb];
+    const obbSin = slab.sin[physIdObb];
+    const cb = slab.x[physIdObb] * ax + slab.y[physIdObb] * ay;
+    const rb = slab.hx[physIdObb] * Math.abs(obbCos * ax + obbSin * ay) + slab.hy[physIdObb] * Math.abs(-obbSin * ax + obbCos * ay);
+    return Math.abs(cc - cb) > rc + rb;
+}
+function circleObbOverlapSlab(physIdCircle, physIdObb) {
+    const slab = kineticDynamicSlab;
+    const obbCos = slab.cos[physIdObb];
+    const obbSin = slab.sin[physIdObb];
+    if (intervalsSeparatedCircleObbSlab(obbCos, obbSin, physIdCircle, physIdObb)) return false;
+    if (intervalsSeparatedCircleObbSlab(-obbSin, obbCos, physIdCircle, physIdObb)) return false;
+    const dx = slab.x[physIdCircle] - slab.x[physIdObb];
+    const dy = slab.y[physIdCircle] - slab.y[physIdObb];
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len > 1e-6) if (intervalsSeparatedCircleObbSlab(dx / len, dy / len, physIdCircle, physIdObb)) return false;
+    return true;
+}
 export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
     const slab = kineticDynamicSlab;
-    if (slab.bpKind[physIdA] === BP_KIND_CIRCLE && slab.bpKind[physIdB] === BP_KIND_CIRCLE) return pairCircleCircleOverlapSlab(physIdA, physIdB);
-    const a =
-        slab.bpKind[physIdA] === BP_KIND_CIRCLE
-            ? { kind: BROADPHASE_KIND.Circle, cx: slab.x[physIdA], cy: slab.y[physIdA], r: slab.r[physIdA] }
-            : { kind: BROADPHASE_KIND.Obb, cx: slab.x[physIdA], cy: slab.y[physIdA], hx: slab.hx[physIdA], hy: slab.hy[physIdA], cos: slab.cos[physIdA], sin: slab.sin[physIdA] };
-    const b =
-        slab.bpKind[physIdB] === BP_KIND_CIRCLE
-            ? { kind: BROADPHASE_KIND.Circle, cx: slab.x[physIdB], cy: slab.y[physIdB], r: slab.r[physIdB] }
-            : { kind: BROADPHASE_KIND.Obb, cx: slab.x[physIdB], cy: slab.y[physIdB], hx: slab.hx[physIdB], hy: slab.hy[physIdB], cos: slab.cos[physIdB], sin: slab.sin[physIdB] };
-    return pairBroadphaseBoundsOverlap(a, b);
+    const kindA = slab.bpKind[physIdA];
+    const kindB = slab.bpKind[physIdB];
+    if (kindA === BP_KIND_CIRCLE && kindB === BP_KIND_CIRCLE) return pairCircleCircleOverlapSlab(physIdA, physIdB);
+    if (kindA === BP_KIND_CIRCLE && kindB === BP_KIND_OBB) return circleObbOverlapSlab(physIdA, physIdB);
+    if (kindA === BP_KIND_OBB && kindB === BP_KIND_CIRCLE) return circleObbOverlapSlab(physIdB, physIdA);
+    return obbObbOverlapSlab(physIdA, physIdB);
 }
-export function writeBroadphaseFromBounds(physId, bounds) {
+export function stampBroadphaseSlabFromEntity(physId, entity) {
     const slab = kineticDynamicSlab;
-    if (bounds.kind === BROADPHASE_KIND.Circle) {
-        slab.bpKind[physId] = BP_KIND_CIRCLE;
-        slab.r[physId] = bounds.r;
+    const angle = entityFacing(entity);
+    const parts = getEntityCollisionParts(entity);
+    if (parts.length > 1) {
+        const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
+        const hx = (bounds.maxX - bounds.minX) * 0.5;
+        const hy = (bounds.maxY - bounds.minY) * 0.5;
+        const localCx = (bounds.minX + bounds.maxX) * 0.5;
+        const localCy = (bounds.minY + bounds.maxY) * 0.5;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        slab.bpKind[physId] = BP_KIND_OBB;
+        slab.hx[physId] = hx;
+        slab.hy[physId] = hy;
+        slab.cos[physId] = cos;
+        slab.sin[physId] = sin;
         return;
     }
-    slab.bpKind[physId] = BP_KIND_OBB;
-    slab.hx[physId] = bounds.hx;
-    slab.hy[physId] = bounds.hy;
-    slab.cos[physId] = bounds.cos;
-    slab.sin[physId] = bounds.sin;
+    const shape = entity.shape;
+    if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+        slab.bpKind[physId] = BP_KIND_CIRCLE;
+        slab.r[physId] = shape.radius;
+        return;
+    }
+    if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
+        const span = convexFootprintHalfExtents(shape.vertices);
+        slab.bpKind[physId] = BP_KIND_OBB;
+        slab.hx[physId] = span.x;
+        slab.hy[physId] = span.y;
+        slab.cos[physId] = Math.cos(angle);
+        slab.sin[physId] = Math.sin(angle);
+        return;
+    }
+    slab.bpKind[physId] = BP_KIND_CIRCLE;
+    slab.r[physId] = shape.radius || 0;
 }
 export function writeActiveKineticBodySlabPose(body) {
     copyBodyPoseToSlab(body, body._physId);
@@ -268,7 +330,6 @@ function copySlabPoseToBody(physId, body) {
     body.vx = slab.vx[physId];
     body.vy = slab.vy[physId];
     body.angularVelocity = slab.w[physId];
-    if (body.broadphaseSnapshot) body.broadphaseSnapshot.x = NaN;
 }
 export function writeStaticKineticSlabSlot(body) {
     const physId = body._physId;
@@ -421,10 +482,6 @@ export class PolygonShape extends Shape {
 const MANIFOLD_MAX_POINTS = 2;
 const clipX = new Float32Array(4);
 const clipY = new Float32Array(4);
-const manifoldPoints = [
-    { cx: 0, cy: 0, featureA: 0, featureB: 0 },
-    { cx: 0, cy: 0, featureA: 0, featureB: 0 },
-];
 export const SAT_RESULT = new Float32Array(25);
 const SAT_BEST_RESULT = new Float32Array(25);
 const PROJ_A = new Float32Array(2);
@@ -573,15 +630,15 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
         if (i > 0 && Math.hypot(px - clipX[i - 1], py - clipY[i - 1]) <= 1e-6) continue;
         const incFeature = nearestIncidentVertexIndex(incShape.vertices, incX, incY, incCos, incSin, px, py);
         const refFeature = nearestIncidentVertexIndex(refShape.vertices, refX, refY, refCos, refSin, px, py);
-        const pt = manifoldPoints[pointCount];
-        pt.cx = px;
-        pt.cy = py;
+        const write = 9 + pointCount * 4;
+        SAT_RESULT[write + 0] = px;
+        SAT_RESULT[write + 1] = py;
         if (refPolyIsA) {
-            pt.featureA = refFeature;
-            pt.featureB = incFeature;
+            SAT_RESULT[write + 2] = refFeature;
+            SAT_RESULT[write + 3] = incFeature;
         } else {
-            pt.featureA = incFeature;
-            pt.featureB = refFeature;
+            SAT_RESULT[write + 2] = incFeature;
+            SAT_RESULT[write + 3] = refFeature;
         }
         pointCount++;
     }
@@ -756,24 +813,15 @@ function satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
         SAT_RESULT[12] = featureB;
         return true;
     }
-    const first = manifoldPoints[0];
     SAT_RESULT[0] = minOverlap;
     SAT_RESULT[1] = minNormalX;
     SAT_RESULT[2] = minNormalY;
-    SAT_RESULT[3] = first.cx;
-    SAT_RESULT[4] = first.cy;
+    SAT_RESULT[3] = SAT_RESULT[9];
+    SAT_RESULT[4] = SAT_RESULT[10];
     SAT_RESULT[5] = 0;
-    SAT_RESULT[6] = first.featureA;
-    SAT_RESULT[7] = first.featureB;
+    SAT_RESULT[6] = SAT_RESULT[11];
+    SAT_RESULT[7] = SAT_RESULT[12];
     SAT_RESULT[8] = pointCount;
-    for (let p = 0; p < pointCount; p++) {
-        const offset = 9 + p * 4;
-        const pt = manifoldPoints[p];
-        SAT_RESULT[offset + 0] = pt.cx;
-        SAT_RESULT[offset + 1] = pt.cy;
-        SAT_RESULT[offset + 2] = pt.featureA;
-        SAT_RESULT[offset + 3] = pt.featureB;
-    }
     return true;
 }
 function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, anglePoly, polyShape) {
@@ -931,98 +979,88 @@ export function computePolygonWallContact(entity, normalX, normalY, overlap, cx 
     return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
 }
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
-/** @typedef {{ kind: number, cx: number, cy: number, r: number, hx: number, hy: number, cos: number, sin: number }} BroadphaseBounds */
-/** @returns {BroadphaseBounds} */
-export function createBroadphaseBounds() {
-    return { kind: BROADPHASE_KIND.Circle, cx: 0, cy: 0, r: 0, hx: 0, hy: 0, cos: 1, sin: 0 };
+const entityWorldAabbOut = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+function obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (let sx = -1; sx <= 1; sx += 2)
+        for (let sy = -1; sy <= 1; sy += 2) {
+            const lx = sx * hx;
+            const ly = sy * hy;
+            const wx = cx + lx * cos - ly * sin;
+            const wy = cy + lx * sin + ly * cos;
+            if (wx < minX) minX = wx;
+            if (wx > maxX) maxX = wx;
+            if (wy < minY) minY = wy;
+            if (wy > maxY) maxY = wy;
+        }
+    out.minX = minX;
+    out.minY = minY;
+    out.maxX = maxX;
+    out.maxY = maxY;
 }
-function intervalsSeparatedObbObb(ax, ay, a, b) {
-    const ca = a.cx * ax + a.cy * ay;
-    const ra = a.hx * Math.abs(a.cos * ax + a.sin * ay) + a.hy * Math.abs(-a.sin * ax + a.cos * ay);
-    const cb = b.cx * ax + b.cy * ay;
-    const rb = b.hx * Math.abs(b.cos * ax + b.sin * ay) + b.hy * Math.abs(-b.sin * ax + b.cos * ay);
-    return Math.abs(ca - cb) > ra + rb;
-}
-function obbObbOverlap(a, b) {
-    if (intervalsSeparatedObbObb(a.cos, a.sin, a, b)) return false;
-    if (intervalsSeparatedObbObb(-a.sin, a.cos, a, b)) return false;
-    if (intervalsSeparatedObbObb(b.cos, b.sin, a, b)) return false;
-    if (intervalsSeparatedObbObb(-b.sin, b.cos, a, b)) return false;
-    return true;
-}
-function intervalsSeparatedCircleObb(ax, ay, circle, obb) {
-    const cc = circle.cx * ax + circle.cy * ay;
-    const rc = circle.r;
-    const cb = obb.cx * ax + obb.cy * ay;
-    const rb = obb.hx * Math.abs(obb.cos * ax + obb.sin * ay) + obb.hy * Math.abs(-obb.sin * ax + obb.cos * ay);
-    return Math.abs(cc - cb) > rc + rb;
-}
-function circleObbOverlap(circle, obb) {
-    if (intervalsSeparatedCircleObb(obb.cos, obb.sin, circle, obb)) return false;
-    if (intervalsSeparatedCircleObb(-obb.sin, obb.cos, circle, obb)) return false;
-    const dx = circle.cx - obb.cx;
-    const dy = circle.cy - obb.cy;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len > 1e-6) if (intervalsSeparatedCircleObb(dx / len, dy / len, circle, obb)) return false;
-    return true;
-}
-export function broadphaseBoundsFromCollisionPartsInto(out, parts, cx, cy, angle = 0) {
-    if (parts.length <= 1) return broadphaseBoundsFromShapeInto(out, parts[0], cx, cy, angle);
-    const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-    const hx = (bounds.maxX - bounds.minX) * 0.5;
-    const hy = (bounds.maxY - bounds.minY) * 0.5;
-    const localCx = (bounds.minX + bounds.maxX) * 0.5;
-    const localCy = (bounds.minY + bounds.maxY) * 0.5;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    out.kind = BROADPHASE_KIND.Obb;
-    out.cx = cx + localCx * cos - localCy * sin;
-    out.cy = cy + localCx * sin + localCy * cos;
-    out.cos = cos;
-    out.sin = sin;
-    out.hx = hx;
-    out.hy = hy;
-    return out;
-}
-export function broadphaseBoundsFromShapeInto(out, shape, cx, cy, angle = 0) {
+function entityWorldAabbFromShapeInto(out, entity) {
+    const x = entity.x;
+    const y = entity.y;
+    const angle = entityFacing(entity);
+    const parts = getEntityCollisionParts(entity);
+    if (parts.length > 1) {
+        const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
+        const hx = (bounds.maxX - bounds.minX) * 0.5;
+        const hy = (bounds.maxY - bounds.minY) * 0.5;
+        const localCx = (bounds.minX + bounds.maxX) * 0.5;
+        const localCy = (bounds.minY + bounds.maxY) * 0.5;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const cx = x + localCx * cos - localCy * sin;
+        const cy = y + localCx * sin + localCy * cos;
+        obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin);
+        return;
+    }
+    const shape = entity.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
-        out.kind = BROADPHASE_KIND.Circle;
-        out.cx = cx;
-        out.cy = cy;
-        out.r = shape.radius;
-        return out;
+        const r = shape.radius;
+        out.minX = x - r;
+        out.minY = y - r;
+        out.maxX = x + r;
+        out.maxY = y + r;
+        return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
-        out.kind = BROADPHASE_KIND.Obb;
-        out.cx = cx;
-        out.cy = cy;
-        out.cos = Math.cos(angle);
-        out.sin = Math.sin(angle);
         const span = convexFootprintHalfExtents(shape.vertices);
-        out.hx = span.x;
-        out.hy = span.y;
-        return out;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        obbWorldAabbInto(out, x, y, span.x, span.y, cos, sin);
+        return;
     }
-    out.kind = BROADPHASE_KIND.Circle;
-    out.cx = cx;
-    out.cy = cy;
-    out.r = shape.radius || 0;
-    return out;
+    const r = shape.radius || 0;
+    out.minX = x - r;
+    out.minY = y - r;
+    out.maxX = x + r;
+    out.maxY = y + r;
 }
-function broadphaseBoundsFromShape(shape, cx, cy, angle = 0) {
-    return broadphaseBoundsFromShapeInto(createBroadphaseBounds(), shape, cx, cy, angle);
-}
-export function pairBroadphaseBoundsOverlap(a, b) {
-    if (a.kind === BROADPHASE_KIND.Circle && b.kind === BROADPHASE_KIND.Circle) {
-        const dx = a.cx - b.cx;
-        const dy = a.cy - b.cy;
-        const radii = a.r + b.r;
-        return dx * dx + dy * dy < radii * radii;
+function entityWorldAabbInto(out, entity) {
+    const physId = entity._physId;
+    const slab = kineticDynamicSlab;
+    if (physId !== undefined && physId >= 0) {
+        if (slab.bpKind[physId] === BP_KIND_CIRCLE) {
+            const cx = slab.x[physId];
+            const cy = slab.y[physId];
+            const r = slab.r[physId];
+            out.minX = cx - r;
+            out.minY = cy - r;
+            out.maxX = cx + r;
+            out.maxY = cy + r;
+            return;
+        }
+        if (slab.bpKind[physId] === BP_KIND_OBB) {
+            obbWorldAabbInto(out, slab.x[physId], slab.y[physId], slab.hx[physId], slab.hy[physId], slab.cos[physId], slab.sin[physId]);
+            return;
+        }
     }
-    if (a.kind === BROADPHASE_KIND.Circle && b.kind === BROADPHASE_KIND.Obb) return circleObbOverlap(a, b);
-    if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Circle) return circleObbOverlap(b, a);
-    if (a.kind === BROADPHASE_KIND.Obb && b.kind === BROADPHASE_KIND.Obb) return obbObbOverlap(a, b);
-    return false;
+    entityWorldAabbFromShapeInto(out, entity);
 }
 function kineticActivity() {
     return collisionSettings.kineticActivity;
@@ -1040,81 +1078,21 @@ export function neighborQueryPadFor(entity) {
 export function maxNeighborQueryPad() {
     return kineticActivity().neighborQueryPad.maxPad;
 }
-export function createBroadphaseSnapshot() {
-    return { x: NaN, y: NaN, angle: NaN, shapeType: "", shapeSpan: NaN };
-}
 function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
     const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
     return lengthXY((bounds.maxX - bounds.minX) * 0.5, (bounds.maxY - bounds.minY) * 0.5);
 }
-function ensureBroadphaseCache(entity) {
-    if (!entity.broadphaseBounds) entity.broadphaseBounds = createBroadphaseBounds();
-    if (!entity.broadphaseSnapshot) entity.broadphaseSnapshot = createBroadphaseSnapshot();
-}
 export function invalidateBroadphaseBounds(entity) {
     entity._broadphaseDirty = true;
-    if (entity.broadphaseSnapshot) entity.broadphaseSnapshot.x = NaN;
 }
 export function entityContainedInAabb(entity, outer) {
-    const bb = getBroadphaseBounds(entity);
-    if (bb.kind === BROADPHASE_KIND.Circle) {
-        const minX = bb.cx - bb.r;
-        const minY = bb.cy - bb.r;
-        const maxX = bb.cx + bb.r;
-        const maxY = bb.cy + bb.r;
-        return outer.minX <= minX && outer.minY <= minY && outer.maxX >= maxX && outer.maxY >= maxY;
-    }
-    const cos = bb.cos;
-    const sin = bb.sin;
-    const hx = bb.hx;
-    const hy = bb.hy;
-    const cx = bb.cx;
-    const cy = bb.cy;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let sx = -1; sx <= 1; sx += 2)
-        for (let sy = -1; sy <= 1; sy += 2) {
-            const lx = sx * hx;
-            const ly = sy * hy;
-            const wx = cx + lx * cos - ly * sin;
-            const wy = cy + lx * sin + ly * cos;
-            if (wx < minX) minX = wx;
-            if (wx > maxX) maxX = wx;
-            if (wy < minY) minY = wy;
-            if (wy > maxY) maxY = wy;
-        }
-    return outer.minX <= minX && outer.minY <= minY && outer.maxX >= maxX && outer.maxY >= maxY;
-}
-export function getBroadphaseBounds(entity) {
-    ensureBroadphaseCache(entity);
-    const x = entity.x;
-    const y = entity.y;
-    const angle = entityFacing(entity);
-    const snapshot = entity.broadphaseSnapshot;
-    if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle) return entity.broadphaseBounds;
-    const parts = getEntityCollisionParts(entity);
-    const multiPart = parts.length > 1;
-    const shape = entity.shape;
-    const span = multiPart ? entityCollisionSpan(entity) : shape.getBoundingRadius();
-    const shapeKey = multiPart ? "multi" : shape.type;
-    if (!entity._broadphaseDirty && snapshot.x === x && snapshot.y === y && snapshot.angle === angle && snapshot.shapeType === shapeKey && snapshot.shapeSpan === span) return entity.broadphaseBounds;
-    snapshot.x = x;
-    snapshot.y = y;
-    snapshot.angle = angle;
-    snapshot.shapeType = shapeKey;
-    snapshot.shapeSpan = span;
-    entity._broadphaseDirty = false;
-    if (multiPart) return broadphaseBoundsFromCollisionPartsInto(entity.broadphaseBounds, parts, x, y, angle);
-    return broadphaseBoundsFromShapeInto(entity.broadphaseBounds, shape, x, y, angle);
+    entityWorldAabbInto(entityWorldAabbOut, entity);
+    return outer.minX <= entityWorldAabbOut.minX && outer.minY <= entityWorldAabbOut.minY && outer.maxX >= entityWorldAabbOut.maxX && outer.maxY >= entityWorldAabbOut.maxY;
 }
 export function entityBroadphaseExtent(entity) {
-    const bounds = getBroadphaseBounds(entity);
-    if (bounds.kind === BROADPHASE_KIND.Circle) return bounds.r;
-    return lengthXY(bounds.hx, bounds.hy);
+    return entityCollisionSpan(entity);
 }
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
@@ -1137,15 +1115,12 @@ export function isKinematicallyActiveSlab(physId) {
     const { movingSpeedSq, rotatingSpeedRad } = kineticActivity();
     return speedSqXY(vx, vy) > movingSpeedSq || w * w > rotatingSpeedRad * rotatingSpeedRad;
 }
-export function pairBroadphaseOverlap(a, b) {
-    return pairBroadphaseBoundsOverlap(getBroadphaseBounds(a), getBroadphaseBounds(b));
-}
 export function snapshotKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
         writeStaticKineticSlabSlot(entity);
         writeActiveKineticBodySlabPose(entity);
-        writeBroadphaseFromBounds(entity._physId, getBroadphaseBounds(entity));
+        stampBroadphaseSlabFromEntity(entity._physId, entity);
     }
 }
 export function refreshActiveKineticBodySlabPose(bodies) {
@@ -1424,11 +1399,10 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
             let normalX, normalY, overlap;
             let satCollisionFound = false;
             if (shape.type === "Circle") {
-                const penetration = getCircleSegmentPenetration({ x: bx, y: by, radius: shape.radius }, seg, { approachX: motion.approachVx, approachY: motion.approachVy });
-                if (!penetration) continue;
-                normalX = penetration.normalX;
-                normalY = penetration.normalY;
-                overlap = penetration.overlap;
+                if (!circleSegmentPenetration(bx, by, shape.radius, seg, motion.approachVx, motion.approachVy)) continue;
+                normalX = SEGMENT_PEN[0];
+                normalY = SEGMENT_PEN[1];
+                overlap = SEGMENT_PEN[2];
             } else if (shape.type === "Polygon") {
                 const segShape = ensureWallSegmentPolygonShape(seg);
                 if (!satCheckCollision(bx, by, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
@@ -2979,14 +2953,13 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
         if (shareKineticIslandSlab(physIdA, physIdB)) continue;
-        const tier = pairs.static.tier[i];
-        const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
+        const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
         if (!overlaps) continue;
         if (!shouldResolveKineticPairSlab(physIdA, physIdB, overlaps)) continue;
         if (write !== i) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
-            pairs.static.tier[write] = tier;
+            pairs.static.tier[write] = pairs.static.tier[i];
         }
         write++;
     }
@@ -3015,7 +2988,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
             const tier = classifyKineticPairTier(primary, neighbor);
-            const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
+            const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) {
@@ -3044,7 +3017,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const neighbor = neighbors[j];
             const physIdB = neighbor._physId;
             const tier = classifyKineticPairTier(primary, neighbor);
-            const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
+            const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
@@ -3631,6 +3604,7 @@ const LOCAL_BOX_SURFACE_SCRATCH = { x: 0, y: 0 };
 const PUSH_NORMAL_SCRATCH = { x: 0, y: 0 };
 const INSIDE_APPROACH_SCRATCH = { nx: 0, ny: 0, dist: 0 };
 const WORLD_NORMAL_SCRATCH = { x: 0, y: 0 };
+const SEGMENT_PEN = new Float32Array(4);
 export function toSegmentLocal(segment, x, y, out = LOCAL_SCRATCH) {
     const dx = x - segment.x;
     const dy = y - segment.y;
@@ -3922,11 +3896,8 @@ function approachToSegmentLocal(segment, worldVx, worldVy, out = LOCAL_APPROACH_
 export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segment, { approachX = 0, approachY = 0 } = {}) {
     if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return null;
     const closest = findClosestPointOnPathToWall(ax, ay, bx, by, segment);
-    CIRCLE_SCRATCH.x = closest.x;
-    CIRCLE_SCRATCH.y = closest.y;
-    CIRCLE_SCRATCH.radius = capsuleRadius;
-    const circlePen = getCircleSegmentPenetration(CIRCLE_SCRATCH, segment, { approachX, approachY });
-    if (circlePen) return circlePen;
+    if (circleSegmentPenetration(closest.x, closest.y, capsuleRadius, segment, approachX, approachY))
+        return { normalX: SEGMENT_PEN[0], normalY: SEGMENT_PEN[1], overlap: SEGMENT_PEN[2], distanceSq: SEGMENT_PEN[3] };
     if (closest.dist >= capsuleRadius) return null;
     const wallPoint = closestPointOnSegment(segment, closest.x, closest.y);
     let normalX = closest.x - wallPoint.x;
@@ -3937,8 +3908,8 @@ export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, 
     normalY /= len;
     return { normalX, normalY, overlap: capsuleRadius - closest.dist, distanceSq: closest.dist * closest.dist };
 }
-export function getCircleSegmentPenetration(circle, segment, { approachX = 0, approachY = 0 } = {}) {
-    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, circle.x, circle.y);
+function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approachY = 0) {
+    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, cx, cy);
     const localApproach = approachToSegmentLocal(segment, approachX, approachY);
     const hasApproach = Math.hypot(localApproach.x, localApproach.y) > 1e-6;
     const strictlyInside = localX > -halfX && localX < halfX && localY > -halfY && localY < halfY;
@@ -3946,8 +3917,8 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
     const toCenterX = localX - surface.x;
     const toCenterY = localY - surface.y;
     const distanceSq = toCenterX * toCenterX + toCenterY * toCenterY;
-    const radiusSq = circle.radius * circle.radius;
-    if (distanceSq > radiusSq + 1e-4) return null;
+    const radiusSq = radius * radius;
+    if (distanceSq > radiusSq + 1e-4) return false;
     let localNormX;
     let localNormY;
     let overlap;
@@ -3955,22 +3926,26 @@ export function getCircleSegmentPenetration(circle, segment, { approachX = 0, ap
         const face = pushNormalFromInsideApproach(localX, localY, halfX, halfY, localApproach.x, localApproach.y);
         localNormX = face.nx;
         localNormY = face.ny;
-        overlap = circle.radius - face.dist;
+        overlap = radius - face.dist;
     } else if (distanceSq <= 1e-10) {
         const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, halfX, halfY);
         localNormX = fn.x;
         localNormY = fn.y;
-        overlap = circle.radius;
+        overlap = radius;
     } else {
         const distance = Math.sqrt(distanceSq);
-        overlap = Math.max(0, circle.radius - distance);
+        overlap = Math.max(0, radius - distance);
         localNormX = toCenterX / distance;
         localNormY = toCenterY / distance;
     }
     const invCos = Math.cos(segment.angle);
     const invSin = Math.sin(segment.angle);
     const worldNormal = rotateXYInto(WORLD_NORMAL_SCRATCH, localNormX, localNormY, invCos, invSin);
-    return { normalX: worldNormal.x, normalY: worldNormal.y, overlap, distanceSq };
+    SEGMENT_PEN[0] = worldNormal.x;
+    SEGMENT_PEN[1] = worldNormal.y;
+    SEGMENT_PEN[2] = overlap;
+    SEGMENT_PEN[3] = distanceSq;
+    return true;
 }
 export function pushPointFromWalls(x, y, walls, clearance) {
     let px = x;
@@ -4069,13 +4044,13 @@ export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDi
     if (t == null || t > maxDist) return null;
     const wx = ox + dx * t;
     const wy = oy + dy * t;
-    let pen = getCircleSegmentPenetration({ x: wx, y: wy, radius }, segment, { approachX: dx, approachY: dy });
-    if (!pen) {
+    let hit = circleSegmentPenetration(wx, wy, radius, segment, dx, dy);
+    if (!hit) {
         const nudge = 1e-3;
-        pen = getCircleSegmentPenetration({ x: wx + dx * nudge, y: wy + dy * nudge, radius }, segment, { approachX: dx, approachY: dy });
+        hit = circleSegmentPenetration(wx + dx * nudge, wy + dy * nudge, radius, segment, dx, dy);
     }
-    if (!pen) return null;
-    return { t, x: wx, y: wy, nx: pen.normalX, ny: pen.normalY, segment };
+    if (!hit) return null;
+    return { t, x: wx, y: wy, nx: SEGMENT_PEN[0], ny: SEGMENT_PEN[1], segment };
 }
 /**
  * Closest wall touch along a ray across many segments.
