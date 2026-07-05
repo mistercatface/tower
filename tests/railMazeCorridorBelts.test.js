@@ -1,103 +1,87 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  FLOOR_CELL_KIND, FloorBelt, planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, layoutAbsCellIndex, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { FLOOR_CELL_KIND, FloorBelt, planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, createCellIndexLayout, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableAt, getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 
-function undirectedEdgeIndex(aCol, aRow, bCol, bRow, layout) {
-    const a = layoutAbsCellIndex(layout, aCol, aRow);
-    const b = layoutAbsCellIndex(layout, bCol, bRow);
-    return undirectedPairIndex(a, b, layout.cellCount);
+function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
+    return undirectedPairIndex(aIdx, bIdx, cellCount);
 }
 
-function collectCorridorPathPolylines(cells, neighborAt, layout) {
-    const members = cells.slice();
-    const memberSet = new Set();
-    for (let i = 0; i < members.length; i++) memberSet.add(layoutAbsCellIndex(layout, members[i].col, members[i].row));
+function collectCorridorPathPolylines(memberIndices, neighborAtIdx, layout) {
+    const members = memberIndices.slice();
+    const memberSet = new Set(members);
     const degreeByIndex = new Map();
     const neighborsByIndex = new Map();
     for (let i = 0; i < members.length; i++) {
-        const cell = members[i];
-        const idx = layoutAbsCellIndex(layout, cell.col, cell.row);
-        const neighbors = neighborAt(cell.col, cell.row).filter((n) => memberSet.has(layoutAbsCellIndex(layout, n.col, n.row)));
+        const idx = members[i];
+        const neighbors = neighborAtIdx(idx).filter((nIdx) => memberSet.has(nIdx));
         neighborsByIndex.set(idx, neighbors);
         degreeByIndex.set(idx, neighbors.length);
     }
-    const isSpecial = (col, row) => degreeByIndex.get(layoutAbsCellIndex(layout, col, row)) !== 2;
+    const isSpecial = (idx) => degreeByIndex.get(idx) !== 2;
     const usedEdges = new Set();
     const paths = [];
     for (let si = 0; si < members.length; si++) {
-        const start = members[si];
-        if (!isSpecial(start.col, start.row)) continue;
-        const startNeighbors = neighborsByIndex.get(layoutAbsCellIndex(layout, start.col, start.row));
+        const startIdx = members[si];
+        if (!isSpecial(startIdx)) continue;
+        const startNeighbors = neighborsByIndex.get(startIdx);
         for (let ni = 0; ni < startNeighbors.length; ni++) {
-            const first = startNeighbors[ni];
-            const edge = undirectedEdgeIndex(start.col, start.row, first.col, first.row, layout);
+            const firstIdx = startNeighbors[ni];
+            const edge = undirectedEdgeIndex(startIdx, firstIdx, layout.cellCount);
             if (usedEdges.has(edge)) continue;
             usedEdges.add(edge);
-            const path = [{ c: start.col, r: start.row }];
-            let prevCol = start.col;
-            let prevRow = start.row;
-            let curCol = first.col;
-            let curRow = first.row;
-            while (!isSpecial(curCol, curRow)) {
-                path.push({ c: curCol, r: curRow });
-                const midNeighbors = neighborsByIndex.get(layoutAbsCellIndex(layout, curCol, curRow));
-                let nextCol = null;
-                let nextRow = null;
+            const path = [startIdx];
+            let prevIdx = startIdx;
+            let curIdx = firstIdx;
+            while (!isSpecial(curIdx)) {
+                path.push(curIdx);
+                const midNeighbors = neighborsByIndex.get(curIdx);
+                let nextIdx = -1;
                 for (let mi = 0; mi < midNeighbors.length; mi++) {
-                    const n = midNeighbors[mi];
-                    if (n.col === prevCol && n.row === prevRow) continue;
-                    nextCol = n.col;
-                    nextRow = n.row;
+                    const nIdx = midNeighbors[mi];
+                    if (nIdx === prevIdx) continue;
+                    nextIdx = nIdx;
                     break;
                 }
-                if (nextCol === null) break;
-                usedEdges.add(undirectedEdgeIndex(curCol, curRow, nextCol, nextRow, layout));
-                prevCol = curCol;
-                prevRow = curRow;
-                curCol = nextCol;
-                curRow = nextRow;
+                if (nextIdx === -1) break;
+                usedEdges.add(undirectedEdgeIndex(curIdx, nextIdx, layout.cellCount));
+                prevIdx = curIdx;
+                curIdx = nextIdx;
             }
-            path.push({ c: curCol, r: curRow });
+            path.push(curIdx);
             if (path.length >= 2) paths.push(path);
         }
     }
     if (paths.length === 0 && members.length > 0) {
         let allDegreeTwo = true;
         for (let i = 0; i < members.length; i++)
-            if (degreeByIndex.get(layoutAbsCellIndex(layout, members[i].col, members[i].row)) !== 2) {
+            if (degreeByIndex.get(members[i]) !== 2) {
                 allDegreeTwo = false;
                 break;
             }
         if (allDegreeTwo) {
-            const start = members[0];
-            const loop = [{ c: start.col, r: start.row }];
-            let prevCol = start.col;
-            let prevRow = start.row;
-            let curCol = start.col;
-            let curRow = start.row;
+            const startIdx = members[0];
+            const loop = [startIdx];
+            let prevIdx = startIdx;
+            let curIdx = startIdx;
             for (;;) {
-                const midNeighbors = neighborsByIndex.get(layoutAbsCellIndex(layout, curCol, curRow));
-                let nextCol = null;
-                let nextRow = null;
+                const midNeighbors = neighborsByIndex.get(curIdx);
+                let nextIdx = -1;
                 for (let mi = 0; mi < midNeighbors.length; mi++) {
-                    const n = midNeighbors[mi];
-                    if (n.col === prevCol && n.row === prevRow) continue;
-                    nextCol = n.col;
-                    nextRow = n.row;
+                    const nIdx = midNeighbors[mi];
+                    if (nIdx === prevIdx) continue;
+                    nextIdx = nIdx;
                     break;
                 }
-                if (nextCol === null) break;
-                if (nextCol === start.col && nextRow === start.row) {
-                    loop.push({ c: start.col, r: start.row });
+                if (nextIdx === -1) break;
+                if (nextIdx === startIdx) {
+                    loop.push(startIdx);
                     break;
                 }
-                loop.push({ c: nextCol, r: nextRow });
-                prevCol = curCol;
-                prevRow = curRow;
-                curCol = nextCol;
-                curRow = nextRow;
+                loop.push(nextIdx);
+                prevIdx = curIdx;
+                curIdx = nextIdx;
                 if (loop.length > members.length + 1) break;
             }
             if (loop.length >= 3) paths.push(loop);
@@ -128,7 +112,7 @@ async function setupTestGridAndNav(seed) {
     };
 
     const rails = bakeRailMazeDfs(
-        { originCol: 0, originRow: 0, cols, rows },
+        { originIdx: 0, cols, rows },
         { railWallHeightLevel: 1, railWallThicknessLevel: 2, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
         seed,
         cols,
@@ -157,29 +141,17 @@ async function setupTestGridAndNav(seed) {
 
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
-        const cells = [
-            { col: 1, row: 0 },
-            { col: 0, row: 1 },
-            { col: 1, row: 1 },
-            { col: 2, row: 1 },
-        ];
-        const layout = { originCol: 0, originRow: 0, strideCols: 4, cellCount: 12 };
-        const memberSet = new Set(cells.map((c) => c.col + c.row * layout.strideCols));
-        const neighborAt = (col, row) => {
+        const memberIndices = [1, 4, 5, 6];
+        const layout = createCellIndexLayout(0, 4, 3, 4, 3);
+        const memberSet = new Set(memberIndices);
+        const neighborAtIdx = (idx) => {
             const out = [];
-            const candidates = [
-                { col: col + 1, row },
-                { col: col - 1, row },
-                { col, row: row + 1 },
-                { col, row: row - 1 },
-            ];
-            for (let i = 0; i < candidates.length; i++) {
-                const n = candidates[i];
-                if (memberSet.has(n.col + n.row * layout.strideCols)) out.push(n);
-            }
+            forEachCardinalNeighborIdx(idx, layout.strideCols, layout.gridRows, (nIdx) => {
+                if (memberSet.has(nIdx)) out.push(nIdx);
+            });
             return out;
         };
-        const paths = collectCorridorPathPolylines(cells, neighborAt, layout);
+        const paths = collectCorridorPathPolylines(memberIndices, neighborAtIdx, layout);
         assert.ok(paths.length >= 2);
         const armLengths = paths.map((path) => path.length);
         assert.ok(armLengths.some((len) => len >= 2));
@@ -241,14 +213,7 @@ describe("rail maze corridor belts", () => {
         const plan = planRailMazeCorridorBelts({ grid, navTopology: nav.topology, railConfig, navWalkableIndex, mapSeed: 42 });
         assert.equal(plan.validation.ok, true);
         for (let bi = 0; bi < plan.floorBelts.length; bi++) {
-            const belt = plan.floorBelts[bi];
-            const col = belt.idx % grid.cols;
-            const row = (belt.idx / grid.cols) | 0;
-            const idx = worldIdxAtCell(grid, col, row);
-            const rtRow = (idx / grid.cols) | 0;
-            const rtCol = idx - (rtRow * grid.cols);
-            assert.equal(rtCol, col);
-            assert.equal(rtRow, row);
+            assert.ok(isNavWalkableAt(navWalkableIndex, plan.floorBelts[bi].idx));
         }
         terminateWorkerNavigation(nav);
     });

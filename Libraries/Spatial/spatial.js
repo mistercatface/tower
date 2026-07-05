@@ -1256,39 +1256,33 @@ function beltMapFromFloorBelts(belts) {
     }
     return map;
 }
-function formatLayoutCellForError(idx, layout) {
-    const row = (idx / layout.strideCols) | 0;
-    const col = idx - row * layout.strideCols;
-    return `(${col + layout.originCol},${row + layout.originRow})`;
+function formatGlobalCellIdx(idx) {
+    return `@${idx}`;
 }
 function assertBeltChains(footprint, beltsByCell, layout, label, mouthExteriorIndices = new Set()) {
-    const stride = layout.strideCols;
-    const rows = layout.cellCount / stride;
-    for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatLayoutCellForError(idx, layout)}`);
+    const gridCols = layout.gridCols;
+    const gridRows = layout.gridRows;
+    for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatGlobalCellIdx(idx)}`);
     for (const idx of footprint) {
         const belt = beltsByCell.get(idx);
         const { entrySide, exitSide } = FloorBelt.getEntryExitSides(belt.kind, belt.facingIndex);
-        const entryIdx = edgeNeighborIdx(belt.idx, entrySide, stride, rows);
-        const exitIdx = edgeNeighborIdx(belt.idx, exitSide, stride, rows);
+        const entryIdx = edgeNeighborIdx(belt.idx, entrySide, gridCols, gridRows);
+        const exitIdx = edgeNeighborIdx(belt.idx, exitSide, gridCols, gridRows);
         const entryInFootprint = footprint.has(entryIdx);
         const exitInFootprint = footprint.has(exitIdx);
         if (entryInFootprint) {
             const entryBelt = beltsByCell.get(entryIdx);
             const entryExit = FloorBelt.getEntryExitSides(entryBelt.kind, entryBelt.facingIndex).exitSide;
             if (entryExit !== edgeMirrorSide(entrySide))
-                throw new Error(
-                    `${label}: belt chain break ${formatLayoutCellForError(entryIdx, layout)} -> ${formatLayoutCellForError(idx, layout)} (entry side ${entrySide}, upstream exit ${entryExit})`,
-                );
+                throw new Error(`${label}: belt chain break ${formatGlobalCellIdx(entryIdx)} -> ${formatGlobalCellIdx(idx)} (entry side ${entrySide}, upstream exit ${entryExit})`);
         }
         if (exitInFootprint) {
             const exitBelt = beltsByCell.get(exitIdx);
             const exitEntry = FloorBelt.getEntryExitSides(exitBelt.kind, exitBelt.facingIndex).entrySide;
             if (exitEntry !== edgeMirrorSide(exitSide))
-                throw new Error(
-                    `${label}: belt chain break ${formatLayoutCellForError(idx, layout)} -> ${formatLayoutCellForError(exitIdx, layout)} (exit side ${exitSide}, downstream entry ${exitEntry})`,
-                );
+                throw new Error(`${label}: belt chain break ${formatGlobalCellIdx(idx)} -> ${formatGlobalCellIdx(exitIdx)} (exit side ${exitSide}, downstream entry ${exitEntry})`);
         }
-        if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) throw new Error(`${label}: dead-end belt at ${formatLayoutCellForError(idx, layout)}`);
+        if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) throw new Error(`${label}: dead-end belt at ${formatGlobalCellIdx(idx)}`);
     }
 }
 export function tryValidateBeltChains(belts, layout, mouthExteriorIndices = new Set()) {
@@ -1364,43 +1358,38 @@ export function bumpSurfaceMaterialRevision(grid) {
 }
 /** @typedef {number} GlobalCellIdx Dense index on the obstacle grid: row * grid.cols + col. */
 /** @typedef {number} LayoutCellIdx Dense index within a {@link CellIndexLayout} rect (local to origin/stride). */
-export function createCellIndexLayout(originCol, originRow, cols, rows) {
-    return { originCol, originRow, strideCols: cols, cellCount: cols * rows };
+function stampGlobalIdx(originIdx, localIdx, gridCols, strideCols) {
+    const q = (localIdx / strideCols) | 0;
+    return originIdx + q * gridCols + (localIdx - q * strideCols);
+}
+/** @typedef {{ originIdx: number, gridCols: number, gridRows: number, strideCols: number, cellCount: number }} CellIndexLayout */
+export function createCellIndexLayout(originIdx, gridCols, gridRows, stampCols, stampRows) {
+    return { originIdx, gridCols, gridRows, strideCols: stampCols, cellCount: stampCols * stampRows };
 }
 export function layoutCellRows(layout) {
     return layout.cellCount / layout.strideCols;
 }
-/** Dense index for absolute (col, row) within a bounded layout rect. */
-export function layoutCellIndex(absCol, absRow, originCol, originRow, strideCols) {
-    return (absRow - originRow) * strideCols + (absCol - originCol);
+export function layoutIndexToGlobalIndex(localIdx, layout) {
+    return stampGlobalIdx(layout.originIdx, localIdx, layout.gridCols, layout.strideCols);
 }
-export function layoutAbsCellIndex(layout, absCol, absRow) {
-    return (absRow - layout.originRow) * layout.strideCols + (absCol - layout.originCol);
+export function globalIndexToLayoutLocal(globalIdx, layout) {
+    const delta = globalIdx - layout.originIdx;
+    const q = (delta / layout.gridCols) | 0;
+    return q * layout.strideCols + (delta - q * layout.gridCols);
 }
-export function layoutLocalCellIndex(layout, localCol, localRow) {
-    return localRow * layout.strideCols + localCol;
-}
-/** @param {number} idx @param {CellIndexLayout} layout @param {number} gridCols */
-export function layoutIndexToGlobalIndex(idx, layout, gridCols) {
-    const localRow = (idx / layout.strideCols) | 0;
-    const localCol = idx - localRow * layout.strideCols;
-    return (layout.originRow + localRow) * gridCols + (layout.originCol + localCol);
-}
-/** @param {Iterable<number>} indices @param {CellIndexLayout} layout @param {number} gridCols */
-export function layoutIndicesToGlobalIndices(indices, layout, gridCols) {
-    /** @type {number[]} */
+/** @param {Iterable<number>} indices @param {CellIndexLayout} layout */
+export function layoutIndicesToGlobalIndices(indices, layout) {
     const out = [];
-    for (const idx of indices) out.push(layoutIndexToGlobalIndex(idx, layout, gridCols));
+    for (const idx of indices) out.push(layoutIndexToGlobalIndex(idx, layout));
     return out;
 }
 /** @param {number} aIdx @param {number} bIdx @param {number} cellCount */
 export function undirectedPairIndex(aIdx, bIdx, cellCount) {
     return aIdx < bIdx ? aIdx * cellCount + bIdx : bIdx * cellCount + aIdx;
 }
-/** @typedef {{ originCol: number, originRow: number, strideCols: number, cellCount: number }} CellIndexLayout */
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function gridCellLayout(grid) {
-    return { originCol: 0, originRow: 0, strideCols: grid.cols, cellCount: grid.cols * grid.rows };
+    return { originIdx: 0, gridCols: grid.cols, gridRows: grid.rows, strideCols: grid.cols, cellCount: grid.cols * grid.rows };
 }
 export function cellInRect(idx, cols, rows) {
     return idx >= 0 && idx < cols * rows;
@@ -1989,7 +1978,7 @@ export class WorldObstacleGrid {
         if (this.onBoundsResync) this.onBoundsResync(this);
         return true;
     }
-    // originCol/originRow are global cell coords; cells is row-major with 1 = blocked.
+    // originIdx anchors the stamp; cells is row-major local with 1 = blocked.
     stampStaticWalls(originIdx, cols, rows, cells, { additive = false, heightLevel }) {
         const level = heightLevel;
         const baseCol = originIdx % this.cols;
@@ -3382,11 +3371,8 @@ export function generateCavernOccupancy(grid, config, { openBoundarySides = null
     if (openBoundarySides?.north) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "north", openBoundaryRows);
     return { originIdx, cols, rows, cells };
 }
-export function bakeRailMazeDfs(stampBounds, options, mapSeed, gridCols) {
-    const cols = stampBounds.cols;
-    const rows = stampBounds.rows;
-    const originCol = stampBounds.originCol;
-    const originRow = stampBounds.originRow;
+export function bakeRailMazeDfs(stampExtent, options, mapSeed, gridCols) {
+    const { originIdx, cols, rows } = stampExtent;
     const activeRows = rows;
     const corridorWidthMin = Math.max(1, Math.round(options.corridorWidthMin ?? 1));
     const corridorWidthMax = Math.max(corridorWidthMin, Math.round(options.corridorWidthMax ?? 2));
@@ -3438,24 +3424,25 @@ export function bakeRailMazeDfs(stampBounds, options, mapSeed, gridCols) {
     const heightLevel = options.railWallHeightLevel ?? 1;
     const thicknessLevel = options.railWallThicknessLevel ?? 1;
     const walls = [];
-    const pushWall = (c, r, side) => {
-        walls.push({ idx: (originRow + r) * gridCols + (originCol + c), side, heightLevel, thicknessLevel });
+    const pushWall = (localIdx, side) => {
+        walls.push({ idx: stampGlobalIdx(originIdx, localIdx, gridCols, cols), side, heightLevel, thicknessLevel });
     };
     for (let r = 0; r < rows; r++) {
         const ly = Math.min(numY - 1, Math.floor(r / W_c));
         for (let c = 0; c < cols; c++) {
+            const localIdx = r * cols + c;
             const lx = Math.min(numX - 1, Math.floor(c / W_c));
             if (r !== 0) {
                 const ly_up = Math.min(numY - 1, Math.floor((r - 1) / W_c));
-                if (ly_up < ly && horizontalWalls[lx][ly_up] === 1) pushWall(c, r, 0);
+                if (ly_up < ly && horizontalWalls[lx][ly_up] === 1) pushWall(localIdx, 0);
             }
-            if (c === 0) pushWall(c, r, 3);
+            if (c === 0) pushWall(localIdx, 3);
             else {
                 const lx_left = Math.min(numX - 1, Math.floor((c - 1) / W_c));
-                if (lx_left < lx && verticalWalls[lx_left][ly] === 1) pushWall(c, r, 3);
+                if (lx_left < lx && verticalWalls[lx_left][ly] === 1) pushWall(localIdx, 3);
             }
-            if (c === cols - 1) pushWall(c, r, 1);
-            if (r === rows - 1) pushWall(c, r, 2);
+            if (c === cols - 1) pushWall(localIdx, 1);
+            if (r === rows - 1) pushWall(localIdx, 2);
         }
     }
     return walls;
@@ -3501,8 +3488,8 @@ function degreeInZone(cells, neighborAtIdx) {
 }
 function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
     let belts = floorBelts.slice();
-    const stride = layout.strideCols;
-    const rows = layout.cellCount / stride;
+    const gridCols = layout.gridCols;
+    const gridRows = layout.gridRows;
     for (let pass = 0; pass < belts.length + 4; pass++) {
         const validation = tryValidateBeltChains(belts, layout, mouthExteriorIndices);
         if (validation.ok) return { floorBelts: belts, validation };
@@ -3512,8 +3499,8 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
         for (const idx of footprint) {
             const belt = byCell.get(idx);
             const { entrySide, exitSide } = FloorBelt.getEntryExitSides(belt.kind, belt.facingIndex);
-            const entryIdx = edgeNeighborIdx(belt.idx, entrySide, stride, rows);
-            const exitIdx = edgeNeighborIdx(belt.idx, exitSide, stride, rows);
+            const entryIdx = edgeNeighborIdx(belt.idx, entrySide, gridCols, gridRows);
+            const exitIdx = edgeNeighborIdx(belt.idx, exitSide, gridCols, gridRows);
             const entryInFootprint = footprint.has(entryIdx);
             const exitInFootprint = footprint.has(exitIdx);
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
@@ -3544,15 +3531,11 @@ function pickRandomFreeIdx(freeIndices, occupiedGlobalIndices, rng) {
 }
 function pickRandomEndInLengthBandIdx(startIdx, endpointIndices, occupiedGlobalIndices, gridCols, minLen, maxLen, rng) {
     const candidates = [];
-    const sc = startIdx % gridCols;
-    const sr = (startIdx / gridCols) | 0;
     for (let i = 0; i < endpointIndices.length; i++) {
         const idx = endpointIndices[i];
         if (idx === startIdx) continue;
         if (occupiedGlobalIndices.has(idx)) continue;
-        const ec = idx % gridCols;
-        const er = (idx / gridCols) | 0;
-        const dist = Math.abs(sc - ec) + Math.abs(sr - er);
+        const dist = manhattanDistanceIdx(startIdx, idx, gridCols);
         if (dist < minLen || dist > maxLen) continue;
         candidates.push(idx);
     }
@@ -3739,6 +3722,10 @@ export function getMapGenBoundsCenterWorld(grid, config, cellSize) {
     if (config.boundsMode === "rect")
         return { x: grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5, y: grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5 };
     return { x: grid.gridCenterXByIdx(config.centerIdx), y: grid.gridCenterYByIdx(config.centerIdx) };
+}
+export function getMapGenBoundsCenterIdx(grid, config) {
+    if (config.boundsMode === "rect") return config.boundsIdx + ((config.boundsRows / 2) | 0) * grid.cols + ((config.boundsCols / 2) | 0);
+    return config.centerIdx;
 }
 export function getMapGenBoundsStampExtent(grid, config) {
     if (config.boundsMode === "rect") return { originIdx: config.boundsIdx, cols: Math.max(1, Math.round(config.boundsCols)), rows: Math.max(1, Math.round(config.boundsRows)) };
@@ -3975,71 +3962,78 @@ async function finalizeMapGenRun(state, { config, profileId, damageBounds, fullN
     if (syncFloorSeed) state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
 }
-function runRailCavernEdgeCA(mapSeed, config, cols, rows, originCol, originRow, cellInBounds, openBoundarySides, axis) {
+function stampCellInBounds(originIdx, cellLocalIdx, cellStride, gridCols, config, grid) {
+    const idx = stampGlobalIdx(originIdx, cellLocalIdx, gridCols, cellStride);
+    if (idx < 0 || idx >= grid.grid.length) return false;
+    return isIdxInMapGenBounds(config, grid, idx);
+}
+function runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, grid, openBoundarySides, axis) {
     const horizontal = axis === "h";
-    const caCols = horizontal ? cols : cols + 1;
-    const caRows = horizontal ? rows + 1 : rows;
+    const edgeStride = horizontal ? cols : cols + 1;
+    const edgeCount = horizontal ? cols * (rows + 1) : (cols + 1) * rows;
     const seedOffset = horizontal ? 0 : 1;
     let cells = null;
     withSeededRandom(mapSeed + seedOffset, () => {
-        cells = fillRandomGrid(caCols, caRows, config.fillChance);
-        cells = runCellularAutomata(caCols, caRows, cells, { iterations: config.iterations, scratch: new Uint8Array(caCols * caRows) });
+        cells = fillRandomGrid(edgeStride, edgeCount / edgeStride, config.fillChance);
+        cells = runCellularAutomata(edgeStride, edgeCount / edgeStride, cells, { iterations: config.iterations, scratch: new Uint8Array(edgeCount) });
     });
-    for (let lr = 0; lr < caRows; lr++)
-        for (let lc = 0; lc < caCols; lc++) {
-            const gc = originCol + lc;
-            const gr = originRow + lr;
-            const in1 = horizontal ? cellInBounds(gc, gr - 1) : cellInBounds(gc - 1, gr);
-            const in2 = horizontal ? cellInBounds(gc, gr) : cellInBounds(gc, gr);
-            if (!in1 && !in2) cells[lr * caCols + lc] = 0;
+    for (let edgeIdx = 0; edgeIdx < edgeCount; edgeIdx++) {
+        let in1 = false;
+        let in2 = false;
+        if (horizontal) {
+            in1 = edgeIdx >= edgeStride && stampCellInBounds(originIdx, edgeIdx - edgeStride, cols, gridCols, config, grid);
+            in2 = stampCellInBounds(originIdx, edgeIdx, cols, gridCols, config, grid);
+        } else {
+            const lc = edgeIdx % edgeStride;
+            const lr = (edgeIdx / edgeStride) | 0;
+            in1 = lc > 0 && stampCellInBounds(originIdx, lr * cols + lc - 1, cols, gridCols, config, grid);
+            in2 = lc < cols && stampCellInBounds(originIdx, lr * cols + lc, cols, gridCols, config, grid);
         }
+        if (!in1 && !in2) cells[edgeIdx] = 0;
+    }
     if (horizontal) {
-        if (openBoundarySides?.north) for (let lc = 0; lc < caCols; lc++) cells[lc] = 0;
+        if (openBoundarySides?.north) for (let edgeIdx = 0; edgeIdx < edgeStride; edgeIdx++) cells[edgeIdx] = 0;
         if (openBoundarySides?.south) {
-            const lr = caRows - 1;
-            for (let lc = 0; lc < caCols; lc++) cells[lr * caCols + lc] = 0;
+            const southStart = rows * edgeStride;
+            for (let edgeIdx = southStart; edgeIdx < southStart + edgeStride; edgeIdx++) cells[edgeIdx] = 0;
         }
     } else {
-        if (openBoundarySides?.west) for (let lr = 0; lr < caRows; lr++) cells[lr * caCols] = 0;
-        if (openBoundarySides?.east) {
-            const lc = caCols - 1;
-            for (let lr = 0; lr < caRows; lr++) cells[lr * caCols + lc] = 0;
-        }
+        if (openBoundarySides?.west) for (let edgeIdx = 0; edgeIdx < edgeCount; edgeIdx += edgeStride) cells[edgeIdx] = 0;
+        if (openBoundarySides?.east) for (let edgeIdx = edgeStride - 1; edgeIdx < edgeCount; edgeIdx += edgeStride) cells[edgeIdx] = 0;
     }
-    return { cells, caCols, caRows };
+    return { cells, edgeStride, edgeCount };
 }
 function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, heightLevel, thicknessLevel }) {
     const ext = getMapGenBoundsStampExtent(grid, config);
-    const originCol = ext.originIdx % grid.cols;
-    const originRow = (ext.originIdx / grid.cols) | 0;
-    const cols = ext.cols;
-    const rows = ext.rows;
-    const cellInBounds = (c, r) => {
-        if (c < 0 || c >= grid.cols || r < 0 || r >= grid.rows) return false;
-        return isIdxInMapGenBounds(config, grid, c + r * grid.cols);
-    };
-    const h = runRailCavernEdgeCA(mapSeed, config, cols, rows, originCol, originRow, cellInBounds, openBoundarySides, "h");
-    const v = runRailCavernEdgeCA(mapSeed, config, cols, rows, originCol, originRow, cellInBounds, openBoundarySides, "v");
+    const { originIdx, cols, rows } = ext;
+    const gridCols = grid.cols;
+    const h = runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, grid, openBoundarySides, "h");
+    const v = runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, grid, openBoundarySides, "v");
     const bounds = stampCellBoundsForConfig(grid, config);
     clearStaticWallsAndEdgesInBounds(grid, bounds);
-    for (let lr = 0; lr < h.caRows; lr++)
-        for (let lc = 0; lc < h.caCols; lc++) {
-            if (h.cells[lr * h.caCols + lc] !== 1) continue;
-            const col = originCol + lc;
-            const row = originRow + lr;
-            if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) setBoundary(grid, row * grid.cols + col, 0, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
-            else if (row - 1 >= 0 && row - 1 < grid.rows && col >= 0 && col < grid.cols)
-                setBoundary(grid, (row - 1) * grid.cols + col, 2, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+    for (let edgeIdx = 0; edgeIdx < h.edgeCount; edgeIdx++) {
+        if (h.cells[edgeIdx] !== 1) continue;
+        const lr = (edgeIdx / h.edgeStride) | 0;
+        const lc = edgeIdx - lr * h.edgeStride;
+        const cellLocalBelow = lr * cols + lc;
+        const idxBelow = stampGlobalIdx(originIdx, cellLocalBelow, gridCols, cols);
+        if (lr < rows && idxBelow >= 0 && idxBelow < grid.grid.length) setBoundary(grid, idxBelow, 0, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        else if (lr > 0) {
+            const idxAbove = stampGlobalIdx(originIdx, (lr - 1) * cols + lc, gridCols, cols);
+            if (idxAbove >= 0 && idxAbove < grid.grid.length) setBoundary(grid, idxAbove, 2, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
         }
-    for (let lr = 0; lr < v.caRows; lr++)
-        for (let lc = 0; lc < v.caCols; lc++) {
-            if (v.cells[lr * v.caCols + lc] !== 1) continue;
-            const col = originCol + lc;
-            const row = originRow + lr;
-            if (col >= 0 && col < grid.cols && row >= 0 && row < grid.rows) setBoundary(grid, row * grid.cols + col, 3, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
-            else if (col - 1 >= 0 && col - 1 < grid.cols && row >= 0 && row < grid.rows)
-                setBoundary(grid, row * grid.cols + col - 1, 1, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+    }
+    for (let edgeIdx = 0; edgeIdx < v.edgeCount; edgeIdx++) {
+        if (v.cells[edgeIdx] !== 1) continue;
+        const lr = (edgeIdx / v.edgeStride) | 0;
+        const lc = edgeIdx % v.edgeStride;
+        const idxRight = stampGlobalIdx(originIdx, lr * cols + lc, gridCols, cols);
+        if (lc < cols && idxRight >= 0 && idxRight < grid.grid.length) setBoundary(grid, idxRight, 3, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        else if (lc > 0) {
+            const idxLeft = stampGlobalIdx(originIdx, lr * cols + lc - 1, gridCols, cols);
+            if (idxLeft >= 0 && idxLeft < grid.grid.length) setBoundary(grid, idxLeft, 1, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
         }
+    }
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
     return bounds;
 }
@@ -4124,11 +4118,8 @@ export async function generateLabRailCaverns(state, { openBoundarySides = null }
 }
 function stampRailMazeBeltsPhase(state, config, options = {}) {
     const grid = state.obstacleGrid;
-    const boundsCol = config.boundsMode === "rect" ? config.boundsIdx % grid.cols : config.centerIdx % grid.cols;
-    const boundsRow = config.boundsMode === "rect" ? (config.boundsIdx / grid.cols) | 0 : (config.centerIdx / grid.cols) | 0;
-    const centerCol = config.boundsMode === "rect" ? boundsCol + Math.floor(config.boundsCols / 2) : boundsCol;
-    const centerRow = config.boundsMode === "rect" ? boundsRow + Math.floor(config.boundsRows / 2) : boundsRow;
-    const floodSeedBounds = options.floodSeedBounds ?? { boundsMode: "rect", boundsIdx: grid.worldToIdx(grid.gridCenterX(centerCol), grid.gridCenterY(centerRow)), boundsCols: 1, boundsRows: 1 };
+    const centerIdx = getMapGenBoundsCenterIdx(grid, config);
+    const floodSeedBounds = options.floodSeedBounds ?? { boundsMode: "rect", boundsIdx: centerIdx, boundsCols: 1, boundsRows: 1 };
     const navWalkableIndex = options.navWalkableIndex ?? getNavWalkableCellIndex(state, config, floodSeedBounds);
     const beltPlan = planRailMazeCorridorBelts({ grid, navTopology: state.nav.topology, railConfig: config, navWalkableIndex, mapSeed: state.mapSeed });
     stampGlobalRailMazeBelts(state, beltPlan.floorBelts);
@@ -4141,20 +4132,13 @@ export async function generateLabRailMaze(state, options = {}) {
     const run = createMapGenRun(state);
     run.ensureCoverage();
     const ext = getMapGenBoundsStampExtent(grid, config);
-    const originCol = ext.originIdx % grid.cols;
-    const originRow = (ext.originIdx / grid.cols) | 0;
     const bounds = run.clearStamp(config);
     const railWallHeightLevel = options.railWallHeightLevel ?? config.wallHeightLevel;
     const railWallThicknessLevel = options.railWallThicknessLevel ?? config.edgeThickness;
     const corridorWidthMin = options.corridorWidthMin ?? config.corridorWidthMin;
     const corridorWidthMax = options.corridorWidthMax ?? config.corridorWidthMax;
     const extraLinkRatio = options.extraLinkRatio ?? config.extraLinkRatio;
-    let rails = bakeRailMazeDfs(
-        { originCol, originRow, cols: ext.cols, rows: ext.rows },
-        { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio },
-        state.mapSeed,
-        grid.cols,
-    );
+    let rails = bakeRailMazeDfs(ext, { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio }, state.mapSeed, grid.cols);
     if (config.boundsMode !== "rect")
         rails = rails.filter((wall) => {
             const idx = wall.idx;
