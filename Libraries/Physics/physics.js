@@ -2975,7 +2975,32 @@ export function copyKineticPairBuffer(from, to) {
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
 }
-const compactPairKeyScratch = new Set();
+const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2;
+const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
+function clearPairHash() {
+    pairHashKeys.fill(-1);
+}
+function addPairHash(key) {
+    let idx = (key % PAIR_HASH_CAPACITY) | 0;
+    while (true) {
+        if (pairHashKeys[idx] === -1) {
+            pairHashKeys[idx] = key;
+            return true;
+        }
+        if (pairHashKeys[idx] === key) return false;
+        idx = (idx + 1) % PAIR_HASH_CAPACITY;
+    }
+}
+function hasPairHash(key) {
+    let idx = (key % PAIR_HASH_CAPACITY) | 0;
+    while (true) {
+        if (pairHashKeys[idx] === -1) return false;
+        if (pairHashKeys[idx] === key) return true;
+        idx = (idx + 1) % PAIR_HASH_CAPACITY;
+    }
+}
+const seenPrimaryScratch = new Uint8Array(MAX_PHYS_BODIES);
+const seenPrimaryScratchIds = new Int32Array(MAX_PHYS_BODIES);
 export function compactSubstepKineticPairs(spatialFrame, pairs) {
     if (kineticPairTopologyStale(spatialFrame)) {
         pairs.count = 0;
@@ -3002,37 +3027,40 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
 }
 export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     if (!bodies.length) return 0;
-    const keys = compactPairKeyScratch;
-    keys.clear();
-    for (let i = 0; i < pairs.count; i++) keys.add(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
-    const slab = kineticDynamicSlab;
+    clearPairHash();
+    for (let i = 0; i < pairs.count; i++) addPairHash(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
     let added = 0;
-    const seenPrimary = new Set();
+    let seenCount = 0;
     for (let i = 0; i < bodies.length; i++) {
         const primary = bodies[i];
-        if (seenPrimary.has(primary)) continue;
-        seenPrimary.add(primary);
         const physIdA = primary._physId;
         if (physIdA === undefined) continue;
+        if (seenPrimaryScratch[physIdA]) continue;
+        seenPrimaryScratch[physIdA] = 1;
+        seenPrimaryScratchIds[seenCount++] = physIdA;
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
             const physIdB = neighbor._physId;
             const key = pairPhysKey(physIdA, physIdB);
-            if (keys.has(key)) continue;
+            if (hasPairHash(key)) continue;
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE ? pairCircleCircleOverlapSlab(physIdA, physIdB) : pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (shareKineticIsland(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
-            if (pairs.count >= MAX_KINETIC_PAIRS) return added;
+            if (pairs.count >= MAX_KINETIC_PAIRS) {
+                for (let k = 0; k < seenCount; k++) seenPrimaryScratch[seenPrimaryScratchIds[k]] = 0;
+                return added;
+            }
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
             pairs.static.tier[idx] = tier;
-            keys.add(key);
+            addPairHash(key);
             added++;
         }
     }
+    for (let k = 0; k < seenCount; k++) seenPrimaryScratch[seenPrimaryScratchIds[k]] = 0;
     return added;
 }
 export function kineticPairBodyAt(spatialFrame, physId) {
