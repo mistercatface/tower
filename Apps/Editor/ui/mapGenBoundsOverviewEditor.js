@@ -45,43 +45,39 @@ export function applyMapGenBoundsDrag(grid, mode, dxWorld, dyWorld, config) {
     const dyCells = dyWorld / cellSize;
     const cols = grid.cols;
     if (config.boundsMode === "rect") {
-        let boundsCol = config.boundsIdx % cols;
-        let boundsRow = (config.boundsIdx / cols) | 0;
         if (mode === "move") {
-            boundsCol += Math.round(dxCells);
-            boundsRow += Math.round(dyCells);
+            config.boundsIdx += Math.round(dxCells) + Math.round(dyCells) * cols;
         } else if (mode === "resize-e") config.boundsCols = Math.max(1, Math.round(config.boundsCols + dxCells));
         else if (mode === "resize-w") {
             const next = Math.max(1, Math.round(config.boundsCols - dxCells));
-            boundsCol += Math.round(config.boundsCols - next);
+            config.boundsIdx += Math.round(config.boundsCols - next);
             config.boundsCols = next;
         } else if (mode === "resize-s") config.boundsRows = Math.max(1, Math.round(config.boundsRows + dyCells));
         else if (mode === "resize-n") {
             const next = Math.max(1, Math.round(config.boundsRows - dyCells));
-            boundsRow += Math.round(config.boundsRows - next);
+            config.boundsIdx += Math.round(config.boundsRows - next) * cols;
             config.boundsRows = next;
         } else if (mode === "resize-se") {
             config.boundsCols = Math.max(1, Math.round(config.boundsCols + dxCells));
             config.boundsRows = Math.max(1, Math.round(config.boundsRows + dyCells));
         } else if (mode === "resize-sw") {
             const nextCols = Math.max(1, Math.round(config.boundsCols - dxCells));
-            boundsCol += Math.round(config.boundsCols - nextCols);
+            config.boundsIdx += Math.round(config.boundsCols - nextCols);
             config.boundsCols = nextCols;
             config.boundsRows = Math.max(1, Math.round(config.boundsRows + dyCells));
         } else if (mode === "resize-ne") {
             config.boundsCols = Math.max(1, Math.round(config.boundsCols + dxCells));
             const nextRows = Math.max(1, Math.round(config.boundsRows - dyCells));
-            boundsRow += Math.round(config.boundsRows - nextRows);
+            config.boundsIdx += Math.round(config.boundsRows - nextRows) * cols;
             config.boundsRows = nextRows;
         } else if (mode === "resize-nw") {
             const nextCols = Math.max(1, Math.round(config.boundsCols - dxCells));
-            boundsCol += Math.round(config.boundsCols - nextCols);
+            config.boundsIdx += Math.round(config.boundsCols - nextCols);
             config.boundsCols = nextCols;
             const nextRows = Math.max(1, Math.round(config.boundsRows - dyCells));
-            boundsRow += Math.round(config.boundsRows - nextRows);
+            config.boundsIdx += Math.round(config.boundsRows - nextRows) * cols;
             config.boundsRows = nextRows;
         }
-        config.boundsIdx = grid.worldToIdx(grid.gridCenterX(boundsCol), grid.gridCenterY(boundsRow));
         migrateMapGenBoundsForMode(grid, config);
         return;
     }

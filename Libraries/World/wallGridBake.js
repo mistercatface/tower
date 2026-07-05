@@ -61,7 +61,7 @@ export function railWallFootprintHalfThickness(grid, idx, side) {
 }
 export function resolveRailWallNeighborContext(grid, idx, side) {
     const fillLevel = neighborFillLevel(grid, idx, side);
-    const nIdx = edgeNeighborIdx(idx, side, grid.cols, grid.rows);
+    const nIdx = edgeNeighborIdx(idx, side, grid);
     let neighborFillHeightPx = 0;
     if (nIdx !== -1) neighborFillHeightPx = resolveCellWallHeightAtIdx(grid, nIdx);
     const neighborCap = neighborFillHeightPx > 0 ? neighborFillHeightPx : null;
@@ -330,7 +330,7 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     if (edgeLevel > 0) return false;
     if (fillHeight === 0) return false;
     const faceHeight = fillHeight;
-    const nIdx = edgeNeighborIdx(idx, edge, cols, grid.rows);
+    const nIdx = edgeNeighborIdx(idx, edge, grid);
     let neighborFillHeight = 0;
     if (nIdx !== -1) neighborFillHeight = resolveCellWallHeightAtIdx(grid, nIdx);
     const neighborCap = neighborFillHeight > 0 ? neighborFillHeight : null;

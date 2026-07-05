@@ -104,7 +104,6 @@ import {
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
 import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
 import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
-import { agentPose } from "../Agent/index.js";
 import {
     sampleFlowDirectionInto,
     buildSabPathOverlayFromProgress,
@@ -116,6 +115,7 @@ import {
     REPLAN_TARGET_MOVE_PX,
     obstacleReplanAllowed,
     replanPriorityFor,
+    agentPose,
 } from "../Navigation/navigation.js";
 import {
     appendOverlayWireLink,

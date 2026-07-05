@@ -1,4 +1,3 @@
-import { fillRandomGrid, runCellularAutomata } from "../CA/index.js";
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, createRailMazeNavCorridorPathfinder, findRailMazeNavCorridorPath, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import {
@@ -195,7 +194,11 @@ export class SpatialFrameCore {
         return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
 }
-export function edgeNeighborIdx(idx, side, cols, rows) {
+function neighborGridDims(grid) {
+    return { cols: grid.cols ?? grid.gridCols, rows: grid.rows ?? grid.gridRows };
+}
+export function edgeNeighborIdx(idx, side, grid) {
+    const { cols, rows } = neighborGridDims(grid);
     const col = idx % cols;
     const row = (idx / cols) | 0;
     const { dc, dr } = CARDINAL_OFFSETS[side];
@@ -254,7 +257,7 @@ export function edgeRailCollisionThicknessPx(grid, idx, side) {
     return railWallThicknessPx(railEdge);
 }
 export function neighborFillLevel(grid, idx, side) {
-    const nIdx = edgeNeighborIdx(idx, side, grid.cols, grid.rows);
+    const nIdx = edgeNeighborIdx(idx, side, grid);
     if (nIdx === -1) return 0;
     return grid.grid[nIdx];
 }
@@ -279,7 +282,7 @@ function pushExposedWallEdgesForCell(grid, idx, out) {
     if (level === 0) return;
     const wallTopZ = resolveCellWallHeightAtIdx(grid, idx);
     for (let side = 0; side < 4; side++) {
-        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        const nIdx = edgeNeighborIdx(idx, side, grid);
         let neighborLevel = 0;
         if (nIdx !== -1) neighborLevel = grid.grid[nIdx];
         if (neighborLevel >= level) continue;
@@ -311,7 +314,7 @@ export function packEdgeCellKeyByIdx(grid, idx, side) {
 }
 export function canonicalEdgeCellKeyIdx(grid, idx, side) {
     const keyA = packEdgeCellKeyByIdx(grid, idx, side);
-    const nIdx = edgeNeighborIdx(idx, side, grid.cols, grid.rows);
+    const nIdx = edgeNeighborIdx(idx, side, grid);
     if (nIdx === -1) return keyA;
     const keyB = packEdgeCellKeyByIdx(grid, nIdx, edgeMirrorSide(side));
     return keyA <= keyB ? keyA : keyB;
@@ -389,10 +392,12 @@ export function forEachChunkKeyInRange(startKey, endKey, fn) {
     const endAxis1 = chunkKeyAxis1(endKey);
     for (let axis1 = startAxis1; axis1 <= endAxis1; axis1++) for (let axis0 = startAxis0; axis0 <= endAxis0; axis0++) fn(packChunkKey(axis0, axis1));
 }
-export function cellBoundsFromStampExtent(originIdx, cols, rows, gridCols, gridRows) {
-    const baseCol = originIdx % gridCols;
-    const baseRow = (originIdx / gridCols) | 0;
-    return { startCol: Math.max(0, baseCol), endCol: Math.min(gridCols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(gridRows - 1, baseRow + rows - 1) };
+export function cellBoundsFromStampLayout(layout) {
+    const baseCol = layout.originIdx % layout.gridCols;
+    const baseRow = (layout.originIdx / layout.gridCols) | 0;
+    const cols = layout.strideCols;
+    const rows = layout.cellCount / layout.strideCols;
+    return { startCol: Math.max(0, baseCol), endCol: Math.min(layout.gridCols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(layout.gridRows - 1, baseRow + rows - 1) };
 }
 export function wrapChunkKey(chunkKey, period) {
     return packChunkKey(((chunkKeyAxis0(chunkKey) % period) + period) % period, ((chunkKeyAxis1(chunkKey) % period) + period) % period);
@@ -802,7 +807,7 @@ export function recomputeNavCardinalOpenInto(grid, cardinalOpen, vertexPassabili
             return;
         }
         let mask = 0;
-        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+        forEachCardinalNeighborIdx(idx, { cols, rows }, (nIdx) => {
             if (!grid.isBlockedIdx(nIdx) && !boundaryBlocksStepFrom(grid, cardinalOpen, vertexPassability, idx, nIdx)) {
                 const diff = nIdx - idx;
                 if (diff === 1) mask |= 1;
@@ -1260,14 +1265,12 @@ function formatGlobalCellIdx(idx) {
     return `@${idx}`;
 }
 function assertBeltChains(footprint, beltsByCell, layout, label, mouthExteriorIndices = new Set()) {
-    const gridCols = layout.gridCols;
-    const gridRows = layout.gridRows;
     for (const idx of footprint) if (!beltsByCell.get(idx)) throw new Error(`${label}: missing belt at ${formatGlobalCellIdx(idx)}`);
     for (const idx of footprint) {
         const belt = beltsByCell.get(idx);
         const { entrySide, exitSide } = FloorBelt.getEntryExitSides(belt.kind, belt.facingIndex);
-        const entryIdx = edgeNeighborIdx(belt.idx, entrySide, gridCols, gridRows);
-        const exitIdx = edgeNeighborIdx(belt.idx, exitSide, gridCols, gridRows);
+        const entryIdx = edgeNeighborIdx(belt.idx, entrySide, layout);
+        const exitIdx = edgeNeighborIdx(belt.idx, exitSide, layout);
         const entryInFootprint = footprint.has(entryIdx);
         const exitInFootprint = footprint.has(exitIdx);
         if (entryInFootprint) {
@@ -1363,8 +1366,24 @@ function stampGlobalIdx(originIdx, localIdx, gridCols, strideCols) {
     return originIdx + q * gridCols + (localIdx - q * strideCols);
 }
 /** @typedef {{ originIdx: number, gridCols: number, gridRows: number, strideCols: number, cellCount: number }} CellIndexLayout */
-export function createCellIndexLayout(originIdx, gridCols, gridRows, stampCols, stampRows) {
-    return { originIdx, gridCols, gridRows, strideCols: stampCols, cellCount: stampCols * stampRows };
+export function stampLayoutFromConfig(grid, config) {
+    if (config.boundsMode === "rect") {
+        const strideCols = Math.max(1, Math.round(config.boundsCols));
+        const stampRows = Math.max(1, Math.round(config.boundsRows));
+        return { originIdx: config.boundsIdx, gridCols: grid.cols, gridRows: grid.rows, strideCols, cellCount: strideCols * stampRows };
+    }
+    const r = Math.max(1, Math.round(config.outerRadiusCells));
+    const side = r * 2;
+    return { originIdx: config.centerIdx - r - r * grid.cols, gridCols: grid.cols, gridRows: grid.rows, strideCols: side, cellCount: side * side };
+}
+export function forEachStampLocalIdx(layout, fn) {
+    for (let localIdx = 0; localIdx < layout.cellCount; localIdx++) fn(localIdx);
+}
+export function forEachStampGlobalIdx(layout, grid, config, fn) {
+    forEachStampLocalIdx(layout, (localIdx) => {
+        const idx = stampGlobalIdx(layout.originIdx, localIdx, layout.gridCols, layout.strideCols);
+        if (idx >= 0 && idx < grid.grid.length && isIdxInMapGenBounds(config, grid, idx)) fn(idx, localIdx);
+    });
 }
 export function layoutCellRows(layout) {
     return layout.cellCount / layout.strideCols;
@@ -1432,7 +1451,8 @@ export function octileDistanceIdx(idxA, idxB, cols) {
     const max = Math.max(dx, dy);
     return min * 1.41421356 + (max - min);
 }
-export function forEachCardinalNeighborIdx(idx, cols, rows, fn) {
+export function forEachCardinalNeighborIdx(idx, grid, fn) {
+    const { cols, rows } = neighborGridDims(grid);
     const row = (idx / cols) | 0;
     const col = idx - row * cols;
     if (row > 0) fn(idx - cols);
@@ -1562,7 +1582,7 @@ export class SurfaceMaterialStore {
         if (idx < 0 || idx >= cols * rows) return;
         this.clearEdgeMirrored(idx, side);
         this.edgeProfileIds.set(cellEdgeSlotOffset(idx, side), profileId);
-        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        const nIdx = edgeNeighborIdx(idx, side, this);
         if (nIdx !== -1) this.edgeProfileIds.set(cellEdgeSlotOffset(nIdx, edgeMirrorSide(side)), profileId);
     }
     clearEdgeMirrored(idx, side) {
@@ -1570,7 +1590,7 @@ export class SurfaceMaterialStore {
         const rows = this.rows;
         if (idx < 0 || idx >= cols * rows) return;
         this.edgeProfileIds.delete(cellEdgeSlotOffset(idx, side));
-        const nIdx = edgeNeighborIdx(idx, side, cols, rows);
+        const nIdx = edgeNeighborIdx(idx, side, this);
         if (nIdx !== -1) this.edgeProfileIds.delete(cellEdgeSlotOffset(nIdx, edgeMirrorSide(side)));
     }
     hasAnyEdgeAtIdx(idx) {
@@ -1681,7 +1701,7 @@ export class WorldObstacleGrid {
         this.clearMirroredCellEdge(idx, side);
         const ref = this._allocCellEdge(edge);
         this.cellEdgeSlots[(idx << 2) + side] = ref;
-        const nIdx = edgeNeighborIdx(idx, side, this.cols, this.rows);
+        const nIdx = edgeNeighborIdx(idx, side, this);
         if (nIdx !== -1) this.cellEdgeSlots[(nIdx << 2) + edgeMirrorSide(side)] = ref;
     }
     clearMirroredCellEdge(idx, side) {
@@ -1690,7 +1710,7 @@ export class WorldObstacleGrid {
         const ref = this.cellEdgeSlots[offset];
         if (ref === EMPTY) return;
         this.cellEdgeSlots[offset] = EMPTY;
-        const nIdx = edgeNeighborIdx(idx, side, this.cols, this.rows);
+        const nIdx = edgeNeighborIdx(idx, side, this);
         if (nIdx !== -1) this.cellEdgeSlots[(nIdx << 2) + edgeMirrorSide(side)] = EMPTY;
         this._freeCellEdge(ref);
     }
@@ -1978,18 +1998,19 @@ export class WorldObstacleGrid {
         if (this.onBoundsResync) this.onBoundsResync(this);
         return true;
     }
-    // originIdx anchors the stamp; cells is row-major local with 1 = blocked.
-    stampStaticWalls(originIdx, cols, rows, cells, { additive = false, heightLevel }) {
+    // layout anchors the stamp; cells is row-major local with 1 = blocked.
+    stampStaticWalls(layout, cells, { additive = false, heightLevel }) {
         const level = heightLevel;
-        const baseCol = originIdx % this.cols;
-        const baseRow = (originIdx / this.cols) | 0;
-        const gridBounds = { startCol: Math.max(0, baseCol), endCol: Math.min(this.cols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(this.rows - 1, baseRow + rows - 1) };
+        const gridBounds = cellBoundsFromStampLayout(layout);
+        const cols = layout.strideCols;
+        const baseCol = layout.originIdx % this.cols;
+        const baseRow = (layout.originIdx / this.cols) | 0;
         if (!additive)
             forEachDenseCellInRect(gridBounds.startCol, gridBounds.endCol, gridBounds.startRow, gridBounds.endRow, this.cols, (idx) => {
                 this.grid[idx] = 0;
             });
         let changed = false;
-        const stampSize = rows * cols;
+        const stampSize = layout.cellCount;
         for (let i = 0; i < stampSize; i++) {
             if (cells[i] !== 1) continue;
             const lr = (i / cols) | 0;
@@ -3272,6 +3293,44 @@ export function clearFloorCellNavEdit(state, idx) {
     if (!state.obstacleGrid.clearFloorCell(idx)) return null;
     return commitGridNavEdit(state, idx);
 }
+export const DEFAULT_WALL_THRESHOLD = 5;
+export function fillRandomGrid(cols, rows, fillChance, out) {
+    const grid = out ?? new Uint8Array(cols * rows);
+    for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < fillChance ? 1 : 0;
+    return grid;
+}
+export function runCellularAutomata(cols, rows, grid, { iterations, wallThreshold = DEFAULT_WALL_THRESHOLD, scratch }) {
+    let next = scratch ?? new Uint8Array(cols * rows);
+    for (let iter = 0; iter < iterations; iter++) {
+        for (let r = 0; r < rows; r++)
+            for (let c = 0; c < cols; c++) {
+                let wallsCount = 0;
+                for (let dr = -1; dr <= 1; dr++)
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                            if (grid[nr * cols + nc] === 1) wallsCount++;
+                        } else wallsCount++;
+                    }
+                next[r * cols + c] = wallsCount >= wallThreshold ? 1 : 0;
+            }
+        const temp = grid;
+        grid = next;
+        next = temp;
+    }
+    return grid;
+}
+export function generateCellularAutomataGrid(cols, rows, { fillChance, iterations, wallThreshold = DEFAULT_WALL_THRESHOLD }) {
+    let grid = fillRandomGrid(cols, rows, fillChance);
+    return runCellularAutomata(cols, rows, grid, { iterations, wallThreshold, scratch: new Uint8Array(cols * rows) });
+}
+export function fillRandomBuffer(strideCols, cellCount, fillChance, out) {
+    return fillRandomGrid(strideCols, cellCount / strideCols, fillChance, out);
+}
+export function runCellularAutomataBuffer(strideCols, cellCount, grid, options) {
+    return runCellularAutomata(strideCols, cellCount / strideCols, grid, options);
+}
 function clearCavernOccupancyBoundaryStrip(cells, cols, rows, side, stripRows) {
     const depth = Math.max(1, Math.round(stripRows));
     if (side === "south") {
@@ -3360,31 +3419,33 @@ function carveCavernSouthVent(cells, cols, rows, stripRows) {
     }
 }
 export function generateCavernOccupancy(grid, config, { openBoundarySides = null, openBoundaryRows = 1 } = {}) {
-    const { originIdx, cols, rows } = getMapGenBoundsStampExtent(grid, config);
-    let cells = fillRandomGrid(cols, rows, config.fillChance);
-    cells = runCellularAutomata(cols, rows, cells, { iterations: config.iterations, scratch: new Uint8Array(cols * rows) });
-    applyMapGenShapeMask(grid, cells, cols, rows, config, originIdx);
+    const layout = stampLayoutFromConfig(grid, config);
+    const cols = layout.strideCols;
+    const rows = layout.cellCount / layout.strideCols;
+    let cells = fillRandomBuffer(layout.strideCols, layout.cellCount, config.fillChance);
+    cells = runCellularAutomataBuffer(layout.strideCols, layout.cellCount, cells, { iterations: config.iterations, scratch: new Uint8Array(layout.cellCount) });
+    applyMapGenShapeMask(grid, cells, layout, config);
     if (openBoundarySides?.south) {
         clearCavernOccupancyBoundaryStrip(cells, cols, rows, "south", openBoundaryRows);
         carveCavernSouthVent(cells, cols, rows, openBoundaryRows);
     }
     if (openBoundarySides?.north) clearCavernOccupancyBoundaryStrip(cells, cols, rows, "north", openBoundaryRows);
-    return { originIdx, cols, rows, cells };
+    return { layout, cells };
 }
-export function bakeRailMazeDfs(stampExtent, options, mapSeed, gridCols) {
-    const { originIdx, cols, rows } = stampExtent;
-    const activeRows = rows;
+export function bakeRailMazeDfs(layout, options, mapSeed) {
+    const { originIdx, strideCols: cols, gridCols } = layout;
+    const rows = layout.cellCount / layout.strideCols;
     const corridorWidthMin = Math.max(1, Math.round(options.corridorWidthMin ?? 1));
     const corridorWidthMax = Math.max(corridorWidthMin, Math.round(options.corridorWidthMax ?? 2));
     const extraLinkRatio = options.extraLinkRatio ?? 0.25;
     const rng = createSeededRng((mapSeed * 16807 + 29) | 0);
     let W_c = corridorWidthMin === corridorWidthMax ? corridorWidthMin : corridorWidthMin + Math.floor(rng() * (corridorWidthMax - corridorWidthMin + 1));
     let numX = Math.floor(cols / W_c);
-    let numY = Math.floor(activeRows / W_c);
+    let numY = Math.floor(rows / W_c);
     if (numX < 2 || numY < 2) {
         W_c = 1;
         numX = cols;
-        numY = activeRows;
+        numY = rows;
     }
     const verticalWalls = Array.from({ length: numX - 1 }, () => new Uint8Array(numY).fill(1));
     const horizontalWalls = Array.from({ length: numX }, () => new Uint8Array(numY - 1).fill(1));
@@ -3458,7 +3519,7 @@ function pathLengthInBand(path, minLen, maxLen) {
 }
 function navWalkableNeighborsIdx(grid, navTopology, idx) {
     const out = [];
-    forEachCardinalNeighborIdx(idx, grid.cols, grid.rows, (nIdx) => {
+    forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
         if (grid.canStep(idx, nIdx, navTopology) || grid.canStep(nIdx, idx, navTopology)) out.push(nIdx);
     });
     return out;
@@ -3488,8 +3549,6 @@ function degreeInZone(cells, neighborAtIdx) {
 }
 function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
     let belts = floorBelts.slice();
-    const gridCols = layout.gridCols;
-    const gridRows = layout.gridRows;
     for (let pass = 0; pass < belts.length + 4; pass++) {
         const validation = tryValidateBeltChains(belts, layout, mouthExteriorIndices);
         if (validation.ok) return { floorBelts: belts, validation };
@@ -3499,8 +3558,8 @@ function peelBrokenBelts(floorBelts, mouthExteriorIndices, layout) {
         for (const idx of footprint) {
             const belt = byCell.get(idx);
             const { entrySide, exitSide } = FloorBelt.getEntryExitSides(belt.kind, belt.facingIndex);
-            const entryIdx = edgeNeighborIdx(belt.idx, entrySide, gridCols, gridRows);
-            const exitIdx = edgeNeighborIdx(belt.idx, exitSide, gridCols, gridRows);
+            const entryIdx = edgeNeighborIdx(belt.idx, entrySide, layout);
+            const exitIdx = edgeNeighborIdx(belt.idx, exitSide, layout);
             const entryInFootprint = footprint.has(entryIdx);
             const exitInFootprint = footprint.has(exitIdx);
             if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
@@ -3610,12 +3669,10 @@ export function planRailMazeCorridorBelts({
     return { floorBelts, paths, zoneCellCount: zoneCells.length, pathCount: paths.length, mouthExteriorIndices, validation, degreeByIndex, beltRails };
 }
 export function hasOpenBeltMouthSideIdx(grid, navTopology, idx) {
-    const cols = grid.cols;
-    const rows = grid.rows;
     if (grid.isBlockedIdx(idx)) return false;
     const navGraph = createNavGraphViewFromTopology(navTopology);
     let open = false;
-    forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+    forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
         if (open) return;
         if (!grid.isBlockedIdx(nIdx) && navGraph.canStepIdx(nIdx, idx) && navGraph.canStepIdx(idx, nIdx)) open = true;
     });
@@ -3629,24 +3686,23 @@ export function filterNavBeltEndpointCandidatesIdx(grid, navTopology, cellIndice
     }
     return out;
 }
-export function beltPathMouthExteriorCells(path, cols, rows) {
+export function beltPathMouthExteriorCells(path, grid) {
+    const cols = grid.cols;
     const startIdx = path[0];
     const secondIdx = path[1];
     const endIdx = path[path.length - 1];
     const prevIdx = path[path.length - 2];
     const startEntrySide = gridSideFromCellIdxToNeighborIdx(secondIdx, startIdx, cols);
-    const entryExteriorIdx = edgeNeighborIdx(startIdx, startEntrySide, cols, rows);
+    const entryExteriorIdx = edgeNeighborIdx(startIdx, startEntrySide, grid);
     const endExitSide = gridSideFromCellIdxToNeighborIdx(prevIdx, endIdx, cols);
-    const exitExteriorIdx = edgeNeighborIdx(endIdx, endExitSide, cols, rows);
+    const exitExteriorIdx = edgeNeighborIdx(endIdx, endExitSide, grid);
     return { entryExteriorIdx, exitExteriorIdx };
 }
 export function validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlobalIndices = new Set()) {
     if (path.length < 2) return false;
-    const cols = grid.cols;
-    const rows = grid.rows;
     const startIdx = path[0];
     const endIdx = path[path.length - 1];
-    const { entryExteriorIdx, exitExteriorIdx } = beltPathMouthExteriorCells(path, cols, rows);
+    const { entryExteriorIdx, exitExteriorIdx } = beltPathMouthExteriorCells(path, grid);
     if (entryExteriorIdx === -1 || exitExteriorIdx === -1) return false;
     if (grid.isBlockedIdx(entryExteriorIdx)) return false;
     if (grid.isBlockedIdx(exitExteriorIdx)) return false;
@@ -3658,8 +3714,6 @@ export function validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlo
     return true;
 }
 export function collectPathMouthExteriorIndices(paths, grid) {
-    const cols = grid.cols;
-    const rows = grid.rows;
     const mouths = new Set();
     for (let i = 0; i < paths.length; i++) {
         const path = paths[i];
@@ -3668,7 +3722,7 @@ export function collectPathMouthExteriorIndices(paths, grid) {
         const endIdx = path[path.length - 1];
         mouths.add(startIdx);
         mouths.add(endIdx);
-        const { entryExteriorIdx, exitExteriorIdx } = beltPathMouthExteriorCells(path, cols, rows);
+        const { entryExteriorIdx, exitExteriorIdx } = beltPathMouthExteriorCells(path, grid);
         if (entryExteriorIdx !== -1) mouths.add(entryExteriorIdx);
         if (exitExteriorIdx !== -1) mouths.add(exitExteriorIdx);
     }
@@ -3727,12 +3781,6 @@ export function getMapGenBoundsCenterIdx(grid, config) {
     if (config.boundsMode === "rect") return config.boundsIdx + ((config.boundsRows / 2) | 0) * grid.cols + ((config.boundsCols / 2) | 0);
     return config.centerIdx;
 }
-export function getMapGenBoundsStampExtent(grid, config) {
-    if (config.boundsMode === "rect") return { originIdx: config.boundsIdx, cols: Math.max(1, Math.round(config.boundsCols)), rows: Math.max(1, Math.round(config.boundsRows)) };
-    const r = Math.max(1, Math.round(config.outerRadiusCells));
-    const originIdx = config.centerIdx - r - r * grid.cols;
-    return { originIdx, cols: r * 2, rows: r * 2 };
-}
 export function isIdxInMapGenBounds(config, grid, idx) {
     if (config.boundsMode === "rect") {
         const dCol = (idx % grid.cols) - (config.boundsIdx % grid.cols);
@@ -3747,30 +3795,14 @@ export function isIdxInMapGenBounds(config, grid, idx) {
     return dist <= config.outerRadiusCells && dist >= innerR;
 }
 export function forEachGlobalCellInMapGenBounds(grid, config, fn) {
-    const { originIdx, cols, rows } = getMapGenBoundsStampExtent(grid, config);
-    for (let i = 0; i < rows; i++) {
-        const rowStartIdx = originIdx + i * grid.cols;
-        for (let j = 0; j < cols; j++) {
-            const idx = rowStartIdx + j;
-            if (idx >= 0 && idx < grid.grid.length && isIdxInMapGenBounds(config, grid, idx)) fn(idx);
-        }
-    }
+    forEachStampGlobalIdx(stampLayoutFromConfig(grid, config), grid, config, (idx) => fn(idx));
 }
-export function applyMapGenShapeMask(grid, cells, cols, rows, config, originIdx) {
+export function applyMapGenShapeMask(grid, cells, layout, config) {
     if (config.boundsMode === "rect") return;
-    const outerR = Math.max(1, config.outerRadiusCells);
-    const innerR = getInnerRadiusCells(config);
-    const baseCol = originIdx % grid.cols;
-    const baseRow = (originIdx / grid.cols) | 0;
-    const centerCol = config.centerIdx % grid.cols;
-    const centerRow = (config.centerIdx / grid.cols) | 0;
-    for (let lr = 0; lr < rows; lr++)
-        for (let lc = 0; lc < cols; lc++) {
-            const c = baseCol + lc;
-            const r = baseRow + lr;
-            const dist = Math.hypot(c - centerCol, r - centerRow);
-            if (dist > outerR || dist < innerR) cells[lr * cols + lc] = 0;
-        }
+    forEachStampLocalIdx(layout, (localIdx) => {
+        const idx = stampGlobalIdx(layout.originIdx, localIdx, layout.gridCols, layout.strideCols);
+        if (!isIdxInMapGenBounds(config, grid, idx)) cells[localIdx] = 0;
+    });
 }
 export function centerMapGenBoundsOnViewport(grid, viewport, config, cellSize) {
     if (config.boundsMode === "rect") {
@@ -3893,8 +3925,7 @@ function clearStaticWallsAndEdgesInBounds(grid, bounds) {
     return bounds;
 }
 function stampCellBoundsForConfig(grid, config) {
-    const ext = getMapGenBoundsStampExtent(grid, config);
-    return cellBoundsFromStampExtent(ext.originIdx, ext.cols, ext.rows, grid.cols, grid.rows);
+    return cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config));
 }
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
@@ -3935,8 +3966,7 @@ function mergeDonutInnerClear(state, config, damageBounds) {
 export function applyMapGenSurfaceProfile(state, config, profileId) {
     const grid = state.obstacleGrid;
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    const ext = getMapGenBoundsStampExtent(grid, config);
-    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(ext.originIdx, ext.cols, ext.rows, grid.cols, grid.rows), profileId, cellsPerChunk);
+    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config)), profileId, cellsPerChunk);
     grid.surfaceMaterialRevision++;
 }
 export function applyEditorRegionSurfaceProfiles(state) {
@@ -3952,8 +3982,7 @@ export function applyEditorRegionSurfaceProfiles(state) {
     for (let i = 0; i < profiles.length; i++) {
         const config = profiles[i][0];
         const fallback = profiles[i][1];
-        const ext = getMapGenBoundsStampExtent(grid, config);
-        grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampExtent(ext.originIdx, ext.cols, ext.rows, grid.cols, grid.rows), config.surfaceProfileId || fallback, cellsPerChunk);
+        grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config)), config.surfaceProfileId || fallback, cellsPerChunk);
     }
 }
 async function finalizeMapGenRun(state, { config, profileId, damageBounds, fullNavSync = true, syncFloorSeed = true } = {}) {
@@ -3967,15 +3996,17 @@ function stampCellInBounds(originIdx, cellLocalIdx, cellStride, gridCols, config
     if (idx < 0 || idx >= grid.grid.length) return false;
     return isIdxInMapGenBounds(config, grid, idx);
 }
-function runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, grid, openBoundarySides, axis) {
+function runRailCavernEdgeCA(mapSeed, config, layout, grid, openBoundarySides, axis) {
+    const { originIdx, strideCols: cols, gridCols } = layout;
+    const rows = layout.cellCount / layout.strideCols;
     const horizontal = axis === "h";
     const edgeStride = horizontal ? cols : cols + 1;
     const edgeCount = horizontal ? cols * (rows + 1) : (cols + 1) * rows;
     const seedOffset = horizontal ? 0 : 1;
     let cells = null;
     withSeededRandom(mapSeed + seedOffset, () => {
-        cells = fillRandomGrid(edgeStride, edgeCount / edgeStride, config.fillChance);
-        cells = runCellularAutomata(edgeStride, edgeCount / edgeStride, cells, { iterations: config.iterations, scratch: new Uint8Array(edgeCount) });
+        cells = fillRandomBuffer(edgeStride, edgeCount, config.fillChance);
+        cells = runCellularAutomataBuffer(edgeStride, edgeCount, cells, { iterations: config.iterations, scratch: new Uint8Array(edgeCount) });
     });
     for (let edgeIdx = 0; edgeIdx < edgeCount; edgeIdx++) {
         let in1 = false;
@@ -4004,11 +4035,11 @@ function runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, g
     return { cells, edgeStride, edgeCount };
 }
 function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, heightLevel, thicknessLevel }) {
-    const ext = getMapGenBoundsStampExtent(grid, config);
-    const { originIdx, cols, rows } = ext;
-    const gridCols = grid.cols;
-    const h = runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, grid, openBoundarySides, "h");
-    const v = runRailCavernEdgeCA(mapSeed, config, originIdx, cols, rows, gridCols, grid, openBoundarySides, "v");
+    const layout = stampLayoutFromConfig(grid, config);
+    const { originIdx, strideCols: cols, gridCols } = layout;
+    const rows = layout.cellCount / layout.strideCols;
+    const h = runRailCavernEdgeCA(mapSeed, config, layout, grid, openBoundarySides, "h");
+    const v = runRailCavernEdgeCA(mapSeed, config, layout, grid, openBoundarySides, "v");
     const bounds = stampCellBoundsForConfig(grid, config);
     clearStaticWallsAndEdgesInBounds(grid, bounds);
     for (let edgeIdx = 0; edgeIdx < h.edgeCount; edgeIdx++) {
@@ -4102,7 +4133,7 @@ export async function generateLabCaverns(state, { openBoundarySides = null, open
     });
     run.ensureCoverage();
     const level = clampStampWallHeightLevel(cavernConfig.wallHeightLevel, state.worldSurfaces.settings);
-    let damageBounds = grid.stampStaticWalls(stamp.originIdx, stamp.cols, stamp.rows, stamp.cells, { additive: true, heightLevel: level });
+    let damageBounds = grid.stampStaticWalls(stamp.layout, stamp.cells, { additive: true, heightLevel: level });
     damageBounds = run.mergeDonut(cavernConfig, damageBounds);
     await run.finish(cavernConfig, cavernConfig.surfaceProfileId || "tomatoGarden", damageBounds, { fullNavSync: true });
 }
@@ -4131,19 +4162,19 @@ export async function generateLabRailMaze(state, options = {}) {
     const grid = state.obstacleGrid;
     const run = createMapGenRun(state);
     run.ensureCoverage();
-    const ext = getMapGenBoundsStampExtent(grid, config);
+    const layout = stampLayoutFromConfig(grid, config);
     const bounds = run.clearStamp(config);
     const railWallHeightLevel = options.railWallHeightLevel ?? config.wallHeightLevel;
     const railWallThicknessLevel = options.railWallThicknessLevel ?? config.edgeThickness;
     const corridorWidthMin = options.corridorWidthMin ?? config.corridorWidthMin;
     const corridorWidthMax = options.corridorWidthMax ?? config.corridorWidthMax;
     const extraLinkRatio = options.extraLinkRatio ?? config.extraLinkRatio;
-    let rails = bakeRailMazeDfs(ext, { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio }, state.mapSeed, grid.cols);
+    let rails = bakeRailMazeDfs(layout, { railWallHeightLevel, railWallThicknessLevel, corridorWidthMin, corridorWidthMax, extraLinkRatio }, state.mapSeed);
     if (config.boundsMode !== "rect")
         rails = rails.filter((wall) => {
             const idx = wall.idx;
             const inCell = isIdxInMapGenBounds(config, grid, idx);
-            const nIdx = edgeNeighborIdx(idx, wall.side, grid.cols, grid.rows);
+            const nIdx = edgeNeighborIdx(idx, wall.side, grid);
             const inNeighbor = nIdx >= 0 && isIdxInMapGenBounds(config, grid, nIdx);
             return inCell || inNeighbor;
         });

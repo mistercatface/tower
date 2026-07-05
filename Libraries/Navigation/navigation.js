@@ -38,15 +38,25 @@ import {
     isEmptyCellBounds,
     unionCellBounds,
     isIdxInMapGenBounds,
-    getMapGenBoundsStampExtent,
-    cellBoundsFromStampExtent,
+    stampLayoutFromConfig,
+    forEachStampGlobalIdx,
     gridCellLayout,
     corridorPathHitsOccupied,
 } from "../Spatial/spatial.js";
 import { FloatingText } from "../Render/render.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
-import { agentPose } from "../Agent/index.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
+const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
+export function agentPose(source) {
+    SCRATCH_AGENT_POSE.x = source.x;
+    SCRATCH_AGENT_POSE.y = source.y;
+    SCRATCH_AGENT_POSE.vx = source.vx ?? 0;
+    SCRATCH_AGENT_POSE.vy = source.vy ?? 0;
+    SCRATCH_AGENT_POSE.desiredX = source.desiredX ?? 0;
+    SCRATCH_AGENT_POSE.desiredY = source.desiredY ?? 0;
+    SCRATCH_AGENT_POSE.radius = source.radius ?? 8;
+    return SCRATCH_AGENT_POSE;
+}
 function _removeEdgeByTargetId(edges, targetId) {
     for (let i = edges.length - 1; i >= 0; i--) if (edges[i].targetId === targetId) edges.splice(i, 1);
 }
@@ -272,7 +282,7 @@ export function isNavWalkableCell(grid, navTopology, idx) {
     if (idx < 0 || idx >= cols * rows) return false;
     if (grid.isBlockedIdx(idx)) return false;
     let walkable = false;
-    forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+    forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
         if (walkable) return;
         if (canStepEitherDirection(grid, navTopology, idx, nIdx)) walkable = true;
     });
@@ -289,7 +299,7 @@ export function floodConnectedNavWalkableCells(grid, navTopology, candidates, ca
     }
     while (queue.length) {
         const idx = queue.pop();
-        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+        forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
             if (candidateMask[nIdx] && !reachedMask[nIdx])
                 if (canStepEitherDirection(grid, navTopology, idx, nIdx)) {
                     reachedMask[nIdx] = 1;
@@ -440,20 +450,14 @@ export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = sta
 }
 let railMazePathScratch = new Int32Array(512);
 export function createRailMazeNavCorridorPathfinder(grid, navTopology, railConfig, navWalkableIndex) {
-    const { originIdx, cols, rows } = getMapGenBoundsStampExtent(grid, railConfig);
-    const bounds = cellBoundsFromStampExtent(originIdx, cols, rows, grid.cols, grid.rows);
+    const layout = stampLayoutFromConfig(grid, railConfig);
     const gridCols = grid.cols;
     const cellCount = gridCols * grid.rows;
     const globalLayout = gridCellLayout(grid);
     const walkable = new Uint8Array(cellCount);
-    for (let r = bounds.startRow; r <= bounds.endRow; r++) {
-        const rowOffset = r * navWalkableIndex.cols;
-        const globalRowOffset = r * gridCols;
-        for (let c = bounds.startCol; c <= bounds.endCol; c++) {
-            if (navWalkableIndex.flags[rowOffset + c] === 0) continue;
-            walkable[globalRowOffset + c] = 1;
-        }
-    }
+    forEachStampGlobalIdx(layout, grid, railConfig, (idx) => {
+        if (navWalkableIndex.flags[idx] !== 0) walkable[idx] = 1;
+    });
     const searchState = new SearchState(cellCount);
     let reservedGlobalIndices = new Set();
     const gridView = new FlatGridView(gridCols, grid.rows, {
@@ -588,7 +592,7 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
     cellCount++;
     bfsIndices([startIdx], (currIdx, enqueue) => {
         if (cellCount >= maxCellsPerChunk) return;
-        forEachCardinalNeighborIdx(currIdx, cols, rows, (nIdx) => {
+        forEachCardinalNeighborIdx(currIdx, frame, (nIdx) => {
             if (navGraph && (!navGraph.canStepIdx(currIdx, nIdx) || !navGraph.canStepIdx(nIdx, currIdx))) return;
             if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
                 if (unassigned) unassigned.delete(nIdx);
@@ -636,7 +640,7 @@ export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk,
             let neighborNode = null;
             for (let i = 0; i < nodeCells.length; i++) {
                 const cellIdx = nodeCells[i];
-                forEachCardinalNeighborIdx(cellIdx, cols, rows, (nIdx) => {
+                forEachCardinalNeighborIdx(cellIdx, frame, (nIdx) => {
                     if (neighborNode) return;
                     const nNodeIdx = cellToNode[nIdx];
                     if (nNodeIdx !== -1 && nNodeIdx !== node.idx) {
@@ -1143,7 +1147,7 @@ function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     for (let i = 0; i < nodeA.cells.length; i++) {
         const idx = nodeA.cells[i];
         let linked = false;
-        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+        forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
             if (linked || !targetCells.has(nIdx)) return;
             if (navGraph.canStepIdx(idx, nIdx)) linked = true;
         });
@@ -1167,7 +1171,7 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
     const nodeCells = node.cells;
     for (let i = 0; i < nodeCells.length; i++) {
         const idx = nodeCells[i];
-        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+        forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
             if (blocked[nIdx]) return;
             if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) return;
             const other = graph.nodeForCell(nIdx);
@@ -1270,7 +1274,7 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;
     bfsIndices([startIdx], (idx, enqueue) => {
-        forEachCardinalNeighborIdx(idx, cols, rows, (nIdx) => {
+        forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
             if (blocked[nIdx] || reachable[nIdx]) return;
             if (!navGraph.canStepIdx(idx, nIdx)) return;
             reachable[nIdx] = 1;
@@ -1848,7 +1852,7 @@ export function bindNavSimGridFrame(simView, frame) {
 export function beltEntryNeighborAtIdx(grid, idx) {
     const sides = FloorBelt.getEntryExitAtIdx(grid, idx);
     if (!sides) return -1;
-    return edgeNeighborIdx(idx, sides.entrySide, grid.cols, grid.rows);
+    return edgeNeighborIdx(idx, sides.entrySide, grid);
 }
 export function createNavGraphView(grid, baked = null, navTopology = null) {
     const topologyRef = navTopology ?? grid._navTopologyRef;

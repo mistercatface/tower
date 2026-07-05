@@ -1,7 +1,7 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { FLOOR_CELL_KIND, FloorBelt, planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, createCellIndexLayout, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
+import { FLOOR_CELL_KIND, FloorBelt, planRailMazeCorridorBelts, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableAt, getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 
 function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
@@ -112,10 +112,9 @@ async function setupTestGridAndNav(seed) {
     };
 
     const rails = bakeRailMazeDfs(
-        { originIdx: 0, cols, rows },
+        { originIdx: 0, gridCols: cols, gridRows: rows, strideCols: cols, cellCount: cols * rows },
         { railWallHeightLevel: 1, railWallThicknessLevel: 2, corridorWidthMin: 1, corridorWidthMax: 2, extraLinkRatio: 0.25 },
         seed,
-        cols,
     );
 
     const state = {
@@ -142,11 +141,11 @@ async function setupTestGridAndNav(seed) {
 describe("rail maze corridor belts", () => {
     it("collects corridor polylines on a T-junction fixture", () => {
         const memberIndices = [1, 4, 5, 6];
-        const layout = createCellIndexLayout(0, 4, 3, 4, 3);
+        const layout = { originIdx: 0, gridCols: 4, gridRows: 3, strideCols: 4, cellCount: 12 };
         const memberSet = new Set(memberIndices);
         const neighborAtIdx = (idx) => {
             const out = [];
-            forEachCardinalNeighborIdx(idx, layout.strideCols, layout.gridRows, (nIdx) => {
+            forEachCardinalNeighborIdx(idx, layout, (nIdx) => {
                 if (memberSet.has(nIdx)) out.push(nIdx);
             });
             return out;
