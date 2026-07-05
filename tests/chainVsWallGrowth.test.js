@@ -14,6 +14,7 @@ const CHAIN_OPTIONS = {
     ballType: "ball",
     growDirX: 1,
     growDirY: 0,
+    faction: "alpha",
 };
 
 function stampBlockedCell(grid, col, row) {

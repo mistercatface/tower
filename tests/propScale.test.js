@@ -24,14 +24,14 @@ function createPropScaleTestState() {
 describe("propScale", () => {
     it("setPropRadius updates shape, radius, and mass", () => {
         const state = createPropScaleTestState();
-        const prop = spawnPlacedSandboxProp(state, 80, 80, "ball");
+        const prop = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
         assert.equal(getCirclePropRadius(prop), 4);
         setCirclePropRadius(prop, 2);
         assert.equal(getCirclePropRadius(prop), 2);
         assert.ok(prop.shape instanceof CircleShape);
         assert.equal(prop.shape.radius, 2);
         assert.ok(prop.mass > 0);
-        assert.ok(prop.mass < spawnPlacedSandboxProp(state, 96, 96, "ball").mass);
+        assert.ok(prop.mass < spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha").mass);
     });
 
     it("setPropRadius rescales polygon props", () => {
@@ -45,8 +45,8 @@ describe("propScale", () => {
 
     it("uses distinct sprite cache keys for quarter-step circle radii", () => {
         const state = createPropScaleTestState();
-        const a = spawnPlacedSandboxProp(state, 80, 80, "ball");
-        const b = spawnPlacedSandboxProp(state, 96, 96, "ball");
+        const a = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
+        const b = spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha");
         setCirclePropRadius(a, 2);
         setCirclePropRadius(b, 2.25);
         assert.notEqual(getBaseSpriteCacheKey(a, noopDeps), getBaseSpriteCacheKey(b, noopDeps));

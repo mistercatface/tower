@@ -1,4 +1,4 @@
-import { HpaPathSession, NavRuntime, resolveNavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";
+import { HpaPathSession, NavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
 import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
 
@@ -37,4 +37,4 @@ export async function terminateAllWorkerNavigations() {
     testNavigations.clear();
     await Promise.allSettled(pending);
 }
-export { NavRuntime, resolveNavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";
+export { NavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";

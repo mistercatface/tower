@@ -2475,7 +2475,7 @@ export class HpaNavSession {
         this.committedPathSlot = -1;
         this.committedPathLen = 0;
         this.routeCommitFrames = 0;
-        const nav = resolveNavRuntime(state);
+        const nav = state.nav;
         nav.worker.releaseOwnedPathSlot(this.navState);
         Object.assign(this.navState, createNavState());
         this.replanClockMs = 0;
@@ -2487,7 +2487,7 @@ export class HpaNavSession {
         return this.pendingTargetReplan || this.navState.hpaReplanRequestId !== 0;
     }
     replan(prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) {
-        const nav = resolveNavRuntime(state);
+        const nav = state.nav;
         return nav.session.requestReplan(this.navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, prop.navStepPenalty, state), priority);
     }
     requestReplan(prop, targetX, targetY, state, priority, reason) {
@@ -2520,7 +2520,7 @@ export class HpaNavSession {
     }
     update(prop, targetX, targetY, state, dtMs, pathSettings, sandboxReplan) {
         this.replanClockMs += dtMs;
-        const nav = resolveNavRuntime(state);
+        const nav = state.nav;
         const settings = nav.settings;
         const inFlight = nav.session.isReplanInFlight(this.navState);
         const routePending = this.pendingTargetReplan || this.navState.hpaReplanRequestId !== 0;
@@ -2721,11 +2721,6 @@ export class NavRuntime {
         await this._workerNavGraphSyncChain.catch(() => {});
         await this.worker.host.worker.terminate();
     }
-}
-/** @param {object} state */
-export function resolveNavRuntime(state) {
-    if (!state?.nav) throw new Error("resolveNavRuntime: state.nav is required");
-    return state.nav;
 }
 const MAX_CACHE = 512;
 const FLOW_DONE = "flowDone";

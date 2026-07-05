@@ -48,6 +48,7 @@ describe("sandboxSceneSnapshot physics", () => {
             headBallType: "boid_triangle",
             growDirX: 1,
             growDirY: 0,
+            faction: "alpha",
         });
         const snapshot = collectSandboxSceneSnapshot(state);
         assert.equal(snapshot.schemaVersion, SANDBOX_SCENE_SCHEMA_VERSION);
@@ -59,7 +60,7 @@ describe("sandboxSceneSnapshot physics", () => {
 
     it("round-trips physics fields through collect and apply helpers", () => {
         const state = createSnapshotTestState();
-        const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball");
+        const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball", "alpha");
         const tintHex = hueToPickerHex(135);
         setPropVisualTint(tinted, tintHex);
         spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
@@ -68,6 +69,7 @@ describe("sandboxSceneSnapshot physics", () => {
             ballType: "ball",
             growDirX: 1,
             growDirY: 0,
+            faction: "alpha",
         });
         const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
         const meta = state.sandbox.entityMeta;

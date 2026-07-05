@@ -50,7 +50,7 @@ describe("boid double tap hpa pathing", () => {
     it("starts HPA ground nav on double-tap when selected, reverts to dragLaunch on drag", () => {
         const state = createEditorTestState();
         // Spawn the boid triangle prop
-        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "neutral");
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "alpha");
         // Write a floor cell at col: 22, row: 22 to ensure Click 1 changes selection to floor
         const cellIdx = worldIdxAtCell(state.obstacleGrid, 22, 22);
         state.obstacleGrid.writeFloorCell(cellIdx, BeltPacked.defaultForSpawn("floor_belt"));

@@ -49,7 +49,6 @@ import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
-import { resolveNavRuntime } from "../Navigation/navigation.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = [0, 1, 0, -1];
 const BELT_DIR_Y = [-1, 0, 1, 0];
@@ -3217,7 +3216,7 @@ export function commitGridNavEdit(state, idx, { invalidateSurfaces = true, fullN
         if (fullNavSync || idx === null) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, grid);
         else state.worldSurfaces.invalidateGridBounds(idx, grid);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
-    const nav = resolveNavRuntime(state);
+    const nav = state.nav;
     return nav.commitEdit(idx, { fullNavSync });
 }
 export function commitGridNavEditUnion(state, ...indices) {

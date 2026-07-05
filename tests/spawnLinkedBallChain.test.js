@@ -7,7 +7,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
+const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1, faction: "alpha" };
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
@@ -36,7 +36,7 @@ describe("spawnLinkedBallChain", () => {
         const state = createChainSpawnTestState();
         const meta = state.sandbox.entityMeta;
         const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid,8, 8), CHAIN_OPTIONS);
-        const exported = tryExportLinkedBallChainSpawnGroup(chain.members, meta);
+        const exported = tryExportLinkedBallChainSpawnGroup(chain.members);
         assert.ok(exported);
         assert.equal(exported.type, CHAIN_OPTIONS.exportType);
         assert.equal(exported.segmentCount, 3);

@@ -23,7 +23,7 @@ function createEditorTestState() {
 }
 
 function spawnBall(state, x = 64, y = 64) {
-    const prop = spawnPlacedSandboxProp(state, x, y, "ball", "neutral");
+    const prop = spawnPlacedSandboxProp(state, x, y, "ball", "alpha");
     setCirclePropRadius(prop, 5);
     return prop;
 }
@@ -43,7 +43,7 @@ describe("sandbox editor inspector wiring", () => {
 
     it("appendShapeFamilySelectedFields builds crate fields without throwing", () => {
         const state = createEditorTestState();
-        const prop = spawnPlacedSandboxProp(state, 80, 80, "crate", "neutral");
+        const prop = spawnPlacedSandboxProp(state, 80, 80, "crate", "alpha");
         const body = mockPanelBody();
         assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, prop));
         assert.ok(body.children.length > 0);
@@ -51,7 +51,7 @@ describe("sandbox editor inspector wiring", () => {
 
     it("appendShapeFamilySelectedFields builds custom_box resizable fields", () => {
         const state = createEditorTestState();
-        const prop = spawnPlacedSandboxProp(state, 96, 96, "custom_box", "neutral", 0, { x: 12, y: 16 });
+        const prop = spawnPlacedSandboxProp(state, 96, 96, "custom_box", "alpha", 0, { x: 12, y: 16 });
         const body = mockPanelBody();
         assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, prop));
         assert.ok(body.children.length > 0);

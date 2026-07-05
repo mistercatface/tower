@@ -39,10 +39,6 @@ import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOver
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
-const SANDBOX_DEFAULT_FACTION = "alpha";
-function resolveSandboxFaction(actor) {
-    return actor?.faction ?? SANDBOX_DEFAULT_FACTION;
-}
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -1233,10 +1229,11 @@ export function evalFractureRules(prop, other, force) {
     const minForce = config.minForce ?? (config.mode === "glass" ? GLASS_FRACTURE_IMPACT_THRESHOLD : FRACTURE_IMPACT_THRESHOLD);
     if (force < minForce) return false;
     if (config.threatType && other.type !== config.threatType) return false;
-    const selfFaction = resolveSandboxFaction(prop);
-    if (config.excludeFactions && config.excludeFactions.includes(selfFaction)) return false;
+    const selfFaction = prop.faction;
+    if (config.excludeFactions && selfFaction != null && config.excludeFactions.includes(selfFaction)) return false;
     if (config.opponentOnly) {
-        const otherFaction = resolveSandboxFaction(other);
+        const otherFaction = other.faction;
+        if (selfFaction == null || otherFaction == null) return false;
         if (selfFaction === otherFaction) return false;
     }
     return true;
@@ -1456,6 +1453,9 @@ function resetWorldPropInstance(prop, x, y, type, facing = null) {
     prop.snakeFoodValue = undefined;
     prop._fractureCooldown = 0;
     prop.faction = undefined;
+    prop.spawnGroupId = undefined;
+    prop.spawnGroupExportType = undefined;
+    prop.spawnGroupAnchor = undefined;
     prop.shape = undefined;
     prop.footprintVertices = undefined;
     prop.footprintArea = undefined;

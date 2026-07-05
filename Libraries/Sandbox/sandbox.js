@@ -94,8 +94,6 @@ import {
     formatSandboxSpawnLabel,
 } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
-import { applyCueStrikeCollision } from "../CueStick/cueStrikeCollision.js";
-import { buildCueStrikeAimLineContext, getCueStrikeAimLine, resolveCueStrikeMaxRayDist } from "../CueStick/cueStrikeAimPreview.js";
 import {
     sampleFlowDirectionInto,
     buildSabPathOverlayFromProgress,
@@ -191,24 +189,6 @@ export class SandboxEntityMetaStore {
     getPathVisual(entityId) {
         return this.get(entityId)?.pathVisual;
     }
-    getSpawnGroupId(entityId) {
-        return this.get(entityId)?.spawnGroupId;
-    }
-    setSpawnGroupId(entityId, spawnGroupId) {
-        this.ensure(entityId).spawnGroupId = spawnGroupId;
-    }
-    getSpawnGroupExportType(entityId) {
-        return this.get(entityId)?.spawnGroupExportType;
-    }
-    setSpawnGroupExportType(entityId, exportType) {
-        this.ensure(entityId).spawnGroupExportType = exportType;
-    }
-    isSpawnGroupAnchor(entityId) {
-        return this.get(entityId)?.spawnGroupAnchor === true;
-    }
-    setSpawnGroupAnchor(entityId, anchor = true) {
-        this.ensure(entityId).spawnGroupAnchor = anchor;
-    }
     isChainHead(entityId) {
         return this.get(entityId)?.chainHead === true;
     }
@@ -217,26 +197,15 @@ export class SandboxEntityMetaStore {
         else if (this.get(entityId)) this.get(entityId).chainHead = false;
     }
 }
-export const sandboxFactions = { alpha: "alpha", bravo: "bravo", charlie: "charlie", delta: "delta", echo: "echo" };
-export const SANDBOX_DEFAULT_FACTION = sandboxFactions.alpha;
 export const SANDBOX_FACTION_OPTIONS = [
-    { id: sandboxFactions.alpha, label: "Alpha" },
-    { id: sandboxFactions.bravo, label: "Bravo" },
-    { id: sandboxFactions.charlie, label: "Charlie" },
-    { id: sandboxFactions.delta, label: "Delta" },
-    { id: sandboxFactions.echo, label: "Echo" },
+    { id: "alpha", label: "Alpha" },
+    { id: "bravo", label: "Bravo" },
+    { id: "charlie", label: "Charlie" },
+    { id: "delta", label: "Delta" },
+    { id: "echo", label: "Echo" },
 ];
-export function resolveSandboxFaction(actor) {
-    return actor?.faction ?? SANDBOX_DEFAULT_FACTION;
-}
 export function formatSandboxFactionLabel(factionId) {
     return SANDBOX_FACTION_OPTIONS.find((opt) => opt.id === factionId)?.label ?? factionId;
-}
-export function resolveSandboxEntityLinkValue(state, entity, linkField) {
-    const meta = state.sandbox.entityMeta;
-    if (entity?.id == null) return entity?.[linkField];
-    if (linkField === "spawnGroupId") return meta.getSpawnGroupId(entity.id);
-    return entity[linkField];
 }
 export class SandboxWorldState {
     constructor() {
@@ -245,16 +214,6 @@ export class SandboxWorldState {
         this.behaviorById = null;
         this.floorBeltDrawCache = null;
     }
-}
-/** @param {object} state @param {object | null | undefined} prop @param {object | null | undefined} asset @param {"cueStrike"} behaviorKey */
-export function resolveWorldPropSandboxBehavior(state, prop, asset, behaviorKey) {
-    const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop?.id)?.[behaviorKey];
-    return stamped && typeof stamped === "object" ? stamped : {};
-}
-/** @param {object} state @param {object | null | undefined} prop @param {object | null | undefined} asset @param {string} behaviorId */
-export function resolveWorldPropInputGateRules(state, prop, asset, behaviorId) {
-    const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop?.id)?.inputGates?.[behaviorId];
-    return Array.isArray(stamped) ? stamped : [];
 }
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
@@ -265,7 +224,6 @@ export const SANDBOX_BEHAVIOR_LABELS = {
     dragLaunchWait: "Drag launch (wait for rest)",
     dragLaunchFacing: "Drag launch (yaw to shot)",
     spawner: "Spawner",
-    cueStrike: "Cue strike",
     [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)",
     [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)",
     [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)",
@@ -293,16 +251,13 @@ export function sandboxAssetMatchesTagFilter(asset, filter) {
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }
-export function isPoolRackSpawnAsset(asset) {
-    return asset?.sandbox?.spawnRack === "8ball" || asset?.sandbox?.spawnRack === "9ball";
-}
 export const DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH = 16;
 export const DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT = 16;
 export function isResizableBoxSpawnAsset(asset) {
     return Boolean(asset?.sandbox?.resizableBox);
 }
 export function isSingleWorldPropSpawnAsset(asset) {
-    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset) && !isPoolRackSpawnAsset(asset);
+    return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset);
 }
 function syncSandboxBehaviorById(state, behaviors) {
     state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
@@ -320,14 +275,7 @@ export function resolveSandboxBehaviors(asset, state, prop = null) {
         if (stamped.length) return stamped;
     }
     if (Array.isArray(asset?.sandbox?.behaviors)) return asset.sandbox.behaviors.filter((id) => byId.has(id));
-    const sandbox = asset?.sandbox;
-    return [...byId.values()]
-        .filter((behavior) => {
-            if (behavior.supports && asset && !behavior.supports(prop, asset)) return false;
-            if (GROUND_NAV_BEHAVIOR_IDS.has(behavior.id) && sandbox?.groundNav === false) return false;
-            return true;
-        })
-        .map((behavior) => behavior.id);
+    throw new Error(`resolveSandboxBehaviors: asset ${asset?.id ?? "unknown"} missing sandbox.behaviors`);
 }
 /**
  * @typedef {"self" | "groupWorldProps" | "groupKinetic"} InputGateScope
@@ -353,11 +301,11 @@ function isExcludedFromGate(entity, excludeStates) {
 }
 export function resolveInputGateScope(scope, prop, state, linkField) {
     if (scope === "self") return [prop];
-    const linkValue = linkField ? resolveSandboxEntityLinkValue(state, prop, linkField) : undefined;
+    const linkValue = linkField ? prop[linkField] : undefined;
     if (linkValue == null) return [];
     const members = [];
     visitLiveWorldProps(state.worldProps, (entity) => {
-        if (resolveSandboxEntityLinkValue(state, entity, linkField) !== linkValue) return;
+        if (entity[linkField] !== linkValue) return;
         if (scope === "groupKinetic" && !entity.strategy?.isKinetic) return;
         members.push(entity);
     });
@@ -386,7 +334,8 @@ export function evaluateInputGateRule(rule, prop, state) {
  * @param {object} state
  */
 export function evaluateInputGates(behaviorId, prop, asset, state) {
-    const rules = resolveWorldPropInputGateRules(state, prop, asset, behaviorId);
+    const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop.id)?.inputGates?.[behaviorId];
+    const rules = Array.isArray(stamped) ? stamped : [];
     if (rules.length === 0) return { allowed: true };
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
@@ -744,7 +693,7 @@ function footprintDiffersFromAsset(prop) {
     return span.x !== defaultSpan.x || span.y !== defaultSpan.y;
 }
 function serializePlacedProp(prop) {
-    const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: resolveSandboxFaction(prop) };
+    const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: prop.faction };
     const assetRadius = propCatalog[prop.type]?.physics?.radius;
     if (prop.radius != null && assetRadius != null && prop.radius !== assetRadius) entry.radius = prop.radius;
     if (prop.type === "cross_pinwheel") {
@@ -768,14 +717,10 @@ export function collectFlatPlacedSandboxPropEntries(state) {
     });
     return { props, propIdToIndex };
 }
-function tryExportSpawnGroup(members, meta) {
-    return tryExportPoolRackSpawnGroup(members, meta) ?? tryExportLinkedBallChainSpawnGroup(members, meta);
-}
-export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction = SANDBOX_DEFAULT_FACTION, facing = 0, boxHalfExtents = undefined, visualOverride = undefined) {
+export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction, facing = 0, boxHalfExtents = undefined, visualOverride = undefined) {
     const asset = propCatalog[propTypeId];
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
-    if (isPoolRackSpawnAsset(asset)) return spawnPoolRack(state, worldX, worldY, asset.sandbox.spawnRack, faction);
     const prop = acquireWorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
@@ -868,7 +813,10 @@ export const SANDBOX_PATH_VISUAL_DEBUG = "debug";
 export const SANDBOX_PATH_VISUAL_OPTIONS = [SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG];
 export const SANDBOX_PATH_VISUAL_LABELS = { off: "Off", normal: "Normal", debug: "Debug" };
 export const SANDBOX_PRIMARY_PROP_IDS = ["ball"];
-export const DEFAULT_BALL_SPAWN_RADIUS = 4;
+function ballRadiusFromAsset(asset) {
+    if (asset.physics?.radius == null) throw new Error(`asset ${asset.id} missing physics.radius`);
+    return asset.physics.radius;
+}
 export function orderSandboxPalettePropIds(propIds) {
     const available = new Set(propIds);
     const ordered = [];
@@ -884,9 +832,6 @@ export function isBallFamilyAsset(asset) {
 }
 export function isBlockFamilyAsset(asset) {
     return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset) && asset.physics?.isKinetic !== false;
-}
-export function assetDefaultBallRadius(asset) {
-    return asset?.physics?.radius ?? DEFAULT_BALL_SPAWN_RADIUS;
 }
 export function blockPresetUsesResizableFootprint(propId) {
     return isResizableBoxSpawnAsset(propCatalog[propId]);
@@ -1255,11 +1200,14 @@ function spawnSnapshotProp(state, entry) {
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction ?? SANDBOX_DEFAULT_FACTION, entry.facing ?? 0, halfExtents, entry.visualOverride);
+    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, halfExtents, entry.visualOverride);
     if (entry.radius != null)
         if (prop.shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
-    if (prop && entry.type === "cross_pinwheel" && (entry.crossLength != null || entry.crossThickness != null)) applyCrossPinwheelFootprint(prop, entry.crossLength ?? 32, entry.crossThickness ?? 8);
+    if (prop && entry.type === "cross_pinwheel") {
+        if (entry.crossLength == null || entry.crossThickness == null) throw new Error("cross_pinwheel snapshot entry requires crossLength and crossThickness");
+        applyCrossPinwheelFootprint(prop, entry.crossLength, entry.crossThickness);
+    }
     return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
@@ -1342,7 +1290,7 @@ export function createSandboxSession(state) {
             const typeLabel = formatPropTypeLabel(prop.type);
             const index = (counts.get(prop.type) ?? 0) + 1;
             counts.set(prop.type, index);
-            placed.push({ id: prop.id, type: prop.type, faction: resolveSandboxFaction(prop), label: `${typeLabel} #${index}` });
+            placed.push({ id: prop.id, type: prop.type, faction: prop.faction, label: `${typeLabel} #${index}` });
         });
         return placed;
     };
@@ -1360,7 +1308,7 @@ export function createSandboxSession(state) {
         }
         return placed;
     };
-    let spawnFaction = SANDBOX_DEFAULT_FACTION;
+    let spawnFaction = "alpha";
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
     let spawnCrossLength = 32;
@@ -1381,7 +1329,7 @@ export function createSandboxSession(state) {
         spawnFaction,
         resolveSpawnPropTypeId: spawnPropIdFromPalette,
         resolveSpawnVisualOverride,
-        spawnBallRadius: spawnBallRadius ?? assetDefaultBallRadius(propCatalog[spawnPropIdFromPalette()]),
+        spawnBallRadius: spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]),
         spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
         spawnCrossLength,
         spawnCrossThickness,
@@ -1730,7 +1678,7 @@ export function createSandboxSession(state) {
             spawnBoxHeight = Math.max(6, Math.min(128, Math.round(height)));
             notifyUi();
         },
-        getSpawnBallRadius: (asset) => spawnBallRadius ?? assetDefaultBallRadius(asset),
+        getSpawnBallRadius: (asset) => spawnBallRadius ?? ballRadiusFromAsset(asset),
         setSpawnBallRadius: (radius) => {
             spawnBallRadius = Math.max(1, Math.min(32, Math.round(radius)));
             notifyUi();
@@ -1805,11 +1753,6 @@ export function createSandboxSession(state) {
         sync: notifyUi,
     };
 }
-export const CUE_STRIKE_BEHAVIOR_ID = "cueStrike";
-/** @param {object} state @param {object} prop @param {object} asset */
-function getCueStrikeConfig(state, prop, asset) {
-    return { ...DRAG_LAUNCH_DEFAULTS, ...resolveWorldPropSandboxBehavior(state, prop, asset, "cueStrike") };
-}
 export const DRAG_LAUNCH_FACING_BEHAVIOR_ID = "dragLaunchFacing";
 export const SPAWNER_BEHAVIOR_ID = "spawner";
 /** @param {object} prop @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
@@ -1828,13 +1771,12 @@ export function resolveSpawnerPropId(prop, asset) {
 }
 /** @param {object | null | undefined} prop @param {object | null | undefined} asset */
 export function getSpawnerDragConfig(_prop, asset) {
-    const overrides = asset?.sandbox?.spawner?.dragLaunch;
-    return { ...DRAG_LAUNCH_DEFAULTS, ...(overrides && typeof overrides === "object" ? overrides : {}) };
+    return asset.sandbox.spawner.dragLaunch;
 }
 /** @param {object} prop @param {object | null | undefined} asset */
 export function getSpawnerOutletWorld(prop, asset) {
     const facing = prop.facing ?? 0;
-    const reach = prop.radius ?? 8;
+    const reach = resolveBodyRadius(prop);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     return { x: prop.x + cos * reach, y: prop.y + sin * reach, nx: cos, ny: sin };
@@ -1854,7 +1796,7 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const launchPower = power ?? config.maxPower;
     const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
     const spawned = acquireWorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
-    spawned.faction = resolveSandboxFaction(spawnerWorldProp);
+    spawned.faction = spawnerWorldProp.faction;
     const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
     if (spawnVisualOverride) stampPropVisualOverride(spawned, spawnVisualOverride);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
@@ -1923,10 +1865,10 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     const leader = props[leaderIndex];
     const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
     for (let i = 0; i < props.length; i++) {
-        meta.setSpawnGroupId(props[i].id, resolvedGroupId);
-        if (exportType) meta.setSpawnGroupExportType(props[i].id, exportType);
+        props[i].spawnGroupId = resolvedGroupId;
+        if (exportType) props[i].spawnGroupExportType = exportType;
     }
-    meta.setSpawnGroupAnchor(leader.id);
+    props[leaderIndex].spawnGroupAnchor = true;
     for (let i = 0; i < props.length - 1; i++) {
         const a = props[i];
         const b = props[i + 1];
@@ -1946,7 +1888,7 @@ export function spawnLinkedBallChain(state, anchorIdx, options) {
         headPropId: options.headBallType ?? options.ballType,
         bodyPropId: options.ballType,
         segmentCount: options.segmentCount,
-        faction: options.faction ?? sandboxFactions.alpha,
+        faction: options.faction,
         exportType: options.exportType,
         linkSlack: options.linkSlack,
         segmentRadius: options.segmentRadius,
@@ -1961,18 +1903,17 @@ export function growChainSegment(state, tailProp, options) {
     const ballType = options.ballType;
     const growDirX = options.growDirX ?? -1;
     const growDirY = options.growDirY ?? 0;
-    const faction = options.faction ?? resolveSandboxFaction(tailProp);
+    const faction = options.faction ?? tailProp.faction;
     const exportType = options.exportType ?? null;
-    const meta = state.sandbox.entityMeta;
-    const spawnGroupId = options.spawnGroupId ?? meta.getSpawnGroupId(tailProp.id);
+    const spawnGroupId = options.spawnGroupId ?? tailProp.spawnGroupId;
     const linkSlack = options.linkSlack ?? 1;
     const segmentRadius = options.segmentRadius ?? null;
     const offset = segmentOffset(1, spacing, growDirX, growDirY);
     const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
     if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
     if (spawnGroupId) {
-        meta.setSpawnGroupId(segment.id, spawnGroupId);
-        if (exportType) meta.setSpawnGroupExportType(segment.id, exportType);
+        segment.spawnGroupId = spawnGroupId;
+        if (exportType) segment.spawnGroupExportType = exportType;
     }
     addChainLink(state, tailProp.id, segment.id, linkSlack);
     return segment;
@@ -1985,116 +1926,17 @@ export function linkedChainOccupiedCellIndices(members, grid) {
     }
     return indices;
 }
-export function tryExportLinkedBallChainSpawnGroup(members, meta) {
-    const exportType = meta.getSpawnGroupExportType(members[0].id);
+export function tryExportLinkedBallChainSpawnGroup(members) {
+    const exportType = members[0].spawnGroupExportType;
     if (!exportType) return null;
-    const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
-    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor), segmentCount: members.length };
-}
-const PLAYFIELD_W = 80;
-const PLAYFIELD_H = 160;
-const APEX_U = 0.5;
-const APEX_V = 0.2933012701892219;
-const CUE_BEHAVIOR_OVERRIDES = {
-    cueStrike: { minDrag: 0.75, maxPull: 18.75, pullScale: 0.5, minPower: 4, maxPower: 800, powerCurve: 2.5 },
-    inputGates: {
-        cueStrike: [
-            { scope: "self", until: "atRest" },
-            { scope: "groupWorldProps", link: "spawnGroupId", until: "allAtRest" },
-        ],
-    },
-};
-/** @typedef {{ prop: string, u: number, v: number }} RackBallPlacement */
-/** @type {RackBallPlacement[]} */
-const RACK_9BALL = [
-    { prop: "pool_cue_ball", u: 0.5, v: 0.75 },
-    { prop: "pool_ball_1", u: 0.5, v: 0.2933012701892219 },
-    { prop: "pool_ball_2", u: 0.45, v: 0.25 },
-    { prop: "pool_ball_3", u: 0.55, v: 0.25 },
-    { prop: "pool_ball_4", u: 0.4, v: 0.20669872981077808 },
-    { prop: "pool_ball_9", u: 0.5, v: 0.20669872981077808 },
-    { prop: "pool_ball_5", u: 0.6, v: 0.20669872981077808 },
-    { prop: "pool_ball_7", u: 0.45, v: 0.16339745962155616 },
-    { prop: "pool_ball_8", u: 0.55, v: 0.16339745962155616 },
-    { prop: "pool_ball_6", u: 0.5, v: 0.12009618943233424 },
-];
-/** @type {RackBallPlacement[]} */
-const RACK_8BALL = [
-    { prop: "pool_cue_ball", u: 0.5, v: 0.75 },
-    { prop: "pool_ball_1", u: 0.5, v: 0.2933012701892219 },
-    { prop: "pool_ball_10", u: 0.45, v: 0.25 },
-    { prop: "pool_ball_2", u: 0.55, v: 0.25 },
-    { prop: "pool_ball_11", u: 0.4, v: 0.20669872981077808 },
-    { prop: "pool_ball_8", u: 0.5, v: 0.20669872981077808 },
-    { prop: "pool_ball_3", u: 0.6, v: 0.20669872981077808 },
-    { prop: "pool_ball_12", u: 0.35, v: 0.16339745962155616 },
-    { prop: "pool_ball_4", u: 0.45, v: 0.16339745962155616 },
-    { prop: "pool_ball_13", u: 0.55, v: 0.16339745962155616 },
-    { prop: "pool_ball_5", u: 0.65, v: 0.16339745962155616 },
-    { prop: "pool_ball_6", u: 0.3, v: 0.12009618943233424 },
-    { prop: "pool_ball_14", u: 0.4, v: 0.12009618943233424 },
-    { prop: "pool_ball_7", u: 0.5, v: 0.12009618943233424 },
-    { prop: "pool_ball_15", u: 0.6, v: 0.12009618943233424 },
-    { prop: "pool_ball_9", u: 0.7, v: 0.12009618943233424 },
-];
-/** @param {number} u @param {number} v */
-function rackOffset(u, v) {
-    return { dx: (u - APEX_U) * PLAYFIELD_W, dy: (v - APEX_V) * PLAYFIELD_H };
-}
-/**
- * @param {object} state
- * @param {number} anchorX — foot spot / apex ball (ball 1) world X
- * @param {number} anchorY
- * @param {"8ball" | "9ball"} variant
- * @param {string} faction
- */
-/** @param {"8ball" | "9ball"} variant */
-function poolRackExportType(variant) {
-    return variant === "9ball" ? "pool_rack_9ball" : "pool_rack_8ball";
-}
-/**
- * @param {object[]} members
- * @param {SandboxEntityMetaStore} meta
- * @returns {{ type: string, x: number, y: number, facing: number, faction: string } | null}
- */
-export function tryExportPoolRackSpawnGroup(members, meta) {
-    const exportType = meta.getSpawnGroupExportType(members[0].id);
-    if (!exportType) return null;
-    const anchor = members.find((prop) => meta.isSpawnGroupAnchor(prop.id)) ?? members[0];
-    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: resolveSandboxFaction(anchor) };
-}
-export function spawnPoolRack(state, anchorX, anchorY, variant, faction) {
-    const layout = variant === "9ball" ? RACK_9BALL : RACK_8BALL;
-    const spawnGroupId = `poolRack:${Date.now()}`;
-    const exportType = poolRackExportType(variant);
-    const meta = state.sandbox.entityMeta;
-    let cueProp = null;
-    for (let i = 0; i < layout.length; i++) {
-        const entry = layout[i];
-        const { dx, dy } = rackOffset(entry.u, entry.v);
-        const prop = acquireWorldProp(anchorX + dx, anchorY + dy, entry.prop, 0);
-        prop.faction = faction;
-        meta.setSpawnGroupId(prop.id, spawnGroupId);
-        meta.setSpawnGroupExportType(prop.id, exportType);
-        if (entry.prop === "pool_ball_1") meta.setSpawnGroupAnchor(prop.id);
-        if (entry.prop === "pool_cue_ball") {
-            meta.setBehaviorOverrides(prop.id, CUE_BEHAVIOR_OVERRIDES);
-            meta.setActiveBehaviorId(prop.id, CUE_STRIKE_BEHAVIOR_ID);
-            cueProp = prop;
-        }
-        wakeKineticBody(prop);
-        addWorldPropToState(state, prop);
-    }
-    return cueProp;
+    const anchor = members.find((prop) => prop.spawnGroupAnchor) ?? members[0];
+    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: anchor.faction, segmentCount: members.length };
 }
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
-export const DRAG_LAUNCH_DEFAULTS = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
 /** @param {object | null | undefined} asset */
 export function getDragLaunchConfig(asset) {
-    const entry = asset?.sandbox?.dragLaunch;
-    const overrides = entry === true ? {} : entry && typeof entry === "object" ? entry : {};
-    return { ...DRAG_LAUNCH_DEFAULTS, ...overrides };
+    return asset.sandbox.dragLaunch;
 }
 /** @param {number} anchorX @param {number} anchorY @param {number} [startX] @param {number} [startY] @returns {DragLaunchAim} */
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
@@ -2173,6 +2015,11 @@ export function releaseDragLaunch(aim, config) {
     if (power <= 0) return null;
     return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
 }
+function dragLaunchMaxRayDist(obstacleGrid) {
+    if (obstacleGrid?.minX != null) 
+        return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
+    return 2400;
+}
 /**
  * @param {object} prop
  * @param {object | null | undefined} state
@@ -2180,7 +2027,7 @@ export function releaseDragLaunch(aim, config) {
 export function buildDragLaunchAimLineContext(prop, state) {
     if (!state || !prop) return null;
     const grid = state.obstacleGrid;
-    const maxRayDist = resolveCueStrikeMaxRayDist({ obstacleGrid: grid });
+    const maxRayDist = dragLaunchMaxRayDist(grid);
     return { prop, radius: prop.radius, maxRayDist };
 }
 /**
@@ -2305,22 +2152,6 @@ const DRAG_LAUNCH_BEHAVIORS = [
                 applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
             };
         },
-    },
-    {
-        id: CUE_STRIKE_BEHAVIOR_ID,
-        getConfig(state) {
-            return (prop) => getCueStrikeConfig(state, prop, propCatalog[prop.type]);
-        },
-        canStart(state) {
-            return (prop) => evaluateInputGates(CUE_STRIKE_BEHAVIOR_ID, prop, propCatalog[prop.type], state).allowed;
-        },
-        onLaunch(_state) {
-            return (prop, shot) => applyCueStrikeCollision(prop, shot);
-        },
-        buildAimLineContext(state) {
-            return (prop) => buildCueStrikeAimLineContext(prop, state);
-        },
-        resolveAimLine: getCueStrikeAimLine,
     },
     {
         id: SPAWNER_BEHAVIOR_ID,
@@ -2511,7 +2342,7 @@ const HPA_PATH_SETTINGS_SCRATCH = {};
 export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
     const hpaNav = physicsSettings.groundNavHpa;
     const settings = Object.assign(HPA_PATH_SETTINGS_SCRATCH, state.nav.settings);
-    settings.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, (prop.radius ?? 6) * hpaNav.pathWaypointArrivalRadiusFactor);
+    settings.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, resolveBodyRadius(prop) * hpaNav.pathWaypointArrivalRadiusFactor);
     settings.arrivalDistance = stopRadius;
     return settings;
 }
@@ -2742,7 +2573,7 @@ const FLOW_GROUND_NAV_CONFIG = {
                 dirY = dir.y;
             }
         }
-        return { mode: "flow", propX: prop.x, propY: prop.y, propRadius: prop.radius ?? 8, dirX, dirY, targetX: steerTarget.x, targetY: steerTarget.y };
+        return { mode: "flow", propX: prop.x, propY: prop.y, propRadius: resolveBodyRadius(prop), dirX, dirY, targetX: steerTarget.x, targetY: steerTarget.y };
     },
     onReset(state, propRuns) {
         propRuns.clear();
@@ -3041,7 +2872,7 @@ const PROP_SELECTION_STROKE = "rgba(255, 252, 245, 0.32)";
 const PROP_SELECTION_DASH = [4, 4];
 const SELECTION_RING_PAD = 4;
 function selectionRingRadius(prop) {
-    const base = prop.radius ?? 8;
+    const base = resolveBodyRadius(prop);
     return base + SELECTION_RING_PAD;
 }
 export function appendSelectionOverlayCommands(out, { selectedProps, showRings, selectedFloorIdx = null, selectedVoxelIdx = null, selectedRailEdge = null, grid = null }) {
@@ -3465,7 +3296,7 @@ export function appendShapeFamilySpawnFields(body, controller, spawnId) {
     else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
 }
 export function appendBallSelectedFields(body, selectedProp, asset) {
-    appendShapeFamilyRadiusField(body, getCirclePropRadius(selectedProp) ?? assetDefaultBallRadius(asset), (radius) => {
+    appendShapeFamilyRadiusField(body, getCirclePropRadius(selectedProp) ?? ballRadiusFromAsset(asset), (radius) => {
         setCirclePropRadius(selectedProp, radius);
         markLabViewDirty();
     });
@@ -3755,7 +3586,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
     );
 }
 function appendFactionSelect(parent, { value, onChange }) {
-    appendSelectField(parent, "Team", { value: value ?? SANDBOX_DEFAULT_FACTION, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
+    appendSelectField(parent, "Team", { value, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
 function appendBehaviorModeField(parent, behaviorIds, value, onChange) {
     if (behaviorIds.length === 0) return;
@@ -3764,7 +3595,7 @@ function appendBehaviorModeField(parent, behaviorIds, value, onChange) {
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {
-        value: resolveSandboxFaction(selectedProp),
+        value: selectedProp.faction,
         onChange: (faction) => {
             selectedProp.faction = faction;
             refreshPanel();
@@ -3934,7 +3765,11 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (allowed.length === 0) return id;
         return allowed.includes(id) ? id : allowed[0];
     };
-    const listSpawnBehaviors = () => resolveSandboxBehaviors(spawnAsset(), state, null);
+    const listSpawnBehaviors = () => {
+        const asset = spawnAsset();
+        if (isGridFloorBeltSpawnAsset(asset)) return [];
+        return resolveSandboxBehaviors(asset, state, null);
+    };
     const clampSpawnBehavior = () => {
         spawnBehaviorId = clampBehaviorId(spawnBehaviorId, listSpawnBehaviors());
     };
@@ -4104,7 +3939,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             if (key.startsWith("prop:")) {
                 clampSpawnBehavior();
                 const asset = propCatalog[key.slice(5)];
-                if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(assetDefaultBallRadius(asset));
+                if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(ballRadiusFromAsset(asset));
             }
         },
         selectSceneItem: (item) => {
