@@ -1,4 +1,4 @@
-import { wakeKineticBody } from "../../Physics/kineticPhysicsPass.js";
+import { wakeKineticBody } from "../../Physics/physics.js";
 import { syncFloorPropCollisionShape, syncFloorTriggerAabb } from "../../Spatial/zones/floorShapes.js";
 import { isButtonEntity, isMassButtonInputMode } from "../../Sandbox/buttonInput.js";
 import { appendActionRow, appendCheckboxField, appendEditorHint, appendInstanceList, appendNumberField, appendSelectField, appendTranslateFields } from "../../UI/paramFields.js";

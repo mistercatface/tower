@@ -1,12 +1,12 @@
 import { getSandboxEntityMeta } from "./sandboxEntityMeta.js";
-import { pruneKineticConstraintsForBody } from "../Libraries/Physics/kineticConstraintSolver.js";
+import { pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { kineticSpatial } from "../Systems/World/KineticSpatialFrame.js";
 import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/Aabb2D.js";
 import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
 import { distanceSqToLineSegment } from "../Libraries/Math/Segment2D.js";
 import { hashString, mixHash4 } from "../Libraries/Math/hash.js";
-import { getEntityCollisionParts } from "../Libraries/Physics/collisionMath.js";
+import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import { releaseWorldProp } from "../Libraries/Props/worldPropPool.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */

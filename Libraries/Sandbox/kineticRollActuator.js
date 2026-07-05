@@ -1,6 +1,6 @@
-import { applyKineticAcceleration } from "../Physics/motionDynamics.js";
-import { wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
-import { physicsSettings } from "../Physics/physicsDefaults.js";
+import { applyKineticAcceleration } from "../Physics/physics.js";
+import { wakeKineticBody } from "../Physics/physics.js";
+import { physicsSettings } from "../Physics/physics.js";
 import { cellInRect } from "../Spatial/grid/GridUtils.js";
 export function snapMoveTargetToCellCenter(grid, world) {
     const idx = grid.worldToIdx(world.x, world.y);

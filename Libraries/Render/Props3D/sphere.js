@@ -1,4 +1,4 @@
-import { resolveBodyRadius } from "../../Physics/physicsDefaults.js";
+import { resolveBodyRadius } from "../../Physics/physics.js";
 import { IDENTITY_ROLL_QUAT } from "../../Props/rollingMotion.js";
 import { buildSphereMesh } from "./sphereMesh.js";
 import { drawPropMeshFace, isPropMeshFaceVisible } from "./propMesh.js";

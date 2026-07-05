@@ -1,4 +1,4 @@
-import { physicsSettings } from "../../Physics/physicsDefaults.js";
+import { physicsSettings } from "../../Physics/physics.js";
 import { navHasPath } from "../../Pathfinding/navSession.js";
 import { REPLAN_PRIORITY_TARGET } from "../../Pathfinding/hpaReplan.js";
 import { HpaNavSession } from "../../Pathfinding/navSession.js";

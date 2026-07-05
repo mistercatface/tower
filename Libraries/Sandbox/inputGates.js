@@ -1,7 +1,7 @@
 import { resolveWorldPropInputGateRules } from "./sandboxBehaviorConfig.js";
 import { resolveSandboxEntityLinkValue } from "../../GameState/sandboxEntityMeta.js";
 import { visitLiveWorldProps } from "../../GameState/EntityRegistry.js";
-import { isKinematicallyActive } from "../Physics/broadphase.js";
+import { isKinematicallyActive } from "../Physics/physics.js";
 /**
  * @typedef {"self" | "groupWorldProps" | "groupKinetic"} InputGateScope
  * @typedef {"atRest" | "asleep" | "allAtRest" | "allAsleep"} InputGateUntil

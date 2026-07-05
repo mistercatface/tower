@@ -1,4 +1,4 @@
-import { resolveBodyRadius } from "../Physics/physicsDefaults.js";
+import { resolveBodyRadius } from "../Physics/physics.js";
 import { quantizeAngle } from "../Math/Angle.js";
 import { clamp } from "../Math/Interpolate.js";
 import { lengthXY, normalizeXY } from "../Math/Vec2.js";

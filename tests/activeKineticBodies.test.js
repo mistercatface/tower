@@ -1,11 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Systems/World/KineticSpatialFrame.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physicsDefaults.js";
+import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
-import { advanceKineticSleep } from "../Libraries/Physics/kineticPhysicsPass.js";
-import { CircleShape } from "../Libraries/Physics/collisionMath.js";
-import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physicsSlabs.js";
+import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
+import { CircleShape } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 let mockPhysId = 0;
 function mockKineticBody(isSleeping = false) {

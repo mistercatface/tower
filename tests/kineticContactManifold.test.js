@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { contactWarmStartKey, pairContactKey, quantizeContactFeatureId } from "../Libraries/Physics/kineticContactSolver.js";
+import { contactWarmStartKey, pairContactKey, quantizeContactFeatureId } from "../Libraries/Physics/physics.js";
 
 describe("kinetic contact manifold keys", () => {
     it("opposing normals get different warm-start keys for the same pair", () => {

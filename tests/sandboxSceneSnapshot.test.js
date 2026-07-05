@@ -4,8 +4,8 @@ import { EntityRegistry, findLiveWorldProp } from "../GameState/EntityRegistry.j
 import { KineticSession, createKineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/grid/WorldObstacleGrid.js";
-import { resetKineticConstraintIds } from "../Libraries/Physics/kineticConstraintSolver.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/kineticConstraintSolver.js";
+import { resetKineticConstraintIds } from "../Libraries/Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
 import { getChainMemberIds, isChainSteeringTarget, setChainHead } from "../Libraries/Sandbox/chainLinks.js";
 import { collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION } from "../Libraries/Sandbox/sandboxSceneSnapshot.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandboxPlacedSpawn.js";

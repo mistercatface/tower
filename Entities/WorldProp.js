@@ -1,17 +1,17 @@
 import { Entity } from "./Entity.js";
-import { applyVelocityDamping } from "../Libraries/Physics/motionDynamics.js";
+import { applyVelocityDamping } from "../Libraries/Physics/physics.js";
 import { IDENTITY_ROLL_QUAT } from "../Libraries/Props/rollingMotion.js";
 import { integratePropMotion } from "../Libraries/Props/propMotion.js";
 import { buildWorldPropStrategyFromAsset, initWorldPropShape } from "../Libraries/Props/propStrategy.js";
 import { transitionEntity } from "../Libraries/FSM/transition.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
-import { isKinematicallyActive } from "../Libraries/Physics/broadphase.js";
-import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Physics/physicsSlabs.js";
-import { wakeKineticBody } from "../Libraries/Physics/kineticPhysicsPass.js";
+import { isKinematicallyActive } from "../Libraries/Physics/physics.js";
+import { momentOfInertiaFromBody, syncKineticRigidBody } from "../Libraries/Physics/physics.js";
+import { wakeKineticBody } from "../Libraries/Physics/physics.js";
 import { initFloorTriggerProp } from "../Libraries/Spatial/zones/floorShapes.js";
 import { initFloorButtonProp } from "../Libraries/Sandbox/floorButtons.js";
 import { quantizeCardinalAngle, rotateAngleTowards } from "../Libraries/Math/Angle.js";
-import { getEntityCollisionParts } from "../Libraries/Physics/collisionMath.js";
+import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
 export class WorldProp extends Entity {

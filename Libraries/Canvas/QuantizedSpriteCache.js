@@ -6,7 +6,7 @@ import { createBakedSpriteCache } from "./BakedSpriteCache.js";
 import { clamp } from "../Math/Interpolate.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Props/rollingMotion.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import { resolveBodyRadius } from "../Physics/physicsDefaults.js";
+import { resolveBodyRadius } from "../Physics/physics.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents } from "../Props/propStrategy.js";
 import { getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/propVisualAttachments.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";

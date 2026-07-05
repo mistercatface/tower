@@ -1,7 +1,7 @@
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { resolveSandboxFaction } from "./sandboxFaction.js";
-import { wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
+import { wakeKineticBody } from "../Physics/physics.js";
 import { CUE_STRIKE_BEHAVIOR_ID } from "./behaviors/cueStrikeBehavior.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 const PLAYFIELD_W = 80;

@@ -2,12 +2,12 @@ import { addWorldPropToState, removeWorldPropFromState, addWorldPropsToState } f
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonSignedArea2D } from "../Math/Poly2D.js";
-import { syncKineticRigidBody } from "../Physics/physicsSlabs.js";
-import { invalidateBroadphaseBounds } from "../Physics/broadphase.js";
-import { kineticDynamicSlab } from "../Physics/physicsSlabs.js";
-import { kineticPairBodyAt, KINETIC_PAIR_TIER } from "../Physics/kineticContactSolver.js";
-import { PolygonShape } from "../Physics/collisionMath.js";
-import { wakeKineticBody } from "../Physics/kineticPhysicsPass.js";
+import { syncKineticRigidBody } from "../Physics/physics.js";
+import { invalidateBroadphaseBounds } from "../Physics/physics.js";
+import { kineticDynamicSlab } from "../Physics/physics.js";
+import { kineticPairBodyAt, KINETIC_PAIR_TIER } from "../Physics/physics.js";
+import { PolygonShape } from "../Physics/physics.js";
+import { wakeKineticBody } from "../Physics/physics.js";
 import { splitPoxels } from "./poxelFracture.js";
 import { bakeChunkOutline, buildChunkGeometryAtPropOrigin, buildGeometryFromChunkParts, chunkNeedsMinCellSubdivide, subdivideSingleChunkAtMinCell } from "./chunkFracture.js";
 import { buildShardGeometry, GLASS_FRACTURE_COOLDOWN_STEPS, GLASS_FRACTURE_IMPACT_THRESHOLD, minShardAreaForPolygon, shatterGlassPolygon, wedgePolygonIntersection } from "./glassFracture.js";

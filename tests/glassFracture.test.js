@@ -10,12 +10,12 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
 }
 import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT, measureGlassShard, minShardAreaForPolygon, shatterGlassFootprint, shatterGlassPolygon } from "../Libraries/Props/glassFracture.js";
 import { transformPoint2DInto } from "../Libraries/Math/Poly2D.js";
-import { satCheckCollision, entityFacing } from "../Libraries/Physics/collisionMath.js";
-import { PolygonShape } from "../Libraries/Physics/collisionMath.js";
+import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
+import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physicsSlabs.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
-import { runCollisionPipeline } from "../Libraries/Physics/kineticPhysicsPass.js";
+import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
 const originalMathRandom = Math.random;
 Math.random = () => 0.5;

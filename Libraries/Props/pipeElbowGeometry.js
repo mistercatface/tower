@@ -1,4 +1,4 @@
-import { PolygonShape } from "../Physics/collisionMath.js";
+import { PolygonShape } from "../Physics/physics.js";
 import { transformPoint2DInto, ensureFlatVerts } from "../Math/Poly2D.js";
 import { quantizeAngleIndex } from "../Math/Angle.js";
 import propCatalog from "../../Assets/props/index.js";

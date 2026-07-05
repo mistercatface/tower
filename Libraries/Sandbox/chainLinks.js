@@ -1,6 +1,6 @@
 import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
-import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Physics/kineticConstraintSolver.js";
-import { getConnectedBodyIds, getConnectedComponentPath } from "../Physics/kineticConstraintSolver.js";
+import { addDistanceConstraint, listKineticConstraints, removeKineticConstraint } from "../Physics/physics.js";
+import { getConnectedBodyIds, getConnectedComponentPath } from "../Physics/physics.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { formatPropTypeLabel } from "../Props/PropCatalog.js";
 import { sandboxAssetMatchesTagFilter } from "./sandboxCapabilities.js";

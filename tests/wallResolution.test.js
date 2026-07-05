@@ -1,14 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Entities/WorldProp.js";
-import { writeActiveKineticBodySlabPose, writeStaticKineticSlabSlot, writeBroadphaseFromBounds } from "../Libraries/Physics/physicsSlabs.js";
+import { writeActiveKineticBodySlabPose, writeStaticKineticSlabSlot, writeBroadphaseFromBounds } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/propStrategy.js";
-import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/collisionMath.js";
-import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Physics/wallResolution.js";
+import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { createKineticTick } from "../GameState/KineticTick.js";
-import { runCollisionPipeline } from "../Libraries/Physics/kineticPhysicsPass.js";
-import { WallCollisionResolver } from "../Libraries/Physics/wallResolution.js";
+import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
+import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/Vec2.js";
 function mockWallSegment(x, y, size = 16) {
     return { x, y, size, width: size, height: size, angle: 0, isDead: false };
