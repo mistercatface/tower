@@ -1,6 +1,6 @@
 import { FlatGridSearch, SearchState, FlatGridView } from "../../Navigation/navigation.js";
 import { corridorPathHitsOccupied } from "./railMazeCorridorFootprint.js";
-import { getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
+import { getMapGenBoundsStampExtent } from "../../Spatial/spatial.js";
 import { gridCellLayout } from "../../Spatial/spatial.js";
 const FULL_FOOTPRINT = { interiorOnly: false };
 let pathScratch = new Int32Array(512);

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../GameState/SandboxWorldState.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
+import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { isSandboxCameraTarget } from "../Libraries/Sandbox/sandboxCameraTarget.js";

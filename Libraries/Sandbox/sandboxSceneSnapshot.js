@@ -1,12 +1,12 @@
 import { emptyAabb, growAabbFromCenterInto, isEmptyAabb } from "../Math/math.js";
-import {  isCanonicalEdgeRepresentativeIdx  } from "../Spatial/spatial.js";
+import { isCanonicalEdgeRepresentativeIdx } from "../Spatial/spatial.js";
 import { isGridFloorBeltSpawnAsset } from "./sandboxCapabilities.js";
-import {  FloorBelt  } from "../Spatial/spatial.js";
-import { commitGridNavEdit } from "./gridNavEdit.js";
-import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Spatial/spatial.js";
+import { FloorBelt } from "../Spatial/spatial.js";
+import { commitGridNavEdit } from "../Spatial/spatial.js";
+import { GRID_NAV_EPOCH, bumpGridNavEpoch } from "../Spatial/spatial.js";
 import { clearGridStampDrawCaches } from "./gridStampDrawCache.js";
 import propCatalog from "../../Assets/props/index.js";
-import { applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls } from "./gridWallEdit.js";
+import { applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls } from "../Spatial/spatial.js";
 import { getSandboxEntityMeta } from "../../GameState/sandboxEntityMeta.js";
 import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
 import { collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";

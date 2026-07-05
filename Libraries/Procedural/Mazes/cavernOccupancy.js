@@ -1,5 +1,5 @@
 import { fillRandomGrid, runCellularAutomata } from "../../CA/index.js";
-import { applyMapGenShapeMask, getMapGenBoundsStampExtent } from "../../Sandbox/mapGenBounds.js";
+import { applyMapGenShapeMask, getMapGenBoundsStampExtent } from "../../Spatial/spatial.js";
 function clearCavernOccupancyBoundaryStrip(cells, cols, rows, side, stripRows) {
     const depth = Math.max(1, Math.round(stripRows));
     if (side === "south") {

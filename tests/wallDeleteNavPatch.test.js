@@ -1,8 +1,8 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createDefaultMapGenBoundsConfig } from "../Libraries/Sandbox/mapGenBounds.js";
-import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit } from "../Libraries/Sandbox/gridWallEdit.js";
+import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
+import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { colRowToIndex } from "./harness/testGridUtils.js";

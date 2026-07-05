@@ -1,7 +1,7 @@
 import { centeredAabbInto, createAabb } from "../Math/math.js";
 import {  cellBoundsAtOriginInto  } from "../Spatial/spatial.js";
 import {  cellInRect  } from "../Spatial/spatial.js";
-import { appendGridEdgeOverlayCommand } from "./gridWallEdit.js";
+import { appendGridEdgeOverlayCommand } from "../Spatial/spatial.js";
 import { overlayAabb, overlayCachedSelectionRing, overlayGridCellHighlight } from "../Render/overlays/overlayCommands.js";
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();

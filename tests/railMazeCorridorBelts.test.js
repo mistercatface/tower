@@ -115,7 +115,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { bakeRailMazeDfs } from "../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { getNavWalkableCellIndex } from "../Libraries/Procedural/Mazes/walkableCells.js";
 import { stampGlobalRailWalls } from "../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
-import { commitGridNavEdit } from "../Libraries/Sandbox/gridNavEdit.js";
+import { commitGridNavEdit } from "../Libraries/Spatial/spatial.js";
 
 async function setupTestGridAndNav(seed) {
     const cellSize = gridSettings.cellSize;

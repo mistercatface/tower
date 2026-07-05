@@ -5,7 +5,7 @@ import { resolveSandboxFaction } from "./sandboxFaction.js";
 import { removeSandboxWorldProp } from "./sandboxPlacedSpawn.js";
 import { FloorBelt } from "../Spatial/spatial.js";
 import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";
-import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "./gridNavEdit.js";
+import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit } from "../Spatial/spatial.js";
 import { unionCellBounds } from "../Spatial/spatial.js";
 import propCatalog from "../../Assets/props/index.js";
 import {
@@ -19,7 +19,7 @@ import {
     stampRailWallAt,
     setVoxelWallHeightAt,
     stampVoxelWallAt,
-} from "./gridWallEdit.js";
+} from "../Spatial/spatial.js";
 import { cellIsStaticWall, railWallEdgeAt } from "../Spatial/spatial.js";
 import { createSandboxSelection } from "./sandboxSelection.js";
 import { selectionFloorCell, selectionPrimaryPropId, selectionPropIds, selectionRailEdge, selectionVoxelCell } from "./sandboxSelectionInspectors.js";

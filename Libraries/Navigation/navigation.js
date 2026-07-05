@@ -21,13 +21,17 @@ import {
     worldColAtOrigin,
     worldRowAtOrigin,
 } from "./../Spatial/spatial.js";
-
 import { FloatingText } from "./../Render/FloatingText.js";
 import { cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsToGrid, clampCellBoundsToGrid, forEachDenseCellInRect } from "../Spatial/spatial.js";
-
 import { MAX_HPA_REPLAN_SLOTS } from "./../Pathfinding/HpaPathWorker.js";
 import { agentPose } from "./../Agent/index.js";
 import { resolveBodyRadius } from "./../Physics/physics.js";
+function _removeEdgeByTargetId(edges, targetId) {
+    for (let i = edges.length - 1; i >= 0; i--) if (edges[i].targetId === targetId) edges.splice(i, 1);
+}
+function _removeCellByIdx(cells, idx) {
+    for (let i = cells.length - 1; i >= 0; i--) if (cells[i] === idx) cells.splice(i, 1);
+}
 import { resolveNavRuntime } from "./NavRuntime.js";
 // --- MERGED FROM AStar.js ---
 const STALE_F_EPSILON = 1e-4;
@@ -840,11 +844,11 @@ export class HpaRegionGraph {
     }
     stripEdgesBetween(nodeA, nodeB) {
         if (!nodeA || !nodeB) return;
-        nodeA.edges = nodeA.edges.filter((e) => e.targetId !== nodeB.id);
-        nodeB.edges = nodeB.edges.filter((e) => e.targetId !== nodeA.id);
+        _removeEdgeByTargetId(nodeA.edges, nodeB.id);
+        _removeEdgeByTargetId(nodeB.edges, nodeA.id);
     }
     removeInboundEdges(targetId) {
-        for (const node of this.nodes()) node.edges = node.edges.filter((edge) => edge.targetId !== targetId);
+        for (const node of this.nodes()) _removeEdgeByTargetId(node.edges, targetId);
     }
     createRegionAtCell(startIdx) {
         const id = startIdx;
@@ -877,7 +881,7 @@ export class HpaRegionGraph {
     stripCellFromRegion(idx) {
         const node = this.nodeForCell(idx);
         if (!node) return null;
-        node.cells = node.cells.filter((cellIdx) => cellIdx !== idx);
+        _removeCellByIdx(node.cells, idx);
         this.unassignCell(idx);
         return node;
     }
@@ -917,7 +921,7 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
     if (!node) return;
     const { cols, rows } = frame;
     for (const edge of [...node.edges]) graph.stripEdgesBetween(node, graph.getNode(edge.targetId));
-    for (const other of graph.nodes()) if (other.id !== node.id) other.edges = other.edges.filter((edge) => edge.targetId !== node.id);
+    for (const other of graph.nodes()) if (other.id !== node.id) _removeEdgeByTargetId(other.edges, node.id);
     const neighborIds = new Set();
     const nodeCells = node.cells;
     for (let i = 0; i < nodeCells.length; i++) {
@@ -1043,7 +1047,7 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
         if (hasReachableCell) continue;
         graph.removeRegion(node);
     }
-    for (const node of graph.nodes()) node.edges = node.edges.filter((e) => graph.getNode(e.targetId));
+    for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (!graph.getNode(node.edges[i].targetId)) node.edges.splice(i, 1);
 }
 function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph) {
     const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
@@ -1323,7 +1327,11 @@ export function captureNavGridSnapshot(grid, bounds = null) {
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
-const OCTILE_REVERSE_DIR = OCTILE_OFFSETS.map(({ dc, dr }) => OCTILE_OFFSETS.findIndex(({ dc: dc2, dr: dr2 }) => dc2 === -dc && dr2 === -dr));
+// Precalculated array for the inverse of each octile offset.
+// Order of OCTILE_OFFSETS: N, NE, E, SE, S, SW, W, NW
+// Their opposites are:     S, SW, W, NW, N, NE, E, SE
+// Which corresponds to indices: 4, 5, 6, 7, 0, 1, 2, 3
+const OCTILE_REVERSE_DIR = [4, 5, 6, 7, 0, 1, 2, 3];
 /** @param {number} cellIdx */
 export function octileNeighborBase(cellIdx) {
     return cellIdx * OCTILE_DIRS_PER_CELL;
@@ -2364,9 +2372,7 @@ export class HpaNavSession {
         return { routeCommitFrames: this.routeCommitFrames };
     }
 }
-
 // --- MERGED FROM GridNavSnapshot.js ---
-
 /** @typedef {{ minX: number, minY: number, cellSize: number, cols: number, rows: number, key: string }} GridFrame */
 /** Stable id for obstacle-grid frame — resize or origin shift changes this. */
 export function gridNavFrameKey(grid) {
@@ -2394,9 +2400,7 @@ export function snapshotWorldToGrid(frame, x, y) {
 export function snapshotGridToWorld(frame, col, row) {
     return { x: snapshotGridCenterX(frame, col), y: snapshotGridCenterY(frame, row) };
 }
-
 // --- MERGED FROM neighborGridLayout.js ---
-
 export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
     directionCount: OCTILE_DIRS_PER_CELL,
     bytesPerCell: OCTILE_NEIGHBOR_BYTES,
@@ -2414,9 +2418,7 @@ export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
         for (let dir = 0; dir < this.directionCount; dir++) neighborGrid[base + dir] = -1;
     },
 });
-
 // --- MERGED FROM gridBfs.js ---
-
 export function bfsIndices(seeds, visit) {
     const queue = Array.isArray(seeds) ? seeds : [seeds];
     let head = 0;

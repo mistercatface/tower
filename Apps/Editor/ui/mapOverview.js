@@ -1,7 +1,7 @@
 import { applySquareCanvasResize } from "../../../Libraries/Canvas/squareCanvasResize.js";
 import { gridSettings } from "../../../Config/world.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
-import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Sandbox/mapGenBounds.js";
+import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Spatial/spatial.js";
 import { createMapGenBoundsOverviewEditor, createViewportOverviewEditor, drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
 import { drawWorldBoundsBox } from "./mapOverviewDraw.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */

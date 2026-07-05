@@ -4,7 +4,7 @@ import { withSeededRandom } from "../../../Libraries/Random/index.js";
 import { fillRandomGrid, runCellularAutomata } from "../../../Libraries/CA/index.js";
 import { bakeRailMazeDfs } from "../../../Libraries/Procedural/Mazes/railMazeDfs.js";
 import { generateCavernOccupancy } from "../../../Libraries/Procedural/Mazes/cavernOccupancy.js";
-import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Sandbox/gridNavEdit.js";
+import { commitGridNavEdit, commitGridNavEditUnion } from "../../../Libraries/Spatial/spatial.js";
 import { planRailMazeCorridorBelts, stampGlobalRailMazeBelts, stampGlobalRailWalls } from "../../../Libraries/Procedural/Mazes/railMazeCorridorBelts.js";
 import { getNavWalkableCellIndex } from "../../../Libraries/Procedural/Mazes/walkableCells.js";
 import { centerReachAabbInto, createAabb, padAabb, unionAabb } from "../../../Libraries/Math/math.js";
@@ -27,7 +27,7 @@ import {
     getMapGenBoundsConfig,
     isIdxInMapGenBounds,
     registerMapGenBoundsGridExpansionListener,
-} from "../../../Libraries/Sandbox/mapGenBounds.js";
+} from "../../../Libraries/Spatial/spatial.js";
 const CLEAR_CIRCLE_BOUNDS = createAabb();
 /** Tile Lab cold start: play area, nav worker sync, map overview + path-debug caches. */
 export async function initTileLabWorld(state) {

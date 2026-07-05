@@ -1,7 +1,7 @@
 import { formatSandboxFactionLabel } from "../Sandbox/sandboxFaction.js";
-import {  FloorBelt  } from "../Spatial/spatial.js";
-import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";;
-import { applyFloorCellEdit } from "./gridNavEdit.js";
+import { FloorBelt } from "../Spatial/spatial.js";
+import { findGridAnchoredFloorPropAtIdx } from "../Props/props.js";
+import { applyFloorCellEdit } from "../Spatial/spatial.js";
 import { spawnPlacedSandboxProp } from "./sandboxPlacedSpawn.js";
 import { spawnLinkedBallChain } from "./spawnLinkedBallChain.js";
 import { setPropVisualBrightness, setPropVisualTint } from "../Color/visualOverride.js";

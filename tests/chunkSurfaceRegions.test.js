@@ -4,7 +4,7 @@ import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import {  resolveChunkSurfaceProfileId  } from "../Libraries/Spatial/spatial.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/WorldSurfaceEngine.js";
-import { setChunkSurfaceProfileRangeEdit } from "../Libraries/Sandbox/gridNavEdit.js";
+import { setChunkSurfaceProfileRangeEdit } from "../Libraries/Spatial/spatial.js";
 
 describe("chunk surface regions", () => {
     it("uses different ground and roof cache keys for different chunk profiles", () => {

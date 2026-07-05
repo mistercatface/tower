@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
-import { stampRailWallsQuiet } from "../Libraries/Sandbox/gridWallEdit.js";
+import { stampRailWallsQuiet } from "../Libraries/Spatial/spatial.js";
 
 
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";

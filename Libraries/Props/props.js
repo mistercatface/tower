@@ -1,12 +1,9 @@
-
-import propCatalog from "../../Assets/props/index.js";
-import { findLiveWorldProp } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT,  } from "../Physics/physics.js";
+import { findLiveWorldProp, addWorldPropToState, removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
+import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, invalidateBroadphaseBounds, kineticMassFromFootprint, syncKineticRigidBody, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT } from "../Physics/physics.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, stepCardinalFacing } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon } from "../Render/Props3D/SolidDraw.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
-
 import { processFloorShapes } from "../Spatial/spatial.js";
 import { tickFloorButtons } from "../Sandbox/floorButtons.js";
 import { runFloorEffect } from "../Sandbox/floorEffects.js";
@@ -14,10 +11,14 @@ import { drawSphere } from "../Render/Props3D/sphere.js";
 import { createFlipperPrimitive } from "../Render/Props3D/flipperPaddle.js";
 import { createPipeElbowPrimitive } from "../Render/Props3D/pipeElbow.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/SurfaceProfileRevision.js";
-import { addWorldPropToState, removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { WorldProp } from "../../Entities/WorldProp.js";
 import { resolveSandboxFaction } from "../Sandbox/sandboxFaction.js";
 import { clearChainLinksForProp } from "../Sandbox/chainLinks.js";
+import propCatalog from "../../Assets/props/index.js";
+
+
+
+
 // --- MERGED FROM propRenderDefaults.js ---
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */

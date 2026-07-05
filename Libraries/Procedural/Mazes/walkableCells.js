@@ -1,6 +1,6 @@
 import {  gridNavCacheKey, isNavTopologyReady  } from "../../Spatial/spatial.js";
 import {  cellInRect  } from "../../Spatial/spatial.js";
-import { isIdxInMapGenBounds } from "../../Sandbox/mapGenBounds.js";
+import { isIdxInMapGenBounds } from "../../Spatial/spatial.js";
 import { padCellIdxToGrid, padCellBoundsToGrid, forEachDenseCellInRect } from "../../Spatial/spatial.js";
 import {  forEachCardinalNeighborIdx  } from "../../Spatial/spatial.js";
 /** @typedef {{ flags: Uint8Array, cols: number, rows: number }} NavWalkableIndex */

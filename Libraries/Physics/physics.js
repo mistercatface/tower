@@ -1,5 +1,5 @@
 import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat } from "../Math/math.js";
-import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo } from "../Sandbox/gridWallEdit.js";
+import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { acquireWorldProp, applyPropBoxFootprint, fracturePropOnImpact, spawnFractureShards } from "../Props/props.js";
 import { resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, cellInRect, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
@@ -2720,8 +2720,8 @@ function narrowPhaseCircleContact(pairs, pairIndex, contacts) {
 function narrowPhaseSatContact(spatialFrame, pairs, pairIndex, contacts) {
     const physIdA = pairs.physIdA[pairIndex];
     const physIdB = pairs.physIdB[pairIndex];
-    const bodyA = (spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null);
-    const bodyB = (spatialFrame.entityGrid.entities[physIdB]?._physId === physIdB ? spatialFrame.entityGrid.entities[physIdB] : null);
+    const bodyA = spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null;
+    const bodyB = spatialFrame.entityGrid.entities[physIdB]?._physId === physIdB ? spatialFrame.entityGrid.entities[physIdB] : null;
     if (!bodyA || !bodyB) return;
     const slab = kineticDynamicSlab;
     const collided = checkEntityPairCollisionAt(bodyA, slab.x[physIdA], slab.y[physIdA], bodyB, slab.x[physIdB], slab.y[physIdB]);
@@ -2862,8 +2862,8 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
 }
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
-        const bodyA = (spatialFrame.entityGrid.entities[contacts.physIdA[i]]?._physId === contacts.physIdA[i] ? spatialFrame.entityGrid.entities[contacts.physIdA[i]] : null);
-        const bodyB = (spatialFrame.entityGrid.entities[contacts.physIdB[i]]?._physId === contacts.physIdB[i] ? spatialFrame.entityGrid.entities[contacts.physIdB[i]] : null);
+        const bodyA = spatialFrame.entityGrid.entities[contacts.physIdA[i]]?._physId === contacts.physIdA[i] ? spatialFrame.entityGrid.entities[contacts.physIdA[i]] : null;
+        const bodyB = spatialFrame.entityGrid.entities[contacts.physIdB[i]]?._physId === contacts.physIdB[i] ? spatialFrame.entityGrid.entities[contacts.physIdB[i]] : null;
         if (!bodyA || !bodyB) continue;
         invalidateWallResolveCache(bodyA, bodyB);
         spatialFrame.scheduleKineticActivation(bodyA);
@@ -3071,7 +3071,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     const slab = kineticDynamicSlab;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
-        const primary = (spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null);
+        const primary = spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null;
         const neighbors = spatialFrame.getNeighbors(primary);
         for (let j = 0; j < neighbors.length; j++) {
             const neighbor = neighbors[j];
@@ -4154,7 +4154,6 @@ export function circlePairContactPoint(centerAx, centerAy, radiusA, centerBx, ce
 // --- MERGED FROM rollingMotion.js ---
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
-
 export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL_QUAT) {
     const rotated = rotateVecByQuat(lx, ly, lz - radius, rollQuat);
     return { lx: rotated.x, ly: rotated.y, z: rotated.z + radius };
@@ -4252,7 +4251,6 @@ export function integratePropMotion(body, dtMs) {
     body.angularVelocity = 0;
     applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
 }
-
 // --- MOVED FROM kineticRollActuator.js ---
 export function applyGroundRollDrive(prop, dtSec) {
     const drive = prop._groundRollDrive;
@@ -4261,7 +4259,6 @@ export function applyGroundRollDrive(prop, dtSec) {
     applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
     return true;
 }
-
 export function computeWallBreakStrength(preSpeed, approachDot, config) {
     if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
     const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
@@ -4269,7 +4266,6 @@ export function computeWallBreakStrength(preSpeed, approachDot, config) {
     const angleT = Math.min(1, -approachDot / preSpeed);
     return speedT * angleT;
 }
-
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;
     const speed = Math.hypot(prop.vx, prop.vy);
@@ -4314,9 +4310,7 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     applyRollSpin(prop);
     wakeKineticBody(prop);
 }
-
 // --- MERGED FROM kineticRollActuator.js ---
-
 export function snapMoveTargetToCellCenter(grid, world) {
     const idx = grid.worldToIdx(world.x, world.y);
     if (idx === -1) return { world, col: null, row: null };
@@ -4333,25 +4327,20 @@ export function getKineticRollConfig(prop, overrides = null) {
     if (overrides && Object.keys(overrides).length > 0) return { ...base, ...overrides };
     return base;
 }
-
 export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
     const limitSpeed = targetSpeed !== null ? Math.min(config.maxSpeed, targetSpeed) : config.maxSpeed;
     prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: limitSpeed };
     wakeKineticBody(prop);
 }
-
 export function decelerateRoll(prop, config) {
     prop._groundRollDrive = { kind: "brake", accel: config.accel };
     wakeKineticBody(prop);
 }
-
 export function clearGroundRollDrive(prop) {
     delete prop._groundRollDrive;
 }
-
 // --- MERGED FROM gridWallDamage.js ---
-
 /** @typedef {{ kind: "voxel", idx: number } | { kind: "rail", idx: number, side: number }} WallDamageTarget */
 export function wallDamageKey(target) {
     return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;

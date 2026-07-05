@@ -1,7 +1,7 @@
 import { FloorBelt } from "../Spatial/spatial.js";
 import { cellInRect } from "../Spatial/spatial.js";
 import { railWallEdgeAt } from "../Spatial/spatial.js";
-import { getRailWallInfo, getVoxelWallInfo } from "./gridWallEdit.js";
+import { getRailWallInfo, getVoxelWallInfo } from "../Spatial/spatial.js";
 export function selectionFloorCell(sel) {
     return sel?.kind === "floor" ? { idx: sel.idx } : null;
 }

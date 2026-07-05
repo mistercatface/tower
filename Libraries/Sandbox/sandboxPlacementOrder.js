@@ -1,5 +1,5 @@
 import {  cellIsStaticWall, railWallEdgeAt  } from "../Spatial/spatial.js";
-import { getRailWallInfo } from "./gridWallEdit.js";
+import { getRailWallInfo } from "../Spatial/spatial.js";
 export function createSandboxPlacementOrder(state) {
     let nextPlacementSeq = 1;
     const placementSeqByKey = new Map();

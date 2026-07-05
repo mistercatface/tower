@@ -1,4 +1,4 @@
-import { formatGridWallEdgeSideLabel } from "../../Sandbox/gridWallEdit.js";
+import { formatGridWallEdgeSideLabel } from "../../Spatial/spatial.js";
 import { appendActionRow, appendEditorHint, appendSelectField } from "../../UI/paramFields.js";
 import { SliderControl } from "../../UI/controls/SliderControl.js";
 const EDGE_SIDE_OPTIONS = [

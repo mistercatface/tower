@@ -1,5 +1,5 @@
 import { gridSettings } from "../../../Config/world.js";
-import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Sandbox/mapGenBounds.js";
+import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Spatial/spatial.js";
 import { activeMapGenKind } from "./mapOverview.js";
 import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;

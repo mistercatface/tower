@@ -1,4 +1,4 @@
-import { createDefaultMapGenBoundsConfig, createMapGenBoundsAabbCache } from "../../../Libraries/Sandbox/mapGenBounds.js";
+import { createDefaultMapGenBoundsConfig, createMapGenBoundsAabbCache } from "../../Libraries/Spatial/spatial.js";
 export function createLabMapBoundsPreview() {
     return { cavern: createMapGenBoundsAabbCache(), rail: createMapGenBoundsAabbCache(), railMaze: createMapGenBoundsAabbCache(), erase: createMapGenBoundsAabbCache() };
 }

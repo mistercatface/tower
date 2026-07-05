@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit, commitGridNavEditUnion } from "../Libraries/Sandbox/gridNavEdit.js";
-import { stampRailWallsBatch } from "../Libraries/Sandbox/gridWallEdit.js";
+import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit, commitGridNavEditUnion } from "../Libraries/Spatial/spatial.js";
+import { stampRailWallsBatch } from "../Libraries/Spatial/spatial.js";
 import {  FLOOR_CELL_KIND  } from "../Libraries/Spatial/spatial.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 
