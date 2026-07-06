@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { FractureEngine } from "../Libraries/Props/props.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
@@ -11,7 +12,9 @@ const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, cols * 16, rows * 16);
-    return { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
+    const world = { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
+    world.fractureEngine = new FractureEngine(world);
+    return world;
 }
 describe("spawnLinkedBallChain", () => {
     it("spawns a linked ball chain with one head and distance links", () => {

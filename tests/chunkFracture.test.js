@@ -1,11 +1,8 @@
+import { FractureEngine } from "../Libraries/Props/props.js";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
-import { measureGlassShard } from "../Libraries/Props/props.js";
-import { bakeChunkOutline, buildGeometryFromChunkParts, cellSizeForBoxExtents, chunkCellCount, chunkCollisionPartsArea, chunkNeedsMinCellSubdivide, mergeChunkCollisionRects, rectGridParts } from "../Libraries/Props/props.js";
 import { boxLocalFootprint } from "../Libraries/Math/math.js";
-import { splitPoxels } from "../Libraries/Props/props.js";
-import { canFracturePropSplit, fracturePropOnImpact, splitFootprintIntoComponents } from "../Libraries/Props/props.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
@@ -16,30 +13,30 @@ describe("chunk fracture", () => {
         assert.equal(propCatalog["custom_box"].physics.fracture.mode, "chunk");
     });
     it("bakes rectilinear chunk grid from a box outline", () => {
-        const geom = bakeChunkOutline(boxLocalFootprint(8, 8));
+        const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(8, 8));
         assert.ok(geom.chunks.length > 1);
         assert.ok(geom.footprintArea > 0);
-        assert.equal(chunkCellCount(8, 8), geom.chunks.length);
+        assert.equal(FractureEngine.chunkCellCount(8, 8), geom.chunks.length);
     });
     it("chunk cells are axis-aligned rectangles not triangles", () => {
-        const geom = bakeChunkOutline(boxLocalFootprint(8, 8));
+        const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(8, 8));
         for (const chunk of geom.chunks) {
             assert.equal(chunk.vertices.length, 8);
-            const metrics = measureGlassShard(chunk.vertices);
+            const metrics = FractureEngine.measureGlassShard(chunk.vertices);
             assert.ok(metrics.aspect <= 4);
         }
     });
     it("buildGeometryFromChunkParts produces convex collision parts", () => {
-        const crate = bakeChunkOutline(boxLocalFootprint(8, 8));
+        const crate = FractureEngine.bakeChunkOutline(boxLocalFootprint(8, 8));
         const subset = crate.chunks.slice(0, 2).map((chunk) => ({ vertices: chunk.vertices }));
-        const frag = buildGeometryFromChunkParts(subset);
+        const frag = FractureEngine.buildGeometryFromChunkParts(subset);
         assert.ok(frag.collisionParts.length >= 1);
         assert.equal(frag.collisionParts[0].type, "Polygon");
         assert.equal(frag.collisionParts[0].vertices.length / 2, 4);
     });
     it("splitPoxels breaks chunk connectivity on a strong center hit", () => {
-        const geom = bakeChunkOutline(boxLocalFootprint(8, 8));
-        const components = splitPoxels(geom.chunks, 0, 0, 80);
+        const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(8, 8));
+        const components = FractureEngine.splitPoxels(geom.chunks, 0, 0, 80);
         assert.ok(components.length > 1);
     });
     it("fracture crate init builds chunk connectivity grid", () => {
@@ -56,7 +53,7 @@ describe("chunk fracture", () => {
         kineticDynamicSlab.y[0] = 200;
         applyPropBoxFootprint(prop, 12, 12);
         const initialChunks = prop.chunks.length;
-        const fracture = fracturePropOnImpact(prop, 100, 200, 80);
+        const fracture = FractureEngine.fracturePropOnImpact(prop, 100, 200, 80);
         assert.ok(fracture);
         assert.ok(prop.chunks.length < initialChunks);
         assert.ok(fracture.debris.length > 0);
@@ -65,7 +62,7 @@ describe("chunk fracture", () => {
     it("splitFootprintIntoComponents forceExplode yields one fragment per chunk", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
         assert.ok(prop.chunks.length > 1);
-        const fragments = splitFootprintIntoComponents(prop, 0, 0, 20, true);
+        const fragments = FractureEngine.splitFootprintIntoComponents(prop, 0, 0, 20, true);
         assert.equal(fragments.length, prop.chunks.length);
     });
     it("fracturePropOnImpact shifts parent position to new centroid", () => {
@@ -74,16 +71,16 @@ describe("chunk fracture", () => {
         kineticDynamicSlab.x[0] = 100;
         kineticDynamicSlab.y[0] = 50;
         applyPropBoxFootprint(prop, 16, 16);
-        const fracture = fracturePropOnImpact(prop, 100, 50, 80);
+        const fracture = FractureEngine.fracturePropOnImpact(prop, 100, 50, 80);
         assert.ok(fracture);
         assert.ok(Math.abs(prop.x - 102.666) < 0.01);
         assert.ok(Math.abs(prop.y - 52.666) < 0.01);
     });
     it("mergeChunkCollisionRects covers concave L-shapes with multiple axis-aligned boxes", () => {
-        const geom = bakeChunkOutline(boxLocalFootprint(16, 16));
-        const components = splitPoxels(geom.chunks, 14, 14, 80);
+        const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(16, 16));
+        const components = FractureEngine.splitPoxels(geom.chunks, 14, 14, 80);
         assert.ok(components.length > 1);
-        const parentRects = mergeChunkCollisionRects(components[0]);
+        const parentRects = FractureEngine.mergeChunkCollisionRects(components[0]);
         assert.ok(parentRects.length >= 2);
         let area = 0;
         for (const rect of parentRects) area += (rect.x1 - rect.x0) * (rect.y1 - rect.y0);
@@ -101,23 +98,23 @@ describe("chunk fracture", () => {
         kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 64, 64);
         const intactArea = prop.footprintArea;
-        fracturePropOnImpact(prop, 0, 0, 80);
+        FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
         assert.ok(prop.collisionParts.length >= 1);
-        assert.ok(Math.abs(chunkCollisionPartsArea(prop.collisionParts) - prop.footprintArea) < 1);
+        assert.ok(Math.abs(FractureEngine.chunkCollisionPartsArea(prop.collisionParts) - prop.footprintArea) < 1);
         assert.ok(prop.footprintArea < intactArea);
         const cornerProp = new WorldProp(100, 100, "custom_box", 0);
         cornerProp._physId = 1;
         kineticDynamicSlab.x[1] = 100;
         kineticDynamicSlab.y[1] = 100;
         applyPropBoxFootprint(cornerProp, 64, 64);
-        fracturePropOnImpact(cornerProp, 160, 160, 80);
+        FractureEngine.fracturePropOnImpact(cornerProp, 160, 160, 80);
         assert.ok(cornerProp.collisionParts.length >= 2);
-        assert.ok(Math.abs(chunkCollisionPartsArea(cornerProp.collisionParts) - cornerProp.footprintArea) < 1);
+        assert.ok(Math.abs(FractureEngine.chunkCollisionPartsArea(cornerProp.collisionParts) - cornerProp.footprintArea) < 1);
     });
     it("large custom box scales chunk cell size and count", () => {
-        const cell = cellSizeForBoxExtents(64, 64);
+        const cell = FractureEngine.cellSizeForBoxExtents(64, 64);
         assert.ok(cell >= 8);
-        const geom = bakeChunkOutline(boxLocalFootprint(64, 64));
+        const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(64, 64));
         assert.ok(geom.chunks.length >= 16);
         assert.ok(geom.chunks.length <= 100);
     });
@@ -128,13 +125,13 @@ describe("chunk fracture", () => {
         kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 64, 64);
         while (prop.chunks.length > 1) {
-            const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+            const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
             if (!fracture) break;
         }
         assert.equal(prop.chunks.length, 1);
-        assert.ok(chunkNeedsMinCellSubdivide(prop.chunks[0]));
-        assert.ok(canFracturePropSplit(prop));
-        const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+        assert.ok(FractureEngine.chunkNeedsMinCellSubdivide(prop.chunks[0]));
+        assert.ok(FractureEngine.canFracturePropSplit(prop));
+        const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
         assert.ok(fracture);
         assert.ok(prop.chunks.length > 1);
         for (const chunk of prop.chunks) {
@@ -149,14 +146,14 @@ describe("chunk fracture", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 20, 5);
         while (prop.chunks.length > 1) {
-            const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+            const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
             if (!fracture) break;
         }
         assert.equal(prop.chunks.length, 1);
-        assert.ok(chunkNeedsMinCellSubdivide(prop.chunks[0]));
-        assert.ok(canFracturePropSplit(prop));
+        assert.ok(FractureEngine.chunkNeedsMinCellSubdivide(prop.chunks[0]));
+        assert.ok(FractureEngine.canFracturePropSplit(prop));
         const beforeArea = prop.footprintArea;
-        const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+        const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
         assert.ok(fracture);
         assert.ok(fracture.debris.length > 0);
         assert.ok(prop.footprintArea < beforeArea);

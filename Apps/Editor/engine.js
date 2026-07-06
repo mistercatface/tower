@@ -6,7 +6,7 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
-import { processKineticContactFractures } from "../../Libraries/Props/props.js";
+import { FractureEngine } from "../../Libraries/Props/props.js";
 import { clearChainLinksForProp } from "../../Libraries/Sandbox/sandbox.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/physics.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
@@ -33,7 +33,7 @@ function loadGameModeStylesheet() {
     document.head.appendChild(link);
 }
 function editorKineticContactSideEffects(tick, contacts) {
-    processKineticContactFractures(tick, contacts, { onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id) });
+    tick.world.fractureEngine.processKineticContactFractures(tick, contacts, { onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id) });
 }
 /** @param {import("./state.js").TileLabGameState} state */
 function simulationKineticHooks(state) {
@@ -59,7 +59,7 @@ function simulationKineticHooks(state) {
 }
 /** @param {import("./state.js").TileLabGameState} state @param {import("../../Libraries/Spatial/spatial.js").KineticSpatialFrame} frame */
 function kineticTickFromState(state, frame) {
-    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks } };
+    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks, fractureEngine: state.fractureEngine } };
 }
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {

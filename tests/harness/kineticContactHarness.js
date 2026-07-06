@@ -1,4 +1,4 @@
-import { processKineticContactFractures } from "../../Libraries/Props/props.js";
+import { FractureEngine } from "../../Libraries/Props/props.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, checkEntityPairCollision, kineticDynamicSlab } from "../../Libraries/Physics/physics.js";
 import { writebackActiveKineticBodySlab } from "../../Libraries/Physics/physics.js";
 
@@ -18,5 +18,5 @@ export function resolveKineticContactPass(tick) {
 /** Single-shot contact resolve plus fracture side effects (tests only). */
 export function resolveKineticContactPassWithEffects(tick) {
     const contacts = resolveKineticContactPass(tick);
-    processKineticContactFractures(tick, contacts);
+    tick.world.fractureEngine.processKineticContactFractures(tick, contacts);
 }

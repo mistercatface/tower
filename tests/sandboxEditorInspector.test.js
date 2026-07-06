@@ -2,6 +2,7 @@ import { installTestDocument, mockPanelBody } from "./harness/sandboxInspectorHa
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { FractureEngine } from "../Libraries/Props/props.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
@@ -11,7 +12,7 @@ import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
-    return {
+    const world = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -20,6 +21,8 @@ function createEditorTestState() {
         viewport: { x: 128, y: 128, snapTo() {} },
         worldSurfaces: { settings: { maxWallHeightLevel: 8 } },
     };
+    world.fractureEngine = new FractureEngine(world);
+    return world;
 }
 
 function spawnBall(state, x = 64, y = 64) {

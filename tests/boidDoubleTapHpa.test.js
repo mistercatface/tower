@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { FractureEngine } from "../Libraries/Props/props.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid, BeltPacked  } from "../Libraries/Spatial/spatial.js";
@@ -10,7 +11,7 @@ function createEditorTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
-    return {
+    const world = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
@@ -45,6 +46,8 @@ function createEditorTestState() {
             },
         },
     };
+    world.fractureEngine = new FractureEngine(world);
+    return world;
 }
 describe("boid double tap hpa pathing", () => {
     it("starts HPA ground nav on double-tap when selected, reverts to dragLaunch on drag", () => {

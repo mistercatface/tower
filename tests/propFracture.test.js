@@ -1,8 +1,7 @@
+import { FractureEngine } from "../Libraries/Props/props.js";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { fracturePropOnImpact, impactForceFromContact, splitFootprintIntoComponents, worldHitToPropLocal } from "../Libraries/Props/props.js";
-import { chunkCollisionPartsArea } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
@@ -12,19 +11,19 @@ describe("prop impact fracture", () => {
         const prop = { x: 100, y: 200, facing: Math.PI / 2, _physId: 0 };
         kineticDynamicSlab.x[0] = 100;
         kineticDynamicSlab.y[0] = 200;
-        const local = worldHitToPropLocal(prop, 100, 210);
+        const local = FractureEngine.worldHitToPropLocal(prop, 100, 210);
         assert.ok(Math.abs(local.x - 10) < 1e-6);
         assert.ok(Math.abs(local.y) < 1e-6);
     });
 
     it("impactForceFromContact scales with relative speed", () => {
-        assert.ok(impactForceFromContact(200) > impactForceFromContact(50));
+        assert.ok(FractureEngine.impactForceFromContact(200) > FractureEngine.impactForceFromContact(50));
     });
 
     it("splitFootprintIntoComponents localizes breaks away from center hit", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
-        const center = splitFootprintIntoComponents(prop, 0, 0, 80, false);
-        const edge = splitFootprintIntoComponents(prop, 7, 0, 80, false);
+        const center = FractureEngine.splitFootprintIntoComponents(prop, 0, 0, 80, false);
+        const edge = FractureEngine.splitFootprintIntoComponents(prop, 7, 0, 80, false);
         assert.ok(center.length > 1);
         assert.ok(edge.length >= 1);
         assert.ok(center.length >= edge.length);
@@ -37,7 +36,7 @@ describe("prop impact fracture", () => {
         kineticDynamicSlab.y[0] = 200;
         applyPropBoxFootprint(prop, 12, 12);
         const initialChunks = prop.chunks.length;
-        const fracture = fracturePropOnImpact(prop, 100, 200, 80);
+        const fracture = FractureEngine.fracturePropOnImpact(prop, 100, 200, 80);
         assert.ok(fracture);
         assert.ok(prop.chunks.length < initialChunks);
         assert.ok(fracture.debris.length > 0);
@@ -58,14 +57,14 @@ describe("prop impact fracture", () => {
         kineticDynamicSlab.x[0] = 0;
         kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 16, 16);
-        const fracture = fracturePropOnImpact(prop, 0, 0, 80);
+        const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
         assert.ok(fracture);
         const parentParts = getEntityCollisionParts(prop);
         assert.ok(parentParts.length >= 1);
-        assert.ok(Math.abs(chunkCollisionPartsArea(parentParts) - prop.footprintArea) < 1);
+        assert.ok(Math.abs(FractureEngine.chunkCollisionPartsArea(parentParts) - prop.footprintArea) < 1);
         for (const geom of fracture.debris) {
             assert.ok(geom.collisionParts.length >= 1);
-            assert.ok(Math.abs(chunkCollisionPartsArea(geom.collisionParts) - geom.footprintArea) < 1);
+            assert.ok(Math.abs(FractureEngine.chunkCollisionPartsArea(geom.collisionParts) - geom.footprintArea) < 1);
         }
     });
 });

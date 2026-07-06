@@ -1,4 +1,5 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
+import { FractureEngine } from "../../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape } from "../../Libraries/Physics/physics.js";
 let nextMockPhysId = 0;
@@ -99,6 +100,7 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
 export function createKineticTestRegistry(liveProps) {
     return {
         membershipGen: 0,
+        entityMeta: [],
         getLive(id) {
             for (let i = 0; i < liveProps.length; i++) if (liveProps[i].id === id) return liveProps[i];
             return null;
@@ -117,7 +119,9 @@ export function createKineticTestRegistry(liveProps) {
 export function createKineticTestWorld(initialProps, { constraints = [], constraintsDirty = false } = {}) {
     const worldProps = initialProps.slice();
     const liveProps = initialProps.slice();
-    return { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraints, constraintsDirty }) };
+    const world = { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraints, constraintsDirty }) };
+    world.fractureEngine = new FractureEngine(world);
+    return world;
 }
 export function setupKineticTestFrame(bodies, cellSize = 50) {
     const frame = new KineticSpatialFrame(cellSize);

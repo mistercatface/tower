@@ -1,7 +1,7 @@
 import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { commitFractureResult, acquireWorldProp, applyPropBoxFootprint, fracturePropOnImpact } from "../Props/props.js";
+import { acquireWorldProp, applyPropBoxFootprint, FractureEngine } from "../Props/props.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -4208,8 +4208,8 @@ export function applyPendingWallDamage(state, wallDamage) {
         wakeKineticBody(prop);
         if (spatialFrame?.admitKineticProp) spatialFrame.admitKineticProp(prop, state);
         const impactForce = desc.sourceSpeed * 0.5 + 10;
-        const fracture = fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
-        if (fracture) commitFractureResult(state, prop, fracture, spatialFrame, { retainParent: prop.strategy?.fracture?.mode === "chunk", height: prop.height });
+        const fracture = FractureEngine.fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
+        if (fracture) FractureEngine.commitFractureResult(state, prop, fracture, spatialFrame, { retainParent: prop.strategy?.fracture?.mode === "chunk", height: prop.height });
     }
     return commitBounds;
 }
