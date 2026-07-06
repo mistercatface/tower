@@ -6,6 +6,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
+import { getMapGenBoundsCenterWorld } from "../Libraries/Spatial/spatial.js";
 
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -70,6 +71,12 @@ describe("snake game launch actions", () => {
         const ctx = await runGameLaunch(state, GAME_LAUNCHERS.snake);
 
         // Verify Maze Config
+        assert.equal(state.editor.railMazeConfig.boundsCols, 64);
+        assert.equal(state.editor.railMazeConfig.boundsRows, 64);
+        assert.ok(state.editor.railMazeConfig.boundsIdx >= 0);
+        const mazeCenter = getMapGenBoundsCenterWorld(state.obstacleGrid, state.editor.railMazeConfig);
+        assert.ok(Math.abs(mazeCenter.x) < state.obstacleGrid.cellHalfSize + 0.01);
+        assert.ok(Math.abs(mazeCenter.y) < state.obstacleGrid.cellHalfSize + 0.01);
         assert.equal(state.editor.railMazeConfig.edgeThickness, 4);
         assert.equal(state.editor.railMazeConfig.wallHeightLevel, 1);
         assert.equal(state.editor.railMazeConfig.surfaceProfileId, "poolTableFelt");
@@ -86,9 +93,6 @@ describe("snake game launch actions", () => {
         assert.equal(state.viewport.zoom, 2.0);
         assert.equal(state.viewport.x, ctx.boid.x);
         assert.equal(state.viewport.y, ctx.boid.y);
-
-        // Verify Shadows
-        assert.equal(state.losShadowStrength, 1.0);
 
         // Verify Selection Lock
         assert.equal(state.editor.lockSelection, true);

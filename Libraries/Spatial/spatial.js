@@ -1,47 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import {
-    CARDINAL_DCOL,
-    CARDINAL_DR,
-    centerReachAabbInto,
-    createAabb,
-    minCornerAabbInto,
-    minCornerAabb,
-    angleDelta,
-    radiusAtT,
-    scaleAtHeight,
-    closestPointOnLineSegment,
-    CARDINAL_FACING_STEPS,
-    centeredAabbInto,
-    padAabbInto,
-    lengthXY,
-    centerHalfExtentsAabbInto,
-    boxLocalFootprint,
-    convexFootprintHalfExtents,
-    vertCount,
-    stepCardinalFacing,
-    createSeededRng,
-    padAabb,
-    unionAabb,
-} from "../Math/math.js";
-import {
-    entityCollisionSpan,
-    neighborQueryPadForExtent,
-    maxNeighborQueryPad,
-    circleLeadingPoint,
-    minDistanceSegmentToWall,
-    circleIntersectsSegment,
-    CircleShape,
-    PolygonShape,
-    satCheckCollision,
-    entityFacing,
-    wakeKineticBody,
-    bumpKineticTopologyGeneration,
-    snapshotKineticBodySlab,
-    kineticDynamicSlab,
-    clearActiveKineticBodySlab,
-    appendActiveKineticBodySlabPhysId,
-} from "../Physics/physics.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb } from "../Math/math.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, maxNeighborQueryPad, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -954,12 +914,7 @@ function diagonalCardinalLegsOpen(cardinalOpen, cols, col, row, dc, dr) {
     const shoulderHRow = row;
     const shoulderVCol = col;
     const shoulderVRow = row + dr;
-    return (
-        cardinalLegOpen(cardinalOpen, cols, col, row, dc, 0) &&
-        cardinalLegOpen(cardinalOpen, cols, col, row, 0, dr) &&
-        cardinalLegOpen(cardinalOpen, cols, shoulderHCol, shoulderHRow, 0, dr) &&
-        cardinalLegOpen(cardinalOpen, cols, shoulderVCol, shoulderVRow, dc, 0)
-    );
+    return cardinalLegOpen(cardinalOpen, cols, col, row, dc, 0) && cardinalLegOpen(cardinalOpen, cols, col, row, 0, dr) && cardinalLegOpen(cardinalOpen, cols, shoulderHCol, shoulderHRow, 0, dr) && cardinalLegOpen(cardinalOpen, cols, shoulderVCol, shoulderVRow, dc, 0);
 }
 export function diagonalStepOpen(cardinalOpen, vertexPassability, grid, fromIdx, dc, dr) {
     const cols = grid.cols;
@@ -1553,12 +1508,7 @@ export class SurfaceMaterialStore {
         if (nIdx !== -1) this.edgeProfileIds.delete(cellEdgeSlotOffset(nIdx, edgeMirrorSide(side)));
     }
     hasAnyEdgeAtIdx(idx) {
-        return (
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 0)) ||
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 1)) ||
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 2)) ||
-            this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 3))
-        );
+        return this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 0)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 1)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 2)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 3));
     }
 }
 export function resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) {
@@ -1735,23 +1685,7 @@ export class WorldObstacleGrid {
         const size = this.cellSize;
         let proxy = this._staticWallProxies[this._staticWallProxyCount];
         if (!proxy) {
-            proxy = {
-                _obstacleGrid: undefined,
-                x: 0,
-                y: 0,
-                angle: 0,
-                width: 0,
-                height: 0,
-                size: 0,
-                padding: 0,
-                isDead: false,
-                isStaticGridProxy: false,
-                isStaticGridFace: false,
-                isEdgeRail: false,
-                gridIdx: 0,
-                gridSide: 0,
-                shape: undefined,
-            };
+            proxy = { _obstacleGrid: undefined, x: 0, y: 0, angle: 0, width: 0, height: 0, size: 0, padding: 0, isDead: false, isStaticGridProxy: false, isStaticGridFace: false, isEdgeRail: false, gridIdx: 0, gridSide: 0, shape: undefined };
             this._staticWallProxies[this._staticWallProxyCount] = proxy;
         }
         this._staticWallProxyCount++;
@@ -1796,23 +1730,7 @@ export class WorldObstacleGrid {
                 const len = Math.hypot(dx, dy);
                 let proxy = this._staticWallProxies[this._staticWallProxyCount];
                 if (!proxy) {
-                    proxy = {
-                        _obstacleGrid: undefined,
-                        x: 0,
-                        y: 0,
-                        angle: 0,
-                        width: 0,
-                        height: 0,
-                        size: 0,
-                        padding: 0,
-                        isDead: false,
-                        isStaticGridProxy: false,
-                        isStaticGridFace: false,
-                        isEdgeRail: false,
-                        gridIdx: 0,
-                        gridSide: 0,
-                        shape: undefined,
-                    };
+                    proxy = { _obstacleGrid: undefined, x: 0, y: 0, angle: 0, width: 0, height: 0, size: 0, padding: 0, isDead: false, isStaticGridProxy: false, isStaticGridFace: false, isEdgeRail: false, gridIdx: 0, gridSide: 0, shape: undefined };
                     this._staticWallProxies[this._staticWallProxyCount] = proxy;
                 } else {
                     proxy.x = 0;
@@ -2573,14 +2491,7 @@ function acquireBucketSegments(slab, slot) {
 export function createWallCandidateBucketSlab() {
     const frameStamp = new Int32Array(MAX_WALL_BUCKETS);
     frameStamp.fill(EMPTY_STAMP);
-    return {
-        keyLo: new Int32Array(MAX_WALL_BUCKETS),
-        keyHi: new Int32Array(MAX_WALL_BUCKETS),
-        frameStamp,
-        revisionStamp: new Int32Array(MAX_WALL_BUCKETS),
-        segments: new Array(MAX_WALL_BUCKETS),
-        segmentPool: [],
-    };
+    return { keyLo: new Int32Array(MAX_WALL_BUCKETS), keyHi: new Int32Array(MAX_WALL_BUCKETS), frameStamp, revisionStamp: new Int32Array(MAX_WALL_BUCKETS), segments: new Array(MAX_WALL_BUCKETS), segmentPool: [] };
 }
 export function resetWallCandidateBucketSlab(slab) {
     for (let i = 0; i < MAX_WALL_BUCKETS; i++) {
@@ -2706,12 +2617,7 @@ export function growCellBoundsIdx(bounds, idx, grid) {
 export function unionCellBounds(a, b) {
     if (!a) return b;
     if (!b) return a;
-    return {
-        startCol: a.startCol < b.startCol ? a.startCol : b.startCol,
-        endCol: a.endCol > b.endCol ? a.endCol : b.endCol,
-        startRow: a.startRow < b.startRow ? a.startRow : b.startRow,
-        endRow: a.endRow > b.endRow ? a.endRow : b.endRow,
-    };
+    return { startCol: a.startCol < b.startCol ? a.startCol : b.startCol, endCol: a.endCol > b.endCol ? a.endCol : b.endCol, startRow: a.startRow < b.startRow ? a.startRow : b.startRow, endRow: a.endRow > b.endRow ? a.endRow : b.endRow };
 }
 /** Iterate sparse grid cells; fn(col, row, packedKey). */
 export function forEachSparseCellInRect(minCol, maxCol, minRow, maxRow, fn) {
@@ -2847,13 +2753,11 @@ export class BeltPlan {
                 const exitInFootprint = footprint.has(exitIdx);
                 if (entryInFootprint) {
                     const entryExit = BeltPacked.exit(this.cells.get(entryIdx));
-                    if (entryExit !== edgeMirrorSide(entrySide))
-                        throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(entryIdx)} -> ${formatGlobalCellIdx(idx)} (entry side ${entrySide}, upstream exit ${entryExit})`);
+                    if (entryExit !== edgeMirrorSide(entrySide)) throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(entryIdx)} -> ${formatGlobalCellIdx(idx)} (entry side ${entrySide}, upstream exit ${entryExit})`);
                 }
                 if (exitInFootprint) {
                     const exitEntry = BeltPacked.entry(this.cells.get(exitIdx));
-                    if (exitEntry !== edgeMirrorSide(exitSide))
-                        throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(idx)} -> ${formatGlobalCellIdx(exitIdx)} (exit side ${exitSide}, downstream entry ${exitEntry})`);
+                    if (exitEntry !== edgeMirrorSide(exitSide)) throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(idx)} -> ${formatGlobalCellIdx(exitIdx)} (exit side ${exitSide}, downstream entry ${exitEntry})`);
                 }
                 if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) throw new Error(`belt plan: dead-end belt at ${formatGlobalCellIdx(idx)}`);
             }
@@ -3447,6 +3351,7 @@ export function bakeRailMazeDfs(originIdx, layoutCols, strideCols, cellCount, op
                 const ly_up = Math.min(numY - 1, Math.floor((r - 1) / W_c));
                 if (ly_up < ly && horizontalWalls[lx][ly_up] === 1) pushWall(localIdx, 0);
             }
+            if (r === 0) pushWall(localIdx, 0);
             if (c === 0) pushWall(localIdx, 3);
             else {
                 const lx_left = Math.min(numX - 1, Math.floor((c - 1) / W_c));
@@ -3660,8 +3565,7 @@ export function getMapGenBoundsAabb(grid, config) {
 }
 export function getMapGenBoundsCenterWorld(grid, config) {
     const cellSize = grid.cellSize;
-    if (config.boundsMode === "rect")
-        return { x: grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5, y: grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5 };
+    if (config.boundsMode === "rect") return { x: grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5, y: grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5 };
     return { x: grid.gridCenterXByIdx(config.centerIdx), y: grid.gridCenterYByIdx(config.centerIdx) };
 }
 export function getMapGenBoundsCenterIdx(grid, config) {
@@ -3697,6 +3601,9 @@ export function centerMapGenBoundsOnViewport(grid, viewport, config) {
     if (config.boundsMode === "rect") {
         const minX = viewport.x - (config.boundsCols * cellSize) / 2;
         const minY = viewport.y - (config.boundsRows * cellSize) / 2;
+        const maxX = minX + config.boundsCols * cellSize;
+        const maxY = minY + config.boundsRows * cellSize;
+        grid.expandToCoverAabb({ minX, minY, maxX, maxY });
         config.boundsIdx = grid.worldToIdx(minX + cellSize * 0.5, minY + cellSize * 0.5);
         return;
     }
@@ -3729,15 +3636,7 @@ export function migrateMapGenBoundsForMode(grid, config) {
     if (config.boundsMode === "donut") config.donutThicknessCells = Math.max(1, Math.min(config.donutThicknessCells, config.outerRadiusCells - 1));
 }
 function mapGenBoundsCacheMatches(cache, config) {
-    return (
-        cache.boundsMode === config.boundsMode &&
-        cache.boundsIdx === config.boundsIdx &&
-        cache.boundsCols === config.boundsCols &&
-        cache.boundsRows === config.boundsRows &&
-        cache.centerIdx === config.centerIdx &&
-        cache.outerRadiusCells === config.outerRadiusCells &&
-        cache.donutThicknessCells === config.donutThicknessCells
-    );
+    return cache.boundsMode === config.boundsMode && cache.boundsIdx === config.boundsIdx && cache.boundsCols === config.boundsCols && cache.boundsRows === config.boundsRows && cache.centerIdx === config.centerIdx && cache.outerRadiusCells === config.outerRadiusCells && cache.donutThicknessCells === config.donutThicknessCells;
 }
 export function refreshMapGenBoundsAabb(grid, cache, config) {
     if (mapGenBoundsCacheMatches(cache, config)) return;

@@ -1,4 +1,4 @@
-import { generateLabRailMaze, centerMapGenBoundsOnViewport } from "../Spatial/spatial.js";
+import { generateLabRailMaze, centerMapGenBoundsOnViewport, applyEditorRegionSurfaceProfiles } from "../Spatial/spatial.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
@@ -19,6 +19,7 @@ async function runSnakeLaunch(state, ctx) {
     railMazeConfig.boundsRows = SNAKE_RAIL_MAZE_ROWS;
     centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railMazeConfig);
     await generateLabRailMaze(state);
+    applyEditorRegionSurfaceProfiles(state);
     await state.nav.commitEdit(null, { fullNavSync: true });
     const x = state.viewport.x;
     const y = state.viewport.y;
