@@ -39,9 +39,10 @@ describe("prop impact fracture", () => {
         const fracture = FractureEngine.fracturePropOnImpact(prop, 100, 200, 80);
         assert.ok(fracture);
         assert.ok(prop.chunks.length < initialChunks);
-        assert.ok(fracture.debris.length > 0);
+        const debris = FractureEngine.fractureDebrisGeometries(fracture);
+        assert.ok(debris.length > 0);
         assert.ok(prop.footprintArea > 0);
-        for (const geom of fracture.debris) assert.ok(geom.footprintArea <= prop.footprintArea);
+        for (const geom of debris) assert.ok(geom.footprintArea <= prop.footprintArea);
     });
 
     it("applyPropBoxFootprint rebakes chunk grid for resized custom box", () => {
@@ -62,7 +63,7 @@ describe("prop impact fracture", () => {
         const parentParts = getEntityCollisionParts(prop);
         assert.ok(parentParts.length >= 1);
         assert.ok(Math.abs(FractureEngine.chunkCollisionPartsArea(parentParts) - prop.footprintArea) < 1);
-        for (const geom of fracture.debris) {
+        for (const geom of FractureEngine.fractureDebrisGeometries(fracture)) {
             assert.ok(geom.collisionParts.length >= 1);
             assert.ok(Math.abs(FractureEngine.chunkCollisionPartsArea(geom.collisionParts) - geom.footprintArea) < 1);
         }

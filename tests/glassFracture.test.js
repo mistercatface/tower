@@ -104,8 +104,9 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(prop, 16, 10);
         const fracture = FractureEngine.fracturePropOnImpact(prop, 50, 50, 25);
         assert.ok(fracture);
-        assert.ok(fracture.debris.length >= 4);
-        assert.ok(fracture.impactLocal);
+        assert.ok(FractureEngine.fractureDebrisGeometries(fracture).length >= 4);
+        assert.ok(Number.isFinite(fracture.impactLocalX));
+        assert.ok(Number.isFinite(fracture.impactLocalY));
         assert.equal(prop.poxels, undefined);
     });
     it("glass shard fractures again on its actual polygon footprint", () => {
@@ -119,8 +120,9 @@ describe("glass fracture", () => {
         assert.ok(FractureEngine.canFracturePropSplit(prop));
         const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 25);
         assert.ok(fracture);
-        assert.ok(fracture.debris.length >= 2);
-        for (const piece of fracture.debris) assert.ok(piece.footprintArea < big.footprintArea);
+        const debris = FractureEngine.fractureDebrisGeometries(fracture);
+        assert.ok(debris.length >= 2);
+        for (const piece of debris) assert.ok(piece.footprintArea < big.footprintArea);
     });
     it("shatterGlassPolygon splits non-rect shard geometry", () => {
         const parentShards = FractureEngine.shatterGlassFootprint(10, 6, 1, 0, 25, deterministicRandom);

@@ -56,8 +56,9 @@ describe("chunk fracture", () => {
         const fracture = FractureEngine.fracturePropOnImpact(prop, 100, 200, 80);
         assert.ok(fracture);
         assert.ok(prop.chunks.length < initialChunks);
-        assert.ok(fracture.debris.length > 0);
-        for (const geom of fracture.debris) assert.ok(geom.chunks.length >= 1);
+        const debris = FractureEngine.fractureDebrisGeometries(fracture);
+        assert.ok(debris.length > 0);
+        for (const geom of debris) assert.ok(geom.chunks.length >= 1);
     });
     it("splitFootprintIntoComponents forceExplode yields one fragment per chunk", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
@@ -155,7 +156,7 @@ describe("chunk fracture", () => {
         const beforeArea = prop.footprintArea;
         const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 80);
         assert.ok(fracture);
-        assert.ok(fracture.debris.length > 0);
+        assert.ok(FractureEngine.fractureDebrisGeometries(fracture).length > 0);
         assert.ok(prop.footprintArea < beforeArea);
     });
 });

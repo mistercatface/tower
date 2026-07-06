@@ -61,8 +61,8 @@ describe("Shatter / Debris Performance Fixes", () => {
             removeWorldPropFromState(state, spawned[i], { evictKineticProp() {} });
         }
 
-        // Shatter again and verify same instances are acquired
-        const spawnedAgain = FractureEngine.spawnFractureShards(state, prop, fracture, null);
+        const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
+        const spawnedAgain = FractureEngine.spawnFractureShards(state, prop, fractureAgain, null);
         assert.ok(spawnedAgain.length >= 2);
         
         // Identity check: pooled props should have the same IDs (since references are reused)

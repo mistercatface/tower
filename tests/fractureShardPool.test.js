@@ -63,7 +63,8 @@ describe("fracture shard pool ownership", () => {
         for (let i = spawned.length - 1; i >= 0; i--) {
             removeWorldPropFromState(state, spawned[i], { evictKineticProp() {} });
         }
-        const spawnedAgain = FractureEngine.spawnFractureShards(state, prop, fracture, null);
+        const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
+        const spawnedAgain = FractureEngine.spawnFractureShards(state, prop, fractureAgain, null);
         for (const id of spawnedAgain.map((s) => s.id)) {
             assert.ok(originalIds.includes(id));
         }
