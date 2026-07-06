@@ -1,4 +1,4 @@
-import { BeltPacked, FloorBelt, migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, computeCircleAimLineSegment, estimateRollingTravelDistance, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel } from "../Spatial/spatial.js";
+import { BeltPacked, FloorBelt, migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, computeCircleAimLineSegment, estimateRollingTravelDistance, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView, queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { isKinematicallyActive, applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, worldAnchorFromBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
@@ -397,6 +397,7 @@ function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated, genera
         options: profileOptions,
         onChange: (value) => {
             cavernConfig.surfaceProfileId = value;
+            repaintMapGenRegionSurfaceIfStamped(state, "cavern");
             onPreviewChange();
         },
     });
@@ -437,6 +438,7 @@ function buildRailGenEditor(panel, state, onPreviewChange, onGenerated, generate
         options: profileOptions,
         onChange: (value) => {
             railConfig.surfaceProfileId = value;
+            repaintMapGenRegionSurfaceIfStamped(state, "rail");
             onPreviewChange();
         },
     });
@@ -471,6 +473,7 @@ function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, gene
         options: profileOptions,
         onChange: (value) => {
             railMazeConfig.surfaceProfileId = value;
+            repaintMapGenRegionSurfaceIfStamped(state, "railMaze");
             onPreviewChange();
         },
     });

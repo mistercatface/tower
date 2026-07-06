@@ -6,7 +6,14 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
-import { getMapGenBoundsCenterWorld } from "../Libraries/Spatial/spatial.js";
+import { getMapGenBoundsCenterWorld, hasMapGenStamp, packChunkKey, cellToChunkCoord } from "../Libraries/Spatial/spatial.js";
+
+const CELLS_PER_CHUNK = 16;
+
+function chunkProfileAtCell(grid, col, row) {
+    const key = packChunkKey(cellToChunkCoord(col, CELLS_PER_CHUNK), cellToChunkCoord(row, CELLS_PER_CHUNK));
+    return grid.surfaceMaterials.getChunkAtKey(key);
+}
 
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -39,7 +46,7 @@ function createEditorTestState() {
             circleInBounds() { return true; } 
         },
         worldSurfaces: { 
-            settings: { maxWallHeightLevel: 8 },
+            settings: { maxWallHeightLevel: 8, cellsPerChunk: CELLS_PER_CHUNK },
             clearBakeCache() {},
             invalidateGridBounds() {}
         },
@@ -80,6 +87,17 @@ describe("snake game launch actions", () => {
         assert.equal(state.editor.railMazeConfig.edgeThickness, 4);
         assert.equal(state.editor.railMazeConfig.wallHeightLevel, 1);
         assert.equal(state.editor.railMazeConfig.surfaceProfileId, "poolTableFelt");
+        assert.ok(hasMapGenStamp(state.editor.railMazeConfig));
+        assert.equal(hasMapGenStamp(state.editor.railConfig), false);
+        const grid = state.obstacleGrid;
+        const stampCol = state.editor.railMazeConfig.stampedBoundsIdx % grid.cols;
+        const stampRow = (state.editor.railMazeConfig.stampedBoundsIdx / grid.cols) | 0;
+        assert.equal(chunkProfileAtCell(grid, stampCol, stampRow), "poolTableFelt");
+        const outsideCol = stampCol + state.editor.railMazeConfig.stampedBoundsCols + 8;
+        const outsideRow = stampRow + state.editor.railMazeConfig.stampedBoundsRows + 8;
+        if (outsideCol < grid.cols && outsideRow < grid.rows) {
+            assert.equal(chunkProfileAtCell(grid, outsideCol, outsideRow), null);
+        }
         
         // Verify Boid
         assert.ok(ctx.boid);

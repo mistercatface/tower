@@ -3537,9 +3537,36 @@ export function stampGlobalRailWalls(state, rails, { commit = true } = {}) {
     return result;
 }
 export const MAP_GEN_KINDS = ["cavern", "rail", "railMaze", "erase"];
+export const MAP_GEN_SURFACE_REGION_SPECS = [
+    { kind: "cavern", editorKey: "cavernConfig", defaultProfile: "tomatoGarden" },
+    { kind: "rail", editorKey: "railConfig", defaultProfile: "poolTableFelt" },
+    { kind: "railMaze", editorKey: "railMazeConfig", defaultProfile: "cyberGrid" },
+];
 export const MAP_GEN_OVERLAY_COLORS = { cavern: "#ff9800", rail: "#e040fb", railMaze: "#ba68c8", erase: "#f44336" };
 export function createDefaultMapGenBoundsConfig() {
-    return { boundsMode: "rect", boundsIdx: 0, boundsCols: 32, boundsRows: 32, centerIdx: 0, outerRadiusCells: 16, donutThicknessCells: 4 };
+    return { boundsMode: "rect", boundsIdx: 0, boundsCols: 32, boundsRows: 32, centerIdx: 0, outerRadiusCells: 16, donutThicknessCells: 4, stampedBoundsIdx: null, stampedBoundsCols: null, stampedBoundsRows: null };
+}
+export function hasMapGenStamp(config) {
+    return config.stampedBoundsIdx != null && config.stampedBoundsIdx >= 0 && config.stampedBoundsCols != null && config.stampedBoundsRows != null;
+}
+export function clearMapGenStamp(config) {
+    config.stampedBoundsIdx = null;
+    config.stampedBoundsCols = null;
+    config.stampedBoundsRows = null;
+}
+function recordMapGenStamp(config) {
+    config.stampedBoundsIdx = config.boundsIdx;
+    config.stampedBoundsCols = config.boundsCols;
+    config.stampedBoundsRows = config.boundsRows;
+}
+function stampedPaintConfig(config) {
+    return { boundsMode: config.boundsMode, boundsIdx: config.stampedBoundsIdx, boundsCols: config.stampedBoundsCols, boundsRows: config.stampedBoundsRows, centerIdx: config.centerIdx, outerRadiusCells: config.outerRadiusCells, donutThicknessCells: config.donutThicknessCells };
+}
+function remapMapGenStampIdx(config, grid, colOffset, rowOffset, oldCols) {
+    if (!hasMapGenStamp(config)) return;
+    const oldCol = config.stampedBoundsIdx % oldCols;
+    const oldRow = (config.stampedBoundsIdx / oldCols) | 0;
+    config.stampedBoundsIdx = grid.worldToIdx(grid.gridCenterX(oldCol + colOffset), grid.gridCenterY(oldRow + rowOffset));
 }
 export function createMapGenBoundsAabbCache() {
     return { aabb: createAabb(), boundsMode: "", boundsIdx: -1, boundsCols: NaN, boundsRows: NaN, centerIdx: -1, outerRadiusCells: NaN, donutThicknessCells: NaN };
@@ -3650,10 +3677,16 @@ export function refreshMapGenBoundsAabb(grid, cache, config) {
     getMapGenBoundsAabbInto(grid, cache.aabb, config);
 }
 export function getMapGenBoundsConfig(editor, kind) {
-    if (kind === "cavern") return editor.cavernConfig;
-    if (kind === "rail") return editor.railConfig;
-    if (kind === "railMaze") return editor.railMazeConfig;
+    if (kind === "erase") return editor.eraseConfig;
+    for (let i = 0; i < MAP_GEN_SURFACE_REGION_SPECS.length; i++) {
+        const spec = MAP_GEN_SURFACE_REGION_SPECS[i];
+        if (spec.kind === kind) return editor[spec.editorKey];
+    }
     return editor.eraseConfig;
+}
+export function getMapGenSurfaceRegionSpec(kind) {
+    for (let i = 0; i < MAP_GEN_SURFACE_REGION_SPECS.length; i++) if (MAP_GEN_SURFACE_REGION_SPECS[i].kind === kind) return MAP_GEN_SURFACE_REGION_SPECS[i];
+    return null;
 }
 export function getMapGenBoundsAabbCache(editor, kind) {
     return editor.mapBoundsPreview[kind];
@@ -3689,6 +3722,7 @@ export function registerMapGenBoundsGridExpansionListener(state) {
                 config.centerIdx = grid.worldToIdx(grid.gridCenterX(oldCol + colOffset), grid.gridCenterY(oldRow + rowOffset));
             }
             migrateMapGenBoundsForMode(grid, config);
+            remapMapGenStampIdx(config, grid, colOffset, rowOffset, oldCols);
         }
     };
 }
@@ -3757,24 +3791,35 @@ export function applyMapGenSurfaceProfile(state, config, profileId) {
     grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config)), profileId, cellsPerChunk);
     grid.surfaceMaterialRevision++;
 }
-export function applyEditorRegionSurfaceProfiles(state) {
+function paintMapGenStampedRegion(state, config, defaultProfile) {
+    if (!hasMapGenStamp(config)) return;
+    const profileId = config.surfaceProfileId || defaultProfile;
+    applyMapGenSurfaceProfile(state, stampedPaintConfig(config), profileId);
+}
+export function repaintMapGenRegionSurfaceIfStamped(state, kind) {
+    const spec = getMapGenSurfaceRegionSpec(kind);
+    if (!spec) return;
+    paintMapGenStampedRegion(state, state.editor[spec.editorKey], spec.defaultProfile);
+    state.worldSurfaces.clearBakeCache();
+}
+export function refreshAllStampedRegionSurfaces(state) {
     const grid = state.obstacleGrid;
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
     grid.surfaceMaterials.chunkProfileIds.clear();
     grid.surfaceMaterialRevision++;
-    const profiles = [
-        [state.editor.cavernConfig, "tomatoGarden"],
-        [state.editor.railConfig, "poolTableFelt"],
-        [state.editor.railMazeConfig, "cyberGrid"],
-    ];
-    for (let i = 0; i < profiles.length; i++) {
-        const config = profiles[i][0];
-        const fallback = profiles[i][1];
-        grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config)), config.surfaceProfileId || fallback, cellsPerChunk);
+    for (let i = 0; i < MAP_GEN_SURFACE_REGION_SPECS.length; i++) {
+        const spec = MAP_GEN_SURFACE_REGION_SPECS[i];
+        const config = state.editor[spec.editorKey];
+        if (!hasMapGenStamp(config)) continue;
+        const profileId = config.surfaceProfileId || spec.defaultProfile;
+        grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, stampedPaintConfig(config))), profileId, cellsPerChunk);
     }
+    grid.surfaceMaterialRevision++;
+    state.worldSurfaces.clearBakeCache();
 }
 async function finalizeMapGenRun(state, { config, profileId, damageBounds, fullNavSync = true, syncFloorSeed = true } = {}) {
-    if (profileId != null) applyMapGenSurfaceProfile(state, config, profileId);
+    recordMapGenStamp(config);
+    if (profileId != null) applyMapGenSurfaceProfile(state, stampedPaintConfig(config), profileId);
     await commitGridNavEdit(state, damageBounds ?? null, { fullNavSync });
     if (syncFloorSeed) state.floorSeed = state.mapSeed;
     state.worldSurfaces.clearBakeCache();
@@ -3889,9 +3934,10 @@ export async function applyPlayAreaConfig(state) {
         const config = getMapGenBoundsConfig(editor, kind);
         syncMapGenBoundsFromPlay(grid, viewport, playConfig, config, { center: true, syncSizeFromPlay: true });
         migrateMapGenBoundsForMode(state.obstacleGrid, config);
+        clearMapGenStamp(config);
     }
     ensureLabObstacleGridCoverage(state);
-    applyEditorRegionSurfaceProfiles(state);
+    refreshAllStampedRegionSurfaces(state);
     await commitGridNavEdit(state, null, { fullNavSync: true });
 }
 export function ensureLabObstacleGridCoverage(state, extraAabb = null) {

@@ -1,4 +1,4 @@
-import { generateLabRailMaze, centerMapGenBoundsOnViewport, applyEditorRegionSurfaceProfiles } from "../Spatial/spatial.js";
+import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces } from "../Spatial/spatial.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
@@ -11,15 +11,20 @@ const SNAKE_RAIL_MAZE_COLS = 64;
 const SNAKE_RAIL_MAZE_ROWS = 64;
 async function runSnakeLaunch(state, ctx) {
     const railMazeConfig = state.editor.railMazeConfig;
+    const railConfig = state.editor.railConfig;
     railMazeConfig.edgeThickness = 4;
     railMazeConfig.wallHeightLevel = 1;
     railMazeConfig.surfaceProfileId = "poolTableFelt";
     railMazeConfig.boundsMode = "rect";
     railMazeConfig.boundsCols = SNAKE_RAIL_MAZE_COLS;
     railMazeConfig.boundsRows = SNAKE_RAIL_MAZE_ROWS;
+    railConfig.boundsMode = "rect";
+    railConfig.boundsCols = SNAKE_RAIL_MAZE_COLS;
+    railConfig.boundsRows = SNAKE_RAIL_MAZE_ROWS;
     centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railMazeConfig);
+    centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railConfig);
     await generateLabRailMaze(state);
-    applyEditorRegionSurfaceProfiles(state);
+    refreshAllStampedRegionSurfaces(state);
     await state.nav.commitEdit(null, { fullNavSync: true });
     const x = state.viewport.x;
     const y = state.viewport.y;
