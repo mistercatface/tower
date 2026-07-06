@@ -1,4 +1,4 @@
-import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCacheManager, sampleFlowDirection } from "../Libraries/Navigation/navigation.js";
+import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCacheManager, sampleFlowDirection, buildOctilePredecessorsFromForwardGrid } from "../Libraries/Navigation/navigation.js";
 import { FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -111,5 +111,17 @@ describe("flow field centered grid frame", () => {
             posts.map((post) => post.payload.range),
             [2, 999999],
         );
+    });
+
+    it("builds predecessors correctly and rebuilds flow neighbors", () => {
+        const octileNeighbors = new Int32Array(OCTILE_NEIGHBOR_GRID_LAYOUT.bufferByteLength(2) / 4).fill(-1);
+        octileNeighbors[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(0, 1)] = 1;
+        octileNeighbors[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(1, 3)] = 0;
+
+        const octilePredecessors = new Int32Array(OCTILE_NEIGHBOR_GRID_LAYOUT.bufferByteLength(2) / 4).fill(-1);
+        buildOctilePredecessorsFromForwardGrid(octileNeighbors, octilePredecessors, 2, 1);
+
+        assert.equal(octilePredecessors[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(1, 3)], 0);
+        assert.equal(octilePredecessors[OCTILE_NEIGHBOR_GRID_LAYOUT.cellOffset(0, 1)], 1);
     });
 });

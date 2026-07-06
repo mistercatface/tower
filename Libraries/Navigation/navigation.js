@@ -1,48 +1,7 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
-import {
-    manhattanDistanceIdx,
-    octileDistanceIdx,
-    makeAdjacencyKey,
-    forEachCardinalNeighborIdx,
-    boundaryBlocksStepFrom,
-    recomputeNavCardinalOpenInto,
-    recomputeVertexPassabilityInto,
-    isNavTopologyReady,
-    CELL_EDGE_SLOT_BYTES,
-    cellEdgeSlotOffset,
-    cellInRect,
-    diagonalStepOpen,
-    getCardinalBit,
-    edgeNeighborIdx,
-    FloorBelt,
-    BeltPacked,
-    hasLineOfSight,
-    worldColAtOrigin,
-    worldRowAtOrigin,
-    cellBoundsForGrid,
-    forEachDenseCellInBounds,
-    padCellIdxToGrid,
-    padCellBoundsInPlace,
-    forEachDenseCellInRect,
-    gridNavCacheKey,
-    centeredGridFrameKey,
-    createCenteredGridFrame,
-    getCellBoundsInCenteredFrameInto,
-    gridCenterXInCenteredFrame,
-    gridCenterYInCenteredFrame,
-    setCenteredGridFrameCenter,
-    worldColInCenteredFrame,
-    worldRowInCenteredFrame,
-    isEmptyCellBounds,
-    unionCellBounds,
-    isIdxInMapGenBounds,
-    stampLayoutFromConfig,
-    forEachStampGlobalIdx,
-    gridCellLayout,
-    corridorPathHitsOccupied,
-} from "../Spatial/spatial.js";
+import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, FloorBelt, BeltPacked, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloatingText } from "../Render/render.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
@@ -364,10 +323,7 @@ function writeNavWalkableFlagsInRect(flags, grid, cells, patchBounds) {
 function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const grid = state.obstacleGrid;
     const navTopology = state.nav.topology;
-    const patchBounds =
-        typeof idx === "object" && idx !== null
-            ? padCellBoundsInPlace({ startCol: idx.startCol, endCol: idx.endCol, startRow: idx.startRow, endRow: idx.endRow }, grid, 2)
-            : padCellIdxToGrid(idx, grid, 2);
+    const patchBounds = typeof idx === "object" && idx !== null ? padCellBoundsInPlace({ startCol: idx.startCol, endCol: idx.endCol, startRow: idx.startRow, endRow: idx.endRow }, grid, 2) : padCellIdxToGrid(idx, grid, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
     let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
@@ -408,10 +364,7 @@ function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = null) {
         if (seeded.length) seedCells = seeded;
     }
     const prior = state.editor.navWalkableCellsCache;
-    const cache = ensureNavWalkableBuffers(
-        { navCacheKey, boundsConfig, floodSeedBounds, cells: [], flags: prior?.flags, candidateMask: prior?.candidateMask, reachedMask: prior?.reachedMask, cols: prior?.cols, rows: prior?.rows },
-        grid,
-    );
+    const cache = ensureNavWalkableBuffers({ navCacheKey, boundsConfig, floodSeedBounds, cells: [], flags: prior?.flags, candidateMask: prior?.candidateMask, reachedMask: prior?.reachedMask, cols: prior?.cols, rows: prior?.rows }, grid);
     const candidateMask = createNavWalkableCandidateMask(grid, candidates, cache.candidateMask);
     const reachedMask = createNavWalkableReachedMask(grid, cache.reachedMask);
     const cells = candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, seedCells, reachedMask) : [];
@@ -622,13 +575,11 @@ export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, 
             if (nodeAIdx === -1) continue;
             if (c + 1 <= endCol) {
                 const nodeBIdx = cellToNode[idx + 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx)))
-                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
             if (r + 1 <= endRow) {
                 const nodeBIdx = cellToNode[idx + cols];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
-                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
         }
     return adjacencies;
@@ -756,13 +707,11 @@ export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) 
             if (nodeAIdx === -1) continue;
             if (c + 1 < cols) {
                 const nodeBIdx = cellToNode[idx + 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx)))
-                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
             if (r + 1 < rows) {
                 const nodeBIdx = cellToNode[idx + cols];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx)))
-                    adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
         }
     return adjacencies;
@@ -776,18 +725,7 @@ export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
 export const HPA_REPLAN_FRAME_START_BUDGET = 12;
 export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
 export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, stepPenalty, state = null) {
-    return new HpaReplanRequest({
-        obstacleGrid,
-        startX,
-        startY,
-        targetX,
-        targetY,
-        graphEpoch: nav.graphSyncGeneration,
-        topologyKey: nav.syncedTopologyKey(),
-        navTopology: nav.topology,
-        stepPenalty: stepPenalty ?? null,
-        state,
-    });
+    return new HpaReplanRequest({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, stepPenalty: stepPenalty ?? null, state });
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function trackNavStuck(navState, x, y, stuckMoveThreshold) {
@@ -944,16 +882,7 @@ export class HpaAbstractGraph extends FlatGraphView {
             extEdgeCosts[startWrite] = startEdgesCost[i];
             startWrite++;
         }
-        const extendedGraph = new FlatGraphView({
-            nodeIdx: extNodeIdx,
-            cols,
-            edgeOffsets: extEdgeOffsets,
-            edgeTargets: extEdgeTargets,
-            edgeCosts: extEdgeCosts,
-            nodeCount: extCount,
-            edgeWrite: totalEdges,
-            nodeIds: this.nodeIds,
-        });
+        const extendedGraph = new FlatGraphView({ nodeIdx: extNodeIdx, cols, edgeOffsets: extEdgeOffsets, edgeTargets: extEdgeTargets, edgeCosts: extEdgeCosts, nodeCount: extCount, edgeWrite: totalEdges, nodeIds: this.nodeIds });
         return { extendedGraph, startTemp, targetTemp };
     }
 }
@@ -1373,17 +1302,7 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
             edgeCosts.push(edges[e].cost);
         }
     }
-    return {
-        nodeCount,
-        nodeIdx,
-        cellToRegion,
-        edgeSources: Int16Array.from(edgeSources),
-        edgeTargets: Int16Array.from(edgeTargets),
-        edgeCosts: Uint16Array.from(edgeCosts),
-        edgeWrite: edgeSources.length,
-        nodeIds,
-        idToIdx,
-    };
+    return { nodeCount, nodeIdx, cellToRegion, edgeSources: Int16Array.from(edgeSources), edgeTargets: Int16Array.from(edgeTargets), edgeCosts: Uint16Array.from(edgeCosts), edgeWrite: edgeSources.length, nodeIds, idToIdx };
 }
 export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame) {
     const { cols, rows } = frame;
@@ -1579,10 +1498,10 @@ export function captureNavGridSnapshot(grid, bounds = null) {
 export const OCTILE_DIRS_PER_CELL = 8;
 export const OCTILE_NEIGHBOR_BYTES = OCTILE_DIRS_PER_CELL * 4;
 // Precalculated array for the inverse of each octile offset.
-// Order of OCTILE_OFFSETS: N, NE, E, SE, S, SW, W, NW
-// Their opposites are:     S, SW, W, NW, N, NE, E, SE
-// Which corresponds to indices: 4, 5, 6, 7, 0, 1, 2, 3
-const OCTILE_REVERSE_DIR = [4, 5, 6, 7, 0, 1, 2, 3];
+// Order of OCTILE_DCOL/OCTILE_DR: N, E, S, W, NE, SE, SW, NW
+// Their opposites are:            S, W, N, E, SW, NW, NE, SE
+// Which corresponds to indices: 2, 3, 0, 1, 6, 7, 4, 5
+const OCTILE_REVERSE_DIR = [2, 3, 0, 1, 6, 7, 4, 5];
 /** @param {number} cellIdx */
 export function octileNeighborBase(cellIdx) {
     return cellIdx * OCTILE_DIRS_PER_CELL;
@@ -1626,26 +1545,7 @@ export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows =
     const vertBytes = Math.max(vertCount, 4);
     const expCellCount = cols > 0 && rows > 0 ? (cols + 1) * (rows + 1) : cellCount;
     /** @type {NavTopologySabArena} */
-    const arena = {
-        cellCount,
-        sabBlocked: new SharedArrayBuffer(cellCount),
-        sabGridFill: new SharedArrayBuffer(cellCount),
-        sabFloorPacked: new SharedArrayBuffer(cellCount),
-        sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES),
-        sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
-        sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES),
-        sabCardinalOpen: new SharedArrayBuffer(cellCount),
-        sabVertexPassability: new SharedArrayBuffer(vertBytes),
-        blocked: undefined,
-        gridFill: undefined,
-        floorPacked: undefined,
-        edgeSlots: undefined,
-        octileNeighbors: undefined,
-        octilePredecessors: undefined,
-        cardinalOpen: undefined,
-        vertexPassability: undefined,
-        topologyHandle: undefined,
-    };
+    const arena = { cellCount, sabBlocked: new SharedArrayBuffer(cellCount), sabGridFill: new SharedArrayBuffer(cellCount), sabFloorPacked: new SharedArrayBuffer(cellCount), sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES), sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabCardinalOpen: new SharedArrayBuffer(cellCount), sabVertexPassability: new SharedArrayBuffer(vertBytes), blocked: undefined, gridFill: undefined, floorPacked: undefined, edgeSlots: undefined, octileNeighbors: undefined, octilePredecessors: undefined, cardinalOpen: undefined, vertexPassability: undefined, topologyHandle: undefined };
     bindNavTopologySabViews(arena);
     return arena;
 }
@@ -2100,26 +2000,7 @@ export function navHasPath(navState) {
 }
 /** @returns {NavSessionState} */
 export function createNavState() {
-    return {
-        lastX: null,
-        lastY: null,
-        stuckFrames: 0,
-        pathProgressIdx: 0,
-        topologyKey: "",
-        lastTargetX: null,
-        lastTargetY: null,
-        lastOffPathReplan: 0,
-        hpaReplanRequestId: 0,
-        pathSlot: -1,
-        pathLen: 0,
-        routeId: 0,
-        pendingReplanReason: null,
-        lastAcceptedRouteReason: null,
-        lastAcceptedPathLen: 0,
-        lastAcceptedProgressIdx: 0,
-        lastAcceptedTargetX: null,
-        lastAcceptedTargetY: null,
-    };
+    return { lastX: null, lastY: null, stuckFrames: 0, pathProgressIdx: 0, topologyKey: "", lastTargetX: null, lastTargetY: null, lastOffPathReplan: 0, hpaReplanRequestId: 0, pathSlot: -1, pathLen: 0, routeId: 0, pendingReplanReason: null, lastAcceptedRouteReason: null, lastAcceptedPathLen: 0, lastAcceptedProgressIdx: 0, lastAcceptedTargetX: null, lastAcceptedTargetY: null };
 }
 const PATH_WAYPOINT_ARRIVAL_PX = 16;
 function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, grid, navTopology) {
@@ -2533,28 +2414,15 @@ export class HpaNavSession {
         const stuckFrames = this.navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
         this.syncRouteCommitState();
-        if (!inFlight && obstacleEpochReplanDue(this.navState, nav.topologyKey()))
-            if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
+        if (!inFlight && obstacleEpochReplanDue(this.navState, nav.topologyKey())) if (obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor("epoch", isVisible), "epoch");
         if (sandboxReplan) {
             const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible, stuckFrames, stuckReplanFrames });
             if (sandboxResult) return sandboxResult;
         }
         const idleReason = idlePathReplanReason(this.navState, settings, inFlight);
-        if (idleReason && idlePathReplanAllowed(this.navState, idleReason, isVisible, stuckReplanFrames))
-            return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);
+        if (idleReason && idlePathReplanAllowed(this.navState, idleReason, isVisible, stuckReplanFrames)) return this.requestReplan(prop, targetX, targetY, state, replanPriorityFor(idleReason, isVisible), idleReason);
         if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
-        const steering = computeSabPathSteering(
-            agentPose(prop),
-            nav.worker,
-            this.navState.pathSlot,
-            this.navState.pathLen,
-            targetX,
-            targetY,
-            state.obstacleGrid,
-            nav.topology,
-            pathSettings,
-            this.navState,
-        );
+        const steering = computeSabPathSteering(agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
         if (steering && !inFlight && offPathReplanDue(steering, this.navState, this.replanClockMs))
             if (this.softReplanAllowed(stuckFrames, stuckReplanFrames) && obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames)) {
                 this.navState.lastOffPathReplan = this.replanClockMs;
@@ -2757,10 +2625,7 @@ export class FlowFieldGrid {
         if (!workerUrl) throw new Error("FlowFieldGrid requires an injected workerUrl");
         this.protocol = new PathfindingWorkerClient(workerUrl, MAX_CACHE, "FlowFieldGrid", (data) => this._handleWorkerMessage(data));
         this._workerHost = this.protocol.host;
-        this.protocol.postMessage({
-            type: "init",
-            data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool, sabFlowDistPool: this.sabFlowDistPool },
-        });
+        this.protocol.postMessage({ type: "init", data: { GRID_WIDTH: this.cols, GRID_SIZE: size, sabFlowToNav: this.sabFlowToNav, sabNeighbors: this.sabNeighbors, sabFlowPool: this.sabFlowPool, sabFlowDistPool: this.sabFlowDistPool } });
         this._syncWindowAliases();
     }
     _syncWindowAliases() {
@@ -2871,8 +2736,7 @@ export class FlowFieldGrid {
     ensureRollTargetWindow(propX, propY, targetX, targetY, recenterThreshold) {
         const focusX = (propX + targetX) * 0.5;
         const focusY = (propY + targetY) * 0.5;
-        const needsRecenter =
-            !this.containsWorldPoint(propX, propY) || !this.containsWorldPoint(targetX, targetY) || Math.max(Math.abs(focusX - this.centerX), Math.abs(focusY - this.centerY)) > recenterThreshold;
+        const needsRecenter = !this.containsWorldPoint(propX, propY) || !this.containsWorldPoint(targetX, targetY) || Math.max(Math.abs(focusX - this.centerX), Math.abs(focusY - this.centerY)) > recenterThreshold;
         if (needsRecenter) {
             this._setCenter(focusX, focusY);
             this.invalidateLocalTopology();
@@ -3061,10 +2925,7 @@ export class FlowCacheManager {
  * @param {Int32Array} params.bfsQueue — scratch, length gridSize
  * @param {Uint8Array} params.localVectorMap — scratch, length gridSize
  */
-export function computeFlowField(
-    vectorMap,
-    { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut },
-) {
+export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut }) {
     bfsDistances.fill(-1);
     localVectorMap.fill(0);
     const startIdx = tx + ty * gridWidth;
