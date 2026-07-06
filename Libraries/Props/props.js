@@ -256,6 +256,7 @@ function resetWorldPropInstance(prop, x, y, type, facing = null) {
     prop._neighborsFrameId = -1;
     delete prop._physId;
     delete prop._activeSlot;
+    delete prop._fractureSpawned;
 }
 export class WorldProp {
     constructor(x, y, type, facing = null) {
@@ -325,36 +326,6 @@ export class WorldProp {
         this.tickPropFrame(dt, state, spatialFrame);
         this.tickPropSubstep(dt);
     }
-}
-const pools = new Map();
-export function acquireWorldProp(x, y, type, facing = null) {
-    let list = pools.get(type);
-    if (!list) {
-        list = [];
-        pools.set(type, list);
-    }
-    if (list.length > 0) {
-        const prop = list.pop();
-        resetWorldPropInstance(prop, x, y, type, facing);
-        prop.changeState("normal");
-        return prop;
-    }
-    return new WorldProp(x, y, type, facing);
-}
-export function releaseWorldProp(prop) {
-    if (!prop) return;
-    const type = prop.type;
-    const isDebris = prop.strategy?.fracture?.mode === "glass" || prop.strategy?.fracture?.mode === "chunk";
-    if (!isDebris) return;
-    prop.shape = undefined;
-    prop.collisionParts = undefined;
-    prop.footprintVertices = undefined;
-    let list = pools.get(type);
-    if (!list) {
-        list = [];
-        pools.set(type, list);
-    }
-    if (list.indexOf(prop) === -1) list.push(prop);
 }
 export function applyCrossPinwheelFootprint(prop, length, thickness) {
     const halfL = length / 2;
@@ -554,6 +525,7 @@ export const GLASS_FRACTURE_COOLDOWN_STEPS = FRACTURE_TUNING.shared.cooldown;
 export const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
 export const FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.shared.impactThreshold;
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
+const shardPools = new Map();
 function admitKineticPropsBatch(spatialFrame, props, world) {
     if (!props.length) return;
     if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(props, world);
@@ -659,6 +631,35 @@ export class FractureEngine {
         item.fracture = fracture;
         this.deferredFracturesCount = count + 1;
     }
+    static acquireShard(x, y, shardPropId, facing = null) {
+        let list = shardPools.get(shardPropId);
+        if (!list) {
+            list = [];
+            shardPools.set(shardPropId, list);
+        }
+        let prop;
+        if (list.length > 0) {
+            prop = list.pop();
+            resetWorldPropInstance(prop, x, y, shardPropId, facing);
+            prop.changeState("normal");
+        } else prop = new WorldProp(x, y, shardPropId, facing);
+        prop._fractureSpawned = true;
+        return prop;
+    }
+    static releaseShard(prop) {
+        if (!prop?._fractureSpawned) return;
+        const type = prop.type;
+        prop.shape = undefined;
+        prop.collisionParts = undefined;
+        prop.footprintVertices = undefined;
+        delete prop._fractureSpawned;
+        let list = shardPools.get(type);
+        if (!list) {
+            list = [];
+            shardPools.set(type, list);
+        }
+        if (list.indexOf(prop) === -1) list.push(prop);
+    }
     static evalFractureRules(prop, other, force) {
         const config = prop.strategy?.fracture;
         if (!config) return false;
@@ -687,7 +688,6 @@ export class FractureEngine {
                 world.entityRegistry.unregister(prop);
                 pruneKineticConstraintsForBody(world.kinetic, prop.id);
                 prop.isDead = true;
-                releaseWorldProp(prop);
             }
         }
         const shards = FractureEngine.spawnFractureShards(world, prop, fracture, spatialFrame);
@@ -745,7 +745,7 @@ export class FractureEngine {
         for (let i = 0; i < geometries.length; i++) {
             const geom = geometries[i];
             const worldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
-            const shard = acquireWorldProp(worldPos.x, worldPos.y, shardPropId, facing);
+            const shard = FractureEngine.acquireShard(worldPos.x, worldPos.y, shardPropId, facing);
             FractureEngine.applyPropFractureGeometry(shard, geom);
             shard.faction = faction;
             shard.vx = motion.vx;

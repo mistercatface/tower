@@ -5,7 +5,7 @@ import { appendActionRow, appendEditorHint, appendSelectField, appendColorField,
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
-import { acquireWorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
+import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
 import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, obstacleReplanAllowed, replanPriorityFor, agentPose } from "../Navigation/navigation.js";
 import { appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment, overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, overlayCachedCircleFillStroke, queryPropsInView, FloorBeltDrawCache, appendPathOverlayCommands } from "../Render/render.js";
@@ -589,7 +589,7 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     const asset = propCatalog[propTypeId];
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
-    const prop = acquireWorldProp(worldX, worldY, propTypeId, facing);
+    const prop = new WorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
     if (visualOverride != null) stampPropVisualOverride(prop, visualOverride);
@@ -1619,7 +1619,7 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const launchNy = ny ?? outlet.ny;
     const launchPower = power ?? config.maxPower;
     const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
-    const spawned = acquireWorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
+    const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = spawnerWorldProp.faction;
     const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
     if (spawnVisualOverride) stampPropVisualOverride(spawned, spawnVisualOverride);

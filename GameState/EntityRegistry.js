@@ -5,7 +5,7 @@ import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/math.js"
 import { distanceSqToLineSegment } from "../Libraries/Math/math.js";
 import { hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
-import { releaseWorldProp } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Props/props.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
@@ -399,7 +399,7 @@ export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta =
     pruneKineticConstraintsForBody(world.kinetic, prop.id);
     spatialFrame.evictKineticProp(prop, world.kinetic);
     prop.isDead = true;
-    releaseWorldProp(prop);
+    if (prop._fractureSpawned) FractureEngine.releaseShard(prop);
 }
 export function visitLiveWorldProps(worldProps, visit) {
     for (let i = 0; i < worldProps.length; i++) {

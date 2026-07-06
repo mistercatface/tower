@@ -1,7 +1,7 @@
 import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, deterministicUnitRandom } from "../Math/math.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { acquireWorldProp, applyPropBoxFootprint, FractureEngine } from "../Props/props.js";
+import { WorldProp, applyPropBoxFootprint, FractureEngine } from "../Props/props.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -4185,7 +4185,7 @@ export function applyPendingWallDamage(state, wallDamage) {
     wallDamage.spatialFrame = null;
     for (const desc of descriptors) {
         const propType = desc.kind === "voxel" ? "wall_voxel_chunk" : "wall_rail_chunk";
-        const prop = acquireWorldProp(desc.x, desc.y, propType, desc.angle);
+        const prop = new WorldProp(desc.x, desc.y, propType, desc.angle);
         applyPropBoxFootprint(prop, desc.width / 2, desc.height / 2);
         prop.height = desc.wallHeight;
         prop.wallChunkProfileId = desc.wallChunkProfileId;
