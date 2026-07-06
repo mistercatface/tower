@@ -1,4 +1,4 @@
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, deterministicUnitRandom } from "../Math/math.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { acquireWorldProp, applyPropBoxFootprint, FractureEngine } from "../Props/props.js";
@@ -47,12 +47,6 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     kineticResting: { normalVelocityEpsilon: 0.05, tangentVelocityEpsilon: 0.05 },
 };
 export const collisionSettings = structuredClone(LIBRARY_COLLISION_DEFAULTS);
-function deterministicUnitRandom(seed) {
-    let h = seed | 0;
-    h = Math.imul(h ^ (h >>> 16), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
 function polygonShapeArea(shape) {
     const verts = shape.vertices;
     if (!verts || verts.length < 6) return 0;
@@ -4207,9 +4201,7 @@ export function applyPendingWallDamage(state, wallDamage) {
         addWorldPropToState(state, prop);
         wakeKineticBody(prop);
         if (spatialFrame?.admitKineticProp) spatialFrame.admitKineticProp(prop, state);
-        const impactForce = desc.sourceSpeed * 0.5 + 10;
-        const fracture = FractureEngine.fracturePropOnImpact(prop, desc.contactX, desc.contactY, impactForce);
-        if (fracture) FractureEngine.commitFractureResult(state, prop, fracture, spatialFrame, { retainParent: prop.strategy?.fracture?.mode === "chunk", height: prop.height });
+        FractureEngine.fractureSpawnedWallChunk(state, prop, { contactX: desc.contactX, contactY: desc.contactY, sourceSpeed: desc.sourceSpeed, sourceMass: desc.sourceMass ?? 1, height: desc.wallHeight }, spatialFrame);
     }
     return commitBounds;
 }

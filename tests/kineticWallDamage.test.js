@@ -13,7 +13,7 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavig
 import { patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { WorldProp } from "../Libraries/Props/props.js";
+import { WorldProp, FractureEngine, FRACTURE_TUNING } from "../Libraries/Props/props.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
@@ -108,6 +108,13 @@ describe("kinetic wall damage", () => {
     it("wallDamageKey round-trips voxel and rail targets", () => {
         assert.equal(wallDamageKey({ kind: "voxel", idx: 17 }), "v:17");
         assert.equal(wallDamageKey({ kind: "rail", idx: 35, side: 1 }), "r:35:1");
+    });
+    it("wall chunk fracture uses unified impact force with wall spawn bias", () => {
+        const speed = 100;
+        const sourceMass = 2;
+        const chunkMass = 1;
+        const force = FractureEngine.impactForceFromContact(speed, sourceMass, chunkMass) + FRACTURE_TUNING.wallSpawn.forceBias;
+        assert.ok(Math.abs(force - (speed * 0.5 + Math.sqrt(sourceMass * chunkMass) * 0.3 + 10)) < 1e-6);
     });
     it("voxel wall hit clears grid wall, spawns a voxel chunk prop, and fractures it", async () => {
         const state = await createWallDamageTestState();

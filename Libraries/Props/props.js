@@ -1,6 +1,6 @@
-import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
+﻿import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody } from "../Physics/physics.js";
-import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards } from "../Math/math.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
@@ -104,687 +104,13 @@ export function setCirclePropRadius(prop, radius) {
         wakeKineticBody(prop);
     }
 }
-const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
-function fractureRandomFromImpact(worldHitX, worldHitY, impactForce, salt = 0) {
-    let call = 0;
-    const base = Math.imul(Math.floor(worldHitX * 1000), 73856093) ^ Math.imul(Math.floor(worldHitY * 1000), 19349663) ^ Math.imul(Math.floor(impactForce * 100), 83492791) ^ salt;
-    return () => FractureEngine.fractureDeterministicRandom(base ^ Math.imul(++call, 2654435761));
-}
-function hashV(x, y) {
-    return Math.round(x * 10000) + "," + Math.round(y * 10000);
-}
-function calculateCentroidOfParts(parts) {
-    let totalCX = 0;
-    let totalCY = 0;
-    let totalArea = 0;
-    for (let i = 0; i < parts.length; i++) {
-        const verts = parts[i].vertices || parts[i];
-        const { cx, cy, signedArea } = polygonCentroid2D(verts, SHARED_CENTROID);
-        const absArea = Math.abs(signedArea);
-        totalCX += cx * absArea;
-        totalCY += cy * absArea;
-        totalArea += absArea;
-    }
-    if (totalArea > 0) {
-        const invTotalArea = 1 / totalArea;
-        SHARED_CENTROID.cx = totalCX * invTotalArea;
-        SHARED_CENTROID.cy = totalCY * invTotalArea;
-    } else {
-        SHARED_CENTROID.cx = 0;
-        SHARED_CENTROID.cy = 0;
-    }
-    SHARED_CENTROID.signedArea = totalArea;
-    return SHARED_CENTROID;
-}
-function getOuterBoundary(parts) {
-    const edgeCounts = new Map();
-    const vMap = new Map();
-    for (let i = 0; i < parts.length; i++) {
-        const v = parts[i].vertices;
-        const count = v.length / 2;
-        let area = 0;
-        for (let j = 0; j < count; j++) {
-            const ax = v[j * 2];
-            const ay = v[j * 2 + 1];
-            const nextIdx = ((j + 1) % count) * 2;
-            const bx = v[nextIdx];
-            const by = v[nextIdx + 1];
-            area += ax * by - bx * ay;
-        }
-        const isCCW = area > 0;
-        for (let j = 0; j < count; j++) {
-            const idx1 = isCCW ? j : count - 1 - j;
-            const idx2 = isCCW ? (j + 1) % count : (count - j) % count;
-            const ax = v[idx1 * 2];
-            const ay = v[idx1 * 2 + 1];
-            const bx = v[idx2 * 2];
-            const by = v[idx2 * 2 + 1];
-            const ha = hashV(ax, ay);
-            const hb = hashV(bx, by);
-            if (!vMap.has(ha)) vMap.set(ha, { x: ax, y: ay });
-            if (!vMap.has(hb)) vMap.set(hb, { x: bx, y: by });
-            const edgeKey = ha + ";" + hb;
-            edgeCounts.set(edgeKey, (edgeCounts.get(edgeKey) || 0) + 1);
-        }
-    }
-    const nextMap = new Map();
-    for (const edgeKey of edgeCounts.keys()) {
-        const [ha, hb] = edgeKey.split(";");
-        const revKey = hb + ";" + ha;
-        if (!edgeCounts.has(revKey)) {
-            if (!nextMap.has(ha)) nextMap.set(ha, []);
-            nextMap.get(ha).push(hb);
-        }
-    }
-    const loops = [];
-    const visited = new Set();
-    for (const startHash of nextMap.keys()) {
-        if (visited.has(startHash)) continue;
-        const loop = [];
-        let currentHash = startHash;
-        let safety = 0;
-        while (safety++ < 10000) {
-            visited.add(currentHash);
-            const pt = vMap.get(currentHash);
-            loop.push(pt.x, pt.y);
-            const nextOpts = nextMap.get(currentHash);
-            if (!nextOpts || nextOpts.length === 0) break;
-            let nextHash = nextOpts.find((h) => !visited.has(h));
-            if (!nextHash) {
-                if (nextOpts.includes(startHash)) break;
-                nextHash = nextOpts[0];
-            }
-            if (nextHash === startHash) break;
-            currentHash = nextHash;
-        }
-        loops.push(loop);
-    }
-    loops.sort((a, b) => b.length - a.length);
-    return loops.length > 0 ? loops[0] : parts[0].vertices;
-}
-function buildPoxelData(visualParts) {
-    const poxels = [];
-    for (let i = 0; i < visualParts.length; i++) poxels.push({ id: i, vertices: visualParts[i].vertices, neighbors: [] });
-    const edgeMap = new Map();
-    for (let i = 0; i < poxels.length; i++) {
-        const v = poxels[i].vertices;
-        const count = v.length / 2;
-        for (let j = 0; j < count; j++) {
-            const ax = v[j * 2];
-            const ay = v[j * 2 + 1];
-            const nextIdx = ((j + 1) % count) * 2;
-            const bx = v[nextIdx];
-            const by = v[nextIdx + 1];
-            const h1 = hashV(ax, ay);
-            const h2 = hashV(bx, by);
-            const edgeKey = h1 < h2 ? h1 + ";" + h2 : h2 + ";" + h1;
-            const edge = edgeMap.get(edgeKey);
-            if (!edge) edgeMap.set(edgeKey, [i]);
-            else edge.push(i);
-        }
-    }
-    for (const indices of edgeMap.values())
-        if (indices.length === 2) {
-            const a = indices[0];
-            const b = indices[1];
-            if (!poxels[a].neighbors.includes(b)) poxels[a].neighbors.push(b);
-            if (!poxels[b].neighbors.includes(a)) poxels[b].neighbors.push(a);
-        }
-    return poxels;
-}
-function halfExtentsFromFootprint(footprintVertices) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    const count = footprintVertices.length / 2;
-    for (let i = 0; i < count; i++) {
-        const vx = footprintVertices[i * 2];
-        const vy = footprintVertices[i * 2 + 1];
-        if (vx < minX) minX = vx;
-        if (vx > maxX) maxX = vx;
-        if (vy < minY) minY = vy;
-        if (vy > maxY) maxY = vy;
-    }
-    return { x: (maxX - minX) * 0.5, y: (maxY - minY) * 0.5 };
-}
-function boundingRadiusFromFootprint(footprintVertices) {
-    let maxRadiusSq = 0;
-    const count = footprintVertices.length / 2;
-    for (let i = 0; i < count; i++) {
-        const vx = footprintVertices[i * 2];
-        const vy = footprintVertices[i * 2 + 1];
-        const distSq = vx * vx + vy * vy;
-        if (distSq > maxRadiusSq) maxRadiusSq = distSq;
-    }
-    return Math.sqrt(maxRadiusSq);
-}
-function clonePoxels(poxels) {
-    return poxels.map((poxel) => {
-        const pVerts = new Float32Array(poxel.vertices.length);
-        pVerts.set(poxel.vertices);
-        return { id: poxel.id, vertices: pVerts, neighbors: [...poxel.neighbors] };
-    });
-}
-function finalizeFootprintGeometry(centeredVerts, visualParts, signedArea, centroid) {
-    const poxels = buildPoxelData(visualParts);
-    const footprintArea = Math.abs(signedArea);
-    const halfExtents = halfExtentsFromFootprint(centeredVerts);
-    const boundingRadius = boundingRadiusFromFootprint(centeredVerts);
-    return { footprintVertices: centeredVerts, poxels: clonePoxels(poxels), footprintArea, halfExtents, boundingRadius, centroid };
-}
-function buildGeometryFromCellParts(localParts) {
-    const { cx, cy } = calculateCentroidOfParts(localParts);
-    const opLen = localParts.length;
-    const shiftedParts = new Array(opLen);
-    for (let i = 0; i < opLen; i++) {
-        const p = localParts[i];
-        const count = p.vertices.length / 2;
-        const shiftedV = new Float32Array(count * 2);
-        for (let j = 0; j < count; j++) {
-            shiftedV[j * 2] = p.vertices[j * 2] - cx;
-            shiftedV[j * 2 + 1] = p.vertices[j * 2 + 1] - cy;
-        }
-        shiftedParts[i] = { vertices: shiftedV };
-    }
-    const boundaryPoints = getOuterBoundary(shiftedParts);
-    const bpCount = boundaryPoints.length / 2;
-    const centeredVerts = new Float32Array(bpCount * 2);
-    centeredVerts.set(boundaryPoints);
-    const { signedArea } = polygonCentroid2D(centeredVerts, SHARED_CENTROID);
-    return finalizeFootprintGeometry(centeredVerts, shiftedParts, signedArea, { cx, cy });
-}
-function fractureNeighborRoll(localHitX, localHitY, impactForce, neighborIndex) {
-    let h = Math.imul(Math.floor(localHitX * 1000), 73856093);
-    h ^= Math.imul(Math.floor(localHitY * 1000), 19349663);
-    h ^= Math.imul(Math.floor(impactForce * 100), 83492791);
-    h ^= Math.imul(neighborIndex, 2654435761);
-    return ((h >>> 0) % 10000) / 10000;
-}
-// chunks = split connectivity graph; collisionParts = merged axis-aligned sim/draw rects
-export const CHUNK_MIN_CELL = 8;
-export const CHUNK_MAX_CELLS_PER_AXIS = 6;
-const RECT_MERGE_EPS = 1e-3;
-function halfExtentsFromFlat(flatVerts) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    const count = flatVerts.length / 2;
-    for (let i = 0; i < count; i++) {
-        const x = flatVerts[i * 2];
-        const y = flatVerts[i * 2 + 1];
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-    }
-    return { hx: (maxX - minX) * 0.5, hy: (maxY - minY) * 0.5 };
-}
-function rectFromChunk(chunk) {
-    const v = chunk.vertices;
-    let x0 = Infinity;
-    let x1 = -Infinity;
-    let y0 = Infinity;
-    let y1 = -Infinity;
-    for (let i = 0; i < v.length / 2; i++) {
-        const x = v[i * 2];
-        const y = v[i * 2 + 1];
-        if (x < x0) x0 = x;
-        if (x > x1) x1 = x;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-    }
-    return { x0, y0, x1, y1 };
-}
-function chunkRectSpan(chunk) {
-    const rect = rectFromChunk(chunk);
-    return { w: rect.x1 - rect.x0, h: rect.y1 - rect.y0 };
-}
-function mergeRectsHorizontally(rects) {
-    const groups = new Map();
-    for (let i = 0; i < rects.length; i++) {
-        const r = rects[i];
-        const key = `${r.y0.toFixed(4)};${r.y1.toFixed(4)}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(r);
-    }
-    const out = [];
-    for (const group of groups.values()) {
-        group.sort((a, b) => a.x0 - b.x0);
-        let cur = group[0];
-        for (let i = 1; i < group.length; i++) {
-            const next = group[i];
-            if (Math.abs(cur.x1 - next.x0) <= RECT_MERGE_EPS) cur = { x0: cur.x0, y0: cur.y0, x1: next.x1, y1: cur.y1 };
-            else {
-                out.push(cur);
-                cur = next;
-            }
-        }
-        out.push(cur);
-    }
-    return out;
-}
-function mergeRectsVertically(rects) {
-    const groups = new Map();
-    for (let i = 0; i < rects.length; i++) {
-        const r = rects[i];
-        const key = `${r.x0.toFixed(4)};${r.x1.toFixed(4)}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(r);
-    }
-    const out = [];
-    for (const group of groups.values()) {
-        group.sort((a, b) => a.y0 - b.y0);
-        let cur = group[0];
-        for (let i = 1; i < group.length; i++) {
-            const next = group[i];
-            if (Math.abs(cur.y1 - next.y0) <= RECT_MERGE_EPS) cur = { x0: cur.x0, y0: cur.y0, x1: cur.x1, y1: next.y1 };
-            else {
-                out.push(cur);
-                cur = next;
-            }
-        }
-        out.push(cur);
-    }
-    return out;
-}
-function rectArea(rect) {
-    return (rect.x1 - rect.x0) * (rect.y1 - rect.y0);
-}
-function chunkMaterialArea(chunks) {
-    let area = 0;
-    for (let i = 0; i < chunks.length; i++) area += rectArea(rectFromChunk(chunks[i]));
-    return area;
-}
-function polygonShapeFromRect(rect) {
-    return new PolygonShape(new Float32Array([rect.x0, rect.y0, rect.x1, rect.y0, rect.x1, rect.y1, rect.x0, rect.y1]));
-}
-function collisionPartsFromChunks(chunks) {
-    return FractureEngine.mergeChunkCollisionRects(chunks).map(polygonShapeFromRect);
-}
-function boundingRadiusFromParts(collisionParts) {
-    let maxR = 0;
-    for (let i = 0; i < collisionParts.length; i++) maxR = Math.max(maxR, collisionParts[i].getBoundingRadius());
-    return maxR;
-}
-function footprintVerticesFromParts(collisionParts) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (let p = 0; p < collisionParts.length; p++) {
-        const verts = collisionParts[p].vertices;
-        const count = verts.length;
-        for (let i = 0; i < count; i += 2) {
-            const x = verts[i];
-            const y = verts[i + 1];
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-        }
-    }
-    return new Float32Array([minX, minY, maxX, minY, maxX, maxY, minX, maxY]);
-}
-function withChunkCollisionParts(geom) {
-    const collisionParts = collisionPartsFromChunks(geom.chunks);
-    const footprintVertices = footprintVerticesFromParts(collisionParts);
-    return { ...geom, collisionParts, footprintVertices, footprintArea: chunkMaterialArea(geom.chunks), boundingRadius: boundingRadiusFromParts(collisionParts) };
-}
-function centerFlatVerts(flatVerts) {
-    const count = flatVerts.length / 2;
-    let cx = 0;
-    let cy = 0;
-    for (let i = 0; i < count; i++) {
-        cx += flatVerts[i * 2];
-        cy += flatVerts[i * 2 + 1];
-    }
-    cx /= count;
-    cy /= count;
-    const centered = new Float32Array(count * 2);
-    for (let i = 0; i < count; i++) {
-        centered[i * 2] = flatVerts[i * 2] - cx;
-        centered[i * 2 + 1] = flatVerts[i * 2 + 1] - cy;
-    }
-    return centered;
-}
-function rectGridPartsCeil(hx, hy, maxCellSize) {
-    const cols = Math.max(1, Math.ceil((hx * 2) / maxCellSize));
-    const rows = Math.max(1, Math.ceil((hy * 2) / maxCellSize));
-    const cellW = (hx * 2) / cols;
-    const cellH = (hy * 2) / rows;
-    const parts = [];
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            const x0 = -hx + col * cellW;
-            const y0 = -hy + row * cellH;
-            const x1 = x0 + cellW;
-            const y1 = y0 + cellH;
-            parts.push({ vertices: new Float32Array([x0, y0, x1, y0, x1, y1, x0, y1]) });
-        }
-    return parts;
-}
-export const GLASS_FRACTURE_IMPACT_THRESHOLD = 6;
-export const GLASS_MIN_SHARD_AREA = 12;
-export const GLASS_MAX_SHARDS_PER_SHATTER = 18;
-export const GLASS_MAX_SLIVER_ASPECT = 10;
-export const GLASS_MIN_WEDGE_ANGLE = Math.PI / 12;
-export const GLASS_FRACTURE_COOLDOWN_STEPS = 8;
-function polygonSpan(flatVerts) {
-    return Math.sqrt(Math.abs(polygonSignedArea2D(flatVerts)));
-}
-function closestPointOnPolygonBoundary(x, y, flatVerts) {
-    let bestX = flatVerts[0];
-    let bestY = flatVerts[1];
-    let bestDistSq = Infinity;
-    const count = flatVerts.length / 2;
-    for (let i = 0; i < count; i++) {
-        const j = (i + 1) % count;
-        const ax = flatVerts[i * 2];
-        const ay = flatVerts[i * 2 + 1];
-        const bx = flatVerts[j * 2];
-        const by = flatVerts[j * 2 + 1];
-        const closest = closestPointOnLineSegment(x, y, ax, ay, bx, by);
-        const distSq = (x - closest.x) * (x - closest.x) + (y - closest.y) * (y - closest.y);
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq;
-            bestX = closest.x;
-            bestY = closest.y;
-        }
-    }
-    return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
-}
-function minDistToPolygonBoundary(x, y, flatVerts) {
-    return closestPointOnPolygonBoundary(x, y, flatVerts).dist;
-}
-function minThinEdgeForPolygon(flatVerts) {
-    return Math.max(3, polygonSpan(flatVerts) * 0.08);
-}
-function resolveShatterApex(flatVerts, hitX, hitY) {
-    const { cx, cy } = polygonCentroid2D(flatVerts);
-    const span = polygonSpan(flatVerts);
-    let ax = hitX;
-    let ay = hitY;
-    if (!pointInPolygon(ax, ay, flatVerts)) {
-        const onEdge = closestPointOnPolygonBoundary(hitX, hitY, flatVerts);
-        ax = onEdge.x;
-        ay = onEdge.y;
-    }
-    const inset = Math.min(span * 0.18, 18);
-    const dx = cx - ax;
-    const dy = cy - ay;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 1e-6) {
-        const push = Math.min(inset, dist * 0.4);
-        ax += (dx / dist) * push;
-        ay += (dy / dist) * push;
-    }
-    if (!pointInPolygon(ax, ay, flatVerts)) {
-        ax = cx;
-        ay = cy;
-    }
-    return { x: ax, y: ay };
-}
-function clipHalfPlane(flatVerts, ax, ay, nx, ny) {
-    const len = flatVerts.length;
-    if (len === 0) return flatVerts;
-    const count = len / 2;
-    const out = [];
-    for (let i = 0; i < count; i++) {
-        const j = (i + 1) % count;
-        const cx = flatVerts[i * 2];
-        const cy = flatVerts[i * 2 + 1];
-        const nx_coord = flatVerts[j * 2];
-        const ny_coord = flatVerts[j * 2 + 1];
-        const currIn = (cx - ax) * nx + (cy - ay) * ny >= -1e-9;
-        const nextIn = (nx_coord - ax) * nx + (ny_coord - ay) * ny >= -1e-9;
-        if (currIn && nextIn) out.push(nx_coord, ny_coord);
-        else if (currIn && !nextIn) {
-            const dx = nx_coord - cx;
-            const dy = ny_coord - cy;
-            const denom = dx * nx + dy * ny;
-            const t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
-            out.push(cx + dx * t, cy + dy * t);
-        } else if (!currIn && nextIn) {
-            const dx = nx_coord - cx;
-            const dy = ny_coord - cy;
-            const denom = dx * nx + dy * ny;
-            const t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
-            out.push(cx + dx * t, cy + dy * t);
-            out.push(nx_coord, ny_coord);
-        }
-    }
-    return new Float32Array(out);
-}
-function acceptGlassShard(flatVerts, parentFlatVerts) {
-    const area = Math.abs(polygonSignedArea2D(flatVerts));
-    if (area < GLASS_MIN_SHARD_AREA) return false;
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    const count = flatVerts.length / 2;
-    for (let i = 0; i < count; i++) {
-        const x = flatVerts[i * 2];
-        const y = flatVerts[i * 2 + 1];
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-    }
-    const thick = Math.max(maxX - minX, maxY - minY);
-    const thin = Math.min(maxX - minX, maxY - minY);
-    if (thin < minThinEdgeForPolygon(parentFlatVerts)) return false;
-    if (thick / Math.max(1e-6, thin) > GLASS_MAX_SLIVER_ASPECT) return false;
-    return true;
-}
-function buildGlassShards(flatVerts, apexX, apexY, shardCount, random) {
-    const baseStep = (Math.PI * 2) / shardCount;
-    const offset = random() * Math.PI * 2;
-    const angles = [];
-    for (let i = 0; i < shardCount; i++) {
-        const jitter = (random() - 0.5) * baseStep * 0.25;
-        angles.push(offset + i * baseStep + jitter);
-    }
-    angles.sort((a, b) => a - b);
-    const shards = [];
-    let startIndex = 0;
-    let lastStartIdx = -1;
-    while (startIndex < angles.length) {
-        const a0 = angles[startIndex];
-        const a1 = startIndex === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[startIndex + 1];
-        const poly = FractureEngine.wedgePolygonIntersection(flatVerts, apexX, apexY, a0, a1);
-        if (poly.length < 6) {
-            startIndex++;
-            continue;
-        }
-        if (acceptGlassShard(poly, flatVerts)) {
-            shards.push(FractureEngine.buildShardGeometry(poly));
-            lastStartIdx = startIndex;
-            startIndex++;
-        } else {
-            let merged = false;
-            if (lastStartIdx !== -1) {
-                const prevA0 = angles[lastStartIdx];
-                const angleDiff = a1 - prevA0;
-                if (angleDiff < Math.PI * 0.95) {
-                    const mergedPoly = FractureEngine.wedgePolygonIntersection(flatVerts, apexX, apexY, prevA0, a1);
-                    if (mergedPoly.length >= 6) {
-                        shards.pop();
-                        shards.push(FractureEngine.buildShardGeometry(mergedPoly));
-                        merged = true;
-                    }
-                }
-            }
-            if (merged) startIndex++;
-            else {
-                shards.push(FractureEngine.buildShardGeometry(poly));
-                lastStartIdx = startIndex;
-                startIndex++;
-            }
-        }
-    }
-    return shards;
-}
-function shardCountForPolygon(flatVerts, impactForce, apexX, apexY) {
-    const area = Math.abs(polygonSignedArea2D(flatVerts));
-    const span = polygonSpan(flatVerts);
-    const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
-    const areaCap = Math.max(2, Math.floor(area / minArea));
-    const angleCap = Math.floor((Math.PI * 2) / GLASS_MIN_WEDGE_ANGLE);
-    const minShardsAllowed = Math.min(4, areaCap);
-    let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
-    count = Math.min(count, areaCap, angleCap);
-    const boundaryDist = minDistToPolygonBoundary(apexX, apexY, flatVerts);
-    const boundaryFactor = Math.min(1, boundaryDist / (span * 0.14));
-    count = Math.max(minShardsAllowed, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
-    return count;
-}
-export const FRACTURE_MIN_PIECE_SIZE = 5;
-export const FRACTURE_IMPACT_THRESHOLD = 12;
-function isGlassFracture(prop) {
-    return prop?.strategy?.fracture?.mode === "glass";
-}
-function isChunkFracture(prop) {
-    return prop?.strategy?.fracture?.mode === "chunk";
-}
-function glassFootprintArea(prop) {
-    if (prop.footprintArea != null) return prop.footprintArea;
-    const shape = prop.shape;
-    if (shape?.type === "Polygon") return Math.abs(polygonSignedArea2D(shape.vertices));
-    return 0;
-}
-function canGlassFractureSplit(prop, minSize) {
-    const shape = prop.shape;
-    if (shape?.type !== "Polygon") return false;
-    const { x, y } = convexFootprintHalfExtents(shape.vertices);
-    if (Math.max(x, y) * 2 < minSize) return false;
-    const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
-    return glassFootprintArea(prop) >= minArea;
-}
-function ensureChunkFractureGrid(prop) {
-    if (prop.chunks?.length !== 1) return;
-    const geom = FractureEngine.subdivideSingleChunkAtMinCell(prop.chunks[0]);
-    if (geom) FractureEngine.applyPropFractureGeometry(prop, geom);
-}
-function flatVertsFromShape(prop) {
-    return prop.shape.vertices;
-}
-// Single write site for post-fracture geometry: chunks = connectivity graph cells;
-// collisionParts = merged AABB sim rects; shape = convex hull for broadphase fallback.
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-function propWorldPosition(prop) {
-    const physId = prop._physId;
-    return { x: physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x, y: physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y };
-}
-function currentPropMotion(prop) {
-    const physId = prop._physId;
-    if (physId !== undefined) return { vx: kineticDynamicSlab.vx[physId], vy: kineticDynamicSlab.vy[physId], w: kineticDynamicSlab.w[physId] };
-    return { vx: prop.vx ?? 0, vy: prop.vy ?? 0, w: prop.angularVelocity ?? 0 };
-}
-function circleShardCount(impactForce, minShards, maxShards) {
-    return clamp(Math.round(3.5 + impactForce * 0.02), minShards, maxShards);
-}
-function applyShardBurstImpulse(fracture, frag, geom, random) {
-    const cos = Math.cos(fracture.facing);
-    const sin = Math.sin(fracture.facing);
-    const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
-    const burst = Math.min(35, 8 + fracture.impactForce * 0.12);
-    const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-    const dx = worldPos.x - impactWorld.x;
-    const dy = worldPos.y - impactWorld.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 1e-6) {
-        frag.vx += (dx / dist) * burst;
-        frag.vy += (dy / dist) * burst;
-    }
-    frag.angularVelocity += (random() - 0.5) * 0.4;
-    frag._fractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
-}
-function spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame = null) {
-    const random = fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
-    return FractureEngine.spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom) => {
-        applyShardBurstImpulse(fracture, frag, geom, random);
-    });
-}
-function spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
-    return spawnBurstFractureShards(world, sourceProp, fracture, sourceProp.type, spatialFrame);
-}
-function spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame = null) {
-    return FractureEngine.spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, sourceProp.type, spatialFrame);
-}
-function splitMeshComponents(cells, localHitX, localHitY, impactForce, forceExplode) {
-    if (!cells?.length) return [];
-    let components = FractureEngine.splitPoxels(cells, localHitX, localHitY, impactForce);
-    if (forceExplode && cells.length > 1) components = cells.map((cell) => [cell]);
-    return components;
-}
-function geometryFromChunkComponent(comp, atOrigin) {
-    const parts = comp.map((chunk) => ({ vertices: chunk.vertices }));
-    return atOrigin ? FractureEngine.buildChunkGeometryAtPropOrigin(parts) : FractureEngine.buildGeometryFromChunkParts(parts);
-}
-function peelSolidFracture(prop, localHitX, localHitY, impactForce) {
-    const components = splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
-    if (components.length <= 1) return null;
-    components.sort((a, b) => b.length - a.length);
-    const origin = propWorldPosition(prop);
-    const mainGeom = geometryFromChunkComponent(components[0], false);
-    const cos = Math.cos(entityFacing(prop));
-    const sin = Math.sin(entityFacing(prop));
-    const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
-    const physId = prop._physId;
-    if (physId !== undefined && physId !== -1) {
-        kineticDynamicSlab.x[physId] = mainWorldPos.x;
-        kineticDynamicSlab.y[physId] = mainWorldPos.y;
-        prop.x = kineticDynamicSlab.x[physId];
-        prop.y = kineticDynamicSlab.y[physId];
-    } else {
-        prop.x = mainWorldPos.x;
-        prop.y = mainWorldPos.y;
-    }
-    const debris = components.slice(1).map((comp) => geometryFromChunkComponent(comp, false));
-    FractureEngine.applyPropFractureGeometry(prop, mainGeom);
-    return { debris, originX: origin.x, originY: origin.y, facing: entityFacing(prop) };
-}
-function fractureImpactContext(prop, worldHitX, worldHitY, impactForce) {
-    const origin = propWorldPosition(prop);
-    return { origin, impactLocal: FractureEngine.worldHitToPropLocal(prop, worldHitX, worldHitY), facing: entityFacing(prop), impactForce };
-}
-function fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
-    if (!FractureEngine.canFracturePropSplit(prop)) return null;
-    const ctx = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
-    const random = fractureRandomFromImpact(worldHitX, worldHitY, impactForce);
-    const debris = FractureEngine.shatterGlassPolygon(flatVertsFromShape(prop), ctx.impactLocal.x, ctx.impactLocal.y, impactForce, random);
-    if (debris.length < 2) return null;
-    return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
-}
-function fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce) {
-    ensureChunkFractureGrid(prop);
-    if (!FractureEngine.canFracturePropSplit(prop)) return null;
-    const { impactLocal } = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
-    return peelSolidFracture(prop, impactLocal.x, impactLocal.y, impactForce);
-}
-function fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
-    const ctx = fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
-    const debris = FractureEngine.buildCircleImpactShards(prop.radius, ctx.impactLocal, impactForce);
-    if (debris.length === 0) return null;
-    return { debris, originX: ctx.origin.x, originY: ctx.origin.y, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce };
-}
-function spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
-    const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" || sourceProp.type === "boid_triangle" ? "snake_shard" : sourceProp.type;
-    return spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame);
-}
-// --- MERGED
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
     markBroadphaseDirty(prop);
-    if (prop.strategy?.fracture && prop.strategy.fracture.mode !== "glass") FractureEngine.initFractureFootprint(prop);
+    if (FractureEngine.shouldInitFractureFootprint(prop)) FractureEngine.initFractureFootprint(prop);
     else if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
 }
 export function initWorldPropShape(prop) {
@@ -805,7 +131,7 @@ export function initWorldPropShape(prop) {
     if (footprint && vertCount(footprint) >= 3) {
         prop.shape = new PolygonShape(footprint);
         prop.radius = prop.shape.getBoundingRadius();
-        if (prop.strategy.fracture && prop.strategy.fracture.mode !== "glass") FractureEngine.initFractureFootprint(prop);
+        if (FractureEngine.shouldInitFractureFootprint(prop)) FractureEngine.initFractureFootprint(prop);
         return;
     }
     prop.radius = prop.strategy.radius ?? 0;
@@ -885,7 +211,7 @@ const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
 function resolvePropSpawnFacing(prop, facing) {
     if (facing != null) return prop.strategy.cardinalFacing ? quantizeCardinalAngle(facing) : facing;
     if (prop.strategy.cardinalFacing) return quantizeCardinalAngle(0);
-    return FractureEngine.fractureDeterministicRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
+    return deterministicUnitRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
 }
 function resetWorldPropInstance(prop, x, y, type, facing = null) {
     const asset = propCatalog[type];
@@ -1215,11 +541,39 @@ export const floorBeltEffectPass = {
         renderer.render3D.drawFloorBelts(ctx, state, viewport);
     },
 };
+// ===== FRACTURE ENGINE =====
+export const FRACTURE_TUNING = { shared: { impactThreshold: 12, minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 18, maxSliverAspect: 10, minWedgeAngle: Math.PI / 12 }, chunk: { minCell: 8, maxCellsPerAxis: 6, damageRadiusScale: 0.05, neighborRollHighForceThreshold: 12, neighborRollHighForceDivisor: 30, neighborRollLowForceBase: 0.1, neighborRollLowForceScale: 0.04, rectMergeEps: 1e-3 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
+export const CHUNK_MIN_CELL = FRACTURE_TUNING.chunk.minCell;
+export const CHUNK_MAX_CELLS_PER_AXIS = FRACTURE_TUNING.chunk.maxCellsPerAxis;
+export const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
+export const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
+export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
+export const GLASS_MAX_SLIVER_ASPECT = FRACTURE_TUNING.glass.maxSliverAspect;
+export const GLASS_MIN_WEDGE_ANGLE = FRACTURE_TUNING.glass.minWedgeAngle;
+export const GLASS_FRACTURE_COOLDOWN_STEPS = FRACTURE_TUNING.shared.cooldown;
+export const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
+export const FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.shared.impactThreshold;
+const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
+function admitKineticPropsBatch(spatialFrame, props, world) {
+    if (!props.length) return;
+    if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(props, world);
+    else if (spatialFrame?.admitKineticProp) for (let j = 0; j < props.length; j++) spatialFrame.admitKineticProp(props[j], world);
+}
+function makeFractureResult({ debris, origin, originX, originY, facing, impactLocal, impactForce }) {
+    if (origin) {
+        originX = origin.x;
+        originY = origin.y;
+    }
+    return { debris, originX, originY, facing, impactLocal, impactForce };
+}
 export class FractureEngine {
     constructor(world) {
         this.world = world;
         this.deferredFractures = [];
         this.deferredFracturesCount = 0;
+        this._splitVisited = null;
+        this._splitHitMask = null;
+        this._splitQueue = null;
     }
     processKineticContactFractures(tick, contacts, hooks = {}) {
         if (contacts.count === 0) return;
@@ -1263,16 +617,13 @@ export class FractureEngine {
                 item.prop = null;
                 item.fracture = null;
             }
-            if (propsToAdmit.length > 0)
-                if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(propsToAdmit, world);
-                else if (spatialFrame?.admitKineticProp) for (let j = 0; j < propsToAdmit.length; j++) spatialFrame.admitKineticProp(propsToAdmit[j], world);
+            admitKineticPropsBatch(spatialFrame, propsToAdmit, world);
         } finally {
             world.entityRegistry.endMembershipBatch();
             this.deferredFracturesCount = 0;
         }
     }
     queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
-        const { world } = tick;
         for (let i = 0; i < 2; i++) {
             const prop = i === 0 ? bodyA : bodyB;
             const other = i === 0 ? bodyB : bodyA;
@@ -1289,8 +640,24 @@ export class FractureEngine {
             if (!fracture) continue;
             prop._pendingEviction = true;
             this.enqueueDeferredFracture(prop, fracture, mode);
+            // One contact -> at most one fracture event (avoid double-spawn cascades).
             return;
         }
+    }
+    enqueueDeferredFracture(prop, fracture, mode) {
+        const deferredFractures = this.deferredFractures;
+        let count = this.deferredFracturesCount;
+        let item = deferredFractures[count];
+        if (!item) {
+            item = { mode: "", retainParent: false, prop: null, fracture: null };
+            deferredFractures[count] = item;
+        }
+        const modeEntry = FractureEngine.resolveFractureMode(mode);
+        item.mode = mode;
+        item.retainParent = modeEntry?.retainParent ?? false;
+        item.prop = prop;
+        item.fracture = fracture;
+        this.deferredFracturesCount = count + 1;
     }
     static evalFractureRules(prop, other, force) {
         const config = prop.strategy?.fracture;
@@ -1306,20 +673,6 @@ export class FractureEngine {
             if (selfFaction === otherFaction) return false;
         }
         return true;
-    }
-    enqueueDeferredFracture(prop, fracture, mode) {
-        const deferredFractures = this.deferredFractures;
-        let count = this.deferredFracturesCount;
-        let item = deferredFractures[count];
-        if (!item) {
-            item = { mode: "", retainParent: false, prop: null, fracture: null };
-            deferredFractures[count] = item;
-        }
-        item.mode = mode;
-        item.retainParent = mode === "chunk";
-        item.prop = prop;
-        item.fracture = fracture;
-        this.deferredFracturesCount = count + 1;
     }
     static commitFractureResult(world, prop, fracture, spatialFrame, { retainParent = false, onBeforeEvict = null, height = null, propsToAdmitOut = null } = {}) {
         if (retainParent) {
@@ -1342,33 +695,34 @@ export class FractureEngine {
         if (propsToAdmitOut) for (let i = 0; i < shards.length; i++) propsToAdmitOut.push(shards[i]);
         else {
             const propsToAdmit = retainParent ? [prop, ...shards] : shards;
-            if (propsToAdmit.length > 0)
-                if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(propsToAdmit, world);
-                else if (spatialFrame?.admitKineticProp) for (let j = 0; j < propsToAdmit.length; j++) spatialFrame.admitKineticProp(propsToAdmit[j], world);
+            admitKineticPropsBatch(spatialFrame, propsToAdmit, world);
         }
         return shards;
     }
     static spawnFractureShards(world, sourceProp, fracture, spatialFrame = null) {
-        const mode = sourceProp.strategy?.fracture?.mode;
-        if (mode === "circle") return spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame);
-        if (mode === "glass") return spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame);
-        return spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame);
+        const entry = FractureEngine.resolveFractureMode(sourceProp.strategy?.fracture?.mode);
+        if (!entry?.spawnShards) return [];
+        return entry.spawnShards(world, sourceProp, fracture, spatialFrame);
     }
     static fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
         const mode = prop.strategy?.fracture?.mode;
-        if (mode === "circle") {
-            if (prop.shape?.type !== "Circle") throw new Error(`fracture.mode "circle" requires Circle shape, got ${prop.shape?.type ?? "none"}`);
-            return fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce);
-        }
-        if (mode === "glass") return fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce);
-        if (mode === "chunk") return fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce);
-        return null;
+        if (mode === "circle") if (prop.shape?.type !== "Circle") throw new Error(`fracture.mode "circle" requires Circle shape, got ${prop.shape?.type ?? "none"}`);
+        const entry = FractureEngine.resolveFractureMode(mode);
+        if (!entry?.onImpact) return null;
+        return entry.onImpact(prop, worldHitX, worldHitY, impactForce);
     }
     static impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
         return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
     }
+    static fractureSpawnedWallChunk(state, prop, strike, spatialFrame) {
+        const force = FractureEngine.impactForceFromContact(strike.sourceSpeed, strike.sourceMass, prop.mass ?? 1) + FRACTURE_TUNING.wallSpawn.forceBias;
+        const fracture = FractureEngine.fracturePropOnImpact(prop, strike.contactX, strike.contactY, force);
+        if (!fracture) return [];
+        const modeEntry = FractureEngine.resolveFractureMode(prop.strategy?.fracture?.mode);
+        return FractureEngine.commitFractureResult(state, prop, fracture, spatialFrame, { retainParent: modeEntry?.retainParent ?? false, height: strike.height });
+    }
     static worldHitToPropLocal(prop, worldX, worldY) {
-        const origin = propWorldPosition(prop);
+        const origin = FractureEngine._propWorldPosition(prop);
         const dx = worldX - origin.x;
         const dy = worldY - origin.y;
         const cos = Math.cos(entityFacing(prop));
@@ -1376,18 +730,18 @@ export class FractureEngine {
         return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
     }
     static splitFootprintIntoComponents(prop, localHitX, localHitY, impactForce, forceExplode = false) {
-        return splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => geometryFromChunkComponent(comp, false));
+        return FractureEngine._splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, forceExplode).map((comp) => FractureEngine._geometryFromChunkComponent(comp, false));
     }
     static spawnShardPropsFromGeometry(world, sourceProp, geometries, shardPropId, spatialFrame = null, configureShard = null) {
         const facing = entityFacing(sourceProp);
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
-        const motion = currentPropMotion(sourceProp);
+        const motion = FractureEngine._currentPropMotion(sourceProp);
         const faction = sourceProp.faction;
         const wallChunkProfileId = sourceProp.wallChunkProfileId;
         const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
         const spawned = [];
-        const origin = propWorldPosition(sourceProp);
+        const origin = FractureEngine._propWorldPosition(sourceProp);
         for (let i = 0; i < geometries.length; i++) {
             const geom = geometries[i];
             const worldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, geom.centroid.cx, geom.centroid.cy, cos, sin);
@@ -1397,7 +751,7 @@ export class FractureEngine {
             shard.vx = motion.vx;
             shard.vy = motion.vy;
             shard.angularVelocity = motion.w;
-            shard._fractureCooldown = GLASS_FRACTURE_COOLDOWN_STEPS;
+            shard._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
             if (sourceProp.visualOverride !== undefined) shard.visualOverride = { ...sourceProp.visualOverride };
             if (wallChunkProfileId !== undefined) {
                 shard.wallChunkProfileId = wallChunkProfileId;
@@ -1409,13 +763,12 @@ export class FractureEngine {
         if (spawned.length > 0) {
             addWorldPropsToState(world, spawned);
             for (let i = 0; i < spawned.length; i++) wakeKineticBody(spawned[i]);
-            if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(spawned, world);
-            else if (spatialFrame?.admitKineticProp) for (let i = 0; i < spawned.length; i++) spatialFrame.admitKineticProp(spawned[i], world);
+            admitKineticPropsBatch(spatialFrame, spawned, world);
         }
         return spawned;
     }
     static buildCircleImpactShards(radius, localHit, impactForce, { minShards = 4, maxShards = 5 } = {}) {
-        const count = circleShardCount(impactForce, minShards, maxShards);
+        const count = FractureEngine._circleShardCount(impactForce, minShards, maxShards);
         const hitDist = Math.hypot(localHit.x, localHit.y);
         const inset = hitDist > 1e-6 ? Math.min(radius * 0.42, hitDist * 0.45) / hitDist : 0;
         const apex = { x: localHit.x * inset, y: localHit.y * inset };
@@ -1451,21 +804,24 @@ export class FractureEngine {
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
     }
+    static shouldInitFractureFootprint(prop) {
+        const entry = FractureEngine.resolveFractureMode(prop.strategy?.fracture?.mode);
+        return entry?.initFootprint ?? false;
+    }
+    static resolveFractureMode(mode) {
+        return FRACTURE_MODES[mode] ?? null;
+    }
     static initFractureFootprint(prop) {
-        if (isGlassFracture(prop)) return;
-        if (!isChunkFracture(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
-        FractureEngine.applyPropFractureGeometry(prop, FractureEngine.bakeChunkOutline(flatVertsFromShape(prop)));
+        if (FractureEngine._isGlassFracture(prop)) return;
+        if (!FractureEngine.shouldInitFractureFootprint(prop)) throw new Error(`Fracture props need fracture.mode "chunk" or "glass", got ${prop.strategy?.fracture?.mode}`);
+        FractureEngine.applyPropFractureGeometry(prop, FractureEngine.bakeChunkOutline(FractureEngine._flatVertsFromShape(prop)));
     }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!prop?.strategy?.fracture) return false;
-        if (isGlassFracture(prop)) return canGlassFractureSplit(prop, minSize);
-        if (!isChunkFracture(prop)) return false;
-        const shape = prop.shape;
-        const { x, y } = shape?.type === "Polygon" ? convexFootprintHalfExtents(shape.vertices) : { x: prop.radius, y: prop.radius };
-        if (x * 2 < minSize || y * 2 < minSize) return false;
-        if (!prop.chunks?.length) return false;
-        if (prop.chunks.length > 1) return true;
-        return FractureEngine.chunkNeedsMinCellSubdivide(prop.chunks[0]);
+        const entry = FractureEngine.resolveFractureMode(prop.strategy.fracture.mode);
+        if (entry?.canSplit) return entry.canSplit(prop, minSize);
+        if (entry?.skipCanSplit) return true;
+        return false;
     }
     static shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10, random = Math.random) {
         const flat = boxLocalFootprint(hx, hy);
@@ -1474,9 +830,9 @@ export class FractureEngine {
     static shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, random = Math.random) {
         if (flatVerts.length < 6) return [];
         const parentArea = Math.abs(polygonSignedArea2D(flatVerts));
-        const { x: apexX, y: apexY } = resolveShatterApex(flatVerts, hitX, hitY);
-        let shardCount = shardCountForPolygon(flatVerts, impactForce, apexX, apexY);
-        let shards = buildGlassShards(flatVerts, apexX, apexY, shardCount, random);
+        const { x: apexX, y: apexY } = FractureEngine._resolveShatterApex(flatVerts, hitX, hitY);
+        let shardCount = FractureEngine._shardCountForPolygon(flatVerts, impactForce, apexX, apexY);
+        let shards = FractureEngine._buildGlassShards(flatVerts, apexX, apexY, shardCount, random);
         const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
         const areaCap = Math.max(2, Math.floor(parentArea / minArea));
         const minShardsAllowed = Math.min(4, areaCap);
@@ -1485,7 +841,7 @@ export class FractureEngine {
             for (let i = 0; i < shards.length; i++) totalArea += shards[i].footprintArea;
             if (shards.length >= 2 && totalArea >= parentArea * 0.92) return shards;
             shardCount = Math.max(minShardsAllowed, Math.floor(shardCount * 0.72));
-            shards = buildGlassShards(flatVerts, apexX, apexY, shardCount, random);
+            shards = FractureEngine._buildGlassShards(flatVerts, apexX, apexY, shardCount, random);
         }
         return shards.length >= 2 ? shards : [];
     }
@@ -1497,7 +853,7 @@ export class FractureEngine {
             centered[i * 2] = flatVerts[i * 2] - cx;
             centered[i * 2 + 1] = flatVerts[i * 2 + 1] - cy;
         }
-        return { footprintVertices: centered, footprintArea: Math.abs(signedArea), boundingRadius: boundingRadiusFromFootprint(centered), centroid: { cx, cy } };
+        return { footprintVertices: centered, footprintArea: Math.abs(signedArea), boundingRadius: FractureEngine._boundingRadiusFromFootprint(centered), centroid: { cx, cy } };
     }
     static wedgePolygonIntersection(flatVerts, apexX, apexY, angle0, angle1) {
         const nx0 = -Math.sin(angle0);
@@ -1505,8 +861,8 @@ export class FractureEngine {
         const nx1 = Math.sin(angle1);
         const ny1 = -Math.cos(angle1);
         let poly = flatVerts;
-        poly = clipHalfPlane(poly, apexX, apexY, nx0, ny0);
-        poly = clipHalfPlane(poly, apexX, apexY, nx1, ny1);
+        poly = FractureEngine._clipHalfPlane(poly, apexX, apexY, nx0, ny0);
+        poly = FractureEngine._clipHalfPlane(poly, apexX, apexY, nx1, ny1);
         return poly;
     }
     static measureGlassShard(flatVerts) {
@@ -1547,19 +903,19 @@ export class FractureEngine {
         return cols * rows;
     }
     static bakeChunkOutline(flatVerts) {
-        const centeredVerts = centerFlatVerts(flatVerts);
-        const { hx, hy } = halfExtentsFromFlat(centeredVerts);
+        const centeredVerts = FractureEngine._centerFlatVerts(flatVerts);
+        const { hx, hy } = FractureEngine._halfExtentsFromFlat(centeredVerts);
         const parts = FractureEngine.rectGridParts(hx, hy, FractureEngine.cellSizeForBoxExtents(hx, hy));
         const mesh = FractureEngine.buildGeometryFromPartsAtOrigin(parts.map((p) => ({ vertices: p.vertices })));
-        return withChunkCollisionParts({ footprintVertices: mesh.footprintVertices, chunks: mesh.poxels, footprintArea: mesh.footprintArea, boundingRadius: mesh.boundingRadius });
+        return FractureEngine._withChunkCollisionParts({ footprintVertices: mesh.footprintVertices, chunks: mesh.chunks, footprintArea: mesh.footprintArea, boundingRadius: mesh.boundingRadius });
     }
     static buildChunkGeometryAtPropOrigin(localParts) {
         const geom = FractureEngine.buildGeometryFromPartsAtOrigin(localParts);
-        return withChunkCollisionParts({ footprintVertices: geom.footprintVertices, chunks: geom.poxels, footprintArea: geom.footprintArea, boundingRadius: geom.boundingRadius });
+        return FractureEngine._withChunkCollisionParts({ footprintVertices: geom.footprintVertices, chunks: geom.chunks, footprintArea: geom.footprintArea, boundingRadius: geom.boundingRadius });
     }
     static buildGeometryFromChunkParts(localParts) {
-        const geom = buildGeometryFromCellParts(localParts);
-        return withChunkCollisionParts({ footprintVertices: geom.footprintVertices, chunks: geom.poxels, footprintArea: geom.footprintArea, boundingRadius: geom.boundingRadius, centroid: geom.centroid });
+        const geom = FractureEngine._buildGeometryFromCellParts(localParts);
+        return FractureEngine._withChunkCollisionParts({ footprintVertices: geom.footprintVertices, chunks: geom.chunks, footprintArea: geom.footprintArea, boundingRadius: geom.boundingRadius, centroid: geom.centroid });
     }
     static rectGridParts(hx, hy, cellSize) {
         const cols = Math.max(1, Math.round((hx * 2) / cellSize));
@@ -1578,118 +934,846 @@ export class FractureEngine {
         return parts;
     }
     static mergeChunkCollisionRects(chunks) {
-        let rects = chunks.map(rectFromChunk);
+        let rects = chunks.map(FractureEngine._rectFromChunk);
         let prev = rects.length + 1;
         while (rects.length < prev) {
             prev = rects.length;
-            rects = mergeRectsVertically(mergeRectsHorizontally(rects));
+            rects = FractureEngine._mergeRectsVertically(FractureEngine._mergeRectsHorizontally(rects));
         }
         return rects;
     }
     static subdivideSingleChunkAtMinCell(chunk) {
-        const rect = rectFromChunk(chunk);
+        const rect = FractureEngine._rectFromChunk(chunk);
         const hx = (rect.x1 - rect.x0) * 0.5;
         const hy = (rect.y1 - rect.y0) * 0.5;
         if (!FractureEngine.chunkNeedsMinCellSubdivide(chunk)) return null;
-        const parts = rectGridPartsCeil(hx, hy, CHUNK_MIN_CELL);
+        const parts = FractureEngine._rectGridPartsCeil(hx, hy, CHUNK_MIN_CELL);
         if (parts.length <= 1) return null;
         return FractureEngine.buildChunkGeometryAtPropOrigin(parts.map((part) => ({ vertices: part.vertices })));
     }
     static chunkNeedsMinCellSubdivide(chunk) {
-        const { w, h } = chunkRectSpan(chunk);
-        return w > CHUNK_MIN_CELL + RECT_MERGE_EPS || h > CHUNK_MIN_CELL + RECT_MERGE_EPS;
+        const { w, h } = FractureEngine._chunkRectSpan(chunk);
+        const eps = FRACTURE_TUNING.chunk.rectMergeEps;
+        return w > CHUNK_MIN_CELL + eps || h > CHUNK_MIN_CELL + eps;
     }
     static cellSizeForBoxExtents(hx, hy) {
         const span = Math.min(hx * 2, hy * 2);
         const cellsPerAxis = Math.min(CHUNK_MAX_CELLS_PER_AXIS, Math.max(2, Math.round(span / 16)));
         return Math.max(CHUNK_MIN_CELL, span / cellsPerAxis);
     }
-    static splitPoxels(poxels, localHitX, localHitY, impactForce = 5) {
-        if (!poxels || poxels.length <= 1) return [poxels];
-        const damageRadius = impactForce * 0.05;
+    static splitChunks(chunks, localHitX, localHitY, impactForce = 5, engine = null) {
+        if (!chunks || chunks.length <= 1) return [chunks];
+        if (engine) return FractureEngine._splitChunksWithScratch(FractureEngine._prepareEngineScratch(engine, chunks.length), chunks, localHitX, localHitY, impactForce);
+        return FractureEngine._splitChunksWithScratch(FractureEngine._prepareStaticScratch(chunks.length), chunks, localHitX, localHitY, impactForce);
+    }
+    static splitPoxels(chunks, localHitX, localHitY, impactForce = 5, engine = null) {
+        return FractureEngine.splitChunks(chunks, localHitX, localHitY, impactForce, engine);
+    }
+    static buildGeometryFromPartsAtOrigin(localParts) {
+        const parts = localParts.map((p) => ({ vertices: p.vertices }));
+        const boundaryPoints = FractureEngine._getOuterBoundary(parts);
+        const footprintVertices = new Float32Array(boundaryPoints.length);
+        footprintVertices.set(boundaryPoints);
+        const { signedArea } = polygonCentroid2D(footprintVertices, SHARED_CENTROID);
+        return FractureEngine._finalizeFootprintGeometry(footprintVertices, parts, signedArea, { cx: 0, cy: 0 });
+    }
+    static fractureDeterministicRandom(seed) {
+        return deterministicUnitRandom(seed);
+    }
+    static _fractureRandomFromImpact(worldHitX, worldHitY, impactForce, salt = 0) {
+        let call = 0;
+        const base = Math.imul(Math.floor(worldHitX * 1000), 73856093) ^ Math.imul(Math.floor(worldHitY * 1000), 19349663) ^ Math.imul(Math.floor(impactForce * 100), 83492791) ^ salt;
+        return () => FractureEngine.fractureDeterministicRandom(base ^ Math.imul(++call, 2654435761));
+    }
+    static _hashV(x, y) {
+        return (Math.imul(Math.round(x * 10000), 73856093) ^ Math.imul(Math.round(y * 10000), 19349663)) & 0xffff;
+    }
+    static _edgeKey(ha, hb) {
+        return ha < hb ? (ha << 16) | (hb & 0xffff) : (hb << 16) | (ha & 0xffff);
+    }
+    static _calculateCentroidOfParts(parts) {
+        let totalCX = 0;
+        let totalCY = 0;
+        let totalArea = 0;
+        for (let i = 0; i < parts.length; i++) {
+            const verts = parts[i].vertices || parts[i];
+            const { cx, cy, signedArea } = polygonCentroid2D(verts, SHARED_CENTROID);
+            const absArea = Math.abs(signedArea);
+            totalCX += cx * absArea;
+            totalCY += cy * absArea;
+            totalArea += absArea;
+        }
+        if (totalArea > 0) {
+            const invTotalArea = 1 / totalArea;
+            SHARED_CENTROID.cx = totalCX * invTotalArea;
+            SHARED_CENTROID.cy = totalCY * invTotalArea;
+        } else {
+            SHARED_CENTROID.cx = 0;
+            SHARED_CENTROID.cy = 0;
+        }
+        SHARED_CENTROID.signedArea = totalArea;
+        return SHARED_CENTROID;
+    }
+    static _getOuterBoundary(parts) {
+        const edgeCounts = new Map();
+        const vMap = new Map();
+        for (let i = 0; i < parts.length; i++) {
+            const v = parts[i].vertices;
+            const count = v.length / 2;
+            let area = 0;
+            for (let j = 0; j < count; j++) {
+                const ax = v[j * 2];
+                const ay = v[j * 2 + 1];
+                const nextIdx = ((j + 1) % count) * 2;
+                const bx = v[nextIdx];
+                const by = v[nextIdx + 1];
+                area += ax * by - bx * ay;
+            }
+            const isCCW = area > 0;
+            for (let j = 0; j < count; j++) {
+                const idx1 = isCCW ? j : count - 1 - j;
+                const idx2 = isCCW ? (j + 1) % count : (count - j) % count;
+                const ax = v[idx1 * 2];
+                const ay = v[idx1 * 2 + 1];
+                const bx = v[idx2 * 2];
+                const by = v[idx2 * 2 + 1];
+                const ha = FractureEngine._hashV(ax, ay);
+                const hb = FractureEngine._hashV(bx, by);
+                if (!vMap.has(ha)) vMap.set(ha, { x: ax, y: ay });
+                if (!vMap.has(hb)) vMap.set(hb, { x: bx, y: by });
+                const edgeKey = FractureEngine._edgeKey(ha, hb);
+                edgeCounts.set(edgeKey, (edgeCounts.get(edgeKey) || 0) + 1);
+            }
+        }
+        const nextMap = new Map();
+        for (const edgeKey of edgeCounts.keys())
+            if (edgeCounts.get(edgeKey) === 1) {
+                const ha = edgeKey >>> 16;
+                const hb = edgeKey & 0xffff;
+                if (!nextMap.has(ha)) nextMap.set(ha, []);
+                nextMap.get(ha).push(hb);
+            }
+        const loops = [];
+        const visited = new Set();
+        for (const startHash of nextMap.keys()) {
+            if (visited.has(startHash)) continue;
+            const loop = [];
+            let currentHash = startHash;
+            let safety = 0;
+            while (safety++ < 10000) {
+                visited.add(currentHash);
+                const pt = vMap.get(currentHash);
+                loop.push(pt.x, pt.y);
+                const nextOpts = nextMap.get(currentHash);
+                if (!nextOpts || nextOpts.length === 0) break;
+                let nextHash = nextOpts.find((h) => !visited.has(h));
+                if (!nextHash) {
+                    if (nextOpts.includes(startHash)) break;
+                    nextHash = nextOpts[0];
+                }
+                if (nextHash === startHash) break;
+                currentHash = nextHash;
+            }
+            if (safety >= 10000) throw new Error(`getOuterBoundary safety cap exceeded (${parts.length} parts)`);
+            loops.push(loop);
+        }
+        loops.sort((a, b) => b.length - a.length);
+        return loops.length > 0 ? loops[0] : parts[0].vertices;
+    }
+    static _buildChunkGraph(visualParts) {
+        const chunks = [];
+        for (let i = 0; i < visualParts.length; i++) {
+            const v = visualParts[i].vertices;
+            const count = v.length / 2;
+            let cx = 0;
+            let cy = 0;
+            for (let j = 0; j < count; j++) {
+                cx += v[j * 2];
+                cy += v[j * 2 + 1];
+            }
+            cx /= count;
+            cy /= count;
+            chunks.push({ id: i, vertices: visualParts[i].vertices, neighbors: [], cx, cy });
+        }
+        const edgeMap = new Map();
+        for (let i = 0; i < chunks.length; i++) {
+            const v = chunks[i].vertices;
+            const count = v.length / 2;
+            for (let j = 0; j < count; j++) {
+                const ax = v[j * 2];
+                const ay = v[j * 2 + 1];
+                const nextIdx = ((j + 1) % count) * 2;
+                const bx = v[nextIdx];
+                const by = v[nextIdx + 1];
+                const h1 = FractureEngine._hashV(ax, ay);
+                const h2 = FractureEngine._hashV(bx, by);
+                const edgeKey = FractureEngine._edgeKey(h1, h2);
+                const edge = edgeMap.get(edgeKey);
+                if (!edge) edgeMap.set(edgeKey, [i]);
+                else edge.push(i);
+            }
+        }
+        for (const indices of edgeMap.values())
+            if (indices.length === 2) {
+                const a = indices[0];
+                const b = indices[1];
+                if (!chunks[a].neighbors.includes(b)) chunks[a].neighbors.push(b);
+                if (!chunks[b].neighbors.includes(a)) chunks[b].neighbors.push(a);
+            }
+        return chunks;
+    }
+    static _halfExtentsFromFootprint(footprintVertices) {
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        const count = footprintVertices.length / 2;
+        for (let i = 0; i < count; i++) {
+            const vx = footprintVertices[i * 2];
+            const vy = footprintVertices[i * 2 + 1];
+            if (vx < minX) minX = vx;
+            if (vx > maxX) maxX = vx;
+            if (vy < minY) minY = vy;
+            if (vy > maxY) maxY = vy;
+        }
+        return { x: (maxX - minX) * 0.5, y: (maxY - minY) * 0.5 };
+    }
+    static _boundingRadiusFromFootprint(footprintVertices) {
+        let maxRadiusSq = 0;
+        const count = footprintVertices.length / 2;
+        for (let i = 0; i < count; i++) {
+            const vx = footprintVertices[i * 2];
+            const vy = footprintVertices[i * 2 + 1];
+            const distSq = vx * vx + vy * vy;
+            if (distSq > maxRadiusSq) maxRadiusSq = distSq;
+        }
+        return Math.sqrt(maxRadiusSq);
+    }
+    static _cloneChunks(chunks) {
+        return chunks.map((chunk) => {
+            const pVerts = new Float32Array(chunk.vertices.length);
+            pVerts.set(chunk.vertices);
+            return { id: chunk.id, vertices: pVerts, neighbors: [...chunk.neighbors], cx: chunk.cx, cy: chunk.cy };
+        });
+    }
+    static _finalizeFootprintGeometry(centeredVerts, visualParts, signedArea, centroid) {
+        const chunks = FractureEngine._buildChunkGraph(visualParts);
+        const footprintArea = Math.abs(signedArea);
+        const halfExtents = FractureEngine._halfExtentsFromFootprint(centeredVerts);
+        const boundingRadius = FractureEngine._boundingRadiusFromFootprint(centeredVerts);
+        return { footprintVertices: centeredVerts, chunks: FractureEngine._cloneChunks(chunks), footprintArea, halfExtents, boundingRadius, centroid };
+    }
+    static _buildGeometryFromCellParts(localParts) {
+        const { cx, cy } = FractureEngine._calculateCentroidOfParts(localParts);
+        const opLen = localParts.length;
+        const shiftedParts = new Array(opLen);
+        for (let i = 0; i < opLen; i++) {
+            const p = localParts[i];
+            const count = p.vertices.length / 2;
+            const shiftedV = new Float32Array(count * 2);
+            for (let j = 0; j < count; j++) {
+                shiftedV[j * 2] = p.vertices[j * 2] - cx;
+                shiftedV[j * 2 + 1] = p.vertices[j * 2 + 1] - cy;
+            }
+            shiftedParts[i] = { vertices: shiftedV };
+        }
+        const boundaryPoints = FractureEngine._getOuterBoundary(shiftedParts);
+        const bpCount = boundaryPoints.length / 2;
+        const centeredVerts = new Float32Array(bpCount * 2);
+        centeredVerts.set(boundaryPoints);
+        const { signedArea } = polygonCentroid2D(centeredVerts, SHARED_CENTROID);
+        return FractureEngine._finalizeFootprintGeometry(centeredVerts, shiftedParts, signedArea, { cx, cy });
+    }
+    static _fractureNeighborRoll(localHitX, localHitY, impactForce, neighborIndex) {
+        let h = Math.imul(Math.floor(localHitX * 1000), 73856093);
+        h ^= Math.imul(Math.floor(localHitY * 1000), 19349663);
+        h ^= Math.imul(Math.floor(impactForce * 100), 83492791);
+        h ^= Math.imul(neighborIndex, 2654435761);
+        return ((h >>> 0) % 10000) / 10000;
+    }
+    static _halfExtentsFromFlat(flatVerts) {
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        const count = flatVerts.length / 2;
+        for (let i = 0; i < count; i++) {
+            const x = flatVerts[i * 2];
+            const y = flatVerts[i * 2 + 1];
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+        return { hx: (maxX - minX) * 0.5, hy: (maxY - minY) * 0.5 };
+    }
+    static _rectFromChunk(chunk) {
+        const v = chunk.vertices;
+        let x0 = Infinity;
+        let x1 = -Infinity;
+        let y0 = Infinity;
+        let y1 = -Infinity;
+        for (let i = 0; i < v.length / 2; i++) {
+            const x = v[i * 2];
+            const y = v[i * 2 + 1];
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+        }
+        return { x0, y0, x1, y1 };
+    }
+    static _chunkRectSpan(chunk) {
+        const rect = FractureEngine._rectFromChunk(chunk);
+        return { w: rect.x1 - rect.x0, h: rect.y1 - rect.y0 };
+    }
+    static _mergeRectsHorizontally(rects) {
+        const groups = new Map();
+        for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            const key = `${r.y0.toFixed(4)};${r.y1.toFixed(4)}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(r);
+        }
+        const out = [];
+        const eps = FRACTURE_TUNING.chunk.rectMergeEps;
+        for (const group of groups.values()) {
+            group.sort((a, b) => a.x0 - b.x0);
+            let cur = group[0];
+            for (let i = 1; i < group.length; i++) {
+                const next = group[i];
+                if (Math.abs(cur.x1 - next.x0) <= eps) cur = { x0: cur.x0, y0: cur.y0, x1: next.x1, y1: cur.y1 };
+                else {
+                    out.push(cur);
+                    cur = next;
+                }
+            }
+            out.push(cur);
+        }
+        return out;
+    }
+    static _mergeRectsVertically(rects) {
+        const groups = new Map();
+        for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            const key = `${r.x0.toFixed(4)};${r.x1.toFixed(4)}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(r);
+        }
+        const out = [];
+        const eps = FRACTURE_TUNING.chunk.rectMergeEps;
+        for (const group of groups.values()) {
+            group.sort((a, b) => a.y0 - b.y0);
+            let cur = group[0];
+            for (let i = 1; i < group.length; i++) {
+                const next = group[i];
+                if (Math.abs(cur.y1 - next.y0) <= eps) cur = { x0: cur.x0, y0: cur.y0, x1: cur.x1, y1: next.y1 };
+                else {
+                    out.push(cur);
+                    cur = next;
+                }
+            }
+            out.push(cur);
+        }
+        return out;
+    }
+    static _rectArea(rect) {
+        return (rect.x1 - rect.x0) * (rect.y1 - rect.y0);
+    }
+    static _chunkMaterialArea(chunks) {
+        let area = 0;
+        for (let i = 0; i < chunks.length; i++) area += FractureEngine._rectArea(FractureEngine._rectFromChunk(chunks[i]));
+        return area;
+    }
+    static _polygonShapeFromRect(rect) {
+        return new PolygonShape(new Float32Array([rect.x0, rect.y0, rect.x1, rect.y0, rect.x1, rect.y1, rect.x0, rect.y1]));
+    }
+    static _collisionPartsFromChunks(chunks) {
+        return FractureEngine.mergeChunkCollisionRects(chunks).map(FractureEngine._polygonShapeFromRect);
+    }
+    static _boundingRadiusFromParts(collisionParts) {
+        let maxR = 0;
+        for (let i = 0; i < collisionParts.length; i++) maxR = Math.max(maxR, collisionParts[i].getBoundingRadius());
+        return maxR;
+    }
+    static _footprintVerticesFromParts(collisionParts) {
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        for (let p = 0; p < collisionParts.length; p++) {
+            const verts = collisionParts[p].vertices;
+            const count = verts.length;
+            for (let i = 0; i < count; i += 2) {
+                const x = verts[i];
+                const y = verts[i + 1];
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+        return new Float32Array([minX, minY, maxX, minY, maxX, maxY, minX, maxY]);
+    }
+    static _withChunkCollisionParts(geom) {
+        const collisionParts = FractureEngine._collisionPartsFromChunks(geom.chunks);
+        const footprintVertices = FractureEngine._footprintVerticesFromParts(collisionParts);
+        return { ...geom, collisionParts, footprintVertices, footprintArea: FractureEngine._chunkMaterialArea(geom.chunks), boundingRadius: FractureEngine._boundingRadiusFromParts(collisionParts) };
+    }
+    static _centerFlatVerts(flatVerts) {
+        const count = flatVerts.length / 2;
+        let cx = 0;
+        let cy = 0;
+        for (let i = 0; i < count; i++) {
+            cx += flatVerts[i * 2];
+            cy += flatVerts[i * 2 + 1];
+        }
+        cx /= count;
+        cy /= count;
+        const centered = new Float32Array(count * 2);
+        for (let i = 0; i < count; i++) {
+            centered[i * 2] = flatVerts[i * 2] - cx;
+            centered[i * 2 + 1] = flatVerts[i * 2 + 1] - cy;
+        }
+        return centered;
+    }
+    static _rectGridPartsCeil(hx, hy, maxCellSize) {
+        const cols = Math.max(1, Math.ceil((hx * 2) / maxCellSize));
+        const rows = Math.max(1, Math.ceil((hy * 2) / maxCellSize));
+        const cellW = (hx * 2) / cols;
+        const cellH = (hy * 2) / rows;
+        const parts = [];
+        for (let row = 0; row < rows; row++)
+            for (let col = 0; col < cols; col++) {
+                const x0 = -hx + col * cellW;
+                const y0 = -hy + row * cellH;
+                const x1 = x0 + cellW;
+                const y1 = y0 + cellH;
+                parts.push({ vertices: new Float32Array([x0, y0, x1, y0, x1, y1, x0, y1]) });
+            }
+        return parts;
+    }
+    static _polygonSpan(flatVerts) {
+        return Math.sqrt(Math.abs(polygonSignedArea2D(flatVerts)));
+    }
+    static _closestPointOnPolygonBoundary(x, y, flatVerts) {
+        let bestX = flatVerts[0];
+        let bestY = flatVerts[1];
+        let bestDistSq = Infinity;
+        const count = flatVerts.length / 2;
+        for (let i = 0; i < count; i++) {
+            const j = (i + 1) % count;
+            const ax = flatVerts[i * 2];
+            const ay = flatVerts[i * 2 + 1];
+            const bx = flatVerts[j * 2];
+            const by = flatVerts[j * 2 + 1];
+            const closest = closestPointOnLineSegment(x, y, ax, ay, bx, by);
+            const distSq = (x - closest.x) * (x - closest.x) + (y - closest.y) * (y - closest.y);
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                bestX = closest.x;
+                bestY = closest.y;
+            }
+        }
+        return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
+    }
+    static _minDistToPolygonBoundary(x, y, flatVerts) {
+        return FractureEngine._closestPointOnPolygonBoundary(x, y, flatVerts).dist;
+    }
+    static _minThinEdgeForPolygon(flatVerts) {
+        return Math.max(3, FractureEngine._polygonSpan(flatVerts) * 0.08);
+    }
+    static _resolveShatterApex(flatVerts, hitX, hitY) {
+        const { cx, cy } = polygonCentroid2D(flatVerts);
+        const span = FractureEngine._polygonSpan(flatVerts);
+        let ax = hitX;
+        let ay = hitY;
+        if (!pointInPolygon(ax, ay, flatVerts)) {
+            const onEdge = FractureEngine._closestPointOnPolygonBoundary(hitX, hitY, flatVerts);
+            ax = onEdge.x;
+            ay = onEdge.y;
+        }
+        const inset = Math.min(span * 0.18, 18);
+        const dx = cx - ax;
+        const dy = cy - ay;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1e-6) {
+            const push = Math.min(inset, dist * 0.4);
+            ax += (dx / dist) * push;
+            ay += (dy / dist) * push;
+        }
+        if (!pointInPolygon(ax, ay, flatVerts)) {
+            ax = cx;
+            ay = cy;
+        }
+        return { x: ax, y: ay };
+    }
+    static _clipHalfPlane(flatVerts, ax, ay, nx, ny) {
+        const len = flatVerts.length;
+        if (len === 0) return flatVerts;
+        const count = len / 2;
+        const out = [];
+        for (let i = 0; i < count; i++) {
+            const j = (i + 1) % count;
+            const cx = flatVerts[i * 2];
+            const cy = flatVerts[i * 2 + 1];
+            const nx_coord = flatVerts[j * 2];
+            const ny_coord = flatVerts[j * 2 + 1];
+            const currIn = (cx - ax) * nx + (cy - ay) * ny >= -1e-9;
+            const nextIn = (nx_coord - ax) * nx + (ny_coord - ay) * ny >= -1e-9;
+            if (currIn && nextIn) out.push(nx_coord, ny_coord);
+            else if (currIn && !nextIn) {
+                const dx = nx_coord - cx;
+                const dy = ny_coord - cy;
+                const denom = dx * nx + dy * ny;
+                const t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
+                out.push(cx + dx * t, cy + dy * t);
+            } else if (!currIn && nextIn) {
+                const dx = nx_coord - cx;
+                const dy = ny_coord - cy;
+                const denom = dx * nx + dy * ny;
+                const t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
+                out.push(cx + dx * t, cy + dy * t);
+                out.push(nx_coord, ny_coord);
+            }
+        }
+        return new Float32Array(out);
+    }
+    static _acceptGlassShard(flatVerts, parentFlatVerts) {
+        const area = Math.abs(polygonSignedArea2D(flatVerts));
+        if (area < GLASS_MIN_SHARD_AREA) return false;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        const count = flatVerts.length / 2;
+        for (let i = 0; i < count; i++) {
+            const x = flatVerts[i * 2];
+            const y = flatVerts[i * 2 + 1];
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+        const thick = Math.max(maxX - minX, maxY - minY);
+        const thin = Math.min(maxX - minX, maxY - minY);
+        if (thin < FractureEngine._minThinEdgeForPolygon(parentFlatVerts)) return false;
+        if (thick / Math.max(1e-6, thin) > GLASS_MAX_SLIVER_ASPECT) return false;
+        return true;
+    }
+    static _buildGlassShards(flatVerts, apexX, apexY, shardCount, random) {
+        const baseStep = (Math.PI * 2) / shardCount;
+        const offset = random() * Math.PI * 2;
+        const angles = [];
+        for (let i = 0; i < shardCount; i++) {
+            const jitter = (random() - 0.5) * baseStep * 0.25;
+            angles.push(offset + i * baseStep + jitter);
+        }
+        angles.sort((a, b) => a - b);
+        const shards = [];
+        let startIndex = 0;
+        let lastStartIdx = -1;
+        while (startIndex < angles.length) {
+            const a0 = angles[startIndex];
+            const a1 = startIndex === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[startIndex + 1];
+            const poly = FractureEngine.wedgePolygonIntersection(flatVerts, apexX, apexY, a0, a1);
+            if (poly.length < 6) {
+                startIndex++;
+                continue;
+            }
+            if (FractureEngine._acceptGlassShard(poly, flatVerts)) {
+                shards.push(FractureEngine.buildShardGeometry(poly));
+                lastStartIdx = startIndex;
+                startIndex++;
+            } else {
+                let merged = false;
+                if (lastStartIdx !== -1) {
+                    const prevA0 = angles[lastStartIdx];
+                    const angleDiff = a1 - prevA0;
+                    if (angleDiff < Math.PI * 0.95) {
+                        const mergedPoly = FractureEngine.wedgePolygonIntersection(flatVerts, apexX, apexY, prevA0, a1);
+                        if (mergedPoly.length >= 6) {
+                            shards.pop();
+                            shards.push(FractureEngine.buildShardGeometry(mergedPoly));
+                            merged = true;
+                        }
+                    }
+                }
+                if (merged) startIndex++;
+                else {
+                    shards.push(FractureEngine.buildShardGeometry(poly));
+                    lastStartIdx = startIndex;
+                    startIndex++;
+                }
+            }
+        }
+        return shards;
+    }
+    static _shardCountForPolygon(flatVerts, impactForce, apexX, apexY) {
+        const area = Math.abs(polygonSignedArea2D(flatVerts));
+        const span = FractureEngine._polygonSpan(flatVerts);
+        const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
+        const areaCap = Math.max(2, Math.floor(area / minArea));
+        const angleCap = Math.floor((Math.PI * 2) / GLASS_MIN_WEDGE_ANGLE);
+        const minShardsAllowed = Math.min(4, areaCap);
+        let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
+        count = Math.min(count, areaCap, angleCap);
+        const boundaryDist = FractureEngine._minDistToPolygonBoundary(apexX, apexY, flatVerts);
+        const boundaryFactor = Math.min(1, boundaryDist / (span * 0.14));
+        count = Math.max(minShardsAllowed, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
+        return count;
+    }
+    static _isGlassFracture(prop) {
+        return prop?.strategy?.fracture?.mode === "glass";
+    }
+    static _isChunkFracture(prop) {
+        return prop?.strategy?.fracture?.mode === "chunk";
+    }
+    static _glassFootprintArea(prop) {
+        if (prop.footprintArea != null) return prop.footprintArea;
+        const shape = prop.shape;
+        if (shape?.type === "Polygon") return Math.abs(polygonSignedArea2D(shape.vertices));
+        return 0;
+    }
+    static _canGlassFractureSplit(prop, minSize) {
+        const shape = prop.shape;
+        if (shape?.type !== "Polygon") return false;
+        const { x, y } = convexFootprintHalfExtents(shape.vertices);
+        if (Math.max(x, y) * 2 < minSize) return false;
+        const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
+        return FractureEngine._glassFootprintArea(prop) >= minArea;
+    }
+    static _canChunkFractureSplit(prop, minSize) {
+        const shape = prop.shape;
+        const { x, y } = shape?.type === "Polygon" ? convexFootprintHalfExtents(shape.vertices) : { x: prop.radius, y: prop.radius };
+        if (x * 2 < minSize || y * 2 < minSize) return false;
+        if (!prop.chunks?.length) return false;
+        if (prop.chunks.length > 1) return true;
+        return FractureEngine.chunkNeedsMinCellSubdivide(prop.chunks[0]);
+    }
+    static _ensureChunkFractureGrid(prop) {
+        if (prop.chunks?.length !== 1) return;
+        const geom = FractureEngine.subdivideSingleChunkAtMinCell(prop.chunks[0]);
+        if (geom) FractureEngine.applyPropFractureGeometry(prop, geom);
+    }
+    static _flatVertsFromShape(prop) {
+        return prop.shape.vertices;
+    }
+    static _clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+    static _propWorldPosition(prop) {
+        const physId = prop._physId;
+        return { x: physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x, y: physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y };
+    }
+    static _currentPropMotion(prop) {
+        const physId = prop._physId;
+        if (physId !== undefined) return { vx: kineticDynamicSlab.vx[physId], vy: kineticDynamicSlab.vy[physId], w: kineticDynamicSlab.w[physId] };
+        return { vx: prop.vx ?? 0, vy: prop.vy ?? 0, w: prop.angularVelocity ?? 0 };
+    }
+    static _circleShardCount(impactForce, minShards, maxShards) {
+        return FractureEngine._clamp(Math.round(3.5 + impactForce * 0.02), minShards, maxShards);
+    }
+    static _applyShardBurstImpulse(fracture, frag, geom, random) {
+        const cos = Math.cos(fracture.facing);
+        const sin = Math.sin(fracture.facing);
+        const impactWorld = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, fracture.impactLocal.x, fracture.impactLocal.y, cos, sin);
+        const burst = Math.min(FRACTURE_TUNING.burst.maxBurst, FRACTURE_TUNING.burst.baseBurst + fracture.impactForce * FRACTURE_TUNING.burst.burstForceScale);
+        const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+        const dx = worldPos.x - impactWorld.x;
+        const dy = worldPos.y - impactWorld.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1e-6) {
+            frag.vx += (dx / dist) * burst;
+            frag.vy += (dy / dist) * burst;
+        }
+        frag.angularVelocity += (random() - 0.5) * FRACTURE_TUNING.burst.spinScale;
+        frag._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
+    }
+    static _spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame = null) {
+        const random = FractureEngine._fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
+        return FractureEngine.spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, shardPropId, spatialFrame, (frag, geom) => {
+            FractureEngine._applyShardBurstImpulse(fracture, frag, geom, random);
+        });
+    }
+    static _spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+        return FractureEngine._spawnBurstFractureShards(world, sourceProp, fracture, sourceProp.type, spatialFrame);
+    }
+    static _spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame = null) {
+        return FractureEngine.spawnShardPropsFromGeometry(world, sourceProp, fracture.debris, sourceProp.type, spatialFrame);
+    }
+    static _spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame = null) {
+        const shardPropId = sourceProp.type === "snake" || sourceProp.type === "ball" || sourceProp.type === "boid_triangle" ? "snake_shard" : sourceProp.type;
+        return FractureEngine._spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, spatialFrame);
+    }
+    static _splitMeshComponents(cells, localHitX, localHitY, impactForce, forceExplode) {
+        if (!cells?.length) return [];
+        let components = FractureEngine.splitChunks(cells, localHitX, localHitY, impactForce);
+        if (forceExplode && cells.length > 1) components = cells.map((cell) => [cell]);
+        return components;
+    }
+    static _geometryFromChunkComponent(comp, atOrigin) {
+        const parts = comp.map((chunk) => ({ vertices: chunk.vertices }));
+        return atOrigin ? FractureEngine.buildChunkGeometryAtPropOrigin(parts) : FractureEngine.buildGeometryFromChunkParts(parts);
+    }
+    static _peelSolidFracture(prop, localHitX, localHitY, impactForce) {
+        const components = FractureEngine._splitMeshComponents(prop.chunks, localHitX, localHitY, impactForce, false);
+        if (components.length <= 1) return null;
+        components.sort((a, b) => b.length - a.length);
+        const origin = FractureEngine._propWorldPosition(prop);
+        const mainGeom = FractureEngine._geometryFromChunkComponent(components[0], false);
+        const cos = Math.cos(entityFacing(prop));
+        const sin = Math.sin(entityFacing(prop));
+        const mainWorldPos = transformPoint2DInto({ x: 0, y: 0 }, origin.x, origin.y, mainGeom.centroid.cx, mainGeom.centroid.cy, cos, sin);
+        const physId = prop._physId;
+        if (physId !== undefined && physId !== -1) {
+            kineticDynamicSlab.x[physId] = mainWorldPos.x;
+            kineticDynamicSlab.y[physId] = mainWorldPos.y;
+            prop.x = kineticDynamicSlab.x[physId];
+            prop.y = kineticDynamicSlab.y[physId];
+        } else {
+            prop.x = mainWorldPos.x;
+            prop.y = mainWorldPos.y;
+        }
+        const debris = components.slice(1).map((comp) => FractureEngine._geometryFromChunkComponent(comp, false));
+        FractureEngine.applyPropFractureGeometry(prop, mainGeom);
+        return makeFractureResult({ debris, origin, facing: entityFacing(prop) });
+    }
+    static _fractureImpactContext(prop, worldHitX, worldHitY, impactForce) {
+        const origin = FractureEngine._propWorldPosition(prop);
+        return { origin, impactLocal: FractureEngine.worldHitToPropLocal(prop, worldHitX, worldHitY), facing: entityFacing(prop), impactForce };
+    }
+    static _fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce) {
+        if (!FractureEngine.canFracturePropSplit(prop)) return null;
+        const ctx = FractureEngine._fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
+        const random = FractureEngine._fractureRandomFromImpact(worldHitX, worldHitY, impactForce);
+        const debris = FractureEngine.shatterGlassPolygon(FractureEngine._flatVertsFromShape(prop), ctx.impactLocal.x, ctx.impactLocal.y, impactForce, random);
+        if (debris.length < 2) return null;
+        return makeFractureResult({ debris, origin: ctx.origin, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce });
+    }
+    static _fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce) {
+        FractureEngine._ensureChunkFractureGrid(prop);
+        if (!FractureEngine.canFracturePropSplit(prop)) return null;
+        const ctx = FractureEngine._fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
+        const peel = FractureEngine._peelSolidFracture(prop, ctx.impactLocal.x, ctx.impactLocal.y, impactForce);
+        if (!peel) return null;
+        return makeFractureResult({ debris: peel.debris, originX: peel.originX, originY: peel.originY, facing: peel.facing, impactLocal: ctx.impactLocal, impactForce });
+    }
+    static _fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce) {
+        const ctx = FractureEngine._fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
+        const debris = FractureEngine.buildCircleImpactShards(prop.radius, ctx.impactLocal, impactForce);
+        if (debris.length === 0) return null;
+        return makeFractureResult({ debris, origin: ctx.origin, facing: ctx.facing, impactLocal: ctx.impactLocal, impactForce });
+    }
+    static _prepareEngineScratch(engine, n) {
+        if (!engine._splitVisited || engine._splitVisited.length < n) {
+            engine._splitVisited = new Uint8Array(n);
+            engine._splitHitMask = new Uint8Array(n);
+            engine._splitHitVisited = new Uint8Array(n);
+            engine._splitQueue = [];
+        } else {
+            engine._splitVisited.fill(0, 0, n);
+            engine._splitHitMask.fill(0, 0, n);
+            engine._splitHitVisited.fill(0, 0, n);
+            engine._splitQueue.length = 0;
+        }
+        return { visited: engine._splitVisited, hitMask: engine._splitHitMask, hitVisited: engine._splitHitVisited, queue: engine._splitQueue };
+    }
+    static _prepareStaticScratch(n) {
+        const scratch = FractureEngine._splitScratch;
+        if (!scratch.visited || scratch.capacity < n) {
+            scratch.visited = new Uint8Array(n);
+            scratch.hitMask = new Uint8Array(n);
+            scratch.hitVisited = new Uint8Array(n);
+            scratch.queue = [];
+            scratch.capacity = n;
+        } else {
+            scratch.visited.fill(0, 0, n);
+            scratch.hitMask.fill(0, 0, n);
+            scratch.hitVisited.fill(0, 0, n);
+            scratch.queue.length = 0;
+        }
+        return scratch;
+    }
+    static _splitChunksWithScratch(scratch, chunks, localHitX, localHitY, impactForce) {
+        const n = chunks.length;
+        const tuning = FRACTURE_TUNING.chunk;
+        const damageRadius = impactForce * tuning.damageRadiusScale;
         const damageRadiusSq = damageRadius * damageRadius;
-        const chunkProb = impactForce >= 12 ? Math.min(1, impactForce / 30) : Math.max(0.1, 1.0 - impactForce * 0.04);
+        const chunkProb = impactForce >= tuning.neighborRollHighForceThreshold ? Math.min(1, impactForce / tuning.neighborRollHighForceDivisor) : Math.max(tuning.neighborRollLowForceBase, 1.0 - impactForce * tuning.neighborRollLowForceScale);
+        const visited = scratch.visited;
+        const hitMask = scratch.hitMask;
+        const hitVisited = scratch.hitVisited;
+        const queue = scratch.queue;
         let hitIdx = 0;
         let minDistSq = Infinity;
-        const hitSet = new Set();
-        for (let i = 0; i < poxels.length; i++) {
-            const poxel = poxels[i];
-            let pcx = 0;
-            let pcy = 0;
-            const vCount = poxel.vertices.length / 2;
-            for (let j = 0; j < vCount; j++) {
-                pcx += poxel.vertices[j * 2];
-                pcy += poxel.vertices[j * 2 + 1];
-            }
-            pcx /= vCount;
-            pcy /= vCount;
+        for (let i = 0; i < n; i++) {
+            const chunk = chunks[i];
+            const pcx = chunk.cx;
+            const pcy = chunk.cy;
             const distSq = (pcx - localHitX) * (pcx - localHitX) + (pcy - localHitY) * (pcy - localHitY);
             if (distSq < minDistSq) {
                 minDistSq = distSq;
                 hitIdx = i;
             }
-            if (distSq <= damageRadiusSq) hitSet.add(i);
+            if (distSq <= damageRadiusSq) hitMask[i] = 1;
         }
-        if (hitSet.size === 0) hitSet.add(hitIdx);
-        const visited = new Array(poxels.length).fill(false);
-        for (const idx of hitSet) visited[idx] = true;
+        if (!hitMask[hitIdx]) hitMask[hitIdx] = 1;
+        for (let i = 0; i < n; i++) if (hitMask[i]) visited[i] = 1;
         const components = [];
-        for (let i = 0; i < poxels.length; i++)
+        for (let i = 0; i < n; i++)
             if (!visited[i]) {
                 const comp = [];
-                const q = [i];
-                visited[i] = true;
+                queue.length = 0;
+                queue.push(i);
+                visited[i] = 1;
                 let head = 0;
-                while (head < q.length) {
-                    const curr = q[head++];
-                    comp.push(poxels[curr]);
-                    for (let j = 0; j < poxels[curr].neighbors.length; j++) {
-                        const n = poxels[curr].neighbors[j];
-                        if (!visited[n]) {
-                            visited[n] = true;
-                            q.push(n);
+                while (head < queue.length) {
+                    const curr = queue[head++];
+                    comp.push(chunks[curr]);
+                    const neighbors = chunks[curr].neighbors;
+                    for (let j = 0; j < neighbors.length; j++) {
+                        const neighbor = neighbors[j];
+                        if (!visited[neighbor]) {
+                            visited[neighbor] = 1;
+                            queue.push(neighbor);
                         }
                     }
                 }
                 components.push(comp);
             }
-        const hitVisited = new Set();
-        for (const idx of hitSet)
-            if (!hitVisited.has(idx)) {
+        hitVisited.fill(0, 0, n);
+        for (let i = 0; i < n; i++)
+            if (hitMask[i] && !hitVisited[i]) {
                 const chunk = [];
-                const q = [idx];
-                hitVisited.add(idx);
+                queue.length = 0;
+                queue.push(i);
+                hitVisited[i] = 1;
                 let head = 0;
-                while (head < q.length) {
-                    const curr = q[head++];
-                    chunk.push(poxels[curr]);
-                    for (let j = 0; j < poxels[curr].neighbors.length; j++) {
-                        const n = poxels[curr].neighbors[j];
-                        if (hitSet.has(n) && !hitVisited.has(n))
-                            if (fractureNeighborRoll(localHitX, localHitY, impactForce, n) < chunkProb) {
-                                hitVisited.add(n);
-                                q.push(n);
+                while (head < queue.length) {
+                    const curr = queue[head++];
+                    chunk.push(chunks[curr]);
+                    const neighbors = chunks[curr].neighbors;
+                    for (let j = 0; j < neighbors.length; j++) {
+                        const neighbor = neighbors[j];
+                        if (hitMask[neighbor] && !hitVisited[neighbor])
+                            if (FractureEngine._fractureNeighborRoll(localHitX, localHitY, impactForce, neighbor) < chunkProb) {
+                                hitVisited[neighbor] = 1;
+                                queue.push(neighbor);
                             }
                     }
                 }
                 components.push(chunk);
             }
         components.sort((a, b) => b.length - a.length);
-        if (components.length === 1) return [poxels];
+        if (components.length === 1) return [chunks];
         return components;
     }
-    static buildGeometryFromPartsAtOrigin(localParts) {
-        const parts = localParts.map((p) => ({ vertices: p.vertices }));
-        const boundaryPoints = getOuterBoundary(parts);
-        const footprintVertices = new Float32Array(boundaryPoints.length);
-        footprintVertices.set(boundaryPoints);
-        const { signedArea } = polygonCentroid2D(footprintVertices, SHARED_CENTROID);
-        return finalizeFootprintGeometry(footprintVertices, parts, signedArea, { cx: 0, cy: 0 });
-    }
-    static fractureDeterministicRandom(seed) {
-        let h = seed | 0;
-        h = Math.imul(h ^ (h >>> 16), 2246822507);
-        h = Math.imul(h ^ (h >>> 13), 3266489909);
-        return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-    }
 }
+FractureEngine._splitScratch = { visited: null, hitMask: null, hitVisited: null, queue: null, capacity: 0 };
+const FRACTURE_MODES = {
+    chunk: { retainParent: true, needsChunkGrid: true, initFootprint: true, onImpact: (prop, worldHitX, worldHitY, impactForce) => FractureEngine._fractureChunkOnImpact(prop, worldHitX, worldHitY, impactForce), spawnShards: (world, sourceProp, fracture, spatialFrame) => FractureEngine._spawnChunkFractureShards(world, sourceProp, fracture, spatialFrame), canSplit: (prop, minSize) => FractureEngine._canChunkFractureSplit(prop, minSize) },
+    glass: { retainParent: false, needsChunkGrid: false, initFootprint: false, onImpact: (prop, worldHitX, worldHitY, impactForce) => FractureEngine._fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce), spawnShards: (world, sourceProp, fracture, spatialFrame) => FractureEngine._spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame), canSplit: (prop, minSize) => FractureEngine._canGlassFractureSplit(prop, minSize) },
+    circle: { retainParent: false, skipCanSplit: true, onImpact: (prop, worldHitX, worldHitY, impactForce) => FractureEngine._fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce), spawnShards: (world, sourceProp, fracture, spatialFrame) => FractureEngine._spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame) },
+};
+// ===== END FRACTURE ENGINE =====

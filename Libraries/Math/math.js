@@ -1,3 +1,9 @@
+export function deterministicUnitRandom(seed) {
+    let h = seed | 0;
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 /** True when segments (ax, ay)–(bx, by) and (cx, cy)–(dx, dy) intersect (inclusive endpoints). */
 export function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
     const d1x = bx - ax;
@@ -972,12 +978,7 @@ export function mixHash4(a, b, c, d) {
 }
 // --- QUATERNION MATH ---
 export function multiplyQuat(a, b) {
-    return {
-        w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
-        x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-        y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-        z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-    };
+    return { w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z, x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x, z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w };
 }
 export function axisAngleQuat(ax, ay, az, angle) {
     const half = angle * 0.5;

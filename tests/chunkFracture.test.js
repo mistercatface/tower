@@ -34,9 +34,9 @@ describe("chunk fracture", () => {
         assert.equal(frag.collisionParts[0].type, "Polygon");
         assert.equal(frag.collisionParts[0].vertices.length / 2, 4);
     });
-    it("splitPoxels breaks chunk connectivity on a strong center hit", () => {
+    it("splitChunks breaks chunk connectivity on a strong center hit", () => {
         const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(8, 8));
-        const components = FractureEngine.splitPoxels(geom.chunks, 0, 0, 80);
+        const components = FractureEngine.splitChunks(geom.chunks, 0, 0, 80);
         assert.ok(components.length > 1);
     });
     it("fracture crate init builds chunk connectivity grid", () => {
@@ -78,7 +78,7 @@ describe("chunk fracture", () => {
     });
     it("mergeChunkCollisionRects covers concave L-shapes with multiple axis-aligned boxes", () => {
         const geom = FractureEngine.bakeChunkOutline(boxLocalFootprint(16, 16));
-        const components = FractureEngine.splitPoxels(geom.chunks, 14, 14, 80);
+        const components = FractureEngine.splitChunks(geom.chunks, 14, 14, 80);
         assert.ok(components.length > 1);
         const parentRects = FractureEngine.mergeChunkCollisionRects(components[0]);
         assert.ok(parentRects.length >= 2);
