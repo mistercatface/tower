@@ -4017,7 +4017,7 @@ export async function generateLabRailMaze(state, options = {}) {
     let damageBounds = run.mergeDonut(config, bounds);
     await commitGridNavEdit(state, damageBounds);
     stampRailMazeBeltsPhase(state, config, options);
-    await run.finish(config, config.surfaceProfileId || "cyberGrid", null, { fullNavSync: true });
+    await run.finish(config, config.surfaceProfileId, null, { fullNavSync: true });
 }
 export class KineticSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {

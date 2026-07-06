@@ -22,7 +22,6 @@ async function runSnakeLaunch(state, ctx) {
     railConfig.boundsCols = SNAKE_RAIL_MAZE_COLS;
     railConfig.boundsRows = SNAKE_RAIL_MAZE_ROWS;
     centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railMazeConfig);
-    centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railConfig);
     await generateLabRailMaze(state);
     refreshAllStampedRegionSurfaces(state);
     await state.nav.commitEdit(null, { fullNavSync: true });
