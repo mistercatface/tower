@@ -32,12 +32,8 @@ function loadGameModeStylesheet() {
     link.href = new URL("./game-mode.css", import.meta.url).href;
     document.head.appendChild(link);
 }
-function editorKineticContactSideEffects(tick, contacts) {
-    tick.world.fractureEngine.processKineticContactFractures(tick, contacts, { onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id) });
-}
 /** @param {import("./state.js").TileLabGameState} state */
 function simulationKineticHooks(state) {
-    const applyContactSideEffects = state.appLaunch?.session?.applyContactSideEffects ?? editorKineticContactSideEffects;
     return {
         updatePropFrame(prop, dt, frame) {
             prop.tickPropFrame(dt, state, frame);
@@ -50,7 +46,9 @@ function simulationKineticHooks(state) {
             if (session?.resolveWalls) return session.resolveWalls(entity, frame);
             return resolveKineticWallDamage(state, entity, frame, state.wallResolver);
         },
-        applyContactSideEffects,
+        applyContactSideEffects(tick, contacts) {
+            tick.world.fractureEngine.processKineticContactFractures(tick, contacts, { onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id) });
+        },
         afterKineticPhysics() {
             state.appLaunch?.session?.afterKineticPhysics?.();
             flushPendingWallDamage(state);
@@ -104,12 +102,7 @@ export function createEditorApp(options = {}) {
     installEditorDefaults(state);
     state.gridWallDamage = createGridWallDamage(state, { minBreakStrength: 0.1, referenceMaxSpeed: 560, minStrikeSpeed: 28 });
     const pauseManager = new PauseManager(state);
-    installRadioOverlay(document.getElementById("gameWrapper"), {
-        eventBus: events,
-        requestPause: (reason) => pauseManager.pause(reason),
-        requestResume: (reason) => pauseManager.resume(reason),
-        content: { conversations: {}, speakers: {}, mainCharacterId: "player" },
-    });
+    installRadioOverlay(document.getElementById("gameWrapper"), { eventBus: events, requestPause: (reason) => pauseManager.pause(reason), requestResume: (reason) => pauseManager.resume(reason), content: { conversations: {}, speakers: {}, mainCharacterId: "player" } });
     const playbackHandlers = {
         togglePause() {
             pauseManager.toggleUser();
