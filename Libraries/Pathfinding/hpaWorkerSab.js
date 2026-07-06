@@ -13,6 +13,38 @@ export function hpaPathSlotIdx(sabPathIdxPool, slot, maxPathLen) {
 export function hpaPathSlotAbstractIdx(sabAbstractIdxPool, slot, maxAbstractLen) {
     return new Int16Array(sabAbstractIdxPool, slot * maxAbstractLen * 2, maxAbstractLen);
 }
+export function stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outIdx, maxPathLen) {
+    if (!abstractIdx || !abstractIdx.length) return 0;
+    let offset = 0;
+    const lastLeg = abstractIdx.length - 1;
+    const { nodeCount } = prep;
+    for (let i = 0; i < lastLeg; i++) {
+        const aIdx = abstractIdx[i];
+        const bIdx = abstractIdx[i + 1];
+        const legKey = (aIdx << 16) | bIdx;
+        let legOffset = tempLegsOffsets.get(legKey);
+        let legLen = 0;
+        let isTempLeg = true;
+        if (legOffset !== undefined) legLen = tempLegsLengths.get(legKey);
+        else if (aIdx < nodeCount && bIdx < nodeCount) {
+            legLen = resolveRegionLeg(aIdx, bIdx);
+            isTempLeg = false;
+        }
+        if (legLen === 0) return 0;
+        const start = offset === 0 ? 0 : 1;
+        if (isTempLeg)
+            for (let j = start; j < legLen; j++) {
+                if (offset >= maxPathLen) return 0;
+                outIdx[offset++] = tempLegsBuffer[legOffset + j];
+            }
+        else
+            for (let j = start; j < legLen; j++) {
+                if (offset >= maxPathLen) return 0;
+                outIdx[offset++] = resolveRegionLeg.scratch[j];
+            }
+    }
+    return offset;
+}
 /**
  * @param {object} config
  * @param {number} config.maxSlots
@@ -38,7 +70,14 @@ export function createHpaWorkerSabPools({ maxSlots, maxPathLen, maxAbstractLen, 
         sabDebugGraphEdgeTargets: new SharedArrayBuffer(maxGraphEdges * 2),
         sabDebugGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2),
         sabDebugGraphEdgeSources: new SharedArrayBuffer(maxGraphEdges * 2),
+        maxPathLen,
     };
+}
+/** @param {SharedArrayBuffer} sabPathIdxPool @param {number} maxSlots @param {number} maxPathLen */
+export function growHpaPathIdxSab(sabPathIdxPool, maxSlots, maxPathLen) {
+    const byteLen = Math.max(maxSlots * maxPathLen * 4, 4);
+    if (sabPathIdxPool.byteLength >= byteLen) return sabPathIdxPool;
+    return new SharedArrayBuffer(byteLen);
 }
 /** @param {number} cellCount */
 export function growHpaCellToRegionSab(sabCellToRegionIdx, cellCount) {
@@ -135,15 +174,6 @@ export class PersistedHpaGraphWriter {
         return sum;
     }
     flatGraphView() {
-        return new FlatGraphView({
-            nodeIdx: this.nodeIdxView(this.nodeCount),
-            cols: this.cols,
-            edgeOffsets: this.edgeOffsetsView(this.nodeCount),
-            edgeTargets: this.edgeTargetsView(this.edgeWrite),
-            edgeCosts: this.edgeCostsView(this.edgeWrite),
-            nodeCount: this.nodeCount,
-            edgeWrite: this.edgeWrite,
-            nodeIds: this.nodeIds,
-        });
+        return new FlatGraphView({ nodeIdx: this.nodeIdxView(this.nodeCount), cols: this.cols, edgeOffsets: this.edgeOffsetsView(this.nodeCount), edgeTargets: this.edgeTargetsView(this.edgeWrite), edgeCosts: this.edgeCostsView(this.edgeWrite), nodeCount: this.nodeCount, edgeWrite: this.edgeWrite, nodeIds: this.nodeIds });
     }
 }

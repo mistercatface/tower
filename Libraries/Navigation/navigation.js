@@ -886,8 +886,6 @@ export class HpaAbstractGraph extends FlatGraphView {
         return { extendedGraph, startTemp, targetTemp };
     }
 }
-export const HPA_LOCAL_MAX_LEN = 96;
-export const HPA_REGION_CONNECT_MAX_LEN = 96;
 export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
 const globalReplanPayload = { startIdx: 0, targetIdx: 0, stepPenaltyKeys: null, stepPenaltyCosts: null };
 export class HpaReplanRequest {
@@ -954,13 +952,14 @@ export class HpaReplanRequest {
         navState.lastTargetY = this.targetY;
     }
 }
-export function prepareHpaReplanPrep(cols, cellToRegion, graphMeta, startIdx, targetIdx) {
+export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx) {
+    const legMaxCost = cols + rows;
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
     const cellDist = octileDistanceIdx(startIdx, targetIdx, cols);
-    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startIdx, targetIdx };
+    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startIdx, targetIdx, legMaxCost };
     const { nodeIds, nodeIdx } = graphMeta;
-    return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, regionConnectMaxLen: HPA_REGION_CONNECT_MAX_LEN, startRegion, targetRegion };
+    return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, legMaxCost, startRegion, targetRegion };
 }
 export function findNearestOpenCellIdx(blocked, grid, idx) {
     const cols = grid.cols;

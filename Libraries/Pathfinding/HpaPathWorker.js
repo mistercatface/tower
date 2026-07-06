@@ -2,7 +2,7 @@ import { expandRegionDamageBounds, createNavTopologySabArena, growNavTopologyVer
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { gridFrameFromGrid } from "../Navigation/navigation.js";
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/spatial.js";
-import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
+import { createHpaWorkerSabPools, growHpaCellToRegionSab, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/spatial.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
@@ -61,7 +61,7 @@ export class HpaPathWorker {
     _workerInitData() {
         return {
             maxSlots: MAX_HPA_REPLAN_SLOTS,
-            maxPathLen: MAX_HPA_PATH_LEN,
+            maxPathLen: this.maxPathLen,
             maxAbstractLen: MAX_HPA_ABSTRACT_LEN,
             maxGraphNodes: MAX_HPA_GRAPH_NODES,
             maxGraphEdges: MAX_GRAPH_EDGES,
@@ -112,7 +112,7 @@ export class HpaPathWorker {
             this.debugGraphNodeIds = data.debugNodeIds ?? [];
             this._graphEpoch = this._graphPatchTargetEpoch;
             const expectedSize = this.navGraph.cols * this.navGraph.rows;
-            if (expectedSize > 0 && this._graphSize !== expectedSize) this._ensureGraphCellBuffers(expectedSize);
+            if (expectedSize > 0) this._ensureGraphCellBuffers(this.navGraph.cols, this.navGraph.rows);
             const resolve = this._graphPatchResolve;
             this._graphPatchResolve = null;
             resolve?.();
@@ -131,12 +131,21 @@ export class HpaPathWorker {
             return;
         }
     }
-    _ensureGraphCellBuffers(size) {
-        if (this._graphSize === size) return;
-        this._graphSize = size;
-        this.sabCellToRegionIdx = growHpaCellToRegionSab(this.sabCellToRegionIdx, size);
-        this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
-        this.sabDebugCellToRegionIdx = growHpaCellToRegionSab(this.sabDebugCellToRegionIdx, size);
+    _ensureGraphCellBuffers(cols, rows) {
+        const size = cols * rows;
+        if (size <= 0) return;
+        if (this._graphSize !== size) {
+            this._graphSize = size;
+            this.sabCellToRegionIdx = growHpaCellToRegionSab(this.sabCellToRegionIdx, size);
+            this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
+            this.sabDebugCellToRegionIdx = growHpaCellToRegionSab(this.sabDebugCellToRegionIdx, size);
+        }
+        const stitchedMax = size;
+        if (stitchedMax > this.maxPathLen) {
+            this.sabPathIdxPool = growHpaPathIdxSab(this.sabPathIdxPool, MAX_HPA_REPLAN_SLOTS, stitchedMax);
+            this.maxPathLen = stitchedMax;
+            this.protocol.postMessage({ type: "growPathSab", sabPathIdxPool: this.sabPathIdxPool, maxPathLen: stitchedMax });
+        }
     }
     _postGraphPatch(type, payload, graphEpoch) {
         const run = () => {
@@ -153,7 +162,7 @@ export class HpaPathWorker {
         const boundsOrIdx = fullGraph ? null : idx;
         await this.scheduleNavTopologySyncAwait(grid, boundsOrIdx);
         const size = grid.cols * grid.rows;
-        this._ensureGraphCellBuffers(size);
+        this._ensureGraphCellBuffers(grid.cols, grid.rows);
         if (fullGraph) {
             await this._postGraphPatch("buildRegionGraphFull", { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk }, graphEpoch);
             return;
@@ -238,7 +247,7 @@ export class HpaPathWorker {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);
     }
     _pathIdx(slot) {
-        return hpaPathSlotIdx(this.sabPathIdxPool, slot, MAX_HPA_PATH_LEN);
+        return hpaPathSlotIdx(this.sabPathIdxPool, slot, this.maxPathLen);
     }
     _abstractIdx(slot) {
         return hpaPathSlotAbstractIdx(this.sabAbstractIdxPool, slot, MAX_HPA_ABSTRACT_LEN);
@@ -323,6 +332,7 @@ export class HpaPathWorker {
         }
         const size = grid.cols * grid.rows;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
+        this._ensureGraphCellBuffers(grid.cols, grid.rows);
         this._inFlightNavCacheKey = gridNavCacheKey(grid);
         const edgePoolRefs = Math.max(grid.cellEdgePool.length, 4);
         this._ensureNavBuffers(size, vertCount, edgePoolRefs, grid.cols, grid.rows);

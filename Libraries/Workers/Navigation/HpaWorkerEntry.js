@@ -1,22 +1,6 @@
-import {
-    FlatAbstractGraphSearch,
-    FlatGridSearch,
-    SearchState,
-    createNavSimView,
-    bindNavSimEdgePool,
-    bindNavSimGridFrame,
-    HpaAbstractGraph,
-    prepareHpaReplanPrep,
-    HPA_LOCAL_MAX_LEN,
-    buildFullRegionGraph,
-    packRegionGraphFlat,
-    rebuildDamagedRegionGraph,
-    createNavLocalView,
-    navTopologyFromSab,
-    bakeNavTopologyIntoArena,
-} from "../../Navigation/navigation.js";
+import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena } from "../../Navigation/navigation.js";
 import { bindNavEdgePoolFromSab, BeltPacked } from "../../Spatial/spatial.js";
-import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter } from "../../Pathfinding/hpaWorkerSab.js";
+import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
 export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null) {
     let maxIdx = 0;
@@ -35,38 +19,6 @@ export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null
             return cost;
         },
     };
-}
-export function stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLegsOffsets, tempLegsLengths, resolveRegionLeg, outIdx, cols) {
-    if (!abstractIdx || !abstractIdx.length) return 0;
-    let offset = 0;
-    const lastLeg = abstractIdx.length - 1;
-    const { nodeIdx, nodeCount, startIdx, targetIdx } = prep;
-    const startTemp = nodeCount;
-    const targetTemp = nodeCount + 1;
-    for (let i = 0; i < lastLeg; i++) {
-        const aIdx = abstractIdx[i];
-        const bIdx = abstractIdx[i + 1];
-        const legKey = (aIdx << 16) | bIdx;
-        let legOffset = tempLegsOffsets.get(legKey);
-        let legLen = 0;
-        let isTempLeg = true;
-        if (legOffset !== undefined) legLen = tempLegsLengths.get(legKey);
-        else if (aIdx < nodeCount && bIdx < nodeCount) {
-            legLen = resolveRegionLeg(aIdx, bIdx);
-            isTempLeg = false;
-        }
-        if (legLen > 0) {
-            const start = offset === 0 ? 0 : 1;
-            if (isTempLeg) for (let j = start; j < legLen; j++) outIdx[offset++] = tempLegsBuffer[legOffset + j];
-            else for (let j = start; j < legLen; j++) outIdx[offset++] = resolveRegionLeg.scratch[j];
-            continue;
-        }
-        const aCellIdx = aIdx === startTemp ? startIdx : aIdx === targetTemp ? targetIdx : nodeIdx[aIdx];
-        const bCellIdx = bIdx === startTemp ? startIdx : bIdx === targetTemp ? targetIdx : nodeIdx[bIdx];
-        if (offset === 0) outIdx[offset++] = aCellIdx;
-        outIdx[offset++] = bCellIdx;
-    }
-    return offset;
 }
 export class HpaBufferManager {
     constructor() {
@@ -259,20 +211,8 @@ export class HpaRegionGraphManager {
     }
     buildRegionGraphFull(gridFrame, topology, navView, data) {
         const frame = gridFrame;
-        const built = buildFullRegionGraph({
-            blocked: topology.blocked,
-            frame,
-            navGraph: navView,
-            maxCellsPerChunk: this.buffers.maxCellsPerChunk,
-            minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk,
-        });
-        this.regionGraphState = {
-            ...built,
-            maxCellsPerChunk: this.buffers.maxCellsPerChunk,
-            minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk,
-            damagePadding: data.damagePadding,
-            distToWall: null,
-        };
+        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk });
+        this.regionGraphState = { ...built, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, damagePadding: data.damagePadding, distToWall: null };
         this.writeDebugRegionGraphToSab(gridFrame);
         return this.writeRegionGraphToSab(gridFrame);
     }
@@ -297,7 +237,7 @@ export class HpaReplanPlanner {
     constructor(buffers, searchState) {
         this.buffers = buffers;
         this.searchState = searchState;
-        this.tempLegsBuffer = new Int32Array(32768);
+        this.tempLegsBuffer = new Int32Array(buffers.maxPathLen);
         this.tempLegsOffsets = new Map();
         this.tempLegsLengths = new Map();
         this.gridSearch = new FlatGridSearch(this.searchState);
@@ -305,20 +245,26 @@ export class HpaReplanPlanner {
         this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
         this.abstractPathList = [];
     }
+    ensureScratchBuffers(cols, rows) {
+        const stitchedMax = cols * rows;
+        if (this.localPathScratch.length < this.buffers.maxPathLen) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        if (this.tempLegsBuffer.length < stitchedMax) this.tempLegsBuffer = new Int32Array(stitchedMax);
+    }
     run(slot, context, data) {
         const startIdx = data.startIdx;
         const targetIdx = data.targetIdx;
         const cols = context.frame.cols;
         const rows = context.frame.rows;
+        this.ensureScratchBuffers(cols, rows);
         this.gridSearch.neighbors = context.topology.octileNeighbors;
         this.gridSearch.cols = cols;
         this.gridSearch.stepPenaltyLookup = context.penaltyLookup;
-        const prep = prepareHpaReplanPrep(cols, context.cellToRegion, context.graph, startIdx, targetIdx);
-        if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, startIdx, targetIdx, cols);
-        return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols);
+        const prep = prepareHpaReplanPrep(cols, rows, context.cellToRegion, context.graph, startIdx, targetIdx);
+        if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, prep, startIdx, targetIdx);
+        return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols, rows);
     }
-    writeLocalResult(slot, gridSearch, startIdx, targetIdx, cols) {
-        const len = gridSearch.local(startIdx, targetIdx, HPA_LOCAL_MAX_LEN, this.localPathScratch);
+    writeLocalResult(slot, gridSearch, prep, startIdx, targetIdx) {
+        const len = gridSearch.local(startIdx, targetIdx, prep.legMaxCost, this.localPathScratch);
         if (len === 0) {
             this.buffers.writeCellPath(slot, this.localPathScratch, 0);
             this.buffers.writeAbstractPath(slot, null);
@@ -328,11 +274,11 @@ export class HpaReplanPlanner {
         this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
-    writeHpaResult(slot, gridSearch, baseGraph, prep, startIdx, targetIdx, cols) {
+    writeHpaResult(slot, gridSearch, baseGraph, prep, startIdx, targetIdx, cols, rows) {
         this.tempLegsOffsets.clear();
         this.tempLegsLengths.clear();
         const { extendedGraph, startTemp, targetTemp } = baseGraph.buildExtended(startIdx, targetIdx, cols, prep, this.buffers.maxCellsPerChunk, (lStartIdx, lTargetIdx, legKey, offset) => {
-            const len = gridSearch.local(lStartIdx, lTargetIdx, prep.regionConnectMaxLen, this.tempLegsBuffer.subarray(offset));
+            const len = gridSearch.local(lStartIdx, lTargetIdx, prep.legMaxCost, this.tempLegsBuffer.subarray(offset));
             if (len === 0) return 0;
             this.tempLegsOffsets.set(legKey, offset);
             this.tempLegsLengths.set(legKey, len);
@@ -352,7 +298,7 @@ export class HpaReplanPlanner {
         const pathIdx = hpaPathSlotIdx(this.buffers.sabPathIdxPool, slot, this.buffers.maxPathLen);
         const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols);
         resolveFn.scratch = this.localPathScratch;
-        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathIdx, cols);
+        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathIdx, cols * rows);
         const pathMeta = hpaPathSlotMeta(this.buffers.sabPathMetaPool, slot);
         pathMeta[0] = pathLen;
         return this.buffers.buildReplanResult(slot);
@@ -360,7 +306,7 @@ export class HpaReplanPlanner {
     resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
         const startIdx = baseGraph.nodeIdx[aIdx];
         const targetIdx = baseGraph.nodeIdx[bIdx];
-        const len = gridSearch.local(startIdx, targetIdx, prep.regionConnectMaxLen, this.localPathScratch);
+        const len = gridSearch.local(startIdx, targetIdx, prep.legMaxCost, this.localPathScratch);
         return len;
     }
 }
@@ -373,15 +319,7 @@ export class HpaPathfindingWorker {
         this.planner = null;
     }
     postGraphPatchDone(meta) {
-        self.postMessage({
-            type: "graphPatchDone",
-            nodeCount: meta?.nodeCount ?? 0,
-            edgeWrite: meta?.edgeWrite ?? 0,
-            nodeIds: meta?.nodeIds ?? [],
-            debugNodeCount: this.graph.debugNodeCount,
-            debugEdgeWrite: this.graph.debugEdgeWrite,
-            debugNodeIds: this.graph.debugNodeIds,
-        });
+        self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [], debugNodeCount: this.graph.debugNodeCount, debugEdgeWrite: this.graph.debugEdgeWrite, debugNodeIds: this.graph.debugNodeIds });
     }
     postGraphPatchError(err) {
         console.error("Worker graph patch error:", err.stack || err);
@@ -412,6 +350,12 @@ export class HpaPathfindingWorker {
             const size = data.maxGraphNodes || 4096;
             this.searchState = new SearchState(size + 2);
             this.planner = new HpaReplanPlanner(this.buffers, this.searchState);
+            return;
+        }
+        if (type === "growPathSab") {
+            this.buffers.sabPathIdxPool = e.data.sabPathIdxPool;
+            this.buffers.maxPathLen = e.data.maxPathLen;
+            if (this.planner) this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
             return;
         }
         if (type === "buildNavTopology") {
