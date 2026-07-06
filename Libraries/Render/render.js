@@ -94,9 +94,6 @@ const PATH_DEBUG_DIM_FILL = "rgba(120, 128, 140, 0.14)";
 const PATH_DEBUG_UNASSIGNED_FILL = "rgba(180, 190, 200, 0.16)";
 const PATH_DEBUG_REGION_BORDER = "rgba(255, 255, 255, 0.28)";
 const PATH_DEBUG_NODE_FILL = "rgba(0, 229, 255, 0.28)";
-function isPathDebugBeltCell(floorPacked, idx) {
-    return floorPacked && BeltPacked.isValid(floorPacked[idx]);
-}
 function cellPathDebugIncluded(idx, bakeOpts, blocked) {
     if (blocked[idx]) return false;
     if (bakeOpts.mode === "hpa") return true;
@@ -125,7 +122,6 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY, bakeOpts) {
                 ctx.fillStyle = PATH_DEBUG_BLOCKED_FILL;
                 ctx.fillRect(wx, wy, cellSize, cellSize);
             } else if (cellToComponent) {
-                if (isPathDebugBeltCell(floorPacked, idx)) continue;
                 const included = cellPathDebugIncluded(idx, bakeOpts, blocked);
                 if (!included) {
                     ctx.fillStyle = PATH_DEBUG_DIM_FILL;
