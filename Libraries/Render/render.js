@@ -87,49 +87,15 @@ function bakeCanvas(width, height) {
 }
 function componentDebugFillColor(componentIdx) {
     const hue = (componentIdx * 47 + 90) % 360;
-    return `hsla(${hue}, 72%, 58%, 0.24)`;
+    return `hsla(${hue}, 72%, 58%, 0.2)`;
 }
-function strokeDirectedDebugEdge(ctx, ax, ay, bx, by, stroke, lineWidth, headLen, headWidth) {
-    const dx = bx - ax;
-    const dy = by - ay;
-    const len = Math.hypot(dx, dy);
-    if (len < 1e-6) return;
-    const dirX = dx / len;
-    const dirY = dy / len;
-    const tipX = bx - dirX * headLen * 0.5;
-    const tipY = by - dirY * headLen * 0.5;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    strokeSegment(ctx, ax, ay, tipX, tipY);
-    const tx = -dirY;
-    const ty = dirX;
-    const baseCenterX = tipX - dirX * headLen;
-    const baseCenterY = tipY - dirY * headLen;
-    ctx.fillStyle = stroke;
-    fillClosedPolygon(ctx, [
-        { x: tipX, y: tipY },
-        { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
-        { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
-    ]);
-}
-const PATH_DEBUG_OVERLAY_ALPHA = 0.72;
-const PATH_DEBUG_BLOCKED_FILL = "rgba(244, 67, 54, 0.18)";
-const PATH_DEBUG_DIM_FILL = "rgba(120, 128, 140, 0.2)";
-const PATH_DEBUG_UNASSIGNED_FILL = "rgba(180, 190, 200, 0.18)";
-const PATH_DEBUG_BELT_FILL = "rgba(76, 175, 80, 0.25)";
-const PATH_DEBUG_BELT_ARROW = "rgba(96, 220, 110, 0.7)";
-const PATH_DEBUG_REGION_BORDER = "rgba(255, 255, 255, 0.32)";
-const PATH_DEBUG_NODE_FILL = "rgba(0, 229, 255, 0.32)";
-function drawPathDebugBeltCell(ctx, wx, wy, cellSize, packed) {
-    ctx.fillStyle = PATH_DEBUG_BELT_FILL;
-    ctx.fillRect(wx, wy, cellSize, cellSize);
-    const angle = BeltPacked.flowAngle(packed);
-    const cx = wx + cellSize * 0.5;
-    const cy = wy + cellSize * 0.5;
-    const dirX = Math.cos(angle);
-    const dirY = Math.sin(angle);
-    const halfLen = cellSize * 0.22;
-    strokeDirectedDebugEdge(ctx, cx - dirX * halfLen, cy - dirY * halfLen, cx + dirX * halfLen, cy + dirY * halfLen, PATH_DEBUG_BELT_ARROW, 1.4, 5, 3);
+const PATH_DEBUG_BLOCKED_FILL = "rgba(244, 67, 54, 0.16)";
+const PATH_DEBUG_DIM_FILL = "rgba(120, 128, 140, 0.14)";
+const PATH_DEBUG_UNASSIGNED_FILL = "rgba(180, 190, 200, 0.16)";
+const PATH_DEBUG_REGION_BORDER = "rgba(255, 255, 255, 0.28)";
+const PATH_DEBUG_NODE_FILL = "rgba(0, 229, 255, 0.28)";
+function isPathDebugBeltCell(floorPacked, idx) {
+    return floorPacked && BeltPacked.isValid(floorPacked[idx]);
 }
 function cellPathDebugIncluded(idx, bakeOpts, blocked) {
     if (blocked[idx]) return false;
@@ -140,6 +106,7 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY, bakeOpts) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
     if (!canvas || !debugView.grid) return null;
     const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.translate(-minX, -minY);
     const endCol = debugView.cols - 1;
     const endRow = debugView.rows - 1;
@@ -158,6 +125,7 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY, bakeOpts) {
                 ctx.fillStyle = PATH_DEBUG_BLOCKED_FILL;
                 ctx.fillRect(wx, wy, cellSize, cellSize);
             } else if (cellToComponent) {
+                if (isPathDebugBeltCell(floorPacked, idx)) continue;
                 const included = cellPathDebugIncluded(idx, bakeOpts, blocked);
                 if (!included) {
                     ctx.fillStyle = PATH_DEBUG_DIM_FILL;
@@ -174,19 +142,6 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY, bakeOpts) {
                 }
             }
         }
-    if (floorPacked)
-        for (let row = 0; row <= endRow; row++)
-            for (let col = 0; col <= endCol; col++) {
-                const idx = row * debugView.cols + col;
-                if (blocked[idx]) continue;
-                if (!cellPathDebugIncluded(idx, bakeOpts, blocked)) continue;
-                const packed = floorPacked[idx];
-                if (!BeltPacked.isValid(packed)) continue;
-                const wx = debugView.minX + col * debugView.cellSize;
-                const wy = debugView.minY + row * debugView.cellSize;
-                const cellSize = debugView.cellSize;
-                drawPathDebugBeltCell(ctx, wx, wy, cellSize, packed);
-            }
     if (cellToRegion) {
         ctx.beginPath();
         ctx.setLineDash([4, 4]);
@@ -317,10 +272,7 @@ export function drawLabPathDebugOverlay(ctx, viewport, state, cacheOpts, onCache
     }
     const pathCache = state.mapPathDebugCache;
     if (!pathCache) return;
-    ctx.save();
-    ctx.globalAlpha = PATH_DEBUG_OVERLAY_ALPHA;
     ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
-    ctx.restore();
 }
 /** @param {object} state */
 export function rebuildLabMapOverviewCache(state) {
