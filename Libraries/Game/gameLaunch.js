@@ -29,16 +29,6 @@ async function runSnakeLaunch(state, ctx) {
     state.viewport.zoom = 2.0;
     syncLabViewportZoomUi(state);
     state.viewport.snapTo(boid.x, boid.y);
-    // 4. Set Shadows to Full
-    state.losShadowStrength = 1.0;
-    if (typeof document !== "undefined") {
-        const shadowSlider = document.getElementById("editorShadowSlider");
-        const shadowValue = document.getElementById("editorShadowValue");
-        if (shadowSlider && shadowValue) {
-            shadowSlider.value = "100";
-            shadowValue.textContent = "100%";
-        }
-    }
     // 5. Lock Selection
     state.editor.lockSelection = true;
 }

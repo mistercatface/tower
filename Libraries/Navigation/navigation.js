@@ -1169,6 +1169,20 @@ export function buildNavComponentMap(blocked, octileNeighbors, cols, rows) {
     }
     return cellToComponent;
 }
+export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx) {
+    const size = cols * rows;
+    const reachable = new Uint8Array(size);
+    if (seedIdx < 0 || seedIdx >= size || blocked[seedIdx] || !octileNeighbors) return reachable;
+    bfsIndices([seedIdx], (idx, enqueue) => {
+        if (blocked[idx] || reachable[idx]) return;
+        reachable[idx] = 1;
+        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+            const nIdx = octileNeighbors[octileNeighborOffset(idx, dir)];
+            if (nIdx >= 0 && !blocked[nIdx] && !reachable[nIdx]) enqueue(nIdx);
+        }
+    });
+    return reachable;
+}
 function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
     const { cols } = frame;
     const touched = new Set();
