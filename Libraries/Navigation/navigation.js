@@ -1245,8 +1245,9 @@ export function buildFullRegionGraph(opts) {
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
+    const debugPacked = packRegionGraphFlat(graph, cellToNode, frame);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
-    return { ...graph.exportState(), graph };
+    return { ...graph.exportState(), graph, debugPacked };
 }
 export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
@@ -1267,6 +1268,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of graph.collectRegionIdsInBounds(box)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
+    state.debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
     graph.syncState(state);
     return state;

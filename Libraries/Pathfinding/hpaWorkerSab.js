@@ -32,6 +32,12 @@ export function createHpaWorkerSabPools({ maxSlots, maxPathLen, maxAbstractLen, 
         sabPersistGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2),
         sabPersistGraphEdgeSources: new SharedArrayBuffer(maxGraphEdges * 2),
         sabCellToRegionIdx: new SharedArrayBuffer(4),
+        sabDebugCellToRegionIdx: new SharedArrayBuffer(4),
+        sabDebugGraphNodeIdx: new SharedArrayBuffer(maxGraphNodes * 4),
+        sabDebugGraphEdgeOffsets: new SharedArrayBuffer((maxGraphNodes + 1) * 4),
+        sabDebugGraphEdgeTargets: new SharedArrayBuffer(maxGraphEdges * 2),
+        sabDebugGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2),
+        sabDebugGraphEdgeSources: new SharedArrayBuffer(maxGraphEdges * 2),
     };
 }
 /** @param {number} cellCount */
@@ -41,13 +47,32 @@ export function growHpaCellToRegionSab(sabCellToRegionIdx, cellCount) {
     return new SharedArrayBuffer(byteLen);
 }
 export class PersistedHpaGraphWriter {
-    constructor(buffers) {
+    constructor(buffers, debug = false) {
         this.buffers = buffers;
+        this.debug = debug;
         this.nodeCount = 0;
         this.edgeWrite = 0;
         /** @type {string[]} */
         this.nodeIds = [];
         this.cols = 0;
+    }
+    get sabNodeIdx() {
+        return this.debug ? this.buffers.sabDebugGraphNodeIdx : this.buffers.sabPersistGraphNodeIdx;
+    }
+    get sabEdgeOffsets() {
+        return this.debug ? this.buffers.sabDebugGraphEdgeOffsets : this.buffers.sabPersistGraphEdgeOffsets;
+    }
+    get sabEdgeSources() {
+        return this.debug ? this.buffers.sabDebugGraphEdgeSources : this.buffers.sabPersistGraphEdgeSources;
+    }
+    get sabEdgeTargets() {
+        return this.debug ? this.buffers.sabDebugGraphEdgeTargets : this.buffers.sabPersistGraphEdgeTargets;
+    }
+    get sabEdgeCosts() {
+        return this.debug ? this.buffers.sabDebugGraphEdgeCosts : this.buffers.sabPersistGraphEdgeCosts;
+    }
+    get sabCellToRegion() {
+        return this.debug ? this.buffers.sabDebugCellToRegionIdx : this.buffers.sabCellToRegionIdx;
     }
     get maxGraphNodes() {
         return this.buffers.maxGraphNodes;
@@ -56,22 +81,22 @@ export class PersistedHpaGraphWriter {
         return this.buffers.maxGraphEdges;
     }
     nodeIdxView(length = this.maxGraphNodes) {
-        return new Int32Array(this.buffers.sabPersistGraphNodeIdx, 0, length);
+        return new Int32Array(this.sabNodeIdx, 0, length);
     }
     edgeOffsetsView(length = this.maxGraphNodes) {
-        return new Int32Array(this.buffers.sabPersistGraphEdgeOffsets, 0, length + 1);
+        return new Int32Array(this.sabEdgeOffsets, 0, length + 1);
     }
     edgeSourcesView(length = this.maxGraphEdges) {
-        return new Int16Array(this.buffers.sabPersistGraphEdgeSources, 0, length);
+        return new Int16Array(this.sabEdgeSources, 0, length);
     }
     edgeTargetsView(length = this.maxGraphEdges) {
-        return new Int16Array(this.buffers.sabPersistGraphEdgeTargets, 0, length);
+        return new Int16Array(this.sabEdgeTargets, 0, length);
     }
     edgeCostsView(length = this.maxGraphEdges) {
-        return new Uint16Array(this.buffers.sabPersistGraphEdgeCosts, 0, length);
+        return new Uint16Array(this.sabEdgeCosts, 0, length);
     }
     cellToRegionView(cellCount) {
-        return new Int16Array(this.buffers.sabCellToRegionIdx, 0, cellCount);
+        return new Int16Array(this.sabCellToRegion, 0, cellCount);
     }
     writePackedRegionGraph(packed, frame) {
         this.assertCapacity(packed, frame);
@@ -90,7 +115,7 @@ export class PersistedHpaGraphWriter {
         if (packed.nodeCount > this.maxGraphNodes) throw new Error(`HPA region graph has ${packed.nodeCount} nodes (max ${this.maxGraphNodes})`);
         if (packed.edgeWrite > this.maxGraphEdges) throw new Error(`HPA region graph has ${packed.edgeWrite} edges (max ${this.maxGraphEdges})`);
         const cellCount = frame.cols * frame.rows;
-        if (this.buffers.sabCellToRegionIdx.byteLength < cellCount * 2) throw new Error(`HPA cell-to-region buffer has ${this.buffers.sabCellToRegionIdx.byteLength} bytes (needs ${cellCount * 2})`);
+        if (this.sabCellToRegion.byteLength < cellCount * 2) throw new Error(`HPA cell-to-region buffer has ${this.sabCellToRegion.byteLength} bytes (needs ${cellCount * 2})`);
     }
     buildCsr(nodeCount, edgeWrite) {
         const srcSources = this.edgeSourcesView(edgeWrite);

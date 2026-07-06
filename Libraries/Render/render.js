@@ -163,6 +163,33 @@ function bakeCanvas(width, height) {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return createOffscreenCanvas(w, h);
 }
+function regionDebugFillColor(regionIdx) {
+    const hue = (regionIdx * 47) % 360;
+    return `hsla(${hue}, 72%, 58%, 0.26)`;
+}
+function strokeDirectedDebugEdge(ctx, ax, ay, bx, by, stroke, lineWidth, headLen, headWidth) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return;
+    const dirX = dx / len;
+    const dirY = dy / len;
+    const tipX = bx - dirX * headLen * 0.5;
+    const tipY = by - dirY * headLen * 0.5;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    strokeSegment(ctx, ax, ay, tipX, tipY);
+    const tx = -dirY;
+    const ty = dirX;
+    const baseCenterX = tipX - dirX * headLen;
+    const baseCenterY = tipY - dirY * headLen;
+    ctx.fillStyle = stroke;
+    fillClosedPolygon(ctx, [
+        { x: tipX, y: tipY },
+        { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
+        { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
+    ]);
+}
 function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
     if (!canvas || !debugView.grid) return null;
@@ -173,21 +200,29 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const cellToRegion = debugView.cellToRegion;
     for (let row = 0; row <= endRow; row++)
         for (let col = 0; col <= endCol; col++) {
-            const isBlocked = debugView.grid[row * debugView.cols + col] !== 0;
+            const idx = row * debugView.cols + col;
+            const isBlocked = debugView.grid[idx] !== 0;
             const wx = debugView.minX + col * debugView.cellSize;
             const wy = debugView.minY + row * debugView.cellSize;
+            const cellSize = debugView.cellSize;
             if (isBlocked) {
-                ctx.fillStyle = "rgba(244, 67, 54, 0.25)";
-                ctx.fillRect(wx, wy, debugView.cellSize, debugView.cellSize);
-            } else if (!cellToRegion || cellToRegion[row * debugView.cols + col] < 0) {
-                ctx.fillStyle = "rgba(76, 175, 80, 0.05)";
-                ctx.fillRect(wx, wy, debugView.cellSize, debugView.cellSize);
+                ctx.fillStyle = "rgba(244, 67, 54, 0.2)";
+                ctx.fillRect(wx, wy, cellSize, cellSize);
+            } else if (cellToRegion) {
+                const region = cellToRegion[idx];
+                if (region < 0) {
+                    ctx.fillStyle = "rgba(180, 190, 200, 0.08)";
+                    ctx.fillRect(wx, wy, cellSize, cellSize);
+                } else {
+                    ctx.fillStyle = regionDebugFillColor(region);
+                    ctx.fillRect(wx, wy, cellSize, cellSize);
+                }
             }
         }
     if (cellToRegion) {
         ctx.beginPath();
-        ctx.strokeStyle = "rgba(0, 229, 255, 0.5)";
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "rgba(255, 152, 0, 0.2)";
+        ctx.lineWidth = 1;
         for (let row = 0; row <= endRow; row++)
             for (let col = 0; col <= endCol; col++) {
                 const idx = row * debugView.cols + col;
@@ -219,8 +254,8 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
         const idx = nodeIdx[i];
         const wx = debugView.gridCenterXByIdx(idx);
         const wy = debugView.gridCenterYByIdx(idx);
-        ctx.fillStyle = "#00e5ff";
-        fillCircle(ctx, wx, wy, 4);
+        ctx.fillStyle = "rgba(0, 229, 255, 0.35)";
+        fillCircle(ctx, wx, wy, 3);
     }
     for (const edge of debugView.edges) {
         const idxA = nodeIdx[edge.sourceIdx];
@@ -229,9 +264,7 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
         const ay = debugView.gridCenterYByIdx(idxA);
         const bx = debugView.gridCenterXByIdx(idxB);
         const by = debugView.gridCenterYByIdx(idxB);
-        ctx.strokeStyle = "#ff9800";
-        ctx.lineWidth = 2.5;
-        strokeSegment(ctx, ax, ay, bx, by);
+        strokeDirectedDebugEdge(ctx, ax, ay, bx, by, "rgba(255, 152, 0, 0.28)", 1, 6, 3.5);
     }
     return { canvas, minX, minY, maxX, maxY };
 }
@@ -300,7 +333,7 @@ export function drawLabPathDebugOverlay(ctx, viewport, state, onCacheReady) {
     const pathCache = state.mapPathDebugCache;
     if (!pathCache) return;
     ctx.save();
-    viewport.apply(ctx);
+    ctx.globalAlpha = 0.88;
     ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
     ctx.restore();
 }

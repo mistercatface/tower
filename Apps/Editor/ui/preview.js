@@ -34,6 +34,13 @@ const editorSceneHooks = {
                 drawLosShadowOverlay(ctx, viewport, state.obstacleGrid, { overlayAlpha: state.losShadowStrength });
             },
         },
+        {
+            zIndex: 120,
+            draw(state, viewport, ctx) {
+                if (!isShowLabPathDebug()) return;
+                drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
+            },
+        },
     ],
 };
 let labRenderer = null;
@@ -166,7 +173,6 @@ export function drawLabFrame(state) {
     const ctx = state.editor.ctx;
     const viewport = state.viewport;
     const showVignette = showLabVignette;
-    const showPathDebug = showLabPathDebug;
     maybeClearProfileBakeCaches(state);
     getLabRenderer(canvas, ctx, state).renderSimulationScene(state, viewport);
     ctx.save();
@@ -175,7 +181,6 @@ export function drawLabFrame(state) {
     ctx.fillStyle = "#080a0e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
-    if (showPathDebug) drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
     labViewDirty = false;
     if (showVignette) {
         ctx.save();

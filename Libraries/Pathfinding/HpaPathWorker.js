@@ -45,6 +45,9 @@ export class HpaPathWorker {
         this.graphIdToIdx = new Map();
         this.graphNodeIds = [];
         this.graphNodeCount = 0;
+        this.debugGraphNodeIds = [];
+        this.debugGraphNodeCount = 0;
+        this.debugGraphEdgeWrite = 0;
         Object.assign(
             this,
             createHpaWorkerSabPools({
@@ -82,6 +85,12 @@ export class HpaPathWorker {
             sabPersistGraphEdgeCosts: this.sabPersistGraphEdgeCosts,
             sabPersistGraphEdgeSources: this.sabPersistGraphEdgeSources,
             sabCellToRegionIdx: this.sabCellToRegionIdx,
+            sabDebugCellToRegionIdx: this.sabDebugCellToRegionIdx,
+            sabDebugGraphNodeIdx: this.sabDebugGraphNodeIdx,
+            sabDebugGraphEdgeOffsets: this.sabDebugGraphEdgeOffsets,
+            sabDebugGraphEdgeTargets: this.sabDebugGraphEdgeTargets,
+            sabDebugGraphEdgeCosts: this.sabDebugGraphEdgeCosts,
+            sabDebugGraphEdgeSources: this.sabDebugGraphEdgeSources,
         };
     }
     _handleWorkerMessage(data) {
@@ -107,6 +116,9 @@ export class HpaPathWorker {
             this.graphNodeIds = data.nodeIds ?? [];
             this.graphIdToIdx = new Map();
             for (let i = 0; i < this.graphNodeIds.length; i++) this.graphIdToIdx.set(this.graphNodeIds[i], i);
+            this.debugGraphNodeCount = data.debugNodeCount ?? 0;
+            this.debugGraphEdgeWrite = data.debugEdgeWrite ?? 0;
+            this.debugGraphNodeIds = data.debugNodeIds ?? [];
             this._graphEpoch = this._graphPatchTargetEpoch;
             const expectedSize = this.navGraph.cols * this.navGraph.rows;
             if (expectedSize > 0 && this._graphSize !== expectedSize) this._ensureGraphCellBuffers(expectedSize);
@@ -133,13 +145,19 @@ export class HpaPathWorker {
         this._graphSize = size;
         this.sabCellToRegionIdx = growHpaCellToRegionSab(this.sabCellToRegionIdx, size);
         this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
+        this.sabDebugCellToRegionIdx = growHpaCellToRegionSab(this.sabDebugCellToRegionIdx, size);
     }
     _postGraphPatch(type, payload, graphEpoch) {
         const run = () => {
             this._graphPatchTargetEpoch = graphEpoch;
             return new Promise((resolve) => {
                 this._graphPatchResolve = resolve;
-                this.protocol.postMessage({ type, sabCellToRegionIdx: this.sabCellToRegionIdx, ...payload });
+                this.protocol.postMessage({
+                    type,
+                    sabCellToRegionIdx: this.sabCellToRegionIdx,
+                    sabDebugCellToRegionIdx: this.sabDebugCellToRegionIdx,
+                    ...payload,
+                });
             });
         };
         this._graphPatchChain = this._graphPatchChain.then(run, run);
@@ -164,18 +182,21 @@ export class HpaPathWorker {
     /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
     isRegionGraphReady(grid = this.navGraph) {
         const size = grid.cols * grid.rows;
-        if (size <= 0 || this.graphNodeCount <= 0 || this._graphSize !== size) return false;
+        if (size <= 0 || this._graphSize !== size) return false;
+        if (this.debugGraphNodeCount > 0 && this.sabDebugCellToRegionIdx.byteLength >> 1 >= size) return true;
+        if (this.graphNodeCount <= 0) return false;
         return this.sabCellToRegionIdx.byteLength >> 1 >= size;
     }
     getRegionGraphDebugView(grid) {
         const size = grid.cols * grid.rows;
         if (!this.isRegionGraphReady(grid)) return null;
-        const nodeCount = this.graphNodeCount;
-        const nodeIdx = new Int32Array(this.sabPersistGraphNodeIdx, 0, nodeCount);
-        const edgeOffsets = new Int32Array(this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
-        const edgeWrite = nodeCount > 0 ? edgeOffsets[nodeCount] : 0;
-        const edgeTargets = new Int16Array(this.sabPersistGraphEdgeTargets, 0, edgeWrite);
-        const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
+        const useDebug = this.debugGraphNodeCount > 0 && this.sabDebugCellToRegionIdx.byteLength >> 1 >= size;
+        const nodeCount = useDebug ? this.debugGraphNodeCount : this.graphNodeCount;
+        const nodeIdx = new Int32Array(useDebug ? this.sabDebugGraphNodeIdx : this.sabPersistGraphNodeIdx, 0, nodeCount);
+        const edgeOffsets = new Int32Array(useDebug ? this.sabDebugGraphEdgeOffsets : this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
+        const edgeWrite = useDebug ? this.debugGraphEdgeWrite : nodeCount > 0 ? edgeOffsets[nodeCount] : 0;
+        const edgeTargets = new Int16Array(useDebug ? this.sabDebugGraphEdgeTargets : this.sabPersistGraphEdgeTargets, 0, edgeWrite);
+        const cellToRegion = size > 0 ? new Int16Array(useDebug ? this.sabDebugCellToRegionIdx : this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
         const edges = [];
         for (let i = 0; i < nodeCount; i++) for (let e = edgeOffsets[i]; e < edgeOffsets[i + 1]; e++) edges.push({ sourceIdx: i, targetIdx: edgeTargets[e] });
         const topology = this.getNavTopology();
@@ -195,7 +216,7 @@ export class HpaPathWorker {
             cellToRegion,
             nodeCount,
             nodeIdx,
-            nodeIds: this.graphNodeIds,
+            nodeIds: useDebug ? this.debugGraphNodeIds : this.graphNodeIds,
             edges,
             gridCenterXByIdx(idx) {
                 return grid.gridCenterXByIdx(idx);
