@@ -1143,6 +1143,32 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
     repositionRegionCentroids(graph.nodesMap, blocked, frame, graph.cellToNode);
     return { newIds, nodeIdCounter: graph.nodeIdCounter, distToWall };
 }
+function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk) {
+    const size = frame.cols * frame.rows;
+    const orphans = [];
+    for (let i = 0; i < size; i++) if (!blocked[i] && graph.cellToNode[i] === -1) orphans.push(i);
+    if (orphans.length === 0) return distToWall;
+    return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph).distToWall;
+}
+export function buildNavComponentMap(blocked, octileNeighbors, cols, rows) {
+    const size = cols * rows;
+    const cellToComponent = new Int16Array(size);
+    cellToComponent.fill(REGION_CELL_UNASSIGNED);
+    let componentId = 0;
+    for (let start = 0; start < size; start++) {
+        if (blocked[start] || cellToComponent[start] >= 0) continue;
+        const id = componentId++;
+        bfsIndices([start], (idx, enqueue) => {
+            if (blocked[idx] || cellToComponent[idx] >= 0) return;
+            cellToComponent[idx] = id;
+            for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+                const nIdx = octileNeighbors[octileNeighborOffset(idx, dir)];
+                if (nIdx >= 0 && !blocked[nIdx] && cellToComponent[nIdx] < 0) enqueue(nIdx);
+            }
+        });
+    }
+    return cellToComponent;
+}
 function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
     const { cols } = frame;
     const touched = new Set();
@@ -1241,11 +1267,12 @@ export function buildFullRegionGraph(opts) {
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
-    const distToWall = computeDistanceTransform(blocked, frame);
+    let distToWall = computeDistanceTransform(blocked, frame);
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
-    const debugPacked = packRegionGraphFlat(graph, cellToNode, frame);
+    distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
+    const debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
     return { ...graph.exportState(), graph, debugPacked };
 }
@@ -1268,6 +1295,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of graph.collectRegionIdsInBounds(box)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
+    state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
     state.debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
     graph.syncState(state);

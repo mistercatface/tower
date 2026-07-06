@@ -1,4 +1,4 @@
-import { expandRegionDamageBounds, createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, navCanStep } from "../Navigation/navigation.js";
+import { expandRegionDamageBounds, createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, buildNavComponentMap } from "../Navigation/navigation.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { gridFrameFromGrid } from "../Navigation/navigation.js";
 import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/spatial.js";
@@ -48,16 +48,7 @@ export class HpaPathWorker {
         this.debugGraphNodeIds = [];
         this.debugGraphNodeCount = 0;
         this.debugGraphEdgeWrite = 0;
-        Object.assign(
-            this,
-            createHpaWorkerSabPools({
-                maxSlots: MAX_HPA_REPLAN_SLOTS,
-                maxPathLen: MAX_HPA_PATH_LEN,
-                maxAbstractLen: MAX_HPA_ABSTRACT_LEN,
-                maxGraphNodes: MAX_HPA_GRAPH_NODES,
-                maxGraphEdges: MAX_GRAPH_EDGES,
-            }),
-        );
+        Object.assign(this, createHpaWorkerSabPools({ maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: MAX_HPA_PATH_LEN, maxAbstractLen: MAX_HPA_ABSTRACT_LEN, maxGraphNodes: MAX_HPA_GRAPH_NODES, maxGraphEdges: MAX_GRAPH_EDGES }));
         this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
@@ -152,12 +143,7 @@ export class HpaPathWorker {
             this._graphPatchTargetEpoch = graphEpoch;
             return new Promise((resolve) => {
                 this._graphPatchResolve = resolve;
-                this.protocol.postMessage({
-                    type,
-                    sabCellToRegionIdx: this.sabCellToRegionIdx,
-                    sabDebugCellToRegionIdx: this.sabDebugCellToRegionIdx,
-                    ...payload,
-                });
+                this.protocol.postMessage({ type, sabCellToRegionIdx: this.sabCellToRegionIdx, sabDebugCellToRegionIdx: this.sabDebugCellToRegionIdx, ...payload });
             });
         };
         this._graphPatchChain = this._graphPatchChain.then(run, run);
@@ -193,18 +179,10 @@ export class HpaPathWorker {
         const useDebug = this.debugGraphNodeCount > 0 && this.sabDebugCellToRegionIdx.byteLength >> 1 >= size;
         const nodeCount = useDebug ? this.debugGraphNodeCount : this.graphNodeCount;
         const nodeIdx = new Int32Array(useDebug ? this.sabDebugGraphNodeIdx : this.sabPersistGraphNodeIdx, 0, nodeCount);
-        const edgeOffsets = new Int32Array(useDebug ? this.sabDebugGraphEdgeOffsets : this.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
-        const edgeWrite = useDebug ? this.debugGraphEdgeWrite : nodeCount > 0 ? edgeOffsets[nodeCount] : 0;
-        const edgeTargets = new Int16Array(useDebug ? this.sabDebugGraphEdgeTargets : this.sabPersistGraphEdgeTargets, 0, edgeWrite);
-        const cellToRegion = size > 0 ? new Int16Array(useDebug ? this.sabDebugCellToRegionIdx : this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
-        const edges = [];
-        for (let i = 0; i < nodeCount; i++) for (let e = edgeOffsets[i]; e < edgeOffsets[i + 1]; e++) edges.push({ sourceIdx: i, targetIdx: edgeTargets[e] });
         const topology = this.getNavTopology();
         const blocked = topology?.blocked ?? grid.grid;
-        const navCaches = { navCardinalOpen: this._navArena.cardinalOpen, vertexPassability: this._navArena.vertexPassability };
-        const regionCanStep = topology
-            ? (fromIdx, toIdx) => navCanStep(this._gridFrame, topology, fromIdx, toIdx) || navCanStep(this._gridFrame, topology, toIdx, fromIdx)
-            : (fromIdx, toIdx) => grid.canStep(fromIdx, toIdx, navCaches) || grid.canStep(toIdx, fromIdx, navCaches);
+        const cellToRegion = size > 0 ? new Int16Array(useDebug ? this.sabDebugCellToRegionIdx : this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
+        const cellToComponent = topology?.octileNeighbors ? buildNavComponentMap(blocked, topology.octileNeighbors, grid.cols, grid.rows) : new Int16Array(size).fill(-1);
         return {
             cols: grid.cols,
             rows: grid.rows,
@@ -212,12 +190,12 @@ export class HpaPathWorker {
             minY: grid.minY,
             cellSize: grid.cellSize,
             grid: blocked,
-            regionCanStep,
+            floorPacked: grid.floorPacked,
             cellToRegion,
+            cellToComponent,
             nodeCount,
             nodeIdx,
             nodeIds: useDebug ? this.debugGraphNodeIds : this.graphNodeIds,
-            edges,
             gridCenterXByIdx(idx) {
                 return grid.gridCenterXByIdx(idx);
             },
@@ -334,18 +312,7 @@ export class HpaPathWorker {
         this._gridFrame = gridFrameFromGrid(grid);
         const payload = { type: "buildNavTopology", navCacheKey: cacheKey, gridFrame: this._gridFrame, edgePoolCount: this._edgePoolSabRefs, rebindArena, damageBounds };
         if (!rebindArena) return payload;
-        return {
-            ...payload,
-            sabBlocked: this.sabBlocked,
-            sabCardinalOpen: this.sabCardinalOpen,
-            sabVertexPassability: this.sabVertexPassability,
-            sabOctileNeighbors: this.sabOctileNeighbors,
-            sabOctilePredecessors: this.sabOctilePredecessors,
-            sabEdgePool: this.sabEdgePool,
-            sabGridFill: this.sabGridFill,
-            sabFloorPacked: this.sabFloorPacked,
-            sabEdgeSlots: this.sabEdgeSlots,
-        };
+        return { ...payload, sabBlocked: this.sabBlocked, sabCardinalOpen: this.sabCardinalOpen, sabVertexPassability: this.sabVertexPassability, sabOctileNeighbors: this.sabOctileNeighbors, sabOctilePredecessors: this.sabOctilePredecessors, sabEdgePool: this.sabEdgePool, sabGridFill: this.sabGridFill, sabFloorPacked: this.sabFloorPacked, sabEdgeSlots: this.sabEdgeSlots };
     }
     scheduleNavTopologySync(grid = this.navGraph, damageBounds = null) {
         if (this._shutDown || (damageBounds == null && isNavTopologyReady(this, grid))) return;

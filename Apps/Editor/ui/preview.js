@@ -16,7 +16,13 @@ import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/Profil
 const editorSceneHooks = {
     drawGroundOverlays(state, viewport, ctx) {},
     simulationEffectPasses: [
-        floorBeltEffectPass,
+        {
+            zIndex: floorBeltEffectPass.zIndex,
+            draw(state, viewport, ctx, renderer) {
+                if (isShowLabPathDebug()) return;
+                floorBeltEffectPass.draw(state, viewport, ctx, renderer);
+            },
+        },
         {
             // After floor stamps (10.5), before draw3DBuildings props/walls (70).
             zIndex: 15,

@@ -1,88 +1,9 @@
-import {
-    traceAabbRect,
-    fillCircle,
-    strokeSegment,
-    traceSegment,
-    fillClosedPolygon,
-    fillStrokeCircle,
-    strokeCircle,
-    strokeOpenPolyline,
-    traceClosedFlatPolygon,
-    traceFlatQuad,
-    fillRgbaBuffer,
-    fillRgbaRect,
-    strokeAxisLineRgba,
-    createOffscreenCanvas,
-    resizeOffscreenCanvas,
-    OVERLAY_RENDER_KEY,
-    drawCachedOverlayGlyph,
-    drawCachedPropSprite,
-    drawCachedGridStampFilmstripShared,
-    warmSharedGridStampFilmstripCache,
-    drawImageQuadFromFlatRingsWithBaseTransform,
-    drawImageTriangleFlatWithBaseTransform,
-    drawImageQuadWithBaseTransformScalars,
-    drawImageTriangleWithBaseTransformScalars,
-    drawImageQuadScalars,
-    SpriteCache,
-    GRID_STAMP_RENDER_KEY,
-    BELT_FILMSTRIP_FRAMES,
-    BELT_FRAME_MS,
-    blitMaskOverlay,
-    addMaskPathFill,
-    cutOutRadialSoftDisc,
-    fillMaskBase,
-    traceWoundFlatQuad,
-} from "../Canvas/canvas.js";
-import {
-    isRailWallEdge,
-    forEachCellEdge,
-    gridNavCacheKey,
-    resolveElevationAlpha,
-    extrudeLocalVertsInto,
-    pointOnFrustumInto,
-    getHeightSlice,
-    traceVisibleArc,
-    isFaceTowardViewer,
-    isOutwardFaceTowardViewer,
-    createSideGradientAt,
-    projectVertical,
-    projectWorldPointInto,
-    projectWorldQuadInto,
-    resolveWallSurfaceProfileId,
-    cellInRect,
-    BeltPacked,
-    floorOccupancyStampDrawCacheKey,
-    projectWallShadowQuadScreenInto,
-    collectExposedWallEdgesInAabb,
-} from "../Spatial/spatial.js";
-import {
-    quantizeAngleIndex,
-    normalizeXY,
-    lengthXY,
-    rotateXY,
-    flatQuadOverlapAabb,
-    transformPoint2DInto,
-    centeredAabbInto,
-    createAabb,
-    aabbFromTwoPointsInto,
-    distanceSqToAabb,
-    centerReachAabbInto,
-    radiusAtT,
-    scaleAtHeight,
-} from "../Math/math.js";
+import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad } from "../Canvas/canvas.js";
+import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustumInto, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPointInto, projectWorldQuadInto, resolveWallSurfaceProfileId, cellInRect, BeltPacked, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreenInto, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
+import { quantizeAngleIndex, normalizeXY, lengthXY, rotateXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, radiusAtT, scaleAtHeight } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
-import {
-    collectVoxelWallFacesInAabbFlat,
-    VOXEL_FACE,
-    VOXEL_FACE_STRIDE,
-    collectRailWallBoxesInAabb,
-    RAIL_BOX,
-    RAIL_BOX_STRIDE,
-    flatRailWallCapUvCornersIntoFlat,
-    resolveWallCapHeightPx,
-} from "../World/wallGridBake.js";
+import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
@@ -163,8 +84,8 @@ function bakeCanvas(width, height) {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return createOffscreenCanvas(w, h);
 }
-function regionDebugFillColor(regionIdx) {
-    const hue = (regionIdx * 47) % 360;
+function componentDebugFillColor(componentIdx) {
+    const hue = (componentIdx * 47 + 90) % 360;
     return `hsla(${hue}, 72%, 58%, 0.26)`;
 }
 function strokeDirectedDebugEdge(ctx, ax, ay, bx, by, stroke, lineWidth, headLen, headWidth) {
@@ -198,6 +119,8 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const endCol = debugView.cols - 1;
     const endRow = debugView.rows - 1;
     const cellToRegion = debugView.cellToRegion;
+    const cellToComponent = debugView.cellToComponent;
+    const floorPacked = debugView.floorPacked;
     for (let row = 0; row <= endRow; row++)
         for (let col = 0; col <= endCol; col++) {
             const idx = row * debugView.cols + col;
@@ -208,20 +131,44 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
             if (isBlocked) {
                 ctx.fillStyle = "rgba(244, 67, 54, 0.2)";
                 ctx.fillRect(wx, wy, cellSize, cellSize);
-            } else if (cellToRegion) {
-                const region = cellToRegion[idx];
-                if (region < 0) {
-                    ctx.fillStyle = "rgba(180, 190, 200, 0.08)";
+            } else if (cellToComponent) {
+                const component = cellToComponent[idx];
+                if (component < 0) {
+                    ctx.fillStyle = "rgba(180, 190, 200, 0.12)";
                     ctx.fillRect(wx, wy, cellSize, cellSize);
                 } else {
-                    ctx.fillStyle = regionDebugFillColor(region);
+                    ctx.fillStyle = componentDebugFillColor(component);
                     ctx.fillRect(wx, wy, cellSize, cellSize);
                 }
             }
         }
+    if (floorPacked) {
+        const beltFill = "rgba(76, 175, 80, 0.25)";
+        const beltArrowStroke = "rgba(76, 175, 80, 0.75)";
+        for (let row = 0; row <= endRow; row++)
+            for (let col = 0; col <= endCol; col++) {
+                const idx = row * debugView.cols + col;
+                if (debugView.grid[idx]) continue;
+                const packed = floorPacked[idx];
+                if (!BeltPacked.isValid(packed)) continue;
+                const wx = debugView.minX + col * debugView.cellSize;
+                const wy = debugView.minY + row * debugView.cellSize;
+                const cellSize = debugView.cellSize;
+                ctx.fillStyle = beltFill;
+                ctx.fillRect(wx, wy, cellSize, cellSize);
+                const angle = BeltPacked.flowAngle(packed);
+                const cx = wx + cellSize * 0.5;
+                const cy = wy + cellSize * 0.5;
+                const dirX = Math.cos(angle);
+                const dirY = Math.sin(angle);
+                const halfLen = cellSize * 0.22;
+                strokeDirectedDebugEdge(ctx, cx - dirX * halfLen, cy - dirY * halfLen, cx + dirX * halfLen, cy + dirY * halfLen, beltArrowStroke, 1.2, 5, 3);
+            }
+    }
     if (cellToRegion) {
         ctx.beginPath();
-        ctx.strokeStyle = "rgba(255, 152, 0, 0.2)";
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
         ctx.lineWidth = 1;
         for (let row = 0; row <= endRow; row++)
             for (let col = 0; col <= endCol; col++) {
@@ -236,35 +183,28 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
                     const rIdx = idx + 1;
                     if (debugView.grid[rIdx] === 0) {
                         const rightRegion = cellToRegion[rIdx];
-                        if (rightRegion >= 0 && rightRegion !== region && debugView.regionCanStep(idx, rIdx)) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
+                        if (rightRegion >= 0 && rightRegion !== region) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
                 if (row + 1 < debugView.rows) {
                     const bIdx = idx + debugView.cols;
                     if (debugView.grid[bIdx] === 0) {
                         const bottomRegion = cellToRegion[bIdx];
-                        if (bottomRegion >= 0 && bottomRegion !== region && debugView.regionCanStep(idx, bIdx)) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
+                        if (bottomRegion >= 0 && bottomRegion !== region) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
                 }
             }
         ctx.stroke();
+        ctx.setLineDash([]);
     }
     const { nodeIdx, nodeCount } = debugView;
     for (let i = 0; i < nodeCount; i++) {
         const idx = nodeIdx[i];
+        if (floorPacked && BeltPacked.isValid(floorPacked[idx])) continue;
         const wx = debugView.gridCenterXByIdx(idx);
         const wy = debugView.gridCenterYByIdx(idx);
         ctx.fillStyle = "rgba(0, 229, 255, 0.35)";
         fillCircle(ctx, wx, wy, 3);
-    }
-    for (const edge of debugView.edges) {
-        const idxA = nodeIdx[edge.sourceIdx];
-        const idxB = nodeIdx[edge.targetIdx];
-        const ax = debugView.gridCenterXByIdx(idxA);
-        const ay = debugView.gridCenterYByIdx(idxA);
-        const bx = debugView.gridCenterXByIdx(idxB);
-        const by = debugView.gridCenterYByIdx(idxB);
-        strokeDirectedDebugEdge(ctx, ax, ay, bx, by, "rgba(255, 152, 0, 0.28)", 1, 6, 3.5);
     }
     return { canvas, minX, minY, maxX, maxY };
 }
@@ -304,7 +244,7 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
 /** @param {object} state */
 export function labPathDebugCacheKey(state) {
     const grid = state.obstacleGrid;
-    return `${gridNavCacheKey(grid)}:${state.nav.graphSyncGeneration}:${grid.cols}x${grid.rows}`;
+    return `${gridNavCacheKey(grid)}:${state.nav.graphSyncGeneration}:${floorOccupancyStampDrawCacheKey(grid)}:${grid.cols}x${grid.rows}`;
 }
 /** @param {object} state */
 export async function ensureLabPathDebugCache(state) {
@@ -554,8 +494,7 @@ function appendFlowAgentArrow(out, overlay) {
         out.push(overlayCachedFlowDirectionArrow(propX, propY, dirX, dirY, { pad: propRadius + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
         return;
     }
-    if (targetX != null && targetY != null)
-        out.push(overlayCachedCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(4, "rgba(255, 193, 7, 0.85)")));
+    if (targetX != null && targetY != null) out.push(overlayCachedCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(4, "rgba(255, 193, 7, 0.85)")));
 }
 function appendNormalPathOverlayCommands(out, overlay) {
     const { mode, targetX, targetY, pathNodes } = overlay;
@@ -592,16 +531,7 @@ function appendAbstractPathCommands(out, abstractPath, grid, pathPlanner = "hpa"
         const isEndpoint = i === 0 || i === abstractPath.length - 1;
         const x = grid.gridCenterXByIdx(idx);
         const y = grid.gridCenterYByIdx(idx);
-        out.push(
-            overlayCachedCircleFillStroke(
-                x,
-                y,
-                isEndpoint ? 8 : 10,
-                { fill: isEndpoint ? endpointColor : nodeColor },
-                OVERLAY_RENDER_KEY.PathDebugNode,
-                pathDestinationCacheKey(isEndpoint ? 8 : 10, isEndpoint ? endpointColor : nodeColor),
-            ),
-        );
+        out.push(overlayCachedCircleFillStroke(x, y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(isEndpoint ? 8 : 10, isEndpoint ? endpointColor : nodeColor)));
     }
 }
 export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") {
@@ -615,8 +545,7 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") 
         if (abstractPath) appendAbstractPathCommands(out, abstractPath, grid, pathPlanner ?? "hpa");
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
         if (pathNodes.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
-        for (let i = 0; i < pathNodes.length; i++)
-            out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
+        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
         return;
     }
     if (mode === "flow") {
@@ -751,16 +680,7 @@ export function drawSphereTextureBand(ctx, prop, viewport, img, options = {}) {
     const vMax = options.vMax ?? 0.65;
     const phiMid = Math.PI * (vMin + vMax) * 0.5;
     const phiHalf = Math.PI * (vMax - vMin) * 0.5;
-    drawSphereTexturePatch(ctx, prop, viewport, img, {
-        baseRadius: options.baseRadius,
-        phiCenter: phiMid,
-        phiHalf,
-        thetaCenter: Math.PI,
-        thetaHalf: Math.PI,
-        phiSegments: options.latBands ?? 8,
-        thetaSegments: options.lonBands ?? 16,
-        uvBleed: options.uvBleed,
-    });
+    drawSphereTexturePatch(ctx, prop, viewport, img, { baseRadius: options.baseRadius, phiCenter: phiMid, phiHalf, thetaCenter: Math.PI, thetaHalf: Math.PI, phiSegments: options.latBands ?? 8, thetaSegments: options.lonBands ?? 16, uvBleed: options.uvBleed });
 }
 function ensureFlatProjectedVertScratch(count) {
     if (sFlatProjectedVerts.length < count * 2) sFlatProjectedVerts = new Float32Array(count * 2);
@@ -1114,24 +1034,7 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, project
             traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
             ctx.clip();
             const baseTransform = ctx.getTransform();
-            drawImageQuadFromFlatRingsWithBaseTransform(
-                ctx,
-                textures.sideCanvas,
-                0,
-                0,
-                textures.sideCanvas.width,
-                sideSrcHeight,
-                sBaseRing,
-                sTopRing,
-                i,
-                count,
-                baseTransform.a,
-                baseTransform.b,
-                baseTransform.c,
-                baseTransform.d,
-                baseTransform.e,
-                baseTransform.f,
-            );
+            drawImageQuadFromFlatRingsWithBaseTransform(ctx, textures.sideCanvas, 0, 0, textures.sideCanvas.width, sideSrcHeight, sBaseRing, sTopRing, i, count, baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
             ctx.restore();
         }
     }
@@ -1154,42 +1057,11 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, project
         sCapSrcRing[i * 2 + 1] = (ry + offset) * textureScale;
     }
     const baseTransform = ctx.getTransform();
-    for (let i = 1; i < count - 1; i++)
-        drawImageTriangleFlatWithBaseTransform(
-            ctx,
-            textures.capCanvas,
-            sCapSrcRing,
-            sTopRing,
-            0,
-            i,
-            i + 1,
-            baseTransform.a,
-            baseTransform.b,
-            baseTransform.c,
-            baseTransform.d,
-            baseTransform.e,
-            baseTransform.f,
-        );
+    for (let i = 1; i < count - 1; i++) drawImageTriangleFlatWithBaseTransform(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1, baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
     ctx.restore();
 }
 function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
-    const {
-        height = DEFAULT_PROP_HEIGHT,
-        facing = prop.facing,
-        faceColors,
-        backFaceColors = null,
-        bottomColors = null,
-        topColors,
-        stroke,
-        lineWidth = 1.0,
-        plankTs,
-        topCross,
-        textures = null,
-        faceOrder = "convexCull",
-        prismPass = "all",
-        topHalfSize = null,
-        baseGradCornerB = 1,
-    } = opts;
+    const { height = DEFAULT_PROP_HEIGHT, facing = prop.facing, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, lineWidth = 1.0, plankTs, topCross, textures = null, faceOrder = "convexCull", prismPass = "all", topHalfSize = null, baseGradCornerB = 1 } = opts;
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
@@ -1263,55 +1135,18 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         }
     }
 }
-export function drawBox(
-    ctx,
-    prop,
-    viewport,
-    { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
-) {
+export function drawBox(ctx, prop, viewport, { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing }) {
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
     const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
     fillBoxFootprintInto(sBoxFootprint, hx, hy);
     const projection = projectVertical(prop.x, prop.y, height, viewport);
     const topHx = scaleAtHeight(hx, projection.alpha, 1);
     const topHy = scaleAtHeight(hy, projection.alpha, 1);
-    drawExtrudedPrism(ctx, prop, viewport, sBoxFootprint, {
-        height,
-        facing,
-        faceColors,
-        backFaceColors,
-        bottomColors,
-        topColors,
-        stroke,
-        lineWidth,
-        plankTs,
-        topCross,
-        faceOrder: "convexCull",
-        baseGradCornerB: 2,
-        topHalfSize: { x: topHx, y: topHy },
-    });
+    drawExtrudedPrism(ctx, prop, viewport, sBoxFootprint, { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "convexCull", baseGradCornerB: 2, topHalfSize: { x: topHx, y: topHy } });
 }
-export function drawExtrudedConvexPolygon(
-    ctx,
-    prop,
-    viewport,
-    { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
-) {
+export function drawExtrudedConvexPolygon(ctx, prop, viewport, { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing }) {
     const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
-    drawExtrudedPrism(ctx, prop, viewport, localVerts, {
-        height,
-        facing,
-        faceColors,
-        backFaceColors,
-        bottomColors,
-        topColors,
-        stroke,
-        lineWidth,
-        plankTs,
-        topCross,
-        textures,
-        faceOrder: "convexCull",
-    });
+    drawExtrudedPrism(ctx, prop, viewport, localVerts, { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, textures, faceOrder: "convexCull" });
 }
 export function getWallChunkSpriteCacheKey(prop) {
     if (!prop.wallChunkProfileId) return "";
@@ -1347,22 +1182,7 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing
     traceClosedFlatPolygon(ctx, sTopRing, count);
     ctx.clip();
     const baseTransform = ctx.getTransform();
-    for (let i = 1; i < count - 1; i++)
-        drawImageTriangleFlatWithBaseTransform(
-            ctx,
-            textures.capCanvas,
-            sCapSrcRing,
-            sTopRing,
-            0,
-            i,
-            i + 1,
-            baseTransform.a,
-            baseTransform.b,
-            baseTransform.c,
-            baseTransform.d,
-            baseTransform.e,
-            baseTransform.f,
-        );
+    for (let i = 1; i < count - 1; i++) drawImageTriangleFlatWithBaseTransform(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1, baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
     ctx.restore();
 }
 export function drawFlatWallChunkProp(ctx, prop) {
@@ -1374,30 +1194,12 @@ export function drawFlatWallChunkProp(ctx, prop) {
     drawFlatWallChunkCap(ctx, prop, verts);
     return true;
 }
-export function drawExtrudedCompoundPolygon(
-    ctx,
-    prop,
-    viewport,
-    { partsVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing },
-) {
+export function drawExtrudedCompoundPolygon(ctx, prop, viewport, { partsVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing }) {
     if (prop.type === "cross_pinwheel") {
         const length = prop.crossLength ?? 32;
         const thickness = prop.crossThickness ?? 8;
         fillPinwheelOutlineInto(sPinwheelLocalVerts, length, thickness);
-        drawExtrudedPrism(ctx, prop, viewport, sPinwheelLocalVerts, {
-            height,
-            facing,
-            faceColors,
-            backFaceColors,
-            bottomColors,
-            topColors,
-            stroke,
-            lineWidth,
-            plankTs,
-            topCross,
-            faceOrder: "midY",
-            baseGradCornerB: 6,
-        });
+        drawExtrudedPrism(ctx, prop, viewport, sPinwheelLocalVerts, { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "midY", baseGradCornerB: 6 });
         return;
     }
     const prismOpts = { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "convexCull" };
@@ -1516,16 +1318,7 @@ export class VisibleDrawQueue {
  */
 const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: new StrideFloatList(VOXEL_FACE_STRIDE) };
 export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
-    return (
-        cache.grid === grid &&
-        cache.wallGridRevision === wallGridRevision &&
-        cache.gridCols === grid.cols &&
-        cache.gridRows === grid.rows &&
-        cache.boundsMinX === bounds.minX &&
-        cache.boundsMaxX === bounds.maxX &&
-        cache.boundsMinY === bounds.minY &&
-        cache.boundsMaxY === bounds.maxY
-    );
+    return cache.grid === grid && cache.wallGridRevision === wallGridRevision && cache.gridCols === grid.cols && cache.gridRows === grid.rows && cache.boundsMinX === bounds.minX && cache.boundsMaxX === bounds.maxX && cache.boundsMinY === bounds.minY && cache.boundsMaxY === bounds.maxY;
 }
 export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds) {
     cache.grid = grid;
@@ -1769,18 +1562,12 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     let cacheHit = false;
     if (canUseSideCache && stash) {
         const atlasKey = worldSurfaces.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
-        if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases)
-            cacheHit = true;
+        if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases) cacheHit = true;
     }
     if (cacheHit) {
         // cache hit!
     } else {
-        stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, {
-            profileId,
-            wallHeight: wallCapHeight,
-            cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null,
-            atlasFaceId: atlasFaceId ?? "side",
-        });
+        stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, { profileId, wallHeight: wallCapHeight, cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null, atlasFaceId: atlasFaceId ?? "side" });
         if (canUseSideCache && stash) state.obstacleGrid._wallAtlasMemo.set(memoSlot, stash);
     }
     if (!stash) return null;
@@ -1806,13 +1593,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     const dist = Math.hypot(wallCx - viewport.x, wallCy - viewport.y);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = bandHeight / cellSize;
-    return {
-        subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))),
-        subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)),
-        capPx: capHeight * settings.surfaceBakeScale,
-        alphaBase,
-        alphaBandMax,
-    };
+    return { subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))), subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)), capPx: capHeight * settings.surfaceBakeScale, alphaBase, alphaBandMax };
 }
 function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, worldBounds) {
     const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
@@ -1839,28 +1620,7 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
             computeFaceCornerElevatedInto(sSubdivQuad, 4, u1, v1, faceBottom, faceTop);
             computeFaceCornerElevatedInto(sSubdivQuad, 6, u0, v1, faceBottom, faceTop);
             if (!flatQuadOverlapAabb(sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], worldBounds)) continue;
-            drawImageQuadWithBaseTransformScalars(
-                ctx,
-                canvas,
-                u0 * canvas.width,
-                sy0,
-                u1 * canvas.width,
-                sy1,
-                sSubdivQuad[0],
-                sSubdivQuad[1],
-                sSubdivQuad[2],
-                sSubdivQuad[3],
-                sSubdivQuad[4],
-                sSubdivQuad[5],
-                sSubdivQuad[6],
-                sSubdivQuad[7],
-                baseTransform.a,
-                baseTransform.b,
-                baseTransform.c,
-                baseTransform.d,
-                baseTransform.e,
-                baseTransform.f,
-            );
+            drawImageQuadWithBaseTransformScalars(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
         }
     }
 }
@@ -1911,19 +1671,7 @@ export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, stat
 }
 export function projectRailWallTopCornersIntoFlat(out8, data, base, viewport) {
     const z = data[base + RAIL_BOX.wallCapHeight];
-    projectWorldQuadInto(
-        out8,
-        data[base + RAIL_BOX.outerP1x],
-        data[base + RAIL_BOX.outerP1y],
-        data[base + RAIL_BOX.outerP2x],
-        data[base + RAIL_BOX.outerP2y],
-        data[base + RAIL_BOX.innerP2x],
-        data[base + RAIL_BOX.innerP2y],
-        data[base + RAIL_BOX.innerP1x],
-        data[base + RAIL_BOX.innerP1y],
-        z,
-        viewport,
-    );
+    projectWorldQuadInto(out8, data[base + RAIL_BOX.outerP1x], data[base + RAIL_BOX.outerP1y], data[base + RAIL_BOX.outerP2x], data[base + RAIL_BOX.outerP2y], data[base + RAIL_BOX.innerP2x], data[base + RAIL_BOX.innerP2y], data[base + RAIL_BOX.innerP1x], data[base + RAIL_BOX.innerP1y], z, viewport);
     return out8;
 }
 function fillProjectedCapPolygonFlat(ctx, corners8, fillStyle) {
@@ -1938,50 +1686,8 @@ function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
     traceClosedFlatPolygon(ctx, dest8, 4);
     ctx.clip();
     const baseTransform = ctx.getTransform();
-    drawImageTriangleWithBaseTransformScalars(
-        ctx,
-        canvas,
-        src8[0],
-        src8[1],
-        src8[2],
-        src8[3],
-        src8[6],
-        src8[7],
-        dest8[0],
-        dest8[1],
-        dest8[2],
-        dest8[3],
-        dest8[6],
-        dest8[7],
-        baseTransform.a,
-        baseTransform.b,
-        baseTransform.c,
-        baseTransform.d,
-        baseTransform.e,
-        baseTransform.f,
-    );
-    drawImageTriangleWithBaseTransformScalars(
-        ctx,
-        canvas,
-        src8[2],
-        src8[3],
-        src8[4],
-        src8[5],
-        src8[6],
-        src8[7],
-        dest8[2],
-        dest8[3],
-        dest8[4],
-        dest8[5],
-        dest8[6],
-        dest8[7],
-        baseTransform.a,
-        baseTransform.b,
-        baseTransform.c,
-        baseTransform.d,
-        baseTransform.e,
-        baseTransform.f,
-    );
+    drawImageTriangleWithBaseTransformScalars(ctx, canvas, src8[0], src8[1], src8[2], src8[3], src8[6], src8[7], dest8[0], dest8[1], dest8[2], dest8[3], dest8[6], dest8[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
+    drawImageTriangleWithBaseTransformScalars(ctx, canvas, src8[2], src8[3], src8[4], src8[5], src8[6], src8[7], dest8[2], dest8[3], dest8[4], dest8[5], dest8[6], dest8[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
     ctx.restore();
 }
 export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, face) {
@@ -2036,10 +1742,7 @@ function isFaceVisibleScalars(prop, viewport, v0lx, v0ly, v0z, v1lx, v1ly, v1z, 
     return nx * vx + ny * vy + nz * vz > 0;
 }
 function isSphereQuadVisibleFlat(prop, viewport, data, base) {
-    return (
-        isFaceVisibleScalars(prop, viewport, data[base + 5], data[base + 6], data[base + 7], data[base + 8], data[base + 9], data[base + 10], data[base + 11], data[base + 12], data[base + 13]) ||
-        isFaceVisibleScalars(prop, viewport, data[base + 5], data[base + 6], data[base + 7], data[base + 11], data[base + 12], data[base + 13], data[base + 14], data[base + 15], data[base + 16])
-    );
+    return isFaceVisibleScalars(prop, viewport, data[base + 5], data[base + 6], data[base + 7], data[base + 8], data[base + 9], data[base + 10], data[base + 11], data[base + 12], data[base + 13]) || isFaceVisibleScalars(prop, viewport, data[base + 5], data[base + 6], data[base + 7], data[base + 11], data[base + 12], data[base + 13], data[base + 14], data[base + 15], data[base + 16]);
 }
 function projectSphereCellIntoFlat(dest, destIndex, src, srcIndex, prop, viewport) {
     const sBase = srcIndex * 17;
@@ -2102,20 +1805,7 @@ export function drawSphereTexturePatch(ctx, prop, viewport, img, options = {}) {
         const subTheta = options.subTheta ?? 2;
         const totalSegments = phiSegments * subPhi * thetaSegments * subTheta;
         ensureRawCapacity(totalSegments);
-        rawCount = tessellateSphereQuadsFlat(
-            sRawCellsData,
-            radius,
-            rollQuat,
-            phiCenter - (options.phiHalf ?? 0.42),
-            phiCenter + (options.phiHalf ?? 0.42),
-            thetaCenter - (options.thetaHalf ?? 0.42),
-            thetaCenter + (options.thetaHalf ?? 0.42),
-            phiSegments,
-            thetaSegments,
-            subPhi,
-            subTheta,
-            radiusInflate,
-        );
+        rawCount = tessellateSphereQuadsFlat(sRawCellsData, radius, rollQuat, phiCenter - (options.phiHalf ?? 0.42), phiCenter + (options.phiHalf ?? 0.42), thetaCenter - (options.thetaHalf ?? 0.42), thetaCenter + (options.thetaHalf ?? 0.42), phiSegments, thetaSegments, subPhi, subTheta, radiusInflate);
     }
     ensureProjectedCapacity(rawCount);
     let projectedCount = 0;
@@ -2409,15 +2099,7 @@ export function createConveyorDraw(options = {}) {
             const sin = Math.sin(angle);
             // Draw full-tile belt bed
             const beltProp = subProp(prop.x, prop.y, angle);
-            drawBox(ctx, beltProp, viewport, {
-                halfSize: { x: hx, y: hy },
-                height: CONVEYOR_BELT_HEIGHT,
-                facing: angle,
-                faceColors: beltColors,
-                topColors: beltTopColors,
-                stroke: beltStroke,
-                lineWidth: 1.0 * lineScale,
-            });
+            drawBox(ctx, beltProp, viewport, { halfSize: { x: hx, y: hy }, height: CONVEYOR_BELT_HEIGHT, facing: angle, faceColors: beltColors, topColors: beltTopColors, stroke: beltStroke, lineWidth: 1.0 * lineScale });
             function projectLocalFlat(out8, offset, lx, ly, lz) {
                 const r = rotateXY(lx, ly, cos, sin);
                 projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
@@ -2475,15 +2157,7 @@ export function createConveyorDraw(options = {}) {
         const startAngle = Math.PI;
         const dir = isLeft ? 1 : -1;
         const beltProp = subProp(prop.x, prop.y, angle);
-        drawBox(ctx, beltProp, viewport, {
-            halfSize: { x: hx, y: hy },
-            height: CONVEYOR_BELT_HEIGHT,
-            facing: angle,
-            faceColors: beltColors,
-            topColors: beltTopColors,
-            stroke: beltStroke,
-            lineWidth: 1.0 * lineScale,
-        });
+        drawBox(ctx, beltProp, viewport, { halfSize: { x: hx, y: hy }, height: CONVEYOR_BELT_HEIGHT, facing: angle, faceColors: beltColors, topColors: beltTopColors, stroke: beltStroke, lineWidth: 1.0 * lineScale });
         function projectLocalFlat(out8, offset, lx, ly, lz) {
             const r = rotateXY(lx, ly, cos, sin);
             projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
@@ -2892,8 +2566,7 @@ export class FloorBeltDrawCache {
         cache.idx = idxList;
         cache.count = count;
         cache.uniqueCount = uniqueCount;
-        if (viewport && uniqueCount)
-            warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY.FloorBelt, uniquePacked, uniqueCount, BeltPacked.flowAngle, beltDrawForPacked, BELT_FILMSTRIP_FRAMES);
+        if (viewport && uniqueCount) warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY.FloorBelt, uniquePacked, uniqueCount, BeltPacked.flowAngle, beltDrawForPacked, BELT_FILMSTRIP_FRAMES);
         return cache;
     }
     draw(ctx, viewport, grid) {
@@ -2907,19 +2580,7 @@ export class FloorBeltDrawCache {
             if (!viewport.circleInBounds(x, y, cellHalf, "props")) continue;
             const packed = grid.floorPacked[cellIdx];
             const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
-            drawCachedGridStampFilmstripShared(
-                ctx,
-                x,
-                y,
-                halfExtents,
-                viewport,
-                GRID_STAMP_RENDER_KEY.FloorBelt,
-                BeltPacked.stripKey(packed),
-                BeltPacked.flowAngle(packed),
-                beltDrawForPacked(packed),
-                frameIndex,
-                BELT_FILMSTRIP_FRAMES,
-            );
+            drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);
         }
     }
 }
