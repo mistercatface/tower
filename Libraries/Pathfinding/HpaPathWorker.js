@@ -6,7 +6,7 @@ import { createHpaWorkerSabPools, growHpaCellToRegionSab, growHpaPathIdxSab, hpa
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/spatial.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
-export const MAX_HPA_PATH_LEN = 512;
+export const MAX_HPA_PATH_LEN = 1024;
 export const MAX_HPA_GRAPH_NODES = 4096 * 2;
 export const MAX_HPA_ABSTRACT_LEN = MAX_HPA_GRAPH_NODES + 2;
 const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;

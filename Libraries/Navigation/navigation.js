@@ -768,7 +768,7 @@ export class HpaAbstractGraph extends FlatGraphView {
         this._candidateSeen = new Int32Array(nodeCount).fill(-1);
         this._candidateGen = -1;
         const extCount = nodeCount + 2;
-        const maxEdges = nodeCount * 8 + 128;
+        const maxEdges = Math.max(edgeWrite + nodeCount * 2, nodeCount * 8 + 128);
         this._extNodeIdx = new Int32Array(extCount);
         this._targetConnectCost = new Int32Array(nodeCount);
         this._startEdgesTarget = new Int32Array(nodeCount);
@@ -953,11 +953,11 @@ export class HpaReplanRequest {
     }
 }
 export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx) {
-    const legMaxCost = (cols + rows) * 21;
+    const legMaxCost = Math.max((cols + rows) * 21, 16384);
+    const localMaxCost = cols * rows * 15;
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
-    const cellDist = octileDistanceIdx(startIdx, targetIdx, cols);
-    if (cellDist < HPA_LOCAL_DISTANCE_THRESHOLD || (startRegion >= 0 && startRegion === targetRegion)) return { mode: "local", startIdx, targetIdx, legMaxCost };
+    if (startRegion >= 0 && startRegion === targetRegion) return { mode: "local", startIdx, targetIdx, legMaxCost: localMaxCost };
     const { nodeIds, nodeIdx } = graphMeta;
     return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, legMaxCost, startRegion, targetRegion };
 }
