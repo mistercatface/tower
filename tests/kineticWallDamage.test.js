@@ -19,6 +19,10 @@ import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
+import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
+import { runKineticPhysics } from "../Libraries/Physics/physics.js";
+import { kineticIntegrateHooks } from "./harness/kineticTickHarness.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState() {
     const grid = new WorldObstacleGrid(16);
@@ -30,6 +34,7 @@ async function createWallDamageTestState() {
         worldSurfaces: { settings: gameWorldSurfaceSettings, activeSurfaceProfileId: "base", invalidateGridBounds: () => {} },
         nav: navigation,
         worldProps: [],
+        wallDebrisBodies: [],
         entityRegistry: new EntityRegistry(),
         kinetic: { kineticConstraints: [] }
     };
@@ -151,13 +156,43 @@ describe("kinetic wall damage", () => {
         flushPendingWallDamage(state);
         
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,3, 3)));
-        assert.ok(state.worldProps.length > 0);
-        
-        const shards = state.worldProps.filter(p => p.type === "wall_voxel_chunk");
+        const shards = (state.wallDebrisBodies ?? []).filter((p) => p.type === "wall_voxel_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every(s => s.height === 32));
-        assert.ok(shards.every(s => s.wallChunkProfileId === "chunk-profile"));
+        assert.ok(shards.every((s) => s.height === 32));
+        assert.ok(shards.every((s) => s.wallChunkProfileId === "chunk-profile"));
+        assert.ok(shards.every((s) => Math.hypot(s.vx ?? 0, s.vy ?? 0) > 5));
         
+        terminateWorkerNavigation(state.nav);
+    });
+    it("wall debris re-registers in begin and moves under kinetic physics", async () => {
+        const state = await createWallDamageTestState();
+        state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        state.fractureEngine = new FractureEngine(state);
+        state.kinetic = createKineticSession();
+        stampVoxel(state.obstacleGrid, 3, 3, 2);
+        state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
+        const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid, 3, 3), isStaticGridProxy: true, isEdgeRail: false };
+        resolveKineticWallDamage(state, { id: 101, type: "ball", vx: 560, vy: 0 }, { evictKineticProp() {} }, {
+            resolve(body) {
+                body._wallResolveHits = [{ approachDot: -560, normalX: 1, normalY: 0, segment, contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 }];
+                return true;
+            },
+        });
+        flushPendingWallDamage(state);
+        const shard = (state.wallDebrisBodies ?? []).find((p) => p.type === "wall_voxel_chunk");
+        assert.ok(shard);
+        shard.vx = 120;
+        shard.vy = 60;
+        const x0 = shard.x;
+        const y0 = shard.y;
+        const frame = kineticSpatial.begin(state);
+        assert.ok(frame._kineticBodies.includes(shard));
+        runKineticPhysics(
+            { frame, world: { worldProps: state.worldProps, wallDebrisBodies: state.wallDebrisBodies, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
+            100,
+            kineticIntegrateHooks((prop, subDt) => prop.tickPropSubstep(subDt))
+        );
+        assert.ok(Math.hypot(shard.x - x0, shard.y - y0) > 1);
         terminateWorkerNavigation(state.nav);
     });
     it("rail wall hit clears edge wall, spawns a rail chunk prop, and fractures it", async () => {
@@ -192,11 +227,10 @@ describe("kinetic wall damage", () => {
         flushPendingWallDamage(state);
         
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,4, 4), 1)));
-        assert.ok(state.worldProps.length > 0);
-        const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
+        const shards = (state.wallDebrisBodies ?? []).filter((p) => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every(s => s.height === 32));
-        assert.ok(shards.every(s => s.wallChunkProfileId === "edge-profile"));
+        assert.ok(shards.every((s) => s.height === 32));
+        assert.ok(shards.every((s) => s.wallChunkProfileId === "edge-profile"));
         
         terminateWorkerNavigation(state.nav);
     });
@@ -229,10 +263,9 @@ describe("kinetic wall damage", () => {
         flushPendingWallDamage(state);
         
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,4, 4), 1)));
-        assert.ok(state.worldProps.length > 0);
-        const shards = state.worldProps.filter(p => p.type === "wall_rail_chunk");
+        const shards = (state.wallDebrisBodies ?? []).filter((p) => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every(s => s.height === 32));
+        assert.ok(shards.every((s) => s.height === 32));
         
         terminateWorkerNavigation(state.nav);
     });
