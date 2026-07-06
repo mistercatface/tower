@@ -298,7 +298,7 @@ export class HpaReplanPlanner {
         const pathIdx = hpaPathSlotIdx(this.buffers.sabPathIdxPool, slot, this.buffers.maxPathLen);
         const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols);
         resolveFn.scratch = this.localPathScratch;
-        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathIdx, cols * rows);
+        const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathIdx, this.buffers.maxPathLen);
         const pathMeta = hpaPathSlotMeta(this.buffers.sabPathMetaPool, slot);
         pathMeta[0] = pathLen;
         return this.buffers.buildReplanResult(slot);
@@ -317,6 +317,12 @@ export class HpaPathfindingWorker {
         this.graph = new HpaRegionGraphManager(this.buffers);
         this.searchState = null;
         this.planner = null;
+    }
+    applyPathSabFromMessage(data) {
+        if (!data.maxPathLen || data.maxPathLen <= this.buffers.maxPathLen) return;
+        this.buffers.sabPathIdxPool = data.sabPathIdxPool;
+        this.buffers.maxPathLen = data.maxPathLen;
+        if (this.planner) this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
     }
     postGraphPatchDone(meta) {
         self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [], debugNodeCount: this.graph.debugNodeCount, debugEdgeWrite: this.graph.debugEdgeWrite, debugNodeIds: this.graph.debugNodeIds });
@@ -353,9 +359,8 @@ export class HpaPathfindingWorker {
             return;
         }
         if (type === "growPathSab") {
-            this.buffers.sabPathIdxPool = e.data.sabPathIdxPool;
-            this.buffers.maxPathLen = e.data.maxPathLen;
-            if (this.planner) this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+            this.applyPathSabFromMessage(e.data);
+            self.postMessage({ type: "growPathSabDone" });
             return;
         }
         if (type === "buildNavTopology") {
@@ -382,6 +387,7 @@ export class HpaPathfindingWorker {
             return;
         }
         if (type === "replan") {
+            this.applyPathSabFromMessage(e.data);
             const replanResult = this.runReplan(slot, e.data);
             self.postMessage({ type: "hpaDone", slot, requestId, replanResult });
         }

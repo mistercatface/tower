@@ -14,6 +14,7 @@ const HPA_DONE = "hpaDone";
 const SYNC_NAV_DONE = "syncNavDone";
 const GRAPH_PATCH_DONE = "graphPatchDone";
 const GRAPH_PATCH_ERROR = "graphPatchError";
+const GROW_PATH_SAB_DONE = "growPathSabDone";
 /**
  * Multi-slot HPA worker — persistent nav topology + abstract graph on worker thread.
  */
@@ -38,6 +39,8 @@ export class HpaPathWorker {
         this._graphEpoch = -1;
         this._graphPatchTargetEpoch = -1;
         this._graphPatchChain = Promise.resolve();
+        this._pathSabGrowChain = Promise.resolve();
+        this._pathSabGrowResolve = null;
         this._graphSize = 0;
         this._damagePadding = 12;
         this._shutDown = false;
@@ -125,6 +128,12 @@ export class HpaPathWorker {
             resolve?.();
             return;
         }
+        if (type === GROW_PATH_SAB_DONE) {
+            const resolve = this._pathSabGrowResolve;
+            this._pathSabGrowResolve = null;
+            resolve?.();
+            return;
+        }
         if (type === HPA_DONE) {
             this._replanResults[slot] = data.replanResult ?? null;
             this.protocol.markReady(slot, requestId);
@@ -144,8 +153,15 @@ export class HpaPathWorker {
         if (stitchedMax > this.maxPathLen) {
             this.sabPathIdxPool = growHpaPathIdxSab(this.sabPathIdxPool, MAX_HPA_REPLAN_SLOTS, stitchedMax);
             this.maxPathLen = stitchedMax;
-            this.protocol.postMessage({ type: "growPathSab", sabPathIdxPool: this.sabPathIdxPool, maxPathLen: stitchedMax });
+            this.protocol.invalidateSlots();
+            this._pathSabGrowChain = this._pathSabGrowChain.then(() => this._postPathSabGrow());
         }
+    }
+    _postPathSabGrow() {
+        return new Promise((resolve) => {
+            this._pathSabGrowResolve = resolve;
+            this.protocol.postMessage({ type: "growPathSab", sabPathIdxPool: this.sabPathIdxPool, maxPathLen: this.maxPathLen });
+        });
     }
     _postGraphPatch(type, payload, graphEpoch) {
         const run = () => {
@@ -394,7 +410,8 @@ export class HpaPathWorker {
         }
     }
     async runOneShotReplan(slot, request) {
-        await this._dispatchAndWait(slot, "replan", request.toWorkerPayload());
+        await this._pathSabGrowChain;
+        await this._dispatchAndWait(slot, "replan", { ...request.toWorkerPayload(), sabPathIdxPool: this.sabPathIdxPool, maxPathLen: this.maxPathLen });
         const result = this._replanResults[slot];
         this._replanResults[slot] = null;
         if (!result) return null;

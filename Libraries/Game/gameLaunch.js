@@ -13,9 +13,7 @@ async function runSnakeLaunch(state, ctx) {
     state.editor.railMazeConfig.wallHeightLevel = 1;
     state.editor.railMazeConfig.surfaceProfileId = "poolTableFelt";
     await generateLabRailMaze(state);
-    // Sync navigation topology so it matches the generated rail maze
     await state.nav.commitEdit(null, { fullNavSync: true });
-    // 2. Spawn and Select Boid Triangle
     const x = state.viewport.x;
     const y = state.viewport.y;
     const boid = spawnPlacedSandboxProp(state, x, y, "boid_triangle", "alpha");
@@ -28,8 +26,6 @@ async function runSnakeLaunch(state, ctx) {
     state.sandbox.entityMeta.setCameraTarget(boid.id, true);
     state.viewport.zoom = 2.0;
     syncLabViewportZoomUi(state);
-    state.viewport.snapTo(boid.x, boid.y);
-    // 5. Lock Selection
     state.editor.lockSelection = true;
 }
 /** @param {object} state @param {object} launcher @param {{ playbackHandlers?: import("../Playback/speedControl.js").PlaybackHandlers }} [launchOptions] */

@@ -953,7 +953,7 @@ export class HpaReplanRequest {
     }
 }
 export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx) {
-    const legMaxCost = cols + rows;
+    const legMaxCost = (cols + rows) * 21;
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
     const cellDist = octileDistanceIdx(startIdx, targetIdx, cols);
