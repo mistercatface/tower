@@ -6,7 +6,7 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
-import { FractureEngine } from "../../Libraries/Props/props.js";
+import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { clearChainLinksForProp } from "../../Libraries/Sandbox/sandbox.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/physics.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";

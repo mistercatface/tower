@@ -1,4 +1,4 @@
-import { FractureEngine } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry, addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";

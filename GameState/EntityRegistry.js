@@ -5,7 +5,7 @@ import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/math.js"
 import { distanceSqToLineSegment } from "../Libraries/Math/math.js";
 import { hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
-import { FractureEngine } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */

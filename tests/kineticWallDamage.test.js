@@ -13,7 +13,8 @@ import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavig
 import { patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { WorldProp, FractureEngine, FRACTURE_TUNING } from "../Libraries/Props/props.js";
+import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";

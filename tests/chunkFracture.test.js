@@ -1,4 +1,4 @@
-import { FractureEngine } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PolygonShape } from "../Libraries/Physics/physics.js";

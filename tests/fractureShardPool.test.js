@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { FractureEngine, WorldProp } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState, EntityRegistry } from "../GameState/EntityRegistry.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";

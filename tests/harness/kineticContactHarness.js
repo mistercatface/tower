@@ -1,4 +1,4 @@
-import { FractureEngine } from "../../Libraries/Props/props.js";
+import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, checkEntityPairCollision, kineticDynamicSlab } from "../../Libraries/Physics/physics.js";
 import { writebackActiveKineticBodySlab } from "../../Libraries/Physics/physics.js";
 

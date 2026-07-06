@@ -1,5 +1,5 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
-import { FractureEngine } from "../../Libraries/Props/props.js";
+import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape } from "../../Libraries/Physics/physics.js";
 let nextMockPhysId = 0;

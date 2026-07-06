@@ -2,7 +2,7 @@ import { installTestDocument, mockPanelBody } from "./harness/sandboxInspectorHa
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";

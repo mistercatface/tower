@@ -8,7 +8,7 @@ import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { EntityRegistry } from "./EntityRegistry.js";
 import { KineticSession } from "./KineticSession.js";
-import { FractureEngine } from "../Libraries/Props/props.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { FollowCamera } from "../Libraries/Sandbox/sandbox.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 60, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };

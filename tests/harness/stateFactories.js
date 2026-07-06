@@ -1,5 +1,5 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
-import { FractureEngine } from "../../Libraries/Props/props.js";
+import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { createWorkerNavigation } from "../WorkerNavigationFactory.js";
