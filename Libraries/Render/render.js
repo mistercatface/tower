@@ -1,5 +1,6 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustumInto, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPointInto, projectWorldQuadInto, resolveWallSurfaceProfileId, cellInRect, BeltPacked, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreenInto, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
+import { findNearestOpenCellIdx } from "../Navigation/navigation.js";
 import { quantizeAngleIndex, normalizeXY, lengthXY, rotateXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, radiusAtT, scaleAtHeight } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -111,7 +112,14 @@ function strokeDirectedDebugEdge(ctx, ax, ay, bx, by, stroke, lineWidth, headLen
         { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
     ]);
 }
-function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
+const PATH_DEBUG_DIM_OPEN_FILL = "rgba(40, 44, 52, 0.15)";
+function cellPathDebugIncluded(idx, bakeOpts, cellToComponent, blocked) {
+    if (blocked[idx]) return true;
+    if (bakeOpts.mode === "hpa") return true;
+    if (bakeOpts.reachableComponent < 0) return false;
+    return cellToComponent && cellToComponent[idx] === bakeOpts.reachableComponent;
+}
+function bakePathDebugLayer(debugView, minX, minY, maxX, maxY, bakeOpts) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
     if (!canvas || !debugView.grid) return null;
     const ctx = canvas.getContext("2d");
@@ -121,10 +129,11 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const cellToRegion = debugView.cellToRegion;
     const cellToComponent = debugView.cellToComponent;
     const floorPacked = debugView.floorPacked;
+    const blocked = debugView.grid;
     for (let row = 0; row <= endRow; row++)
         for (let col = 0; col <= endCol; col++) {
             const idx = row * debugView.cols + col;
-            const isBlocked = debugView.grid[idx] !== 0;
+            const isBlocked = blocked[idx] !== 0;
             const wx = debugView.minX + col * debugView.cellSize;
             const wy = debugView.minY + row * debugView.cellSize;
             const cellSize = debugView.cellSize;
@@ -132,13 +141,19 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
                 ctx.fillStyle = "rgba(244, 67, 54, 0.2)";
                 ctx.fillRect(wx, wy, cellSize, cellSize);
             } else if (cellToComponent) {
-                const component = cellToComponent[idx];
-                if (component < 0) {
-                    ctx.fillStyle = "rgba(180, 190, 200, 0.12)";
+                const included = cellPathDebugIncluded(idx, bakeOpts, cellToComponent, blocked);
+                if (!included) {
+                    ctx.fillStyle = PATH_DEBUG_DIM_OPEN_FILL;
                     ctx.fillRect(wx, wy, cellSize, cellSize);
                 } else {
-                    ctx.fillStyle = componentDebugFillColor(component);
-                    ctx.fillRect(wx, wy, cellSize, cellSize);
+                    const component = cellToComponent[idx];
+                    if (component < 0) {
+                        ctx.fillStyle = "rgba(180, 190, 200, 0.12)";
+                        ctx.fillRect(wx, wy, cellSize, cellSize);
+                    } else {
+                        ctx.fillStyle = componentDebugFillColor(component);
+                        ctx.fillRect(wx, wy, cellSize, cellSize);
+                    }
                 }
             }
         }
@@ -148,7 +163,8 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
         for (let row = 0; row <= endRow; row++)
             for (let col = 0; col <= endCol; col++) {
                 const idx = row * debugView.cols + col;
-                if (debugView.grid[idx]) continue;
+                if (blocked[idx]) continue;
+                if (!cellPathDebugIncluded(idx, bakeOpts, cellToComponent, blocked)) continue;
                 const packed = floorPacked[idx];
                 if (!BeltPacked.isValid(packed)) continue;
                 const wx = debugView.minX + col * debugView.cellSize;
@@ -173,7 +189,8 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
         for (let row = 0; row <= endRow; row++)
             for (let col = 0; col <= endCol; col++) {
                 const idx = row * debugView.cols + col;
-                if (debugView.grid[idx]) continue;
+                if (blocked[idx]) continue;
+                if (!cellPathDebugIncluded(idx, bakeOpts, cellToComponent, blocked)) continue;
                 const region = cellToRegion[idx];
                 if (region < 0) continue;
                 const wx = debugView.minX + col * debugView.cellSize;
@@ -181,14 +198,14 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
                 const cellSize = debugView.cellSize;
                 if (col + 1 < debugView.cols) {
                     const rIdx = idx + 1;
-                    if (debugView.grid[rIdx] === 0) {
+                    if (blocked[rIdx] === 0) {
                         const rightRegion = cellToRegion[rIdx];
                         if (rightRegion >= 0 && rightRegion !== region) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
                     }
                 }
                 if (row + 1 < debugView.rows) {
                     const bIdx = idx + debugView.cols;
-                    if (debugView.grid[bIdx] === 0) {
+                    if (blocked[bIdx] === 0) {
                         const bottomRegion = cellToRegion[bIdx];
                         if (bottomRegion >= 0 && bottomRegion !== region) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
                     }
@@ -200,6 +217,7 @@ function bakePathDebugLayer(debugView, minX, minY, maxX, maxY) {
     const { nodeIdx, nodeCount } = debugView;
     for (let i = 0; i < nodeCount; i++) {
         const idx = nodeIdx[i];
+        if (!cellPathDebugIncluded(idx, bakeOpts, cellToComponent, blocked)) continue;
         if (floorPacked && BeltPacked.isValid(floorPacked[idx])) continue;
         const wx = debugView.gridCenterXByIdx(idx);
         const wy = debugView.gridCenterYByIdx(idx);
@@ -241,31 +259,52 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     ctx.putImageData(data, 0, 0);
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
 }
-/** @param {object} state */
-export function labPathDebugCacheKey(state) {
+/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {'off' | 'hpa' | 'reachable'} mode */
+export function buildPathDebugCacheOpts(state, mode) {
     const grid = state.obstacleGrid;
-    return `${gridNavCacheKey(grid)}:${state.nav.graphSyncGeneration}:${floorOccupancyStampDrawCacheKey(grid)}:${grid.cols}x${grid.rows}`;
+    const prop = state.sandbox?.controller?.session?.getSelectedProp();
+    const selectionPropId = prop?.id ?? "none";
+    let seedCellIdx = -1;
+    if (prop) {
+        let idx = grid.worldToIdx(prop.x, prop.y);
+        if (idx >= 0) seedCellIdx = findNearestOpenCellIdx(grid.grid, grid, idx);
+    }
+    return { mode, selectionPropId, seedCellIdx };
 }
-/** @param {object} state */
-export async function ensureLabPathDebugCache(state) {
-    const key = labPathDebugCacheKey(state);
+function resolvePathDebugBakeOpts(debugView, cacheOpts) {
+    if (cacheOpts.mode === "hpa") return { mode: "hpa", reachableComponent: -1 };
+    let reachableComponent = -1;
+    if (cacheOpts.seedCellIdx >= 0 && debugView.cellToComponent) reachableComponent = debugView.cellToComponent[cacheOpts.seedCellIdx];
+    return { mode: "reachable", reachableComponent };
+}
+/** @param {object} state @param {{ mode: string, selectionPropId: string, seedCellIdx: number }} cacheOpts */
+export function labPathDebugCacheKey(state, cacheOpts) {
+    const grid = state.obstacleGrid;
+    const base = `${gridNavCacheKey(grid)}:${state.nav.graphSyncGeneration}:${floorOccupancyStampDrawCacheKey(grid)}:${grid.cols}x${grid.rows}`;
+    return `${base}:${cacheOpts.mode}:${cacheOpts.selectionPropId}:${cacheOpts.seedCellIdx}`;
+}
+/** @param {object} state @param {{ mode: string, selectionPropId: string, seedCellIdx: number }} cacheOpts */
+export async function ensureLabPathDebugCache(state, cacheOpts) {
+    const key = labPathDebugCacheKey(state, cacheOpts);
     if (state._labPathDebugKey === key && state.mapPathDebugCache) return state.mapPathDebugCache;
     if (state._labPathDebugBake) return state._labPathDebugBake;
     state._labPathDebugBake = (async () => {
         const grid = state.obstacleGrid;
         await state.nav.awaitWorkerNavReady();
         const debugView = state.nav.worker.getRegionGraphDebugView(grid);
-        state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY) : null;
+        const bakeOpts = resolvePathDebugBakeOpts(debugView, cacheOpts);
+        state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY, bakeOpts) : null;
         state._labPathDebugKey = key;
         state._labPathDebugBake = null;
         return state.mapPathDebugCache;
     })();
     return state._labPathDebugBake;
 }
-export function drawLabPathDebugOverlay(ctx, viewport, state, onCacheReady) {
-    if (state._labPathDebugKey !== labPathDebugCacheKey(state) && !state._labPathDebugRedrawScheduled) {
+export function drawLabPathDebugOverlay(ctx, viewport, state, cacheOpts, onCacheReady) {
+    const key = labPathDebugCacheKey(state, cacheOpts);
+    if (state._labPathDebugKey !== key && !state._labPathDebugRedrawScheduled) {
         state._labPathDebugRedrawScheduled = true;
-        void ensureLabPathDebugCache(state).then(() => {
+        void ensureLabPathDebugCache(state, cacheOpts).then(() => {
             state._labPathDebugRedrawScheduled = false;
             onCacheReady?.();
         });

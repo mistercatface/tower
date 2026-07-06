@@ -28,7 +28,8 @@ export function bindWorldRenderModeToolbar(state, onChange) {
 /** @param {{ onOverlayChange: () => void, onRedraw: () => void, onStageResize: () => void, onRenderModeChange: (mode: import("../../../Render/WorldRenderMode.js").WorldRenderMode) => void }} handlers @param {import("../state.js").TileLabGameState} state */
 export function bindToolbarControls(handlers, state) {
     const { onOverlayChange, onRedraw, onStageResize, onRenderModeChange } = handlers;
-    for (const id of ["showVignetteInput", "showPathDebugInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
+    for (const id of ["showVignetteInput"]) document.getElementById(id).addEventListener("change", onOverlayChange);
+    document.getElementById("pathDebugModeBtn").addEventListener("click", onOverlayChange);
     bindWorldRenderModeToolbar(state, onRenderModeChange);
     document.getElementById("regenerateBtn").addEventListener("click", onRedraw);
     const stage = document.getElementById("mapStage");

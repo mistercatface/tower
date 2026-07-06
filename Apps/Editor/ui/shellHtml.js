@@ -11,7 +11,7 @@ export const TILELAB_UI_HTML = `
     <div class="toolbar">
         <h1>Editor</h1>
         <span class="sep"></span>
-        <label class="check-inline"><input id="showPathDebugInput" type="checkbox"> HPA* Grid</label>
+        <button type="button" id="pathDebugModeBtn" class="toolbar-cycle-btn">Nav Grid: Off</button>
         ${WORLD_RENDER_CONTROLS_HTML}
         <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
         <label class="check-inline"><span>Shadows</span><input type="range" id="editorShadowSlider" min="0" max="100" step="1" value="0"><span class="hint-inline" id="editorShadowValue">Off</span></label>

@@ -1,11 +1,11 @@
 import { shippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { applySquareCanvasResize } from "./squareCanvasResize.js";
 import { initResizer } from "./lab-shared.js";
-import { ensureLabPathDebugCache } from "../../../Libraries/Render/render.js";
+import { ensureLabPathDebugCache, buildPathDebugCacheOpts } from "../../../Libraries/Render/render.js";
 import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flushMapOverviewRepaint, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isShowLabPathDebug } from "./preview.js";
+import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { initTileLabWorld } from "../../../Libraries/Spatial/spatial.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
@@ -143,7 +143,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     bindToolbarControls(
         {
             onOverlayChange: () => {
-                if (isShowLabPathDebug()) void ensureLabPathDebugCache(state);
+                if (isLabPathDebugActive()) void ensureLabPathDebugCache(state, buildPathDebugCacheOpts(state, getLabPathDebugMode()));
             },
             onRedraw: () => {
                 pushEditorProfile(state);

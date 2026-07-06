@@ -8,7 +8,7 @@ import { floorBeltEffectPass } from "../../../Libraries/Props/props.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
-import { drawLabPathDebugOverlay } from "../../../Libraries/Render/render.js";
+import { drawLabPathDebugOverlay, buildPathDebugCacheOpts } from "../../../Libraries/Render/render.js";
 import { drawOverlayCommands } from "../../../Libraries/Render/render.js";
 import { drawLosShadowOverlay } from "../../../Libraries/Render/render.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
@@ -19,7 +19,7 @@ const editorSceneHooks = {
         {
             zIndex: floorBeltEffectPass.zIndex,
             draw(state, viewport, ctx, renderer) {
-                if (isShowLabPathDebug()) return;
+                if (isLabPathDebugActive()) return;
                 floorBeltEffectPass.draw(state, viewport, ctx, renderer);
             },
         },
@@ -43,8 +43,9 @@ const editorSceneHooks = {
         {
             zIndex: 120,
             draw(state, viewport, ctx) {
-                if (!isShowLabPathDebug()) return;
-                drawLabPathDebugOverlay(ctx, viewport, state, markLabViewDirty);
+                if (!isLabPathDebugActive()) return;
+                const opts = buildPathDebugCacheOpts(state, getLabPathDebugMode());
+                drawLabPathDebugOverlay(ctx, viewport, state, opts, markLabViewDirty);
             },
         },
     ],
@@ -54,14 +55,29 @@ let labRendererSettings = null;
 let lastProfileBakeKey = "";
 let labViewDirty = true;
 let showLabVignette = false;
-let showLabPathDebug = false;
+/** @type {'off' | 'hpa' | 'reachable'} */
+let labPathDebugMode = "off";
+const PATH_DEBUG_MODE_LABELS = { off: "Nav Grid: Off", hpa: "Nav Grid: HPA*", reachable: "Nav Grid: Reachable" };
+const PATH_DEBUG_MODE_CYCLE = ["off", "hpa", "reachable"];
 export function setLabVignetteEnabled(enabled) {
     showLabVignette = enabled;
     markLabViewDirty();
 }
-export function setLabPathDebugEnabled(enabled) {
-    showLabPathDebug = enabled;
+function syncPathDebugModeButtonLabel() {
+    const btn = document.getElementById("pathDebugModeBtn");
+    if (btn) btn.textContent = PATH_DEBUG_MODE_LABELS[labPathDebugMode];
+}
+function cycleLabPathDebugMode() {
+    const i = PATH_DEBUG_MODE_CYCLE.indexOf(labPathDebugMode);
+    labPathDebugMode = PATH_DEBUG_MODE_CYCLE[(i + 1) % PATH_DEBUG_MODE_CYCLE.length];
+    syncPathDebugModeButtonLabel();
     markLabViewDirty();
+}
+export function getLabPathDebugMode() {
+    return labPathDebugMode;
+}
+export function isLabPathDebugActive() {
+    return labPathDebugMode !== "off";
 }
 export function markLabViewDirty() {
     labViewDirty = true;
@@ -72,19 +88,16 @@ function formatShadowStrengthLabel(strength) {
 }
 export function mountLabDrawOptions(state) {
     const vignetteInput = document.getElementById("showVignetteInput");
-    const pathDebugInput = document.getElementById("showPathDebugInput");
+    const pathDebugModeBtn = document.getElementById("pathDebugModeBtn");
     const shadowSlider = document.getElementById("editorShadowSlider");
     const shadowValue = document.getElementById("editorShadowValue");
     showLabVignette = vignetteInput.checked;
-    showLabPathDebug = pathDebugInput.checked;
+    syncPathDebugModeButtonLabel();
     vignetteInput.addEventListener("change", () => {
         showLabVignette = vignetteInput.checked;
         markLabViewDirty();
     });
-    pathDebugInput.addEventListener("change", () => {
-        showLabPathDebug = pathDebugInput.checked;
-        markLabViewDirty();
-    });
+    pathDebugModeBtn.addEventListener("click", () => cycleLabPathDebugMode());
     if (shadowSlider && shadowValue) {
         const initialStrength = state.losShadowStrength ?? 0.0;
         shadowSlider.value = String(Math.round(initialStrength * 100));
@@ -97,9 +110,6 @@ export function mountLabDrawOptions(state) {
             markLabViewDirty();
         });
     }
-}
-export function isShowLabPathDebug() {
-    return showLabPathDebug;
 }
 /** Canvas input marks the lab view dirty while paused (place preview, clicks). Camera pan/zoom goes through setCamera. */
 export function mountLabFrameRefresh(canvas) {
