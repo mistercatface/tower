@@ -10,7 +10,7 @@ import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { clearChainLinksForProp } from "../../Libraries/Sandbox/sandbox.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
-import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/render.js";
+import { FLOATING_TEXT_SPAWN_EVENT, FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spatial/spatial.js";
 import { FloorBelt } from "../../Libraries/Spatial/spatial.js";

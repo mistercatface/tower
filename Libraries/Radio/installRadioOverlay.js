@@ -38,7 +38,7 @@ function mountRadioDialogDom(host) {
     return overlay;
 }
 /**
- * Mount radio DOM on the game wrapper and wire the event bus (same boot level as FloatingText handlers).
+ * Mount radio DOM on the game wrapper and wire the event bus.
  *
  * @param {HTMLElement} host — typically `#gameWrapper`
  * @param {{

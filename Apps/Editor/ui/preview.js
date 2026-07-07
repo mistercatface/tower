@@ -129,7 +129,6 @@ export function wrapLabUiSync(sync) {
 export function shouldRenderLabFrame(state) {
     if (!state.isPaused) return true;
     if (state.worldSurfaces.hasPendingSurfaceBakes()) return true;
-    if (state.floatingTexts && state.floatingTexts.length > 0) return true;
     return labViewDirty;
 }
 function buildLabRuntimeProfile() {
