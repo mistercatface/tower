@@ -2218,23 +2218,11 @@ export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
     settings.arrivalDistance = stopRadius;
     return settings;
 }
-export function driveGroundNav({ prop, targetWorld, nav, beltWasOnBelt, beltHandoffCooldown, state, dtMs, pathSettings }) {
+export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
-    if (FloorBelt.isEntityOnBelt(grid, prop.x, prop.y)) return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: true };
     const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
-    if (beltWasOnBelt) {
-        const cooldownFrames = beltHandoffCooldown.frames;
-        if (cooldownFrames > 0) {
-            beltHandoffCooldown.frames = cooldownFrames - 1;
-            return { vx: 0, vy: 0, steering: null, replanReason: null, beltWasOnBelt: false };
-        }
-        nav.reset(state);
-        nav.replan(prop, steerTarget.x, steerTarget.y, state);
-        beltHandoffCooldown.frames = state.nav.settings.stuckReplanFrames;
-        return { vx: 0, vy: 0, steering: null, replanReason: "beltHandoff", beltWasOnBelt: false };
-    }
     const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
-    return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason, beltWasOnBelt: false };
+    return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason };
 }
 const FLOW_OVERLAY_DIR_SCRATCH = { x: 0, y: 0 };
 const FLOW_DIR_SCRATCH = { x: 0, y: 0 };
@@ -2454,7 +2442,7 @@ const FLOW_GROUND_NAV_CONFIG = {
 const HPA_GROUND_NAV_CONFIG = {
     id: HPA_GROUND_NAV_BEHAVIOR_ID,
     initRun() {
-        return { targetWorld: null, targetCellIdx: null, dragging: false, wasOnBelt: false, beltHandoffCooldown: { frames: 0 }, hpaNav: new HpaNavSession() };
+        return { targetWorld: null, targetCellIdx: null, dragging: false, hpaNav: new HpaNavSession() };
     },
     applyMoveTarget(state, run, world, prop, forceReset) {
         const grid = state.obstacleGrid;
@@ -2469,8 +2457,6 @@ const HPA_GROUND_NAV_CONFIG = {
         run.targetWorld = null;
         run.targetCellIdx = null;
         run.dragging = false;
-        run.wasOnBelt = false;
-        run.beltHandoffCooldown.frames = 0;
         run.hpaNav.reset(state);
     },
     hasMoveTarget(run) {
@@ -2489,12 +2475,8 @@ const HPA_GROUND_NAV_CONFIG = {
             HPA_GROUND_NAV_CONFIG.clearRunTarget(state, run);
             return;
         }
-        const { vx, vy, steering, beltWasOnBelt } = driveGroundNav({ prop, targetWorld: run.targetWorld, nav: run.hpaNav, beltWasOnBelt: run.wasOnBelt, beltHandoffCooldown: run.beltHandoffCooldown, state, dtMs, pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius) });
-        run.wasOnBelt = beltWasOnBelt;
-        if (!steering) {
-            if (beltWasOnBelt) clearGroundRollDrive(prop);
-            return;
-        }
+        const { vx, vy, steering } = driveGroundNav({ prop, targetWorld: run.targetWorld, nav: run.hpaNav, state, dtMs, pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius) });
+        if (!steering) return;
         if (vx === 0 && vy === 0) return;
         steerRollToward(prop, vx, vy, config, steering?.desiredSpeed);
     },
