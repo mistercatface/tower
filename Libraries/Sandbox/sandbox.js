@@ -2174,13 +2174,6 @@ export function listChainLinkEndpoints(state, propId) {
     }
     return endpoints;
 }
-export function clearChainLinksForProp(state, propId) {
-    const list = listKineticConstraints(state.kinetic);
-    for (let i = list.length - 1; i >= 0; i--) {
-        const entry = list[i];
-        if (entry.bodyAId === propId || entry.bodyBId === propId) removeKineticConstraint(state.kinetic, entry.id);
-    }
-}
 export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
     for (let i = 0; i < propIds.length; i++) if (entityMeta.isChainHead(propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     for (let i = 0; i < propIds.length; i++) if (isChainSteeringTarget(state, entityMeta, propIds[i])) return state.entityRegistry.getLive(propIds[i]);

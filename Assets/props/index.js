@@ -13,34 +13,12 @@ import floor_belt_elbow_right from "./floor_belt/floor_belt_elbow_right.asset.js
 import cross_pinwheel from "./cross_pinwheel/cross_pinwheel.asset.js";
 import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
 import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
-import snake_shard from "./snake_shard/snake_shard.asset.js";
 export const DRAG_LAUNCH_BASELINE = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
-const catalog = {
-    ball,
-    crate,
-    custom_box,
-    glass_pane,
-    tri_wedge,
-    boid_triangle,
-    snake,
-    hex_block,
-    pipe_elbow,
-    floor_belt,
-    floor_belt_elbow_left,
-    floor_belt_elbow_right,
-    cross_pinwheel,
-    wall_voxel_chunk,
-    wall_rail_chunk,
-    snake_shard,
-};
+const catalog = { ball, crate, custom_box, glass_pane, tri_wedge, boid_triangle, snake, hex_block, pipe_elbow, floor_belt, floor_belt_elbow_left, floor_belt_elbow_right, cross_pinwheel, wall_voxel_chunk, wall_rail_chunk };
 for (const asset of Object.values(catalog)) {
     const sandbox = asset.sandbox;
     if (!sandbox) continue;
-    if (sandbox.dragLaunch && typeof sandbox.dragLaunch === "object") {
-        sandbox.dragLaunch = { ...DRAG_LAUNCH_BASELINE, ...sandbox.dragLaunch };
-    }
-    if (sandbox.spawner?.dragLaunch && typeof sandbox.spawner.dragLaunch === "object") {
-        sandbox.spawner.dragLaunch = { ...DRAG_LAUNCH_BASELINE, ...sandbox.spawner.dragLaunch };
-    }
+    if (sandbox.dragLaunch && typeof sandbox.dragLaunch === "object") sandbox.dragLaunch = { ...DRAG_LAUNCH_BASELINE, ...sandbox.dragLaunch };
+    if (sandbox.spawner?.dragLaunch && typeof sandbox.spawner.dragLaunch === "object") sandbox.spawner.dragLaunch = { ...DRAG_LAUNCH_BASELINE, ...sandbox.spawner.dragLaunch };
 }
 export default catalog;

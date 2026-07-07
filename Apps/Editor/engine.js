@@ -6,8 +6,6 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
-import { FractureEngine } from "../../Libraries/Physics/fracture.js";
-import { clearChainLinksForProp } from "../../Libraries/Sandbox/sandbox.js";
 import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FloatingText } from "../../Libraries/Render/FloatingText.js";
@@ -47,7 +45,7 @@ function simulationKineticHooks(state) {
             return resolveKineticWallDamage(state, entity, frame, state.wallResolver);
         },
         applyContactSideEffects(tick, contacts) {
-            tick.world.fractureEngine.processKineticContactFractures(tick, contacts, { onCircleFracture: (world, prop) => clearChainLinksForProp(world, prop.id) });
+            tick.world.fractureEngine.processKineticContactFractures(tick, contacts);
         },
         afterKineticPhysics(tick, dt) {
             state.appLaunch?.session?.afterKineticPhysics?.();

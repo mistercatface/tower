@@ -1,6 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
-import { FractureEngine } from "../Physics/fracture.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
@@ -113,8 +112,7 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
     markBroadphaseDirty(prop);
-    if (FractureEngine.shouldInitFractureFootprint(prop)) FractureEngine.initFractureFootprint(prop);
-    else if (prop.strategy?.isKinetic) {
+    if (prop.strategy?.isKinetic) {
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
     }
@@ -137,7 +135,6 @@ export function initWorldPropShape(prop) {
     if (footprint && vertCount(footprint) >= 3) {
         prop.shape = new PolygonShape(footprint);
         prop.radius = prop.shape.getBoundingRadius();
-        if (FractureEngine.shouldInitFractureFootprint(prop)) FractureEngine.initFractureFootprint(prop);
         return;
     }
     prop.radius = prop.strategy.radius ?? 0;
