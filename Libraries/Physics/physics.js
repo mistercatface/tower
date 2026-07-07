@@ -2818,7 +2818,9 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        if (shareKineticIslandSlab(physIdA, physIdB)) continue;
+        const bodyA = spatialFrame.entityGrid.entities[physIdA]?._physId === physIdA ? spatialFrame.entityGrid.entities[physIdA] : null;
+        const bodyB = spatialFrame.entityGrid.entities[physIdB]?._physId === physIdB ? spatialFrame.entityGrid.entities[physIdB] : null;
+        if (bodyA && bodyB && areKineticLinkNeighbors(bodyA, bodyB)) continue;
         const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
         if (!overlaps) continue;
         if (!shouldResolveKineticPairSlab(physIdA, physIdB, overlaps)) continue;
@@ -2855,7 +2857,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             if (hasPairHash(key)) continue;
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (shareKineticIsland(primary, neighbor)) continue;
+            if (areKineticLinkNeighbors(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) {
                 for (let k = 0; k < seenCount; k++) seenPrimary[seenPrimaryIds[k]] = 0;
@@ -2884,7 +2886,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
             const physIdB = neighbor._physId;
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (shareKineticIsland(primary, neighbor)) continue;
+            if (areKineticLinkNeighbors(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
             const idx = pairs.count++;
@@ -3135,11 +3137,11 @@ export function shareKineticIsland(bodyA, bodyB) {
     if (bodyA._kineticIslandRoot !== bodyB._kineticIslandRoot) return false;
     return Boolean(bodyA._kineticIslandPeers);
 }
-export function shareKineticIslandSlab(physIdA, physIdB) {
-    const rootA = kineticDynamicSlab.islandRoot[physIdA];
-    const rootB = kineticDynamicSlab.islandRoot[physIdB];
-    if (rootA === -1 || rootB === -1) return false;
-    return rootA === rootB;
+export function areKineticLinkNeighbors(bodyA, bodyB) {
+    const neighbors = bodyA._kineticLinkNeighbors;
+    if (!neighbors) return false;
+    for (let i = 0; i < neighbors.length; i++) if (neighbors[i] === bodyB) return true;
+    return false;
 }
 const parent = new Int32Array(MAX_PHYS_BODIES);
 const rank = new Int32Array(MAX_PHYS_BODIES);

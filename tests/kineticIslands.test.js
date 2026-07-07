@@ -56,6 +56,20 @@ describe("kinetic islands", () => {
         assert.equal(pairBuffer.count, 0);
     });
 
+    it("folded linked chain emits non-adjacent overlapping pair", () => {
+        const left = mockKineticCircle(0, 0, 10, 5, 0);
+        const center = mockKineticCircle(18, 0, 10, 0, 0);
+        const right = mockKineticCircle(5, 0, 10, 0, 0);
+        const bodies = [left, center, right];
+        const state = createState(bodies);
+        linkChain(state, bodies, 18);
+        const frame = setupKineticTestFrame(bodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
+        snapshotKineticBodySlab(frame._activeKineticBodies);
+        gatherKineticCandidatePairs(frame, pairBuffer);
+        assert.equal(pairBuffer.count, 1);
+    });
+
     it("unlinked chain still emits moving-body pairs", () => {
         const left = mockKineticCircle(0, 0, 10, 0, 0);
         const center = mockKineticCircle(18, 0, 10, 25, 0);
