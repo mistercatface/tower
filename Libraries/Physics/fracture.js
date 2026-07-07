@@ -4,13 +4,12 @@ import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, p
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
 import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
-export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 18, maxSliverAspect: 10, minWedgeAngle: Math.PI / 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
+export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 18 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
 const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
 export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
-export const GLASS_MAX_SLIVER_ASPECT = FRACTURE_TUNING.glass.maxSliverAspect;
-const GLASS_MIN_WEDGE_ANGLE = FRACTURE_TUNING.glass.minWedgeAngle;
 const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
+const SHATTER_SEEDS = [];
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 const MAX_FRACTURE_DEBRIS = FRACTURE_TUNING.burst.maxBurst;
@@ -37,8 +36,9 @@ class FractureGeomPool {
     borrow(minVertCapacity) {
         const bucket = this._bucketIndex(minVertCapacity);
         const capacity = GEOM_VERT_BUCKETS[bucket];
+        const floatCapacity = capacity * 2;
         let buffer = this.buckets[bucket].pop();
-        if (!buffer || buffer.length < capacity) buffer = new Float32Array(capacity);
+        if (!buffer || buffer.length < floatCapacity) buffer = new Float32Array(floatCapacity);
         const handle = this.nextHandle++;
         this.live.set(handle, { buffer, bucket });
         return handle;
@@ -96,22 +96,30 @@ class FractureGeomPool {
         }
         return outCount;
     }
-    wedgeClip(flatVerts, vertCount, apexX, apexY, angle0, angle1) {
-        const nx0 = -Math.sin(angle0);
-        const ny0 = Math.cos(angle0);
-        const nx1 = Math.sin(angle1);
-        const ny1 = -Math.cos(angle1);
+    voronoiCell(flatVerts, vertCount, seeds, seedIndex, seedCount) {
         let count = vertCount;
-        for (let i = 0; i < count; i++) {
-            this.clipA[i * 2] = flatVerts[i * 2];
-            this.clipA[i * 2 + 1] = flatVerts[i * 2 + 1];
+        for (let k = 0; k < count; k++) {
+            this.clipA[k * 2] = flatVerts[k * 2];
+            this.clipA[k * 2 + 1] = flatVerts[k * 2 + 1];
         }
-        count = this.clipHalfPlaneInPlace(this.clipA, count, apexX, apexY, nx0, ny0, this.clipB);
-        if (count === 0) return { handle: 0, vertCount: 0 };
-        count = this.clipHalfPlaneInPlace(this.clipB, count, apexX, apexY, nx1, ny1, this.clipA);
-        if (count < 3) return { handle: 0, vertCount: 0 };
+        const six = seeds[seedIndex * 2];
+        const siy = seeds[seedIndex * 2 + 1];
+        let src = this.clipA;
+        let dst = this.clipB;
+        for (let j = 0; j < seedCount; j++) {
+            if (j === seedIndex) continue;
+            const sjx = seeds[j * 2];
+            const sjy = seeds[j * 2 + 1];
+            const mx = (six + sjx) * 0.5;
+            const my = (siy + sjy) * 0.5;
+            count = this.clipHalfPlaneInPlace(src, count, mx, my, six - sjx, siy - sjy, dst);
+            if (count < 3) return { handle: 0, vertCount: 0 };
+            const tmp = src;
+            src = dst;
+            dst = tmp;
+        }
         const handle = this.borrow(count);
-        this.copyVerts(handle, this.clipA, count);
+        this.copyVerts(handle, src, count);
         return { handle, vertCount: count };
     }
     centerVertsInPlace(handle, vertCount) {
@@ -855,39 +863,58 @@ export class FractureEngine {
     static shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, random = Math.random, stores = moduleStores) {
         if (flatVerts.length < 6) return [];
         stores.debris.reset();
-        const parentArea = Math.abs(polygonSignedArea2D(flatVerts));
-        const { x: apexX, y: apexY } = FractureEngine._resolveShatterApex(flatVerts, hitX, hitY);
-        let shardCount = FractureEngine._shardCountForPolygon(flatVerts, impactForce, apexX, apexY);
-        let result = FractureEngine._shatterGlassIntoStore(stores, flatVerts, apexX, apexY, shardCount, random);
-        const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
-        const areaCap = Math.max(2, Math.floor(parentArea / minArea));
-        const minShardsAllowed = Math.min(4, areaCap);
-        for (let attempt = 0; attempt < 4; attempt++) {
-            const totalArea = stores.debris.totalArea(result.debrisStart, result.debrisCount);
-            if (result.debrisCount >= 2 && totalArea >= parentArea * 0.92) {
-                const geometries = FractureEngine.materializeDebrisGeometries(stores, result.debrisStart, result.debrisCount);
-                releaseDebrisGeomHandles(stores, result.debrisStart, result.debrisCount);
-                stores.debris.reset();
-                return geometries;
-            }
-            releaseDebrisGeomHandles(stores, result.debrisStart, result.debrisCount);
+        const result = FractureEngine._shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce, random);
+        if (result.debrisCount < 2) {
             stores.debris.reset();
-            shardCount = Math.max(minShardsAllowed, Math.floor(shardCount * 0.72));
-            result = FractureEngine._shatterGlassIntoStore(stores, flatVerts, apexX, apexY, shardCount, random);
+            return [];
         }
-        if (result.debrisCount >= 2) {
-            const geometries = FractureEngine.materializeDebrisGeometries(stores, result.debrisStart, result.debrisCount);
-            releaseDebrisGeomHandles(stores, result.debrisStart, result.debrisCount);
-            stores.debris.reset();
-            return geometries;
-        }
+        const geometries = FractureEngine.materializeDebrisGeometries(stores, result.debrisStart, result.debrisCount);
+        releaseDebrisGeomHandles(stores, result.debrisStart, result.debrisCount);
         stores.debris.reset();
-        return [];
+        return geometries;
     }
-    static _shatterGlassIntoStore(stores, flatVerts, apexX, apexY, shardCount, random) {
+    static _shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce, random) {
+        const seedCount = FractureEngine._seedCountForPolygon(flatVerts, impactForce);
+        FractureEngine._buildShatterSeeds(flatVerts, hitX, hitY, seedCount, random, SHATTER_SEEDS);
+        const vertCount = flatVerts.length / 2;
         const debrisStart = stores.debris.write;
-        FractureEngine._buildGlassShardsIntoStore(stores, flatVerts, apexX, apexY, shardCount, random);
+        for (let i = 0; i < seedCount; i++) {
+            const cell = stores.geom.voronoiCell(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
+            if (cell.vertCount < 3) {
+                if (cell.handle) stores.geom.release(cell.handle);
+                continue;
+            }
+            stores.debris.appendCenteredPolygon(cell.handle, cell.vertCount);
+        }
         return { debrisStart, debrisCount: stores.debris.write - debrisStart };
+    }
+    static _buildShatterSeeds(flatVerts, hitX, hitY, seedCount, random, outSeeds) {
+        const { cx, cy } = polygonCentroid2D(flatVerts);
+        let ox = hitX;
+        let oy = hitY;
+        if (!pointInPolygon(ox, oy, flatVerts)) {
+            const edge = FractureEngine._closestPointOnPolygonBoundary(ox, oy, flatVerts);
+            ox = edge.x + (cx - edge.x) * 0.15;
+            oy = edge.y + (cy - edge.y) * 0.15;
+        }
+        const span = FractureEngine._polygonSpan(flatVerts);
+        const golden = 2.399963229728653;
+        outSeeds.length = 0;
+        outSeeds.push(ox, oy);
+        for (let i = 1; i < seedCount; i++) {
+            const r = span * 0.62 * Math.sqrt(i / seedCount) * (0.85 + 0.3 * random());
+            const a = i * golden + (random() - 0.5) * 0.5;
+            outSeeds.push(ox + Math.cos(a) * r, oy + Math.sin(a) * r);
+        }
+    }
+    static _seedCountForPolygon(flatVerts, impactForce) {
+        const area = Math.abs(polygonSignedArea2D(flatVerts));
+        const span = FractureEngine._polygonSpan(flatVerts);
+        const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
+        const areaCap = Math.max(2, Math.floor(area / minArea));
+        const minShardsAllowed = Math.min(4, areaCap);
+        let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
+        return Math.min(count, areaCap);
     }
     static measureGlassShard(flatVerts) {
         let minX = Infinity;
@@ -942,132 +969,6 @@ export class FractureEngine {
             }
         }
         return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
-    }
-    static _minThinEdgeForPolygon(flatVerts) {
-        return Math.max(3, FractureEngine._polygonSpan(flatVerts) * 0.08);
-    }
-    static _resolveShatterApex(flatVerts, hitX, hitY) {
-        const { cx, cy } = polygonCentroid2D(flatVerts);
-        const span = FractureEngine._polygonSpan(flatVerts);
-        let ax = hitX;
-        let ay = hitY;
-        if (!pointInPolygon(ax, ay, flatVerts)) {
-            const onEdge = FractureEngine._closestPointOnPolygonBoundary(hitX, hitY, flatVerts);
-            ax = onEdge.x;
-            ay = onEdge.y;
-        }
-        const inset = Math.min(span * 0.18, 18);
-        const dx = cx - ax;
-        const dy = cy - ay;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 1e-6) {
-            const push = Math.min(inset, dist * 0.4);
-            ax += (dx / dist) * push;
-            ay += (dy / dist) * push;
-        }
-        if (!pointInPolygon(ax, ay, flatVerts)) {
-            ax = cx;
-            ay = cy;
-        }
-        return { x: ax, y: ay };
-    }
-    static _clipHalfPlane(flatVerts, ax, ay, nx, ny, stores = moduleStores) {
-        const vertCount = flatVerts.length / 2;
-        if (vertCount === 0) return flatVerts;
-        const geom = stores.geom;
-        for (let i = 0; i < vertCount; i++) {
-            geom.clipA[i * 2] = flatVerts[i * 2];
-            geom.clipA[i * 2 + 1] = flatVerts[i * 2 + 1];
-        }
-        const outCount = geom.clipHalfPlaneInPlace(geom.clipA, vertCount, ax, ay, nx, ny, geom.clipB);
-        return geom.footprintSlice(geom.clipB, outCount);
-    }
-    static _acceptGlassShard(flatVerts, parentFlatVerts) {
-        const area = Math.abs(polygonSignedArea2D(flatVerts));
-        if (area < GLASS_MIN_SHARD_AREA) return false;
-        let minX = Infinity;
-        let maxX = -Infinity;
-        let minY = Infinity;
-        let maxY = -Infinity;
-        const count = flatVerts.length / 2;
-        for (let i = 0; i < count; i++) {
-            const x = flatVerts[i * 2];
-            const y = flatVerts[i * 2 + 1];
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-        }
-        const thick = Math.max(maxX - minX, maxY - minY);
-        const thin = Math.min(maxX - minX, maxY - minY);
-        if (thin < FractureEngine._minThinEdgeForPolygon(parentFlatVerts)) return false;
-        if (thick / Math.max(1e-6, thin) > GLASS_MAX_SLIVER_ASPECT) return false;
-        return true;
-    }
-    static _buildGlassShardsIntoStore(stores, flatVerts, apexX, apexY, shardCount, random) {
-        const baseStep = (Math.PI * 2) / shardCount;
-        const offset = random() * Math.PI * 2;
-        const angles = [];
-        for (let i = 0; i < shardCount; i++) {
-            const jitter = (random() - 0.5) * baseStep * 0.25;
-            angles.push(offset + i * baseStep + jitter);
-        }
-        angles.sort((a, b) => a - b);
-        const vertCount = flatVerts.length / 2;
-        let startIndex = 0;
-        let lastStartIdx = -1;
-        while (startIndex < angles.length) {
-            const a0 = angles[startIndex];
-            const a1 = startIndex === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[startIndex + 1];
-            const clip = stores.geom.wedgeClip(flatVerts, vertCount, apexX, apexY, a0, a1);
-            if (clip.vertCount < 3) {
-                if (clip.handle) stores.geom.release(clip.handle);
-                startIndex++;
-                continue;
-            }
-            const poly = stores.geom.buffer(clip.handle).subarray(0, clip.vertCount * 2);
-            if (FractureEngine._acceptGlassShard(poly, flatVerts)) {
-                stores.debris.appendCenteredPolygon(clip.handle, clip.vertCount);
-                lastStartIdx = startIndex;
-                startIndex++;
-            } else {
-                let merged = false;
-                if (lastStartIdx !== -1) {
-                    const prevA0 = angles[lastStartIdx];
-                    const angleDiff = a1 - prevA0;
-                    if (angleDiff < Math.PI * 0.95) {
-                        const mergedClip = stores.geom.wedgeClip(flatVerts, vertCount, apexX, apexY, prevA0, a1);
-                        if (mergedClip.vertCount >= 3) {
-                            stores.debris.write--;
-                            stores.geom.release(stores.debris.vertHandle[stores.debris.write]);
-                            stores.debris.appendCenteredPolygon(mergedClip.handle, mergedClip.vertCount);
-                            stores.geom.release(clip.handle);
-                            merged = true;
-                        } else if (mergedClip.handle) stores.geom.release(mergedClip.handle);
-                    }
-                }
-                if (merged) startIndex++;
-                else {
-                    stores.debris.appendCenteredPolygon(clip.handle, clip.vertCount);
-                    lastStartIdx = startIndex;
-                    startIndex++;
-                }
-            }
-        }
-    }
-    static _shardCountForPolygon(flatVerts, impactForce, apexX, apexY) {
-        const area = Math.abs(polygonSignedArea2D(flatVerts));
-        const span = FractureEngine._polygonSpan(flatVerts);
-        const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
-        const areaCap = Math.max(2, Math.floor(area / minArea));
-        const angleCap = Math.floor((Math.PI * 2) / GLASS_MIN_WEDGE_ANGLE);
-        const minShardsAllowed = Math.min(4, areaCap);
-        let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
-        count = Math.min(count, areaCap, angleCap);
-        const boundaryDist = FractureEngine._closestPointOnPolygonBoundary(apexX, apexY, flatVerts).dist;
-        const boundaryFactor = Math.min(1, boundaryDist / (span * 0.14));
-        count = Math.max(minShardsAllowed, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
-        return count;
     }
     static _glassFootprintArea(prop) {
         if (prop.footprintArea != null) return prop.footprintArea;
@@ -1128,21 +1029,7 @@ export class FractureEngine {
         const ctx = FractureEngine._fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
         const flatVerts = prop.shape.vertices;
         const random = FractureEngine._fractureRandomFromImpact(worldHitX, worldHitY, impactForce);
-        const parentArea = Math.abs(polygonSignedArea2D(flatVerts));
-        const { x: apexX, y: apexY } = FractureEngine._resolveShatterApex(flatVerts, ctx.impactLocalX, ctx.impactLocalY);
-        let shardCount = FractureEngine._shardCountForPolygon(flatVerts, impactForce, apexX, apexY);
-        let result = FractureEngine._shatterGlassIntoStore(stores, flatVerts, apexX, apexY, shardCount, random);
-        const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
-        const areaCap = Math.max(2, Math.floor(parentArea / minArea));
-        const minShardsAllowed = Math.min(4, areaCap);
-        for (let attempt = 0; attempt < 4; attempt++) {
-            const totalArea = stores.debris.totalArea(result.debrisStart, result.debrisCount);
-            if (result.debrisCount >= 2 && totalArea >= parentArea * 0.92) break;
-            releaseDebrisGeomHandles(stores, result.debrisStart, result.debrisCount);
-            stores.debris.write = result.debrisStart;
-            shardCount = Math.max(minShardsAllowed, Math.floor(shardCount * 0.72));
-            result = FractureEngine._shatterGlassIntoStore(stores, flatVerts, apexX, apexY, shardCount, random);
-        }
+        const result = FractureEngine._shatterPolygonIntoStore(stores, flatVerts, ctx.impactLocalX, ctx.impactLocalY, impactForce, random);
         if (result.debrisCount < 2) return null;
         return makeFractureDescriptor(stores, { ...ctx, debrisStart: result.debrisStart, debrisCount: result.debrisCount });
     }

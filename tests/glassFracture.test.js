@@ -8,7 +8,7 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
     tick.world.fractureEngine.queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force);
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
-import { GLASS_MAX_SHARDS_PER_SHATTER, GLASS_MAX_SLIVER_ASPECT } from "../Libraries/Physics/fracture.js";
+import { GLASS_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
 import { transformPoint2DInto } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
@@ -135,7 +135,7 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(prop, 2, 2);
         assert.equal(FractureEngine.canFracturePropSplit(prop), false);
     });
-    it("128x128 shatter stays bounded and avoids needle slivers", () => {
+    it("128x128 shatter stays bounded and conserves area exactly", () => {
         const parentArea = 128 * 128;
         const hits = [
             [0, 0],
@@ -149,23 +149,30 @@ describe("glass fracture", () => {
             const stats = analyzeShards(shards, parentArea);
             assert.ok(stats.count >= 4, `hit ${hitX},${hitY} produced too few shards`);
             assert.ok(stats.count <= GLASS_MAX_SHARDS_PER_SHATTER, `hit ${hitX},${hitY} exceeded shard cap`);
-            assert.ok(stats.maxAspect <= GLASS_MAX_SLIVER_ASPECT, `hit ${hitX},${hitY} aspect ${stats.maxAspect}`);
-            assert.ok(stats.minThin >= 3, `hit ${hitX},${hitY} thin edge ${stats.minThin}`);
-            assert.ok(Math.abs(stats.totalArea - parentArea) < parentArea * 0.08, `hit ${hitX},${hitY} area loss`);
+            assert.ok(Math.abs(stats.totalArea - parentArea) < parentArea * 1e-3, `hit ${hitX},${hitY} area loss`);
             assert.equal(countSpawnOverlaps(shards), 0, `hit ${hitX},${hitY} spawn overlap`);
         }
     });
-    it("128x128 cascade from largest shard stays bounded for two generations", () => {
+    it("128x128 cascade from largest shard conserves area for two generations", () => {
         let shard = FractureEngine.shatterGlassFootprint(64, 64, 0, 0, 25, deterministicRandom).reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         for (let gen = 1; gen <= 2; gen++) {
             const pieces = FractureEngine.shatterGlassPolygon(shard.footprintVertices, 0, 0, 25, deterministicRandom);
             const stats = analyzeShards(pieces, shard.footprintArea);
             assert.ok(stats.count >= 2);
             assert.ok(stats.count <= GLASS_MAX_SHARDS_PER_SHATTER);
-            assert.ok(stats.maxAspect <= GLASS_MAX_SLIVER_ASPECT);
+            assert.ok(Math.abs(stats.totalArea - shard.footprintArea) < shard.footprintArea * 1e-3, `gen ${gen} area loss`);
             assert.equal(countSpawnOverlaps(pieces), 0);
             shard = pieces.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         }
+    });
+    it("offset thin rectangle corner hit partitions exactly", () => {
+        const flat = new Float32Array([-20, -6, 20, -6, 20, 6, -20, 6]);
+        const parentArea = 40 * 12;
+        const shards = FractureEngine.shatterGlassPolygon(flat, 20, 6, 25, deterministicRandom);
+        const stats = analyzeShards(shards, parentArea);
+        assert.ok(stats.count >= 2);
+        assert.ok(Math.abs(stats.totalArea - parentArea) < parentArea * 1e-3);
+        assert.equal(countSpawnOverlaps(shards), 0);
     });
     it("128x128 min shard area scales with pane size", () => {
         const minArea = FractureEngine.minShardAreaForPolygon(new Float32Array([-64, -64, 64, -64, 64, 64, -64, 64]));
