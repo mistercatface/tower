@@ -6,6 +6,8 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
+import { WorldProp } from "../Libraries/Props/props.js";
+import { findClosestPolygonBoundaryGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
 import {
     createGrabDragBehavior,
     createDefaultSandboxBehaviors,
@@ -129,5 +131,45 @@ describe("grabDrag behavior", () => {
 
     it("ball asset lists grabDrag behavior", () => {
         assert.ok(propCatalog.ball.sandbox.behaviors.includes("grabDrag"));
+    });
+
+    it("findClosestPolygonBoundaryGrabPointInto snaps to corner or edge", () => {
+        const out = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
+        const box = boxLocalFootprint(12, 8);
+        findClosestPolygonBoundaryGrabPointInto(out, box, 0, 0, 0, 12, 8);
+        assert.ok(Math.abs(out.localX - 12) < 0.01);
+        assert.ok(Math.abs(out.localY - 8) < 0.01);
+        findClosestPolygonBoundaryGrabPointInto(out, box, 0, 0, 0, 0, 8);
+        assert.ok(Math.abs(out.localX) < 0.01);
+        assert.ok(Math.abs(out.localY - 8) < 0.01);
+    });
+
+    it("polygon grab uses off-center anchor and applies grab torque", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state);
+        const prop = registerProp(state, new WorldProp(0, 0, "tri_wedge", 0));
+        prop.angularVelocity = 0;
+        behavior.onPointerDown(prop, { x: -9, y: -5 });
+        behavior.onPointerMove(prop, { x: -9, y: 80 });
+        behavior.tickWorld(16);
+        assert.ok(prop._groundRollDrive);
+        assert.ok(prop._groundRollDrive.dirY > 0.5);
+        assert.notEqual(prop.angularVelocity, 0);
+    });
+
+    it("ball center grab does not apply off-center torque", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state);
+        const prop = registerProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0 }));
+        behavior.onPointerDown(prop, { x: 0, y: 0 });
+        behavior.onPointerMove(prop, { x: 100, y: 0 });
+        behavior.tickWorld(16);
+        assert.equal(prop.angularVelocity, 0);
+    });
+
+    it("glass pane hex block and tri wedge list grabDrag", () => {
+        assert.ok(propCatalog.glass_pane.sandbox.behaviors.includes("grabDrag"));
+        assert.ok(propCatalog.hex_block.sandbox.behaviors.includes("grabDrag"));
+        assert.ok(propCatalog.tri_wedge.sandbox.behaviors.includes("grabDrag"));
     });
 });

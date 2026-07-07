@@ -264,6 +264,43 @@ export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX
     }
     return bestIndex;
 }
+export function findClosestPolygonBoundaryGrabPointInto(out, vertices, posX, posY, facing, targetX, targetY) {
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    const count = vertices.length / 2;
+    let bestDistSq = Infinity;
+    let bestWorldX = posX;
+    let bestWorldY = posY;
+    for (let i = 0; i < count; i++) {
+        const j = (i + 1) % count;
+        const lax = vertices[i * 2];
+        const lay = vertices[i * 2 + 1];
+        const lbx = vertices[j * 2];
+        const lby = vertices[j * 2 + 1];
+        const ax = posX + lax * cos - lay * sin;
+        const ay = posY + lax * sin + lay * cos;
+        const bx = posX + lbx * cos - lby * sin;
+        const by = posY + lbx * sin + lby * cos;
+        const closest = closestPointOnLineSegment(targetX, targetY, ax, ay, bx, by);
+        const dx = targetX - closest.x;
+        const dy = targetY - closest.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestWorldX = closest.x;
+            bestWorldY = closest.y;
+        }
+    }
+    const wdx = bestWorldX - posX;
+    const wdy = bestWorldY - posY;
+    out.worldX = bestWorldX;
+    out.worldY = bestWorldY;
+    out.x = bestWorldX;
+    out.y = bestWorldY;
+    out.localX = wdx * cos + wdy * sin;
+    out.localY = -wdx * sin + wdy * cos;
+    return out;
+}
 function pointOnPolygonRing(px, py, count, xAt, yAt) {
     for (let i = 0, j = count - 1; i < count; j = i++) if (distanceSqToLineSegment(px, py, xAt(j), yAt(j), xAt(i), yAt(i)) <= POLYGON_EDGE_EPS_SQ) return true;
     return false;

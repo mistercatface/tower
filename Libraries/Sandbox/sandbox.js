@@ -1,12 +1,12 @@
 import { BeltPacked, FloorBelt, migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, computeCircleAimLineSegment, estimateRollingTravelDistance, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView, queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
-import { isKinematicallyActive, applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, worldAnchorFromBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
+import { isKinematicallyActive, applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, worldAnchorFromBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb, entityFacing } from "../Physics/physics.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
-import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
+import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, findClosestPolygonBoundaryGrabPointInto } from "../Math/math.js";
 import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, obstacleReplanAllowed, replanPriorityFor, agentPose } from "../Navigation/navigation.js";
 import { appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment, overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, overlayCachedCircleFillStroke, queryPropsInView, FloorBeltDrawCache, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
@@ -1949,16 +1949,28 @@ export function createDragLaunchBehaviors(state) {
 export function createDragLaunchBehavior(state) {
     return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[0]);
 }
+const GRAB_DRAG_TORQUE_GAIN = 0.004;
+const GRAB_ANCHOR_SCRATCH = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
+function resolveGrabDragAnchor(prop, world) {
+    const asset = propCatalog[prop.type];
+    if (isBlockFamilyAsset(asset) && prop.shape?.vertices?.length >= 6) {
+        const facing = entityFacing(prop);
+        findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
+        return { anchorLocalX: GRAB_ANCHOR_SCRATCH.localX, anchorLocalY: GRAB_ANCHOR_SCRATCH.localY, offsetX: GRAB_ANCHOR_SCRATCH.worldX - world.x, offsetY: GRAB_ANCHOR_SCRATCH.worldY - world.y };
+    }
+    return { anchorLocalX: 0, anchorLocalY: 0, offsetX: prop.x - world.x, offsetY: prop.y - world.y };
+}
 export function createGrabDragBehavior(state) {
     const propRuns = new Map();
     const activeRunIds = [];
     const tickPull = (prop, run) => {
         const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
         const rollConfig = getKineticRollConfig(prop);
+        const anchor = worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, GRAB_ANCHOR_SCRATCH);
         const tx = run.targetWorld.x + run.offsetX;
         const ty = run.targetWorld.y + run.offsetY;
-        const dx = tx - prop.x;
-        const dy = ty - prop.y;
+        const dx = tx - anchor.x;
+        const dy = ty - anchor.y;
         const dist = Math.hypot(dx, dy);
         if (dist < rollConfig.stopRadius) {
             decelerateRoll(prop, rollConfig);
@@ -1971,13 +1983,25 @@ export function createGrabDragBehavior(state) {
         }
         const ratio = power / grabConfig.maxPower;
         steerRollToward(prop, dx / dist, dy / dist, { ...rollConfig, accel: rollConfig.accel * (0.5 + ratio), maxSpeed: rollConfig.maxSpeed * (0.3 + ratio * 0.7) });
+        const rx = anchor.x - prop.x;
+        const ry = anchor.y - prop.y;
+        const leverArmSq = rx * rx + ry * ry;
+        if (leverArmSq > 0.25) {
+            const fx = (dx / dist) * power;
+            const fy = (dy / dist) * power;
+            const torque = rx * fy - ry * fx;
+            const invI = prop.momentOfInertia > 0 ? 1 / prop.momentOfInertia : 0;
+            prop.angularVelocity = (prop.angularVelocity ?? 0) + torque * invI * GRAB_DRAG_TORQUE_GAIN;
+            wakeKineticBody(prop);
+        }
     };
     return {
         id: GRAB_DRAG_BEHAVIOR_ID,
         onPointerDown(prop, world) {
             if (!prop?.strategy?.isKinetic || prop.isDead) return false;
             for (const id of GROUND_NAV_BEHAVIOR_IDS) state.sandbox.behaviorById.get(id)?.clearMoveTarget?.(prop);
-            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: prop.x - world.x, offsetY: prop.y - world.y, dragging: true });
+            const anchor = resolveGrabDragAnchor(prop, world);
+            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: anchor.offsetX, offsetY: anchor.offsetY, anchorLocalX: anchor.anchorLocalX, anchorLocalY: anchor.anchorLocalY, dragging: true });
             if (activeRunIds.indexOf(prop.id) === -1) activeRunIds.push(prop.id);
             wakeKineticBody(prop);
             return true;
@@ -2013,12 +2037,14 @@ export function createGrabDragBehavior(state) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
             const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
+            const anchor = worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, GRAB_ANCHOR_SCRATCH);
             const tx = run.targetWorld.x + run.offsetX;
             const ty = run.targetWorld.y + run.offsetY;
-            const dist = Math.hypot(tx - prop.x, ty - prop.y);
+            const dist = Math.hypot(tx - anchor.x, ty - anchor.y);
             const ratio = resolveDragLaunchPullRatio(dist, grabConfig);
             const hue = 180 - ratio * 180;
-            commands.push(overlaySegment(prop.x, prop.y, tx, ty, { stroke: `hsla(${hue}, 90%, 55%, 0.35)`, lineWidth: 1.5, dash: [3, 3] }));
+            commands.push(overlaySegment(anchor.x, anchor.y, tx, ty, { stroke: `hsla(${hue}, 90%, 55%, 0.35)`, lineWidth: 1.5, dash: [3, 3] }));
+            commands.push(overlayCircleFillStroke(anchor.x, anchor.y, 3, { fill: `hsla(${hue}, 90%, 55%, 0.45)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
             commands.push(overlayCircleFillStroke(tx, ty, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
         },
         reset() {
