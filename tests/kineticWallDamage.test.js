@@ -87,6 +87,20 @@ describe("kinetic wall damage", () => {
         assert.equal(state.gridWallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
     });
+    it("does not queue wall breaks without per-body overlap hits", async () => {
+        const state = await createWallDamageTestState();
+        state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 5, 5), 0, 2, 4));
+        const entity = { id: 42, vx: 560, vy: 0 };
+        const wallResolver = {
+            resolve() {
+                return { collided: true, hits: [] };
+            },
+        };
+        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        assert.equal(state.gridWallDamage.pendingBreaks.size, 0);
+        terminateWorkerNavigation(state.nav);
+    });
     it("resolveWallDamageTarget distinguishes voxel and rail segments", async () => {
         const state = await createWallDamageTestState();
         const grid = state.obstacleGrid;

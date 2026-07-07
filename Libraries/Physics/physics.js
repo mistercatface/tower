@@ -1374,33 +1374,6 @@ function resolveSlabAgainstWallSegments(physId, body, shape, segments, opts = {}
 export function invalidateWallResolveCache(...entities) {
     for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
 }
-function appendFrameWallResolveHit(spatialFrame, body, hit) {
-    const physId = body._physId;
-    if (physId === undefined || physId === -1) return;
-    const buckets = spatialFrame._wallResolveHitBuckets ?? (spatialFrame._wallResolveHitBuckets = []);
-    const touched = spatialFrame._wallResolveHitTouched ?? (spatialFrame._wallResolveHitTouched = []);
-    let bucket = buckets[physId];
-    if (!bucket) {
-        bucket = [];
-        buckets[physId] = bucket;
-        touched.push(physId);
-    }
-    bucket.push(hit);
-}
-export function collectFrameWallResolveHits(spatialFrame, body, out) {
-    const physId = body._physId;
-    if (physId === undefined || physId === -1) return;
-    const bucket = spatialFrame._wallResolveHitBuckets?.[physId];
-    if (!bucket) return;
-    for (let i = 0; i < bucket.length; i++) out.push(bucket[i]);
-}
-function clearFrameWallResolveHits(spatialFrame) {
-    const touched = spatialFrame._wallResolveHitTouched;
-    if (!touched?.length) return;
-    const buckets = spatialFrame._wallResolveHitBuckets;
-    for (let i = 0; i < touched.length; i++) buckets[touched[i]].length = 0;
-    touched.length = 0;
-}
 export class WallCollisionResolver {
     /**
      * @param {object} entity
@@ -1825,10 +1798,6 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
             if (!best || penetration.overlap > best.overlap) best = { ...penetration, segment: seg };
         }
         if (!best) break;
-        const approachDot = approachX * best.normalX + approachY * best.normalY;
-        const hit = { approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, isLinkCapsule: true };
-        appendFrameWallResolveHit(spatialFrame, bodyA, hit);
-        appendFrameWallResolveHit(spatialFrame, bodyB, hit);
         translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
@@ -1842,7 +1811,6 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
     const islandWalls = islandLinkWallCandidates;
     const linkWalls = linkFilteredWallCandidates;
     const gatherMark = spatialFrame.frameId;
-    clearFrameWallResolveHits(spatialFrame);
     let currentGroupStart = 0;
     for (let g = 0; g < slab.groupCount; g++) {
         const count = slab.groupCounts[g];
@@ -2964,7 +2932,6 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = c
     const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
-    if (hasActiveBodies) clearFrameWallResolveHits(frame);
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         sleepContactBuffer.reset();

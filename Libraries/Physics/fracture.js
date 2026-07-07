@@ -1,6 +1,6 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, collectFrameWallResolveHits, normalizeKineticBody } from "./physics.js";
+import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
 import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
@@ -500,7 +500,6 @@ class WallDebrisStore {
         integrated.length = 0;
     }
 }
-const wallDamageFrameHitsScratch = [];
 const railWallEndpointA = { x: 0, y: 0 };
 const railWallEndpointB = { x: 0, y: 0 };
 export function computeWallBreakStrength(preSpeed, approachDot, config) {
@@ -539,13 +538,9 @@ export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolv
     const shouldBreakWallHit = wallDamage && preSpeed > 0 ? (hit) => computeWallBreakStrength(preSpeed, hit.approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
     const result = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
     if (!wallDamage) return result.collided;
-    const hits = wallDamageFrameHitsScratch;
-    hits.length = 0;
-    collectFrameWallResolveHits(spatialFrame, entity, hits);
-    for (let i = 0; i < result.hits.length; i++) hits.push(result.hits[i]);
-    if (!hits.length) return result.collided;
+    if (!result.hits.length) return result.collided;
     wallDamage.spatialFrame = spatialFrame;
-    queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, entity);
+    queueWallHits(wallDamage, state.obstacleGrid, result.hits, preSpeed, entity);
     return result.collided;
 }
 export function flushPendingWallDamage(state) {
