@@ -1,9 +1,5 @@
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, deterministicUnitRandom } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
-import { addWorldPropToState, removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import propCatalog from "../../Assets/props/index.js";
-import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
-import { FractureEngine } from "./fracture.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -144,213 +140,6 @@ export function massFromBody(body) {
 }
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
-export const BP_KIND_WALL_DEBRIS = 2;
-export const MAX_WALL_DEBRIS = 2048;
-export const wallDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_WALL_DEBRIS), y: new Float32Array(MAX_WALL_DEBRIS), vx: new Float32Array(MAX_WALL_DEBRIS), vy: new Float32Array(MAX_WALL_DEBRIS), w: new Float32Array(MAX_WALL_DEBRIS), facing: new Float32Array(MAX_WALL_DEBRIS), ageMs: new Float32Array(MAX_WALL_DEBRIS), alpha: new Float32Array(MAX_WALL_DEBRIS) };
-const wallDebrisFreeStack = [];
-const wallDebrisBodiesByRow = new Array(MAX_WALL_DEBRIS);
-let wallDebrisNextId = 0x50000000;
-export function isWallChunkPropType(type) {
-    return type === "wall_voxel_chunk" || type === "wall_rail_chunk";
-}
-export class WallDebrisBody {
-    constructor() {
-        this.isWallDebris = true;
-        this._row = -1;
-        this._physId = undefined;
-        this.id = 0;
-        this.type = "";
-        this.strategy = null;
-        this.shape = undefined;
-        this.collisionParts = undefined;
-        this.chunks = undefined;
-        this.footprintVertices = undefined;
-        this.footprintArea = undefined;
-        this.radius = 0;
-        this.mass = 1;
-        this.height = undefined;
-        this.wallChunkProfileId = undefined;
-        this.wallChunkHeightPx = undefined;
-        this.faction = undefined;
-        this.isSleeping = false;
-        this.isDead = false;
-        this._fractureCooldown = 0;
-        this._neighbors = undefined;
-        this._neighborsFrameId = -1;
-    }
-    get x() {
-        return wallDebrisSlab.x[this._row];
-    }
-    set x(v) {
-        wallDebrisSlab.x[this._row] = v;
-    }
-    get y() {
-        return wallDebrisSlab.y[this._row];
-    }
-    set y(v) {
-        wallDebrisSlab.y[this._row] = v;
-    }
-    get vx() {
-        return wallDebrisSlab.vx[this._row];
-    }
-    set vx(v) {
-        wallDebrisSlab.vx[this._row] = v;
-    }
-    get vy() {
-        return wallDebrisSlab.vy[this._row];
-    }
-    set vy(v) {
-        wallDebrisSlab.vy[this._row] = v;
-    }
-    get angularVelocity() {
-        return wallDebrisSlab.w[this._row];
-    }
-    set angularVelocity(v) {
-        wallDebrisSlab.w[this._row] = v;
-    }
-    get facing() {
-        return wallDebrisSlab.facing[this._row];
-    }
-    set facing(v) {
-        wallDebrisSlab.facing[this._row] = v;
-    }
-    get ageMs() {
-        return wallDebrisSlab.ageMs[this._row];
-    }
-    set ageMs(v) {
-        wallDebrisSlab.ageMs[this._row] = v;
-    }
-    get alpha() {
-        return wallDebrisSlab.alpha[this._row];
-    }
-    set alpha(v) {
-        wallDebrisSlab.alpha[this._row] = v;
-    }
-    get momentOfInertia() {
-        return this.mass * this.radius * this.radius * 0.5;
-    }
-    get angle() {
-        return this.facing;
-    }
-    set angle(v) {
-        this.facing = v;
-    }
-    getRender3DKey() {
-        return this.strategy.render3DKey;
-    }
-    needsWallCollision() {
-        return !this.isSleeping;
-    }
-    tickPropFrame(dt, state, spatialFrame) {
-        this.ageMs += dt;
-        if (this.strategy.fadeOutMs !== undefined) {
-            const fadeOutMs = this.strategy.fadeOutMs;
-            const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
-            if (this.ageMs >= fadeOutMs + durationMs) {
-                if (state && spatialFrame) removeWallDebrisFromState(state, this, spatialFrame);
-                else this.isDead = true;
-                return;
-            }
-            if (this.ageMs >= fadeOutMs) {
-                const elapsedFade = this.ageMs - fadeOutMs;
-                this.alpha = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
-            } else this.alpha = 1;
-        }
-        if (this._fractureCooldown > 0) this._fractureCooldown--;
-    }
-    tickPropSubstep(dt) {
-        if (this.isSleeping) return;
-        applyVelocityDamping(this, dt, { friction: this.strategy.friction });
-    }
-}
-function acquireWallDebrisRow() {
-    let row = wallDebrisFreeStack.pop();
-    if (row === undefined) {
-        row = wallDebrisSlab.activeCount;
-        if (row >= MAX_WALL_DEBRIS) throw new Error(`Wall debris slab capacity exceeded (${MAX_WALL_DEBRIS})`);
-        wallDebrisSlab.activeCount = row + 1;
-    }
-    wallDebrisSlab.alpha[row] = 1;
-    wallDebrisSlab.ageMs[row] = 0;
-    return row;
-}
-function releaseWallDebrisRow(row) {
-    wallDebrisBodiesByRow[row] = null;
-    wallDebrisFreeStack.push(row);
-}
-export function acquireWallDebrisBody(type, x, y, facing = 0) {
-    const row = acquireWallDebrisRow();
-    let body = wallDebrisBodiesByRow[row];
-    if (!body) {
-        body = new WallDebrisBody();
-        wallDebrisBodiesByRow[row] = body;
-    }
-    body._row = row;
-    body.id = wallDebrisNextId++;
-    body.type = type;
-    body.strategy = buildWorldPropStrategyFromAsset(propCatalog[type]);
-    body.isDead = false;
-    body.isSleeping = false;
-    body.shape = undefined;
-    body.collisionParts = undefined;
-    body.chunks = undefined;
-    body.footprintVertices = undefined;
-    body._fractureCooldown = 0;
-    wallDebrisSlab.x[row] = x;
-    wallDebrisSlab.y[row] = y;
-    wallDebrisSlab.vx[row] = 0;
-    wallDebrisSlab.vy[row] = 0;
-    wallDebrisSlab.w[row] = 0;
-    wallDebrisSlab.facing[row] = facing;
-    return body;
-}
-export function removeWallDebrisFromState(world, body, spatialFrame) {
-    if (!body?.isWallDebris || body._row < 0) return;
-    if (spatialFrame) spatialFrame.evictKineticProp(body, world.kinetic);
-    const list = world.wallDebrisBodies;
-    if (list) {
-        const index = list.indexOf(body);
-        if (index >= 0) list.splice(index, 1);
-    }
-    body.isDead = true;
-    releaseWallDebrisRow(body._row);
-    body._row = -1;
-}
-export function spawnWallDebrisFromDescriptor(world, desc, spatialFrame) {
-    const propType = desc.kind === "voxel" ? "wall_voxel_chunk" : "wall_rail_chunk";
-    const body = acquireWallDebrisBody(propType, desc.x, desc.y, desc.angle);
-    applyPropBoxFootprint(body, desc.width / 2, desc.height / 2);
-    body.height = desc.wallHeight;
-    body.wallChunkProfileId = desc.wallChunkProfileId;
-    body.wallChunkHeightPx = desc.wallChunkHeightPx;
-    const sourceMass = desc.sourceMass ?? 1;
-    const massFactor = sourceMass / (sourceMass + body.mass);
-    const speed = Math.max(20, desc.sourceSpeed * 0.6 * (massFactor * 2));
-    body.vx = -desc.normalX * speed;
-    body.vy = -desc.normalY * speed;
-    body.angularVelocity = (deterministicUnitRandom(Math.imul(desc.idx | 0, 1597334677)) - 0.5) * 2.0;
-    if (!world.wallDebrisBodies) world.wallDebrisBodies = [];
-    world.wallDebrisBodies.push(body);
-    wakeKineticBody(body);
-    if (spatialFrame?.admitKineticProp) spatialFrame.admitKineticProp(body, world);
-    return FractureEngine.fractureSpawnedWallChunk(world, body, { contactX: desc.contactX, contactY: desc.contactY, sourceSpeed: desc.sourceSpeed, sourceMass: desc.sourceMass ?? 1, height: desc.wallHeight }, spatialFrame);
-}
-export function integrateWallDebrisSpawnStep(frame, bodies, dtMs) {
-    if (!bodies?.length || !frame || dtMs <= 0) return;
-    const integrated = [];
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        if (!body?.isWallDebris || body.isDead || body.isSleeping) continue;
-        body.tickPropSubstep(dtMs);
-        integrated.push(body);
-    }
-    if (!integrated.length) return;
-    snapshotKineticBodySlab(integrated);
-    frame.reindexKineticBodies(integrated);
-}
-export function listWallDebrisBodies(world) {
-    return world.wallDebrisBodies ?? [];
-}
 export const kineticDynamicSlab = { x: new Float32Array(MAX_PHYS_BODIES), y: new Float32Array(MAX_PHYS_BODIES), vx: new Float32Array(MAX_PHYS_BODIES), vy: new Float32Array(MAX_PHYS_BODIES), w: new Float32Array(MAX_PHYS_BODIES), activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), pinned: new Uint8Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
@@ -3186,8 +2975,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     let substepsRun = steps;
     const collisionHooks = { resolveWalls: (entity) => hooks.resolveWalls(entity, frame), applyContactSideEffects: hooks.applyContactSideEffects };
     for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, frame);
-    const wallDebris = world.wallDebrisBodies;
-    if (wallDebris) for (let i = wallDebris.length - 1; i >= 0; i--) hooks.updatePropFrame(wallDebris[i], dt, frame);
+    world.fractureEngine.wallDebris.tickFrames(dt, frame);
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
         for (let i = 0; i < activeBodies.length; i++) hooks.updatePropSubstep(activeBodies[i], subDt, frame);
@@ -4396,7 +4184,7 @@ export function applyPendingWallDamage(state, wallDamage) {
     wallDamage.spatialFrame = null;
     const spawned = [];
     for (const desc of descriptors) {
-        const shards = spawnWallDebrisFromDescriptor(state, desc, spatialFrame);
+        const shards = state.fractureEngine.wallDebris.spawnFromBreak(desc, spatialFrame);
         for (let i = 0; i < shards.length; i++) spawned.push(shards[i]);
     }
     if (!spawned.length && !commitBounds) return null;

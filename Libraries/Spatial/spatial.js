@@ -4048,19 +4048,18 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 snapshotKineticBodySlab([prop]);
             }
         }
-        const wallDebris = state.wallDebrisBodies;
-        if (wallDebris)
-            for (let i = 0; i < wallDebris.length; i++) {
-                const body = wallDebris[i];
-                if (body.isDead) continue;
-                body.ax = 0;
-                body.ay = 0;
-                this.insertEntity(body, physIdCounter++);
-                if (body.strategy?.isKinetic) {
-                    this._kineticBodies.push(body);
-                    snapshotKineticBodySlab([body]);
-                }
+        const wallDebris = state.fractureEngine.wallDebris.list();
+        for (let i = 0; i < wallDebris.length; i++) {
+            const body = wallDebris[i];
+            if (body.isDead) continue;
+            body.ax = 0;
+            body.ay = 0;
+            this.insertEntity(body, physIdCounter++);
+            if (body.strategy?.isKinetic) {
+                this._kineticBodies.push(body);
+                snapshotKineticBodySlab([body]);
             }
+        }
         this._nextPhysId = physIdCounter;
         this.syncActiveKineticBodies();
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
