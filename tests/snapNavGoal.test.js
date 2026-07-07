@@ -2,7 +2,7 @@ import { snapNavGoalCellIndex, snapNavGoalWorld } from "../Libraries/Navigation/
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  BeltPacked  } from "../Libraries/Spatial/spatial.js";
+import {  BeltPacked  } from "../Libraries/Spatial/belts.js";
 
 describe("snapNavGoal", () => {
     it("snapNavGoalCellIndex moves belt target to entry neighbor", () => {

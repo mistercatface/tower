@@ -4,7 +4,8 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid, BeltPacked  } from "../Libraries/Spatial/spatial.js";
+import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked } from "../Libraries/Spatial/belts.js";
 import { createSandboxController, spawnPlacedSandboxProp, createDefaultSandboxBehaviors, HPA_GROUND_NAV_BEHAVIOR_ID } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 function createEditorTestState() {

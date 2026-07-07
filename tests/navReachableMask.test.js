@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { bakeNavTopologyLocal, buildNavComponentMap, buildNavReachableMaskFromSeed } from "../Libraries/Navigation/navigation.js";
-import { BeltPacked, WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked } from "../Libraries/Spatial/belts.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 
 describe("buildNavReachableMaskFromSeed", () => {
     it("dead-end belt seed does not mark upstream belt cells", () => {

@@ -34,7 +34,7 @@ describe("hpa path length budget", () => {
 
     it("legMaxCost belt headroom covers penalized belt corridors that exceed cols + rows g-score", async () => {
         const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
-        const { BeltPacked } = await import("../Libraries/Spatial/spatial.js");
+        const { BeltPacked } = await import("../Libraries/Spatial/belts.js");
         const cols = 80;
         const rows = 3;
         const grid = openCorridorGrid(cols, rows);

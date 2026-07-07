@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { BeltPacked, WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked } from "../Libraries/Spatial/belts.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 
 describe("BeltPacked", () => {
     it("packs entry and exit sides into one byte", () => {

@@ -1,5 +1,6 @@
 import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena } from "../../Navigation/navigation.js";
-import { bindNavEdgePoolFromSab, BeltPacked } from "../../Spatial/spatial.js";
+import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
+import { BeltPacked } from "../../Spatial/belts.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
 export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null) {

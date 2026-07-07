@@ -1,7 +1,8 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { BeltPacked, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess, undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Spatial/belts.js";
+import { undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
 import { getNavWalkableCellIndex, isNavWalkableAt, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 

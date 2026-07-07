@@ -27,7 +27,7 @@ describe("nav step penalty", () => {
     });
     it("conveyor step penalty checks transition directions", async () => {
         const { createNavStepPenaltyLookup } = await import("../Libraries/Workers/Navigation/HpaWorkerEntry.js");
-        const { BeltPacked } = await import("../Libraries/Spatial/spatial.js");
+        const { BeltPacked } = await import("../Libraries/Spatial/belts.js");
         const cols = 5;
         const rows = 3;
         const floorPacked = new Uint8Array(cols * rows);

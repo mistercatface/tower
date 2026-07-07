@@ -3,7 +3,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  BeltPacked  } from "../Libraries/Spatial/spatial.js";
+import {  BeltPacked  } from "../Libraries/Spatial/belts.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import { createRailStampTestState } from "./harness/stateFactories.js";

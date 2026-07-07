@@ -11,7 +11,7 @@ import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spatial/spatial.js";
-import { FloorBelt } from "../../Libraries/Spatial/spatial.js";
+import { FloorBelt } from "../../Libraries/Spatial/belts.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandbox.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
