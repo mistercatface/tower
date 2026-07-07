@@ -92,12 +92,9 @@ export class FlatGridSearch {
         this._grid = null;
         this.cols = 0;
         this.neighbors = null;
-        this.cellCount = 0;
         this._cardinalDidx = null;
         this._octileDidx = null;
         this._lastCols = 0;
-        this.manhattanHeuristic = (i0, i1) => this.manhattanDistance(i0, i1);
-        this.octileHeuristic = (i0, i1) => this.octileDistance(i0, i1);
     }
     get grid() {
         return this._grid;
@@ -116,37 +113,32 @@ export class FlatGridSearch {
         }
         return cardinal ? this._cardinalDidx : this._octileDidx;
     }
-    manhattanDistance(idx0, idx1) {
-        return manhattanDistanceIdx(idx0, idx1, this.cols);
-    }
-    octileDistance(idx0, idx1) {
-        return octileDistanceIdx(idx0, idx1, this.cols);
-    }
     cardinal(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, this.manhattanHeuristic, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, outPath);
     }
     local(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, outPath);
     }
-    runGrid(startIdx, targetIdx, maxPathLen, maxDirs, heuristic, outPath) {
+    runGrid(startIdx, targetIdx, maxPathLen, maxDirs, outPath) {
         if (startIdx === targetIdx) {
             outPath[0] = startIdx;
             return 1;
         }
         globalOpenSet.reset();
         const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
-        const heuristicFn = heuristic;
+        const cols = this.cols;
+        const heuristic = maxDirs === 4 ? manhattanDistanceIdx : octileDistanceIdx;
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        globalOpenSet.push(startIdx, this.priorityFor(0, startIdx, targetIdx, heuristicFn));
+        globalOpenSet.push(startIdx, heuristic(startIdx, targetIdx, cols));
         const neighbors = this.neighbors;
         if (neighbors) {
             const edgeCosts = maxDirs === 4 ? CARDINAL_COSTS : OCTILE_COSTS;
             while (globalOpenSet.size > 0) {
                 const currIdx = globalOpenSet.pop();
                 const currentG = gScore[currIdx];
-                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn)) continue;
+                if (globalOpenSet.lastPopPriority > currentG + heuristic(currIdx, targetIdx, cols) + STALE_F_EPSILON) continue;
                 if (currentG > maxPathLen) continue;
                 if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
                 const base = currIdx * 8;
@@ -158,18 +150,17 @@ export class FlatGridSearch {
                     visited[nIdx] = runId;
                     gScore[nIdx] = tentativeG;
                     cameFrom[nIdx] = currIdx;
-                    globalOpenSet.push(nIdx, this.priorityFor(tentativeG, nIdx, targetIdx, heuristicFn));
+                    globalOpenSet.push(nIdx, tentativeG + heuristic(nIdx, targetIdx, cols));
                 }
             }
         } else {
             const grid = this.grid;
-            const cols = grid.cols;
             const offsets = this.getOffsets(maxDirs === 4, cols);
             const edgeCosts = maxDirs === 4 ? CARDINAL_COSTS : OCTILE_COSTS;
             while (globalOpenSet.size > 0) {
                 const currIdx = globalOpenSet.pop();
                 const currentG = gScore[currIdx];
-                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn)) continue;
+                if (globalOpenSet.lastPopPriority > currentG + heuristic(currIdx, targetIdx, cols) + STALE_F_EPSILON) continue;
                 if (currentG > maxPathLen) continue;
                 if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
                 for (let i = 0; i < maxDirs; i++) {
@@ -180,17 +171,11 @@ export class FlatGridSearch {
                     visited[nIdx] = runId;
                     gScore[nIdx] = tentativeG;
                     cameFrom[nIdx] = currIdx;
-                    globalOpenSet.push(nIdx, this.priorityFor(tentativeG, nIdx, targetIdx, heuristicFn));
+                    globalOpenSet.push(nIdx, tentativeG + heuristic(nIdx, targetIdx, cols));
                 }
             }
         }
         return 0;
-    }
-    priorityFor(tentativeG, idx, targetIdx, heuristic) {
-        return tentativeG + heuristic(idx, targetIdx);
-    }
-    isStaleQueueEntry(currF, currentG, idx, targetIdx, heuristic) {
-        return currF > currentG + heuristic(idx, targetIdx) + STALE_F_EPSILON;
     }
 }
 export function isNavWalkableAt(index, idx) {
