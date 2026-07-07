@@ -2498,17 +2498,6 @@ const HPA_GROUND_NAV_CONFIG = {
     },
     getPathOverlay(state, prop, run) {
         if (!run?.targetWorld) return null;
-        const grid = state.obstacleGrid;
-        if (FloorBelt.isEntityOnBelt(grid, prop.x, prop.y))
-            return {
-                mode: "direct",
-                pathNodes: [
-                    { x: prop.x, y: prop.y },
-                    { x: run.targetWorld.x, y: run.targetWorld.y },
-                ],
-                targetX: run.targetWorld.x,
-                targetY: run.targetWorld.y,
-            };
         const nav = run.hpaNav.navState;
         const progressIdx = nav.pathProgressIdx;
         const trace = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid) : { pathNodes: [] };
