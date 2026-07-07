@@ -4,7 +4,7 @@ import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, p
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
 import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
-export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 18 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
+export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 36, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
 const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
 export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
@@ -913,7 +913,7 @@ export class FractureEngine {
         const minArea = FractureEngine.minShardAreaForPolygon(flatVerts);
         const areaCap = Math.max(2, Math.floor(area / minArea));
         const minShardsAllowed = Math.min(4, areaCap);
-        let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
+        let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 12) + Math.floor(impactForce * 0.03)));
         return Math.min(count, areaCap);
     }
     static measureGlassShard(flatVerts) {
