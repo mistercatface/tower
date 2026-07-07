@@ -193,13 +193,13 @@ export class FloorBelt {
         if (grid.floorPacked[idx] !== 0) return idx;
         return -1;
     }
-    static rotateOccupantAt(state, occupant, steps = 1, onCommit = null) {
+    static rotateOccupantAt(state, occupant, steps = 1, onCommit) {
         const grid = state.obstacleGrid;
         const idx = occupant;
         const packed = grid.floorPacked[idx];
         if (!packed) return false;
         grid.writeFloorCell(idx, BeltPacked.rotate(packed, steps));
-        if (onCommit) onCommit(state, idx);
+        onCommit(state, idx);
         return true;
     }
     static canStampAt(state, idx) {
@@ -249,7 +249,7 @@ export class FloorBelt {
         grid.floorBeltCount = beltCount;
         return bounds;
     }
-    static tick(state, spatialFrame, dt, applyAcceleration = null) {
+    static tick(state, spatialFrame, dt, applyAcceleration) {
         const grid = state.obstacleGrid;
         if (grid.floorBeltCount === 0) return;
         const kineticBodies = spatialFrame._kineticBodies;
@@ -309,7 +309,7 @@ export class FloorBelt {
                 ax = tX * force + rX * (springForce + damping);
                 ay = tY * force + rY * (springForce + damping);
             }
-            if (applyAcceleration) applyAcceleration(entity, ax, ay, dtSec);
+            applyAcceleration(entity, ax, ay, dtSec);
         }
     }
     static syncAnimFromBodies(state, spatialFrame, dt) {

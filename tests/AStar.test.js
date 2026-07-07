@@ -64,49 +64,6 @@ describe("AStar Engine Search Suite", () => {
         ]);
     });
 
-    it("FlatGridSearch.dijkstra finds shortest path (uniform-cost)", () => {
-        const searchState = new SearchState(size);
-        const navGraph = { canStep: () => true };
-
-        const gridView = new FlatGridView(cols, rows, { canStep: () => true });
-        const search = new FlatGridSearch(searchState);
-        search.grid = gridView;
-        const outPath = new Int32Array(100);
-        const startIdx = 0 + 0 * cols;
-        const targetIdx = 2 + 2 * cols;
-        const len = search.dijkstra(startIdx, targetIdx, 20, outPath);
-        assert.ok(len > 0);
-        const path = [];
-        for (let i = 0; i < len; i++) {
-            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
-        }
-        assert.equal(path.length, 3);
-        assert.deepEqual(path, [
-            { col: 0, row: 0 },
-            { col: 1, row: 1 },
-            { col: 2, row: 2 }
-        ]);
-    });
-
-    it("FlatGridSearch.greedy finds a fast heuristic-focused path", () => {
-        const searchState = new SearchState(size);
-        const navGraph = { canStep: () => true };
-
-        const gridView = new FlatGridView(cols, rows, { canStep: () => true });
-        const search = new FlatGridSearch(searchState);
-        search.grid = gridView;
-        const outPath = new Int32Array(100);
-        const startIdx = 0 + 0 * cols;
-        const targetIdx = 2 + 2 * cols;
-        const len = search.greedy(startIdx, targetIdx, 20, outPath);
-        assert.ok(len > 0);
-        const path = [];
-        for (let i = 0; i < len; i++) {
-            path.push({ col: outPath[i] % cols, row: (outPath[i] / cols) | 0 });
-        }
-        assert.deepEqual(path[path.length - 1], { col: 2, row: 2 });
-    });
-
     it("FlatAbstractGraphSearch solves simple flat CSR graph", () => {
         const searchState = new SearchState(3);
         const cols = 10;

@@ -86,11 +86,9 @@ function reconstructIndexPathInto(cameFrom, targetIdx, outPath) {
     return count;
 }
 const globalOpenSet = new IdxMinHeap();
-const SEARCH_MODE = { AStar: 1, Dijkstra: 2, Greedy: 3 };
 export class FlatGridSearch {
-    constructor(searchState, stepPenaltyLookup = null) {
+    constructor(searchState) {
         this.searchState = searchState;
-        this.stepPenaltyLookup = stepPenaltyLookup;
         this._grid = null;
         this.cols = 0;
         this.neighbors = null;
@@ -125,18 +123,12 @@ export class FlatGridSearch {
         return octileDistanceIdx(idx0, idx1, this.cols);
     }
     cardinal(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, this.manhattanHeuristic, SEARCH_MODE.AStar, SEARCH_MODE.AStar, false, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 4, this.manhattanHeuristic, outPath);
     }
     local(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, SEARCH_MODE.AStar, SEARCH_MODE.AStar, true, outPath);
+        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, outPath);
     }
-    dijkstra(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, SEARCH_MODE.Dijkstra, SEARCH_MODE.Dijkstra, true, outPath);
-    }
-    greedy(startIdx, targetIdx, maxPathLen, outPath) {
-        return this.runGrid(startIdx, targetIdx, maxPathLen, 8, this.octileHeuristic, SEARCH_MODE.Greedy, 0, true, outPath);
-    }
-    runGrid(startIdx, targetIdx, maxPathLen, maxDirs, heuristic, priority, stale, stepPenalty, outPath) {
+    runGrid(startIdx, targetIdx, maxPathLen, maxDirs, heuristic, outPath) {
         if (startIdx === targetIdx) {
             outPath[0] = startIdx;
             return 1;
@@ -147,27 +139,26 @@ export class FlatGridSearch {
         gScore[startIdx] = 0;
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
-        globalOpenSet.push(startIdx, this.priorityFor(priority, 0, startIdx, targetIdx, heuristicFn));
+        globalOpenSet.push(startIdx, this.priorityFor(0, startIdx, targetIdx, heuristicFn));
         const neighbors = this.neighbors;
         if (neighbors) {
             const edgeCosts = maxDirs === 4 ? CARDINAL_COSTS : OCTILE_COSTS;
             while (globalOpenSet.size > 0) {
                 const currIdx = globalOpenSet.pop();
                 const currentG = gScore[currIdx];
-                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn, stale)) continue;
+                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn)) continue;
                 if (currentG > maxPathLen) continue;
                 if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
                 const base = currIdx * 8;
                 for (let i = 0; i < maxDirs; i++) {
                     const nIdx = neighbors[base + i];
                     if (nIdx === -1) continue;
-                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCost(nIdx) : 0;
-                    const tentativeG = currentG + edgeCosts[i] + stepExtra;
+                    const tentativeG = currentG + edgeCosts[i];
                     if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
                     visited[nIdx] = runId;
                     gScore[nIdx] = tentativeG;
                     cameFrom[nIdx] = currIdx;
-                    globalOpenSet.push(nIdx, this.priorityFor(priority, tentativeG, nIdx, targetIdx, heuristicFn));
+                    globalOpenSet.push(nIdx, this.priorityFor(tentativeG, nIdx, targetIdx, heuristicFn));
                 }
             }
         } else {
@@ -178,44 +169,33 @@ export class FlatGridSearch {
             while (globalOpenSet.size > 0) {
                 const currIdx = globalOpenSet.pop();
                 const currentG = gScore[currIdx];
-                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn, stale)) continue;
+                if (this.isStaleQueueEntry(globalOpenSet.lastPopPriority, currentG, currIdx, targetIdx, heuristicFn)) continue;
                 if (currentG > maxPathLen) continue;
                 if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
                 for (let i = 0; i < maxDirs; i++) {
                     const nIdx = currIdx + offsets[i];
                     if (!grid.canStep(currIdx, nIdx)) continue;
-                    const stepExtra = stepPenalty && this.stepPenaltyLookup ? this.stepPenaltyLookup.extraCost(nIdx) : 0;
-                    const tentativeG = currentG + edgeCosts[i] + stepExtra;
+                    const tentativeG = currentG + edgeCosts[i];
                     if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
                     visited[nIdx] = runId;
                     gScore[nIdx] = tentativeG;
                     cameFrom[nIdx] = currIdx;
-                    globalOpenSet.push(nIdx, this.priorityFor(priority, tentativeG, nIdx, targetIdx, heuristicFn));
+                    globalOpenSet.push(nIdx, this.priorityFor(tentativeG, nIdx, targetIdx, heuristicFn));
                 }
             }
         }
         return 0;
     }
-    priorityFor(priority, tentativeG, idx, targetIdx, heuristic) {
-        if (priority === SEARCH_MODE.Dijkstra) return tentativeG;
-        const h = heuristic(idx, targetIdx);
-        if (priority === SEARCH_MODE.Greedy) return h;
-        return tentativeG + h;
+    priorityFor(tentativeG, idx, targetIdx, heuristic) {
+        return tentativeG + heuristic(idx, targetIdx);
     }
-    isStaleQueueEntry(currF, currentG, idx, targetIdx, heuristic, stale) {
-        if (stale === SEARCH_MODE.Dijkstra) return currF > currentG + STALE_F_EPSILON;
-        if (stale === SEARCH_MODE.AStar) return currF > currentG + heuristic(idx, targetIdx) + STALE_F_EPSILON;
-        return false;
+    isStaleQueueEntry(currF, currentG, idx, targetIdx, heuristic) {
+        return currF > currentG + heuristic(idx, targetIdx) + STALE_F_EPSILON;
     }
 }
 export function isNavWalkableAt(index, idx) {
     if (idx < 0 || idx >= index.flags.length) return false;
     return index.flags[idx] !== 0;
-}
-export function countNavWalkableFlags(flags) {
-    let count = 0;
-    for (let i = 0; i < flags.length; i++) if (flags[i]) count++;
-    return count;
 }
 export function writeNavWalkableFlags(flags, cells) {
     flags.fill(0);
@@ -724,8 +704,8 @@ export const REPLAN_PRIORITY_NORMAL = 2;
 export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
 export const HPA_REPLAN_FRAME_START_BUDGET = 12;
 export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
-export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, stepPenalty, state = null) {
-    return new HpaReplanRequest({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, stepPenalty: stepPenalty ?? null, state });
+export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, state = null) {
+    return new HpaReplanRequest({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, state });
 }
 /** @param {import("./navSession.js").NavSessionState} navState */
 export function trackNavStuck(navState, x, y, stuckMoveThreshold) {
@@ -886,10 +866,9 @@ export class HpaAbstractGraph extends FlatGraphView {
         return { extendedGraph, startTemp, targetTemp };
     }
 }
-export const HPA_LOCAL_DISTANCE_THRESHOLD = 32;
-const globalReplanPayload = { startIdx: 0, targetIdx: 0, stepPenaltyKeys: null, stepPenaltyCosts: null };
+const globalReplanPayload = { startIdx: 0, targetIdx: 0 };
 export class HpaReplanRequest {
-    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, stepPenalty = null, state = null }) {
+    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, state = null }) {
         this.obstacleGrid = obstacleGrid;
         this.startX = startX;
         this.startY = startY;
@@ -898,7 +877,6 @@ export class HpaReplanRequest {
         this.graphEpoch = graphEpoch;
         this.topologyKey = topologyKey;
         this.navTopology = navTopology;
-        this.stepPenalty = stepPenalty;
         this.state = state;
     }
     toWorkerPayload() {
@@ -914,8 +892,6 @@ export class HpaReplanRequest {
         const snappedIdx = snapNavGoalCellIndex(grid, startIdx, targetIdx);
         globalReplanPayload.startIdx = startIdx;
         globalReplanPayload.targetIdx = snappedIdx;
-        globalReplanPayload.stepPenaltyKeys = this.stepPenalty?.keys ?? null;
-        globalReplanPayload.stepPenaltyCosts = this.stepPenalty?.costs ?? null;
         return globalReplanPayload;
     }
     applyResult(navState, worker, result) {
@@ -1347,27 +1323,6 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     }
     return { nodeCount, nodeIdx, cellToRegion, edgeSources: Int16Array.from(edgeSources), edgeTargets: Int16Array.from(edgeTargets), edgeCosts: Uint16Array.from(edgeCosts), edgeWrite: edgeSources.length, nodeIds, idToIdx };
 }
-export function unpackRegionGraphToNodes(cellToRegion, nodeIdx, nodeCount, frame) {
-    const { cols, rows } = frame;
-    const size = cols * rows;
-    const cellToNode = new Int32Array(size).fill(-1);
-    const nodesMap = {};
-    for (let i = 0; i < nodeCount; i++) {
-        const id = nodeIdx[i];
-        const idx = nodeIdx[i];
-        const node = new RegionNode(id, idx);
-        node.cells = [];
-        nodesMap[id] = node;
-    }
-    for (let idx = 0; idx < size; idx++) {
-        const regionIdx = cellToRegion[idx];
-        if (regionIdx < 0) continue;
-        const node = nodesMap[nodeIdx[regionIdx]];
-        cellToNode[idx] = node.idx;
-        node.cells.push(idx);
-    }
-    return { nodesMap, cellToNode, nodeIdCounter: nodeCount };
-}
 /** @typedef {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} WorldObstacleGrid */
 /** @typedef {import("../Pathfinding/HpaPathWorker.js").HpaPathWorker} HpaPathWorker */
 /** @typedef {import("../DataStructures/CellRect.js").CellBounds} CellBounds */
@@ -1527,15 +1482,6 @@ export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertex
 export function bakeNavTopologyLocal(grid, damageBounds = null) {
     const navTopology = NavTopology.bakeLocal(grid, damageBounds);
     return { frame: navTopology.frame, topology: navTopology.topology, simView: null, cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability, navTopology };
-}
-/**
- * Capture the worker bake input snapshot from a live grid.
- *
- * @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {import("../DataStructures/CellRect.js").CellBounds | null} [bounds]
- */
-export function captureNavGridSnapshot(grid, bounds = null) {
-    return NavTopology.packSnapshot(grid, bounds);
 }
 /** Octile step slots per cell in nav snapshot CSR. */
 export const OCTILE_DIRS_PER_CELL = 8;
@@ -1862,15 +1808,6 @@ export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
 /** Worker-synced nav topology → graph view (map-gen, vision, belt endpoints). */
 export function createNavGraphViewFromTopology(navTopology) {
     return createNavGraphView(navTopology.grid, { cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability }, navTopology);
-}
-/** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {import("../DataStructures/CellRect.js").CellBounds | null} [damageBounds] */
-export function canStepForAuthoringIdx(grid, fromIdx, toIdx, damageBounds = null) {
-    return createNavGraphViewWithLocalBake(grid, damageBounds).canStepIdx(fromIdx, toIdx);
-}
-/** @param {ReturnType<typeof createNavGraphView>} graph @param {number[]} cellIndices */
-export function canStepPathIdx(graph, cellIndices) {
-    for (let i = 0; i < cellIndices.length - 1; i++) if (!graph.canStepIdx(cellIndices[i], cellIndices[i + 1])) return false;
-    return true;
 }
 /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function createNavGraphViewWithLocalBake(grid, damageBounds = null) {
@@ -2403,7 +2340,7 @@ export class HpaNavSession {
     }
     replan(prop, targetX, targetY, state, priority = REPLAN_PRIORITY_TARGET) {
         const nav = state.nav;
-        return nav.session.requestReplan(this.navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, prop.navStepPenalty, state), priority);
+        return nav.session.requestReplan(this.navState, buildReplanParams(state.obstacleGrid, prop.x, prop.y, targetX, targetY, nav, state), priority);
     }
     requestReplan(prop, targetX, targetY, state, priority, reason) {
         const accepted = this.replan(prop, targetX, targetY, state, priority);
@@ -3135,14 +3072,6 @@ export function flowCellBlocked(flowToNavIdx, navBlocked, flowIdx) {
 }
 const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0.707]);
 const FLOW_DECODE_Y = new Float32Array([-0.707, -1, -0.707, 0, 0, 0, 0.707, 1, 0.707]);
-export function decodeFlowFieldCell(byte) {
-    if (byte === 255) return null;
-    const vx = FLOW_DECODE_X[byte];
-    const vy = FLOW_DECODE_Y[byte];
-    const len = Math.hypot(vx, vy);
-    if (len <= 0) return null;
-    return { x: vx / len, y: vy / len };
-}
 export function sampleFlowDirectionInto(out, x, y, flowField, frame) {
     if (!flowField) return null;
     const { cellSize, cols, rows, centerX, centerY, offsetX, offsetY } = frame;

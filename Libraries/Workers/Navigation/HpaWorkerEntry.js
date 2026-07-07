@@ -2,17 +2,6 @@ import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView,
 import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
-export function createNavStepPenaltyLookup(keys, costs) {
-    let maxIdx = 0;
-    if (keys && keys.length) for (let i = 0; i < keys.length; i++) if (keys[i] > maxIdx) maxIdx = keys[i];
-    const costArray = keys && keys.length ? new Uint8Array(maxIdx + 1) : null;
-    if (costArray) for (let i = 0; i < keys.length; i++) costArray[keys[i]] = costs[i];
-    return {
-        extraCost(idx) {
-            return costArray && idx < costArray.length ? costArray[idx] : 0;
-        },
-    };
-}
 export class HpaBufferManager {
     constructor() {
         this.maxSlots = 0;
@@ -217,12 +206,11 @@ export class HpaRegionGraphManager {
     }
 }
 export class HpaReplanContext {
-    constructor({ frame, topology, navView, graph, penaltyLookup, cellToRegion }) {
+    constructor({ frame, topology, navView, graph, cellToRegion }) {
         this.frame = frame;
         this.topology = topology;
         this.navView = navView;
         this.graph = graph;
-        this.penaltyLookup = penaltyLookup;
         this.cellToRegion = cellToRegion;
     }
 }
@@ -251,7 +239,6 @@ export class HpaReplanPlanner {
         this.ensureScratchBuffers(cols, rows);
         this.gridSearch.neighbors = context.topology.octileNeighbors;
         this.gridSearch.cols = cols;
-        this.gridSearch.stepPenaltyLookup = context.penaltyLookup;
         const prep = prepareHpaReplanPrep(cols, rows, context.cellToRegion, context.graph, startIdx, targetIdx);
         if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, prep, startIdx, targetIdx);
         return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols, rows);
@@ -333,10 +320,9 @@ export class HpaPathfindingWorker {
     }
     runReplan(slot, data) {
         const frame = this.topology.requireGridFrame();
-        const stepPenaltyLookup = createNavStepPenaltyLookup(data.stepPenaltyKeys, data.stepPenaltyCosts);
         const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
         const baseGraph = this.graph.abstractGraph();
-        const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, penaltyLookup: stepPenaltyLookup, cellToRegion });
+        const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, cellToRegion });
         return this.planner.run(slot, context, data);
     }
     onMessage(e) {

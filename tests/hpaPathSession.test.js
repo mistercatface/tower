@@ -9,7 +9,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 async function replanParams(grid) {
     const navigation = await createWorkerNavigation(grid);
-    const request = buildReplanParams(grid, 40, 40, 120, 120, navigation, null);
+    const request = buildReplanParams(grid, 40, 40, 120, 120, navigation);
     request._navigation = navigation;
     return request;
 }
