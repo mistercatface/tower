@@ -1,5 +1,4 @@
 import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
-import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -1285,9 +1284,9 @@ function createSlabWallMotion(physId) {
         },
     };
 }
-function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitution = 0, friction = 0.9, passes = 2, preSpeed = 0, wallBreakConfig = null } = {}) {
+function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitution = 0, friction = 0.9, passes = 2, shouldBreakWallHit = null } = {}) {
     let collided = false;
-    const wantHits = wallBreakConfig != null;
+    const wantHits = shouldBreakWallHit != null;
     const hits = wantHits ? [] : EMPTY_WALL_HITS;
     const radius = shape.getBoundingRadius();
     let bestNormalX = 0;
@@ -1337,14 +1336,15 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
         const bvy = motion.vy;
         const bw = motion.w;
         const approachDot = dotXY(bvx - bw * (contact.cy - by), bvy + bw * (contact.cx - bx), bestNormalX, bestNormalY);
-        if (wallBreakConfig && preSpeed > 0 && computeWallBreakStrength(preSpeed, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength) {
-            hits.push({ approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX: contact.cx, contactY: contact.cy });
+        const hit = wantHits ? { approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX: contact.cx, contactY: contact.cy } : null;
+        if (hit && shouldBreakWallHit(hit)) {
+            hits.push(hit);
             motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contact.cx, contact.cy, { restitution, friction });
             break;
         }
         motion.applyPositionCorrection(bestNormalX, bestNormalY, bestOverlap);
         motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contact.cx, contact.cy, { restitution, friction });
-        if (wantHits) hits.push({ approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX: contact.cx, contactY: contact.cy });
+        if (hit) hits.push(hit);
     }
     return { collided, hits };
 }
@@ -1358,24 +1358,47 @@ function resolveSlabAgainstWallSegments(physId, body, shape, segments, opts = {}
 export function invalidateWallResolveCache(...entities) {
     for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
 }
-const wallResolveHitsScratch = [];
+function appendFrameWallResolveHit(spatialFrame, body, hit) {
+    const physId = body._physId;
+    if (physId === undefined || physId === -1) return;
+    const buckets = spatialFrame._wallResolveHitBuckets ?? (spatialFrame._wallResolveHitBuckets = []);
+    const touched = spatialFrame._wallResolveHitTouched ?? (spatialFrame._wallResolveHitTouched = []);
+    let bucket = buckets[physId];
+    if (!bucket) {
+        bucket = [];
+        buckets[physId] = bucket;
+        touched.push(physId);
+    }
+    bucket.push(hit);
+}
+export function collectFrameWallResolveHits(spatialFrame, body, out) {
+    const physId = body._physId;
+    if (physId === undefined || physId === -1) return;
+    const bucket = spatialFrame._wallResolveHitBuckets?.[physId];
+    if (!bucket) return;
+    for (let i = 0; i < bucket.length; i++) out.push(bucket[i]);
+}
+function clearFrameWallResolveHits(spatialFrame) {
+    const touched = spatialFrame._wallResolveHitTouched;
+    if (!touched?.length) return;
+    const buckets = spatialFrame._wallResolveHitBuckets;
+    for (let i = 0; i < touched.length; i++) buckets[touched[i]].length = 0;
+    touched.length = 0;
+}
 export class WallCollisionResolver {
     /**
      * @param {object} entity
      * @param {{ frameId: number, getWallCandidates: (entity: object) => object[] }} spatialFrame
      * @returns {boolean}
      */
-    resolve(entity, spatialFrame, preSpeed = 0, wallBreakConfig = null) {
-        if (entity._wallResolvedFrame === spatialFrame.frameId) return entity._wallResolvedCollided;
+    resolve(entity, spatialFrame, shouldBreakWallHit = null) {
+        if (entity._wallResolvedFrame === spatialFrame.frameId) return { collided: entity._wallResolvedCollided, hits: EMPTY_WALL_HITS };
         entity._wallResolvedFrame = spatialFrame.frameId;
         const candidateWalls = spatialFrame.getWallCandidates(entity);
-        wallResolveHitsScratch.length = 0;
-        if (entity._wallResolveHits) for (let hi = 0; hi < entity._wallResolveHits.length; hi++) wallResolveHitsScratch.push(entity._wallResolveHits[hi]);
-        const hits = wallResolveHitsScratch;
+        const hits = [];
         if (candidateWalls.length === 0) {
-            entity._wallResolvedCollided = hits.length > 0;
-            entity._wallResolveHits = hits.length ? hits.slice() : null;
-            return entity._wallResolvedCollided;
+            entity._wallResolvedCollided = false;
+            return { collided: false, hits };
         }
         const wp = entity.strategy?.wallPhysics;
         const parts = getEntityCollisionParts(entity);
@@ -1383,14 +1406,13 @@ export class WallCollisionResolver {
         const physId = entity._physId;
         const hasSlab = physId !== undefined && physId !== -1;
         for (let i = 0; i < parts.length; i++) {
-            const result = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig }) : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, preSpeed, wallBreakConfig });
+            const result = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, shouldBreakWallHit }) : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, shouldBreakWallHit });
             if (result.collided) collided = true;
             if (result.hits.length) hits.push(...result.hits);
         }
-        entity._wallResolveHits = hits.length ? hits.slice() : null;
         if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
-        return collided;
+        return { collided, hits };
     }
 }
 const LINK_CAPSULE_WALL_PASSES = 4;
@@ -1787,10 +1809,8 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
         if (!best) break;
         const approachDot = approachX * best.normalX + approachY * best.normalY;
         const hit = { approachDot, normalX: best.normalX, normalY: best.normalY, segment: best.segment, overlap: best.overlap, isLinkCapsule: true };
-        if (!bodyA._wallResolveHits) bodyA._wallResolveHits = [];
-        if (!bodyB._wallResolveHits) bodyB._wallResolveHits = [];
-        bodyA._wallResolveHits.push(hit);
-        bodyB._wallResolveHits.push(hit);
+        appendFrameWallResolveHit(spatialFrame, bodyA, hit);
+        appendFrameWallResolveHit(spatialFrame, bodyB, hit);
         translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
@@ -1804,10 +1824,7 @@ function projectIslandLinkCapsulesAgainstWalls(tick) {
     const islandWalls = islandLinkWallCandidates;
     const linkWalls = linkFilteredWallCandidates;
     const gatherMark = spatialFrame.frameId;
-    for (let i = 0; i < slab.activeCount; i++) {
-        if (slab.bodyA[i]) slab.bodyA[i]._wallResolveHits = null;
-        if (slab.bodyB[i]) slab.bodyB[i]._wallResolveHits = null;
-    }
+    clearFrameWallResolveHits(spatialFrame);
     let currentGroupStart = 0;
     for (let g = 0; g < slab.groupCount; g++) {
         const count = slab.groupCounts[g];
@@ -2927,7 +2944,7 @@ export function runCollisionPipeline(tick, { resolveWalls, kineticIterations = c
     const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
     const activeBodies = frame._activeKineticBodies;
     const hasActiveBodies = activeBodies.length > 0;
-    if (hasActiveBodies) for (let i = 0; i < activeBodies.length; i++) activeBodies[i]._wallResolveHits = null;
+    if (hasActiveBodies) clearFrameWallResolveHits(frame);
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         sleepContactBuffer.reset();
@@ -3998,13 +4015,6 @@ export function applyGroundRollDrive(prop, dtSec) {
     applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
     return true;
 }
-export function computeWallBreakStrength(preSpeed, approachDot, config) {
-    if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
-    const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
-    const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
-    const angleT = Math.min(1, -approachDot / preSpeed);
-    return speedT * angleT;
-}
 export function applyRollSpin(prop) {
     if (!prop.strategy?.rolls) return;
     const speed = Math.hypot(prop.vx, prop.vy);
@@ -4075,118 +4085,4 @@ export function decelerateRoll(prop, config) {
 }
 export function clearGroundRollDrive(prop) {
     delete prop._groundRollDrive;
-}
-/** @typedef {{ kind: "voxel", idx: number } | { kind: "rail", idx: number, side: number }} WallDamageTarget */
-export function wallDamageKey(target) {
-    return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
-}
-export function resolveWallDamageTarget(grid, segment) {
-    if (!segment) return null;
-    const idx = segment.gridIdx;
-    if (idx < 0 || idx >= grid.grid.length) return null;
-    if (segment.isStaticGridProxy && cellIsStaticWall(grid, idx)) return { kind: "voxel", idx };
-    if (segment.isEdgeRail) {
-        const side = segment.gridSide;
-        if (side == null) return null;
-        const edge = grid.getCellEdge(idx, side);
-        if (!isRailWallEdge(edge)) return null;
-        return { kind: "rail", idx, side };
-    }
-    return null;
-}
-export function getGridWallDamageState(state) {
-    return state.gridWallDamage;
-}
-export function createGridWallDamage(state, config) {
-    return { config, pendingBreaks: new Map(), commit: createDeferredGridWallCommit(state), spatialFrame: null };
-}
-export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
-    const wallDamage = getGridWallDamageState(state);
-    const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
-    const collided = wallResolver.resolve(entity, spatialFrame, preSpeed, wallDamage?.config ?? null);
-    if (!wallDamage || !entity._wallResolveHits?.length) return collided;
-    // Store spatialFrame on wallDamage for use during flush/promotion
-    wallDamage.spatialFrame = spatialFrame;
-    queueWallHits(wallDamage, state.obstacleGrid, entity._wallResolveHits, preSpeed, entity);
-    return collided;
-}
-export function flushPendingWallDamage(state) {
-    const wallDamage = getGridWallDamageState(state);
-    if (!wallDamage) return null;
-    return applyPendingWallDamage(state, wallDamage);
-}
-function targetToSegment(grid, target) {
-    if (target.kind === "voxel") return { gridIdx: target.idx, isStaticGridProxy: true, isEdgeRail: false };
-    return { gridIdx: target.idx, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
-}
-export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
-    const config = wallDamage.config;
-    for (let i = 0; i < hits.length; i++) {
-        const hit = hits[i];
-        const target = resolveWallDamageTarget(grid, hit.segment);
-        if (!target) continue;
-        const strength = computeWallBreakStrength(preSpeed, hit.approachDot, config);
-        if (strength < config.minBreakStrength) continue;
-        const key = wallDamageKey(target);
-        if (!wallDamage.pendingBreaks.has(key)) {
-            const col = target.idx % grid.cols;
-            const row = (target.idx / grid.cols) | 0;
-            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
-            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
-            wallDamage.pendingBreaks.set(key, { target, strength, hit, contactX: cx, contactY: cy, normalX: hit.normalX ?? 0, normalY: hit.normalY ?? 0, sourceSpeed: preSpeed, sourceMass: entity ? (entity.mass ?? 1) : 1 });
-        }
-    }
-}
-export function applyPendingWallDamage(state, wallDamage) {
-    if (!wallDamage.pendingBreaks.size) return null;
-    const grid = state.obstacleGrid;
-    const descriptors = [];
-    for (const item of wallDamage.pendingBreaks.values()) {
-        const target = item.target;
-        if (!resolveWallDamageTarget(grid, targetToSegment(grid, target))) continue;
-        const idx = target.idx;
-        if (target.kind === "voxel") {
-            const info = getVoxelWallInfo(grid, idx);
-            if (info == null) continue;
-            const cx = grid.gridCenterXByIdx(idx);
-            const cy = grid.gridCenterYByIdx(idx);
-            const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-            const profileId = resolveCellSurfaceProfileId(grid, idx, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
-            const wallHeightPx = grid.grid[idx] * grid.cellSize;
-            descriptors.push({ kind: "voxel", idx: idx, x: cx, y: cy, angle: 0, width: grid.cellSize, height: grid.cellSize, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
-        } else {
-            const info = getRailWallInfo(grid, idx, target.side);
-            if (!info) continue;
-            const p1 = { x: 0, y: 0 };
-            const p2 = { x: 0, y: 0 };
-            cellEdgeEndpointsIdx(grid, idx, target.side, p1, p2, 0);
-            const cx = (p1.x + p2.x) * 0.5;
-            const cy = (p1.y + p2.y) * 0.5;
-            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-            const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-            const profileId = resolveEdgeSurfaceProfileId(grid, idx, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
-            const wallHeightPx = info.heightLevel * grid.cellSize;
-            descriptors.push({ kind: "rail", idx: idx, side: target.side, x: cx, y: cy, angle: angle, width: grid.cellSize, height: info.thicknessLevel ?? 1, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
-        }
-    }
-    wallDamage.pendingBreaks.clear();
-    const voxels = [];
-    const railBatch = new RailWallBatch(Math.max(1, descriptors.length));
-    for (const desc of descriptors)
-        if (desc.kind === "voxel") voxels.push(desc.idx);
-        else railBatch.add(desc.idx, desc.side, 1, 1);
-    let commitBounds = null;
-    if (voxels.length || railBatch.count) {
-        wallDamage.commit.clearWalls({ voxels, rails: railBatch });
-        commitBounds = wallDamage.commit.flush();
-    }
-    const spatialFrame = wallDamage.spatialFrame ?? null;
-    wallDamage.spatialFrame = null;
-    const spawned = [];
-    for (const desc of descriptors) {
-        const shards = state.fractureEngine.wallDebris.spawnFromBreak(desc, spatialFrame);
-        for (let i = 0; i < shards.length; i++) spawned.push(shards[i]);
-    }
-    if (!spawned.length && !commitBounds) return null;
-    return { commitBounds, spawned };
 }

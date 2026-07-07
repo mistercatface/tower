@@ -2452,19 +2452,7 @@ export class WorldSceneRenderer {
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
             this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, p, distSq);
         }
-        const wallDebris = state.fractureEngine.wallDebris.list();
-        const vx = viewport.x;
-        const vy = viewport.y;
-        const halfW = viewport.width * 0.5 + 64;
-        const halfH = viewport.height * 0.5 + 64;
-        for (let i = 0; i < wallDebris.length; i++) {
-            const p = wallDebris[i];
-            if (p.isDead || p._row < 0) continue;
-            const dx = p.x - vx;
-            const dy = p.y - vy;
-            if (Math.abs(dx) > halfW + (p.radius ?? 16) || Math.abs(dy) > halfH + (p.radius ?? 16)) continue;
-            this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, p, dx * dx + dy * dy);
-        }
+        state.fractureEngine.wallDebris.appendVisibleProps(this.visibleDrawQueue, viewport, DRAW_KIND_PROP);
     }
     _appendVisibleStaticGridWalls(state, viewport) {
         collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);

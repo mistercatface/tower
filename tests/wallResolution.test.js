@@ -5,7 +5,7 @@ import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { resolveBodyAgainstWallSegments, ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
+import { FractureEngine, computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
 import { KineticSession } from "../GameState/KineticSession.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
@@ -34,8 +34,7 @@ describe("polygon wall resolution", () => {
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
-        const wallBreakConfig = { minBreakStrength: 1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
-        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction, wallBreakConfig });
+        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction, shouldBreakWallHit: () => false });
         assert.ok(collided);
         assert.ok(hits.length > 0);
         assert.ok(hits[0].normalX > 0.9);
@@ -100,8 +99,7 @@ describe("polygon wall resolution", () => {
         const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], {
             restitution: bar.strategy.wallPhysics.restitution,
             friction: bar.strategy.wallPhysics.friction,
-            preSpeed: 560,
-            wallBreakConfig,
+            shouldBreakWallHit: (hit) => computeWallBreakStrength(560, hit.approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
         });
         assert.ok(collided);
         assert.ok(hits.length >= 1);
@@ -119,8 +117,7 @@ describe("polygon wall resolution", () => {
         resolveBodyAgainstWallSegments(bar, bar.shape, [wall], {
             restitution: bar.strategy.wallPhysics.restitution,
             friction: bar.strategy.wallPhysics.friction,
-            preSpeed: 40,
-            wallBreakConfig,
+            shouldBreakWallHit: (hit) => computeWallBreakStrength(40, hit.approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
         });
         assert.ok(!shapeOverlapsWall(bar, wall));
     });

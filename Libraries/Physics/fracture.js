@@ -1,9 +1,9 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab } from "./physics.js";
+import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, collectFrameWallResolveHits } from "./physics.js";
+import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
 import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
-// ===== FRACTURE ENGINE =====
 export const FRACTURE_TUNING = { shared: { impactThreshold: 12, minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 18, maxSliverAspect: 10, minWedgeAngle: Math.PI / 12 }, chunk: { minCell: 8, maxCellsPerAxis: 6, damageRadiusScale: 0.05, neighborRollHighForceThreshold: 12, neighborRollHighForceDivisor: 30, neighborRollLowForceBase: 0.1, neighborRollLowForceScale: 0.04, rectMergeEps: 1e-3 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 export const CHUNK_MIN_CELL = FRACTURE_TUNING.chunk.minCell;
 export const CHUNK_MAX_CELLS_PER_AXIS = FRACTURE_TUNING.chunk.maxCellsPerAxis;
@@ -473,6 +473,8 @@ class WallDebrisStore {
         this.engine = engine;
         this.world = world;
         this._bodies = [];
+        this._integratedScratch = [];
+        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: undefined, chunks: undefined, footprintVertices: undefined, footprintArea: undefined, radius: 0, mass: 1, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined };
     }
     list() {
         return this._bodies;
@@ -522,11 +524,6 @@ class WallDebrisStore {
         wallDebrisSlab.facing[row] = facing;
         return body;
     }
-    _releaseTransient(body) {
-        body.isDead = true;
-        this._releaseRow(body._row);
-        body._row = -1;
-    }
     remove(body, spatialFrame) {
         if (!spatialFrame) throw new Error("Wall debris removal requires spatial frame");
         if (!body?.isWallDebris || body._row < 0) throw new Error("Invalid wall debris removal");
@@ -541,7 +538,20 @@ class WallDebrisStore {
     spawnFromBreak(desc, spatialFrame) {
         if (!spatialFrame) throw new Error("Wall debris break spawn requires spatial frame");
         const propType = desc.kind === "voxel" ? "wall_voxel_chunk" : "wall_rail_chunk";
-        const parent = this.acquireBody(propType, desc.x, desc.y, desc.angle);
+        const parent = this._breakSource;
+        parent.type = propType;
+        parent.strategy = buildWorldPropStrategyFromAsset(propCatalog[propType]);
+        parent.x = desc.x;
+        parent.y = desc.y;
+        parent.vx = 0;
+        parent.vy = 0;
+        parent.angularVelocity = 0;
+        parent.facing = desc.angle;
+        parent.shape = undefined;
+        parent.collisionParts = undefined;
+        parent.chunks = undefined;
+        parent.footprintVertices = undefined;
+        parent.footprintArea = undefined;
         applyPropBoxFootprint(parent, desc.width / 2, desc.height / 2);
         parent.height = desc.wallHeight;
         parent.wallChunkProfileId = desc.wallChunkProfileId;
@@ -555,10 +565,7 @@ class WallDebrisStore {
         const sourceMotion = FractureEngine._currentPropMotion(parent);
         const force = FractureEngine.impactForceFromContact(desc.sourceSpeed, sourceMass, parent.mass ?? 1) + FRACTURE_TUNING.wallSpawn.forceBias;
         const fracture = FractureEngine.fracturePropOnImpact(parent, desc.contactX, desc.contactY, force, this.engine);
-        if (!fracture) {
-            this._releaseTransient(parent);
-            throw new Error("Wall break produced no fracture debris");
-        }
+        if (!fracture) throw new Error("Wall break produced no fracture debris");
         const stores = fracture._stores ?? this.engine.stores;
         const random = FractureEngine._fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
         const spawned = this.spawnShardsFromFracture(
@@ -574,14 +581,11 @@ class WallDebrisStore {
         if (!spawned.length) {
             releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
             stores.debris.reset();
-            this._releaseTransient(parent);
             throw new Error("Wall break spawned no debris bodies");
         }
-        for (let i = 0; i < spawned.length; i++) if (desc.wallHeight != null) spawned[i].height = desc.wallHeight;
         admitKineticPropsBatch(spatialFrame, spawned, this.world);
         releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
         stores.debris.reset();
-        this._releaseTransient(parent);
         return spawned;
     }
     spawnShardsFromFracture(world, sourceProp, fracture, stores = moduleStores, configureShard = null, sourceMotion = null) {
@@ -628,9 +632,31 @@ class WallDebrisStore {
     tickFrames(dt, spatialFrame) {
         for (let i = this._bodies.length - 1; i >= 0; i--) this._bodies[i].tickPropFrame(dt, this.world, spatialFrame);
     }
+    appendVisibleProps(drawQueue, viewport, drawKindProp) {
+        const bounds = viewport.bounds("props");
+        const minX = bounds.minX;
+        const maxX = bounds.maxX;
+        const minY = bounds.minY;
+        const maxY = bounds.maxY;
+        const vx = viewport.x;
+        const vy = viewport.y;
+        for (let i = 0; i < this._bodies.length; i++) {
+            const body = this._bodies[i];
+            if (body.isDead || body._row < 0) throw new Error("Invalid live wall debris body");
+            const radius = body.radius;
+            if (!(radius > 0)) throw new Error("Wall debris missing radius");
+            const x = body.x;
+            const y = body.y;
+            if (x + radius < minX || x - radius > maxX || y + radius < minY || y - radius > maxY) continue;
+            const dx = x - vx;
+            const dy = y - vy;
+            drawQueue.push(drawKindProp, 0, body, dx * dx + dy * dy);
+        }
+    }
     integrateSpawned(frame, bodies, dtMs) {
         if (!bodies.length || dtMs <= 0) return;
-        const integrated = [];
+        const integrated = this._integratedScratch;
+        integrated.length = 0;
         for (let i = 0; i < bodies.length; i++) {
             const body = bodies[i];
             if (body.isDead || body.isSleeping) continue;
@@ -640,7 +666,132 @@ class WallDebrisStore {
         if (!integrated.length) return;
         snapshotKineticBodySlab(integrated);
         frame.reindexKineticBodies(integrated);
+        integrated.length = 0;
     }
+}
+const wallDamageFrameHitsScratch = [];
+const railWallEndpointA = { x: 0, y: 0 };
+const railWallEndpointB = { x: 0, y: 0 };
+export function computeWallBreakStrength(preSpeed, approachDot, config) {
+    if (preSpeed < config.minStrikeSpeed || approachDot >= 0) return 0;
+    const speedSpan = config.referenceMaxSpeed - config.minStrikeSpeed;
+    const speedT = speedSpan <= 0 ? 1 : Math.min(1, Math.max(0, (preSpeed - config.minStrikeSpeed) / speedSpan));
+    const angleT = Math.min(1, -approachDot / preSpeed);
+    return speedT * angleT;
+}
+export function wallDamageKey(target) {
+    return target.kind === "voxel" ? `v:${target.idx}` : `r:${target.idx}:${target.side}`;
+}
+export function resolveWallDamageTarget(grid, segment) {
+    if (!segment) return null;
+    const idx = segment.gridIdx;
+    if (idx < 0 || idx >= grid.grid.length) return null;
+    if (segment.isStaticGridProxy && cellIsStaticWall(grid, idx)) return { kind: "voxel", idx };
+    if (segment.isEdgeRail) {
+        const side = segment.gridSide;
+        if (side == null) return null;
+        const edge = grid.getCellEdge(idx, side);
+        if (!isRailWallEdge(edge)) return null;
+        return { kind: "rail", idx, side };
+    }
+    return null;
+}
+export function getGridWallDamageState(state) {
+    return state.gridWallDamage;
+}
+export function createGridWallDamage(state, config) {
+    return { config, pendingBreaks: new Map(), commit: createDeferredGridWallCommit(state), spatialFrame: null };
+}
+export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
+    const wallDamage = getGridWallDamageState(state);
+    const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
+    const shouldBreakWallHit = wallDamage && preSpeed > 0 ? (hit) => computeWallBreakStrength(preSpeed, hit.approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
+    const result = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
+    if (!wallDamage) return result.collided;
+    const hits = wallDamageFrameHitsScratch;
+    hits.length = 0;
+    collectFrameWallResolveHits(spatialFrame, entity, hits);
+    for (let i = 0; i < result.hits.length; i++) hits.push(result.hits[i]);
+    if (!hits.length) return result.collided;
+    wallDamage.spatialFrame = spatialFrame;
+    queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, entity);
+    return result.collided;
+}
+export function flushPendingWallDamage(state) {
+    const wallDamage = getGridWallDamageState(state);
+    if (!wallDamage) return null;
+    return applyPendingWallDamage(state, wallDamage);
+}
+function targetToSegment(target) {
+    if (target.kind === "voxel") return { gridIdx: target.idx, isStaticGridProxy: true, isEdgeRail: false };
+    return { gridIdx: target.idx, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
+}
+export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
+    const config = wallDamage.config;
+    for (let i = 0; i < hits.length; i++) {
+        const hit = hits[i];
+        const target = resolveWallDamageTarget(grid, hit.segment);
+        if (!target) continue;
+        const strength = computeWallBreakStrength(preSpeed, hit.approachDot, config);
+        if (strength < config.minBreakStrength) continue;
+        const key = wallDamageKey(target);
+        if (!wallDamage.pendingBreaks.has(key)) {
+            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
+            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
+            wallDamage.pendingBreaks.set(key, { target, strength, hit, contactX: cx, contactY: cy, normalX: hit.normalX ?? 0, normalY: hit.normalY ?? 0, sourceSpeed: preSpeed, sourceMass: entity ? (entity.mass ?? 1) : 1 });
+        }
+    }
+}
+export function applyPendingWallDamage(state, wallDamage) {
+    if (!wallDamage.pendingBreaks.size) return null;
+    const grid = state.obstacleGrid;
+    const descriptors = [];
+    for (const item of wallDamage.pendingBreaks.values()) {
+        const target = item.target;
+        if (!resolveWallDamageTarget(grid, targetToSegment(target))) continue;
+        const idx = target.idx;
+        if (target.kind === "voxel") {
+            const info = getVoxelWallInfo(grid, idx);
+            if (info == null) continue;
+            const cx = grid.gridCenterXByIdx(idx);
+            const cy = grid.gridCenterYByIdx(idx);
+            const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
+            const profileId = resolveCellSurfaceProfileId(grid, idx, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
+            const wallHeightPx = grid.grid[idx] * grid.cellSize;
+            descriptors.push({ kind: "voxel", idx: idx, x: cx, y: cy, angle: 0, width: grid.cellSize, height: grid.cellSize, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
+        } else {
+            const info = getRailWallInfo(grid, idx, target.side);
+            if (!info) continue;
+            cellEdgeEndpointsIdx(grid, idx, target.side, railWallEndpointA, railWallEndpointB, 0);
+            const cx = (railWallEndpointA.x + railWallEndpointB.x) * 0.5;
+            const cy = (railWallEndpointA.y + railWallEndpointB.y) * 0.5;
+            const angle = Math.atan2(railWallEndpointB.y - railWallEndpointA.y, railWallEndpointB.x - railWallEndpointA.x);
+            const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
+            const profileId = resolveEdgeSurfaceProfileId(grid, idx, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
+            const wallHeightPx = info.heightLevel * grid.cellSize;
+            descriptors.push({ kind: "rail", idx: idx, side: target.side, x: cx, y: cy, angle: angle, width: grid.cellSize, height: info.thicknessLevel ?? 1, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
+        }
+    }
+    wallDamage.pendingBreaks.clear();
+    const voxels = [];
+    const railBatch = new RailWallBatch(Math.max(1, descriptors.length));
+    for (const desc of descriptors)
+        if (desc.kind === "voxel") voxels.push(desc.idx);
+        else railBatch.add(desc.idx, desc.side, 1, 1);
+    let commitBounds = null;
+    if (voxels.length || railBatch.count) {
+        wallDamage.commit.clearWalls({ voxels, rails: railBatch });
+        commitBounds = wallDamage.commit.flush();
+    }
+    const spatialFrame = wallDamage.spatialFrame ?? null;
+    wallDamage.spatialFrame = null;
+    const spawned = [];
+    for (const desc of descriptors) {
+        const shards = state.fractureEngine.wallDebris.spawnFromBreak(desc, spatialFrame);
+        for (let i = 0; i < shards.length; i++) spawned.push(shards[i]);
+    }
+    if (!spawned.length && !commitBounds) return null;
+    return { commitBounds, spawned };
 }
 export class FractureEngine {
     constructor(world) {
@@ -1963,4 +2114,3 @@ const FRACTURE_MODES = {
     glass: { retainParent: false, needsChunkGrid: false, initFootprint: false, onImpact: (prop, worldHitX, worldHitY, impactForce, stores) => FractureEngine._fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce, stores), spawnShards: (world, sourceProp, fracture, spatialFrame, stores) => FractureEngine._spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame, stores), canSplit: (prop, minSize) => FractureEngine._canGlassFractureSplit(prop, minSize) },
     circle: { retainParent: false, skipCanSplit: true, onImpact: (prop, worldHitX, worldHitY, impactForce, stores) => FractureEngine._fractureCirclePropOnImpact(prop, worldHitX, worldHitY, impactForce, stores), spawnShards: (world, sourceProp, fracture, spatialFrame, stores) => FractureEngine._spawnCircleShatterShards(world, sourceProp, fracture, spatialFrame, stores) },
 };
-// ===== END FRACTURE ENGINE =====

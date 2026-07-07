@@ -2,8 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
-import { computeWallBreakStrength } from "../Libraries/Physics/physics.js";
-import { applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Physics/physics.js";;
+import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Physics/fracture.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
@@ -77,9 +76,8 @@ describe("kinetic wall damage", () => {
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,6, 6), isStaticGridProxy: true, isEdgeRail: false };
         const entity = { id: 42, vx: 560, vy: 0 };
         const wallResolver = {
-            resolve(body) {
-                body._wallResolveHits = [{ approachDot: -560, normalX: 1, normalY: 0, segment }];
-                return true;
+            resolve() {
+                return { collided: true, hits: [{ approachDot: -560, normalX: 1, normalY: 0, segment }] };
             },
         };
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
@@ -159,16 +157,15 @@ describe("kinetic wall damage", () => {
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,3, 3), isStaticGridProxy: true, isEdgeRail: false };
         const entity = { id: 101, type: "crate", vx: 560, vy: 0 };
         const wallResolver = {
-            resolve(body) {
-                body._wallResolveHits = [{
+            resolve() {
+                return { collided: true, hits: [{
                     approachDot: -560,
                     normalX: 1,
                     normalY: 0,
                     segment,
                     contactX: 3 * 16 + 8,
                     contactY: 3 * 16 + 8
-                }];
-                return true;
+                }] };
             },
         };
         
@@ -203,9 +200,8 @@ describe("kinetic wall damage", () => {
         state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid, 3, 3), isStaticGridProxy: true, isEdgeRail: false };
         resolveKineticWallDamage(state, { id: 101, type: "ball", vx: 560, vy: 0 }, wallDebrisTestFrame(), {
-            resolve(body) {
-                body._wallResolveHits = [{ approachDot: -560, normalX: 1, normalY: 0, segment, contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 }];
-                return true;
+            resolve() {
+                return { collided: true, hits: [{ approachDot: -560, normalX: 1, normalY: 0, segment, contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 }] };
             },
         });
         flushPendingWallDamage(state);
@@ -234,16 +230,15 @@ describe("kinetic wall damage", () => {
         const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,4, 4), gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
         const entity = { id: 102, type: "ball", vx: 0, vy: -560 };
         const wallResolver = {
-            resolve(body) {
-                body._wallResolveHits = [{
+            resolve() {
+                return { collided: true, hits: [{
                     approachDot: -560,
                     normalX: 0,
                     normalY: -1,
                     segment,
                     contactX: 4 * 16 + 8,
                     contactY: 4 * 16 + 16
-                }];
-                return true;
+                }] };
             },
         };
         
