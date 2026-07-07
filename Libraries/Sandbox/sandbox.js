@@ -98,7 +98,8 @@ export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
 export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID]);
-export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", dragLaunchWait: "Drag launch (wait for rest)", dragLaunchFacing: "Drag launch (yaw to shot)", spawner: "Spawner", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
+export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
+export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", dragLaunchWait: "Drag launch (wait for rest)", dragLaunchFacing: "Drag launch (yaw to shot)", spawner: "Spawner", [GRAB_DRAG_BEHAVIOR_ID]: "Grab drag", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
@@ -1732,6 +1733,9 @@ export function tryExportLinkedBallChainSpawnGroup(members) {
 export function getDragLaunchConfig(asset) {
     return asset.sandbox.dragLaunch;
 }
+export function getGrabDragConfig(asset) {
+    return asset.sandbox.grabDrag ?? asset.sandbox.dragLaunch;
+}
 /** @param {number} anchorX @param {number} anchorY @param {number} [startX] @param {number} [startY] @returns {DragLaunchAim} */
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
     return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
@@ -1760,7 +1764,7 @@ export function resolveDragLaunchPullRatio(drag, config) {
     return Math.min(1, (drag - config.minDrag) / span);
 }
 /** @param {number} drag @param {DragLaunchConfig} config */
-function computeLaunchPower(drag, config) {
+export function computeLaunchPower(drag, config) {
     const pullRatio = resolveDragLaunchPullRatio(drag, config);
     if (pullRatio <= 0) return 0;
     const exponent = config.powerCurve ?? 1;
@@ -1944,6 +1948,84 @@ export function createDragLaunchBehaviors(state) {
 }
 export function createDragLaunchBehavior(state) {
     return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[0]);
+}
+export function createGrabDragBehavior(state) {
+    const propRuns = new Map();
+    const activeRunIds = [];
+    const tickPull = (prop, run) => {
+        const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
+        const rollConfig = getKineticRollConfig(prop);
+        const tx = run.targetWorld.x + run.offsetX;
+        const ty = run.targetWorld.y + run.offsetY;
+        const dx = tx - prop.x;
+        const dy = ty - prop.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < rollConfig.stopRadius) {
+            decelerateRoll(prop, rollConfig);
+            return;
+        }
+        const power = computeLaunchPower(dist, grabConfig);
+        if (power <= 0) {
+            decelerateRoll(prop, rollConfig);
+            return;
+        }
+        const ratio = power / grabConfig.maxPower;
+        steerRollToward(prop, dx / dist, dy / dist, { ...rollConfig, accel: rollConfig.accel * (0.5 + ratio), maxSpeed: rollConfig.maxSpeed * (0.3 + ratio * 0.7) });
+    };
+    return {
+        id: GRAB_DRAG_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            if (!prop?.strategy?.isKinetic || prop.isDead) return false;
+            for (const id of GROUND_NAV_BEHAVIOR_IDS) state.sandbox.behaviorById.get(id)?.clearMoveTarget?.(prop);
+            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: prop.x - world.x, offsetY: prop.y - world.y, dragging: true });
+            if (activeRunIds.indexOf(prop.id) === -1) activeRunIds.push(prop.id);
+            wakeKineticBody(prop);
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = propRuns.get(prop.id);
+            if (!run?.dragging) return;
+            run.targetWorld.x = world.x;
+            run.targetWorld.y = world.y;
+        },
+        onPointerUp(prop) {
+            const run = propRuns.get(prop.id);
+            if (!run) return;
+            run.dragging = false;
+            clearGroundRollDrive(prop);
+            propRuns.delete(prop.id);
+            const idx = activeRunIds.indexOf(prop.id);
+            if (idx >= 0) activeRunIds.splice(idx, 1);
+        },
+        tickWorld() {
+            for (let i = activeRunIds.length - 1; i >= 0; i--) {
+                const propId = activeRunIds[i];
+                const prop = state.entityRegistry.getLive(propId);
+                const run = propRuns.get(propId);
+                if (!prop || !run?.dragging) {
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                tickPull(prop, run);
+            }
+        },
+        appendOverlayCommands(commands, prop) {
+            const run = propRuns.get(prop.id);
+            if (!run?.dragging) return;
+            const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
+            const tx = run.targetWorld.x + run.offsetX;
+            const ty = run.targetWorld.y + run.offsetY;
+            const dist = Math.hypot(tx - prop.x, ty - prop.y);
+            const ratio = resolveDragLaunchPullRatio(dist, grabConfig);
+            const hue = 180 - ratio * 180;
+            commands.push(overlaySegment(prop.x, prop.y, tx, ty, { stroke: `hsla(${hue}, 90%, 55%, 0.35)`, lineWidth: 1.5, dash: [3, 3] }));
+            commands.push(overlayCircleFillStroke(tx, ty, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
+        },
+        reset() {
+            propRuns.clear();
+            activeRunIds.length = 0;
+        },
+    };
 }
 export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
     const preview = getDragLaunchPreview(aim, config);
@@ -2477,7 +2559,7 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
     return actions;
 }
 export function createDefaultSandboxBehaviors(state) {
-    return [...createDragLaunchBehaviors(state), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
+    return [...createDragLaunchBehaviors(state), createGrabDragBehavior(state), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
 }
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
 export function findSandboxCameraTargetWorldProp(state, registry) {

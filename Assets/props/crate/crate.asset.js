@@ -5,7 +5,7 @@ const CRATE_TOP_CROSS = { stroke: "rgba(62, 39, 35, 0.6)" };
 export default {
     id: "crate",
     primitive: "polygon",
-    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Crate" },
+    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch", "grabDrag"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Crate" },
     physics: {
         isKinetic: true,
         localFootprint: boxLocalFootprint(8, 8),

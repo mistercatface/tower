@@ -2,7 +2,7 @@ import { boxLocalFootprint } from "../../../Libraries/Math/math.js";
 export default {
     id: "custom_box",
     primitive: "polygon",
-    sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Custom box", behaviors: ["dragLaunch"], dragLaunch: { minPower: 20, maxPower: 260 } },
+    sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Custom box", behaviors: ["dragLaunch", "grabDrag"], dragLaunch: { minPower: 20, maxPower: 260 } },
     physics: { isKinetic: true, localFootprint: boxLocalFootprint(8, 8), wallPhysics: { restitution: 0.15, friction: 0.8 }, fracture: { mode: "chunk" } },
     visuals: {
         colors: {
