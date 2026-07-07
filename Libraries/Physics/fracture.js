@@ -5,13 +5,12 @@ import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolv
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
 import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 18, maxSliverAspect: 10, minWedgeAngle: Math.PI / 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
-export const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
-export const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
+const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
+const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
 export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
 export const GLASS_MAX_SLIVER_ASPECT = FRACTURE_TUNING.glass.maxSliverAspect;
-export const GLASS_MIN_WEDGE_ANGLE = FRACTURE_TUNING.glass.minWedgeAngle;
-export const GLASS_FRACTURE_COOLDOWN_STEPS = FRACTURE_TUNING.shared.cooldown;
-export const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
+const GLASS_MIN_WEDGE_ANGLE = FRACTURE_TUNING.glass.minWedgeAngle;
+const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
 const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 const MAX_FRACTURE_DEBRIS = FRACTURE_TUNING.burst.maxBurst;
@@ -676,7 +675,7 @@ export class FractureEngine {
                 const item = deferredFractures[i];
                 const prop = item.prop;
                 delete prop._pendingEviction;
-                FractureEngine.commitFractureResult(world, prop, item, spatialFrame, { retainParent: item.retainParent, propsToAdmitOut: propsToAdmit, stores: this.stores, resetDebrisStore: false });
+                FractureEngine.commitFractureResult(world, prop, item, spatialFrame, { propsToAdmitOut: propsToAdmit, stores: this.stores, resetDebrisStore: false });
                 item.prop = null;
             }
             admitKineticPropsBatch(spatialFrame, propsToAdmit, world);
@@ -691,7 +690,10 @@ export class FractureEngine {
             const prop = i === 0 ? bodyA : bodyB;
             const other = i === 0 ? bodyB : bodyA;
             if (prop._physId === undefined) continue;
-            if (!FractureEngine.evalFractureRules(prop, other, force)) continue;
+            const fractureConfig = prop.strategy?.fracture;
+            if (!fractureConfig) continue;
+            const minForce = fractureConfig.minForce ?? GLASS_FRACTURE_IMPACT_THRESHOLD;
+            if (force < minForce) continue;
             if (!FractureEngine.canFracturePropSplit(prop)) continue;
             if (prop._fractureCooldown > 0) continue;
             if (other.strategy?.fracture?.mode === "glass") continue;
@@ -709,10 +711,9 @@ export class FractureEngine {
         let count = this.deferredFracturesCount;
         let item = deferredFractures[count];
         if (!item) {
-            item = { retainParent: false, prop: null, debrisStart: 0, debrisCount: 0, originX: 0, originY: 0, impactLocalX: 0, impactLocalY: 0, impactForce: 0, facing: 0 };
+            item = { prop: null, debrisStart: 0, debrisCount: 0, originX: 0, originY: 0, impactLocalX: 0, impactLocalY: 0, impactForce: 0, facing: 0 };
             deferredFractures[count] = item;
         }
-        item.retainParent = false;
         item.prop = prop;
         item.debrisStart = fracture.debrisStart;
         item.debrisCount = fracture.debrisCount;
@@ -757,38 +758,22 @@ export class FractureEngine {
         }
         if (list.indexOf(prop) === -1) list.push(prop);
     }
-    static evalFractureRules(prop, other, force) {
-        const config = prop.strategy?.fracture;
-        if (!config) return false;
-        const minForce = config.minForce ?? GLASS_FRACTURE_IMPACT_THRESHOLD;
-        if (force < minForce) return false;
-        return true;
-    }
-    static commitFractureResult(world, prop, fracture, spatialFrame, { retainParent = false, onBeforeEvict = null, height = null, propsToAdmitOut = null, stores = null, resetDebrisStore = true } = {}) {
+    static commitFractureResult(world, prop, fracture, spatialFrame, { height = null, propsToAdmitOut = null, stores = null, resetDebrisStore = true } = {}) {
         const sourceMotion = FractureEngine._currentPropMotion(prop);
-        if (retainParent) {
-            wakeKineticBody(prop);
-            if (propsToAdmitOut) propsToAdmitOut.push(prop);
-        } else {
-            onBeforeEvict?.(world, prop);
-            if (prop.isWallDebris) world.fractureEngine.wallDebris.remove(prop, spatialFrame);
-            else if (spatialFrame) removeWorldPropFromState(world, prop, spatialFrame);
-            else {
-                const index = world.worldProps.indexOf(prop);
-                if (index >= 0) world.worldProps.splice(index, 1);
-                world.entityRegistry.unregister(prop);
-                pruneKineticConstraintsForBody(world.kinetic, prop.id);
-                prop.isDead = true;
-            }
+        if (prop.isWallDebris) world.fractureEngine.wallDebris.remove(prop, spatialFrame);
+        else if (spatialFrame) removeWorldPropFromState(world, prop, spatialFrame);
+        else {
+            const index = world.worldProps.indexOf(prop);
+            if (index >= 0) world.worldProps.splice(index, 1);
+            world.entityRegistry.unregister(prop);
+            pruneKineticConstraintsForBody(world.kinetic, prop.id);
+            prop.isDead = true;
         }
         const resolvedStores = stores ?? fracture._stores ?? moduleStores;
         const shards = FractureEngine.spawnFractureShards(world, prop, fracture, spatialFrame, resolvedStores, sourceMotion);
         if (height != null) for (let i = 0; i < shards.length; i++) shards[i].height = height;
         if (propsToAdmitOut) for (let i = 0; i < shards.length; i++) propsToAdmitOut.push(shards[i]);
-        else {
-            const propsToAdmit = retainParent ? (prop.isWallDebris ? [...shards] : [prop, ...shards]) : shards;
-            admitKineticPropsBatch(spatialFrame, propsToAdmit, world);
-        }
+        else admitKineticPropsBatch(spatialFrame, shards, world);
         releaseDebrisGeomHandles(resolvedStores, fracture.debrisStart, fracture.debrisCount);
         if (resetDebrisStore) resolvedStores.debris.reset();
         return shards;
@@ -809,19 +794,11 @@ export class FractureEngine {
     static fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce, engine = null) {
         const stores = fractureStoresFor(engine);
         if (!engine || engine.deferredFracturesCount === 0) stores.debris.reset();
-        const entry = FractureEngine.resolveFractureMode(prop.strategy?.fracture?.mode);
-        if (!entry?.onImpact) return null;
-        return entry.onImpact(prop, worldHitX, worldHitY, impactForce, stores);
+        if (prop.strategy?.fracture?.mode !== "glass") return null;
+        return FractureEngine._fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce, stores);
     }
     static impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
         return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
-    }
-    static fractureSpawnedWallChunk(state, prop, strike, spatialFrame) {
-        const force = FractureEngine.impactForceFromContact(strike.sourceSpeed, strike.sourceMass, prop.mass ?? 1) + FRACTURE_TUNING.wallSpawn.forceBias;
-        const fracture = FractureEngine.fracturePropOnImpact(prop, strike.contactX, strike.contactY, force);
-        if (!fracture) return [];
-        const modeEntry = FractureEngine.resolveFractureMode(prop.strategy?.fracture?.mode);
-        return FractureEngine.commitFractureResult(state, prop, fracture, spatialFrame, { retainParent: modeEntry?.retainParent ?? false, height: strike.height });
     }
     static worldHitToPropLocal(prop, worldX, worldY) {
         const origin = FractureEngine._propWorldPosition(prop);
@@ -879,9 +856,6 @@ export class FractureEngine {
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
-    }
-    static resolveFractureMode(mode) {
-        return FRACTURE_MODES[mode] ?? null;
     }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!prop?.strategy?.fracture) return false;
@@ -981,9 +955,6 @@ export class FractureEngine {
             }
         }
         return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
-    }
-    static _minDistToPolygonBoundary(x, y, flatVerts) {
-        return FractureEngine._closestPointOnPolygonBoundary(x, y, flatVerts).dist;
     }
     static _minThinEdgeForPolygon(flatVerts) {
         return Math.max(3, FractureEngine._polygonSpan(flatVerts) * 0.08);
@@ -1106,7 +1077,7 @@ export class FractureEngine {
         const minShardsAllowed = Math.min(4, areaCap);
         let count = Math.max(minShardsAllowed, Math.min(GLASS_MAX_SHARDS_PER_SHATTER, Math.round(span / 8) + Math.floor(impactForce * 0.04)));
         count = Math.min(count, areaCap, angleCap);
-        const boundaryDist = FractureEngine._minDistToPolygonBoundary(apexX, apexY, flatVerts);
+        const boundaryDist = FractureEngine._closestPointOnPolygonBoundary(apexX, apexY, flatVerts).dist;
         const boundaryFactor = Math.min(1, boundaryDist / (span * 0.14));
         count = Math.max(minShardsAllowed, Math.round(count * (0.35 + 0.65 * boundaryFactor)));
         return count;
@@ -1124,9 +1095,6 @@ export class FractureEngine {
         if (Math.max(x, y) * 2 < minSize) return false;
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
         return FractureEngine._glassFootprintArea(prop) >= minArea;
-    }
-    static _flatVertsFromShape(prop) {
-        return prop.shape.vertices;
     }
     static _propWorldPosition(prop) {
         const physId = prop._physId;
@@ -1157,25 +1125,11 @@ export class FractureEngine {
         frag.angularVelocity += (random() - 0.5) * FRACTURE_TUNING.burst.spinScale;
         frag._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
     }
-    static _spawnBurstFractureShards(world, sourceProp, fracture, shardPropId, stores, spatialFrame = null) {
+    static _spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null, stores = moduleStores) {
         const random = FractureEngine._fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
-        if (sourceProp.isWallDebris || isWallChunkPropType(shardPropId))
-            return world.fractureEngine.wallDebris.spawnShardsFromFracture(
-                world,
-                sourceProp,
-                fracture,
-                stores,
-                (frag, geom) => {
-                    FractureEngine._applyShardBurstImpulse(fracture, frag, geom, random);
-                },
-                FractureEngine._currentPropMotion(sourceProp),
-            );
-        return FractureEngine.spawnShardPropsFromDebrisStore(world, sourceProp, fracture, shardPropId, stores, spatialFrame, (frag, geom) => {
+        return FractureEngine.spawnShardPropsFromDebrisStore(world, sourceProp, fracture, sourceProp.type, stores, spatialFrame, (frag, geom) => {
             FractureEngine._applyShardBurstImpulse(fracture, frag, geom, random);
         });
-    }
-    static _spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null, stores = moduleStores) {
-        return FractureEngine._spawnBurstFractureShards(world, sourceProp, fracture, sourceProp.type, stores, spatialFrame);
     }
     static _fractureImpactContext(prop, worldHitX, worldHitY, impactForce) {
         const origin = FractureEngine._propWorldPosition(prop);
@@ -1185,7 +1139,7 @@ export class FractureEngine {
     static _fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce, stores) {
         if (!FractureEngine.canFracturePropSplit(prop)) return null;
         const ctx = FractureEngine._fractureImpactContext(prop, worldHitX, worldHitY, impactForce);
-        const flatVerts = FractureEngine._flatVertsFromShape(prop);
+        const flatVerts = prop.shape.vertices;
         const random = FractureEngine._fractureRandomFromImpact(worldHitX, worldHitY, impactForce);
         const parentArea = Math.abs(polygonSignedArea2D(flatVerts));
         const { x: apexX, y: apexY } = FractureEngine._resolveShatterApex(flatVerts, ctx.impactLocalX, ctx.impactLocalY);
@@ -1206,4 +1160,3 @@ export class FractureEngine {
         return makeFractureDescriptor(stores, { ...ctx, debrisStart: result.debrisStart, debrisCount: result.debrisCount });
     }
 }
-const FRACTURE_MODES = { glass: { retainParent: false, onImpact: (prop, worldHitX, worldHitY, impactForce, stores) => FractureEngine._fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce, stores), spawnShards: (world, sourceProp, fracture, spatialFrame, stores) => FractureEngine._spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame, stores) } };

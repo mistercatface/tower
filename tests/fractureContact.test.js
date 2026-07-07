@@ -75,12 +75,3 @@ describe("fracture contact queue", () => {
         assert.equal(tick.world.worldProps.filter((p) => p !== prop).length, 0);
     });
 });
-
-describe("fracture mode dispatch", () => {
-    it("resolveFractureMode returns glass entry only", () => {
-        assert.equal(FractureEngine.resolveFractureMode("glass")?.retainParent, false);
-        assert.equal(FractureEngine.resolveFractureMode("chunk"), null);
-        assert.equal(FractureEngine.resolveFractureMode("circle"), null);
-        assert.equal(FractureEngine.resolveFractureMode("unknown"), null);
-    });
-});
