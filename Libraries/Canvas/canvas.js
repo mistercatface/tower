@@ -3,17 +3,12 @@ import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex, clamp } from "../Math/math.js";
 import { buildRollOrientKey, quantizeRollQuat, resolveBodyRadius } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import {
-    resolvePropQuantizeSteps,
-    getBaseSpriteCacheKey,
-    getPropStageBakeState,
-    propFootprintHalfExtents,
-    getVisualAttachmentSpriteCacheKey,
-    resolveVisualAttachmentBakeRadius,
-    resolveVisualAttachmentProps,
-} from "../Props/props.js";
+import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 import propCatalog from "../../Assets/props/index.js";
+export function getCanvasLineScale(ctx) {
+    return 1 / Math.max(0.001, ctx.getTransform().a);
+}
 /** @param {Uint8ClampedArray} data @param {[number, number, number]} rgb */
 export function fillRgbaBuffer(data, rgb) {
     for (let i = 0; i < data.length; i += 4) {
@@ -363,95 +358,17 @@ export function drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1
 }
 export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y) {
     const currentTransform = ctx.getTransform();
-    drawImageTriangleWithBaseTransformScalars(
-        ctx,
-        img,
-        s0x,
-        s0y,
-        s1x,
-        s1y,
-        s2x,
-        s2y,
-        d0x,
-        d0y,
-        d1x,
-        d1y,
-        d2x,
-        d2y,
-        currentTransform.a,
-        currentTransform.b,
-        currentTransform.c,
-        currentTransform.d,
-        currentTransform.e,
-        currentTransform.f,
-    );
+    drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y, currentTransform.a, currentTransform.b, currentTransform.c, currentTransform.d, currentTransform.e, currentTransform.f);
 }
 export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
-    drawImageTriangleScalars(
-        ctx,
-        img,
-        srcFlat[i0 * 2],
-        srcFlat[i0 * 2 + 1],
-        srcFlat[i1 * 2],
-        srcFlat[i1 * 2 + 1],
-        srcFlat[i2 * 2],
-        srcFlat[i2 * 2 + 1],
-        dstFlat[i0 * 2],
-        dstFlat[i0 * 2 + 1],
-        dstFlat[i1 * 2],
-        dstFlat[i1 * 2 + 1],
-        dstFlat[i2 * 2],
-        dstFlat[i2 * 2 + 1],
-    );
+    drawImageTriangleScalars(ctx, img, srcFlat[i0 * 2], srcFlat[i0 * 2 + 1], srcFlat[i1 * 2], srcFlat[i1 * 2 + 1], srcFlat[i2 * 2], srcFlat[i2 * 2 + 1], dstFlat[i0 * 2], dstFlat[i0 * 2 + 1], dstFlat[i1 * 2], dstFlat[i1 * 2 + 1], dstFlat[i2 * 2], dstFlat[i2 * 2 + 1]);
 }
 export function drawImageTriangleFlatWithBaseTransform(ctx, img, srcFlat, dstFlat, i0, i1, i2, baseA, baseB, baseC, baseD, baseE, baseF) {
-    drawImageTriangleWithBaseTransformScalars(
-        ctx,
-        img,
-        srcFlat[i0 * 2],
-        srcFlat[i0 * 2 + 1],
-        srcFlat[i1 * 2],
-        srcFlat[i1 * 2 + 1],
-        srcFlat[i2 * 2],
-        srcFlat[i2 * 2 + 1],
-        dstFlat[i0 * 2],
-        dstFlat[i0 * 2 + 1],
-        dstFlat[i1 * 2],
-        dstFlat[i1 * 2 + 1],
-        dstFlat[i2 * 2],
-        dstFlat[i2 * 2 + 1],
-        baseA,
-        baseB,
-        baseC,
-        baseD,
-        baseE,
-        baseF,
-    );
+    drawImageTriangleWithBaseTransformScalars(ctx, img, srcFlat[i0 * 2], srcFlat[i0 * 2 + 1], srcFlat[i1 * 2], srcFlat[i1 * 2 + 1], srcFlat[i2 * 2], srcFlat[i2 * 2 + 1], dstFlat[i0 * 2], dstFlat[i0 * 2 + 1], dstFlat[i1 * 2], dstFlat[i1 * 2 + 1], dstFlat[i2 * 2], dstFlat[i2 * 2 + 1], baseA, baseB, baseC, baseD, baseE, baseF);
 }
 export function drawImageQuadScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y) {
     const currentTransform = ctx.getTransform();
-    drawImageQuadWithBaseTransformScalars(
-        ctx,
-        img,
-        sx0,
-        sy0,
-        sx1,
-        sy1,
-        d0x,
-        d0y,
-        d1x,
-        d1y,
-        d2x,
-        d2y,
-        d3x,
-        d3y,
-        currentTransform.a,
-        currentTransform.b,
-        currentTransform.c,
-        currentTransform.d,
-        currentTransform.e,
-        currentTransform.f,
-    );
+    drawImageQuadWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, currentTransform.a, currentTransform.b, currentTransform.c, currentTransform.d, currentTransform.e, currentTransform.f);
 }
 export function drawImageQuadWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, baseA, baseB, baseC, baseD, baseE, baseF) {
     const diag02 = (d2x - d0x) ** 2 + (d2y - d0y) ** 2;
@@ -466,50 +383,12 @@ export function drawImageQuadWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, s
 }
 export function drawImageQuadFromFlatRings(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count) {
     const currentTransform = ctx.getTransform();
-    drawImageQuadFromFlatRingsWithBaseTransform(
-        ctx,
-        img,
-        sx0,
-        sy0,
-        sx1,
-        sy1,
-        baseRing,
-        topRing,
-        edgeIndex,
-        count,
-        currentTransform.a,
-        currentTransform.b,
-        currentTransform.c,
-        currentTransform.d,
-        currentTransform.e,
-        currentTransform.f,
-    );
+    drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count, currentTransform.a, currentTransform.b, currentTransform.c, currentTransform.d, currentTransform.e, currentTransform.f);
 }
 export function drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count, baseA, baseB, baseC, baseD, baseE, baseF) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
-    drawImageQuadWithBaseTransformScalars(
-        ctx,
-        img,
-        sx0,
-        sy0,
-        sx1,
-        sy1,
-        baseRing[ai],
-        baseRing[ai + 1],
-        baseRing[bi],
-        baseRing[bi + 1],
-        topRing[bi],
-        topRing[bi + 1],
-        topRing[ai],
-        topRing[ai + 1],
-        baseA,
-        baseB,
-        baseC,
-        baseD,
-        baseE,
-        baseF,
-    );
+    drawImageQuadWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy1, baseRing[ai], baseRing[ai + 1], baseRing[bi], baseRing[bi + 1], topRing[bi], topRing[bi + 1], topRing[ai], topRing[ai + 1], baseA, baseB, baseC, baseD, baseE, baseF);
 }
 /** Default radial stops for omnidirectional vision carve (destination-out). */
 export const VISION_RADIAL_CUTOUT_STOPS = [
@@ -628,16 +507,7 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
             const existing = cache.peek(key);
             if (existing) disposeEntry(existing);
             const bakeScale = meta.bakeScale ?? 1;
-            const entry = {
-                canvas: sourceCanvas,
-                _isBitmap: false,
-                bakeScale,
-                anchorX: meta.anchorX ?? 0,
-                anchorY: meta.anchorY ?? 0,
-                drawW: sourceCanvas.width / bakeScale,
-                drawH: sourceCanvas.height / bakeScale,
-                ...meta,
-            };
+            const entry = { canvas: sourceCanvas, _isBitmap: false, bakeScale, anchorX: meta.anchorX ?? 0, anchorY: meta.anchorY ?? 0, drawW: sourceCanvas.width / bakeScale, drawH: sourceCanvas.height / bakeScale, ...meta };
             cache.set(key, entry);
             // Asynchronously promote to a GPU-resident ImageBitmap so that
             // subsequent ctx.drawImage calls are zero-copy.
@@ -758,8 +628,7 @@ function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
             }
             if (cached) return cached;
             const result = bakeFn();
-            if (result instanceof OffscreenCanvas || (typeof HTMLCanvasElement !== "undefined" && result instanceof HTMLCanvasElement))
-                return baked.set(key, result, { drawRatio: result.drawRatio, verticalShift: result.verticalShift });
+            if (result instanceof OffscreenCanvas || (typeof HTMLCanvasElement !== "undefined" && result instanceof HTMLCanvasElement)) return baked.set(key, result, { drawRatio: result.drawRatio, verticalShift: result.verticalShift });
             const { canvas, meta = {} } = result;
             return baked.set(key, canvas, meta);
         },
@@ -830,14 +699,7 @@ function getPropStaticKey(prop, renderKey) {
     const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
     const rolls = !!prop.strategy?.rolls;
     const rollKey = rolls ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : "";
-    if (
-        prop._staticKeyFacing === facing &&
-        prop._staticKeyVo === voKey &&
-        prop._staticKeyAttachment === attachmentKey &&
-        (!rolls || prop._staticKeyRoll === rollKey) &&
-        prop._cachedStaticKey !== undefined
-    )
-        return prop._cachedStaticKey;
+    if (prop._staticKeyFacing === facing && prop._staticKeyVo === voKey && prop._staticKeyAttachment === attachmentKey && (!rolls || prop._staticKeyRoll === rollKey) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
     const k1 = BigInt(internSpriteKeyPart(renderKey));
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
     const k2 = BigInt(internSpriteKeyPart(customKey));
@@ -968,15 +830,7 @@ export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExte
     blitAnchoredSprite(ctx, sprite, worldX, worldY, null, frameIndex);
 }
 /** Render keys for baked sandbox/editor overlay glyphs. */
-export const OVERLAY_RENDER_KEY = {
-    SelectionRing: "overlay_selection_ring",
-    PathDestination: "overlay_path_destination",
-    PathArrowHead: "overlay_path_arrow_head",
-    FlowDirectionArrow: "overlay_flow_direction_arrow",
-    WireEndpoint: "overlay_wire_endpoint",
-    GridCellHighlight: "overlay_grid_cell_highlight",
-    PathDebugNode: "overlay_path_debug_node",
-};
+export const OVERLAY_RENDER_KEY = { SelectionRing: "overlay_selection_ring", PathDestination: "overlay_path_destination", PathArrowHead: "overlay_path_arrow_head", FlowDirectionArrow: "overlay_flow_direction_arrow", WireEndpoint: "overlay_wire_endpoint", GridCellHighlight: "overlay_grid_cell_highlight", PathDebugNode: "overlay_path_debug_node" };
 const OVERLAY_STAGE_PADDING = 6;
 const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
 /** @typedef {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} OverlayDrawRecipe */

@@ -2,6 +2,7 @@ import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
+import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { transitionEntity } from "../FSM/transition.js";
@@ -516,7 +517,7 @@ queueMicrotask(registerAllPropDrawRecipes);
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const floorBeltEffectPass = {
     zIndex: 10.5,
-    draw(state, viewport, ctx, renderer) {
-        renderer.render3D.drawFloorBelts(ctx, state, viewport);
+    draw(state, viewport, ctx) {
+        drawFloorOccupancyBelts(ctx, state, viewport);
     },
 };

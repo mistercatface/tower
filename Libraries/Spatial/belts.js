@@ -1,6 +1,7 @@
-import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, GRID_NAV_EPOCH, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx } from "./spatial.js";
+import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, GRID_NAV_EPOCH, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
 import { CorridorPathfinder, createNavGraphViewFromTopology } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
+import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = [0, 1, 0, -1];
 const BELT_DIR_Y = [-1, 0, 1, 0];
@@ -655,4 +656,194 @@ export function collectPathMouthExteriorIndices(paths, grid) {
         if (exitExteriorIdx !== -1) mouths.add(exitExteriorIdx);
     }
     return mouths;
+}
+function createFlatConveyorDraw(options = {}) {
+    const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
+    const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
+    const beltStroke = "#111111";
+    const beltFill = "#1e1e1e";
+    return (ctx, prop) => {
+        const hx = prop.halfExtents?.x ?? 8;
+        const hy = prop.halfExtents?.y ?? 8;
+        const lineScale = getCanvasLineScale(ctx);
+        const angle = prop.facing ?? 0;
+        ctx.save();
+        ctx.translate(prop.x, prop.y);
+        ctx.rotate(angle);
+        ctx.fillStyle = beltFill;
+        ctx.fillRect(-hx, -hy, hx * 2, hy * 2);
+        ctx.strokeStyle = beltStroke;
+        ctx.lineWidth = 1.0 * lineScale;
+        ctx.strokeRect(-hx, -hy, hx * 2, hy * 2);
+        ctx.beginPath();
+        ctx.rect(-hx, -hy, hx * 2, hy * 2);
+        ctx.clip();
+        const speed = 20;
+        const spacing = 8;
+        const timeSec = (prop.ageMs ?? 0) / 1000;
+        if (!turnDirection) {
+            const offset = (timeSec * speed) % spacing;
+            ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
+            ctx.lineWidth = 1.0 * lineScale;
+            const numSlats = Math.ceil((hx * 2) / 4) + 2;
+            for (let i = -2; i < numSlats; i++) {
+                const cx = -hx + ((timeSec * speed) % 4) + i * 4;
+                ctx.beginPath();
+                ctx.moveTo(cx, -hy);
+                ctx.lineTo(cx, hy);
+                ctx.stroke();
+            }
+            ctx.fillStyle = chevronColors.fill;
+            ctx.strokeStyle = chevronColors.stroke;
+            ctx.lineWidth = 0.5 * lineScale;
+            const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
+            for (let i = -2; i < numChevrons; i++) {
+                const cx = -hx + offset + i * spacing;
+                ctx.beginPath();
+                ctx.moveTo(cx + 1.5, 0);
+                ctx.lineTo(cx - 1.2, 3.2);
+                ctx.lineTo(cx - 0.4, 3.2);
+                ctx.lineTo(cx + 0.8, 0);
+                ctx.lineTo(cx - 0.4, -3.2);
+                ctx.lineTo(cx - 1.2, -3.2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.restore();
+            return;
+        }
+        const isLeft = turnDirection === "left";
+        const pivotX = hx;
+        const pivotY = isLeft ? hy : -hy;
+        const startAngle = Math.PI;
+        const dir = isLeft ? 1 : -1;
+        const arcR = hx;
+        const totalArcLength = (Math.PI / 2) * arcR;
+        const offset = (timeSec * speed) % spacing;
+        ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
+        ctx.lineWidth = 1.0 * lineScale;
+        const numSlats = Math.ceil(totalArcLength / 4) + 2;
+        for (let i = -1; i < numSlats; i++) {
+            const s = ((timeSec * speed) % 4) + i * 4;
+            if (s < 0 || s > totalArcLength) continue;
+            const A = startAngle + dir * (s / arcR);
+            ctx.beginPath();
+            ctx.moveTo(pivotX, pivotY);
+            ctx.lineTo(pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A));
+            ctx.stroke();
+        }
+        ctx.fillStyle = chevronColors.fill;
+        ctx.strokeStyle = chevronColors.stroke;
+        ctx.lineWidth = 0.5 * lineScale;
+        const numChevrons = Math.ceil(totalArcLength / spacing) + 2;
+        for (let i = -1; i < numChevrons; i++) {
+            const s = offset + i * spacing;
+            if (s < -2 || s > totalArcLength + 2) continue;
+            const A = startAngle + dir * (s / arcR);
+            const tipAngle = A + dir * (1.5 / arcR);
+            const wingAngle = A - dir * (1.2 / arcR);
+            const innerAngle = A - dir * (0.4 / arcR);
+            const innerTipAngle = A + dir * (0.8 / arcR);
+            ctx.beginPath();
+            ctx.moveTo(pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle));
+            ctx.lineTo(pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle));
+            ctx.lineTo(pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle));
+            ctx.lineTo(pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle));
+            ctx.lineTo(pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle));
+            ctx.lineTo(pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle));
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+    };
+}
+const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
+const beltFilmstripDrawByTurn = { straight: createFlatConveyorDraw(), left: createFlatConveyorDraw({ turnDirection: "left" }), right: createFlatConveyorDraw({ turnDirection: "right" }) };
+const BELT_FILMSTRIP_DRAW = new Array(16);
+let beltFilmstripDrawReady = false;
+function ensureBeltFilmstripDrawTable() {
+    if (beltFilmstripDrawReady) return;
+    for (let packed = 1; packed < 16; packed++) {
+        if (!BeltPacked.isValid(packed)) continue;
+        const turn = BeltPacked.turn(packed);
+        BELT_FILMSTRIP_DRAW[packed] = turn === 0 ? beltFilmstripDrawByTurn.left : turn === 2 ? beltFilmstripDrawByTurn.right : beltFilmstripDrawByTurn.straight;
+    }
+    beltFilmstripDrawReady = true;
+}
+function beltDrawForPacked(packed) {
+    ensureBeltFilmstripDrawTable();
+    return BELT_FILMSTRIP_DRAW[packed];
+}
+export class FloorBeltDrawCache {
+    constructor() {
+        this.revision = -1;
+        this.idx = new Uint32Array(0);
+        this.count = 0;
+        this.uniquePacked = new Uint8Array(12);
+        this.uniqueCount = 0;
+    }
+    static clear(state) {
+        if (!state.sandbox) return;
+        state.sandbox.floorBeltDrawCache = null;
+    }
+    sync(state, grid, viewport = null) {
+        if (!state.sandbox) return null;
+        if (!state.sandbox.floorBeltDrawCache) state.sandbox.floorBeltDrawCache = new FloorBeltDrawCache();
+        const cache = state.sandbox.floorBeltDrawCache;
+        const revision = floorOccupancyStampDrawCacheKey(grid);
+        if (cache.revision === revision) return cache;
+        const cellHalf = grid.cellHalfSize;
+        SHARED_HALF_EXTENTS.x = cellHalf;
+        SHARED_HALF_EXTENTS.y = cellHalf;
+        const size = grid.cols * grid.rows;
+        let idxList = cache.idx.length >= grid.floorBeltCount ? cache.idx : new Uint32Array(Math.max(grid.floorBeltCount, 8));
+        const packedSeen = new Uint8Array(16);
+        let count = 0;
+        let uniqueCount = 0;
+        const uniquePacked = cache.uniquePacked;
+        for (let cellIdx = 0; cellIdx < size; cellIdx++) {
+            const packed = grid.floorPacked[cellIdx];
+            if (!packed) continue;
+            if (count >= idxList.length) {
+                const grown = new Uint32Array(idxList.length * 2);
+                grown.set(idxList.subarray(0, count));
+                idxList = grown;
+            }
+            idxList[count++] = cellIdx;
+            if (!packedSeen[packed]) {
+                packedSeen[packed] = 1;
+                uniquePacked[uniqueCount++] = packed;
+            }
+        }
+        cache.revision = revision;
+        cache.idx = idxList;
+        cache.count = count;
+        cache.uniqueCount = uniqueCount;
+        if (viewport && uniqueCount) warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY.FloorBelt, uniquePacked, uniqueCount, BeltPacked.flowAngle, beltDrawForPacked, BELT_FILMSTRIP_FRAMES);
+        return cache;
+    }
+    draw(ctx, viewport, grid) {
+        if (!this.count) return;
+        const halfExtents = SHARED_HALF_EXTENTS;
+        const cellHalf = grid.cellHalfSize;
+        for (let i = 0; i < this.count; i++) {
+            const cellIdx = this.idx[i];
+            const x = grid.gridCenterXByIdx(cellIdx);
+            const y = grid.gridCenterYByIdx(cellIdx);
+            if (!viewport.circleInBounds(x, y, cellHalf, "props")) continue;
+            const packed = grid.floorPacked[cellIdx];
+            const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
+            drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);
+        }
+    }
+}
+export function drawFloorOccupancyBelts(ctx, state, viewport) {
+    const grid = state.obstacleGrid;
+    if (grid.floorBeltCount === 0) return;
+    if (!state.sandbox) return;
+    if (!state.sandbox.floorBeltDrawCache) state.sandbox.floorBeltDrawCache = new FloorBeltDrawCache();
+    const cache = state.sandbox.floorBeltDrawCache.sync(state, grid, viewport);
+    cache.draw(ctx, viewport, grid);
 }
