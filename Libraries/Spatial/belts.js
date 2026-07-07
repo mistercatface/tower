@@ -3,9 +3,17 @@ import { CorridorPathfinder, createNavGraphViewFromTopology } from "../Navigatio
 import { createSeededRng } from "../Math/math.js";
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
-const BELT_DIR_X = [0, 1, 0, -1];
-const BELT_DIR_Y = [-1, 0, 1, 0];
+const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);
+const BELT_DIR_Y = Int8Array.from([-1, 0, 1, 0]);
 const BELT_TWO_PI = Math.PI * 2;
+const BELT_STEP_AGAINST_FLOW_PENALTY = 20;
+const BELT_STEP_LATERAL_PENALTY = 5;
+const BELT_STEP_DIAGONAL_PENALTY = 8;
+const BELT_LINK_OK = 0;
+const BELT_LINK_EXIT_MISMATCH = 1;
+const BELT_LINK_ENTRY_MISMATCH = 2;
+const BELT_LINK_CANSTEP_BLOCKED = 3;
+const BELT_LINK_REVERSE_OPEN = 4;
 const BELT_TURN_TABLE = new Uint8Array(16);
 const BELT_VALID_TABLE = new Uint8Array(16);
 const BELT_FLOW_ANGLE_TABLE = new Float32Array(16);
@@ -16,7 +24,10 @@ const BELT_RAIL_SIDE1_TABLE = new Int8Array(16);
 const BELT_RENDER_KEY_TABLE = new Array(16);
 const BELT_LABEL_TABLE = new Array(16);
 const BELT_STRIP_KEY_TABLE = new Array(16);
-const BELT_SPAWN_DEFAULT = { floor_belt: 0, floor_belt_elbow_left: 0, floor_belt_elbow_right: 0 };
+function beltPack(entrySide, exitSide) {
+    return entrySide | (exitSide << 2);
+}
+const BELT_SPAWN_DEFAULT = { floor_belt: beltPack(3, 1), floor_belt_elbow_left: beltPack(2, 1), floor_belt_elbow_right: beltPack(0, 1) };
 for (let exit = 0; exit < 4; exit++)
     for (let di = 0; di < 3; di++) {
         const delta = di === 0 ? 1 : di === 1 ? 2 : 3;
@@ -42,6 +53,33 @@ for (let exit = 0; exit < 4; exit++)
             railWrite++;
         }
     }
+function beltSidePenalty(packed, side, flowIsExit) {
+    if (side === -1) return BELT_STEP_DIAGONAL_PENALTY;
+    const entrySide = BeltPacked.entry(packed);
+    const exitSide = BeltPacked.exit(packed);
+    const flowSide = flowIsExit ? exitSide : entrySide;
+    const againstSide = flowIsExit ? entrySide : exitSide;
+    if (side === flowSide) return 0;
+    if (side === againstSide) return BELT_STEP_AGAINST_FLOW_PENALTY;
+    return BELT_STEP_LATERAL_PENALTY;
+}
+function beltLinkCode(idxA, packedA, idxB, packedB, cols, graph) {
+    const exitSide = BeltPacked.exit(packedA);
+    const entrySide = BeltPacked.entry(packedB);
+    const stepSide = BeltPacked.stepSideBetween(idxA, idxB, cols);
+    if (stepSide !== exitSide) return BELT_LINK_EXIT_MISMATCH;
+    if (edgeMirrorSide(stepSide) !== entrySide) return BELT_LINK_ENTRY_MISMATCH;
+    if (!graph.canStepIdx(idxA, idxB)) return BELT_LINK_CANSTEP_BLOCKED;
+    if (graph.canStepIdx(idxB, idxA)) return BELT_LINK_REVERSE_OPEN;
+    return BELT_LINK_OK;
+}
+function beltLinkReason(code, idxA, packedA, idxB, packedB, cols) {
+    if (code === BELT_LINK_EXIT_MISMATCH) return `exit ${BeltPacked.exit(packedA)} ≠ step ${BeltPacked.stepSideBetween(idxA, idxB, cols)}`;
+    if (code === BELT_LINK_ENTRY_MISMATCH) return `entry ${BeltPacked.entry(packedB)} ≠ approach ${edgeMirrorSide(BeltPacked.stepSideBetween(idxA, idxB, cols))}`;
+    if (code === BELT_LINK_CANSTEP_BLOCKED) return "canStep blocked";
+    if (code === BELT_LINK_REVERSE_OPEN) return "reverse canStep open";
+    return "";
+}
 export class BeltPacked {
     static EMPTY = 0;
     static pack(entrySide, exitSide) {
@@ -121,53 +159,20 @@ export class BeltPacked {
         const packedCurr = floorPacked[currIdx];
         const packedN = floorPacked[nIdx];
         if (!packedCurr && !packedN) return 0;
-        let penaltyOut = 0;
-        if (packedCurr) {
-            const side = BeltPacked.stepSideBetween(currIdx, nIdx, cols);
-            if (side === -1) penaltyOut = BELT_STEP_DIAGONAL_PENALTY;
-            else {
-                const entrySide = BeltPacked.entry(packedCurr);
-                const exitSide = BeltPacked.exit(packedCurr);
-                if (side === exitSide) penaltyOut = 0;
-                else if (side === entrySide) penaltyOut = BELT_STEP_AGAINST_FLOW_PENALTY;
-                else penaltyOut = BELT_STEP_LATERAL_PENALTY;
-            }
-        }
-        let penaltyIn = 0;
-        if (packedN) {
-            const sideN = BeltPacked.stepSideBetween(nIdx, currIdx, cols);
-            if (sideN === -1) penaltyIn = BELT_STEP_DIAGONAL_PENALTY;
-            else {
-                const entrySide = BeltPacked.entry(packedN);
-                const exitSide = BeltPacked.exit(packedN);
-                if (sideN === entrySide) penaltyIn = 0;
-                else if (sideN === exitSide) penaltyIn = BELT_STEP_AGAINST_FLOW_PENALTY;
-                else penaltyIn = BELT_STEP_LATERAL_PENALTY;
-            }
-        }
-        return Math.max(penaltyOut, penaltyIn);
+        let penalty = 0;
+        if (packedCurr) penalty = beltSidePenalty(packedCurr, BeltPacked.stepSideBetween(currIdx, nIdx, cols), true);
+        if (packedN) penalty = Math.max(penalty, beltSidePenalty(packedN, BeltPacked.stepSideBetween(nIdx, currIdx, cols), false));
+        return penalty;
     }
     static linkOk(idxA, packedA, idxB, packedB, cols, graph) {
-        const exitSide = BeltPacked.exit(packedA);
-        const entrySide = BeltPacked.entry(packedB);
-        const stepSide = BeltPacked.stepSideBetween(idxA, idxB, cols);
-        if (stepSide !== exitSide) return { ok: false, reason: `exit ${exitSide} ≠ step ${stepSide}` };
-        const reverseSide = edgeMirrorSide(stepSide);
-        if (reverseSide !== entrySide) return { ok: false, reason: `entry ${entrySide} ≠ approach ${reverseSide}` };
-        if (!graph.canStepIdx(idxA, idxB)) return { ok: false, reason: `canStep blocked` };
-        if (graph.canStepIdx(idxB, idxA)) return { ok: false, reason: `reverse canStep open` };
-        return { ok: true };
+        const code = beltLinkCode(idxA, packedA, idxB, packedB, cols, graph);
+        if (code === BELT_LINK_OK) return { ok: true };
+        return { ok: false, reason: beltLinkReason(code, idxA, packedA, idxB, packedB, cols) };
     }
     static orientationOptions() {
         return BELT_ORIENTATION_OPTIONS;
     }
 }
-const BELT_STEP_AGAINST_FLOW_PENALTY = 20;
-const BELT_STEP_LATERAL_PENALTY = 5;
-const BELT_STEP_DIAGONAL_PENALTY = 8;
-BELT_SPAWN_DEFAULT.floor_belt = BeltPacked.pack(3, 1);
-BELT_SPAWN_DEFAULT.floor_belt_elbow_left = BeltPacked.pack(2, 1);
-BELT_SPAWN_DEFAULT.floor_belt_elbow_right = BeltPacked.pack(0, 1);
 const BELT_ORIENTATION_OPTIONS = Object.freeze(
     (() => {
         const out = [];
@@ -175,28 +180,29 @@ const BELT_ORIENTATION_OPTIONS = Object.freeze(
         return out;
     })(),
 );
+function beltIdxInBounds(grid, idx) {
+    return idx >= 0 && idx < grid.cols * grid.rows;
+}
 export class FloorBelt {
     static getEntryEdgeWorldPointInto(out, grid, idx, entrySide) {
-        const x = grid.gridCenterXByIdx(idx);
-        const y = grid.gridCenterYByIdx(idx);
         const inset = grid.cellSize * 0.35;
-        if (entrySide === 0) {
-            out.x = x;
-            out.y = y - inset;
-        } else if (entrySide === 1) {
-            out.x = x + inset;
-            out.y = y;
-        } else if (entrySide === 2) {
-            out.x = x;
-            out.y = y + inset;
-        } else {
-            out.x = x - inset;
-            out.y = y;
-        }
+        out.x = grid.gridCenterXByIdx(idx) + BELT_DIR_X[entrySide] * inset;
+        out.y = grid.gridCenterYByIdx(idx) + BELT_DIR_Y[entrySide] * inset;
         return out;
     }
+    static entryNeighborIdx(grid, idx) {
+        const packed = grid.floorPacked[idx];
+        if (!BeltPacked.isValid(packed)) return -1;
+        return edgeNeighborIdx(idx, BeltPacked.entry(packed), grid);
+    }
+    static entryEdgeWorldPointInto(out, grid, idx) {
+        const packed = grid.floorPacked[idx];
+        if (!BeltPacked.isValid(packed)) return false;
+        FloorBelt.getEntryEdgeWorldPointInto(out, grid, idx, BeltPacked.entry(packed));
+        return true;
+    }
     static isBeltAtIdx(grid, idx) {
-        if (idx < 0 || idx >= grid.cols * grid.rows) return false;
+        if (!beltIdxInBounds(grid, idx)) return false;
         return BeltPacked.isValid(grid.floorPacked[idx]);
     }
     static isEntityOnBelt(grid, x, y) {
@@ -220,14 +226,14 @@ export class FloorBelt {
     }
     static canStampAt(state, idx) {
         const grid = state.obstacleGrid;
-        if (idx < 0 || idx >= grid.cols * grid.rows) return false;
+        if (!beltIdxInBounds(grid, idx)) return false;
         if (grid.isBlockedIdx(idx)) return false;
         if (grid.hasFloorOccupancy(idx)) return false;
         return true;
     }
     static clearOverlayAt(state, idx) {
         const grid = state.obstacleGrid;
-        if (idx < 0 || idx >= grid.cols * grid.rows) return false;
+        if (!beltIdxInBounds(grid, idx)) return false;
         if (!grid.clearFloorCell(idx)) return false;
         return true;
     }
@@ -251,7 +257,7 @@ export class FloorBelt {
             const { idx: docIdx, packed } = doc.floorBelts[i];
             if (!BeltPacked.isValid(packed)) throw new Error(`Invalid floor belt packed: ${packed}`);
             const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
-            if (idx < 0 || idx >= grid.cols * grid.rows) continue;
+            if (!beltIdxInBounds(grid, idx)) continue;
             if (grid.floorPacked[idx] !== packed) floorNavChanged = true;
             grid.writeFloorCell(idx, packed);
             growCellBoundsIdx(bounds, idx, grid);
@@ -356,6 +362,28 @@ export class FloorBelt {
         for (let i = 0; i < write; i++) grid._floorBeltAnimMs[list[i]] += dt;
     }
 }
+function classifyBeltCell(cells, footprint, idx, layout) {
+    const packed = cells.get(idx);
+    const entrySide = BeltPacked.entry(packed);
+    const exitSide = BeltPacked.exit(packed);
+    const entryIdx = edgeNeighborIdx(idx, entrySide, layout);
+    const exitIdx = edgeNeighborIdx(idx, exitSide, layout);
+    return { idx, packed, entrySide, exitSide, entryIdx, exitIdx, entryInFootprint: footprint.has(entryIdx), exitInFootprint: footprint.has(exitIdx) };
+}
+function beltPlanCellError(classification, cells, footprint, mouthExteriorIndices) {
+    const { idx, packed, entrySide, exitSide, entryIdx, exitIdx, entryInFootprint, exitInFootprint } = classification;
+    if (!packed) return `belt plan: missing belt at ${formatGlobalCellIdx(idx)}`;
+    if (entryInFootprint) {
+        const entryExit = BeltPacked.exit(cells.get(entryIdx));
+        if (entryExit !== edgeMirrorSide(entrySide)) return `belt plan: belt chain break ${formatGlobalCellIdx(entryIdx)} -> ${formatGlobalCellIdx(idx)} (entry side ${entrySide}, upstream exit ${entryExit})`;
+    }
+    if (exitInFootprint) {
+        const exitEntry = BeltPacked.entry(cells.get(exitIdx));
+        if (exitEntry !== edgeMirrorSide(exitSide)) return `belt plan: belt chain break ${formatGlobalCellIdx(idx)} -> ${formatGlobalCellIdx(exitIdx)} (exit side ${exitSide}, downstream entry ${exitEntry})`;
+    }
+    if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) return `belt plan: dead-end belt at ${formatGlobalCellIdx(idx)}`;
+    return null;
+}
 export class BeltPlan {
     constructor() {
         this.cells = new Map();
@@ -398,30 +426,11 @@ export class BeltPlan {
     }
     validate(layout, mouthExteriorIndices = new Set()) {
         const footprint = new Set(this.cells.keys());
-        try {
-            for (const idx of footprint) if (!this.cells.get(idx)) throw new Error(`belt plan: missing belt at ${formatGlobalCellIdx(idx)}`);
-            for (const idx of footprint) {
-                const packed = this.cells.get(idx);
-                const entrySide = BeltPacked.entry(packed);
-                const exitSide = BeltPacked.exit(packed);
-                const entryIdx = edgeNeighborIdx(idx, entrySide, layout);
-                const exitIdx = edgeNeighborIdx(idx, exitSide, layout);
-                const entryInFootprint = footprint.has(entryIdx);
-                const exitInFootprint = footprint.has(exitIdx);
-                if (entryInFootprint) {
-                    const entryExit = BeltPacked.exit(this.cells.get(entryIdx));
-                    if (entryExit !== edgeMirrorSide(entrySide)) throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(entryIdx)} -> ${formatGlobalCellIdx(idx)} (entry side ${entrySide}, upstream exit ${entryExit})`);
-                }
-                if (exitInFootprint) {
-                    const exitEntry = BeltPacked.entry(this.cells.get(exitIdx));
-                    if (exitEntry !== edgeMirrorSide(exitSide)) throw new Error(`belt plan: belt chain break ${formatGlobalCellIdx(idx)} -> ${formatGlobalCellIdx(exitIdx)} (exit side ${exitSide}, downstream entry ${exitEntry})`);
-                }
-                if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) throw new Error(`belt plan: dead-end belt at ${formatGlobalCellIdx(idx)}`);
-            }
-            return { ok: true, footprint, cells: this.cells, error: null };
-        } catch (err) {
-            return { ok: false, error: err.message, footprint, cells: this.cells };
+        for (const idx of footprint) {
+            const error = beltPlanCellError(classifyBeltCell(this.cells, footprint, idx, layout), this.cells, footprint, mouthExteriorIndices);
+            if (error) return { ok: false, error, footprint, cells: this.cells };
         }
+        return { ok: true, footprint, cells: this.cells, error: null };
     }
     validatePath(graph, cellIndices) {
         if (cellIndices.length < 2) return { ok: true };
@@ -432,8 +441,8 @@ export class BeltPlan {
             const b = cellIndices[i + 1];
             const packedA = this.cells.get(a) ?? grid.floorPacked[a];
             const packedB = this.cells.get(b) ?? grid.floorPacked[b];
-            const link = BeltPacked.linkOk(a, packedA, b, packedB, cols, graph);
-            if (!link.ok) return { ok: false, reason: `cell ${i}: ${link.reason}` };
+            const code = beltLinkCode(a, packedA, b, packedB, cols, graph);
+            if (code !== BELT_LINK_OK) return { ok: false, reason: `cell ${i}: ${beltLinkReason(code, a, packedA, b, packedB, cols)}` };
         }
         return { ok: true };
     }
@@ -442,26 +451,8 @@ export class BeltPlan {
             const validation = this.validate(layout, mouthExteriorIndices);
             if (validation.ok) return validation;
             const footprint = validation.footprint;
-            const byCell = validation.cells;
             const removeIndices = new Set();
-            for (const idx of footprint) {
-                const packed = byCell.get(idx);
-                const entrySide = BeltPacked.entry(packed);
-                const exitSide = BeltPacked.exit(packed);
-                const entryIdx = edgeNeighborIdx(idx, entrySide, layout);
-                const exitIdx = edgeNeighborIdx(idx, exitSide, layout);
-                const entryInFootprint = footprint.has(entryIdx);
-                const exitInFootprint = footprint.has(exitIdx);
-                if (!entryInFootprint && !exitInFootprint && !mouthExteriorIndices.has(idx)) removeIndices.add(idx);
-                if (entryInFootprint) {
-                    const entryExit = BeltPacked.exit(byCell.get(entryIdx));
-                    if (entryExit !== edgeMirrorSide(entrySide)) removeIndices.add(idx);
-                }
-                if (exitInFootprint) {
-                    const exitEntry = BeltPacked.entry(byCell.get(exitIdx));
-                    if (exitEntry !== edgeMirrorSide(exitSide)) removeIndices.add(idx);
-                }
-            }
+            for (const idx of footprint) if (beltPlanCellError(classifyBeltCell(this.cells, footprint, idx, layout), this.cells, footprint, mouthExteriorIndices)) removeIndices.add(idx);
             if (removeIndices.size === 0) return validation;
             for (const idx of removeIndices) this.cells.delete(idx);
             if (this.cells.size === 0) return this.validate(layout, mouthExteriorIndices);
@@ -681,21 +672,29 @@ function createFlatConveyorDraw(options = {}) {
         const speed = 20;
         const spacing = 8;
         const timeSec = (prop.ageMs ?? 0) / 1000;
-        if (!turnDirection) {
-            const offset = (timeSec * speed) % spacing;
+        const strokeSlats = (drawSlat) => {
             ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
             ctx.lineWidth = 1.0 * lineScale;
-            const numSlats = Math.ceil((hx * 2) / 4) + 2;
-            for (let i = -2; i < numSlats; i++) {
-                const cx = -hx + ((timeSec * speed) % 4) + i * 4;
-                ctx.beginPath();
-                ctx.moveTo(cx, -hy);
-                ctx.lineTo(cx, hy);
-                ctx.stroke();
-            }
+            drawSlat();
+        };
+        const styleChevrons = () => {
             ctx.fillStyle = chevronColors.fill;
             ctx.strokeStyle = chevronColors.stroke;
             ctx.lineWidth = 0.5 * lineScale;
+        };
+        if (!turnDirection) {
+            const offset = (timeSec * speed) % spacing;
+            strokeSlats(() => {
+                const numSlats = Math.ceil((hx * 2) / 4) + 2;
+                for (let i = -2; i < numSlats; i++) {
+                    const cx = -hx + ((timeSec * speed) % 4) + i * 4;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, -hy);
+                    ctx.lineTo(cx, hy);
+                    ctx.stroke();
+                }
+            });
+            styleChevrons();
             const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
             for (let i = -2; i < numChevrons; i++) {
                 const cx = -hx + offset + i * spacing;
@@ -721,21 +720,19 @@ function createFlatConveyorDraw(options = {}) {
         const arcR = hx;
         const totalArcLength = (Math.PI / 2) * arcR;
         const offset = (timeSec * speed) % spacing;
-        ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
-        ctx.lineWidth = 1.0 * lineScale;
-        const numSlats = Math.ceil(totalArcLength / 4) + 2;
-        for (let i = -1; i < numSlats; i++) {
-            const s = ((timeSec * speed) % 4) + i * 4;
-            if (s < 0 || s > totalArcLength) continue;
-            const A = startAngle + dir * (s / arcR);
-            ctx.beginPath();
-            ctx.moveTo(pivotX, pivotY);
-            ctx.lineTo(pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A));
-            ctx.stroke();
-        }
-        ctx.fillStyle = chevronColors.fill;
-        ctx.strokeStyle = chevronColors.stroke;
-        ctx.lineWidth = 0.5 * lineScale;
+        strokeSlats(() => {
+            const numSlats = Math.ceil(totalArcLength / 4) + 2;
+            for (let i = -1; i < numSlats; i++) {
+                const s = ((timeSec * speed) % 4) + i * 4;
+                if (s < 0 || s > totalArcLength) continue;
+                const A = startAngle + dir * (s / arcR);
+                ctx.beginPath();
+                ctx.moveTo(pivotX, pivotY);
+                ctx.lineTo(pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A));
+                ctx.stroke();
+            }
+        });
+        styleChevrons();
         const numChevrons = Math.ceil(totalArcLength / spacing) + 2;
         for (let i = -1; i < numChevrons; i++) {
             const s = offset + i * spacing;
@@ -759,7 +756,6 @@ function createFlatConveyorDraw(options = {}) {
         ctx.restore();
     };
 }
-const SHARED_HALF_EXTENTS = { x: 0, y: 0 };
 const beltFilmstripDrawByTurn = { straight: createFlatConveyorDraw(), left: createFlatConveyorDraw({ turnDirection: "left" }), right: createFlatConveyorDraw({ turnDirection: "right" }) };
 const BELT_FILMSTRIP_DRAW = new Array(16);
 let beltFilmstripDrawReady = false;
@@ -783,6 +779,8 @@ export class FloorBeltDrawCache {
         this.count = 0;
         this.uniquePacked = new Uint8Array(12);
         this.uniqueCount = 0;
+        this.cellHalf = 0;
+        this.halfExtents = { x: 0, y: 0 };
     }
     static clear(state) {
         if (!state.sandbox) return;
@@ -795,8 +793,9 @@ export class FloorBeltDrawCache {
         const revision = floorOccupancyStampDrawCacheKey(grid);
         if (cache.revision === revision) return cache;
         const cellHalf = grid.cellHalfSize;
-        SHARED_HALF_EXTENTS.x = cellHalf;
-        SHARED_HALF_EXTENTS.y = cellHalf;
+        cache.cellHalf = cellHalf;
+        cache.halfExtents.x = cellHalf;
+        cache.halfExtents.y = cellHalf;
         const size = grid.cols * grid.rows;
         let idxList = cache.idx.length >= grid.floorBeltCount ? cache.idx : new Uint32Array(Math.max(grid.floorBeltCount, 8));
         const packedSeen = new Uint8Array(16);
@@ -826,8 +825,8 @@ export class FloorBeltDrawCache {
     }
     draw(ctx, viewport, grid) {
         if (!this.count) return;
-        const halfExtents = SHARED_HALF_EXTENTS;
-        const cellHalf = grid.cellHalfSize;
+        const cellHalf = this.cellHalf;
+        const halfExtents = this.halfExtents;
         for (let i = 0; i < this.count; i++) {
             const cellIdx = this.idx[i];
             const x = grid.gridCenterXByIdx(cellIdx);

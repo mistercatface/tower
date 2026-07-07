@@ -2,7 +2,7 @@ import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
-import { FloorBelt, BeltPacked } from "../Spatial/belts.js";
+import { FloorBelt } from "../Spatial/belts.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
@@ -1794,11 +1794,6 @@ export function bindNavSimGridFrame(simView, frame) {
     simView.frame = frame;
 }
 /** @typedef {number} CellIdx */
-export function beltEntryNeighborAtIdx(grid, idx) {
-    const packed = grid.floorPacked[idx];
-    if (!BeltPacked.isValid(packed)) return -1;
-    return edgeNeighborIdx(idx, BeltPacked.entry(packed), grid);
-}
 export function createNavGraphView(grid, baked = null, navTopology = null) {
     const topologyRef = navTopology ?? grid._navTopologyRef;
     const frame = topologyRef?.frame ?? null;
@@ -1822,7 +1817,7 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
 /** Snap a path goal cell to the belt entry neighbor (belt-mouth approach). */
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
     if (!FloorBelt.isBeltAtIdx(grid, targetIdx)) return targetIdx;
-    const neighborIdx = beltEntryNeighborAtIdx(grid, targetIdx);
+    const neighborIdx = FloorBelt.entryNeighborIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
     if (fromIdx === neighborIdx) return targetIdx;
     return neighborIdx;
@@ -1856,13 +1851,9 @@ export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) 
         out.y = targetY;
         return out;
     }
-    const packed = grid.floorPacked[targetIdx];
-    if (!BeltPacked.isValid(packed)) {
-        out.x = targetX;
-        out.y = targetY;
-        return out;
-    }
-    FloorBelt.getEntryEdgeWorldPointInto(out, grid, targetIdx, BeltPacked.entry(packed));
+    if (FloorBelt.entryEdgeWorldPointInto(out, grid, targetIdx)) return out;
+    out.x = targetX;
+    out.y = targetY;
     return out;
 }
 export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
