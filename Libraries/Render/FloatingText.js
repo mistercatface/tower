@@ -1,9 +1,8 @@
 import { SpriteCache } from "../Canvas/canvas.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
-
+import { events } from "../../Core/EventSystem.js";
 let floatingTextCache = null;
 export const FLOATING_TEXT_SPAWN_EVENT = "fx:floatingText";
-
 export const TextStyles = {
     standard: {
         font: "bold 10px monospace",
@@ -15,7 +14,6 @@ export const TextStyles = {
         getFill: (ctx, color) => color,
     },
 };
-
 export class FloatingText {
     constructor(x, y, text, color, timerId, styleName = "standard") {
         this.x = x;
@@ -87,3 +85,4 @@ export class FloatingText {
         ctx.restore();
     }
 }
+events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);
