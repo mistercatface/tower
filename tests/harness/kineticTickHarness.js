@@ -1,16 +1,19 @@
 import { createKineticSession } from "../../GameState/KineticSession.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { snapshotKineticBodySlab, CircleShape } from "../../Libraries/Physics/physics.js";
+import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
 }
 export function mockKineticBody(isSleeping = false) {
     const radius = 10;
-    return {
+    const body = {
         x: 0,
         y: 0,
+        vx: 0,
+        vy: 0,
+        angularVelocity: 0,
         radius,
         isSleeping,
         isDead: false,
@@ -23,12 +26,17 @@ export function mockKineticBody(isSleeping = false) {
         },
         shape: new CircleShape(radius),
     };
+    normalizeKineticBody(body);
+    return body;
 }
 export function mockCircleProp(x, y, radius) {
-    return {
+    const body = {
         id: 1,
         x,
         y,
+        vx: 0,
+        vy: 0,
+        angularVelocity: 0,
         radius,
         mass: radius,
         isSleeping: false,
@@ -39,6 +47,8 @@ export function mockCircleProp(x, y, radius) {
         },
         shape: new CircleShape(radius),
     };
+    normalizeKineticBody(body);
+    return body;
 }
 export const noop = () => {};
 export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop, updatePropFrame: noop, updatePropSubstep: noop };
@@ -57,10 +67,15 @@ export function resetMockBallIds(next = 1) {
     nextMockBallId = next;
 }
 export function mockBall(x, y, overrides = {}) {
-    return { id: overrides.id ?? nextMockBallId++, x, y, type: "ball", strategy: { isKinetic: true }, shape: overrides.shape ?? new CircleShape(4), ...overrides };
+    const shape = overrides.shape ?? new CircleShape(4);
+    const body = { id: overrides.id ?? nextMockBallId++, x, y, vx: 0, vy: 0, angularVelocity: 0, radius: shape.radius, mass: shape.radius, type: "ball", strategy: { isKinetic: true }, shape, ...overrides };
+    normalizeKineticBody(body);
+    return body;
 }
 export function mockRollingProp(overrides = {}) {
-    return { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, isSleeping: false, strategy: { rolls: true, friction: 0, isKinetic: true }, ...overrides };
+    const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, strategy: { rolls: true, friction: 0, isKinetic: true }, shape: new CircleShape(8), ...overrides };
+    normalizeKineticBody(body);
+    return body;
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     const strategy = { isKinetic: true, ...options.strategy };
@@ -95,6 +110,7 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
             this.vy *= 0.02;
         };
     else if (options.update) body.update = options.update;
+    normalizeKineticBody(body);
     return body;
 }
 export function createKineticTestRegistry(liveProps) {

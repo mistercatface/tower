@@ -137,6 +137,22 @@ export function massFromBody(body) {
     if (body.mass == null) throw new Error("Kinetic body missing mass");
     return body.mass;
 }
+export function normalizeKineticBody(body) {
+    const strategy = body.strategy;
+    if (!strategy || strategy.isKinetic !== true) throw new Error("normalizeKineticBody requires a kinetic body");
+    if (body.vx === undefined) body.vx = 0;
+    if (body.vy === undefined) body.vy = 0;
+    if (body.angularVelocity === undefined) body.angularVelocity = 0;
+    if (body.mass == null) body.mass = kineticMassFromFootprint(body);
+    const pinned = strategy.pinned === true;
+    body._kineticPinned = pinned ? 1 : 0;
+    body._kineticInvMass = pinned ? 0 : 1 / body.mass;
+    const moment = body.momentOfInertia;
+    body._kineticInvI = moment ? 1 / moment : 0;
+    body._kineticRestitution = strategy.pairRestitution ?? -1;
+    body._kineticFriction = strategy.pairFriction ?? (strategy.wallPhysics ? strategy.wallPhysics.friction : -1);
+    return body;
+}
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
 export const kineticDynamicSlab = { x: new Float32Array(MAX_PHYS_BODIES), y: new Float32Array(MAX_PHYS_BODIES), vx: new Float32Array(MAX_PHYS_BODIES), vy: new Float32Array(MAX_PHYS_BODIES), w: new Float32Array(MAX_PHYS_BODIES), activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
@@ -238,9 +254,9 @@ function copyBodyPoseToSlab(body, physId) {
     const slab = kineticDynamicSlab;
     slab.x[physId] = body.x;
     slab.y[physId] = body.y;
-    slab.vx[physId] = body.vx ?? 0;
-    slab.vy[physId] = body.vy ?? 0;
-    slab.w[physId] = body.angularVelocity ?? 0;
+    slab.vx[physId] = body.vx;
+    slab.vy[physId] = body.vy;
+    slab.w[physId] = body.angularVelocity;
 }
 function copySlabPoseToBody(physId, body) {
     const slab = kineticDynamicSlab;
@@ -253,14 +269,13 @@ function copySlabPoseToBody(physId, body) {
 export function writeStaticKineticSlabSlot(body) {
     const physId = body._physId;
     const slab = kineticStaticSlab;
-    slab.mass[physId] = massFromBody(body);
-    slab.invMass[physId] = body.strategy?.pinned ? 0 : 1 / massFromBody(body);
-    const moment = body.momentOfInertia;
-    slab.invI[physId] = moment ? 1 / moment : 0;
-    slab.pinned[physId] = body.strategy?.pinned ? 1 : 0;
+    slab.mass[physId] = body.mass;
+    slab.invMass[physId] = body._kineticInvMass;
+    slab.invI[physId] = body._kineticInvI;
+    slab.pinned[physId] = body._kineticPinned;
     slab.entityId[physId] = body.id;
-    slab.restitution[physId] = body.strategy?.pairRestitution ?? -1;
-    slab.friction[physId] = body.strategy?.pairFriction ?? body.strategy?.wallPhysics?.friction ?? -1;
+    slab.restitution[physId] = body._kineticRestitution;
+    slab.friction[physId] = body._kineticFriction;
 }
 export function clearActiveKineticBodySlab() {
     const slab = kineticDynamicSlab;
@@ -1024,6 +1039,7 @@ export function isKinematicallyActiveSlab(physId) {
 export function snapshotKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
+        normalizeKineticBody(entity);
         writeStaticKineticSlabSlot(entity);
         writeActiveKineticBodySlabPose(entity);
         stampBroadphaseSlabFromEntity(entity._physId, entity);
@@ -1107,13 +1123,13 @@ function createBodyImpulseMotion(body) {
             return body.angularVelocity;
         },
         get invMass() {
-            return body.strategy?.pinned ? 0 : 1 / massFromBody(body);
+            return body._kineticInvMass;
         },
         get invI() {
-            return body.momentOfInertia ? 1 / body.momentOfInertia : 0;
+            return body._kineticInvI;
         },
         get hasMoment() {
-            return !!body.momentOfInertia;
+            return body._kineticInvI !== 0;
         },
         velocityDefined() {
             return body.vx !== undefined && body.vy !== undefined;
@@ -1592,14 +1608,16 @@ function appendConstraintEntry(slab, item) {
         slab.static.restLength[idx] = item.entry.restLength ?? 0;
         slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
     }
-    slab.static.massA[idx] = massFromBody(bodyA);
-    slab.static.massB[idx] = massFromBody(bodyB);
-    slab.static.invMassA[idx] = bodyA.strategy?.pinned ? 0 : 1 / massFromBody(bodyA);
-    slab.static.invMassB[idx] = bodyB.strategy?.pinned ? 0 : 1 / massFromBody(bodyB);
-    slab.static.invIA[idx] = bodyA.momentOfInertia ? 1 / bodyA.momentOfInertia : 0;
-    slab.static.invIB[idx] = bodyB.momentOfInertia ? 1 / bodyB.momentOfInertia : 0;
-    slab.static.pinnedA[idx] = bodyA.strategy?.pinned ? 1 : 0;
-    slab.static.pinnedB[idx] = bodyB.strategy?.pinned ? 1 : 0;
+    normalizeKineticBody(bodyA);
+    normalizeKineticBody(bodyB);
+    slab.static.massA[idx] = bodyA.mass;
+    slab.static.massB[idx] = bodyB.mass;
+    slab.static.invMassA[idx] = bodyA._kineticInvMass;
+    slab.static.invMassB[idx] = bodyB._kineticInvMass;
+    slab.static.invIA[idx] = bodyA._kineticInvI;
+    slab.static.invIB[idx] = bodyB._kineticInvI;
+    slab.static.pinnedA[idx] = bodyA._kineticPinned;
+    slab.static.pinnedB[idx] = bodyB._kineticPinned;
     slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
     slab.entry[idx] = item.entry;
 }

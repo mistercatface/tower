@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb } from "../Math/math.js";
-import { entityCollisionSpan, neighborQueryPadForExtent, maxNeighborQueryPad, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Physics/physics.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, maxNeighborQueryPad, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, normalizeKineticBody } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -4044,6 +4044,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             prop.ay = 0;
             this.insertEntity(prop, physIdCounter++);
             if (prop.strategy?.isKinetic) {
+                normalizeKineticBody(prop);
                 this._kineticBodies.push(prop);
                 snapshotKineticBodySlab([prop]);
             }
@@ -4056,6 +4057,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             body.ay = 0;
             this.insertEntity(body, physIdCounter++);
             if (body.strategy?.isKinetic) {
+                normalizeKineticBody(body);
                 this._kineticBodies.push(body);
                 snapshotKineticBodySlab([body]);
             }
@@ -4081,6 +4083,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         prop._neighborsFrameId = -1;
         this.frameId = (this.frameId + 1) | 0;
         if (prop.strategy?.isKinetic) {
+            normalizeKineticBody(prop);
             this.activateKineticBody(prop);
             snapshotKineticBodySlab([prop]);
         }
@@ -4104,6 +4107,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             this.entityGrid.insert(prop);
             prop._neighborsFrameId = -1;
             if (prop.strategy?.isKinetic) {
+                normalizeKineticBody(prop);
                 this.activateKineticBody(prop);
                 snapshotKineticBodySlab([prop]);
             }

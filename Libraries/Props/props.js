@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody } from "../Physics/physics.js";
+import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
 import { FractureEngine } from "../Physics/fracture.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
@@ -79,6 +79,7 @@ export function scalePolygonPropFootprint(prop, scale) {
     markBroadphaseDirty(prop);
     if (prop.strategy?.isKinetic) {
         prop.mass = kineticMassFromFootprint(prop);
+        normalizeKineticBody(prop);
         wakeKineticBody(prop);
     }
 }
@@ -102,6 +103,7 @@ export function setCirclePropRadius(prop, radius) {
     markBroadphaseDirty(prop);
     if (prop.strategy?.isKinetic) {
         prop.mass = kineticMassFromFootprint(prop);
+        normalizeKineticBody(prop);
         wakeKineticBody(prop);
     }
 }
@@ -112,7 +114,10 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.radius = prop.shape.getBoundingRadius();
     markBroadphaseDirty(prop);
     if (FractureEngine.shouldInitFractureFootprint(prop)) FractureEngine.initFractureFootprint(prop);
-    else if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
+    else if (prop.strategy?.isKinetic) {
+        prop.mass = kineticMassFromFootprint(prop);
+        normalizeKineticBody(prop);
+    }
 }
 export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
@@ -261,7 +266,10 @@ export class WorldProp {
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
         initWorldPropShape(this);
-        if (this.strategy.isKinetic) this.mass = kineticMassFromFootprint(this);
+        if (this.strategy.isKinetic) {
+            this.mass = kineticMassFromFootprint(this);
+            normalizeKineticBody(this);
+        }
         if (this._kineticLinkNeighbors) this._kineticLinkNeighbors.length = 0;
         this._kineticIslandPeers = null;
         if (this._neighbors) this._neighbors.length = 0;

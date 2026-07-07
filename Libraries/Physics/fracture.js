@@ -1,6 +1,6 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, collectFrameWallResolveHits } from "./physics.js";
+import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, collectFrameWallResolveHits, normalizeKineticBody } from "./physics.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
 import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
@@ -513,6 +513,8 @@ class WallDebrisStore {
         body.chunks = undefined;
         body.footprintVertices = undefined;
         body.footprintArea = undefined;
+        body.radius = 0;
+        body.mass = 1;
         body._fractureCooldown = 0;
         body._neighbors = undefined;
         body._neighborsFrameId = -1;
@@ -522,6 +524,7 @@ class WallDebrisStore {
         wallDebrisSlab.vy[row] = 0;
         wallDebrisSlab.w[row] = 0;
         wallDebrisSlab.facing[row] = facing;
+        normalizeKineticBody(body);
         return body;
     }
     remove(body, spatialFrame) {
@@ -1107,6 +1110,7 @@ export class FractureEngine {
         prop.shape = new PolygonShape(geometry.footprintVertices);
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
+        normalizeKineticBody(prop);
     }
     static shouldInitFractureFootprint(prop) {
         const entry = FractureEngine.resolveFractureMode(prop.strategy?.fracture?.mode);
