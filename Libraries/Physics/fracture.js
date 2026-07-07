@@ -17,8 +17,7 @@ const MAX_FRACTURE_DEBRIS = FRACTURE_TUNING.burst.maxBurst;
 const MAX_CLIP_VERTS = 512;
 const MAX_WALL_DEBRIS = 2048;
 const wallDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_WALL_DEBRIS), y: new Float32Array(MAX_WALL_DEBRIS), vx: new Float32Array(MAX_WALL_DEBRIS), vy: new Float32Array(MAX_WALL_DEBRIS), w: new Float32Array(MAX_WALL_DEBRIS), facing: new Float32Array(MAX_WALL_DEBRIS), ageMs: new Float32Array(MAX_WALL_DEBRIS), alpha: new Float32Array(MAX_WALL_DEBRIS) };
-const wallDebrisFreeStack = [];
-const wallDebrisBodiesByRow = new Array(MAX_WALL_DEBRIS);
+const wallDebrisFreePool = [];
 let wallDebrisNextId = 0x50000000;
 function isWallChunkPropType(type) {
     return type === "wall_voxel_chunk" || type === "wall_rail_chunk";
@@ -315,30 +314,19 @@ class WallDebrisStore {
     list() {
         return this._bodies;
     }
-    _acquireRow() {
-        let row = wallDebrisFreeStack.pop();
-        if (row === undefined) {
-            row = wallDebrisSlab.activeCount;
+    acquireBody(type, x, y, facing = 0) {
+        let body = wallDebrisFreePool.pop();
+        if (!body) {
+            const row = wallDebrisSlab.activeCount;
             if (row >= MAX_WALL_DEBRIS) throw new Error(`Wall debris slab capacity exceeded (${MAX_WALL_DEBRIS})`);
             wallDebrisSlab.activeCount = row + 1;
+            body = new WallDebrisBody(this);
+            body._row = row;
         }
+        const row = body._row;
         wallDebrisSlab.alpha[row] = 1;
         wallDebrisSlab.ageMs[row] = 0;
-        return row;
-    }
-    _releaseRow(row) {
-        wallDebrisBodiesByRow[row] = null;
-        wallDebrisFreeStack.push(row);
-    }
-    acquireBody(type, x, y, facing = 0) {
-        const row = this._acquireRow();
-        let body = wallDebrisBodiesByRow[row];
-        if (!body) {
-            body = new WallDebrisBody(this);
-            wallDebrisBodiesByRow[row] = body;
-        }
         body._store = this;
-        body._row = row;
         body.id = wallDebrisNextId++;
         body.type = type;
         body.strategy = buildWorldPropStrategyFromAsset(propCatalog[type]);
@@ -365,14 +353,13 @@ class WallDebrisStore {
     }
     remove(body, spatialFrame) {
         if (!spatialFrame) throw new Error("Wall debris removal requires spatial frame");
-        if (!body?.isWallDebris || body._row < 0) throw new Error("Invalid wall debris removal");
+        if (!body?.isWallDebris) throw new Error("Invalid wall debris removal");
         if (body._physId !== undefined) spatialFrame.evictKineticProp(body, this.world.kinetic);
         const index = this._bodies.indexOf(body);
         if (index < 0) throw new Error("Wall debris body missing from store");
         this._bodies.splice(index, 1);
         body.isDead = true;
-        this._releaseRow(body._row);
-        body._row = -1;
+        wallDebrisFreePool.push(body);
     }
     spawnFromBreak(desc, spatialFrame) {
         if (!spatialFrame) throw new Error("Wall debris break spawn requires spatial frame");
@@ -478,7 +465,7 @@ class WallDebrisStore {
         const vy = viewport.y;
         for (let i = 0; i < this._bodies.length; i++) {
             const body = this._bodies[i];
-            if (body.isDead || body._row < 0) throw new Error("Invalid live wall debris body");
+            if (body.isDead) throw new Error("Invalid live wall debris body");
             const radius = body.radius;
             if (!(radius > 0)) throw new Error("Wall debris missing radius");
             const x = body.x;
