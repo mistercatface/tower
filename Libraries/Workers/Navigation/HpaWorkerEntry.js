@@ -1,23 +1,15 @@
 import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena } from "../../Navigation/navigation.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
-import { BeltPacked } from "../../Spatial/belts.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
-export function createNavStepPenaltyLookup(cols, keys, costs, floorPacked = null) {
+export function createNavStepPenaltyLookup(keys, costs) {
     let maxIdx = 0;
-    if (keys && keys.length)
-        for (let i = 0; i < keys.length; i++) {
-            const idx = keys[i];
-            if (idx > maxIdx) maxIdx = idx;
-        }
+    if (keys && keys.length) for (let i = 0; i < keys.length; i++) if (keys[i] > maxIdx) maxIdx = keys[i];
     const costArray = keys && keys.length ? new Uint8Array(maxIdx + 1) : null;
-    if (keys && keys.length) for (let i = 0; i < keys.length; i++) costArray[keys[i]] = costs[i];
+    if (costArray) for (let i = 0; i < keys.length; i++) costArray[keys[i]] = costs[i];
     return {
-        extraCost(idx, currIdx) {
-            let cost = 0;
-            if (costArray && idx < costArray.length) cost += costArray[idx];
-            if (floorPacked && currIdx !== undefined) cost += BeltPacked.stepPenalty(currIdx, idx, cols, floorPacked);
-            return cost;
+        extraCost(idx) {
+            return costArray && idx < costArray.length ? costArray[idx] : 0;
         },
     };
 }
@@ -341,9 +333,7 @@ export class HpaPathfindingWorker {
     }
     runReplan(slot, data) {
         const frame = this.topology.requireGridFrame();
-        const simView = this.topology.navSimView;
-        const floorPacked = simView?.floorPacked ?? null;
-        const stepPenaltyLookup = createNavStepPenaltyLookup(frame.cols, data.stepPenaltyKeys, data.stepPenaltyCosts, floorPacked);
+        const stepPenaltyLookup = createNavStepPenaltyLookup(data.stepPenaltyKeys, data.stepPenaltyCosts);
         const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
         const baseGraph = this.graph.abstractGraph();
         const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, penaltyLookup: stepPenaltyLookup, cellToRegion });

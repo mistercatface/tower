@@ -60,17 +60,6 @@ describe("BeltPacked", () => {
         assert.equal(BeltPacked.blocksStep(grid, beltIdx, westIdx), true);
     });
 
-    it("stepPenalty favors flow-aligned steps", () => {
-        const cols = 5;
-        const floorPacked = new Uint8Array(cols * 3);
-        const beltIdx = 2 + 1 * cols;
-        floorPacked[beltIdx] = BeltPacked.defaultForSpawn("floor_belt");
-        const withFlow = BeltPacked.stepPenalty(1 + 1 * cols, beltIdx, cols, floorPacked);
-        const againstFlow = BeltPacked.stepPenalty(3 + 1 * cols, beltIdx, cols, floorPacked);
-        assert.equal(withFlow, 0);
-        assert.equal(againstFlow, 20);
-    });
-
     it("orientationOptions lists valid packed bytes", () => {
         const options = BeltPacked.orientationOptions();
         assert.ok(options.length > 0);

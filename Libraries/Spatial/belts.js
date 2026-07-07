@@ -6,9 +6,6 @@ export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);
 const BELT_DIR_Y = Int8Array.from([-1, 0, 1, 0]);
 const BELT_TWO_PI = Math.PI * 2;
-const BELT_STEP_AGAINST_FLOW_PENALTY = 20;
-const BELT_STEP_LATERAL_PENALTY = 5;
-const BELT_STEP_DIAGONAL_PENALTY = 8;
 const BELT_LINK_OK = 0;
 const BELT_LINK_EXIT_MISMATCH = 1;
 const BELT_LINK_ENTRY_MISMATCH = 2;
@@ -53,16 +50,6 @@ for (let exit = 0; exit < 4; exit++)
             railWrite++;
         }
     }
-function beltSidePenalty(packed, side, flowIsExit) {
-    if (side === -1) return BELT_STEP_DIAGONAL_PENALTY;
-    const entrySide = BeltPacked.entry(packed);
-    const exitSide = BeltPacked.exit(packed);
-    const flowSide = flowIsExit ? exitSide : entrySide;
-    const againstSide = flowIsExit ? entrySide : exitSide;
-    if (side === flowSide) return 0;
-    if (side === againstSide) return BELT_STEP_AGAINST_FLOW_PENALTY;
-    return BELT_STEP_LATERAL_PENALTY;
-}
 function beltLinkCode(idxA, packedA, idxB, packedB, cols, graph) {
     const exitSide = BeltPacked.exit(packedA);
     const entrySide = BeltPacked.entry(packedB);
@@ -154,15 +141,6 @@ export class BeltPacked {
         if (fromPacked && stepSide !== BeltPacked.exit(fromPacked)) return true;
         if (toPacked && edgeMirrorSide(stepSide) === BeltPacked.exit(toPacked)) return true;
         return false;
-    }
-    static stepPenalty(currIdx, nIdx, cols, floorPacked) {
-        const packedCurr = floorPacked[currIdx];
-        const packedN = floorPacked[nIdx];
-        if (!packedCurr && !packedN) return 0;
-        let penalty = 0;
-        if (packedCurr) penalty = beltSidePenalty(packedCurr, BeltPacked.stepSideBetween(currIdx, nIdx, cols), true);
-        if (packedN) penalty = Math.max(penalty, beltSidePenalty(packedN, BeltPacked.stepSideBetween(nIdx, currIdx, cols), false));
-        return penalty;
     }
     static linkOk(idxA, packedA, idxB, packedB, cols, graph) {
         const code = beltLinkCode(idxA, packedA, idxB, packedB, cols, graph);
