@@ -4,7 +4,7 @@ import { getSurfaceProfileRevision } from "../../../Libraries/WorldSurface/world
 import { invalidateStaticGridEdgeRailDrawCache } from "../../../Libraries/Render/render.js";
 import { invalidateStaticGridWallDrawCache } from "../../../Libraries/Render/render.js";
 import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.js";
-import { floorBeltEffectPass, floorPortalEffectPass } from "../../../Libraries/Props/props.js";
+import { floorEffectPass } from "../../../Libraries/Props/props.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
@@ -16,8 +16,7 @@ import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/Profil
 const editorSceneHooks = {
     drawGroundOverlays(state, viewport, ctx) {},
     simulationEffectPasses: [
-        floorBeltEffectPass,
-        floorPortalEffectPass,
+        floorEffectPass,
         {
             // After floor stamps (10.5), before draw3DBuildings props/walls (70).
             zIndex: 15,

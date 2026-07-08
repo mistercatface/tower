@@ -3,7 +3,7 @@ import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { PortalLink } from "../Spatial/portals.js";
+import { PortalLink, injectPortalRegionEdges, expandReachableThroughPortal } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
@@ -1206,42 +1206,6 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
-const PORTAL_ABSTRACT_COST = 8;
-function stripPortalRegionEdges(graph) {
-    for (const node of graph.nodes()) node.edges = node.edges.filter((edge) => edge.cost !== PORTAL_ABSTRACT_COST);
-}
-function connectPortalEdge(nodeA, nodeB) {
-    if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
-    if (nodeA.edges.some((edge) => edge.targetId === nodeB.id)) return;
-    nodeA.edges.push({ targetId: nodeB.id, cost: PORTAL_ABSTRACT_COST });
-}
-export function injectPortalRegionEdges(graph, blocked, portalTargetIdx) {
-    if (!portalTargetIdx) return;
-    stripPortalRegionEdges(graph);
-    const size = portalTargetIdx.length;
-    for (let exitIdx = 0; exitIdx < size; exitIdx++) {
-        const entryIdx = portalTargetIdx[exitIdx];
-        if (entryIdx < 0) continue;
-        if (blocked[exitIdx] || blocked[entryIdx]) continue;
-        const exitNode = graph.nodeForCell(exitIdx);
-        const entryNode = graph.nodeForCell(entryIdx);
-        if (!exitNode || !entryNode || exitNode.id === entryNode.id) continue;
-        connectPortalEdge(exitNode, entryNode);
-    }
-}
-export function findPortalLegBetweenRegions(cellToRegion, portalTargetIdx, regionAIdx, regionBIdx, scratch) {
-    const size = portalTargetIdx.length;
-    for (let exitIdx = 0; exitIdx < size; exitIdx++) {
-        const entryIdx = portalTargetIdx[exitIdx];
-        if (entryIdx < 0) continue;
-        if (cellToRegion[exitIdx] !== regionAIdx) continue;
-        if (cellToRegion[entryIdx] !== regionBIdx) continue;
-        scratch[0] = exitIdx;
-        scratch[1] = entryIdx;
-        return 2;
-    }
-    return 0;
-}
 function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, portalTargetIdx = null) {
     const { cols, rows } = frame;
     const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
@@ -1255,13 +1219,7 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
             reachable[nIdx] = 1;
             enqueue(nIdx);
         });
-        if (portalTargetIdx) {
-            const entryIdx = portalTargetIdx[idx];
-            if (entryIdx >= 0 && !blocked[entryIdx] && !reachable[entryIdx]) {
-                reachable[entryIdx] = 1;
-                enqueue(entryIdx);
-            }
-        }
+        expandReachableThroughPortal(portalTargetIdx, idx, blocked, reachable, enqueue);
     });
     for (const node of graph.nodes()) {
         let hasReachableCell = false;

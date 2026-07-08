@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
-import { PortalLink, FloorPortal } from "../Libraries/Spatial/portals.js";
+import { PortalLink, FloorPortal, findPortalLegBetweenRegions, PORTAL_ABSTRACT_COST } from "../Libraries/Spatial/portals.js";
 import {
     bakeNavTopologyLocal,
     navCanStep,
     buildFullRegionGraph,
-    findPortalLegBetweenRegions,
     findSabPathProgressIdx,
     createNavLocalView,
     HpaAbstractGraph,
@@ -18,7 +17,7 @@ import { HpaBufferManager, HpaReplanPlanner } from "../Libraries/Workers/Navigat
 import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { mockCircleProp } from "./harness/kineticTickHarness.js";
 
-const PORTAL_ABSTRACT_COST_EXPORT = 8;
+const PORTAL_ABSTRACT_COST_EXPORT = PORTAL_ABSTRACT_COST;
 
 function abstractGraphFromPacked(packed, cols) {
     const { nodeCount, nodeIdx, edgeSources, edgeTargets, edgeCosts, edgeWrite, nodeIds } = packed;

@@ -75,6 +75,50 @@ export class FloorPortal {
         }
     }
 }
+export const PORTAL_ABSTRACT_COST = 8;
+function stripPortalRegionEdges(graph) {
+    for (const node of graph.nodes()) node.edges = node.edges.filter((edge) => edge.cost !== PORTAL_ABSTRACT_COST);
+}
+function connectPortalEdge(nodeA, nodeB) {
+    if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
+    if (nodeA.edges.some((edge) => edge.targetId === nodeB.id)) return;
+    nodeA.edges.push({ targetId: nodeB.id, cost: PORTAL_ABSTRACT_COST });
+}
+export function injectPortalRegionEdges(graph, blocked, portalTargetIdx) {
+    if (!portalTargetIdx) return;
+    stripPortalRegionEdges(graph);
+    const size = portalTargetIdx.length;
+    for (let exitIdx = 0; exitIdx < size; exitIdx++) {
+        const entryIdx = portalTargetIdx[exitIdx];
+        if (entryIdx < 0) continue;
+        if (blocked[exitIdx] || blocked[entryIdx]) continue;
+        const exitNode = graph.nodeForCell(exitIdx);
+        const entryNode = graph.nodeForCell(entryIdx);
+        if (!exitNode || !entryNode || exitNode.id === entryNode.id) continue;
+        connectPortalEdge(exitNode, entryNode);
+    }
+}
+export function findPortalLegBetweenRegions(cellToRegion, portalTargetIdx, regionAIdx, regionBIdx, scratch) {
+    const size = portalTargetIdx.length;
+    for (let exitIdx = 0; exitIdx < size; exitIdx++) {
+        const entryIdx = portalTargetIdx[exitIdx];
+        if (entryIdx < 0) continue;
+        if (cellToRegion[exitIdx] !== regionAIdx) continue;
+        if (cellToRegion[entryIdx] !== regionBIdx) continue;
+        scratch[0] = exitIdx;
+        scratch[1] = entryIdx;
+        return 2;
+    }
+    return 0;
+}
+export function expandReachableThroughPortal(portalTargetIdx, idx, blocked, reachable, enqueue) {
+    if (!portalTargetIdx) return;
+    const entryIdx = portalTargetIdx[idx];
+    if (entryIdx >= 0 && !blocked[entryIdx] && !reachable[entryIdx]) {
+        reachable[entryIdx] = 1;
+        enqueue(entryIdx);
+    }
+}
 const PORTAL_EXIT_PALETTE = { ring: "#ff7a2f", glow: "rgba(255,122,47,0.35)", core: "#ffd9b0" };
 const PORTAL_ENTRY_PALETTE = { ring: "#3fa9ff", glow: "rgba(63,169,255,0.35)", core: "#bfe4ff" };
 function portalDrawForPalette(palette) {

@@ -516,16 +516,10 @@ export function registerAllPropDrawRecipes() {
 }
 queueMicrotask(registerAllPropDrawRecipes);
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
-export const floorBeltEffectPass = {
+export const floorEffectPass = {
     zIndex: 10.5,
     draw(state, viewport, ctx) {
         drawFloorOccupancyBelts(ctx, state, viewport);
-    },
-};
-/** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
-export const floorPortalEffectPass = {
-    zIndex: 10.6,
-    draw(state, viewport, ctx) {
         drawFloorPortals(ctx, state, viewport);
     },
 };
