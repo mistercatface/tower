@@ -324,6 +324,7 @@ export class HpaPathWorker {
         this._ensureNavBuffers(size, vertCount, edgePoolRefs, grid.cols, grid.rows);
         const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
         packNavTopologyFromGrid(grid, this._navArena, rebindArena ? null : damageBounds);
+        this._syncNavArenaFields();
         this._packNavEdgePoolForWorker(grid);
         if (rebindArena) {
             this._workerNavArenaBound = true;

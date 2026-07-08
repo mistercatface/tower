@@ -20,6 +20,12 @@ import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { mockCircleProp } from "./harness/kineticTickHarness.js";
 
 function buildTestRegionGraph(opts) {
+    const grid = opts.grid;
+    if (grid) {
+        if (opts.floorPacked === undefined) opts.floorPacked = grid.floorPacked;
+        if (opts.activePortalPairs === undefined) opts.activePortalPairs = grid.activePortalPairs;
+        if (opts.activePortalCount === undefined) opts.activePortalCount = grid.activePortalCount;
+    }
     return buildFullRegionGraph(opts);
 }
 
@@ -141,11 +147,9 @@ describe("portal nav", () => {
         const blocked = new Uint8Array(cols * rows);
         const exitIdx = 2 + 2 * cols;
         const entryIdx = 8 + 8 * cols;
-        const navGraph = { 
-            canStepIdx: () => true,
-            grid: { activePortalPairs: new Int32Array([exitIdx, entryIdx]), activePortalCount: 1 }
-        };
-        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
+        const pairs = new Int32Array([exitIdx, entryIdx]);
+        const navGraph = { canStepIdx: () => true };
+        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, activePortalPairs: pairs, activePortalCount: 1 });
         const exitNode = built.graph.nodeForCell(exitIdx);
         const entryNode = built.graph.nodeForCell(entryIdx);
         assert.ok(exitNode);
@@ -164,11 +168,8 @@ describe("portal nav", () => {
         const exitIdx = 2 + 2 * cols;
         const entryIdx = 8 + 8 * cols;
         const pairs = new Int32Array([exitIdx, entryIdx]);
-        const navGraph = { 
-            canStepIdx: () => true,
-            grid: { activePortalPairs: pairs, activePortalCount: 1 }
-        };
-        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
+        const navGraph = { canStepIdx: () => true };
+        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, activePortalPairs: pairs, activePortalCount: 1 });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const scratch = new Int32Array(2);
         const exitRegion = packed.cellToRegion[exitIdx];
@@ -185,6 +186,7 @@ describe("portal nav", () => {
         const exitIdx = grid.idx(2, 2);
         const entryIdx = grid.idx(8, 8);
         PortalLink.setLink(grid, exitIdx, entryIdx);
+        const { navTopology } = bakeNavTopologyLocal(grid);
         const worker = mockHpaPathWorker(
             [
                 { col: 1, row: 2 },
@@ -195,7 +197,7 @@ describe("portal nav", () => {
         );
         const x = grid.gridCenterXByIdx(entryIdx);
         const y = grid.gridCenterYByIdx(entryIdx);
-        const progress = findSabPathProgressIdx(x, y, worker, 0, 3, grid, null);
+        const progress = findSabPathProgressIdx(x, y, worker, 0, 3, grid, navTopology);
         assert.ok(progress >= 2);
     });
 
@@ -220,7 +222,7 @@ describe("portal nav", () => {
         const { grid, cols, rows, exitIdx, entryIdx } = walledPortalOnlyGrid();
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
-        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
+        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, grid });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const exitRegion = packed.cellToRegion[exitIdx];
@@ -249,7 +251,7 @@ describe("portal nav", () => {
         const { grid, cols, rows, exitIdx, entryIdx, startIdx, targetIdx } = portalShortcutGrid();
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
-        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
+        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, grid });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const planner = createPortalPlanner(cols, rows);
@@ -274,7 +276,7 @@ describe("portal nav", () => {
         const { grid, cols, rows, exitIdx, entryIdx, startIdx, targetIdx } = farSideOnlyViaPortalGrid();
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
-        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
+        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, grid });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         assert.ok(built.graph.nodeForCell(entryIdx), "entry region must survive prune");
         assert.ok(built.graph.nodeForCell(targetIdx), "target region must survive prune");

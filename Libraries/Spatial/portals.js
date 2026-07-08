@@ -1,4 +1,5 @@
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
+import { forEachCardinalNeighborIdx } from "./spatial.js";
 export const PORTAL_NONE = -1;
 const PORTAL_STRIP_KEYS = ["exit", "entry"];
 const PORTAL_QUERY_BOUNDS = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
@@ -72,6 +73,21 @@ export class PortalLink {
     static blocksStep(grid, fromIdx, toIdx) {
         if (PortalLink.isExit(grid, fromIdx)) return true;
         return false;
+    }
+    static approachGoalIdx(grid, fromIdx, targetIdx) {
+        if (!PortalLink.isExit(grid, targetIdx)) return targetIdx;
+        if (fromIdx === targetIdx) return targetIdx;
+        let approach = -1;
+        forEachCardinalNeighborIdx(targetIdx, grid, (nIdx) => {
+            if (grid.grid[nIdx] !== 0) return;
+            if (PortalLink.isExit(grid, nIdx)) return;
+            if (fromIdx === nIdx) {
+                approach = nIdx;
+                return;
+            }
+            if (approach < 0) approach = nIdx;
+        });
+        return approach >= 0 ? approach : targetIdx;
     }
     static portalHopBetween(portalTargetIdx, fromIdx, toIdx) {
         return portalTargetIdx[fromIdx] === toIdx;

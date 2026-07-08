@@ -510,7 +510,7 @@ export function computeDistanceTransform(grid, frame, distToWall = null) {
     for (let i = 0; i < size; i++) if (distances[i] === Infinity) distances[i] = 1000;
     return distances;
 }
-export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
+export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, floorPacked = null, unassigned = null) {
     const { cols, rows } = frame;
     let cellCount = 0;
     cellToNode[startIdx] = node.idx;
@@ -524,13 +524,8 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
                 const canStepRev = navGraph.canStepIdx(nIdx, currIdx);
                 if (!canStepFwd && !canStepRev) return;
                 if (!canStepFwd || !canStepRev) {
-                    const grid = navGraph.grid;
-                    if (!grid || !grid.floorPacked) return;
-                    const packedA = grid.floorPacked[currIdx];
-                    const packedB = grid.floorPacked[nIdx];
-                    // Group only if they share a modifier (e.g. both are belts).
-                    // In the future, this can check if they have the exact SAME modifier type.
-                    if (packedA === 0 || packedB === 0) return;
+                    if (!floorPacked) return;
+                    if (floorPacked[currIdx] === 0 || floorPacked[nIdx] === 0) return;
                 }
             }
             if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
@@ -630,7 +625,7 @@ export function repositionRegionCentroids(nodesMap, grid, frame, cellToNode) {
         }
     }
 }
-export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
+export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null, floorPacked = null }) {
     const { cols, rows } = frame;
     const size = cols * rows;
     const assignment = cellToNode ?? new Int32Array(size).fill(-1);
@@ -644,7 +639,7 @@ export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChu
         const id = startIdx; // Pure integer ID
         const node = new RegionNode(id, startIdx);
         nodesMap[id] = node;
-        floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph);
+        floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph, floorPacked);
     }
     if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, frame, minCellsPerChunk, navGraph);
     repositionRegionCentroids(nodesMap, grid, frame, assignment);
@@ -1123,7 +1118,7 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
         if (regionsShareDirectedPassableLink(navGraph, frame, other, node)) graph.connectEdge(other, node);
     }
 }
-function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph) {
+function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, floorPacked = null) {
     const { cols, rows } = frame;
     if (cells.length === 0) return { newIds: [], nodeIdCounter: graph.nodeIdCounter };
     if (!distToWall || distToWall.length !== cols * rows) distToWall = computeDistanceTransform(blocked, frame, distToWall);
@@ -1135,7 +1130,7 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
         if (!unassigned.has(startIdx)) continue;
         const node = graph.createRegionAtCell(startIdx);
         node.cells.length = 0;
-        floodFillRegion(startIdx, node, blocked, frame, graph.cellToNode, node.cells, maxCellsPerChunk, navGraph, unassigned);
+        floodFillRegion(startIdx, node, blocked, frame, graph.cellToNode, node.cells, maxCellsPerChunk, navGraph, floorPacked, unassigned);
         repositionNodeCentroid(node, graph.cellToNode, blocked, frame, graph.nodesMap);
         newIds.push(node.id);
     }
@@ -1143,12 +1138,12 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
     repositionRegionCentroids(graph.nodesMap, blocked, frame, graph.cellToNode);
     return { newIds, nodeIdCounter: graph.nodeIdCounter, distToWall };
 }
-function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk) {
+function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk, floorPacked = null) {
     const size = frame.cols * frame.rows;
     const orphans = [];
     for (let i = 0; i < size; i++) if (!blocked[i] && graph.cellToNode[i] === -1) orphans.push(i);
     if (orphans.length === 0) return distToWall;
-    return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph).distToWall;
+    return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, floorPacked).distToWall;
 }
 export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
@@ -1209,7 +1204,7 @@ function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
         repositionNodeCentroid(node, graph.cellToNode, blocked, frame, graph.nodesMap);
     }
 }
-function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, bounds) {
+function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, bounds, floorPacked = null) {
     const { cols } = frame;
     const regionIds = graph.collectRegionIdsInBounds(bounds);
     const cells = new Set();
@@ -1224,7 +1219,7 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
     });
     if (cells.size === 0) return { repackedIds: [], nodeIdCounter: graph.nodeIdCounter, distToWall };
     distToWall = computeDistanceTransform(blocked, frame, distToWall);
-    const { newIds, nodeIdCounter: nextCounter, distToWall: dist } = createRegionFromCells([...cells], blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph);
+    const { newIds, nodeIdCounter: nextCounter, distToWall: dist } = createRegionFromCells([...cells], blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, floorPacked);
     return { repackedIds: newIds, nodeIdCounter: nextCounter, distToWall: dist };
 }
 function connectAllNodes(navGraph, blocked, frame, graph) {
@@ -1308,20 +1303,20 @@ function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph)
     }
 }
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount, floorPacked = null } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
     let distToWall = computeDistanceTransform(blocked, frame);
-    const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
+    const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph, floorPacked });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
-    distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
+    distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk, floorPacked);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     return { ...graph.exportState(), graph };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount, floorPacked = null) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1330,7 +1325,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     let distToWall = state.distToWall;
     const box = expandRegionDamageBounds(bounds, frame, damagePadding);
     stripBlockedCellsFromRegions(blocked, frame, box, graph);
-    const { repackedIds, nodeIdCounter, distToWall: dist } = repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, box);
+    const { repackedIds, nodeIdCounter, distToWall: dist } = repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, box, floorPacked);
     graph.nodeIdCounter = nodeIdCounter;
     graph.syncState(state);
     state.graph = graph;
@@ -1340,7 +1335,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of graph.collectRegionIdsInBounds(box)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
-    state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
+    state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk, floorPacked);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     graph.syncState(state);
@@ -1584,7 +1579,8 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {Uint8Array} blocked
  * @property {Uint8Array} gridFill
  * @property {Uint8Array} floorPacked
- * @property {Int32Array} portalTargetIdx
+ * @property {Int32Array} activePortalPairs
+ * @property {Int32Array} activePortalCount
  * @property {Int32Array} edgeSlots
  * @property {Int32Array} octileNeighbors
  * @property {Int32Array} octilePredecessors
@@ -1634,8 +1630,19 @@ export function growNavTopologyVertexSab(arena, vertCount) {
     arena.sabVertexPassability = new SharedArrayBuffer(vertBytes);
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
 }
+export function growNavTopologyActivePortalSab(arena, pairSlots) {
+    const needBytes = Math.max(pairSlots * 4, 8);
+    if (arena.sabActivePortalPairs.byteLength >= needBytes) return;
+    const grown = new SharedArrayBuffer(Math.max(needBytes, arena.sabActivePortalPairs.byteLength * 2));
+    new Int32Array(grown).set(arena.activePortalPairs);
+    arena.sabActivePortalPairs = grown;
+    arena.activePortalPairs = new Int32Array(arena.sabActivePortalPairs);
+}
 export function packNavTopologyFromGrid(grid, arena, idx = null) {
-    arena.activePortalPairs.set(grid.activePortalPairs.subarray(0, arena.activePortalPairs.length));
+    const pairSlots = grid.activePortalCount * 2;
+    growNavTopologyActivePortalSab(arena, pairSlots);
+    arena.activePortalPairs.fill(0);
+    if (pairSlots > 0) arena.activePortalPairs.set(grid.activePortalPairs.subarray(0, pairSlots));
     arena.activePortalCount[0] = grid.activePortalCount;
     const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
@@ -1838,26 +1845,9 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
     };
 }
 /** Snap a path goal cell to the belt entry neighbor (belt-mouth approach). */
-function portalApproachNeighborIdx(grid, fromIdx, exitIdx) {
-    let approach = -1;
-    forEachCardinalNeighborIdx(exitIdx, grid, (nIdx) => {
-        if (grid.grid[nIdx] !== 0) return;
-        if (PortalLink.isExit(grid, nIdx)) return;
-        if (fromIdx === nIdx) {
-            approach = nIdx;
-            return;
-        }
-        if (approach < 0) approach = nIdx;
-    });
-    return approach;
-}
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
-    if (PortalLink.isExit(grid, targetIdx)) {
-        if (fromIdx === targetIdx) return targetIdx;
-        const approachIdx = portalApproachNeighborIdx(grid, fromIdx, targetIdx);
-        if (approachIdx >= 0) return approachIdx;
-        return targetIdx;
-    }
+    const portalSnapped = PortalLink.approachGoalIdx(grid, fromIdx, targetIdx);
+    if (portalSnapped !== targetIdx) return portalSnapped;
     if (!FloorBelt.isBeltAtIdx(grid, targetIdx)) return targetIdx;
     const neighborIdx = FloorBelt.entryNeighborIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
@@ -2070,6 +2060,14 @@ export function createNavState() {
     return { lastX: null, lastY: null, stuckFrames: 0, pathProgressIdx: 0, topologyKey: "", lastTargetX: null, lastTargetY: null, lastOffPathReplan: 0, hpaReplanRequestId: 0, pathSlot: -1, pathLen: 0, routeId: 0, pendingReplanReason: null, lastAcceptedRouteReason: null, lastAcceptedPathLen: 0, lastAcceptedProgressIdx: 0, lastAcceptedTargetX: null, lastAcceptedTargetY: null };
 }
 const PATH_WAYPOINT_ARRIVAL_PX = 16;
+function pathSegmentIsDiscontinuousHop(navTopology, fromIdx, toIdx) {
+    if (fromIdx < 0 || toIdx < 0 || !navTopology) return false;
+    if (typeof navTopology.canStep === "function") return !navTopology.canStep(fromIdx, toIdx);
+    const frame = navTopology.frame;
+    const topology = navTopology.topology ?? navTopology;
+    if (frame && topology?.octileNeighbors) return !navCanStep(frame, topology, fromIdx, toIdx);
+    return false;
+}
 function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, grid, navTopology) {
     const idx = worker.pathIdx(slot, i);
     const wx = grid.gridCenterXByIdx(idx);
@@ -2092,7 +2090,7 @@ function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, g
     if (bodyIdx === idx) return true;
     if (i > 0) {
         const prevIdx = worker.pathIdx(slot, i - 1);
-        if (PortalLink.portalHopBetween(grid.portalTargetIdx, prevIdx, idx)) return bodyIdx === idx || bodyIdx === prevIdx;
+        if (pathSegmentIsDiscontinuousHop(navTopology, prevIdx, idx)) return bodyIdx === idx || bodyIdx === prevIdx;
     }
     return grid.canStep(bodyIdx, idx, navTopology);
 }
@@ -2136,7 +2134,7 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
             continue;
         }
         const prevCellIdx = idx > 0 ? worker.pathIdx(slot, idx - 1) : -1;
-        if (prevCellIdx >= 0 && PortalLink.portalHopBetween(grid.portalTargetIdx, prevCellIdx, cellIdx)) {
+        if (prevCellIdx >= 0 && pathSegmentIsDiscontinuousHop(navTopology, prevCellIdx, cellIdx)) {
             idx++;
             continue;
         }
@@ -2405,7 +2403,7 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     }
     const distToTarget = Math.hypot(targetX - x, targetY - y);
     const nextPathIdx = step < pathLen - 1 ? worker.pathIdx(slot, step + 1) : -1;
-    if (nextPathIdx >= 0 && PortalLink.portalHopBetween(grid.portalTargetIdx, steerIdx, nextPathIdx) && bodyIdx === steerIdx) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
+    if (nextPathIdx >= 0 && pathSegmentIsDiscontinuousHop(navTopology, steerIdx, nextPathIdx) && bodyIdx === steerIdx) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     if (step >= pathLen - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     if (!(dist >= 0.01)) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     const maxSpeed = settings.maxSpeed ?? 180;
