@@ -1,5 +1,4 @@
-import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena } from "../../Navigation/navigation.js";
-import { PortalNavGraph } from "../../Spatial/portals.js";
+import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena, findPortalLegBetweenRegions } from "../../Navigation/navigation.js";
 import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
 import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "../../Pathfinding/hpaWorkerSab.js";
 import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
@@ -160,12 +159,6 @@ export class HpaRegionGraphManager {
         this.persistNodeIds = [];
         this.portalLinkPairs = new Int32Array(8);
     }
-    _getPortalCallbacks(activePortalPairs, activePortalCount) {
-        const count = activePortalCount ? activePortalCount[0] : 0;
-        if (count === 0 || !activePortalPairs) return { injectEdges: null, expandReachable: null };
-        const pairs = activePortalPairs;
-        return { injectEdges: (graph, blocked) => PortalNavGraph.injectRegionEdges(graph, blocked, pairs, count), expandReachable: (idx, blocked, reachable, enqueue) => PortalNavGraph.expandReachable(pairs, count, idx, blocked, reachable, enqueue) };
-    }
     writeRegionGraphToSab(gridFrame) {
         if (!this.regionGraphState) return null;
         const frame = gridFrame;
@@ -182,15 +175,13 @@ export class HpaRegionGraphManager {
     }
     buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, data) {
         const frame = gridFrame;
-        const { injectEdges, expandReachable } = this._getPortalCallbacks(activePortalPairs, activePortalCount);
-        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, injectEdges, expandReachable });
+        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, activePortalPairs, activePortalCount });
         this.regionGraphState = { ...built, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, damagePadding: data.damagePadding, distToWall: null };
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, activePortalPairs, activePortalCount, data) {
         if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, data);
-        const { injectEdges, expandReachable } = this._getPortalCallbacks(activePortalPairs, activePortalCount);
-        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, injectEdges, expandReachable);
+        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, null, null, activePortalPairs, activePortalCount);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
@@ -286,7 +277,7 @@ export class HpaReplanPlanner {
         if (len > 0) return len;
         const count = activePortalCount ? activePortalCount[0] : 0;
         if (!cellToRegion || count === 0 || !activePortalPairs) return 0;
-        const hopLen = PortalNavGraph.findLegBetweenRegions(cellToRegion, activePortalPairs, count, aIdx, bIdx, this.portalHopScratch);
+        const hopLen = findPortalLegBetweenRegions(cellToRegion, activePortalPairs, count, aIdx, bIdx, this.portalHopScratch);
         if (hopLen === 0) return 0;
         const exitIdx = this.portalHopScratch[0];
         const entryIdx = this.portalHopScratch[1];

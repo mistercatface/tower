@@ -175,7 +175,7 @@ export class HpaPathWorker {
         const topology = this.getNavTopology();
         const blocked = topology?.blocked ?? grid.grid;
         const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
-        const cellToComponent = topology?.octileNeighbors ? buildNavComponentMap(blocked, topology.octileNeighbors, grid.cols, grid.rows) : new Int16Array(size).fill(-1);
+        const cellToComponent = topology?.octileNeighbors ? buildNavComponentMap(blocked, topology.octileNeighbors, grid.cols, grid.rows, grid.activePortalPairs, grid.activePortalCount) : new Int16Array(size).fill(-1);
         return {
             cols: grid.cols,
             rows: grid.rows,

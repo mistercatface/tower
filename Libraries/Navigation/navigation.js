@@ -519,7 +519,20 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
     bfsIndices([startIdx], (currIdx, enqueue) => {
         if (cellCount >= maxCellsPerChunk) return;
         forEachCardinalNeighborIdx(currIdx, frame, (nIdx) => {
-            if (navGraph && (!navGraph.canStepIdx(currIdx, nIdx) || !navGraph.canStepIdx(nIdx, currIdx))) return;
+            if (navGraph) {
+                const canStepFwd = navGraph.canStepIdx(currIdx, nIdx);
+                const canStepRev = navGraph.canStepIdx(nIdx, currIdx);
+                if (!canStepFwd && !canStepRev) return;
+                if (!canStepFwd || !canStepRev) {
+                    const grid = navGraph.grid;
+                    if (!grid || !grid.floorPacked) return;
+                    const packedA = grid.floorPacked[currIdx];
+                    const packedB = grid.floorPacked[nIdx];
+                    // Group only if they share a modifier (e.g. both are belts).
+                    // In the future, this can check if they have the exact SAME modifier type.
+                    if (packedA === 0 || packedB === 0) return;
+                }
+            }
             if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
                 if (unassigned) unassigned.delete(nIdx);
                 cellToNode[nIdx] = node.idx;
@@ -877,7 +890,7 @@ function logHpaReplanFailure(grid, worker, navTopology, startX, startY, targetX,
     const topology = navTopology?.topology ?? navTopology;
     const blocked = topology?.blocked ?? grid.grid;
     const octileNeighbors = topology?.octileNeighbors;
-    const cellToComponent = octileNeighbors ? buildNavComponentMap(blocked, octileNeighbors, grid.cols, grid.rows) : null;
+    const cellToComponent = octileNeighbors ? buildNavComponentMap(blocked, octileNeighbors, grid.cols, grid.rows, grid.activePortalPairs, grid.activePortalCount) : null;
     const startComp = cellToComponent ? cellToComponent[startIdx] : REGION_CELL_UNASSIGNED;
     const targetComp = cellToComponent ? cellToComponent[snappedTargetIdx] : REGION_CELL_UNASSIGNED;
     const cellToRegion = worker.graphCellToRegion;
@@ -1137,11 +1150,12 @@ function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, ma
     if (orphans.length === 0) return distToWall;
     return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph).distToWall;
 }
-export function buildNavComponentMap(blocked, octileNeighbors, cols, rows) {
+export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
     const cellToComponent = new Int16Array(size);
     cellToComponent.fill(REGION_CELL_UNASSIGNED);
     let componentId = 0;
+    const count = activePortalCount ? (typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0]) : 0;
     for (let start = 0; start < size; start++) {
         if (blocked[start] || cellToComponent[start] >= 0) continue;
         const id = componentId++;
@@ -1152,6 +1166,12 @@ export function buildNavComponentMap(blocked, octileNeighbors, cols, rows) {
                 const nIdx = octileNeighbors[octileNeighborOffset(idx, dir)];
                 if (nIdx >= 0 && !blocked[nIdx] && cellToComponent[nIdx] < 0) enqueue(nIdx);
             }
+            if (activePortalPairs && count > 0)
+                for (let i = 0; i < count; i++)
+                    if (idx === activePortalPairs[i * 2]) {
+                        const entryIdx = activePortalPairs[i * 2 + 1];
+                        if (!blocked[entryIdx] && cellToComponent[entryIdx] < 0) enqueue(entryIdx);
+                    }
         });
     }
     return cellToComponent;
@@ -1232,7 +1252,7 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
-function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable = null) {
+function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable = null, activePortalPairs = null, activePortalCount = null) {
     const { cols, rows } = frame;
     const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
     const startIdx = findNearestOpenCellIdx(blocked, frame, seedIdx);
@@ -1245,6 +1265,15 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
             reachable[nIdx] = 1;
             enqueue(nIdx);
         });
+        if (activePortalPairs && activePortalCount) {
+            const pairs = activePortalPairs;
+            const count = typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0];
+            for (let i = 0; i < count; i++)
+                if (idx === pairs[i * 2] && !blocked[pairs[i * 2 + 1]] && !reachable[pairs[i * 2 + 1]]) {
+                    reachable[pairs[i * 2 + 1]] = 1;
+                    enqueue(pairs[i * 2 + 1]);
+                }
+        }
         if (expandReachable) expandReachable(idx, blocked, reachable, enqueue);
     });
     for (const node of graph.nodes()) {
@@ -1259,13 +1288,28 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     }
     for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (!graph.getNode(node.edges[i].targetId)) node.edges.splice(i, 1);
 }
-function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable = null) {
+function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable = null, activePortalPairs = null, activePortalCount = null) {
     const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
     const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
-    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable);
+    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable, activePortalPairs, activePortalCount);
+}
+function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph) {
+    if (!activePortalPairs || !activePortalCount) return;
+    const pairs = activePortalPairs;
+    const count = typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0];
+    for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (node.edges[i].cost === 0) node.edges.splice(i, 1);
+    for (let i = 0; i < count; i++) {
+        const exitIdx = pairs[i * 2];
+        const entryIdx = pairs[i * 2 + 1];
+        if (blocked[exitIdx] || blocked[entryIdx]) continue;
+        const nodeExit = graph.nodeForCell(exitIdx);
+        const nodeEntry = graph.nodeForCell(entryIdx);
+        if (!nodeExit || !nodeEntry || nodeExit.id === nodeEntry.id) continue;
+        if (!nodeExit.edges.some((e) => e.targetId === nodeEntry.id)) nodeExit.edges.push({ targetId: nodeEntry.id, cost: 0 });
+    }
 }
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, injectEdges, expandReachable } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, injectEdges, expandReachable, activePortalPairs, activePortalCount } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
@@ -1273,12 +1317,12 @@ export function buildFullRegionGraph(opts) {
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
-    if (injectEdges) injectEdges(graph, blocked);
+    injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
     distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable, activePortalPairs, activePortalCount);
     return { ...graph.exportState(), graph };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, injectEdges, expandReachable) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, injectEdges, expandReachable, activePortalPairs, activePortalCount) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1298,10 +1342,22 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
     state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
-    if (injectEdges) injectEdges(graph, blocked);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable);
+    injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable, activePortalPairs, activePortalCount);
     graph.syncState(state);
     return state;
+}
+export function findPortalLegBetweenRegions(cellToRegion, pairs, count, regionAIdx, regionBIdx, scratch) {
+    for (let i = 0; i < count; i++) {
+        const exitIdx = pairs[i * 2];
+        const entryIdx = pairs[i * 2 + 1];
+        if (cellToRegion[exitIdx] !== regionAIdx) continue;
+        if (cellToRegion[entryIdx] !== regionBIdx) continue;
+        scratch[0] = exitIdx;
+        scratch[1] = entryIdx;
+        return 2;
+    }
+    return 0;
 }
 export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     const graph = nodesMap instanceof HpaRegionGraph ? nodesMap : new HpaRegionGraph(frame, nodesMap, cellToNode);

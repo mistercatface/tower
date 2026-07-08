@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid, EntityGrid } from "../Libraries/Spatial/spatial.js";
-import { PortalLink, FloorPortal, PortalNavGraph } from "../Libraries/Spatial/portals.js";
+import { PortalLink, FloorPortal } from "../Libraries/Spatial/portals.js";
 import {
     bakeNavTopologyLocal,
     navCanStep,
@@ -12,32 +12,14 @@ import {
     HpaAbstractGraph,
     prepareHpaReplanPrep,
     SearchState,
+    findPortalLegBetweenRegions,
 } from "../Libraries/Navigation/navigation.js";
 import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotIdx } from "../Libraries/Pathfinding/hpaWorkerSab.js";
 import { HpaBufferManager, HpaReplanPlanner } from "../Libraries/Workers/Navigation/HpaWorkerEntry.js";
 import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { mockCircleProp } from "./harness/kineticTickHarness.js";
 
-function portalLinkPairsFromTargetIdx(portalTargetIdx) {
-    const pairs = new Int32Array(8);
-    let count = 0;
-    for (let i = 0; i < portalTargetIdx.length; i++) {
-        if (portalTargetIdx[i] >= 0) {
-            pairs[count * 2] = i;
-            pairs[count * 2 + 1] = portalTargetIdx[i];
-            count++;
-        }
-    }
-    return { pairs, count };
-}
-
 function buildTestRegionGraph(opts) {
-    const portalTargetIdx = opts.portalTargetIdx;
-    delete opts.portalTargetIdx;
-    if (!portalTargetIdx) return buildFullRegionGraph(opts);
-    const { pairs, count } = portalLinkPairsFromTargetIdx(portalTargetIdx);
-    opts.injectEdges = (graph, blocked) => PortalNavGraph.injectRegionEdges(graph, blocked, pairs, count);
-    opts.expandReachable = (idx, blocked, reachable, enqueue) => PortalNavGraph.expandReachable(pairs, count, idx, blocked, reachable, enqueue);
     return buildFullRegionGraph(opts);
 }
 
@@ -157,13 +139,13 @@ describe("portal nav", () => {
         const rows = 10;
         const frame = { cols, rows, minX: 0, minY: 0, cellSize: 16 };
         const blocked = new Uint8Array(cols * rows);
-        const portalTargetIdx = new Int32Array(cols * rows);
-        portalTargetIdx.fill(-1);
         const exitIdx = 2 + 2 * cols;
         const entryIdx = 8 + 8 * cols;
-        portalTargetIdx[exitIdx] = entryIdx;
-        const navGraph = { canStepIdx: () => true };
-        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx });
+        const navGraph = { 
+            canStepIdx: () => true,
+            grid: { activePortalPairs: new Int32Array([exitIdx, entryIdx]), activePortalCount: 1 }
+        };
+        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
         const exitNode = built.graph.nodeForCell(exitIdx);
         const entryNode = built.graph.nodeForCell(entryIdx);
         assert.ok(exitNode);
@@ -171,7 +153,7 @@ describe("portal nav", () => {
         assert.notEqual(exitNode.id, entryNode.id);
         const portalEdge = exitNode.edges.find((edge) => edge.targetId === entryNode.id);
         assert.ok(portalEdge);
-        assert.equal(portalEdge.cost, PortalNavGraph.COST);
+        assert.equal(portalEdge.cost, 0);
     });
 
     it("findPortalLegBetweenRegions returns exit and entry cells", () => {
@@ -179,19 +161,19 @@ describe("portal nav", () => {
         const rows = 10;
         const frame = { cols, rows, minX: 0, minY: 0, cellSize: 16 };
         const blocked = new Uint8Array(cols * rows);
-        const portalTargetIdx = new Int32Array(cols * rows);
-        portalTargetIdx.fill(-1);
         const exitIdx = 2 + 2 * cols;
         const entryIdx = 8 + 8 * cols;
-        portalTargetIdx[exitIdx] = entryIdx;
-        const navGraph = { canStepIdx: () => true };
-        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx });
+        const pairs = new Int32Array([exitIdx, entryIdx]);
+        const navGraph = { 
+            canStepIdx: () => true,
+            grid: { activePortalPairs: pairs, activePortalCount: 1 }
+        };
+        const built = buildTestRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const scratch = new Int32Array(2);
         const exitRegion = packed.cellToRegion[exitIdx];
         const entryRegion = packed.cellToRegion[entryIdx];
-        const { pairs, count } = portalLinkPairsFromTargetIdx(portalTargetIdx);
-        const len = PortalNavGraph.findLegBetweenRegions(packed.cellToRegion, pairs, count, exitRegion, entryRegion, scratch);
+        const len = findPortalLegBetweenRegions(packed.cellToRegion, pairs, 1, exitRegion, entryRegion, scratch);
         assert.equal(len, 2);
         assert.equal(scratch[0], exitIdx);
         assert.equal(scratch[1], entryIdx);
@@ -238,7 +220,7 @@ describe("portal nav", () => {
         const { grid, cols, rows, exitIdx, entryIdx } = walledPortalOnlyGrid();
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
-        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx: grid.portalTargetIdx });
+        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const exitRegion = packed.cellToRegion[exitIdx];
@@ -267,7 +249,7 @@ describe("portal nav", () => {
         const { grid, cols, rows, exitIdx, entryIdx, startIdx, targetIdx } = portalShortcutGrid();
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
-        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx: grid.portalTargetIdx });
+        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const planner = createPortalPlanner(cols, rows);
@@ -292,7 +274,7 @@ describe("portal nav", () => {
         const { grid, cols, rows, exitIdx, entryIdx, startIdx, targetIdx } = farSideOnlyViaPortalGrid();
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
-        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx: grid.portalTargetIdx });
+        const built = buildTestRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         assert.ok(built.graph.nodeForCell(entryIdx), "entry region must survive prune");
         assert.ok(built.graph.nodeForCell(targetIdx), "target region must survive prune");

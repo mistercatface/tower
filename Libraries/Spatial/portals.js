@@ -134,45 +134,6 @@ export class FloorPortal {
         }
     }
 }
-export class PortalNavGraph {
-    static COST = 8;
-    static injectRegionEdges(graph, blocked, pairs, count) {
-        for (const node of graph.nodes()) node.edges = node.edges.filter((edge) => edge.cost !== PortalNavGraph.COST);
-        for (let i = 0; i < count; i++) {
-            const exitIdx = pairs[i * 2];
-            const entryIdx = pairs[i * 2 + 1];
-            if (blocked[exitIdx] || blocked[entryIdx]) continue;
-            const exitNode = graph.nodeForCell(exitIdx);
-            const entryNode = graph.nodeForCell(entryIdx);
-            if (!exitNode || !entryNode || exitNode.id === entryNode.id) continue;
-            if (exitNode.edges.some((edge) => edge.targetId === entryNode.id)) continue;
-            exitNode.edges.push({ targetId: entryNode.id, cost: PortalNavGraph.COST });
-        }
-    }
-    static findLegBetweenRegions(cellToRegion, pairs, count, regionAIdx, regionBIdx, scratch) {
-        for (let i = 0; i < count; i++) {
-            const exitIdx = pairs[i * 2];
-            const entryIdx = pairs[i * 2 + 1];
-            if (cellToRegion[exitIdx] !== regionAIdx) continue;
-            if (cellToRegion[entryIdx] !== regionBIdx) continue;
-            scratch[0] = exitIdx;
-            scratch[1] = entryIdx;
-            return 2;
-        }
-        return 0;
-    }
-    static expandReachable(pairs, count, idx, blocked, reachable, enqueue) {
-        for (let i = 0; i < count; i++)
-            if (pairs[i * 2] === idx) {
-                const entryIdx = pairs[i * 2 + 1];
-                if (!blocked[entryIdx] && !reachable[entryIdx]) {
-                    reachable[entryIdx] = 1;
-                    enqueue(entryIdx);
-                }
-                break;
-            }
-    }
-}
 const PORTAL_EXIT_PALETTE = { ring: "#ff7a2f", glow: "rgba(255,122,47,0.35)", core: "#ffd9b0" };
 const PORTAL_ENTRY_PALETTE = { ring: "#3fa9ff", glow: "rgba(63,169,255,0.35)", core: "#bfe4ff" };
 function portalDrawForPalette(palette) {
