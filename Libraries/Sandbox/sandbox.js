@@ -1529,7 +1529,7 @@ export function createSandboxSession(state) {
         },
         getSpawnSnakeLength: () => spawnSnakeLength,
         setSpawnSnakeLength: (len) => {
-            spawnSnakeLength = Math.max(3, Math.min(9, Math.round(len)));
+            spawnSnakeLength = Math.max(3, Math.min(999, Math.round(len)));
             notifyUi();
         },
         resolveSpawnVisualOverride,
@@ -3518,7 +3518,7 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
             value: session.getSpawnSnakeLength(),
             step: 1,
             min: 3,
-            max: 9,
+            max: 999,
             onChange: (length) => {
                 session.setSpawnSnakeLength(length);
             },
