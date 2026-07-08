@@ -123,17 +123,31 @@ describe("snake game launch actions", () => {
     it("toggles navMode between hpa and flow and switches active behavior", async () => {
         const state = createEditorTestState();
         state.flowFieldGrid = {
+            cols: 32,
+            rows: 32,
             invalidateNavTopology() {},
             ensureRollTargetWindow() {},
             getReadyFlowField() {
-                return new Uint8Array(24 * 10).fill(5);
+                return new Uint8Array(32 * 32).fill(5);
+            },
+            worldToIdx(x, y) {
+                const col = Math.floor((x - (-256)) / 16);
+                const row = Math.floor((y - (-256)) / 16);
+                if (col < 0 || col >= 32 || row < 0 || row >= 32) return -1;
+                return row * 32 + col;
+            },
+            gridCenterX(col) {
+                return col * 16 + 8 - 256;
+            },
+            gridCenterY(row) {
+                return row * 16 + 8 - 256;
             },
             frame: {
                 cellSize: 16,
-                cols: 24,
-                rows: 10,
-                offsetX: 192,
-                offsetY: 80,
+                cols: 32,
+                rows: 32,
+                offsetX: 256,
+                offsetY: 256,
                 centerX: 0,
                 centerY: 0
             }
@@ -176,5 +190,7 @@ describe("snake game launch actions", () => {
         assert.ok(overlay);
         assert.equal(overlay.targetX, 104);
         assert.equal(overlay.targetY, 120);
+        assert.ok(overlay.pathNodes);
+        assert.ok(overlay.pathNodes.length >= 2);
     });
 });

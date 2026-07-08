@@ -338,12 +338,10 @@ function appendNormalPathOverlayCommands(out, overlay) {
         return;
     }
     if (mode === "flow") {
-        appendFlowAgentArrow(out, overlay);
+        if (pathNodes && pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(76, 175, 80, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
         return;
     }
-    const hpaColor = "rgba(156, 39, 176, 0.9)";
     if (pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(156, 39, 176, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
-    appendPathEndArrow(out, pathNodes ?? [], targetX, targetY, hpaColor);
 }
 function appendAbstractPathCommands(out, abstractPath, grid, pathPlanner = "hpa") {
     if (abstractPath.length < 2) return;
@@ -375,12 +373,16 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") 
     if (mode === "hpa") {
         if (abstractPath) appendAbstractPathCommands(out, abstractPath, grid, pathPlanner ?? "hpa");
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
-        if (pathNodes.length >= 1) appendPathEndArrow(out, pathNodes, targetX, targetY, "rgba(156, 39, 176, 0.9)");
         for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
         return;
     }
     if (mode === "flow") {
-        appendFlowAgentArrow(out, overlay);
+        if (pathNodes && pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#4caf50", lineWidth: 4 }));
+        if (pathNodes) {
+            for (let i = 0; i < pathNodes.length; i++) {
+                out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#4caf50" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#4caf50")));
+            }
+        }
         return;
     }
     if (pathNodes.length < 2) return;

@@ -1,4 +1,5 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
+import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, computeCircleAimLineSegment, estimateRollingTravelDistance, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView, queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
 import { isKinematicallyActive, applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, worldAnchorFromBody, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb, entityFacing } from "../Physics/physics.js";
@@ -2384,6 +2385,48 @@ const DIRECT_GROUND_NAV_CONFIG = {
         propRuns.clear();
     },
 };
+export function traceFlowFieldPath(startX, startY, targetX, targetY, flowFieldGrid, grid) {
+    const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
+    if (!flowField) return [];
+    const path = [{ x: startX, y: startY }];
+    let currentIdx = flowFieldGrid.worldToIdx(startX, startY);
+    if (currentIdx < 0) return path;
+    const visited = new Set([currentIdx]);
+    const maxSteps = 500;
+    for (let step = 0; step < maxSteps; step++) {
+        const val = flowField[currentIdx];
+        if (val === 255 || val === 4) break;
+        if (PortalLink.isExit(grid, currentIdx)) {
+            const nextIdx = PortalLink.targetIdx(grid, currentIdx);
+            if (nextIdx >= 0 && nextIdx < flowFieldGrid.cols * flowFieldGrid.rows && !visited.has(nextIdx)) {
+                visited.add(nextIdx);
+                path.push({
+                    x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextIdx % flowFieldGrid.cols),
+                    y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(Math.floor(nextIdx / flowFieldGrid.cols))
+                });
+                currentIdx = nextIdx;
+                continue;
+            }
+        }
+        const dc = (val % 3) - 1;
+        const dr = Math.floor(val / 3) - 1;
+        const col = currentIdx % flowFieldGrid.cols;
+        const row = Math.floor(currentIdx / flowFieldGrid.cols);
+        const nextCol = col + dc;
+        const nextRow = row + dr;
+        if (nextCol < 0 || nextCol >= flowFieldGrid.cols || nextRow < 0 || nextRow >= flowFieldGrid.rows) break;
+        const nextIdx = nextRow * flowFieldGrid.cols + nextCol;
+        if (visited.has(nextIdx)) break;
+        visited.add(nextIdx);
+        path.push({
+            x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextCol),
+            y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(nextRow)
+        });
+        currentIdx = nextIdx;
+    }
+    path.push({ x: targetX, y: targetY });
+    return path;
+}
 const FLOW_GROUND_NAV_CONFIG = {
     id: FLOW_GROUND_NAV_BEHAVIOR_ID,
     initRun() {
@@ -2424,17 +2467,8 @@ const FLOW_GROUND_NAV_CONFIG = {
     getPathOverlay(state, prop, run) {
         if (!run?.targetWorld) return null;
         const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
-        const flowField = state.flowFieldGrid.getReadyFlowField(steerTarget.x, steerTarget.y);
-        let dirX = null;
-        let dirY = null;
-        if (flowField) {
-            const dir = sampleFlowDirectionInto(FLOW_OVERLAY_DIR_SCRATCH, prop.x, prop.y, flowField, state.flowFieldGrid.frame);
-            if (dir) {
-                dirX = dir.x;
-                dirY = dir.y;
-            }
-        }
-        return { mode: "flow", propX: prop.x, propY: prop.y, propRadius: resolveBodyRadius(prop), dirX, dirY, targetX: steerTarget.x, targetY: steerTarget.y };
+        const pathNodes = traceFlowFieldPath(prop.x, prop.y, steerTarget.x, steerTarget.y, state.flowFieldGrid, state.obstacleGrid);
+        return { mode: "flow", pathNodes, targetX: steerTarget.x, targetY: steerTarget.y };
     },
     onReset(state, propRuns) {
         propRuns.clear();
