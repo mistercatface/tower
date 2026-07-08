@@ -3,6 +3,7 @@ import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
+import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
@@ -1205,7 +1206,43 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
-function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY) {
+const PORTAL_ABSTRACT_COST = 8;
+function stripPortalRegionEdges(graph) {
+    for (const node of graph.nodes()) node.edges = node.edges.filter((edge) => edge.cost !== PORTAL_ABSTRACT_COST);
+}
+function connectPortalEdge(nodeA, nodeB) {
+    if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
+    if (nodeA.edges.some((edge) => edge.targetId === nodeB.id)) return;
+    nodeA.edges.push({ targetId: nodeB.id, cost: PORTAL_ABSTRACT_COST });
+}
+export function injectPortalRegionEdges(graph, blocked, portalTargetIdx) {
+    if (!portalTargetIdx) return;
+    stripPortalRegionEdges(graph);
+    const size = portalTargetIdx.length;
+    for (let exitIdx = 0; exitIdx < size; exitIdx++) {
+        const entryIdx = portalTargetIdx[exitIdx];
+        if (entryIdx < 0) continue;
+        if (blocked[exitIdx] || blocked[entryIdx]) continue;
+        const exitNode = graph.nodeForCell(exitIdx);
+        const entryNode = graph.nodeForCell(entryIdx);
+        if (!exitNode || !entryNode || exitNode.id === entryNode.id) continue;
+        connectPortalEdge(exitNode, entryNode);
+    }
+}
+export function findPortalLegBetweenRegions(cellToRegion, portalTargetIdx, regionAIdx, regionBIdx, scratch) {
+    const size = portalTargetIdx.length;
+    for (let exitIdx = 0; exitIdx < size; exitIdx++) {
+        const entryIdx = portalTargetIdx[exitIdx];
+        if (entryIdx < 0) continue;
+        if (cellToRegion[exitIdx] !== regionAIdx) continue;
+        if (cellToRegion[entryIdx] !== regionBIdx) continue;
+        scratch[0] = exitIdx;
+        scratch[1] = entryIdx;
+        return 2;
+    }
+    return 0;
+}
+function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, portalTargetIdx = null) {
     const { cols, rows } = frame;
     const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
     const startIdx = findNearestOpenCellIdx(blocked, frame, seedIdx);
@@ -1218,6 +1255,13 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
             reachable[nIdx] = 1;
             enqueue(nIdx);
         });
+        if (portalTargetIdx) {
+            const entryIdx = portalTargetIdx[idx];
+            if (entryIdx >= 0 && !blocked[entryIdx] && !reachable[entryIdx]) {
+                reachable[entryIdx] = 1;
+                enqueue(entryIdx);
+            }
+        }
     });
     for (const node of graph.nodes()) {
         let hasReachableCell = false;
@@ -1231,13 +1275,13 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     }
     for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (!graph.getNode(node.edges[i].targetId)) node.edges.splice(i, 1);
 }
-function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph) {
+function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx = null) {
     const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
     const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
-    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY);
+    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, portalTargetIdx);
 }
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, portalTargetIdx = null } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
@@ -1245,12 +1289,13 @@ export function buildFullRegionGraph(opts) {
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
+    injectPortalRegionEdges(graph, blocked, portalTargetIdx);
     distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
     const debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx);
     return { ...graph.exportState(), graph, debugPacked };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, portalTargetIdx = null) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1270,8 +1315,9 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
     state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
+    if (portalTargetIdx) injectPortalRegionEdges(graph, blocked, portalTargetIdx);
     state.debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx);
     graph.syncState(state);
     return state;
 }
@@ -1389,7 +1435,7 @@ export class NavTopology {
         const arena = ensureLocalBakeArena(this.grid);
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
-        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability);
+        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability, arena.portalTargetIdx);
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
@@ -1491,6 +1537,7 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {SharedArrayBuffer} sabBlocked
  * @property {SharedArrayBuffer} sabGridFill
  * @property {SharedArrayBuffer} sabFloorPacked
+ * @property {SharedArrayBuffer} sabPortalTargetIdx
  * @property {SharedArrayBuffer} sabEdgeSlots
  * @property {SharedArrayBuffer} sabOctileNeighbors
  * @property {SharedArrayBuffer} sabOctilePredecessors
@@ -1499,6 +1546,7 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {Uint8Array} blocked
  * @property {Uint8Array} gridFill
  * @property {Uint8Array} floorPacked
+ * @property {Int32Array} portalTargetIdx
  * @property {Int32Array} edgeSlots
  * @property {Int32Array} octileNeighbors
  * @property {Int32Array} octilePredecessors
@@ -1519,7 +1567,7 @@ export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows =
     const vertBytes = Math.max(vertCount, 4);
     const expCellCount = cols > 0 && rows > 0 ? (cols + 1) * (rows + 1) : cellCount;
     /** @type {NavTopologySabArena} */
-    const arena = { cellCount, sabBlocked: new SharedArrayBuffer(cellCount), sabGridFill: new SharedArrayBuffer(cellCount), sabFloorPacked: new SharedArrayBuffer(cellCount), sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES), sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabCardinalOpen: new SharedArrayBuffer(cellCount), sabVertexPassability: new SharedArrayBuffer(vertBytes), blocked: undefined, gridFill: undefined, floorPacked: undefined, edgeSlots: undefined, octileNeighbors: undefined, octilePredecessors: undefined, cardinalOpen: undefined, vertexPassability: undefined, topologyHandle: undefined };
+    const arena = { cellCount, sabBlocked: new SharedArrayBuffer(cellCount), sabGridFill: new SharedArrayBuffer(cellCount), sabFloorPacked: new SharedArrayBuffer(cellCount), sabPortalTargetIdx: new SharedArrayBuffer(cellCount * 4), sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES), sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabCardinalOpen: new SharedArrayBuffer(cellCount), sabVertexPassability: new SharedArrayBuffer(vertBytes), blocked: undefined, gridFill: undefined, floorPacked: undefined, portalTargetIdx: undefined, edgeSlots: undefined, octileNeighbors: undefined, octilePredecessors: undefined, cardinalOpen: undefined, vertexPassability: undefined, topologyHandle: undefined };
     bindNavTopologySabViews(arena);
     return arena;
 }
@@ -1528,6 +1576,8 @@ export function bindNavTopologySabViews(arena) {
     arena.blocked = new Uint8Array(arena.sabBlocked);
     arena.gridFill = new Uint8Array(arena.sabGridFill);
     arena.floorPacked = new Uint8Array(arena.sabFloorPacked);
+    arena.portalTargetIdx = new Int32Array(arena.sabPortalTargetIdx);
+    arena.portalTargetIdx.fill(-1);
     arena.edgeSlots = new Int32Array(arena.sabEdgeSlots);
     arena.octileNeighbors = new Int32Array(arena.sabOctileNeighbors);
     arena.octilePredecessors = new Int32Array(arena.sabOctilePredecessors);
@@ -1551,6 +1601,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     if (idx === null) {
         arena.gridFill.set(grid.grid);
         arena.floorPacked.set(grid.floorPacked);
+        arena.portalTargetIdx.set(grid.portalTargetIdx);
         arena.edgeSlots.set(grid.cellEdgeSlots);
         return;
     }
@@ -1558,6 +1609,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
         forEachDenseCellInBounds(grid, idx, (cellIdx) => {
             arena.gridFill[cellIdx] = grid.grid[cellIdx];
             arena.floorPacked[cellIdx] = grid.floorPacked[cellIdx];
+            arena.portalTargetIdx[cellIdx] = grid.portalTargetIdx[cellIdx];
             for (let side = 0; side < 4; side++) {
                 const offset = cellEdgeSlotOffset(cellIdx, side);
                 arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
@@ -1566,6 +1618,7 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     else {
         arena.gridFill[idx] = grid.grid[idx];
         arena.floorPacked[idx] = grid.floorPacked[idx];
+        arena.portalTargetIdx[idx] = grid.portalTargetIdx[idx];
         for (let side = 0; side < 4; side++) {
             const offset = cellEdgeSlotOffset(idx, side);
             arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
@@ -1660,7 +1713,7 @@ export function createNavLocalView(frame, topology) {
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability) {
+export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability, portalTargetIdx) {
     const simView = {
         frame,
         grid: gridFill,
@@ -1668,6 +1721,7 @@ export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePo
         cellEdgeSlots: edgeSlots,
         cellEdgePool: edgePool,
         floorPacked: floorPacked,
+        portalTargetIdx: portalTargetIdx,
         getCellEdge(idx, side) {
             const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
             if (ref < 0) return null;
@@ -1746,7 +1800,26 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
     };
 }
 /** Snap a path goal cell to the belt entry neighbor (belt-mouth approach). */
+function portalApproachNeighborIdx(grid, fromIdx, exitIdx) {
+    let approach = -1;
+    forEachCardinalNeighborIdx(exitIdx, grid, (nIdx) => {
+        if (grid.grid[nIdx] !== 0) return;
+        if (PortalLink.isExit(grid, nIdx)) return;
+        if (fromIdx === nIdx) {
+            approach = nIdx;
+            return;
+        }
+        if (approach < 0) approach = nIdx;
+    });
+    return approach;
+}
 export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
+    if (PortalLink.isExit(grid, targetIdx)) {
+        if (fromIdx === targetIdx) return targetIdx;
+        const approachIdx = portalApproachNeighborIdx(grid, fromIdx, targetIdx);
+        if (approachIdx >= 0) return approachIdx;
+        return targetIdx;
+    }
     if (!FloorBelt.isBeltAtIdx(grid, targetIdx)) return targetIdx;
     const neighborIdx = FloorBelt.entryNeighborIdx(grid, targetIdx);
     if (neighborIdx === -1 || grid.grid[neighborIdx] !== 0) return targetIdx;
@@ -1979,6 +2052,10 @@ function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arrivalPx, g
         }
     }
     if (bodyIdx === idx) return true;
+    if (i > 0) {
+        const prevIdx = worker.pathIdx(slot, i - 1);
+        if (PortalLink.portalHopBetween(grid.portalTargetIdx, prevIdx, idx)) return bodyIdx === idx || bodyIdx === prevIdx;
+    }
     return grid.canStep(bodyIdx, idx, navTopology);
 }
 /**
@@ -2017,6 +2094,11 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
         }
         if (!arrived) break;
         if (hereIdx === cellIdx) {
+            idx++;
+            continue;
+        }
+        const prevCellIdx = idx > 0 ? worker.pathIdx(slot, idx - 1) : -1;
+        if (prevCellIdx >= 0 && PortalLink.portalHopBetween(grid.portalTargetIdx, prevCellIdx, cellIdx)) {
             idx++;
             continue;
         }
@@ -2284,6 +2366,8 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
         dist = Math.hypot(dx, dy);
     }
     const distToTarget = Math.hypot(targetX - x, targetY - y);
+    const nextPathIdx = step < pathLen - 1 ? worker.pathIdx(slot, step + 1) : -1;
+    if (nextPathIdx >= 0 && PortalLink.portalHopBetween(grid.portalTargetIdx, steerIdx, nextPathIdx) && bodyIdx === steerIdx) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     if (step >= pathLen - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     if (!(dist >= 0.01)) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
     const maxSpeed = settings.maxSpeed ?? 180;

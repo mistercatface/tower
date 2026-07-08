@@ -81,6 +81,7 @@ export class HpaTopologyArena {
         this.edgePoolCount = 0;
         this.cardinalOpen = null;
         this.vertexPassability = null;
+        this.portalTargetIdx = null;
         this.navCacheKey = "";
     }
     requireGridFrame() {
@@ -112,11 +113,13 @@ export class HpaTopologyArena {
         this.edgePoolCount = data.edgePoolCount;
         const gridFill = new Uint8Array(data.sabGridFill);
         const floorPacked = new Uint8Array(data.sabFloorPacked);
+        const portalTargetIdx = new Int32Array(data.sabPortalTargetIdx);
         const edgeSlots = new Int32Array(data.sabEdgeSlots);
         this.cardinalOpen = new Uint8Array(data.sabCardinalOpen);
         this.vertexPassability = new Uint8Array(data.sabVertexPassability);
         const edgePool = bindNavEdgePoolFromSab(new Uint8Array(this.sabEdgePool), this.edgePoolCount);
-        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorPacked, edgeSlots, edgePool, this.vertexPassability);
+        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorPacked, edgeSlots, edgePool, this.vertexPassability, portalTargetIdx);
+        this.portalTargetIdx = portalTargetIdx;
         this.navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);
         this.navView = createNavLocalView(this.requireGridFrame(), this.navTopology);
         this.navArenaBound = true;
@@ -193,25 +196,27 @@ export class HpaRegionGraphManager {
     }
     buildRegionGraphFull(gridFrame, topology, navView, data) {
         const frame = gridFrame;
-        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk });
+        const portalTargetIdx = data.portalTargetIdx ?? null;
+        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, portalTargetIdx });
         this.regionGraphState = { ...built, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, damagePadding: data.damagePadding, distToWall: null };
         this.writeDebugRegionGraphToSab(gridFrame);
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, data) {
         if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, data);
-        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView);
+        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, data.portalTargetIdx ?? null);
         this.writeDebugRegionGraphToSab(gridFrame);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
 export class HpaReplanContext {
-    constructor({ frame, topology, navView, graph, cellToRegion }) {
+    constructor({ frame, topology, navView, graph, cellToRegion, portalTargetIdx }) {
         this.frame = frame;
         this.topology = topology;
         this.navView = navView;
         this.graph = graph;
         this.cellToRegion = cellToRegion;
+        this.portalTargetIdx = portalTargetIdx;
     }
 }
 export class HpaReplanPlanner {
@@ -223,12 +228,14 @@ export class HpaReplanPlanner {
         this.tempLegsLengths = new Map();
         this.gridSearch = new FlatGridSearch(this.searchState);
         this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        this.portalLegScratch = new Int32Array(this.buffers.maxPathLen);
         this.abstractPathScratch = new Int32Array(this.buffers.maxAbstractLen);
         this.abstractPathList = [];
     }
     ensureScratchBuffers(cols, rows) {
         const stitchedMax = cols * rows;
         if (this.localPathScratch.length < this.buffers.maxPathLen) this.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        if (this.portalLegScratch.length < this.buffers.maxPathLen) this.portalLegScratch = new Int32Array(this.buffers.maxPathLen);
         if (this.tempLegsBuffer.length < stitchedMax) this.tempLegsBuffer = new Int32Array(stitchedMax);
     }
     run(slot, context, data) {
@@ -241,7 +248,7 @@ export class HpaReplanPlanner {
         this.gridSearch.cols = cols;
         const prep = prepareHpaReplanPrep(cols, rows, context.cellToRegion, context.graph, startIdx, targetIdx);
         if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, prep, startIdx, targetIdx);
-        return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols, rows);
+        return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols, rows, context);
     }
     writeLocalResult(slot, gridSearch, prep, startIdx, targetIdx) {
         const len = gridSearch.local(startIdx, targetIdx, prep.legMaxCost, this.localPathScratch);
@@ -254,7 +261,7 @@ export class HpaReplanPlanner {
         this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
-    writeHpaResult(slot, gridSearch, baseGraph, prep, startIdx, targetIdx, cols, rows) {
+    writeHpaResult(slot, gridSearch, baseGraph, prep, startIdx, targetIdx, cols, rows, context) {
         this.tempLegsOffsets.clear();
         this.tempLegsLengths.clear();
         const { extendedGraph, startTemp, targetTemp } = baseGraph.buildExtended(startIdx, targetIdx, cols, prep, this.buffers.maxCellsPerChunk, (lStartIdx, lTargetIdx, legKey, offset) => {
@@ -276,18 +283,33 @@ export class HpaReplanPlanner {
         for (let i = 0; i < abstractLen; i++) abstractPath[i] = this.abstractPathScratch[i];
         this.buffers.writeAbstractPath(slot, abstractPath);
         const pathIdx = hpaPathSlotIdx(this.buffers.sabPathIdxPool, slot, this.buffers.maxPathLen);
-        const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols);
+        const resolveFn = (aIdx, bIdx) => this.resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols, context.cellToRegion, context.portalTargetIdx);
         resolveFn.scratch = this.localPathScratch;
         const pathLen = stitchAbstractCellPath(abstractPath, prep, this.tempLegsBuffer, this.tempLegsOffsets, this.tempLegsLengths, resolveFn, pathIdx, this.buffers.maxPathLen);
         const pathMeta = hpaPathSlotMeta(this.buffers.sabPathMetaPool, slot);
         pathMeta[0] = pathLen;
         return this.buffers.buildReplanResult(slot);
     }
-    resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols) {
-        const startIdx = baseGraph.nodeIdx[aIdx];
-        const targetIdx = baseGraph.nodeIdx[bIdx];
-        const len = gridSearch.local(startIdx, targetIdx, prep.legMaxCost, this.localPathScratch);
-        return len;
+    resolveRegionLeg(gridSearch, baseGraph, prep, aIdx, bIdx, cols, cellToRegion, portalTargetIdx) {
+        const repA = baseGraph.nodeIdx[aIdx];
+        const repB = baseGraph.nodeIdx[bIdx];
+        const len = gridSearch.local(repA, repB, prep.legMaxCost, this.localPathScratch);
+        if (len > 0) return len;
+        if (!portalTargetIdx || !cellToRegion) return 0;
+        const size = portalTargetIdx.length;
+        for (let exitIdx = 0; exitIdx < size; exitIdx++) {
+            const entryIdx = portalTargetIdx[exitIdx];
+            if (entryIdx < 0) continue;
+            if (cellToRegion[exitIdx] !== aIdx) continue;
+            if (cellToRegion[entryIdx] !== bIdx) continue;
+            const seg1 = gridSearch.local(repA, exitIdx, prep.legMaxCost, this.localPathScratch);
+            if (seg1 === 0) continue;
+            const seg2 = gridSearch.local(entryIdx, repB, prep.legMaxCost, this.portalLegScratch);
+            if (seg2 === 0) continue;
+            for (let i = 0; i < seg2; i++) this.localPathScratch[seg1 + i] = this.portalLegScratch[i];
+            return seg1 + seg2;
+        }
+        return 0;
     }
 }
 export class HpaPathfindingWorker {
@@ -302,7 +324,10 @@ export class HpaPathfindingWorker {
         if (!data.maxPathLen || data.maxPathLen <= this.buffers.maxPathLen) return;
         this.buffers.sabPathIdxPool = data.sabPathIdxPool;
         this.buffers.maxPathLen = data.maxPathLen;
-        if (this.planner) this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        if (this.planner) {
+            this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+            this.planner.portalLegScratch = new Int32Array(this.buffers.maxPathLen);
+        }
     }
     postGraphPatchDone(meta) {
         self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [], debugNodeCount: this.graph.debugNodeCount, debugEdgeWrite: this.graph.debugEdgeWrite, debugNodeIds: this.graph.debugNodeIds });
@@ -322,7 +347,7 @@ export class HpaPathfindingWorker {
         const frame = this.topology.requireGridFrame();
         const cellToRegion = new Int16Array(this.buffers.sabCellToRegionIdx, 0, frame.cols * frame.rows);
         const baseGraph = this.graph.abstractGraph();
-        const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, cellToRegion });
+        const context = new HpaReplanContext({ frame, topology: this.topology.requireNavTopology(), navView: this.topology.navView, graph: baseGraph, cellToRegion, portalTargetIdx: this.topology.portalTargetIdx });
         return this.planner.run(slot, context, data);
     }
     onMessage(e) {
@@ -354,13 +379,13 @@ export class HpaPathfindingWorker {
         if (type === "buildRegionGraphFull") {
             if (e.data.sabCellToRegionIdx) this.buffers.sabCellToRegionIdx = e.data.sabCellToRegionIdx;
             if (e.data.sabDebugCellToRegionIdx) this.buffers.sabDebugCellToRegionIdx = e.data.sabDebugCellToRegionIdx;
-            this.runGraphPatch(() => this.graph.buildRegionGraphFull(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, e.data));
+            this.runGraphPatch(() => this.graph.buildRegionGraphFull(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, { ...e.data, portalTargetIdx: this.topology.portalTargetIdx }));
             return;
         }
         if (type === "patchRegionGraph") {
             if (e.data.sabCellToRegionIdx) this.buffers.sabCellToRegionIdx = e.data.sabCellToRegionIdx;
             if (e.data.sabDebugCellToRegionIdx) this.buffers.sabDebugCellToRegionIdx = e.data.sabDebugCellToRegionIdx;
-            this.runGraphPatch(() => this.graph.patchRegionGraph(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, e.data));
+            this.runGraphPatch(() => this.graph.patchRegionGraph(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, { ...e.data, portalTargetIdx: this.topology.portalTargetIdx }));
             return;
         }
         if (type === "replan") {
@@ -370,5 +395,7 @@ export class HpaPathfindingWorker {
         }
     }
 }
-const worker = new HpaPathfindingWorker();
-self.onmessage = (e) => worker.onMessage(e);
+if (typeof self !== "undefined") {
+    const worker = new HpaPathfindingWorker();
+    self.onmessage = (e) => worker.onMessage(e);
+}

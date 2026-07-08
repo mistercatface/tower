@@ -7,6 +7,7 @@ import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
+import { PortalLink } from "./portals.js";
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
 }
@@ -656,6 +657,7 @@ export function boundaryBlocksStep(grid, idx, side) {
 export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, fromIdx, toIdx) {
     if (grid.grid[toIdx] !== 0) return true;
     if (BeltPacked.blocksStep(grid, fromIdx, toIdx)) return true;
+    if (PortalLink.blocksStep(grid, fromIdx, toIdx)) return true;
     const cols = grid.cols;
     const diff = toIdx - fromIdx;
     if (diff === 1) return boundaryBlocksStep(grid, fromIdx, 1);
@@ -1205,6 +1207,8 @@ export class WorldObstacleGrid {
         this.cellEdgeFree = [];
         this.floorPacked = new Uint8Array(0);
         this.floorBeltCount = 0;
+        this.portalTargetIdx = new Int32Array(0);
+        this.portalLinkCount = 0;
         this._floorBeltLoad = new Uint8Array(0);
         this._floorBeltAnimMs = new Uint32Array(0);
         this._floorBeltLoadedIdx = new Uint32Array(0);
@@ -1428,6 +1432,9 @@ export class WorldObstacleGrid {
         this.cellEdgeFree.length = 0;
         this.floorPacked = new Uint8Array(size);
         this.floorBeltCount = 0;
+        this.portalTargetIdx = new Int32Array(size);
+        this.portalTargetIdx.fill(-1);
+        this.portalLinkCount = 0;
         this._floorBeltLoad = new Uint8Array(size);
         this._floorBeltAnimMs = new Uint32Array(size);
         this._floorBeltLoadedIdx = new Uint32Array(8);
@@ -1470,6 +1477,7 @@ export class WorldObstacleGrid {
         const newGrid = new Uint8Array(this.cols * this.rows);
         const oldSlots = this.cellEdgeSlots;
         const oldFloorPacked = this.floorPacked;
+        const oldPortalTargetIdx = this.portalTargetIdx;
         const oldFloorBeltLoad = this._floorBeltLoad;
         const oldFloorBeltAnimMs = this._floorBeltAnimMs;
         const oldSurfaceMaterials = this.surfaceMaterials.snapshot();
@@ -1477,9 +1485,12 @@ export class WorldObstacleGrid {
         const newEdgeSlots = new Int32Array(this.cols * this.rows * 4);
         newEdgeSlots.fill(EMPTY);
         const newFloorPacked = new Uint8Array(this.cols * this.rows);
+        const newPortalTargetIdx = new Int32Array(this.cols * this.rows);
+        newPortalTargetIdx.fill(-1);
         const newFloorBeltLoad = new Uint8Array(this.cols * this.rows);
         const newFloorBeltAnimMs = new Uint32Array(this.cols * this.rows);
         let floorBeltCount = 0;
+        let portalLinkCount = 0;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
             if (level === 0 && !this.hasAnyCellEdgeAtIdx(idx) && this.floorPacked[idx] === 0 && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx)) continue;
@@ -1497,12 +1508,25 @@ export class WorldObstacleGrid {
                         newFloorBeltAnimMs[newIdx] = oldFloorBeltAnimMs[idx];
                         floorBeltCount++;
                     }
+                    const portalTarget = oldPortalTargetIdx[idx];
+                    if (portalTarget >= 0) {
+                        const targetCol = portalTarget % oldCols;
+                        const targetRow = (portalTarget / oldCols) | 0;
+                        const targetNc = targetCol + colOffset;
+                        const targetNr = targetRow + rowOffset;
+                        if (targetNc >= 0 && targetNc < this.cols && targetNr >= 0 && targetNr < this.rows) {
+                            newPortalTargetIdx[newIdx] = targetNc + targetNr * this.cols;
+                            portalLinkCount++;
+                        }
+                    }
                     for (let side = 0; side < 4; side++) newEdgeSlots[(newIdx << 2) + side] = this.cellEdgeSlots[(idx << 2) + side];
                 }
             }
         }
         this.cellEdgeSlots = newEdgeSlots;
         this.floorPacked = newFloorPacked;
+        this.portalTargetIdx = newPortalTargetIdx;
+        this.portalLinkCount = portalLinkCount;
         this._floorBeltLoad = newFloorBeltLoad;
         this._floorBeltAnimMs = newFloorBeltAnimMs;
         this._floorBeltLoadedIdx = new Uint32Array(8);

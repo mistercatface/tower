@@ -12,6 +12,7 @@ import { FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spatial/spatial.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
+import { FloorPortal } from "../../Libraries/Spatial/portals.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandbox.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
@@ -64,6 +65,7 @@ function runSimulationTick(state, dt) {
     state.gameTime += simDt;
     const spatialFrame = kineticSpatial.begin(state);
     FloorBelt.tick(state, spatialFrame, simDt, applyKineticAcceleration);
+    FloorPortal.tick(state, spatialFrame);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
     FloorBelt.syncAnimFromBodies(state, spatialFrame, simDt);
     FloatingText.updateAll(state, simDt);

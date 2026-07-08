@@ -769,7 +769,7 @@ export function clearPropSpriteCache() {
     clearSpriteKeyIntern();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
-export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt" };
+export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt", Portal: "grid_portal" };
 export const BELT_FILMSTRIP_FRAMES = 8;
 export const BELT_FRAME_MS = 60;
 const GRID_STAMP_STAGE_PADDING = 40;

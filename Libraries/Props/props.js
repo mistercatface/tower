@@ -3,6 +3,7 @@ import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, 
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXY, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
+import { drawFloorPortals } from "../Spatial/portals.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { transitionEntity } from "../FSM/transition.js";
@@ -519,5 +520,12 @@ export const floorBeltEffectPass = {
     zIndex: 10.5,
     draw(state, viewport, ctx) {
         drawFloorOccupancyBelts(ctx, state, viewport);
+    },
+};
+/** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
+export const floorPortalEffectPass = {
+    zIndex: 10.6,
+    draw(state, viewport, ctx) {
+        drawFloorPortals(ctx, state, viewport);
     },
 };
