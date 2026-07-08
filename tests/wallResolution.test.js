@@ -76,7 +76,7 @@ describe("polygon wall resolution", () => {
             entityRegistry: { getLive: (id) => (id === bar.id ? bar : null) },
             kinetic: session,
         };
-        runCollisionPipeline({ frame, world }, { resolveWalls: (entity) => resolver.resolve(entity, frame), kineticIterations: 1 });
+        runCollisionPipeline({ frame, world }, (entity) => resolver.resolve(entity, frame), undefined, 1);
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("wall hit wakes a sleeping polygon", () => {

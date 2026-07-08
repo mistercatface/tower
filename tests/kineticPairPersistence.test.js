@@ -7,7 +7,7 @@ import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
-import { createKineticTestTick, kineticIntegrateHooks, kineticPipelineStubs, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, kineticIntegrateHooks, noop, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { collisionSettingsForIterations, withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
@@ -23,7 +23,7 @@ describe("kinetic pair persistence", () => {
             const b = mockKineticCircle(14, 0, 10, -40, 0, { currentState: true, needsWallCollision: false });
             const tick = createKineticTestTick([a, b]);
             const ax0 = a.x;
-            runCollisionPipeline(tick, kineticPipelineStubs);
+            runCollisionPipeline(tick, noop, noop);
             assert.equal(tick.world.kinetic.kineticSolverStats.outerIterations, 3);
             assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 1);
             assert.ok(a.x !== ax0 || b.x !== 14);
@@ -37,7 +37,7 @@ describe("kinetic pair persistence", () => {
             const bodyB = mockKineticCircle(20, 0, 10, 0, 0, { needsWallCollision: false });
             const tick = createKineticTestTick([bodyA, bodyB]);
             addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
-            runCollisionPipeline(tick, kineticPipelineStubs);
+            runCollisionPipeline(tick, noop, noop);
             snapshotKineticBodySlab(tick.frame._activeKineticBodies);
             assert.ok(bodiesMatchKineticSlab(tick.frame._activeKineticBodies));
             assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations <= tick.world.kinetic.kineticSolverStats.maxIterations);
@@ -52,9 +52,9 @@ describe("kinetic pair persistence", () => {
             wedge.vx = -25;
             assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
             const tick = createKineticTestTick([ball, wedge]);
-            runCollisionPipeline(tick, kineticPipelineStubs);
+            runCollisionPipeline(tick, noop, noop);
             wedge.vx = -25;
-            runCollisionPipeline(tick, kineticPipelineStubs);
+            runCollisionPipeline(tick, noop, noop);
             assert.ok(!slabPairCollision(ball, wedge));
         });
     });

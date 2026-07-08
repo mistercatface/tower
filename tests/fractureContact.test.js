@@ -23,7 +23,7 @@ describe("fracture contact queue", () => {
         kineticDynamicSlab.x[3] = 92;
         kineticDynamicSlab.y[3] = 100;
         const tick = createKineticTestTick([a, b, impactor]);
-        tick.world.fractureEngine.queueFractureKineticContact(tick, a, impactor, 104, 100, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(a, impactor, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         const deadCount = [a, b].filter((p) => p.isDead).length;
         assert.equal(deadCount, 1);
@@ -41,7 +41,7 @@ describe("fracture contact queue", () => {
         kineticDynamicSlab.x[2] = 92;
         kineticDynamicSlab.y[2] = 100;
         const tick = createKineticTestTick([prop, impactor]);
-        tick.world.fractureEngine.queueFractureKineticContact(tick, prop, impactor, 100, 100, 50);
+        tick.world.fractureEngine.queueFractureKineticContact(prop, impactor, 100, 100, 50);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.ok(!prop.isDead);
     });
@@ -58,7 +58,7 @@ describe("fracture contact queue", () => {
         kineticDynamicSlab.y[2] = 100;
         applyPropBoxFootprint(b, 32, 32);
         const tick = createKineticTestTick([a, b]);
-        tick.world.fractureEngine.queueFractureKineticContact(tick, a, b, 104, 100, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.ok(!a.isDead);
         assert.ok(!b.isDead);
@@ -70,7 +70,7 @@ describe("fracture contact queue", () => {
         prop._fractureCooldown = 4;
         const tick = createKineticTestTick([prop]);
         const other = { type: "ball", faction: null, strategy: {} };
-        tick.world.fractureEngine.queueFractureKineticContact(tick, prop, other, 0, 0, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(prop, other, 0, 0, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.equal(tick.world.worldProps.filter((p) => p !== prop).length, 0);
     });

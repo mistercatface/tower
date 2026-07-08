@@ -99,7 +99,7 @@ describe("kinetic topology lifecycle", () => {
         ball.vx = -200;
         assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
-        runCollisionPipeline(tick, { resolveWalls() {}, applyContactSideEffects: (t, c, h) => t.world.fractureEngine.processKineticContactFractures(t, c, h) });
+        runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         assert.ok(tick.world.worldProps.length > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });

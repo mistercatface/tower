@@ -5,7 +5,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
     const force = FractureEngine.impactForceFromContact(relativeSpeed, bodyA.mass, bodyB.mass);
-    tick.world.fractureEngine.queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force);
+    tick.world.fractureEngine.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force);
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
 import { GLASS_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
@@ -240,7 +240,7 @@ describe("glass fracture", () => {
         ball.vx = -200;
         assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
-        runCollisionPipeline(tick, { resolveWalls() {}, applyContactSideEffects: (t, c, h) => t.world.fractureEngine.processKineticContactFractures(t, c, h) });
+        runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         const count = liveGlassPropCount(tick.world);
         assert.ok(count > 2);
         assert.ok(count <= GLASS_MAX_SHARDS_PER_SHATTER + 2);

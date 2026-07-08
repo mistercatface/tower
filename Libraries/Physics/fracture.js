@@ -484,7 +484,7 @@ class WallDebrisStore {
             drawQueue.push(drawKindProp, 0, body, dx * dx + dy * dy);
         }
     }
-    integrateSpawned(frame, bodies, dtMs) {
+    integrateSpawned(spatialFrame, bodies, dtMs) {
         if (!bodies.length || dtMs <= 0) return;
         const integrated = this._integratedScratch;
         integrated.length = 0;
@@ -496,7 +496,7 @@ class WallDebrisStore {
         }
         if (!integrated.length) return;
         snapshotKineticBodySlab(integrated);
-        frame.reindexKineticBodies(integrated);
+        spatialFrame.reindexKineticBodies(integrated);
         integrated.length = 0;
     }
 }
@@ -650,7 +650,7 @@ export class FractureEngine {
             }
             const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
             const force = FractureEngine.impactForceFromContact(relSpeed, bodyA.mass, bodyB.mass);
-            this.queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx, ny);
+            this.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx, ny);
         }
         this.flushDeferredFractures(tick.world, tick.frame);
     }
@@ -675,7 +675,7 @@ export class FractureEngine {
             this.deferredFracturesCount = 0;
         }
     }
-    queueFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
+    queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
         for (let i = 0; i < 2; i++) {
             const prop = i === 0 ? bodyA : bodyB;
             const other = i === 0 ? bodyB : bodyA;
