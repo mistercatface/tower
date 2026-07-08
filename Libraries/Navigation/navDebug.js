@@ -16,9 +16,20 @@ function bakeCanvas(width, height) {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return createOffscreenCanvas(w, h);
 }
-function componentDebugFillColor(componentIdx) {
-    const hue = (componentIdx * 47 + 90) % 360;
-    return `hsla(${hue}, 72%, 58%, 0.2)`;
+function writeComponentColor(h, data, offset) {
+    const a = 0.3024;
+    const l = 0.58;
+    const hDiv30 = h / 30;
+    let k0 = hDiv30 % 12;
+    let f0 = l - a * Math.max(-1, Math.min(k0 - 3, 9 - k0, 1));
+    let k8 = (8 + hDiv30) % 12;
+    let f8 = l - a * Math.max(-1, Math.min(k8 - 3, 9 - k8, 1));
+    let k4 = (4 + hDiv30) % 12;
+    let f4 = l - a * Math.max(-1, Math.min(k4 - 3, 9 - k4, 1));
+    data[offset] = Math.round(f0 * 255);
+    data[offset + 1] = Math.round(f8 * 255);
+    data[offset + 2] = Math.round(f4 * 255);
+    data[offset + 3] = 51; // 0.2 * 255 = 51
 }
 function cellReachable(idx, reachableMask) {
     return !reachableMask || reachableMask[idx] !== 0;
@@ -27,29 +38,44 @@ function bakeCellFills(ctx, debugView, reachableMask) {
     const { cols, rows, cellSize, minX, minY } = debugView;
     const cellToComponent = debugView.cellToComponent;
     const blocked = debugView.grid;
-    for (let row = 0; row < rows; row++)
-        for (let col = 0; col < cols; col++) {
-            const idx = row * cols + col;
-            const wx = minX + col * cellSize;
-            const wy = minY + row * cellSize;
-            if (blocked[idx] !== 0) {
-                ctx.fillStyle = PATH_DEBUG_BLOCKED_FILL;
-                ctx.fillRect(wx, wy, cellSize, cellSize);
-            } else if (cellToComponent)
-                if (!cellReachable(idx, reachableMask)) {
-                    ctx.fillStyle = PATH_DEBUG_DIM_FILL;
-                    ctx.fillRect(wx, wy, cellSize, cellSize);
+    const size = cols * rows;
+    if (size <= 0) return;
+    const tinyCanvas = createOffscreenCanvas(cols, rows);
+    if (!tinyCanvas) return;
+    const tinyCtx = tinyCanvas.getContext("2d");
+    const imgData = tinyCtx.createImageData(cols, rows);
+    const data = imgData.data;
+    for (let i = 0; i < size; i++) {
+        const offset = i * 4;
+        if (blocked[i] !== 0) {
+            data[offset] = 244;
+            data[offset + 1] = 67;
+            data[offset + 2] = 54;
+            data[offset + 3] = 41; // 0.16 * 255 = 40.8
+        } else if (cellToComponent)
+            if (!cellReachable(i, reachableMask)) {
+                data[offset] = 120;
+                data[offset + 1] = 128;
+                data[offset + 2] = 140;
+                data[offset + 3] = 36; // 0.14 * 255 = 35.7
+            } else {
+                const component = cellToComponent[i];
+                if (component < 0) {
+                    data[offset] = 180;
+                    data[offset + 1] = 190;
+                    data[offset + 2] = 200;
+                    data[offset + 3] = 41; // 0.16 * 255 = 40.8
                 } else {
-                    const component = cellToComponent[idx];
-                    if (component < 0) {
-                        ctx.fillStyle = PATH_DEBUG_UNASSIGNED_FILL;
-                        ctx.fillRect(wx, wy, cellSize, cellSize);
-                    } else {
-                        ctx.fillStyle = componentDebugFillColor(component);
-                        ctx.fillRect(wx, wy, cellSize, cellSize);
-                    }
+                    const hue = (component * 47 + 90) % 360;
+                    writeComponentColor(hue, data, offset);
                 }
-        }
+            }
+    }
+    tinyCtx.putImageData(imgData, 0, 0);
+    const oldSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tinyCanvas, minX, minY, cols * cellSize, rows * cellSize);
+    ctx.imageSmoothingEnabled = oldSmoothing;
 }
 function portalLinkGeometry(debugView, x0, y0, x1, y1) {
     const dx = x1 - x0;
@@ -129,9 +155,7 @@ function bakeLayerCanvas(debugView, minX, minY, maxX, maxY, reachableMask, grid,
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.translate(-minX, -minY);
     bakeCellFills(ctx, debugView, reachableMask);
-    if (includeVectors) {
-        drawPortalEdges(ctx, debugView, grid, reachableMask);
-    }
+    if (includeVectors) drawPortalEdges(ctx, debugView, grid, reachableMask);
     return { canvas, minX, minY, maxX, maxY };
 }
 export class NavPathDebugBaker {
