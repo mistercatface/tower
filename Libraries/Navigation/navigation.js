@@ -120,6 +120,54 @@ export class FlatGridSearch {
     local(startIdx, targetIdx, maxPathLen, outPath) {
         return this.runGrid(startIdx, targetIdx, maxPathLen, 8, outPath);
     }
+    octileBfsPath(startIdx, targetIdx, maxPathLen, outPath) {
+        if (startIdx === targetIdx) {
+            outPath[0] = startIdx;
+            return 1;
+        }
+        const neighbors = this.neighbors;
+        if (!neighbors) return 0;
+        const { visited, runId, cameFrom } = preparedSearchState(this.searchState);
+        const q = [startIdx];
+        visited[startIdx] = runId;
+        cameFrom[startIdx] = -1;
+        for (let qi = 0; qi < q.length; qi++) {
+            const idx = q[qi];
+            if (idx === targetIdx) return reconstructIndexPathInto(cameFrom, targetIdx, outPath);
+            const base = idx * 8;
+            for (let i = 0; i < 8; i++) {
+                const nIdx = neighbors[base + i];
+                if (nIdx < 0 || visited[nIdx] === runId) continue;
+                visited[nIdx] = runId;
+                cameFrom[nIdx] = idx;
+                q.push(nIdx);
+            }
+        }
+        return 0;
+    }
+    navWalkBfsPath(startIdx, targetIdx, blocked, activePortalPairs, portalCount, outPath) {
+        if (startIdx === targetIdx) {
+            outPath[0] = startIdx;
+            return 1;
+        }
+        const neighbors = this.neighbors;
+        if (!neighbors || !blocked) return 0;
+        const { visited, runId, cameFrom } = preparedSearchState(this.searchState);
+        const q = [startIdx];
+        visited[startIdx] = runId;
+        cameFrom[startIdx] = -1;
+        for (let qi = 0; qi < q.length; qi++) {
+            const idx = q[qi];
+            if (idx === targetIdx) return reconstructIndexPathInto(cameFrom, targetIdx, outPath);
+            forEachNavWalkNeighbor(idx, blocked, neighbors, activePortalPairs, portalCount, (nIdx) => {
+                if (visited[nIdx] === runId) return;
+                visited[nIdx] = runId;
+                cameFrom[nIdx] = idx;
+                q.push(nIdx);
+            });
+        }
+        return 0;
+    }
     runGrid(startIdx, targetIdx, maxPathLen, maxDirs, outPath) {
         if (startIdx === targetIdx) {
             outPath[0] = startIdx;
@@ -984,9 +1032,10 @@ export class HpaReplanRequest {
         navState.lastTargetY = this.targetY;
     }
 }
-export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx) {
+export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx, cellToComponent = null) {
     const legMaxCost = Math.max((cols + rows) * 21, 16384);
     const localMaxCost = cols * rows * 15;
+    if (cellToComponent && cellToComponent[startIdx] >= 0 && cellToComponent[startIdx] === cellToComponent[targetIdx]) return { mode: "local", startIdx, targetIdx, legMaxCost: localMaxCost };
     const startRegion = cellToRegion[startIdx];
     const targetRegion = cellToRegion[targetIdx];
     if (startRegion >= 0 && startRegion === targetRegion) return { mode: "local", startIdx, targetIdx, legMaxCost: localMaxCost };
@@ -1386,8 +1435,142 @@ function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph)
         if (!nodeExit.edges.some((e) => e.targetId === nodeEntry.id)) nodeExit.edges.push({ targetId: nodeEntry.id, cost: 0 });
     }
 }
+function collectCellsForRegionCluster(graph, cluster) {
+    const cells = [];
+    for (const regionId of cluster) {
+        const node = graph.getNode(regionId);
+        if (!node) continue;
+        for (let i = 0; i < node.cells.length; i++) cells.push(node.cells[i]);
+    }
+    return cells;
+}
+function findAbstractRegionClusters(regionIds, regionAdj) {
+    const clusters = [];
+    const remaining = new Set(regionIds);
+    while (remaining.size > 0) {
+        const start = remaining.values().next().value;
+        remaining.delete(start);
+        const cluster = new Set([start]);
+        const q = [start];
+        for (let qi = 0; qi < q.length; qi++) {
+            const regionId = q[qi];
+            const neighbors = regionAdj.get(regionId);
+            if (!neighbors) continue;
+            for (let i = 0; i < neighbors.length; i++) {
+                const next = neighbors[i];
+                if (!remaining.has(next)) continue;
+                remaining.delete(next);
+                cluster.add(next);
+                q.push(next);
+            }
+        }
+        clusters.push(cluster);
+    }
+    return clusters;
+}
+function findCellPathBetweenRegionClusters(graph, blocked, octileNeighbors, activePortalPairs, portalCount, cellToComponent, comp, clusterA, clusterB) {
+    const size = blocked.length;
+    const visited = new Uint8Array(size);
+    const parent = new Int32Array(size);
+    parent.fill(-1);
+    const q = [];
+    const seedCells = collectCellsForRegionCluster(graph, clusterA);
+    for (let i = 0; i < seedCells.length; i++) {
+        const idx = seedCells[i];
+        if (cellToComponent[idx] !== comp || visited[idx]) continue;
+        visited[idx] = 1;
+        q.push(idx);
+    }
+    let goal = -1;
+    for (let qi = 0; qi < q.length && goal < 0; qi++) {
+        const idx = q[qi];
+        const node = graph.nodeForCell(idx);
+        if (node && clusterB.has(node.id)) {
+            goal = idx;
+            break;
+        }
+        forEachNavWalkNeighbor(idx, blocked, octileNeighbors, activePortalPairs, portalCount, (nIdx) => {
+            if (cellToComponent[nIdx] !== comp || visited[nIdx]) return;
+            visited[nIdx] = 1;
+            parent[nIdx] = idx;
+            q.push(nIdx);
+        });
+    }
+    if (goal < 0) return null;
+    const path = [];
+    let cur = goal;
+    while (cur >= 0) {
+        path.push(cur);
+        cur = parent[cur];
+    }
+    path.reverse();
+    return path;
+}
+function applyRegionBridgePath(graph, navGraph, frame, path) {
+    for (let i = 0; i < path.length - 1; i++) {
+        const fromIdx = path[i];
+        const toIdx = path[i + 1];
+        if (!navGraph.canStepIdx(fromIdx, toIdx)) continue;
+        const fromNode = graph.nodeForCell(fromIdx);
+        const toNode = graph.nodeForCell(toIdx);
+        if (!fromNode || !toNode || fromNode.id === toNode.id) continue;
+        if (!regionsShareDirectedPassableLink(navGraph, frame, fromNode, toNode)) continue;
+        graph.connectEdge(fromNode, toNode);
+    }
+}
+function bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, graph, octileNeighbors, activePortalPairs, activePortalCount) {
+    if (!octileNeighbors) return;
+    const { cols, rows } = frame;
+    const size = cols * rows;
+    const cellToComponent = buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs, activePortalCount);
+    const portalCount = activePortalPairCount(activePortalCount);
+    const compRegions = new Map();
+    for (const node of graph.nodes()) {
+        if (!node.cells.length) continue;
+        const comp = cellToComponent[node.cells[0]];
+        if (comp < 0) continue;
+        let regions = compRegions.get(comp);
+        if (!regions) {
+            regions = new Set();
+            compRegions.set(comp, regions);
+        }
+        regions.add(node.id);
+    }
+    const regionAdj = new Map();
+    for (const node of graph.nodes()) {
+        const neighbors = [];
+        for (let i = 0; i < node.edges.length; i++) neighbors.push(node.edges[i].targetId);
+        regionAdj.set(node.id, neighbors);
+    }
+    for (const regionIds of compRegions.values()) {
+        const clusters = findAbstractRegionClusters(regionIds, regionAdj);
+        if (clusters.length <= 1) continue;
+        let merged = clusters[0];
+        for (let c = 1; c < clusters.length; c++) {
+            const targetCluster = clusters[c];
+            const mergedCells = collectCellsForRegionCluster(graph, merged);
+            if (!mergedCells.length) continue;
+            const comp = cellToComponent[mergedCells[0]];
+            const path = findCellPathBetweenRegionClusters(graph, blocked, octileNeighbors, activePortalPairs, portalCount, cellToComponent, comp, merged, targetCluster);
+            if (!path) continue;
+            applyRegionBridgePath(graph, navGraph, frame, path);
+            for (const regionId of targetCluster) {
+                merged.add(regionId);
+                const neighbors = regionAdj.get(regionId);
+                if (!neighbors) regionAdj.set(regionId, []);
+                else regionAdj.set(regionId, [...neighbors]);
+            }
+            for (const node of graph.nodes()) {
+                const neighbors = [];
+                for (let i = 0; i < node.edges.length; i++) neighbors.push(node.edges[i].targetId);
+                regionAdj.set(node.id, neighbors);
+            }
+        }
+    }
+    for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
+}
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount, octileNeighbors = null } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
@@ -1397,10 +1580,11 @@ export function buildFullRegionGraph(opts) {
     connectAllNodes(navGraph, blocked, frame, graph);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
     distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
+    bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, graph, octileNeighbors, activePortalPairs, activePortalCount);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     return { ...graph.exportState(), graph };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount, octileNeighbors = null) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1421,6 +1605,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
     state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
+    bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, graph, octileNeighbors, activePortalPairs, activePortalCount);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     graph.syncState(state);
     return state;

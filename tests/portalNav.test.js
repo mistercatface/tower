@@ -233,7 +233,8 @@ describe("portal nav", () => {
         const prep = { legMaxCost: Math.max((cols + rows) * 21, 16384) };
         planner.activePortalPairs = grid.activePortalPairs;
         planner.activePortalCount = new Int32Array([grid.activePortalCount]);
-        const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, packed.cellToRegion, planner.activePortalPairs, planner.activePortalCount);
+        const legContext = { cellToRegion: packed.cellToRegion, activePortalPairs: planner.activePortalPairs, activePortalCount: planner.activePortalCount, topology };
+        const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, legContext);
         assert.ok(legLen >= 3);
         const leg = planner.localPathScratch;
         assert.equal(leg[0], abstractGraph.nodeIdx[exitRegion]);

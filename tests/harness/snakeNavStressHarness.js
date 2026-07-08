@@ -7,7 +7,7 @@ import {
     findNearestOpenCellIdx,
     patchNavWalkableCellIndex,
     snapNavGoalWorldInto,
-    REPLAN_PRIORITY_TARGET,
+    snapNavGoalCellIndex,
 } from "../../Libraries/Navigation/navigation.js";
 import { snapMoveTargetToCellCenter } from "../../Libraries/Physics/physics.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
@@ -27,7 +27,6 @@ import { createNavRuntime } from "../WorkerNavigationFactory.js";
 const SNAKE_RAIL_MAZE_COLS = 64;
 const SNAKE_RAIL_MAZE_ROWS = 64;
 const CELLS_PER_CHUNK = 16;
-let stressReplanFrame = 1000;
 
 export function mulberry32(seed) {
     return () => {
@@ -124,11 +123,26 @@ export function assertSnakeLaunchReady(state) {
 
 export function boidOpenCellIdx(state, prop) {
     const grid = state.obstacleGrid;
-    const topology = state.nav.topology.topology;
-    const blocked = topology?.blocked ?? grid.grid;
     const idx = grid.worldToIdx(prop.x, prop.y);
     if (idx < 0) return -1;
-    return findNearestOpenCellIdx(blocked, grid, idx);
+    return findNearestOpenCellIdx(grid.grid, grid, idx);
+}
+
+function workerTargetCellIdx(grid, startIdx, clickIdx) {
+    const snappedClick = findNearestOpenCellIdx(grid.grid, grid, clickIdx);
+    return snapNavGoalCellIndex(grid, startIdx, snappedClick);
+}
+
+export function replanCellIndicesFromWorld(grid, propX, propY, targetWorldX, targetWorldY) {
+    const steerScratch = { x: 0, y: 0 };
+    const steer = snapNavGoalWorldInto(steerScratch, grid, propX, propY, targetWorldX, targetWorldY);
+    let startIdx = grid.worldToIdx(propX, propY);
+    if (startIdx < 0) startIdx = 0;
+    startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
+    let targetIdx = grid.worldToIdx(steer.x, steer.y);
+    if (targetIdx < 0) targetIdx = 0;
+    targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
+    return { startIdx, targetIdx: snapNavGoalCellIndex(grid, startIdx, targetIdx), steerX: steer.x, steerY: steer.y };
 }
 
 export function pickRandomReachableTarget(state, startIdx, rng) {
@@ -147,14 +161,23 @@ export function pickRandomReachableTarget(state, startIdx, rng) {
     return candidates[(rng() * candidates.length) | 0];
 }
 
-export function pickRandomReachableTargetWorld(state, startIdx, rng) {
-    const targetIdx = pickRandomReachableTarget(state, startIdx, rng);
-    if (targetIdx == null) return null;
+export function pickRandomReachableTargetWorld(state, startIdx, rng, prop) {
     const grid = state.obstacleGrid;
+    const topology = state.nav.topology.topology;
+    const octileNeighbors = topology?.octileNeighbors;
+    const blocked = topology?.blocked ?? grid.grid;
+    const clickIdx = pickRandomReachableTarget(state, startIdx, rng);
+    if (clickIdx == null || !octileNeighbors || !prop) return null;
+    const snapped = snapMoveTargetToCellCenter(grid, { x: grid.gridCenterXByIdx(clickIdx), y: grid.gridCenterYByIdx(clickIdx) });
+    const replan = replanCellIndicesFromWorld(grid, prop.x, prop.y, snapped.worldX, snapped.worldY);
+    const mask = buildNavReachableMaskFromSeed(blocked, octileNeighbors, grid.cols, grid.rows, replan.startIdx, grid.activePortalPairs, grid.activePortalCount);
+    if (!mask[replan.targetIdx]) return null;
     return {
-        idx: targetIdx,
-        onBelt: FloorBelt.isBeltAtIdx(grid, targetIdx),
-        ...snapMoveTargetToCellCenter(grid, { x: grid.gridCenterXByIdx(targetIdx), y: grid.gridCenterYByIdx(targetIdx) }),
+        idx: replan.targetIdx,
+        clickIdx,
+        onBelt: FloorBelt.isBeltAtIdx(grid, clickIdx),
+        worldX: replan.steerX,
+        worldY: replan.steerY,
     };
 }
 
@@ -165,20 +188,10 @@ export function moveStressBoidToTarget(prop, targetWorld) {
 
 async function awaitSessionReplan(state, navState, request) {
     const nav = state.nav;
-    nav.session.beginFrame(stressReplanFrame++);
-    const accepted = nav.session.requestReplan(navState, request, REPLAN_PRIORITY_TARGET);
-    if (!accepted) {
-        const workerOut = await nav.worker.requestPath(request, navState);
-        request.applyResult(navState, nav.worker, workerOut?.result ?? null);
-        if (workerOut?.result?.pathLen > 0) nav.worker.releaseSlot(workerOut.result.pathSlot);
-        return navState.pathLen;
-    }
-    nav.session.flushFrame();
-    let guard = 0;
-    while (navState.hpaReplanRequestId !== 0 && guard++ < 500) {
-        await nav.awaitWorkerNavReady();
-        nav.session.flushFrame();
-    }
+    await nav.awaitWorkerNavReady();
+    const workerOut = await nav.worker.requestPath(request, navState);
+    request.applyResult(navState, nav.worker, workerOut?.result ?? null);
+    if (workerOut?.result?.pathLen > 0) nav.worker.releaseSlot(workerOut.result.pathSlot);
     return navState.pathLen;
 }
 
@@ -217,7 +230,7 @@ export function formatReplanFailureDiagnostics(state, ctx) {
     const topology = state.nav.topology.topology;
     const blocked = topology?.blocked ?? grid.grid;
     const octileNeighbors = topology?.octileNeighbors;
-    const { seed, step, startIdx, targetIdx, targetWorld } = ctx;
+    const { seed, step, startIdx, targetIdx, targetWorld, clickIdx } = ctx;
     let maskReachable = false;
     let startComp = null;
     let targetComp = null;
@@ -236,7 +249,7 @@ export function formatReplanFailureDiagnostics(state, ctx) {
     const steerTarget = prop && targetWorld ? snapNavGoalWorldInto(steerScratch, grid, prop.x, prop.y, targetWorld.worldX, targetWorld.worldY) : steerScratch;
     return [
         `HPA replan failed for oracle-reachable target (seed=${seed} step=${step})`,
-        `startIdx=${startIdx} targetIdx=${targetIdx} targetOnBelt=${FloorBelt.isBeltAtIdx(grid, targetIdx)}`,
+        `startIdx=${startIdx} targetIdx=${targetIdx} clickIdx=${clickIdx ?? targetWorld?.clickIdx} targetOnBelt=${FloorBelt.isBeltAtIdx(grid, clickIdx ?? targetIdx)}`,
         `prop=(${prop?.x}, ${prop?.y}) steerTarget=(${steerTarget.x}, ${steerTarget.y})`,
         `clickTarget=(${targetWorld?.worldX}, ${targetWorld?.worldY})`,
         `maskReachable=${maskReachable} startComp=${startComp} targetComp=${targetComp}`,

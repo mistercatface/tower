@@ -29,12 +29,12 @@ async function runStressSteps(state, prop, seed, steps, breakRate) {
         if (breakRate > 0 && rng() < breakRate) await breakRandomWall(state, rng);
         await state.nav.awaitWorkerNavReady();
         const startIdx = boidOpenCellIdx(state, prop);
-        const targetWorld = pickRandomReachableTargetWorld(state, startIdx, rng);
+        const targetWorld = pickRandomReachableTargetWorld(state, startIdx, rng, prop);
         assert.ok(targetWorld != null, `no reachable target at seed=${seed} step=${step} startIdx=${startIdx}`);
         const pathLen = await requestSnakeGroundNavReplan(state, prop, targetWorld);
         assert.ok(
             pathLen > 0,
-            formatReplanFailureDiagnostics(state, { seed, step, startIdx, targetIdx: targetWorld.idx, targetWorld, prop }),
+            formatReplanFailureDiagnostics(state, { seed, step, startIdx, targetIdx: targetWorld.idx, clickIdx: targetWorld.clickIdx, targetWorld, prop }),
         );
         moveStressBoidToTarget(prop, targetWorld);
     }
@@ -45,8 +45,9 @@ describe("snake ground nav stress", () => {
         const seed = 42;
         const { state, boid } = await createSnakeNavStressState(seed);
         assertSnakeLaunchReady(state);
+        await state.nav.awaitWorkerNavReady();
         const startIdx = boidOpenCellIdx(state, boid);
-        const targetWorld = pickRandomReachableTargetWorld(state, startIdx, mulberry32(seed));
+        const targetWorld = pickRandomReachableTargetWorld(state, startIdx, mulberry32(seed), boid);
         assert.ok(targetWorld != null);
         const pathLen = await requestSnakeGroundNavReplan(state, boid, targetWorld);
         assert.ok(
