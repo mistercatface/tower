@@ -36,7 +36,9 @@ function computeMapColumnSlotMax(state) {
     const container = document.querySelector(".map-container");
     const column = document.querySelector(".map-viewport-column");
     const gap = parseFloat(getComputedStyle(column).gap) || 10;
-    const controlsH = (document.getElementById("labZoomControl")?.offsetHeight ?? 0) + (document.getElementById("labSpeedControl")?.offsetHeight ?? 0) + gap * 2;
+    const isSpeedInToolbar = document.querySelector(".toolbar #labSpeedControl") !== null;
+    const speedCtrlH = isSpeedInToolbar ? 0 : (document.getElementById("labSpeedControl")?.offsetHeight ?? 0);
+    const controlsH = (document.getElementById("labZoomControl")?.offsetHeight ?? 0) + speedCtrlH + gap * 2;
     const squareSlots = 1 + (state.editor.showMapOverview ? 1 : 0);
     const rect = container.getBoundingClientRect();
     const availableH = rect.height - controlsH - gap * squareSlots;
@@ -97,7 +99,51 @@ export function mountEditorUi(state, { playbackHandlers }) {
     uiRoot.innerHTML = TILELAB_UI_HTML;
     if (state.appLaunch?.id === "snake") {
         const titleEl = document.querySelector(".toolbar h1");
-        if (titleEl) titleEl.textContent = "Snake";
+        if (titleEl) titleEl.style.display = "none";
+        const seps = document.querySelectorAll(".toolbar .sep");
+        seps.forEach(sep => sep.style.display = "none");
+        
+        state.editor.showMapOverview = false;
+        state.editor.showSelectionRings = false;
+        
+        const mapOverviewInput = document.getElementById("showMapOverviewInput");
+        if (mapOverviewInput) {
+            mapOverviewInput.checked = false;
+            const lbl = mapOverviewInput.closest("label");
+            if (lbl) lbl.style.display = "none";
+        }
+        
+        const selectionRingsInput = document.getElementById("showSelectionRingsInput");
+        if (selectionRingsInput) {
+            selectionRingsInput.checked = false;
+            const lbl = selectionRingsInput.closest("label");
+            if (lbl) lbl.style.display = "none";
+        }
+        
+        const regenerateBtn = document.getElementById("regenerateBtn");
+        if (regenerateBtn) {
+            regenerateBtn.style.display = "none";
+        }
+
+        const speedCtrl = document.getElementById("labSpeedControl");
+        const shadowSlider = document.getElementById("editorShadowSlider");
+        if (speedCtrl && shadowSlider) {
+            const shadowLabel = shadowSlider.closest("label");
+            if (shadowLabel) {
+                shadowLabel.insertAdjacentElement("afterend", speedCtrl);
+                speedCtrl.style.display = "inline-flex";
+                speedCtrl.style.alignItems = "center";
+                speedCtrl.style.marginLeft = "15px";
+                
+                const speedLabelSpan = document.createElement("span");
+                speedLabelSpan.textContent = "Speed";
+                speedLabelSpan.style.marginRight = "8px";
+                speedLabelSpan.style.fontSize = "12px";
+                speedLabelSpan.style.color = "var(--text)";
+                speedCtrl.insertBefore(speedLabelSpan, speedCtrl.firstChild);
+            }
+        }
+
         const pathDebugBtn = document.getElementById("pathDebugModeBtn");
         if (pathDebugBtn) {
             const toggleBtn = document.createElement("button");

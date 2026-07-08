@@ -50,7 +50,7 @@ let labViewDirty = true;
 let showLabVignette = false;
 /** @type {'off' | 'hpa' | 'reachable'} */
 let labPathDebugMode = "off";
-const PATH_DEBUG_MODE_LABELS = { off: "HPA: OFF", hpa: "HPA: ALL", reachable: "HPA: REACHABLE" };
+const PATH_DEBUG_MODE_LABELS = { off: "TILES: OFF", hpa: "TILES: ALL", reachable: "TILES: REACHABLE" };
 const PATH_DEBUG_MODE_CYCLE = ["off", "hpa", "reachable"];
 export function setLabVignetteEnabled(enabled) {
     showLabVignette = enabled;
