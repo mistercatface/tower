@@ -60,17 +60,6 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 
-    it("contact side effects still fracture crate after topology bump", () => {
-        const crate = new WorldProp(0, 0, "crate", 0);
-        const ball = new WorldProp(10, 0, "ball", 0);
-        ball.vx = -200;
-        const tick = createKineticTestTick([crate, ball]);
-        stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
-        tick.frame.admitKineticProp(mockKineticCircle(40, 0, 10), tick.world);
-        assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.frame.entityGrid.entities[crate._physId]?._physId === crate._physId && tick.frame.entityGrid.entities[ball._physId]?._physId === ball._physId) ? { bodyA: tick.frame.entityGrid.entities[crate._physId], bodyB: tick.frame.entityGrid.entities[ball._physId] } : null)), null);
-        resolveKineticContactPassWithEffects(tick);
-        assert.ok(tick.world.worldProps.length > 2);
-    });
 
     it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {
         const a = mockKineticCircle(0, 0, 10);

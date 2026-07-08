@@ -8,7 +8,7 @@ import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, findClosestPolygonBoundaryGrabPointInto } from "../Math/math.js";
-import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, obstacleReplanAllowed, replanPriorityFor, agentPose } from "../Navigation/navigation.js";
+import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment, overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, overlayCachedCircleFillStroke, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
@@ -1164,7 +1164,7 @@ export function createSandboxSession(state) {
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
         return visualOverride;
     };
-    const spawnCtx = (options = {}) => ({ spawnPropId: spawnPropIdFromPalette(), spawnFaction, resolveSpawnPropTypeId: spawnPropIdFromPalette, resolveSpawnVisualOverride, spawnBallRadius: spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]), spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 }, spawnCrossLength, spawnCrossThickness, spawnSnakeLength, pickSelection, notifyUi, placement, selectSpawned: options.selectSpawned !== false });
+    const spawnCtx = (options = {}) => ({ spawnPropId: spawnPropIdFromPalette(), spawnFaction, resolveSpawnPropTypeId: spawnPropIdFromPalette, resolveSpawnVisualOverride, get spawnBallRadius() { return spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]); }, spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 }, spawnCrossLength, spawnCrossThickness, spawnSnakeLength, pickSelection, notifyUi, placement, selectSpawned: options.selectSpawned !== false });
     const spawnAt = (worldX, worldY, options = {}) => {
         const asset = propCatalog[spawnPropIdFromPalette()];
         if (!asset) return false;
@@ -2195,13 +2195,13 @@ export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, tar
 export function sandboxReplanAllowed(reason, isVisible, stuckFrames, stuckReplanFrames) {
     if (reason === "targetChange") return true;
     if (reason === "noPath") return isVisible || stuckFrames > stuckReplanFrames;
-    if (reason === "targetMoved") return obstacleReplanAllowed(isVisible, stuckFrames, stuckReplanFrames);
+    if (reason === "targetMoved") return isVisible || stuckFrames > stuckReplanFrames;
     return false;
 }
 function applyGroundNavSandboxReplan(nav, prop, targetX, targetY, state, ctx) {
     let sandboxReason = sandboxReplanReason(nav.navState, nav.pendingTargetReplan, ctx.inFlight, targetX, targetY);
     if (sandboxReason === "targetMoved" && !nav.softReplanAllowed(ctx.stuckFrames, ctx.stuckReplanFrames)) sandboxReason = null;
-    if (sandboxReason && sandboxReplanAllowed(sandboxReason, ctx.isVisible, ctx.stuckFrames, ctx.stuckReplanFrames)) return nav.requestReplan(prop, targetX, targetY, state, replanPriorityFor(sandboxReason, ctx.isVisible), sandboxReason);
+    if (sandboxReason && sandboxReplanAllowed(sandboxReason, ctx.isVisible, ctx.stuckFrames, ctx.stuckReplanFrames)) return nav.requestReplan(prop, targetX, targetY, state, PathReplanManager.getPriority(sandboxReason, ctx.isVisible), sandboxReason);
     return null;
 }
 const SCRATCH_STEER_TARGET = { x: 0, y: 0 };

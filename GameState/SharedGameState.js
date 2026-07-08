@@ -1,7 +1,7 @@
 import { FlowFieldGrid, NavRuntime, HpaPathSession } from "../Libraries/Navigation/navigation.js";
 import { gridSettings, worldSpanPx } from "../Config/world.js";
 import { FLOW_FIELD_WORKER_URL, HPA_WORKER_URL, gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
+import { HpaPathWorker } from "../Libraries/Navigation/HpaPathWorker.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";

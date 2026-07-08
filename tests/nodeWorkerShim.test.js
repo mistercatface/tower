@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createWorkerNavigation, terminateWorkerNavigation, NavTopology } from "./WorkerNavigationFactory.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
-import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
+import { HpaPathWorker } from "../Libraries/Navigation/HpaPathWorker.js";
 
 
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";

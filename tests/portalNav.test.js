@@ -14,8 +14,8 @@ import {
     SearchState,
     findPortalLegBetweenRegions,
 } from "../Libraries/Navigation/navigation.js";
-import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotIdx } from "../Libraries/Pathfinding/hpaWorkerSab.js";
-import { HpaBufferManager, HpaReplanPlanner } from "../Libraries/Workers/Navigation/HpaWorkerEntry.js";
+import { createHpaWorkerSabPools, growHpaCellToRegionSab, hpaPathSlotIdx } from "../Libraries/Navigation/hpaWorkerSab.js";
+import { HpaBufferManager, HpaReplanPlanner } from "../Libraries/Navigation/HpaWorkerEntry.js";
 import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { mockCircleProp } from "./harness/kineticTickHarness.js";
 

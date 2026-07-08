@@ -1,6 +1,6 @@
 import { HpaPathSession, NavRuntime, NavTopology } from "../Libraries/Navigation/navigation.js";
 import { HPA_WORKER_URL } from "../Render/WorldSurfaceBootstrap.js";
-import { HpaPathWorker } from "../Libraries/Pathfinding/HpaPathWorker.js";
+import { HpaPathWorker } from "../Libraries/Navigation/HpaPathWorker.js";
 
 const mockFlowFieldGrid = { invalidateNavTopology() {} };
 /** @type {Set<NavRuntime> | null} */

@@ -1,4 +1,4 @@
-import { createSabSlotWorkerHost } from "./SabSlotWorkerHost.js";
+import { createSabSlotWorkerHost } from "../Workers/SabSlotWorkerHost.js";
 /**
  * Shared worker client abstraction for pathfinding & flow field workers.
  * Manages worker lifetime, message routing, and slot-based shared buffer handshakes.

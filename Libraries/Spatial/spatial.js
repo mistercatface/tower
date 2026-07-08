@@ -907,7 +907,7 @@ export function gridNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}`;
 }
 /**
- * @param {import("../../Pathfinding/HpaPathWorker.js").HpaPathWorker} hpaPathWorker
+ * @param {import("../../Navigation/HpaPathWorker.js").HpaPathWorker} hpaPathWorker
  * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
  */
 export function isNavTopologyReady(hpaPathWorker, grid) {

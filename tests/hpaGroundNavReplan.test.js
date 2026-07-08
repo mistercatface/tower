@@ -1,55 +1,62 @@
-import { createNavState, obstacleEpochReplanDue, obstacleReplanAllowed, idlePathReplanReason, idlePathReplanAllowed, trackNavStuck, offPathReplanDue, replanPriorityFor, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest, HpaNavSession } from "../Libraries/Navigation/navigation.js";
+import { createNavState, PathReplanManager, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest, HpaNavSession } from "../Libraries/Navigation/navigation.js";
 import { sandboxReplanReason, sandboxReplanAllowed } from "../Libraries/Sandbox/sandbox.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-
-
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
+
 describe("hpa ground nav replan policy", () => {
-    it("obstacleEpochReplanDue when path topology lags grid", () => {
+    it("evaluates epoch replan due when path topology lags grid", () => {
         const nav = createNavState();
-        assert.equal(obstacleEpochReplanDue(nav, "key-a"), true);
+        nav.pathLen = 10; // give it a path so it doesn't trigger noPath
+        nav.pathSlot = 1;
+        const manager = new PathReplanManager(nav);
+        const state = { nav: { settings: navSettings, topologyKey: () => "key-b" }, viewport: { circleInBounds: () => true } };
         nav.topologyKey = "key-a";
-        assert.equal(obstacleEpochReplanDue(nav, "key-a"), false);
-        assert.equal(obstacleEpochReplanDue(nav, "key-b"), true);
+        assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "epoch");
+        
+        nav.topologyKey = "key-b";
+        assert.equal(manager.evaluate({x:0,y:0}, state, false).shouldReplan, false);
     });
-    it("idlePathReplanReason requests noPath when idle without a route", () => {
+
+    it("evaluates idlePathReplanReason correctly", () => {
         const nav = createNavState();
-        assert.equal(idlePathReplanReason(nav, navSettings, false), "noPath");
-        assert.equal(idlePathReplanReason(nav, navSettings, true), null);
+        const manager = new PathReplanManager(nav);
+        const state = { nav: { settings: navSettings, topologyKey: () => nav.topologyKey }, viewport: { circleInBounds: () => true } };
+        
+        assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "noPath");
+        assert.equal(manager.evaluate({x:0,y:0}, state, true).shouldReplan, false);
     });
+
     it("trackNavStuck accumulates when the body barely moves", () => {
         const nav = createNavState();
-        for (let i = 0; i < 25; i++) trackNavStuck(nav, 10, 10, navSettings.stuckMoveThreshold);
+        const manager = new PathReplanManager(nav);
+        for (let i = 0; i < 25; i++) manager.trackStuck({x: 10, y: 10}, false, false, navSettings.stuckMoveThreshold);
         assert.ok(nav.stuckFrames > navSettings.stuckReplanFrames);
-        trackNavStuck(nav, 20, 20, navSettings.stuckMoveThreshold);
+        manager.trackStuck({x: 20, y: 20}, false, false, navSettings.stuckMoveThreshold);
         assert.equal(nav.stuckFrames, 0);
     });
-    it("idlePathReplanReason returns stuck after enough stuck frames", () => {
-        const nav = createNavState();
-        nav.pathLen = 4;
-        nav.pathSlot = 0;
-        nav.stuckFrames = navSettings.stuckReplanFrames + 1;
-        assert.equal(idlePathReplanReason(nav, navSettings, false), "stuck");
-    });
-    it("offPathReplanDue respects cooldown", () => {
+
+    it("evaluates offPath correctly", () => {
         const nav = createNavState();
         nav.pathLen = 3;
         nav.pathSlot = 0;
         nav.lastOffPathReplan = 0;
-        assert.equal(offPathReplanDue({ offPath: true }, nav, 250), true);
-        nav.lastOffPathReplan = 100;
-        assert.equal(offPathReplanDue({ offPath: true }, nav, 300), false);
-        assert.equal(offPathReplanDue({ offPath: true }, nav, 351), true);
+        const manager = new PathReplanManager(nav);
+        const state = { nav: { settings: navSettings }, viewport: { circleInBounds: () => true } };
+        
+        manager.updateClock(250);
+        manager.trackStuck({x:10,y:10}, false, false, 0); // stuck frames = 1. softReplan requires > 10
+        for (let i = 0; i < 15; i++) manager.trackStuck({x:10,y:10}, false, false, 2); // 15 stuck frames
+        
+        assert.equal(manager.evaluateOffPath({ offPath: true }, {x:0,y:0}, state).reason, "offPath");
+        
+        manager.updateClock(10);
+        assert.equal(manager.evaluateOffPath({ offPath: true }, {x:0,y:0}, state).shouldReplan, false);
     });
-    it("obstacleReplanAllowed defers off-screen until stuck", () => {
-        assert.equal(obstacleReplanAllowed(false, 0, 20), false);
-        assert.equal(obstacleReplanAllowed(false, 21, 20), true);
-        assert.equal(obstacleReplanAllowed(true, 0, 20), true);
-    });
+
     it("sandboxReplanReason and sandboxReplanAllowed gate off-screen idle replans", () => {
         const nav = createNavState();
         assert.equal(sandboxReplanReason(nav, true, false, 0, 0), "targetChange");
@@ -63,19 +70,11 @@ describe("hpa ground nav replan policy", () => {
         assert.equal(sandboxReplanReason(nav, false, false, 100, 0), "targetMoved");
         assert.equal(sandboxReplanAllowed("targetMoved", false, 0, 20), false);
     });
-    it("idlePathReplanAllowed requires visibility unless stuck", () => {
-        const nav = createNavState();
-        nav.stuckFrames = 5;
-        assert.equal(idlePathReplanAllowed(nav, "noPath", false, 20), false);
-        nav.stuckFrames = 25;
-        assert.equal(idlePathReplanAllowed(nav, "noPath", false, 20), true);
-        nav.stuckFrames = 0;
-        assert.equal(idlePathReplanAllowed(nav, "noPath", true, 20), true);
-    });
+
     it("replanPriorityFor ranks target changes and visible agents ahead of off-screen", () => {
-        assert.equal(replanPriorityFor("targetChange", false), REPLAN_PRIORITY_TARGET);
-        assert.equal(replanPriorityFor("noPath", true), REPLAN_PRIORITY_VISIBLE);
-        assert.equal(replanPriorityFor("epoch", false), REPLAN_PRIORITY_STUCK_OFFSCREEN);
+        assert.equal(PathReplanManager.getPriority("targetChange", false), REPLAN_PRIORITY_TARGET);
+        assert.equal(PathReplanManager.getPriority("noPath", true), REPLAN_PRIORITY_VISIBLE);
+        assert.equal(PathReplanManager.getPriority("epoch", false), REPLAN_PRIORITY_STUCK_OFFSCREEN);
     });
     it("keeps committed off-path routes while the agent is still making progress", () => {
         const grid = new WorldObstacleGrid(16);

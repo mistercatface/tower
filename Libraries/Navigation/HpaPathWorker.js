@@ -1,5 +1,5 @@
 import { expandRegionDamageBounds, createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, buildNavComponentMap } from "../Navigation/navigation.js";
-import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
+import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
 import { gridFrameFromGrid } from "../Navigation/navigation.js";
 import { gridNavCacheKey, isNavTopologyReady, unionCellBounds } from "../Spatial/spatial.js";
 import { createHpaWorkerSabPools, growHpaCellToRegionSab, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";

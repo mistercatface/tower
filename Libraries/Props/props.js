@@ -306,7 +306,7 @@ export class WorldProp {
             const fadeOutMs = this.strategy.fadeOutMs;
             const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
             if (this.ageMs >= fadeOutMs + durationMs) {
-                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox.entityMeta);
+                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
                 else this.isDead = true;
                 return;
             } else if (this.ageMs >= fadeOutMs) {

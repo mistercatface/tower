@@ -1,7 +1,7 @@
-import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena, findPortalLegBetweenRegions, buildNavComponentMap } from "../../Navigation/navigation.js";
-import { bindNavEdgePoolFromSab } from "../../Spatial/spatial.js";
-import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "../../Pathfinding/hpaWorkerSab.js";
-import { packCellKey, KEY_STRIDE } from "../../Spatial/spatial.js";
+import { FlatAbstractGraphSearch, FlatGridSearch, SearchState, createNavSimView, bindNavSimEdgePool, bindNavSimGridFrame, HpaAbstractGraph, prepareHpaReplanPrep, buildFullRegionGraph, packRegionGraphFlat, rebuildDamagedRegionGraph, createNavLocalView, navTopologyFromSab, bakeNavTopologyIntoArena, findPortalLegBetweenRegions, buildNavComponentMap } from "./navigation.js";
+import { bindNavEdgePoolFromSab } from "../Spatial/spatial.js";
+import { hpaPathSlotAbstractIdx, hpaPathSlotIdx, hpaPathSlotMeta, PersistedHpaGraphWriter, stitchAbstractCellPath } from "./hpaWorkerSab.js";
+import { packCellKey, KEY_STRIDE } from "../Spatial/spatial.js";
 export class HpaBufferManager {
     constructor() {
         this.maxSlots = 0;

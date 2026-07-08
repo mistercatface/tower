@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 globalThis.self = globalThis;
 import { bakeNavTopologyLocal, FlatGridSearch, prepareHpaReplanPrep, SearchState } from "../Libraries/Navigation/navigation.js";
-import { growHpaPathIdxSab, stitchAbstractCellPath } from "../Libraries/Pathfinding/hpaWorkerSab.js";
+import { growHpaPathIdxSab, stitchAbstractCellPath } from "../Libraries/Navigation/hpaWorkerSab.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 
 function openCorridorGrid(cols, rows) {

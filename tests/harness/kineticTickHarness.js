@@ -73,7 +73,11 @@ export function mockBall(x, y, overrides = {}) {
     return body;
 }
 export function mockRollingProp(overrides = {}) {
-    const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, strategy: { rolls: true, friction: 0, isKinetic: true }, shape: new CircleShape(8), ...overrides };
+    const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
+    body.strategy = { rolls: true, friction: 0, isKinetic: true, ...(overrides.strategy || {}) };
+    if (!body.strategy || body.strategy.isKinetic !== true) {
+        console.error("DEBUG mockRollingProp bad strategy:", body.strategy);
+    }
     normalizeKineticBody(body);
     return body;
 }
