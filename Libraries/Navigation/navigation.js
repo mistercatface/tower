@@ -852,6 +852,44 @@ export class HpaAbstractGraph extends FlatGraphView {
         return { extendedGraph, startTemp, targetTemp };
     }
 }
+function logHpaReplanFailure(grid, worker, navTopology, startX, startY, targetX, targetY) {
+    let startIdx = grid.worldToIdx(startX, startY);
+    if (startIdx < 0) {
+        console.warn("HPA replan failed: start out of bounds", { startX, startY, targetX, targetY });
+        return;
+    }
+    let targetIdx = grid.worldToIdx(targetX, targetY);
+    if (targetIdx < 0) {
+        console.warn("HPA replan failed: target out of bounds", { startX, startY, targetX, targetY });
+        return;
+    }
+    if (grid.isBlockedIdx(startIdx)) {
+        console.warn("HPA replan failed: start blocked", { startIdx, targetIdx });
+        return;
+    }
+    if (grid.isBlockedIdx(targetIdx)) {
+        console.warn("HPA replan failed: target blocked", { startIdx, targetIdx });
+        return;
+    }
+    startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
+    targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
+    const snappedTargetIdx = snapNavGoalCellIndex(grid, startIdx, targetIdx);
+    const topology = navTopology?.topology ?? navTopology;
+    const blocked = topology?.blocked ?? grid.grid;
+    const octileNeighbors = topology?.octileNeighbors;
+    const cellToComponent = octileNeighbors ? buildNavComponentMap(blocked, octileNeighbors, grid.cols, grid.rows) : null;
+    const startComp = cellToComponent ? cellToComponent[startIdx] : REGION_CELL_UNASSIGNED;
+    const targetComp = cellToComponent ? cellToComponent[snappedTargetIdx] : REGION_CELL_UNASSIGNED;
+    const cellToRegion = worker.graphCellToRegion;
+    const startRegion = cellToRegion ? cellToRegion[startIdx] : REGION_CELL_UNASSIGNED;
+    const targetRegion = cellToRegion ? cellToRegion[snappedTargetIdx] : REGION_CELL_UNASSIGNED;
+    let reason;
+    if (cellToComponent && startComp !== targetComp) reason = "different walkable components (truly unreachable)";
+    else if (startRegion < 0 || targetRegion < 0) reason = "cell reachable in grid but HPA region missing (pruned from search graph)";
+    else if (startRegion === targetRegion) reason = "same region but local search returned no path";
+    else reason = "abstract search found no edge path between regions";
+    console.warn("HPA replan failed:", reason, { startIdx, targetIdx, snappedTargetIdx, startComp, targetComp, startRegion, targetRegion });
+}
 const globalReplanPayload = { startIdx: 0, targetIdx: 0 };
 export class HpaReplanRequest {
     constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, state = null }) {
@@ -884,19 +922,7 @@ export class HpaReplanRequest {
         navState.topologyKey = this.topologyKey;
         if (!result || !result.pathLen) {
             worker.releaseOwnedPathSlot(navState);
-            if (this.state && (navState.pendingReplanReason === "targetChange" || navState.pendingReplanReason === "targetMoved")) {
-                const grid = this.obstacleGrid;
-                const cols = grid.cols;
-                const rows = grid.rows;
-                const startIdx = grid.worldToIdx(this.startX, this.startY);
-                const targetIdx = grid.worldToIdx(this.targetX, this.targetY);
-                let errorMsg = "Unreachable";
-                if (startIdx < 0) errorMsg = "Start out of bounds";
-                else if (targetIdx < 0) errorMsg = "Target out of bounds";
-                else if (grid.isBlockedIdx(startIdx)) errorMsg = "Start blocked";
-                else if (grid.isBlockedIdx(targetIdx)) errorMsg = "Target blocked";
-                console.log(errorMsg);
-            }
+            if (this.state && (navState.pendingReplanReason === "targetChange" || navState.pendingReplanReason === "targetMoved")) logHpaReplanFailure(this.obstacleGrid, worker, this.navTopology, this.startX, this.startY, this.targetX, this.targetY);
             return;
         }
         worker.releaseOwnedPathSlot(navState);
@@ -1215,7 +1241,7 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     bfsIndices([startIdx], (idx, enqueue) => {
         forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
             if (blocked[nIdx] || reachable[nIdx]) return;
-            if (!navGraph.canStepIdx(idx, nIdx)) return;
+            if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) return;
             reachable[nIdx] = 1;
             enqueue(nIdx);
         });
@@ -1249,9 +1275,8 @@ export function buildFullRegionGraph(opts) {
     connectAllNodes(navGraph, blocked, frame, graph);
     injectPortalRegionEdges(graph, blocked, portalTargetIdx);
     distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
-    const debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx);
-    return { ...graph.exportState(), graph, debugPacked };
+    return { ...graph.exportState(), graph };
 }
 export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, portalTargetIdx = null) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
@@ -1274,7 +1299,6 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
     state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
     if (portalTargetIdx) injectPortalRegionEdges(graph, blocked, portalTargetIdx);
-    state.debugPacked = packRegionGraphFlat(graph, graph.cellToNode, frame);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx);
     graph.syncState(state);
     return state;

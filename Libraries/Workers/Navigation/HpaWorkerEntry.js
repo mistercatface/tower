@@ -20,12 +20,6 @@ export class HpaBufferManager {
         this.sabPersistGraphEdgeCosts = null;
         this.sabPersistGraphEdgeSources = null;
         this.sabCellToRegionIdx = null;
-        this.sabDebugCellToRegionIdx = null;
-        this.sabDebugGraphNodeIdx = null;
-        this.sabDebugGraphEdgeOffsets = null;
-        this.sabDebugGraphEdgeTargets = null;
-        this.sabDebugGraphEdgeCosts = null;
-        this.sabDebugGraphEdgeSources = null;
     }
     init(data) {
         this.maxSlots = data.maxSlots;
@@ -44,12 +38,6 @@ export class HpaBufferManager {
         this.sabPersistGraphEdgeCosts = data.sabPersistGraphEdgeCosts;
         this.sabPersistGraphEdgeSources = data.sabPersistGraphEdgeSources;
         this.sabCellToRegionIdx = data.sabCellToRegionIdx;
-        this.sabDebugCellToRegionIdx = data.sabDebugCellToRegionIdx;
-        this.sabDebugGraphNodeIdx = data.sabDebugGraphNodeIdx;
-        this.sabDebugGraphEdgeOffsets = data.sabDebugGraphEdgeOffsets;
-        this.sabDebugGraphEdgeTargets = data.sabDebugGraphEdgeTargets;
-        this.sabDebugGraphEdgeCosts = data.sabDebugGraphEdgeCosts;
-        this.sabDebugGraphEdgeSources = data.sabDebugGraphEdgeSources;
     }
     writeCellPath(slot, pathScratch, len) {
         const pathMeta = hpaPathSlotMeta(this.sabPathMetaPool, slot);
@@ -159,17 +147,12 @@ export class HpaTopologyArena {
 export class HpaRegionGraphManager {
     constructor(buffers) {
         this.buffers = buffers;
-        this.persistedGraph = new PersistedHpaGraphWriter(buffers, false);
-        this.debugGraph = new PersistedHpaGraphWriter(buffers, true);
+        this.persistedGraph = new PersistedHpaGraphWriter(buffers);
         this.regionGraphState = null;
         this.persistNodeCount = 0;
         this.persistEdgeWrite = 0;
-        this.debugNodeCount = 0;
-        this.debugEdgeWrite = 0;
         /** @type {string[]} */
         this.persistNodeIds = [];
-        /** @type {string[]} */
-        this.debugNodeIds = [];
     }
     writeRegionGraphToSab(gridFrame) {
         if (!this.regionGraphState) return null;
@@ -181,15 +164,6 @@ export class HpaRegionGraphManager {
         this.persistNodeIds = meta.nodeIds;
         return meta;
     }
-    writeDebugRegionGraphToSab(gridFrame) {
-        const debugPacked = this.regionGraphState?.debugPacked;
-        if (!debugPacked) return null;
-        const meta = this.debugGraph.writePackedRegionGraph(debugPacked, gridFrame);
-        this.debugNodeCount = meta.nodeCount;
-        this.debugEdgeWrite = meta.edgeWrite;
-        this.debugNodeIds = meta.nodeIds;
-        return meta;
-    }
     abstractGraph() {
         const graph = this.persistedGraph.flatGraphView();
         return new HpaAbstractGraph(graph.nodeIdx, graph.cols, graph.edgeOffsets, graph.edgeTargets, graph.edgeCosts, graph.nodeCount, graph.edgeWrite, graph.nodeIds);
@@ -199,13 +173,11 @@ export class HpaRegionGraphManager {
         const portalTargetIdx = data.portalTargetIdx ?? null;
         const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, portalTargetIdx });
         this.regionGraphState = { ...built, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, damagePadding: data.damagePadding, distToWall: null };
-        this.writeDebugRegionGraphToSab(gridFrame);
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, data) {
         if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, data);
         rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, data.portalTargetIdx ?? null);
-        this.writeDebugRegionGraphToSab(gridFrame);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
@@ -330,7 +302,7 @@ export class HpaPathfindingWorker {
         }
     }
     postGraphPatchDone(meta) {
-        self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [], debugNodeCount: this.graph.debugNodeCount, debugEdgeWrite: this.graph.debugEdgeWrite, debugNodeIds: this.graph.debugNodeIds });
+        self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
     }
     postGraphPatchError(err) {
         console.error("Worker graph patch error:", err.stack || err);
@@ -378,13 +350,11 @@ export class HpaPathfindingWorker {
         }
         if (type === "buildRegionGraphFull") {
             if (e.data.sabCellToRegionIdx) this.buffers.sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-            if (e.data.sabDebugCellToRegionIdx) this.buffers.sabDebugCellToRegionIdx = e.data.sabDebugCellToRegionIdx;
             this.runGraphPatch(() => this.graph.buildRegionGraphFull(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, { ...e.data, portalTargetIdx: this.topology.portalTargetIdx }));
             return;
         }
         if (type === "patchRegionGraph") {
             if (e.data.sabCellToRegionIdx) this.buffers.sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-            if (e.data.sabDebugCellToRegionIdx) this.buffers.sabDebugCellToRegionIdx = e.data.sabDebugCellToRegionIdx;
             this.runGraphPatch(() => this.graph.patchRegionGraph(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, { ...e.data, portalTargetIdx: this.topology.portalTargetIdx }));
             return;
         }

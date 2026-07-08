@@ -54,24 +54,7 @@ export function stitchAbstractCellPath(abstractIdx, prep, tempLegsBuffer, tempLe
  * @param {number} config.maxGraphEdges
  */
 export function createHpaWorkerSabPools({ maxSlots, maxPathLen, maxAbstractLen, maxGraphNodes, maxGraphEdges }) {
-    return {
-        sabPathMetaPool: new SharedArrayBuffer(maxSlots * HPA_PATH_META_STRIDE_BYTES),
-        sabPathIdxPool: new SharedArrayBuffer(maxSlots * maxPathLen * 4),
-        sabAbstractIdxPool: new SharedArrayBuffer(maxSlots * maxAbstractLen * 2),
-        sabPersistGraphNodeIdx: new SharedArrayBuffer(maxGraphNodes * 4),
-        sabPersistGraphEdgeOffsets: new SharedArrayBuffer((maxGraphNodes + 1) * 4),
-        sabPersistGraphEdgeTargets: new SharedArrayBuffer(maxGraphEdges * 2),
-        sabPersistGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2),
-        sabPersistGraphEdgeSources: new SharedArrayBuffer(maxGraphEdges * 2),
-        sabCellToRegionIdx: new SharedArrayBuffer(4),
-        sabDebugCellToRegionIdx: new SharedArrayBuffer(4),
-        sabDebugGraphNodeIdx: new SharedArrayBuffer(maxGraphNodes * 4),
-        sabDebugGraphEdgeOffsets: new SharedArrayBuffer((maxGraphNodes + 1) * 4),
-        sabDebugGraphEdgeTargets: new SharedArrayBuffer(maxGraphEdges * 2),
-        sabDebugGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2),
-        sabDebugGraphEdgeSources: new SharedArrayBuffer(maxGraphEdges * 2),
-        maxPathLen,
-    };
+    return { sabPathMetaPool: new SharedArrayBuffer(maxSlots * HPA_PATH_META_STRIDE_BYTES), sabPathIdxPool: new SharedArrayBuffer(maxSlots * maxPathLen * 4), sabAbstractIdxPool: new SharedArrayBuffer(maxSlots * maxAbstractLen * 2), sabPersistGraphNodeIdx: new SharedArrayBuffer(maxGraphNodes * 4), sabPersistGraphEdgeOffsets: new SharedArrayBuffer((maxGraphNodes + 1) * 4), sabPersistGraphEdgeTargets: new SharedArrayBuffer(maxGraphEdges * 2), sabPersistGraphEdgeCosts: new SharedArrayBuffer(maxGraphEdges * 2), sabPersistGraphEdgeSources: new SharedArrayBuffer(maxGraphEdges * 2), sabCellToRegionIdx: new SharedArrayBuffer(4), maxPathLen };
 }
 /** @param {SharedArrayBuffer} sabPathIdxPool @param {number} maxSlots @param {number} maxPathLen */
 export function growHpaPathIdxSab(sabPathIdxPool, maxSlots, maxPathLen) {
@@ -86,9 +69,8 @@ export function growHpaCellToRegionSab(sabCellToRegionIdx, cellCount) {
     return new SharedArrayBuffer(byteLen);
 }
 export class PersistedHpaGraphWriter {
-    constructor(buffers, debug = false) {
+    constructor(buffers) {
         this.buffers = buffers;
-        this.debug = debug;
         this.nodeCount = 0;
         this.edgeWrite = 0;
         /** @type {string[]} */
@@ -96,22 +78,22 @@ export class PersistedHpaGraphWriter {
         this.cols = 0;
     }
     get sabNodeIdx() {
-        return this.debug ? this.buffers.sabDebugGraphNodeIdx : this.buffers.sabPersistGraphNodeIdx;
+        return this.buffers.sabPersistGraphNodeIdx;
     }
     get sabEdgeOffsets() {
-        return this.debug ? this.buffers.sabDebugGraphEdgeOffsets : this.buffers.sabPersistGraphEdgeOffsets;
+        return this.buffers.sabPersistGraphEdgeOffsets;
     }
     get sabEdgeSources() {
-        return this.debug ? this.buffers.sabDebugGraphEdgeSources : this.buffers.sabPersistGraphEdgeSources;
+        return this.buffers.sabPersistGraphEdgeSources;
     }
     get sabEdgeTargets() {
-        return this.debug ? this.buffers.sabDebugGraphEdgeTargets : this.buffers.sabPersistGraphEdgeTargets;
+        return this.buffers.sabPersistGraphEdgeTargets;
     }
     get sabEdgeCosts() {
-        return this.debug ? this.buffers.sabDebugGraphEdgeCosts : this.buffers.sabPersistGraphEdgeCosts;
+        return this.buffers.sabPersistGraphEdgeCosts;
     }
     get sabCellToRegion() {
-        return this.debug ? this.buffers.sabDebugCellToRegionIdx : this.buffers.sabCellToRegionIdx;
+        return this.buffers.sabCellToRegionIdx;
     }
     get maxGraphNodes() {
         return this.buffers.maxGraphNodes;

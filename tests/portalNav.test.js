@@ -6,6 +6,7 @@ import {
     bakeNavTopologyLocal,
     navCanStep,
     buildFullRegionGraph,
+    packRegionGraphFlat,
     findSabPathProgressIdx,
     createNavLocalView,
     HpaAbstractGraph,
@@ -164,7 +165,7 @@ describe("portal nav", () => {
         portalTargetIdx[exitIdx] = entryIdx;
         const navGraph = { canStepIdx: () => true };
         const built = buildFullRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx });
-        const packed = built.debugPacked;
+        const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const scratch = new Int32Array(2);
         const exitRegion = packed.cellToRegion[exitIdx];
         const entryRegion = packed.cellToRegion[entryIdx];
@@ -212,7 +213,7 @@ describe("portal nav", () => {
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
         const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx: grid.portalTargetIdx });
-        const packed = built.debugPacked;
+        const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const exitRegion = packed.cellToRegion[exitIdx];
         const entryRegion = packed.cellToRegion[entryIdx];
@@ -239,7 +240,7 @@ describe("portal nav", () => {
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
         const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx: grid.portalTargetIdx });
-        const packed = built.debugPacked;
+        const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const planner = createPortalPlanner(cols, rows);
         const context = { frame, topology, graph: abstractGraph, cellToRegion: packed.cellToRegion, portalTargetIdx: grid.portalTargetIdx };
@@ -264,7 +265,7 @@ describe("portal nav", () => {
         const { frame, topology } = bakeNavTopologyLocal(grid);
         const navGraph = createNavLocalView(frame, topology);
         const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, portalTargetIdx: grid.portalTargetIdx });
-        const packed = built.debugPacked;
+        const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         assert.ok(built.graph.nodeForCell(entryIdx), "entry region must survive prune");
         assert.ok(built.graph.nodeForCell(targetIdx), "target region must survive prune");
         const abstractGraph = abstractGraphFromPacked(packed, cols);
