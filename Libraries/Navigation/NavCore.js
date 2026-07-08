@@ -7,8 +7,6 @@ import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 import { FlowFieldGrid } from "./NavFlowField.js";
-
-
 // --- NavMath.js ---
 export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
@@ -88,8 +86,6 @@ export function snapshotGridToWorldIdx(frame, idx) {
     const row = (idx / frame.cols) | 0;
     return { x: snapshotGridCenterX(frame, col), y: snapshotGridCenterY(frame, row) };
 }
-
-
 // --- NavSearch.js ---
 export class SearchState {
     constructor(size) {
@@ -457,8 +453,6 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
         if (result !== undefined) return result;
     }
 }
-
-
 // --- NavUtils.js ---
 export const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
 export function _removeEdgeByTargetId(edges, targetId) {
@@ -835,11 +829,18 @@ export function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWor
         if (activePortalPairs && activePortalCount) {
             const pairs = activePortalPairs;
             const count = typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0];
-            for (let i = 0; i < count; i++)
-                if (idx === pairs[i * 2] && !blocked[pairs[i * 2 + 1]] && !reachable[pairs[i * 2 + 1]]) {
-                    reachable[pairs[i * 2 + 1]] = 1;
-                    enqueue(pairs[i * 2 + 1]);
+            for (let i = 0; i < count; i++) {
+                const exitIdx = pairs[i * 2];
+                const entryIdx = pairs[i * 2 + 1];
+                if (idx === exitIdx && !blocked[entryIdx] && !reachable[entryIdx]) {
+                    reachable[entryIdx] = 1;
+                    enqueue(entryIdx);
                 }
+                if (idx === entryIdx && !blocked[exitIdx] && !reachable[exitIdx]) {
+                    reachable[exitIdx] = 1;
+                    enqueue(exitIdx);
+                }
+            }
         }
     });
     for (const node of graph.nodes()) {
@@ -1210,8 +1211,6 @@ export const FLOW_DONE = "flowDone";
 export const FLOW_WINDOW_DONE = "flowWindowDone";
 export const FLOW_DECODE_X = new Float32Array([-0.707, 0, 0.707, -1, 0, 1, -0.707, 0, 0.707]);
 export const FLOW_DECODE_Y = new Float32Array([-0.707, -1, -0.707, 0, 0, 0, 0.707, 1, 0.707]);
-
-
 // --- CorridorPathfinder.js ---
 export class CorridorPathfinder {
     constructor(grid, navTopology, railConfig, navWalkableIndex) {
@@ -1394,8 +1393,6 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     }
     return { desiredX: dx / dist, desiredY: dy / dist, desiredSpeed, offPath: dist > offPathDistance };
 }
-
-
 // --- NavRuntime.js ---
 export function agentPose(source) {
     SCRATCH_AGENT_POSE.x = source.x;
@@ -1503,27 +1500,21 @@ export class NavRuntime {
         await this.worker.host.worker.terminate();
     }
 }
-
-
 // --- NavReplanPolicy.js ---
-
 export const REPLAN_TARGET_MOVE_PX = 64;
 export const REPLAN_OFF_PATH_COOLDOWN_MS = 250;
 export const REPLAN_PRIORITY_TARGET = 4;
 export const REPLAN_PRIORITY_VISIBLE = 3;
 export const REPLAN_PRIORITY_NORMAL = 2;
 export const REPLAN_PRIORITY_STUCK_OFFSCREEN = 1;
-
 export class PathReplanManager {
     constructor(navState) {
         this.navState = navState;
         this.replanClockMs = 0;
     }
-
     updateClock(dtMs) {
         this.replanClockMs += dtMs;
     }
-
     trackStuck(prop, inFlight, routePending, stuckMoveThreshold) {
         if (inFlight || routePending) {
             this.navState.stuckFrames = 0;
@@ -1537,14 +1528,12 @@ export class PathReplanManager {
             else this.navState.stuckFrames = 0;
         }
     }
-
     static getPriority(reason, isVisible) {
         if (reason === "targetChange") return REPLAN_PRIORITY_TARGET;
         if (!isVisible) return REPLAN_PRIORITY_STUCK_OFFSCREEN;
         if (reason === "noPath" || reason === "stuck" || reason === "offPath") return REPLAN_PRIORITY_VISIBLE;
         return REPLAN_PRIORITY_NORMAL;
     }
-
     evaluate(prop, state, inFlight) {
         const nav = state.nav;
         const settings = nav.settings;
@@ -1552,32 +1541,22 @@ export class PathReplanManager {
         const stuckReplanFrames = settings.stuckReplanFrames;
         const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props");
         const canReplan = isVisible || stuckFrames > stuckReplanFrames;
-        
-        if (!inFlight && this.navState.topologyKey !== nav.topologyKey()) {
-            if (canReplan) return { shouldReplan: true, reason: "epoch", priority: PathReplanManager.getPriority("epoch", isVisible) };
-        }
-        
+        if (!inFlight && this.navState.topologyKey !== nav.topologyKey()) if (canReplan) return { shouldReplan: true, reason: "epoch", priority: PathReplanManager.getPriority("epoch", isVisible) };
         if (!inFlight) {
             let idleReason = null;
             if (!navHasPath(this.navState)) idleReason = "noPath";
             else if (stuckFrames > stuckReplanFrames) idleReason = "stuck";
-            
-            if (idleReason && canReplan) {
-                return { shouldReplan: true, reason: idleReason, priority: PathReplanManager.getPriority(idleReason, isVisible) };
-            }
+            if (idleReason && canReplan) return { shouldReplan: true, reason: idleReason, priority: PathReplanManager.getPriority(idleReason, isVisible) };
         }
-        
         return { shouldReplan: false };
     }
-
     evaluateOffPath(steering, prop, state) {
-        if (steering && steering.offPath && (this.replanClockMs - (this.navState.lastOffPathReplan || 0) >= REPLAN_OFF_PATH_COOLDOWN_MS)) {
+        if (steering && steering.offPath && this.replanClockMs - (this.navState.lastOffPathReplan || 0) >= REPLAN_OFF_PATH_COOLDOWN_MS) {
             const stuckFrames = this.navState.stuckFrames;
             const stuckReplanFrames = state.nav.settings.stuckReplanFrames;
             const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props");
             const canReplan = isVisible || stuckFrames > stuckReplanFrames;
             const softReplanAllowed = stuckFrames > Math.max(1, Math.floor(stuckReplanFrames * 0.5));
-            
             if (softReplanAllowed && canReplan) {
                 this.navState.lastOffPathReplan = this.replanClockMs;
                 return { shouldReplan: true, reason: "offPath", priority: PathReplanManager.getPriority("offPath", isVisible) };
@@ -1586,7 +1565,6 @@ export class PathReplanManager {
         return { shouldReplan: false };
     }
 }
-
 // --- NavTopology.js ---
 export function isNavWalkableAt(index, idx) {
     if (idx < 0 || idx >= index.flags.length) return false;
@@ -1996,8 +1974,6 @@ export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
         for (let dir = 0; dir < this.directionCount; dir++) neighborGrid[base + dir] = -1;
     },
 });
-
-
 // --- HpaRegion.js ---
 export class RegionNode {
     constructor(id, idx) {
@@ -2384,8 +2360,6 @@ export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
     }
     return { nodeCount, nodeIdx, cellToRegion, edgeSources: Int16Array.from(edgeSources), edgeTargets: Int16Array.from(edgeTargets), edgeCosts: Uint16Array.from(edgeCosts), edgeWrite: edgeSources.length, nodeIds, idToIdx };
 }
-
-
 // --- HpaNavigation.js ---
 export const HPA_REPLAN_FRAME_START_BUDGET = 12;
 export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
@@ -2788,33 +2762,21 @@ export class HpaNavSession {
     update(prop, targetX, targetY, state, dtMs, pathSettings, sandboxReplan) {
         if (!this.replanManager) this.replanManager = new PathReplanManager(this.navState);
         this.replanManager.updateClock(dtMs);
-        
         const nav = state.nav;
         const inFlight = nav.session.isReplanInFlight(this.navState);
         const routePending = this.pendingTargetReplan || this.navState.hpaReplanRequestId !== 0;
-        
         this.replanManager.trackStuck(prop, inFlight, routePending, nav.settings.stuckMoveThreshold);
         this.syncRouteCommitState();
-        
         const replanDecision = this.replanManager.evaluate(prop, state, inFlight);
-        if (replanDecision.shouldReplan) {
-            return this.requestReplan(prop, targetX, targetY, state, replanDecision.priority, replanDecision.reason);
-        }
-        
+        if (replanDecision.shouldReplan) return this.requestReplan(prop, targetX, targetY, state, replanDecision.priority, replanDecision.reason);
         if (sandboxReplan) {
             const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible: state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props"), stuckFrames: this.navState.stuckFrames, stuckReplanFrames: nav.settings.stuckReplanFrames });
             if (sandboxResult) return sandboxResult;
         }
-        
         if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
-        
         const steering = computeSabPathSteering(agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
-        
         const offPathDecision = this.replanManager.evaluateOffPath(steering, prop, state);
-        if (offPathDecision.shouldReplan) {
-            return this.requestReplan(prop, targetX, targetY, state, offPathDecision.priority, offPathDecision.reason);
-        }
-        
+        if (offPathDecision.shouldReplan) return this.requestReplan(prop, targetX, targetY, state, offPathDecision.priority, offPathDecision.reason);
         return { steering, replanReason: null };
     }
     getCommitStatus() {
