@@ -1,17 +1,6 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbWidth, aabbHeight, intersectAabbOptionalInto } from "../Math/math.js";
-import {
-    projectWorldAabbCornersIntoFlat,
-    forEachObstacleGridCellInAabb,
-    resolveCellWallHeightAtIdx,
-    resolveChunkSurfaceProfileIdAtKey,
-    packChunkKey,
-    worldToChunkKey,
-    chunkKeyBoundsInto,
-    wrapChunkKey,
-    forEachChunkKeyInRange,
-    cellIdxToChunkKey,
-} from "../Spatial/spatial.js";
+import { projectWorldAabbCornersIntoFlat, forEachObstacleGridCellInAabb, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBoundsInto, wrapChunkKey, forEachChunkKeyInRange, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
 import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfaceProfileIds, surfaceProfileKnown } from "../../Config/procedural/profiles.js";
@@ -31,23 +20,8 @@ export function bumpSurfaceProfileRevision(profileId) {
     revisions.set(profileId, rev);
     return rev;
 }
-export const TILE_WORKER_MESSAGE = {
-    CONFIGURE_BAKE_CONSTANTS: "configureBakeConstants",
-    BAKE_GROUND_CHUNK: "bakeGroundChunk",
-    BAKE_WALL_ATLAS: "bakeWallAtlas",
-    REGISTER_RUNTIME_PROFILE: "registerRuntimeProfile",
-};
-export const EMPTY_BAKE_TIMING_STATS = {
-    sampleCount: 0,
-    sampleFillMs: 0,
-    composeStaticMs: 0,
-    composeFrameMs: 0,
-    rgbaCopyMs: 0,
-    transferMs: 0,
-    noiseCallsPerPixel: 0,
-    noiseHitRate: 0,
-    noiseOverflowRate: 0,
-};
+export const TILE_WORKER_MESSAGE = { CONFIGURE_BAKE_CONSTANTS: "configureBakeConstants", BAKE_GROUND_CHUNK: "bakeGroundChunk", BAKE_WALL_ATLAS: "bakeWallAtlas", REGISTER_RUNTIME_PROFILE: "registerRuntimeProfile" };
+export const EMPTY_BAKE_TIMING_STATS = { sampleCount: 0, sampleFillMs: 0, composeStaticMs: 0, composeFrameMs: 0, rgbaCopyMs: 0, transferMs: 0, noiseCallsPerPixel: 0, noiseHitRate: 0, noiseOverflowRate: 0 };
 let tileBakeMetricsEnabled = false;
 export function isTileBakeMetricsEnabled() {
     return tileBakeMetricsEnabled;
@@ -61,15 +35,7 @@ export function createEmptyBakePhases() {
 }
 export function createNoiseProfileSnapshot(profile, numPixels) {
     const calls = profile.calls;
-    return {
-        calls,
-        hits: profile.hits,
-        overflows: profile.overflows,
-        numPixels,
-        callsPerPixel: numPixels > 0 ? calls / numPixels : 0,
-        hitRate: calls > 0 ? profile.hits / calls : 0,
-        overflowRate: calls > 0 ? profile.overflows / calls : 0,
-    };
+    return { calls, hits: profile.hits, overflows: profile.overflows, numPixels, callsPerPixel: numPixels > 0 ? calls / numPixels : 0, hitRate: calls > 0 ? profile.hits / calls : 0, overflowRate: calls > 0 ? profile.overflows / calls : 0 };
 }
 export function createTileBakeMetrics(jobType, numPixels, phases, noiseProfile) {
     return { jobType, numPixels, phases: { ...phases }, noise: createNoiseProfileSnapshot(noiseProfile, numPixels) };
@@ -107,33 +73,13 @@ export class TileBakeMetricsAccumulator {
             noiseHitRate += sample.noise.hitRate;
             noiseOverflowRate += sample.noise.overflowRate;
         }
-        return {
-            sampleCount: n,
-            sampleFillMs: sampleFillMs / n,
-            composeStaticMs: composeStaticMs / n,
-            composeFrameMs: composeFrameMs / n,
-            rgbaCopyMs: rgbaCopyMs / n,
-            transferMs: transferMs / n,
-            noiseCallsPerPixel: noiseCallsPerPixel / n,
-            noiseHitRate: noiseHitRate / n,
-            noiseOverflowRate: noiseOverflowRate / n,
-        };
+        return { sampleCount: n, sampleFillMs: sampleFillMs / n, composeStaticMs: composeStaticMs / n, composeFrameMs: composeFrameMs / n, rgbaCopyMs: rgbaCopyMs / n, transferMs: transferMs / n, noiseCallsPerPixel: noiseCallsPerPixel / n, noiseHitRate: noiseHitRate / n, noiseOverflowRate: noiseOverflowRate / n };
     }
 }
 export function formatTileBakeMetricsLog(type, metrics, transferMs = 0) {
     const phases = metrics.phases;
     const noise = metrics.noise;
-    return (
-        `[TileWorker] ${type} | sampleFill: ${phases.sampleFillMs.toFixed(2)}ms` +
-        ` | composeStatic: ${phases.composeStaticMs.toFixed(2)}ms` +
-        ` | composeFrame: ${phases.composeFrameMs.toFixed(2)}ms` +
-        ` | rgbaCopy: ${phases.rgbaCopyMs.toFixed(2)}ms` +
-        ` | transfer: ${transferMs.toFixed(2)}ms` +
-        ` | noise: ${noise.callsPerPixel.toFixed(2)} calls/px` +
-        ` hit ${(noise.hitRate * 100).toFixed(1)}%` +
-        ` overflow ${(noise.overflowRate * 100).toFixed(1)}%` +
-        ` (${metrics.numPixels}px)`
-    );
+    return `[TileWorker] ${type} | sampleFill: ${phases.sampleFillMs.toFixed(2)}ms` + ` | composeStatic: ${phases.composeStaticMs.toFixed(2)}ms` + ` | composeFrame: ${phases.composeFrameMs.toFixed(2)}ms` + ` | rgbaCopy: ${phases.rgbaCopyMs.toFixed(2)}ms` + ` | transfer: ${transferMs.toFixed(2)}ms` + ` | noise: ${noise.callsPerPixel.toFixed(2)} calls/px` + ` hit ${(noise.hitRate * 100).toFixed(1)}%` + ` overflow ${(noise.overflowRate * 100).toFixed(1)}%` + ` (${metrics.numPixels}px)`;
 }
 export function horizontalZCacheTag(zLevel = 0) {
     return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
@@ -458,13 +404,7 @@ export class TileSurfaceWorkerClient {
         return this.workerReady;
     }
     syncBakeConstants(settings) {
-        const constants = {
-            cellSize: settings.cellSize,
-            cellsPerChunk: settings.cellsPerChunk,
-            surfaceBakeScale: settings.surfaceBakeScale,
-            surfaceTilePeriodPx: settings.surfaceTilePeriodPx,
-            metricsEnabled: settings.metricsEnabled,
-        };
+        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: settings.surfaceBakeScale, surfaceTilePeriodPx: settings.surfaceTilePeriodPx, metricsEnabled: settings.metricsEnabled };
         this._ensureStarted();
         this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, constants));
         return this.workerReady;
@@ -651,22 +591,7 @@ export function isDrawableBakedSurface(canvas) {
 }
 export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, viewport) {
     projectWorldAabbCornersIntoFlat(sProjectedChunkCorners, bounds, zLevel, viewport);
-    drawImageQuadScalars(
-        ctx,
-        canvas,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-        sProjectedChunkCorners[0],
-        sProjectedChunkCorners[1],
-        sProjectedChunkCorners[2],
-        sProjectedChunkCorners[3],
-        sProjectedChunkCorners[4],
-        sProjectedChunkCorners[5],
-        sProjectedChunkCorners[6],
-        sProjectedChunkCorners[7],
-    );
+    drawImageQuadScalars(ctx, canvas, 0, 0, canvas.width, canvas.height, sProjectedChunkCorners[0], sProjectedChunkCorners[1], sProjectedChunkCorners[2], sProjectedChunkCorners[3], sProjectedChunkCorners[4], sProjectedChunkCorners[5], sProjectedChunkCorners[6], sProjectedChunkCorners[7]);
 }
 let tileWorkerBakeConstants = null;
 export function installTileWorkerBakeConstants(constants) {
@@ -696,14 +621,7 @@ class TileMemoryPool {
         if (!this.buffers.has(numPixels)) this.buffers.set(numPixels, []);
         const pool = this.buffers.get(numPixels);
         if (pool.length > 0) return pool.pop();
-        return {
-            evalX: new Float32Array(numPixels),
-            evalY: new Float32Array(numPixels),
-            lookupX: new Float32Array(numPixels),
-            lookupY: new Float32Array(numPixels),
-            wallU: new Float32Array(numPixels),
-            wallV: new Float32Array(numPixels),
-        };
+        return { evalX: new Float32Array(numPixels), evalY: new Float32Array(numPixels), lookupX: new Float32Array(numPixels), lookupY: new Float32Array(numPixels), wallU: new Float32Array(numPixels), wallV: new Float32Array(numPixels) };
     }
     release(samples, numPixels) {
         const pool = this.buffers.get(numPixels);
@@ -819,19 +737,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     if (options.isWall && options.p1 && options.p2) {
         const wf = { p1: options.p1, ...createWallFaceAxes(options.p1, options.p2) };
         if (options.wallHeight == null) throw new Error("paintPixelArea wallFace requires options.wallHeight");
-        mapCtx = {
-            invBakeScale,
-            height,
-            p1x: wf.p1.x,
-            p1y: wf.p1.y,
-            dirX: wf.dirX,
-            dirY: wf.dirY,
-            foldX: wf.foldX,
-            foldY: wf.foldY,
-            invEdgeLen: wf.edgeLen > 0 ? 1 / wf.edgeLen : 1,
-            wallHeight: options.wallHeight,
-            wallWidth: options.wallWidth ?? cellSize,
-        };
+        mapCtx = { invBakeScale, height, p1x: wf.p1.x, p1y: wf.p1.y, dirX: wf.dirX, dirY: wf.dirY, foldX: wf.foldX, foldY: wf.foldY, invEdgeLen: wf.edgeLen > 0 ? 1 / wf.edgeLen : 1, wallHeight: options.wallHeight, wallWidth: options.wallWidth ?? cellSize };
         bake = { useWallBase: true, wallFace: true };
     } else if (options.roofSurface) {
         writePixel = writeRoofPixel;
@@ -1024,19 +930,7 @@ export class WorldSurfaceEngine {
         const canvasWidth = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
         const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
-        return this._scheduleBake(key, () =>
-            TileWorkerCoordinator.requestWallAtlasBake({
-                width: canvasWidth,
-                height: canvasHeight,
-                p1,
-                p2,
-                seed: this.worldSurfaceSeed,
-                profileId,
-                centerX: (p1.x + p2.x) / 2,
-                centerY: (p1.y + p2.y) / 2,
-                wallHeight: hVal,
-            }),
-        );
+        return this._scheduleBake(key, () => TileWorkerCoordinator.requestWallAtlasBake({ width: canvasWidth, height: canvasHeight, p1, p2, seed: this.worldSurfaceSeed, profileId, centerX: (p1.x + p2.x) / 2, centerY: (p1.y + p2.y) / 2, wallHeight: hVal }));
     }
     hasPendingSurfaceBakes() {
         return this.surfaceCache.hasPlaceholders();
@@ -1083,15 +977,7 @@ export class WorldSurfaceEngine {
         const atlas = this.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
         if (cacheObj) {
             const stash = cacheObj._wallAtlasStashes?.[atlasFaceId];
-            if (
-                stash &&
-                stash.profileId === profileId &&
-                stash.rev === atlas.rev &&
-                stash.seed === seed &&
-                stash.wallHeightKey === wallHeightKey &&
-                this.surfaceCache.get(stash.key) === stash.canvases
-            )
-                return stash;
+            if (stash && stash.profileId === profileId && stash.rev === atlas.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && this.surfaceCache.get(stash.key) === stash.canvases) return stash;
         }
         const { key, wrappedP1, wrappedP2, rev } = atlas;
         let canvases = this.surfaceCache.get(key);
@@ -1116,7 +1002,8 @@ export class WorldSurfaceEngine {
         const obstacleGrid = state.obstacleGrid;
         const sample = this.surfaceSpace.flatHorizontalSample(worldCorners8, obstacleGrid);
         const profileId = resolveChunkSurfaceProfileIdAtKey(obstacleGrid, sample.chunkKey, this.activeSurfaceProfileId);
-        const canvas = this.getGroundChunkCanvas(sample.chunkKey, state, zLevel, null, profileId)[0];
+        const canvases = this.getGroundChunkCanvas(sample.chunkKey, state, zLevel, null, profileId);
+        const canvas = canvases ? canvases[0] : null;
         for (let i = 0; i < 4; i++) {
             outSrc8[i * 2] = (worldCorners8[i * 2] - sample.minX) * surfaceBakeScale;
             outSrc8[i * 2 + 1] = (worldCorners8[i * 2 + 1] - sample.minY) * surfaceBakeScale;

@@ -1,19 +1,13 @@
 export const WORLD_RENDER_CONTROLS_HTML = `
-        <label class="toolbar-select">
-            Render mode
-            <select id="worldRenderModeSelect">
-                <option value="radial">Radial</option>
-                <option value="flat2d">2D</option>
-            </select>
-        </label>`;
+        <button type="button" id="worldRenderModeBtn" class="toolbar-cycle-btn">Render: 2D</button>`;
 export const TILELAB_UI_HTML = `
 <div class="app">
     <div class="toolbar">
-        <h1>Editor</h1>
-        <span class="sep"></span>
-        <button type="button" id="pathDebugModeBtn" class="toolbar-cycle-btn">Nav Grid: Off</button>
+        <h1 style="display: none;">Editor</h1>
+        <span class="sep" style="display: none;"></span>
+        <button type="button" id="pathDebugModeBtn" class="toolbar-cycle-btn">Nav: Off</button>
         ${WORLD_RENDER_CONTROLS_HTML}
-        <label class="check-inline"><input id="showVignetteInput" type="checkbox"> Circular Overlay</label>
+        <button type="button" id="showVignetteBtn" class="toolbar-cycle-btn">Overlay: Off</button>
         <label class="check-inline"><span>Shadows</span><input type="range" id="editorShadowSlider" min="0" max="100" step="1" value="0"><span class="hint-inline" id="editorShadowValue">Off</span></label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>
         <label class="check-inline"><input id="showSelectionRingsInput" type="checkbox"> Selection rings</label>
@@ -69,6 +63,7 @@ export const TILELAB_UI_HTML = `
                         <details class="editor-block" open>
                             <summary>Selected</summary>
                             <div id="motifParamsPanel"></div>
+                        </details>
                         <details class="editor-block" open>
                             <summary>Global</summary>
                             <div id="globalParamsPanel"></div>

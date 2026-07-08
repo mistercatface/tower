@@ -101,30 +101,23 @@ export function mountEditorUi(state, { playbackHandlers }) {
         const titleEl = document.querySelector(".toolbar h1");
         if (titleEl) titleEl.style.display = "none";
         const seps = document.querySelectorAll(".toolbar .sep");
-        seps.forEach(sep => sep.style.display = "none");
-        
+        seps.forEach((sep) => (sep.style.display = "none"));
         state.editor.showMapOverview = false;
         state.editor.showSelectionRings = false;
-        
         const mapOverviewInput = document.getElementById("showMapOverviewInput");
         if (mapOverviewInput) {
             mapOverviewInput.checked = false;
             const lbl = mapOverviewInput.closest("label");
             if (lbl) lbl.style.display = "none";
         }
-        
         const selectionRingsInput = document.getElementById("showSelectionRingsInput");
         if (selectionRingsInput) {
             selectionRingsInput.checked = false;
             const lbl = selectionRingsInput.closest("label");
             if (lbl) lbl.style.display = "none";
         }
-        
         const regenerateBtn = document.getElementById("regenerateBtn");
-        if (regenerateBtn) {
-            regenerateBtn.style.display = "none";
-        }
-
+        if (regenerateBtn) regenerateBtn.style.display = "none";
         const speedCtrl = document.getElementById("labSpeedControl");
         const shadowSlider = document.getElementById("editorShadowSlider");
         if (speedCtrl && shadowSlider) {
@@ -133,8 +126,6 @@ export function mountEditorUi(state, { playbackHandlers }) {
                 shadowLabel.insertAdjacentElement("afterend", speedCtrl);
                 speedCtrl.style.display = "inline-flex";
                 speedCtrl.style.alignItems = "center";
-                speedCtrl.style.marginLeft = "15px";
-                
                 const speedLabelSpan = document.createElement("span");
                 speedLabelSpan.textContent = "Speed";
                 speedLabelSpan.style.marginRight = "8px";
@@ -143,22 +134,22 @@ export function mountEditorUi(state, { playbackHandlers }) {
                 speedCtrl.insertBefore(speedLabelSpan, speedCtrl.firstChild);
             }
         }
-
         const pathDebugBtn = document.getElementById("pathDebugModeBtn");
         if (pathDebugBtn) {
             const toggleBtn = document.createElement("button");
             toggleBtn.type = "button";
             toggleBtn.id = "navModeToggleBtn";
             toggleBtn.className = "toolbar-cycle-btn";
-            toggleBtn.style.marginLeft = "10px";
-            toggleBtn.textContent = state.editor.navMode === "flow" ? "Mode: Flow" : "Mode: A*";
+            toggleBtn.textContent = state.editor.navMode === "flow" ? "Paths: Flow" : "Paths: A*";
             pathDebugBtn.insertAdjacentElement("afterend", toggleBtn);
             toggleBtn.addEventListener("click", () => {
                 const nextMode = state.editor.navMode === "flow" ? "hpa" : "flow";
                 setEditorNavMode(state, nextMode);
-                toggleBtn.textContent = nextMode === "flow" ? "Mode: Flow" : "Mode: A*";
+                toggleBtn.textContent = nextMode === "flow" ? "Paths: Flow" : "Paths: A*";
             });
         }
+        const sidebarHead = document.querySelector(".editor-sidebar-head");
+        if (sidebarHead) sidebarHead.style.display = "none";
     }
     const mapStage = document.getElementById("mapStage");
     const canvas = document.getElementById("gameCanvas");
@@ -255,9 +246,7 @@ export function setEditorNavMode(state, mode) {
                 const targetWorld = overlay?.targetX != null ? { x: overlay.targetX, y: overlay.targetY } : null;
                 if (oldBehavior.clearMoveTarget) oldBehavior.clearMoveTarget(boid);
                 entityMeta.setActiveBehaviorId(boid.id, nextBehaviorId);
-                if (targetWorld) {
-                    nextBehavior.setMoveTarget(boid, targetWorld);
-                }
+                if (targetWorld) nextBehavior.setMoveTarget(boid, targetWorld);
             }
         }
     }

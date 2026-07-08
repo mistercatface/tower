@@ -50,10 +50,14 @@ let labViewDirty = true;
 let showLabVignette = false;
 /** @type {'off' | 'hpa' | 'reachable'} */
 let labPathDebugMode = "off";
-const PATH_DEBUG_MODE_LABELS = { off: "TILES: OFF", hpa: "TILES: ALL", reachable: "TILES: REACHABLE" };
+const PATH_DEBUG_MODE_LABELS = { off: "Nav: Off", hpa: "Nav: All", reachable: "Nav: Reachable" };
 const PATH_DEBUG_MODE_CYCLE = ["off", "hpa", "reachable"];
 export function setLabVignetteEnabled(enabled) {
     showLabVignette = enabled;
+    const vignetteBtn = document.getElementById("showVignetteBtn");
+    if (vignetteBtn) vignetteBtn.textContent = showLabVignette ? "Overlay: On" : "Overlay: Off";
+    const vignetteInput = document.getElementById("showVignetteInput");
+    if (vignetteInput) vignetteInput.checked = showLabVignette;
     markLabViewDirty();
 }
 function syncPathDebugModeButtonLabel() {
@@ -81,15 +85,28 @@ function formatShadowStrengthLabel(strength) {
 }
 export function mountLabDrawOptions(state) {
     const vignetteInput = document.getElementById("showVignetteInput");
+    const vignetteBtn = document.getElementById("showVignetteBtn");
     const pathDebugModeBtn = document.getElementById("pathDebugModeBtn");
     const shadowSlider = document.getElementById("editorShadowSlider");
     const shadowValue = document.getElementById("editorShadowValue");
-    showLabVignette = vignetteInput.checked;
-    syncPathDebugModeButtonLabel();
-    vignetteInput.addEventListener("change", () => {
+    if (vignetteInput) {
         showLabVignette = vignetteInput.checked;
-        markLabViewDirty();
-    });
+        vignetteInput.addEventListener("change", () => {
+            showLabVignette = vignetteInput.checked;
+            markLabViewDirty();
+        });
+    } else if (vignetteBtn) {
+        const updateVignetteBtnText = () => {
+            vignetteBtn.textContent = showLabVignette ? "Overlay: On" : "Overlay: Off";
+        };
+        updateVignetteBtnText();
+        vignetteBtn.addEventListener("click", () => {
+            showLabVignette = !showLabVignette;
+            updateVignetteBtnText();
+            markLabViewDirty();
+        });
+    }
+    syncPathDebugModeButtonLabel();
     pathDebugModeBtn.addEventListener("click", () => cycleLabPathDebugMode());
     if (shadowSlider && shadowValue) {
         const initialStrength = state.losShadowStrength ?? 0.0;
