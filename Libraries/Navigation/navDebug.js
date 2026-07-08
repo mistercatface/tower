@@ -122,55 +122,6 @@ function drawPortalEdges(ctx, debugView, grid, reachableMask) {
     }
     ctx.restore();
 }
-function drawRegionBorders(ctx, debugView, reachableMask) {
-    const { cols, rows, cellSize, minX, minY, cellToRegion } = debugView;
-    const blocked = debugView.grid;
-    if (!cellToRegion) return;
-    const endCol = cols - 1;
-    const endRow = rows - 1;
-    ctx.beginPath();
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = PATH_DEBUG_REGION_BORDER;
-    ctx.lineWidth = 1;
-    for (let row = 0; row <= endRow; row++)
-        for (let col = 0; col <= endCol; col++) {
-            const idx = row * cols + col;
-            if (blocked[idx]) continue;
-            if (!cellReachable(idx, reachableMask)) continue;
-            const region = cellToRegion[idx];
-            if (region < 0) continue;
-            const wx = minX + col * cellSize;
-            const wy = minY + row * cellSize;
-            if (col + 1 < cols) {
-                const rIdx = idx + 1;
-                if (blocked[rIdx] === 0 && cellReachable(rIdx, reachableMask)) {
-                    const rightRegion = cellToRegion[rIdx];
-                    if (rightRegion >= 0 && rightRegion !== region) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
-                }
-            }
-            if (row + 1 < rows) {
-                const bIdx = idx + cols;
-                if (blocked[bIdx] === 0 && cellReachable(bIdx, reachableMask)) {
-                    const bottomRegion = cellToRegion[bIdx];
-                    if (bottomRegion >= 0 && bottomRegion !== region) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
-                }
-            }
-        }
-    ctx.stroke();
-    ctx.setLineDash([]);
-}
-function drawHpaNodes(ctx, debugView, reachableMask) {
-    const { nodeIdx, nodeCount, floorPacked } = debugView;
-    const blocked = debugView.grid;
-    for (let i = 0; i < nodeCount; i++) {
-        const idx = nodeIdx[i];
-        if (!cellReachable(idx, reachableMask)) continue;
-        if (blocked[idx]) continue;
-        if (floorPacked && BeltPacked.isValid(floorPacked[idx])) continue;
-        ctx.fillStyle = PATH_DEBUG_NODE_FILL;
-        fillCircle(ctx, debugView.gridCenterXByIdx(idx), debugView.gridCenterYByIdx(idx), 3);
-    }
-}
 function bakeLayerCanvas(debugView, minX, minY, maxX, maxY, reachableMask, grid, includeVectors) {
     const canvas = bakeCanvas(maxX - minX, maxY - minY);
     if (!canvas || !debugView.grid) return null;
@@ -179,8 +130,6 @@ function bakeLayerCanvas(debugView, minX, minY, maxX, maxY, reachableMask, grid,
     ctx.translate(-minX, -minY);
     bakeCellFills(ctx, debugView, reachableMask);
     if (includeVectors) {
-        drawRegionBorders(ctx, debugView, reachableMask);
-        drawHpaNodes(ctx, debugView, reachableMask);
         drawPortalEdges(ctx, debugView, grid, reachableMask);
     }
     return { canvas, minX, minY, maxX, maxY };

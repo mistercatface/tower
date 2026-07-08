@@ -5,18 +5,14 @@ export class HpaBufferManager {
     constructor() {
         this.maxSlots = 0;
         this.maxPathLen = 0;
-        this.maxAbstractLen = 0;
         this.sabPathMetaPool = null;
         this.sabPathIdxPool = null;
-        this.sabAbstractIdxPool = null;
     }
     init(data) {
         this.maxSlots = data.maxSlots;
         this.maxPathLen = data.maxPathLen;
-        this.maxAbstractLen = data.maxAbstractLen;
         this.sabPathMetaPool = data.sabPathMetaPool;
         this.sabPathIdxPool = data.sabPathIdxPool;
-        this.sabAbstractIdxPool = data.sabAbstractIdxPool;
     }
     writeCellPath(slot, pathScratch, len) {
         const pathMeta = hpaPathSlotMeta(this.sabPathMetaPool, slot);
@@ -25,10 +21,7 @@ export class HpaBufferManager {
         const pathIdx = hpaPathSlotIdx(this.sabPathIdxPool, slot, this.maxPathLen);
         pathIdx.set(pathScratch.subarray(0, len));
     }
-    writeAbstractPath(slot, pathIdx) {
-        const pathMeta = hpaPathSlotMeta(this.sabPathMetaPool, slot);
-        pathMeta[1] = pathIdx ? pathIdx.length : 0;
-    }
+
     buildReplanResult(slot) {
         const pathLen = hpaPathSlotMeta(this.sabPathMetaPool, slot)[0];
         return pathLen > 0 ? { pathLen } : null;
@@ -156,12 +149,10 @@ export class HpaReplanPlanner {
         const mask = buildNavReachableMaskFromSeed(context.topology.blocked, context.topology.octileNeighbors, cols, rows, startIdx, context.activePortalPairs, context.activePortalCount);
         if (startIdx !== targetIdx && !mask[targetIdx]) {
             this.buffers.writeCellPath(slot, this.localPathScratch, 0);
-            this.buffers.writeAbstractPath(slot, null);
             return this.buffers.buildReplanResult(slot);
         }
         const len = this.gridSearch.localPortal(startIdx, targetIdx, this.buffers.maxPathLen, this.localPathScratch, context.topology.blocked, context.activePortalPairs, portalCount);
         this.buffers.writeCellPath(slot, this.localPathScratch, len);
-        this.buffers.writeAbstractPath(slot, null);
         return this.buffers.buildReplanResult(slot);
     }
 }
@@ -201,7 +192,7 @@ export class HpaPathfindingWorker {
         if (type === "buildNavTopology") {
             this.topology.buildNavTopologyOnWorker(e.data);
             const size = this.topology.requireGridFrame().cols * this.topology.requireGridFrame().rows;
-            const searchStateSize = Math.max(size, (this.buffers.maxGraphNodes || 4096) + 2);
+            const searchStateSize = Math.max(size, 4096);
             this.searchState.resize(searchStateSize);
             self.postMessage({ type: "syncNavDone" });
             return;

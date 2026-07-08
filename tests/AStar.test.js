@@ -1,4 +1,4 @@
-import { FlatAbstractGraphSearch, FlatGraphView, FlatGridSearch, SearchState, FlatGridView } from "../Libraries/Navigation/navigation.js";
+import { FlatGridSearch, SearchState, FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -62,36 +62,5 @@ describe("AStar Engine Search Suite", () => {
             { col: 1, row: 1 },
             { col: 2, row: 2 }
         ]);
-    });
-
-    it("FlatAbstractGraphSearch solves simple flat CSR graph", () => {
-        const searchState = new SearchState(3);
-        const cols = 10;
-        const nodeIdx = new Int32Array([0, 2, 4]);
-        const edgeOffsets = new Int32Array([0, 2, 3, 3]);
-        const edgeTargets = new Int32Array([1, 2, 2]);
-        const edgeCosts = new Float32Array([10, 100, 5]);
-
-        const graph = new FlatGraphView({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
-        const search = new FlatAbstractGraphSearch({ graph, searchState });
-        const outPath = new Int32Array(10);
-        const len = search.run(0, 2, outPath);
-        assert.ok(len > 0);
-        assert.deepEqual(Array.from(outPath.subarray(0, len)), [0, 1, 2], "Should resolve flat indices 0 -> 1 -> 2");
-    });
-
-    it("FlatAbstractGraphSearch prefers cheaper multi-hop route over direct edge", () => {
-        const searchState = new SearchState(3);
-        const cols = 10;
-        const nodeIdx = new Int32Array([0, 1, 2]);
-        const edgeOffsets = new Int32Array([0, 2, 3, 4]);
-        const edgeTargets = new Int32Array([1, 2, 2]);
-        const edgeCosts = new Float32Array([1, 10, 1]);
-        const graph = new FlatGraphView({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount: 3 });
-        const search = new FlatAbstractGraphSearch({ graph, searchState });
-        const outPath = new Int32Array(10);
-        const len = search.run(0, 2, outPath);
-        assert.ok(len > 0);
-        assert.deepEqual(Array.from(outPath.subarray(0, len)), [0, 1, 2]);
     });
 });

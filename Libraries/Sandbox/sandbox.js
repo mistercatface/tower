@@ -9,7 +9,7 @@ import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, normalizeXY, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, findClosestPolygonBoundaryGrabPointInto } from "../Math/math.js";
-import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, buildSabAbstractPathOverlay, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
+import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { appendOverlayWireLink, overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment, overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, overlayCachedCircleFillStroke, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
@@ -2546,8 +2546,7 @@ const HPA_GROUND_NAV_CONFIG = {
         const nav = run.hpaNav.navState;
         const progressIdx = nav.pathProgressIdx;
         const trace = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid) : { pathNodes: [] };
-        const abstract = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabAbstractPathOverlay(state.nav.worker, nav.pathSlot, nav.pathLen) : null;
-        return { mode: "hpa", pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y, abstractPath: abstract?.abstractPath, pathPlanner: abstract?.pathPlanner };
+        return { mode: "hpa", pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y };
     },
     onReset(state, propRuns) {
         propRuns.forEach((run) => run.hpaNav.reset(state));

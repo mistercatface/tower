@@ -2,13 +2,11 @@ import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFro
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
 import { gridFrameFromGrid } from "../Navigation/navigation.js";
 import { gridNavCacheKey, isNavTopologyReady, unionCellBounds } from "../Spatial/spatial.js";
-import { createHpaWorkerSabPools, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
+import { createHpaWorkerSabPools, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/spatial.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 1024;
-export const MAX_HPA_GRAPH_NODES = 4096 * 2;
-export const MAX_HPA_ABSTRACT_LEN = MAX_HPA_GRAPH_NODES + 2;
 const HPA_DONE = "hpaDone";
 const SYNC_NAV_DONE = "syncNavDone";
 const GROW_PATH_SAB_DONE = "growPathSabDone";
@@ -36,7 +34,7 @@ export class HpaPathWorker {
         this._topologySyncTarget = null;
         this._debugViewCacheKey = "";
         this._debugViewCellToComponent = null;
-        Object.assign(this, createHpaWorkerSabPools({ maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: MAX_HPA_PATH_LEN, maxAbstractLen: MAX_HPA_ABSTRACT_LEN }));
+        Object.assign(this, createHpaWorkerSabPools({ maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: MAX_HPA_PATH_LEN }));
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
         /** @type {(object | null)[]} */
@@ -46,7 +44,7 @@ export class HpaPathWorker {
         this.protocol.postMessage({ type: "init", data: this._workerInitData() });
     }
     _workerInitData() {
-        return { maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: this.maxPathLen, maxAbstractLen: MAX_HPA_ABSTRACT_LEN, sabPathMetaPool: this.sabPathMetaPool, sabPathIdxPool: this.sabPathIdxPool, sabAbstractIdxPool: this.sabAbstractIdxPool };
+        return { maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: this.maxPathLen, sabPathMetaPool: this.sabPathMetaPool, sabPathIdxPool: this.sabPathIdxPool };
     }
     _handleWorkerMessage(data) {
         const { type, slot, requestId } = data;
@@ -161,23 +159,11 @@ export class HpaPathWorker {
     pathIdx(slot, i) {
         return this._pathIdx(slot)[i];
     }
-    abstractPathLen(slot) {
-        return this._pathMeta(slot)[1];
-    }
-    abstractPathIdx(slot, i) {
-        return this._abstractIdx(slot)[i];
-    }
-    graphNodeIdx(idx) {
-        return -1;
-    }
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);
     }
     _pathIdx(slot) {
         return hpaPathSlotIdx(this.sabPathIdxPool, slot, this.maxPathLen);
-    }
-    _abstractIdx(slot) {
-        return hpaPathSlotAbstractIdx(this.sabAbstractIdxPool, slot, MAX_HPA_ABSTRACT_LEN);
     }
     _ensureNavEdgePoolSab(refCount) {
         const byteLen = navEdgePoolSabByteLength(refCount);

@@ -310,57 +310,7 @@ export class FlatGridSearch {
         return 0;
     }
 }
-export class FlatGraphView {
-    constructor({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite = edgeTargets?.length ?? 0, nodeIds = null }) {
-        this.nodeIdx = nodeIdx;
-        this.cols = cols;
-        this.edgeOffsets = edgeOffsets;
-        this.edgeTargets = edgeTargets;
-        this.edgeCosts = edgeCosts;
-        this.nodeCount = nodeCount;
-        this.edgeWrite = edgeWrite;
-        this.nodeIds = nodeIds;
-    }
-}
-export class FlatAbstractGraphSearch {
-    constructor({ graph = null, nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds, searchState }) {
-        this.graph = graph ?? new FlatGraphView({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
-        this.searchState = searchState;
-    }
-    run(startIdx, targetIdx, outPath) {
-        const graph = this.graph;
-        if (startIdx === targetIdx) {
-            outPath[0] = startIdx;
-            return 1;
-        }
-        const targetNodeIdx = graph.nodeIdx[targetIdx];
-        globalOpenSet.reset();
-        const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
-        gScore[startIdx] = 0;
-        visited[startIdx] = runId;
-        cameFrom[startIdx] = -1;
-        globalOpenSet.push(startIdx, octileDistanceIdx(graph.nodeIdx[startIdx], targetNodeIdx, graph.cols));
-        while (globalOpenSet.size > 0) {
-            const currentIdx = globalOpenSet.pop();
-            const currentG = gScore[currentIdx];
-            const bestF = currentG + octileDistanceIdx(graph.nodeIdx[currentIdx], targetNodeIdx, graph.cols);
-            if (globalOpenSet.lastPopPriority > bestF + STALE_F_EPSILON) continue;
-            if (currentIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currentIdx, outPath);
-            const edgeStart = graph.edgeOffsets[currentIdx];
-            const edgeEnd = graph.edgeOffsets[currentIdx + 1];
-            for (let i = edgeStart; i < edgeEnd; i++) {
-                const neighborIdx = graph.edgeTargets[i];
-                const tentativeG = currentG + graph.edgeCosts[i];
-                if (visited[neighborIdx] === runId && tentativeG >= gScore[neighborIdx]) continue;
-                visited[neighborIdx] = runId;
-                cameFrom[neighborIdx] = currentIdx;
-                gScore[neighborIdx] = tentativeG;
-                globalOpenSet.push(neighborIdx, tentativeG + octileDistanceIdx(graph.nodeIdx[neighborIdx], targetNodeIdx, graph.cols));
-            }
-        }
-        return 0;
-    }
-}
+
 export function computeDistanceTransform(grid, frame, distToWall = null) {
     const { cols, rows } = frame;
     const size = cols * rows;
@@ -1383,22 +1333,7 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
     }
     return { pathNodes };
 }
-export function buildSabAbstractPathOverlay(worker, slot, pathLen) {
-    if (pathLen <= 0) return null;
-    const abstractLen = worker.abstractPathLen(slot);
-    if (abstractLen <= 0) return { pathPlanner: "local", abstractPath: [worker.pathIdx(slot, 0), worker.pathIdx(slot, pathLen - 1)] };
-    const nodeCount = worker.graphNodeCount;
-    const startTemp = nodeCount;
-    const targetTemp = nodeCount + 1;
-    const abstractPath = [];
-    for (let i = 0; i < abstractLen; i++) {
-        const idx = worker.abstractPathIdx(slot, i);
-        if (idx === startTemp) abstractPath.push(worker.pathIdx(slot, 0));
-        else if (idx === targetTemp) abstractPath.push(worker.pathIdx(slot, pathLen - 1));
-        else abstractPath.push(worker.graphNodeIdx(idx));
-    }
-    return { pathPlanner: "hpa", abstractPath };
-}
+
 export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
     const x = pose.x;
     const y = pose.y;

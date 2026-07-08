@@ -16,12 +16,11 @@ import { mockCircleProp } from "./harness/kineticTickHarness.js";
 function createPortalPlanner(cols, rows) {
     const cellCount = cols * rows;
     const maxPathLen = cellCount;
-    const pools = createHpaWorkerSabPools({ maxSlots: 1, maxPathLen, maxAbstractLen: 64 });
+    const pools = createHpaWorkerSabPools({ maxSlots: 1, maxPathLen });
     const buffers = new HpaBufferManager();
     buffers.init({
         maxSlots: 1,
         maxPathLen,
-        maxAbstractLen: 64,
         maxCellsPerChunk: 16,
         minCellsPerChunk: 0,
         ...pools,
