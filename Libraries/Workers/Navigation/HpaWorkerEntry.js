@@ -156,7 +156,6 @@ export class HpaRegionGraphManager {
         this.regionGraphState = null;
         this.persistNodeCount = 0;
         this.persistEdgeWrite = 0;
-        this.persistEdgeWrite = 0;
         /** @type {string[]} */
         this.persistNodeIds = [];
     }
@@ -300,10 +299,8 @@ export class HpaPathfindingWorker {
         if (!data.maxPathLen || data.maxPathLen <= this.buffers.maxPathLen) return;
         this.buffers.sabPathIdxPool = data.sabPathIdxPool;
         this.buffers.maxPathLen = data.maxPathLen;
-        if (this.planner) {
-            this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
-            this.planner.portalLegScratch = new Int32Array(this.buffers.maxPathLen);
-        }
+        this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
+        this.planner.portalLegScratch = new Int32Array(this.buffers.maxPathLen);
     }
     postGraphPatchDone(meta) {
         self.postMessage({ type: "graphPatchDone", nodeCount: meta?.nodeCount ?? 0, edgeWrite: meta?.edgeWrite ?? 0, nodeIds: meta?.nodeIds ?? [] });
@@ -345,10 +342,7 @@ export class HpaPathfindingWorker {
             this.topology.buildNavTopologyOnWorker(e.data);
             const size = this.topology.requireGridFrame().cols * this.topology.requireGridFrame().rows;
             const searchStateSize = Math.max(size, (this.buffers.maxGraphNodes || 4096) + 2);
-            if (!this.searchState) {
-                this.searchState = new SearchState(searchStateSize);
-                if (!this.planner) this.planner = new HpaReplanPlanner(this.buffers, this.searchState);
-            } else this.searchState.resize(searchStateSize);
+            this.searchState.resize(searchStateSize);
             self.postMessage({ type: "syncNavDone" });
             return;
         }
