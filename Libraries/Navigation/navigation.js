@@ -1084,22 +1084,16 @@ function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     const targetCells = new Set(nodeB.cells);
     for (let i = 0; i < nodeA.cells.length; i++) {
         const idx = nodeA.cells[i];
-        let linked = false;
         const col = idx % cols;
         const row = (idx / cols) | 0;
-        const check = (nIdx) => {
-            if (linked || !targetCells.has(nIdx)) return;
-            if (navGraph.canStepIdx(idx, nIdx)) linked = true;
-        };
-        if (row > 0) check(idx - cols);
-        if (col < cols - 1) check(idx + 1);
-        if (row < rows - 1) check(idx + cols);
-        if (col > 0) check(idx - 1);
-        if (row > 0 && col < cols - 1) check(idx - cols + 1);
-        if (row < rows - 1 && col < cols - 1) check(idx + cols + 1);
-        if (row < rows - 1 && col > 0) check(idx + cols - 1);
-        if (row > 0 && col > 0) check(idx - cols - 1);
-        if (linked) return true;
+        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+            const nCol = col + OCTILE_DCOL[dir];
+            const nRow = row + OCTILE_DR[dir];
+            if (nCol >= 0 && nCol < cols && nRow >= 0 && nRow < rows) {
+                const nIdx = nRow * cols + nCol;
+                if (targetCells.has(nIdx) && navGraph.canStepIdx(idx, nIdx)) return true;
+            }
+        }
     }
     return false;
 }
@@ -1121,20 +1115,17 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
         const idx = nodeCells[i];
         const col = idx % cols;
         const row = (idx / cols) | 0;
-        const check = (nIdx) => {
-            if (blocked[nIdx]) return;
-            if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) return;
-            const other = graph.nodeForCell(nIdx);
-            if (other && other.id !== node.id) neighborIds.add(other.id);
-        };
-        if (row > 0) check(idx - cols);
-        if (col < cols - 1) check(idx + 1);
-        if (row < rows - 1) check(idx + cols);
-        if (col > 0) check(idx - 1);
-        if (row > 0 && col < cols - 1) check(idx - cols + 1);
-        if (row < rows - 1 && col < cols - 1) check(idx + cols + 1);
-        if (row < rows - 1 && col > 0) check(idx + cols - 1);
-        if (row > 0 && col > 0) check(idx - cols - 1);
+        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+            const nCol = col + OCTILE_DCOL[dir];
+            const nRow = row + OCTILE_DR[dir];
+            if (nCol >= 0 && nCol < cols && nRow >= 0 && nRow < rows) {
+                const nIdx = nRow * cols + nCol;
+                if (blocked[nIdx]) continue;
+                if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) continue;
+                const other = graph.nodeForCell(nIdx);
+                if (other && other.id !== node.id) neighborIds.add(other.id);
+            }
+        }
     }
     for (const otherId of neighborIds) {
         const other = graph.getNode(otherId);
@@ -1255,17 +1246,38 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
         const row = (idx / cols) | 0;
         const node = graph.nodeForCell(idx);
         if (!node) return;
-        const check = (nIdx) => {
+        if (col + 1 < cols) {
+            const nIdx = idx + 1;
             const other = graph.nodeForCell(nIdx);
             if (other && other.id !== node.id) {
                 if (navGraph.canStepIdx(idx, nIdx)) graph.connectEdge(node, other);
                 if (navGraph.canStepIdx(nIdx, idx)) graph.connectEdge(other, node);
             }
-        };
-        if (col + 1 < cols) check(idx + 1);
-        if (row + 1 < rows) check(idx + cols);
-        if (col + 1 < cols && row + 1 < rows) check(idx + cols + 1);
-        if (col - 1 >= 0 && row + 1 < rows) check(idx + cols - 1);
+        }
+        if (row + 1 < rows) {
+            const nIdx = idx + cols;
+            const other = graph.nodeForCell(nIdx);
+            if (other && other.id !== node.id) {
+                if (navGraph.canStepIdx(idx, nIdx)) graph.connectEdge(node, other);
+                if (navGraph.canStepIdx(nIdx, idx)) graph.connectEdge(other, node);
+            }
+        }
+        if (col + 1 < cols && row + 1 < rows) {
+            const nIdx = idx + cols + 1;
+            const other = graph.nodeForCell(nIdx);
+            if (other && other.id !== node.id) {
+                if (navGraph.canStepIdx(idx, nIdx)) graph.connectEdge(node, other);
+                if (navGraph.canStepIdx(nIdx, idx)) graph.connectEdge(other, node);
+            }
+        }
+        if (col - 1 >= 0 && row + 1 < rows) {
+            const nIdx = idx + cols - 1;
+            const other = graph.nodeForCell(nIdx);
+            if (other && other.id !== node.id) {
+                if (navGraph.canStepIdx(idx, nIdx)) graph.connectEdge(node, other);
+                if (navGraph.canStepIdx(nIdx, idx)) graph.connectEdge(other, node);
+            }
+        }
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
