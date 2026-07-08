@@ -1073,6 +1073,11 @@ export function expandRegionDamageBounds(idxOrBounds, frame, padding = 12) {
     if (typeof idxOrBounds === "number") return padCellIdxToGrid(idxOrBounds, frame, padding);
     return padCellBoundsInPlace({ startCol: idxOrBounds.startCol, endCol: idxOrBounds.endCol, startRow: idxOrBounds.startRow, endRow: idxOrBounds.endRow }, frame, padding);
 }
+/** 1-cell halo around an edit (idx or bounds) — the min neighborhood a mirrored-edge change touches. */
+function haloEditBounds(idxOrBounds, frame) {
+    if (typeof idxOrBounds === "object") return padCellBoundsInPlace({ startCol: idxOrBounds.startCol, endCol: idxOrBounds.endCol, startRow: idxOrBounds.startRow, endRow: idxOrBounds.endRow }, frame, 1);
+    return padCellIdxToGrid(idxOrBounds, frame, 1);
+}
 function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     if (!nodeA || !nodeB || nodeA.id === nodeB.id) return false;
     const { cols, rows } = frame;
@@ -1524,13 +1529,14 @@ export function invalidateGridLocalNavBake(grid) {
 export function bakeNavTopologyIntoArena(simView, topology, cardinalOpen, vertexPassability, idx = null) {
     const frame = simView.frame;
     const { cols, rows } = frame;
-    const isBounds = idx !== null && typeof idx === "object";
-    const bakeBounds = idx !== null ? (isBounds ? idx : padCellIdxToGrid(idx, frame, 1)) : null;
-    if (isBounds)
-        forEachDenseCellInBounds(frame, idx, (cellIdx) => {
+    // An edit changes canStep on BOTH cells of a shared (mirrored) edge, and octile/vertex
+    // recompute reads a 1-cell neighborhood — so re-bake a 1-cell halo around the edit.
+    const bakeBounds = idx === null ? null : haloEditBounds(idx, frame);
+    if (bakeBounds)
+        forEachDenseCellInBounds(frame, bakeBounds, (cellIdx) => {
             recomputeBlockedFromGridFill(simView.grid, topology.blocked, cellIdx);
         });
-    else recomputeBlockedFromGridFill(simView.grid, topology.blocked, idx);
+    else recomputeBlockedFromGridFill(simView.grid, topology.blocked, null);
     recomputeVertexPassabilityInto(simView, vertexPassability, bakeBounds);
     recomputeNavCardinalOpenInto(simView, cardinalOpen, vertexPassability, bakeBounds);
     buildOctileNeighborsFromTopologyBounds(topology.blocked, cardinalOpen, vertexPassability, cols, rows, topology.octileNeighbors, bakeBounds ?? cellBoundsForGrid(frame));
@@ -1644,30 +1650,21 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     arena.activePortalPairs.fill(0);
     if (pairSlots > 0) arena.activePortalPairs.set(grid.activePortalPairs.subarray(0, pairSlots));
     arena.activePortalCount[0] = grid.activePortalCount;
-    const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
         arena.gridFill.set(grid.grid);
         arena.floorPacked.set(grid.floorPacked);
         arena.edgeSlots.set(grid.cellEdgeSlots);
         return;
     }
-    if (isBounds)
-        forEachDenseCellInBounds(grid, idx, (cellIdx) => {
-            arena.gridFill[cellIdx] = grid.grid[cellIdx];
-            arena.floorPacked[cellIdx] = grid.floorPacked[cellIdx];
-            for (let side = 0; side < 4; side++) {
-                const offset = cellEdgeSlotOffset(cellIdx, side);
-                arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
-            }
-        });
-    else {
-        arena.gridFill[idx] = grid.grid[idx];
-        arena.floorPacked[idx] = grid.floorPacked[idx];
+    // Copy a 1-cell halo: a mirrored edge write updates edge slots on the neighbor cell too.
+    forEachDenseCellInBounds(grid, haloEditBounds(idx, grid), (cellIdx) => {
+        arena.gridFill[cellIdx] = grid.grid[cellIdx];
+        arena.floorPacked[cellIdx] = grid.floorPacked[cellIdx];
         for (let side = 0; side < 4; side++) {
-            const offset = cellEdgeSlotOffset(idx, side);
+            const offset = cellEdgeSlotOffset(cellIdx, side);
             arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
         }
-    }
+    });
 }
 /** @param {Uint8Array} gridFill @param {Uint8Array} blocked @param {number | null} idx */
 export function recomputeBlockedFromGridFill(gridFill, blocked, idx = null) {
