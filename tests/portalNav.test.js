@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
-import { PortalLink, FloorPortal, findPortalLegBetweenRegions, PORTAL_ABSTRACT_COST } from "../Libraries/Spatial/portals.js";
+import { WorldObstacleGrid, EntityGrid } from "../Libraries/Spatial/spatial.js";
+import { PortalLink, FloorPortal, PortalNavGraph } from "../Libraries/Spatial/portals.js";
 import {
     bakeNavTopologyLocal,
     navCanStep,
@@ -18,7 +18,10 @@ import { HpaBufferManager, HpaReplanPlanner } from "../Libraries/Workers/Navigat
 import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { mockCircleProp } from "./harness/kineticTickHarness.js";
 
-const PORTAL_ABSTRACT_COST_EXPORT = PORTAL_ABSTRACT_COST;
+function portalLinkPairsFromTargetIdx(portalTargetIdx) {
+    const collected = PortalNavGraph.collectActiveLinks(portalTargetIdx, new Int32Array(8));
+    return collected;
+}
 
 function abstractGraphFromPacked(packed, cols) {
     const { nodeCount, nodeIdx, edgeSources, edgeTargets, edgeCosts, edgeWrite, nodeIds } = packed;
@@ -150,7 +153,7 @@ describe("portal nav", () => {
         assert.notEqual(exitNode.id, entryNode.id);
         const portalEdge = exitNode.edges.find((edge) => edge.targetId === entryNode.id);
         assert.ok(portalEdge);
-        assert.equal(portalEdge.cost, PORTAL_ABSTRACT_COST_EXPORT);
+        assert.equal(portalEdge.cost, PortalNavGraph.COST);
     });
 
     it("findPortalLegBetweenRegions returns exit and entry cells", () => {
@@ -169,7 +172,8 @@ describe("portal nav", () => {
         const scratch = new Int32Array(2);
         const exitRegion = packed.cellToRegion[exitIdx];
         const entryRegion = packed.cellToRegion[entryIdx];
-        const len = findPortalLegBetweenRegions(packed.cellToRegion, portalTargetIdx, exitRegion, entryRegion, scratch);
+        const { pairs, count } = portalLinkPairsFromTargetIdx(portalTargetIdx);
+        const len = PortalNavGraph.findLegBetweenRegions(packed.cellToRegion, pairs, count, exitRegion, entryRegion, scratch);
         assert.equal(len, 2);
         assert.equal(scratch[0], exitIdx);
         assert.equal(scratch[1], entryIdx);
@@ -202,7 +206,11 @@ describe("portal nav", () => {
         const entryIdx = grid.idx(8, 8);
         PortalLink.setLink(grid, exitIdx, entryIdx);
         const body = mockCircleProp(grid.gridCenterXByIdx(exitIdx), grid.gridCenterYByIdx(exitIdx), 5);
-        const spatialFrame = { _kineticBodies: [body] };
+        body._physId = 0;
+        const entityGrid = new EntityGrid(grid.cellSize);
+        entityGrid.syncBounds(grid);
+        entityGrid.insert(body);
+        const spatialFrame = { entityGrid };
         const state = { obstacleGrid: grid };
         FloorPortal.tick(state, spatialFrame);
         assert.equal(grid.worldToIdx(body.x, body.y), entryIdx);
@@ -222,7 +230,8 @@ describe("portal nav", () => {
         planner.gridSearch.neighbors = topology.octileNeighbors;
         planner.gridSearch.cols = cols;
         const prep = { legMaxCost: Math.max((cols + rows) * 21, 16384) };
-        const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, packed.cellToRegion, grid.portalTargetIdx);
+        planner.syncPortalLinkPairs(grid.portalTargetIdx);
+        const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, packed.cellToRegion);
         assert.ok(legLen >= 3);
         const leg = planner.localPathScratch;
         assert.equal(leg[0], abstractGraph.nodeIdx[exitRegion]);

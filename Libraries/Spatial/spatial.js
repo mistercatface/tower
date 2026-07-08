@@ -1208,7 +1208,8 @@ export class WorldObstacleGrid {
         this.floorPacked = new Uint8Array(0);
         this.floorBeltCount = 0;
         this.portalTargetIdx = new Int32Array(0);
-        this.portalLinkCount = 0;
+        this.activePortalPairs = new Int32Array(8);
+        this.activePortalCount = 0;
         this._floorBeltLoad = new Uint8Array(0);
         this._floorBeltAnimMs = new Uint32Array(0);
         this._floorBeltLoadedIdx = new Uint32Array(0);
@@ -1434,7 +1435,8 @@ export class WorldObstacleGrid {
         this.floorBeltCount = 0;
         this.portalTargetIdx = new Int32Array(size);
         this.portalTargetIdx.fill(-1);
-        this.portalLinkCount = 0;
+        this.activePortalPairs = new Int32Array(8);
+        this.activePortalCount = 0;
         this._floorBeltLoad = new Uint8Array(size);
         this._floorBeltAnimMs = new Uint32Array(size);
         this._floorBeltLoadedIdx = new Uint32Array(8);
@@ -1490,7 +1492,8 @@ export class WorldObstacleGrid {
         const newFloorBeltLoad = new Uint8Array(this.cols * this.rows);
         const newFloorBeltAnimMs = new Uint32Array(this.cols * this.rows);
         let floorBeltCount = 0;
-        let portalLinkCount = 0;
+        let newActivePortalPairs = new Int32Array(8);
+        let activePortalCount = 0;
         for (let idx = 0; idx < oldSize; idx++) {
             const level = oldGrid[idx];
             if (level === 0 && !this.hasAnyCellEdgeAtIdx(idx) && this.floorPacked[idx] === 0 && !this.surfaceMaterials.hasAnyCellAtIdx(idx) && !this.surfaceMaterials.hasAnyEdgeAtIdx(idx)) continue;
@@ -1515,8 +1518,17 @@ export class WorldObstacleGrid {
                         const targetNc = targetCol + colOffset;
                         const targetNr = targetRow + rowOffset;
                         if (targetNc >= 0 && targetNc < this.cols && targetNr >= 0 && targetNr < this.rows) {
-                            newPortalTargetIdx[newIdx] = targetNc + targetNr * this.cols;
-                            portalLinkCount++;
+                            const remappedTarget = targetNc + targetNr * this.cols;
+                            newPortalTargetIdx[newIdx] = remappedTarget;
+                            const w = activePortalCount * 2;
+                            if (w + 2 > newActivePortalPairs.length) {
+                                const grown = new Int32Array(newActivePortalPairs.length * 2);
+                                grown.set(newActivePortalPairs);
+                                newActivePortalPairs = grown;
+                            }
+                            newActivePortalPairs[w] = newIdx;
+                            newActivePortalPairs[w + 1] = remappedTarget;
+                            activePortalCount++;
                         }
                     }
                     for (let side = 0; side < 4; side++) newEdgeSlots[(newIdx << 2) + side] = this.cellEdgeSlots[(idx << 2) + side];
@@ -1526,7 +1538,8 @@ export class WorldObstacleGrid {
         this.cellEdgeSlots = newEdgeSlots;
         this.floorPacked = newFloorPacked;
         this.portalTargetIdx = newPortalTargetIdx;
-        this.portalLinkCount = portalLinkCount;
+        this.activePortalPairs = newActivePortalPairs;
+        this.activePortalCount = activePortalCount;
         this._floorBeltLoad = newFloorBeltLoad;
         this._floorBeltAnimMs = newFloorBeltAnimMs;
         this._floorBeltLoadedIdx = new Uint32Array(8);
