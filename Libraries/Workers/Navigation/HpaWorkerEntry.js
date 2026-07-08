@@ -173,15 +173,15 @@ export class HpaRegionGraphManager {
         const graph = this.persistedGraph.flatGraphView();
         return new HpaAbstractGraph(graph.nodeIdx, graph.cols, graph.edgeOffsets, graph.edgeTargets, graph.edgeCosts, graph.nodeCount, graph.edgeWrite, graph.nodeIds);
     }
-    buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, floorPacked, data) {
+    buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, data) {
         const frame = gridFrame;
-        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, activePortalPairs, activePortalCount, floorPacked });
+        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, activePortalPairs, activePortalCount });
         this.regionGraphState = { ...built, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, damagePadding: data.damagePadding, distToWall: null };
         return this.writeRegionGraphToSab(gridFrame);
     }
-    patchRegionGraph(gridFrame, topology, navView, activePortalPairs, activePortalCount, floorPacked, data) {
-        if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, floorPacked, data);
-        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, activePortalPairs, activePortalCount, floorPacked);
+    patchRegionGraph(gridFrame, topology, navView, activePortalPairs, activePortalCount, data) {
+        if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, data);
+        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, activePortalPairs, activePortalCount);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
@@ -348,12 +348,12 @@ export class HpaPathfindingWorker {
         }
         if (type === "buildRegionGraphFull") {
             if (e.data.sabCellToRegionIdx) this.buffers.sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-            this.runGraphPatch(() => this.graph.buildRegionGraphFull(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, this.topology.activePortalPairs, this.topology.activePortalCount, this.topology.floorPacked, e.data));
+            this.runGraphPatch(() => this.graph.buildRegionGraphFull(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, this.topology.activePortalPairs, this.topology.activePortalCount, e.data));
             return;
         }
         if (type === "patchRegionGraph") {
             if (e.data.sabCellToRegionIdx) this.buffers.sabCellToRegionIdx = e.data.sabCellToRegionIdx;
-            this.runGraphPatch(() => this.graph.patchRegionGraph(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, this.topology.activePortalPairs, this.topology.activePortalCount, this.topology.floorPacked, e.data));
+            this.runGraphPatch(() => this.graph.patchRegionGraph(this.topology.requireGridFrame(), this.topology.requireNavTopology(), this.topology.navView, this.topology.activePortalPairs, this.topology.activePortalCount, e.data));
             return;
         }
         if (type === "replan") {

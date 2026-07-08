@@ -1,7 +1,7 @@
 import { expandRegionDamageBounds, createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, buildNavComponentMap } from "../Navigation/navigation.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { gridFrameFromGrid } from "../Navigation/navigation.js";
-import { gridNavCacheKey, isNavTopologyReady } from "../Spatial/spatial.js";
+import { gridNavCacheKey, isNavTopologyReady, unionCellBounds } from "../Spatial/spatial.js";
 import { createHpaWorkerSabPools, growHpaCellToRegionSab, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/spatial.js";
@@ -35,7 +35,7 @@ export class HpaPathWorker {
         this._workerBoundNavSize = 0;
         this._workerBoundEdgePoolSab = 0;
         this._deferFullNavSync = false;
-        this._deferNavBounds = null;
+        this._deferNavBounds = undefined;
         this._graphEpoch = -1;
         this._graphPatchTargetEpoch = -1;
         this._graphPatchChain = Promise.resolve();
@@ -74,8 +74,9 @@ export class HpaPathWorker {
             resolve();
             if (this._deferFullNavSync) {
                 this._deferFullNavSync = false;
-                this.scheduleNavTopologySync(this.navGraph, this._deferNavBounds);
-                this._deferNavBounds = null;
+                const deferredBounds = this._deferNavBounds;
+                this._deferNavBounds = undefined;
+                this.scheduleNavTopologySync(this.navGraph, deferredBounds === undefined ? null : deferredBounds);
             }
             return;
         }
@@ -309,11 +310,25 @@ export class HpaPathWorker {
         if (!rebindArena) return payload;
         return { ...payload, sabBlocked: this.sabBlocked, sabCardinalOpen: this.sabCardinalOpen, sabVertexPassability: this.sabVertexPassability, sabOctileNeighbors: this.sabOctileNeighbors, sabOctilePredecessors: this.sabOctilePredecessors, sabEdgePool: this.sabEdgePool, sabGridFill: this.sabGridFill, sabFloorPacked: this.sabFloorPacked, sabActivePortalPairs: this.sabActivePortalPairs, sabActivePortalCount: this.sabActivePortalCount, sabEdgeSlots: this.sabEdgeSlots };
     }
+    _deferNavDamageBounds(grid, damageBounds) {
+        const frame = this._gridFrame ?? gridFrameFromGrid(grid);
+        if (typeof damageBounds === "number") {
+            const col = damageBounds % frame.cols;
+            const row = (damageBounds / frame.cols) | 0;
+            return { startCol: col, endCol: col, startRow: row, endRow: row };
+        }
+        return { startCol: damageBounds.startCol, endCol: damageBounds.endCol, startRow: damageBounds.startRow, endRow: damageBounds.endRow };
+    }
     scheduleNavTopologySync(grid = this.navGraph, damageBounds = null) {
         if (this._shutDown || (damageBounds == null && isNavTopologyReady(this, grid))) return;
         if (this._navSyncPromise) {
             this._deferFullNavSync = true;
-            this._deferNavBounds = damageBounds;
+            if (damageBounds == null) this._deferNavBounds = null;
+            else if (this._deferNavBounds !== null) {
+                const box = this._deferNavDamageBounds(grid, damageBounds);
+                if (this._deferNavBounds !== undefined) this._deferNavBounds = unionCellBounds(this._deferNavBounds, box);
+                else this._deferNavBounds = box;
+            }
             return;
         }
         const size = grid.cols * grid.rows;

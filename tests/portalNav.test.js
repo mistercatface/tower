@@ -22,7 +22,6 @@ import { mockCircleProp } from "./harness/kineticTickHarness.js";
 function buildTestRegionGraph(opts) {
     const grid = opts.grid;
     if (grid) {
-        if (opts.floorPacked === undefined) opts.floorPacked = grid.floorPacked;
         if (opts.activePortalPairs === undefined) opts.activePortalPairs = grid.activePortalPairs;
         if (opts.activePortalCount === undefined) opts.activePortalCount = grid.activePortalCount;
     }

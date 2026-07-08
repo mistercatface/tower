@@ -99,8 +99,6 @@ describe("region damage one-way reconnect", () => {
         // 3x3 grid, belt at center cell 4. Entry W (from 3), exit E (to 5). Rails N,S.
         const frame = makeFrame(3, 3);
         const blocked = new Uint8Array(9);
-        const floorPacked = new Uint8Array(9);
-        floorPacked[4] = 0b0111; // arbitrary non-zero belt packing
         const open = new Set();
         // Floor ring (all bidirectional), excludes belt cell 4.
         link(open, 0, 1);
@@ -112,17 +110,16 @@ describe("region damage one-way reconnect", () => {
         link(open, 2, 5);
         link(open, 5, 8);
         // Belt entry/exit one-way.
-        open.add("3->4"); // enter via W entry
-        open.add("4->5"); // exit via E
+        open.add("3->4");
+        open.add("4->5");
         const navGraph = makeNavGraph(open);
-        const built = buildFullRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0, floorPacked });
+        const built = buildFullRegionGraph({ blocked, frame, navGraph, maxCellsPerChunk: 16, minCellsPerChunk: 0 });
         const beltId = built.cellToNode[4];
 
         // Break the north rail: one-way 1 -> 4 (step down onto belt from the north).
         open.add("1->4");
         const state = makeState(built, 16);
-        state.floorPacked = floorPacked;
-        rebuildDamagedRegionGraph(state, 4, frame, blocked, navGraph, null, null, floorPacked);
+        rebuildDamagedRegionGraph(state, 4, frame, blocked, navGraph, null, null);
 
         const northId = state.cellToNode[1];
         const postBeltId = state.cellToNode[4];

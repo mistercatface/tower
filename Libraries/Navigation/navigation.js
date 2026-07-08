@@ -1,7 +1,7 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
-import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
+import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
@@ -208,12 +208,16 @@ export function isNavWalkableCell(grid, navTopology, idx) {
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
     if (grid.isBlockedIdx(idx)) return false;
-    let walkable = false;
-    forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
-        if (walkable) return;
-        if (canStepEitherDirection(grid, navTopology, idx, nIdx)) walkable = true;
-    });
-    return walkable;
+    const col = idx % cols;
+    const row = (idx / cols) | 0;
+    for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+        const nCol = col + OCTILE_DCOL[dir];
+        const nRow = row + OCTILE_DR[dir];
+        if (nCol < 0 || nCol >= cols || nRow < 0 || nRow >= rows) continue;
+        const nIdx = nRow * cols + nCol;
+        if (canStepEitherDirection(grid, navTopology, idx, nIdx)) return true;
+    }
+    return false;
 }
 export function floodConnectedNavWalkableCells(grid, navTopology, candidates, candidateMask, seedCells, reachedMask) {
     reachedMask.fill(0);
@@ -226,13 +230,18 @@ export function floodConnectedNavWalkableCells(grid, navTopology, candidates, ca
     }
     while (queue.length) {
         const idx = queue.pop();
-        forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
-            if (candidateMask[nIdx] && !reachedMask[nIdx])
-                if (canStepEitherDirection(grid, navTopology, idx, nIdx)) {
-                    reachedMask[nIdx] = 1;
-                    queue.push(nIdx);
-                }
-        });
+        const col = idx % grid.cols;
+        const row = (idx / grid.cols) | 0;
+        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+            const nCol = col + OCTILE_DCOL[dir];
+            const nRow = row + OCTILE_DR[dir];
+            if (nCol < 0 || nCol >= grid.cols || nRow < 0 || nRow >= grid.rows) continue;
+            const nIdx = nRow * grid.cols + nCol;
+            if (candidateMask[nIdx] && !reachedMask[nIdx] && canStepEitherDirection(grid, navTopology, idx, nIdx)) {
+                reachedMask[nIdx] = 1;
+                queue.push(nIdx);
+            }
+        }
     }
     const connected = [];
     for (let i = 0; i < candidates.length; i++) {
@@ -510,7 +519,7 @@ export function computeDistanceTransform(grid, frame, distToWall = null) {
     for (let i = 0; i < size; i++) if (distances[i] === Infinity) distances[i] = 1000;
     return distances;
 }
-export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, floorPacked = null, unassigned = null) {
+export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
     const { cols, rows } = frame;
     let cellCount = 0;
     cellToNode[startIdx] = node.idx;
@@ -528,11 +537,7 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
             if (navGraph) {
                 const canStepFwd = navGraph.canStepIdx(currIdx, nIdx);
                 const canStepRev = navGraph.canStepIdx(nIdx, currIdx);
-                if (!canStepFwd && !canStepRev) continue;
-                if (!canStepFwd || !canStepRev) {
-                    if (!floorPacked) continue;
-                    if (floorPacked[currIdx] === 0 || floorPacked[nIdx] === 0) continue;
-                }
+                if (!canStepFwd || !canStepRev) continue;
             }
             if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
                 if (unassigned) unassigned.delete(nIdx);
@@ -648,7 +653,7 @@ export function repositionRegionCentroids(nodesMap, grid, frame, cellToNode) {
         }
     }
 }
-export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null, floorPacked = null }) {
+export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
     const { cols, rows } = frame;
     const size = cols * rows;
     const assignment = cellToNode ?? new Int32Array(size).fill(-1);
@@ -662,7 +667,7 @@ export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChu
         const id = startIdx; // Pure integer ID
         const node = new RegionNode(id, startIdx);
         nodesMap[id] = node;
-        floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph, floorPacked);
+        floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph);
     }
     if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, frame, minCellsPerChunk, navGraph);
     repositionRegionCentroids(nodesMap, grid, frame, assignment);
@@ -1165,7 +1170,7 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
         if (regionsShareDirectedPassableLink(navGraph, frame, other, node)) graph.connectEdge(other, node);
     }
 }
-function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, floorPacked = null) {
+function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph) {
     const { cols, rows } = frame;
     if (cells.length === 0) return { newIds: [], nodeIdCounter: graph.nodeIdCounter };
     if (!distToWall || distToWall.length !== cols * rows) distToWall = computeDistanceTransform(blocked, frame, distToWall);
@@ -1177,7 +1182,7 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
         if (!unassigned.has(startIdx)) continue;
         const node = graph.createRegionAtCell(startIdx);
         node.cells.length = 0;
-        floodFillRegion(startIdx, node, blocked, frame, graph.cellToNode, node.cells, maxCellsPerChunk, navGraph, floorPacked, unassigned);
+        floodFillRegion(startIdx, node, blocked, frame, graph.cellToNode, node.cells, maxCellsPerChunk, navGraph, unassigned);
         repositionNodeCentroid(node, graph.cellToNode, blocked, frame, graph.nodesMap);
         newIds.push(node.id);
     }
@@ -1185,12 +1190,12 @@ function createRegionFromCells(cells, blocked, frame, maxCellsPerChunk, minCells
     repositionRegionCentroids(graph.nodesMap, blocked, frame, graph.cellToNode);
     return { newIds, nodeIdCounter: graph.nodeIdCounter, distToWall };
 }
-function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk, floorPacked = null) {
+function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk) {
     const size = frame.cols * frame.rows;
     const orphans = [];
     for (let i = 0; i < size; i++) if (!blocked[i] && graph.cellToNode[i] === -1) orphans.push(i);
     if (orphans.length === 0) return distToWall;
-    return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, floorPacked).distToWall;
+    return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph).distToWall;
 }
 export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
@@ -1251,7 +1256,7 @@ function stripBlockedCellsFromRegions(blocked, frame, bounds, graph) {
         repositionNodeCentroid(node, graph.cellToNode, blocked, frame, graph.nodesMap);
     }
 }
-function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, bounds, floorPacked = null) {
+function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, bounds) {
     const { cols } = frame;
     const regionIds = graph.collectRegionIdsInBounds(bounds);
     const cells = new Set();
@@ -1266,7 +1271,7 @@ function repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, n
     });
     if (cells.size === 0) return { repackedIds: [], nodeIdCounter: graph.nodeIdCounter, distToWall };
     distToWall = computeDistanceTransform(blocked, frame, distToWall);
-    const { newIds, nodeIdCounter: nextCounter, distToWall: dist } = createRegionFromCells([...cells], blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, floorPacked);
+    const { newIds, nodeIdCounter: nextCounter, distToWall: dist } = createRegionFromCells([...cells], blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph);
     return { repackedIds: newIds, nodeIdCounter: nextCounter, distToWall: dist };
 }
 function connectAllNodes(navGraph, blocked, frame, graph) {
@@ -1319,12 +1324,18 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     const reachable = new Uint8Array(cols * rows);
     reachable[startIdx] = 1;
     bfsIndices([startIdx], (idx, enqueue) => {
-        forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
-            if (blocked[nIdx] || reachable[nIdx]) return;
-            if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) return;
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+            const nCol = col + OCTILE_DCOL[dir];
+            const nRow = row + OCTILE_DR[dir];
+            if (nCol < 0 || nCol >= cols || nRow < 0 || nRow >= rows) continue;
+            const nIdx = nRow * cols + nCol;
+            if (blocked[nIdx] || reachable[nIdx]) continue;
+            if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) continue;
             reachable[nIdx] = 1;
             enqueue(nIdx);
-        });
+        }
         if (activePortalPairs && activePortalCount) {
             const pairs = activePortalPairs;
             const count = typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0];
@@ -1368,20 +1379,20 @@ function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph)
     }
 }
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount, floorPacked = null } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
     let distToWall = computeDistanceTransform(blocked, frame);
-    const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph, floorPacked });
+    const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
-    distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk, floorPacked);
+    distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     return { ...graph.exportState(), graph };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount, floorPacked = null) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1390,7 +1401,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     let distToWall = state.distToWall;
     const box = expandRegionDamageBounds(bounds, frame, damagePadding);
     stripBlockedCellsFromRegions(blocked, frame, box, graph);
-    const { repackedIds, nodeIdCounter, distToWall: dist } = repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, box, floorPacked);
+    const { repackedIds, nodeIdCounter, distToWall: dist } = repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, box);
     graph.nodeIdCounter = nodeIdCounter;
     graph.syncState(state);
     state.graph = graph;
@@ -1400,7 +1411,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of graph.collectRegionIdsInBounds(box)) reconnectIds.add(id);
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
-    state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk, floorPacked);
+    state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
     pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     graph.syncState(state);
