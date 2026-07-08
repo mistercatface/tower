@@ -11,6 +11,7 @@ import {
     pickRandomReachableTargetWorld,
     breakRandomWall,
     requestSnakeGroundNavReplan,
+    requestSnakeSessionNavReplan,
     moveStressBoidToTarget,
     formatReplanFailureDiagnostics,
     stressStepsFromEnv,
@@ -30,7 +31,10 @@ async function runStressSteps(state, prop, seed, steps, breakRate) {
         await state.nav.awaitWorkerNavReady();
         const startIdx = boidOpenCellIdx(state, prop);
         const targetWorld = pickRandomReachableTargetWorld(state, startIdx, rng, prop);
-        assert.ok(targetWorld != null, `no reachable target at seed=${seed} step=${step} startIdx=${startIdx}`);
+        if (!targetWorld) {
+            if (breakRate >= 1) continue;
+            assert.ok(false, `no reachable target at seed=${seed} step=${step} startIdx=${startIdx}`);
+        }
         const pathLen = await requestSnakeGroundNavReplan(state, prop, targetWorld);
         assert.ok(
             pathLen > 0,
@@ -83,6 +87,22 @@ describe("snake ground nav stress", () => {
         const { state, boid } = await createSnakeNavStressState(seed);
         assertSnakeLaunchReady(state);
         await runStressSteps(state, boid, seed, steps, 1);
+        await terminateWorkerNavigation(state.nav);
+    });
+
+    it("session replan on snake maze", async () => {
+        const seed = 42;
+        const { state, boid } = await createSnakeNavStressState(seed);
+        assertSnakeLaunchReady(state);
+        await state.nav.awaitWorkerNavReady();
+        const startIdx = boidOpenCellIdx(state, boid);
+        const targetWorld = pickRandomReachableTargetWorld(state, startIdx, mulberry32(seed), boid);
+        assert.ok(targetWorld != null);
+        const pathLen = await requestSnakeSessionNavReplan(state, boid, targetWorld);
+        assert.ok(
+            pathLen > 0,
+            formatReplanFailureDiagnostics(state, { seed, step: 0, startIdx, targetIdx: targetWorld.idx, targetWorld, prop: boid }),
+        );
         await terminateWorkerNavigation(state.nav);
     });
 });

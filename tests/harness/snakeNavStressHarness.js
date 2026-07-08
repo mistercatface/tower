@@ -7,7 +7,8 @@ import {
     findNearestOpenCellIdx,
     patchNavWalkableCellIndex,
     snapNavGoalWorldInto,
-    snapNavGoalCellIndex,
+    replanCellIndicesFromWorldCoords,
+    REPLAN_PRIORITY_TARGET,
 } from "../../Libraries/Navigation/navigation.js";
 import { snapMoveTargetToCellCenter } from "../../Libraries/Physics/physics.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
@@ -27,6 +28,7 @@ import { createNavRuntime } from "../WorkerNavigationFactory.js";
 const SNAKE_RAIL_MAZE_COLS = 64;
 const SNAKE_RAIL_MAZE_ROWS = 64;
 const CELLS_PER_CHUNK = 16;
+let sessionReplanFrame = 1000;
 
 export function mulberry32(seed) {
     return () => {
@@ -128,65 +130,48 @@ export function boidOpenCellIdx(state, prop) {
     return findNearestOpenCellIdx(grid.grid, grid, idx);
 }
 
-function workerTargetCellIdx(grid, startIdx, clickIdx) {
-    const snappedClick = findNearestOpenCellIdx(grid.grid, grid, clickIdx);
-    return snapNavGoalCellIndex(grid, startIdx, snappedClick);
-}
-
-export function replanCellIndicesFromWorld(grid, propX, propY, targetWorldX, targetWorldY) {
-    const steerScratch = { x: 0, y: 0 };
-    const steer = snapNavGoalWorldInto(steerScratch, grid, propX, propY, targetWorldX, targetWorldY);
-    let startIdx = grid.worldToIdx(propX, propY);
-    if (startIdx < 0) startIdx = 0;
-    startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
-    let targetIdx = grid.worldToIdx(steer.x, steer.y);
-    if (targetIdx < 0) targetIdx = 0;
-    targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
-    return { startIdx, targetIdx: snapNavGoalCellIndex(grid, startIdx, targetIdx), steerX: steer.x, steerY: steer.y };
-}
-
-export function pickRandomReachableTarget(state, startIdx, rng) {
-    const grid = state.obstacleGrid;
-    const topology = state.nav.topology.topology;
-    const octileNeighbors = topology?.octileNeighbors;
-    const blocked = topology?.blocked ?? grid.grid;
-    if (!octileNeighbors || startIdx < 0) return null;
-    const mask = buildNavReachableMaskFromSeed(blocked, octileNeighbors, grid.cols, grid.rows, startIdx, grid.activePortalPairs, grid.activePortalCount);
-    const candidates = [];
-    for (let idx = 0; idx < mask.length; idx++) {
-        if (idx === startIdx) continue;
-        if (mask[idx]) candidates.push(idx);
-    }
-    if (!candidates.length) return null;
-    return candidates[(rng() * candidates.length) | 0];
-}
-
 export function pickRandomReachableTargetWorld(state, startIdx, rng, prop) {
     const grid = state.obstacleGrid;
     const topology = state.nav.topology.topology;
     const octileNeighbors = topology?.octileNeighbors;
     const blocked = topology?.blocked ?? grid.grid;
-    const clickIdx = pickRandomReachableTarget(state, startIdx, rng);
-    if (clickIdx == null || !octileNeighbors || !prop) return null;
-    const snapped = snapMoveTargetToCellCenter(grid, { x: grid.gridCenterXByIdx(clickIdx), y: grid.gridCenterYByIdx(clickIdx) });
-    const replan = replanCellIndicesFromWorld(grid, prop.x, prop.y, snapped.worldX, snapped.worldY);
-    const mask = buildNavReachableMaskFromSeed(blocked, octileNeighbors, grid.cols, grid.rows, replan.startIdx, grid.activePortalPairs, grid.activePortalCount);
-    if (!mask[replan.targetIdx]) return null;
-    return {
-        idx: replan.targetIdx,
-        clickIdx,
-        onBelt: FloorBelt.isBeltAtIdx(grid, clickIdx),
-        worldX: replan.steerX,
-        worldY: replan.steerY,
-    };
+    if (!octileNeighbors || !prop || startIdx < 0) return null;
+    let propIdx = grid.worldToIdx(prop.x, prop.y);
+    if (propIdx < 0) propIdx = 0;
+    const replanStart = findNearestOpenCellIdx(grid.grid, grid, propIdx);
+    const mask = buildNavReachableMaskFromSeed(blocked, octileNeighbors, grid.cols, grid.rows, replanStart, grid.activePortalPairs, grid.activePortalCount);
+    const reachable = [];
+    for (let idx = 0; idx < mask.length; idx++) {
+        if (idx === replanStart) continue;
+        if (mask[idx]) reachable.push(idx);
+    }
+    if (!reachable.length) return null;
+    const pickOrder = reachable.length;
+    const first = (rng() * pickOrder) | 0;
+    for (let attempt = 0; attempt < pickOrder; attempt++) {
+        const clickIdx = reachable[(first + attempt) % pickOrder];
+        const snapped = snapMoveTargetToCellCenter(grid, { x: grid.gridCenterXByIdx(clickIdx), y: grid.gridCenterYByIdx(clickIdx) });
+        const replan = replanCellIndicesFromWorldCoords(grid, prop.x, prop.y, snapped.worldX, snapped.worldY);
+        if (!mask[replan.targetIdx]) continue;
+        return {
+            idx: replan.targetIdx,
+            clickIdx,
+            onBelt: FloorBelt.isBeltAtIdx(grid, clickIdx),
+            worldX: replan.steerX,
+            worldY: replan.steerY,
+            moveX: snapped.worldX,
+            moveY: snapped.worldY,
+        };
+    }
+    return null;
 }
 
 export function moveStressBoidToTarget(prop, targetWorld) {
-    prop.x = targetWorld.worldX;
-    prop.y = targetWorld.worldY;
+    prop.x = targetWorld.moveX ?? targetWorld.worldX;
+    prop.y = targetWorld.moveY ?? targetWorld.worldY;
 }
 
-async function awaitSessionReplan(state, navState, request) {
+async function awaitWorkerReplan(state, navState, request) {
     const nav = state.nav;
     await nav.awaitWorkerNavReady();
     const workerOut = await nav.worker.requestPath(request, navState);
@@ -195,14 +180,35 @@ async function awaitSessionReplan(state, navState, request) {
     return navState.pathLen;
 }
 
+export async function awaitSessionReplan(state, navState, request, priority = REPLAN_PRIORITY_TARGET) {
+    const nav = state.nav;
+    await nav.awaitWorkerNavReady();
+    nav.session.beginFrame(sessionReplanFrame++);
+    const accepted = nav.session.requestReplan(navState, request, priority);
+    if (!accepted) throw new Error("session replan rejected (frame cooldown?)");
+    nav.session.flushFrame();
+    while (navState.hpaReplanRequestId !== 0) {
+        await new Promise((r) => setImmediate(r));
+        nav.session.flushFrame();
+    }
+    return navState.pathLen;
+}
+
 export async function requestSnakeGroundNavReplan(state, prop, targetWorld) {
     const grid = state.obstacleGrid;
     const nav = state.nav;
-    const steerScratch = { x: 0, y: 0 };
-    const steerTarget = snapNavGoalWorldInto(steerScratch, grid, prop.x, prop.y, targetWorld.worldX, targetWorld.worldY);
     const navState = createNavState();
     navState.pendingReplanReason = "targetChange";
-    const request = buildReplanParams(grid, prop.x, prop.y, steerTarget.x, steerTarget.y, nav, state);
+    const request = buildReplanParams(grid, prop.x, prop.y, targetWorld.moveX ?? targetWorld.worldX, targetWorld.moveY ?? targetWorld.worldY, nav, state);
+    return awaitWorkerReplan(state, navState, request);
+}
+
+export async function requestSnakeSessionNavReplan(state, prop, targetWorld) {
+    const grid = state.obstacleGrid;
+    const nav = state.nav;
+    const navState = createNavState();
+    navState.pendingReplanReason = "targetChange";
+    const request = buildReplanParams(grid, prop.x, prop.y, targetWorld.moveX ?? targetWorld.worldX, targetWorld.moveY ?? targetWorld.worldY, nav, state);
     return awaitSessionReplan(state, navState, request);
 }
 

@@ -1,12 +1,9 @@
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
-import {
-    buildNavComponentMap,
-    findNearestOpenCellIdx,
-    snapNavGoalCellIndex,
-} from "../Libraries/Navigation/navigation.js";
+import { buildNavComponentMap } from "../Libraries/Navigation/navigation.js";
 import { terminateWorkerNavigation, enableTestNavigationTracking, terminateAllWorkerNavigations } from "./WorkerNavigationFactory.js";
+import { packedRegionGraphFromWorker, hasDirectedRegionPath } from "./harness/navGraphHarness.js";
 import {
     mulberry32,
     createSnakeNavStressState,
@@ -21,48 +18,6 @@ enableTestNavigationTracking();
 after(async () => {
     await terminateAllWorkerNavigations();
 });
-
-function packedRegionGraphFromWorker(worker) {
-    const nodeCount = worker.graphNodeCount;
-    if (nodeCount <= 0) return null;
-    const edgeOffsets = new Int32Array(worker.sabPersistGraphEdgeOffsets, 0, nodeCount + 1);
-    const edgeWrite = edgeOffsets[nodeCount];
-    return {
-        nodeCount,
-        edgeWrite,
-        edgeSources: new Int16Array(worker.sabPersistGraphEdgeSources, 0, edgeWrite),
-        edgeTargets: new Int16Array(worker.sabPersistGraphEdgeTargets, 0, edgeWrite),
-        cellToRegion: worker.graphCellToRegion,
-    };
-}
-
-function hasDirectedRegionPath(packed, startRegion, targetRegion) {
-    if (startRegion < 0 || targetRegion < 0) return false;
-    if (startRegion === targetRegion) return true;
-    const { nodeCount, edgeSources, edgeTargets, edgeWrite } = packed;
-    const adj = Array.from({ length: nodeCount }, () => []);
-    for (let e = 0; e < edgeWrite; e++) adj[edgeSources[e]].push(edgeTargets[e]);
-    const seen = new Uint8Array(nodeCount);
-    const q = [startRegion];
-    seen[startRegion] = 1;
-    for (let qi = 0; qi < q.length; qi++) {
-        const region = q[qi];
-        if (region === targetRegion) return true;
-        const neighbors = adj[region];
-        for (let i = 0; i < neighbors.length; i++) {
-            const next = neighbors[i];
-            if (seen[next]) continue;
-            seen[next] = 1;
-            q.push(next);
-        }
-    }
-    return false;
-}
-
-function workerTargetCellIdx(grid, startIdx, clickIdx) {
-    const snappedClick = findNearestOpenCellIdx(grid.grid, grid, clickIdx);
-    return snapNavGoalCellIndex(grid, startIdx, snappedClick);
-}
 
 describe("snake HPA region coherence", () => {
     it("seed 42 worker region graph connects same walkable component", async () => {

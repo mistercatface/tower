@@ -120,31 +120,6 @@ export class FlatGridSearch {
     local(startIdx, targetIdx, maxPathLen, outPath) {
         return this.runGrid(startIdx, targetIdx, maxPathLen, 8, outPath);
     }
-    octileBfsPath(startIdx, targetIdx, maxPathLen, outPath) {
-        if (startIdx === targetIdx) {
-            outPath[0] = startIdx;
-            return 1;
-        }
-        const neighbors = this.neighbors;
-        if (!neighbors) return 0;
-        const { visited, runId, cameFrom } = preparedSearchState(this.searchState);
-        const q = [startIdx];
-        visited[startIdx] = runId;
-        cameFrom[startIdx] = -1;
-        for (let qi = 0; qi < q.length; qi++) {
-            const idx = q[qi];
-            if (idx === targetIdx) return reconstructIndexPathInto(cameFrom, targetIdx, outPath);
-            const base = idx * 8;
-            for (let i = 0; i < 8; i++) {
-                const nIdx = neighbors[base + i];
-                if (nIdx < 0 || visited[nIdx] === runId) continue;
-                visited[nIdx] = runId;
-                cameFrom[nIdx] = idx;
-                q.push(nIdx);
-            }
-        }
-        return 0;
-    }
     navWalkBfsPath(startIdx, targetIdx, blocked, activePortalPairs, portalCount, outPath) {
         if (startIdx === targetIdx) {
             outPath[0] = startIdx;
@@ -996,18 +971,9 @@ export class HpaReplanRequest {
         this.state = state;
     }
     toWorkerPayload() {
-        const grid = this.obstacleGrid;
-        const cols = grid.cols;
-        const rows = grid.rows;
-        let startIdx = grid.worldToIdx(this.startX, this.startY);
-        if (startIdx < 0) startIdx = 0;
-        startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
-        let targetIdx = grid.worldToIdx(this.targetX, this.targetY);
-        if (targetIdx < 0) targetIdx = 0;
-        targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
-        const snappedIdx = snapNavGoalCellIndex(grid, startIdx, targetIdx);
+        const { startIdx, targetIdx } = replanCellIndicesFromWorldCoords(this.obstacleGrid, this.startX, this.startY, this.targetX, this.targetY);
         globalReplanPayload.startIdx = startIdx;
-        globalReplanPayload.targetIdx = snappedIdx;
+        globalReplanPayload.targetIdx = targetIdx;
         return globalReplanPayload;
     }
     applyResult(navState, worker, result) {
@@ -1032,6 +998,7 @@ export class HpaReplanRequest {
         navState.lastTargetY = this.targetY;
     }
 }
+// Graph build bridges abstract region clusters per walkable component; same-component replans skip abstract search for perf.
 export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx, cellToComponent = null) {
     const legMaxCost = Math.max((cols + rows) * 21, 16384);
     const localMaxCost = cols * rows * 15;
@@ -1061,6 +1028,17 @@ export function findNearestOpenCellIdx(blocked, grid, idx) {
             }
         }
     return idx;
+}
+export function replanCellIndicesFromWorldCoords(grid, startX, startY, targetX, targetY) {
+    const steerScratch = { x: 0, y: 0 };
+    const steer = snapNavGoalWorldInto(steerScratch, grid, startX, startY, targetX, targetY);
+    let startIdx = grid.worldToIdx(startX, startY);
+    if (startIdx < 0) startIdx = 0;
+    startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
+    let targetIdx = grid.worldToIdx(steer.x, steer.y);
+    if (targetIdx < 0) targetIdx = 0;
+    targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
+    return { startIdx, targetIdx: snapNavGoalCellIndex(grid, startIdx, targetIdx), steerX: steer.x, steerY: steer.y };
 }
 export const REGION_CELL_UNASSIGNED = -1;
 export class HpaRegionGraph {

@@ -231,14 +231,17 @@ export class HpaReplanPlanner {
         if (prep.mode === "local") return this.writeLocalResult(slot, this.gridSearch, prep, startIdx, targetIdx, context);
         return this.writeHpaResult(slot, this.gridSearch, context.graph, prep, startIdx, targetIdx, cols, rows, context);
     }
-    writeLocalResult(slot, gridSearch, prep, startIdx, targetIdx, context) {
-        const buffer = this.localPathScratch;
-        let len = gridSearch.local(startIdx, targetIdx, prep.legMaxCost, buffer);
-        if (len === 0) len = gridSearch.octileBfsPath(startIdx, targetIdx, prep.legMaxCost, buffer);
+    resolveCellLeg(gridSearch, prep, fromIdx, toIdx, outBuffer, context) {
+        let len = gridSearch.local(fromIdx, toIdx, prep.legMaxCost, outBuffer);
         if (len === 0) {
             const portalCount = context.activePortalCount ? context.activePortalCount[0] : 0;
-            len = gridSearch.navWalkBfsPath(startIdx, targetIdx, context.topology.blocked, context.activePortalPairs, portalCount, buffer);
+            len = gridSearch.navWalkBfsPath(fromIdx, toIdx, context.topology.blocked, context.activePortalPairs, portalCount, outBuffer);
         }
+        return len;
+    }
+    writeLocalResult(slot, gridSearch, prep, startIdx, targetIdx, context) {
+        const buffer = this.localPathScratch;
+        const len = this.resolveCellLeg(gridSearch, prep, startIdx, targetIdx, buffer, context);
         if (len === 0) {
             this.buffers.writeCellPath(slot, buffer, 0);
             this.buffers.writeAbstractPath(slot, null);
@@ -250,12 +253,7 @@ export class HpaReplanPlanner {
     }
     resolveTempLegCost(gridSearch, prep, cellToRegion, startIdx, targetIdx, lStartIdx, lTargetIdx, legKey, offset, context) {
         const buffer = this.tempLegsBuffer.subarray(offset);
-        let len = gridSearch.local(lStartIdx, lTargetIdx, prep.legMaxCost, buffer);
-        if (len === 0) len = gridSearch.octileBfsPath(lStartIdx, lTargetIdx, prep.legMaxCost, buffer);
-        if (len === 0 && context) {
-            const portalCount = context.activePortalCount ? context.activePortalCount[0] : 0;
-            len = gridSearch.navWalkBfsPath(lStartIdx, lTargetIdx, context.topology.blocked, context.activePortalPairs, portalCount, buffer);
-        }
+        let len = this.resolveCellLeg(gridSearch, prep, lStartIdx, lTargetIdx, buffer, context);
         if (len === 0 && cellToRegion) {
             const regionAtStart = cellToRegion[lStartIdx];
             const regionAtTarget = cellToRegion[lTargetIdx];
@@ -309,23 +307,17 @@ export class HpaReplanPlanner {
         const activePortalCount = context.activePortalCount;
         const repA = baseGraph.nodeIdx[aIdx];
         const repB = baseGraph.nodeIdx[bIdx];
-        let len = gridSearch.local(repA, repB, prep.legMaxCost, this.localPathScratch);
-        if (len === 0) len = gridSearch.octileBfsPath(repA, repB, prep.legMaxCost, this.localPathScratch);
-        const portalCount = activePortalCount ? activePortalCount[0] : 0;
-        if (len === 0) len = gridSearch.navWalkBfsPath(repA, repB, context.topology.blocked, activePortalPairs, portalCount, this.localPathScratch);
+        let len = this.resolveCellLeg(gridSearch, prep, repA, repB, this.localPathScratch, context);
         if (len > 0) return len;
+        const portalCount = activePortalCount ? activePortalCount[0] : 0;
         if (!cellToRegion || portalCount === 0 || !activePortalPairs) return 0;
         const hopLen = findPortalLegBetweenRegions(cellToRegion, activePortalPairs, portalCount, aIdx, bIdx, this.portalHopScratch);
         if (hopLen === 0) return 0;
         const exitIdx = this.portalHopScratch[0];
         const entryIdx = this.portalHopScratch[1];
-        let seg1 = gridSearch.local(repA, exitIdx, prep.legMaxCost, this.localPathScratch);
-        if (seg1 === 0) seg1 = gridSearch.octileBfsPath(repA, exitIdx, prep.legMaxCost, this.localPathScratch);
-        if (seg1 === 0) seg1 = gridSearch.navWalkBfsPath(repA, exitIdx, context.topology.blocked, activePortalPairs, portalCount, this.localPathScratch);
+        const seg1 = this.resolveCellLeg(gridSearch, prep, repA, exitIdx, this.localPathScratch, context);
         if (seg1 === 0) return 0;
-        let seg2 = gridSearch.local(entryIdx, repB, prep.legMaxCost, this.portalLegScratch);
-        if (seg2 === 0) seg2 = gridSearch.octileBfsPath(entryIdx, repB, prep.legMaxCost, this.portalLegScratch);
-        if (seg2 === 0) seg2 = gridSearch.navWalkBfsPath(entryIdx, repB, context.topology.blocked, activePortalPairs, portalCount, this.portalLegScratch);
+        const seg2 = this.resolveCellLeg(gridSearch, prep, entryIdx, repB, this.portalLegScratch, context);
         if (seg2 === 0) return 0;
         for (let i = 0; i < seg2; i++) this.localPathScratch[seg1 + i] = this.portalLegScratch[i];
         return seg1 + seg2;
