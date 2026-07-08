@@ -406,14 +406,6 @@ function cellBoundsAtOriginIdxInto(out, grid, idx) {
     return minCornerAabbInto(out, grid.minX + col * grid.cellSize, grid.minY + row * grid.cellSize, grid.cellSize, grid.cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
-export function cellBoundsToWorldBoundsInto(out, bounds, grid) {
-    const cellSize = grid.cellSize;
-    out.minX = grid.minX + bounds.startCol * cellSize;
-    out.minY = grid.minY + bounds.startRow * cellSize;
-    out.maxX = grid.minX + (bounds.endCol + 1) * cellSize;
-    out.maxY = grid.minY + (bounds.endRow + 1) * cellSize;
-    return out;
-}
 /**
  * Visit each obstacle-grid cell overlapping a world AABB.
  * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
@@ -593,35 +585,6 @@ export function projectWallShadowQuadScreenInto(out8, viewport, lx, ly, lightZ, 
     out8[6] = sScreen.x;
     out8[7] = sScreen.y;
     return 4;
-}
-export function projectOntoPathFrom(path, x, y, startSegmentIdx = 0) {
-    if (!path || path.length === 0) return { segmentIdx: 0, t: 0, closestX: x, closestY: y, dist: 0 };
-    if (path.length === 1) {
-        const dist = Math.hypot(x - path[0].x, y - path[0].y);
-        return { segmentIdx: 0, t: 0, closestX: path[0].x, closestY: path[0].y, dist };
-    }
-    const firstSegment = Math.max(0, Math.min(startSegmentIdx, path.length - 2));
-    let bestDistSq = Infinity;
-    let segmentIdx = firstSegment;
-    let t = 0;
-    let closestX = path[firstSegment].x;
-    let closestY = path[firstSegment].y;
-    for (let i = firstSegment; i < path.length - 1; i++) {
-        const ax = path[i].x;
-        const ay = path[i].y;
-        const bx = path[i + 1].x;
-        const by = path[i + 1].y;
-        const closest = closestPointOnLineSegment(x, y, ax, ay, bx, by);
-        const distSq = (x - closest.x) ** 2 + (y - closest.y) ** 2;
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq;
-            segmentIdx = i;
-            t = closest.t;
-            closestX = closest.x;
-            closestY = closest.y;
-        }
-    }
-    return { segmentIdx, t, closestX, closestY, dist: Math.sqrt(bestDistSq) };
 }
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
     const cols = grid.cols;
@@ -951,21 +914,8 @@ export function forEachStampGlobalIdx(originIdx, layoutCols, strideCols, cellCou
         if (idx >= 0 && idx < grid.grid.length && isIdxInMapGenBounds(config, grid, idx)) fn(idx, localIdx);
     });
 }
-export function layoutCellRows(layout) {
-    return layout.cellCount / layout.strideCols;
-}
 export function layoutIndexToGlobalIndex(localIdx, originIdx, layoutCols, strideCols) {
     return stampGlobalIdx(originIdx, localIdx, layoutCols, strideCols);
-}
-export function globalIndexToLayoutLocal(globalIdx, originIdx, layoutCols, strideCols) {
-    const delta = globalIdx - originIdx;
-    const q = (delta / layoutCols) | 0;
-    return q * strideCols + (delta - q * layoutCols);
-}
-export function layoutIndicesToGlobalIndices(indices, originIdx, layoutCols, strideCols) {
-    const out = [];
-    for (const idx of indices) out.push(layoutIndexToGlobalIndex(idx, originIdx, layoutCols, strideCols));
-    return out;
 }
 /** @param {number} aIdx @param {number} bIdx @param {number} cellCount */
 export function undirectedPairIndex(aIdx, bIdx, cellCount) {
@@ -984,14 +934,8 @@ const GRID_SIDE_NEIGHBOR_LABELS = ["North neighbor", "East neighbor", "South nei
 export const GRID_SIDE_NX = Int8Array.from([0, 1, 0, -1]);
 export const GRID_SIDE_NY = Int8Array.from([-1, 0, 1, 0]);
 /** Neighbor cell reached by stepping outward across side. */
-export function formatGridSideNeighborLabel(side) {
-    return GRID_SIDE_NEIGHBOR_LABELS[side] ?? `Side ${side} neighbor`;
-}
 const GRID_EDGE_SIDE_FACING = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
 /** Facing radians for grid edge side 0=N, 1=E, 2=S, 3=W. */
-export function gridEdgeSideFacing(side) {
-    return GRID_EDGE_SIDE_FACING[side];
-}
 export function makeAdjacencyKey(idA, idB) {
     return idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
 }
@@ -2233,20 +2177,7 @@ export function unpackCellKey(key) {
     return { col: key % KEY_STRIDE, row: (key / KEY_STRIDE) | 0 };
 }
 /** @param {number} key from `packEdgeCellKey` */
-export function unpackEdgeCellKey(key) {
-    const side = (key / EDGE_KEY_STRIDE) | 0;
-    const cellKey = key - side * EDGE_KEY_STRIDE;
-    return { ...unpackCellKey(cellKey), side: side - 1 };
-}
 /** @param {number} key */
-export function isEdgeZoneKey(key) {
-    return key >= EDGE_ZONE_KEY_MIN;
-}
-export function worldToSparseCellKey(x, y, cellSize) {
-    const col = Math.floor(x / cellSize);
-    const row = Math.floor(y / cellSize);
-    return packCellKey(col, row);
-}
 export function boundsToCellRect(minX, minY, maxX, maxY, cellSize) {
     return { minCol: Math.floor(minX / cellSize), maxCol: Math.floor(maxX / cellSize), minRow: Math.floor(minY / cellSize), maxRow: Math.floor(maxY / cellSize) };
 }

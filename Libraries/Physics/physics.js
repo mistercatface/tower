@@ -873,20 +873,6 @@ export const COINCIDENT_CIRCLE_EPS = 1e-10;
  * @param {{ x: number, y: number }} a — mutated in place
  * @param {{ x: number, y: number }} b — mutated in place
  */
-export function separateCoincidentCirclePair(a, b, overlap, massA, massB, pinnedA = false, pinnedB = false) {
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        addXY(b, overlap, 0);
-        return;
-    }
-    if (pinnedB) {
-        addXY(a, -overlap, 0);
-        return;
-    }
-    const totalMass = massA + massB;
-    addXY(a, -overlap * (massB / totalMass), 0);
-    addXY(b, overlap * (massA / totalMass), 0);
-}
 /**
  * @param {{ x: number, y: number }} entity
  * @returns {{ cx: number, cy: number }}
@@ -3365,49 +3351,7 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
  * @param {{ nx: number, ny: number, overlap: number, cx?: number, cy?: number }} collisionInfo
  * @param {number} [restitution]
  */
-export function applyRigidBodyImpulse(p1, p2, collisionInfo, restitution = collisionSettings.restitution.rigidBody) {
-    const nx = collisionInfo.nx;
-    const ny = collisionInfo.ny;
-    const cx = collisionInfo.cx !== undefined ? collisionInfo.cx : p1.x + nx * (collisionInfo.overlap / 2);
-    const cy = collisionInfo.cy !== undefined ? collisionInfo.cy : p1.y + ny * (collisionInfo.overlap / 2);
-    const rx1 = cx - p1.x;
-    const ry1 = cy - p1.y;
-    const rx2 = cx - p2.x;
-    const ry2 = cy - p2.y;
-    const w1 = p1.angularVelocity || 0;
-    const w2 = p2.angularVelocity || 0;
-    const v1x = (p1.vx || 0) - w1 * ry1;
-    const v1y = (p1.vy || 0) + w1 * rx1;
-    const v2x = (p2.vx || 0) - w2 * ry2;
-    const v2y = (p2.vy || 0) + w2 * rx2;
-    const rvx = v2x - v1x;
-    const rvy = v2y - v1y;
-    const velAlongNormal = dotXY(rvx, rvy, nx, ny);
-    if (velAlongNormal >= 0) return;
-    const m1 = p1.mass !== undefined ? p1.mass : p1.radius || 15;
-    const m2 = p2.mass !== undefined ? p2.mass : p2.radius || 15;
-    const invMass1 = 1 / m1;
-    const invMass2 = 1 / m2;
-    const invI1 = p1.momentOfInertia ? 1 / p1.momentOfInertia : 0;
-    const invI2 = p2.momentOfInertia ? 1 / p2.momentOfInertia : 0;
-    const cross1 = rx1 * ny - ry1 * nx;
-    const cross2 = rx2 * ny - ry2 * nx;
-    const denom = invMass1 + invMass2 + cross1 * cross1 * invI1 + cross2 * cross2 * invI2;
-    const j = (-(1 + restitution) * velAlongNormal) / denom;
-    if (p1.vx !== undefined) p1.vx -= j * nx * invMass1;
-    if (p1.vy !== undefined) p1.vy -= j * ny * invMass1;
-    if (p1.momentOfInertia) p1.angularVelocity -= j * cross1 * invI1;
-    if (p2.vx !== undefined) p2.vx += j * nx * invMass2;
-    if (p2.vy !== undefined) p2.vy += j * ny * invMass2;
-    if (p2.momentOfInertia) p2.angularVelocity += j * cross2 * invI2;
-}
-export function getWallReach(wall, padding = wall.padding) {
-    return (wall.size / 2) * Math.SQRT2 + padding;
-}
 /** Ground-plane corners of a wall segment prism (rotated square). */
-export function getSegmentFootprintCorners(segment) {
-    return rectCorners(segment.x, segment.y, segment.size / 2, segment.angle);
-}
 const LOCAL_SCRATCH = { localX: 0, localY: 0, halfX: 0, halfY: 0 };
 const ROTATE_SCRATCH_A = { x: 0, y: 0 };
 const ROTATE_SCRATCH_B = { x: 0, y: 0 };
@@ -3558,12 +3502,6 @@ export function circleIntersectsSegment(circle, segment) {
     const radiusSq = circle.radius * circle.radius;
     return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
 }
-export function pointToSegmentPaddingDistanceSq(segment, x, y) {
-    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, x, y);
-    const distX = Math.max(0, Math.abs(localX) - halfX);
-    const distY = Math.max(0, Math.abs(localY) - halfY);
-    return distX * distX + distY * distY;
-}
 /**
  * Closest point on an axis-aligned box boundary (segment-local space).
  *
@@ -3685,10 +3623,6 @@ function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, a
     return out;
 }
 /** @param {object} segment @param {number} worldX @param {number} worldY */
-export function isStrictlyInsideSegmentBox(segment, worldX, worldY) {
-    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, worldX, worldY);
-    return localX > -halfX && localX < halfX && localY > -halfY && localY < halfY;
-}
 /** @param {object} segment @param {number} worldVx @param {number} worldVy */
 function approachToSegmentLocal(segment, worldVx, worldVy, out = LOCAL_APPROACH_SCRATCH) {
     const cos = Math.cos(-segment.angle);
@@ -3752,33 +3686,6 @@ function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approa
     SEGMENT_PEN[2] = overlap;
     SEGMENT_PEN[3] = distanceSq;
     return true;
-}
-export function pushPointFromWalls(x, y, walls, clearance) {
-    let px = x;
-    let py = y;
-    for (let iter = 0; iter < 6; iter++)
-        for (const wall of walls) {
-            const closest = closestPointOnSegment(wall, px, py);
-            let pushX = px - closest.x;
-            let pushY = py - closest.y;
-            let dist = Math.hypot(pushX, pushY);
-            if (dist < 0.01) {
-                pushX = px - wall.x;
-                pushY = py - wall.y;
-                dist = Math.hypot(pushX, pushY);
-                if (dist < 0.01) {
-                    pushX = Math.cos(wall.angle + Math.PI / 2);
-                    pushY = Math.sin(wall.angle + Math.PI / 2);
-                    dist = 1;
-                }
-            }
-            if (dist < clearance) {
-                const scale = (clearance - dist) / dist;
-                px += pushX * scale;
-                py += pushY * scale;
-            }
-        }
-    return { x: px, y: py };
 }
 /**
  * @typedef {object} CircleSegmentSweepHit
@@ -3864,15 +3771,6 @@ export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDi
  * @param {object[]} segments
  * @returns {CircleSegmentSweepHit | null}
  */
-export function sweepCircleAgainstSegments(ox, oy, dx, dy, radius, segments, maxDist = Infinity) {
-    let best = null;
-    for (let i = 0; i < segments.length; i++) {
-        const hit = sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segments[i], maxDist);
-        if (!hit) continue;
-        if (!best || hit.t < best.t) best = hit;
-    }
-    return best;
-}
 /**
  * Circle contact geometry — surface points for casts, previews, and impulse hooks.
  */
@@ -3881,15 +3779,7 @@ export function circleLeadingPoint(cx, cy, radius, dirX, dirY) {
     return { x: cx + dirX * radius, y: cy + dirY * radius };
 }
 /** Push-out wall normal (away from solid into free space). */
-export function circleWallContactPoint(cx, cy, radius, normalX, normalY) {
-    return { x: cx - normalX * radius, y: cy - normalY * radius };
-}
 /** Point on circle A that faces circle B at first center–center contact. */
-export function circlePairContactPoint(centerAx, centerAy, radiusA, centerBx, centerBy) {
-    const { nx, ny, len: d } = normalizeXY(centerBx - centerAx, centerBy - centerAy);
-    if (d < 1e-8) return { x: centerAx + radiusA, y: centerAy };
-    return { x: centerAx + nx * radiusA, y: centerAy + ny * radiusA };
-}
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
 export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL_QUAT) {

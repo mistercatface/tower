@@ -252,35 +252,23 @@ function appendSyncedNumberField(panel, label, getValue, setValue, onPreviewChan
     });
     mapGenBoundInputs.push({ input, getValue });
 }
-function mapGenIdxCol(idx, cols) {
-    return idx % cols;
-}
-function mapGenIdxRow(idx, cols) {
-    return (idx / cols) | 0;
-}
-function mapGenIdxWithCol(idx, grid, col) {
-    const row = (idx / grid.cols) | 0;
-    return grid.worldToIdx(grid.gridCenterX(Math.round(col)), grid.gridCenterY(row));
-}
-function mapGenIdxWithRow(idx, grid, row) {
-    const col = idx % grid.cols;
-    return grid.worldToIdx(grid.gridCenterX(col), grid.gridCenterY(Math.round(row)));
-}
 function appendMapGenIdxColRowFields(parent, grid, config, idxKey, colLabel, rowLabel, addBound) {
     addBound(
         parent,
         colLabel,
-        () => mapGenIdxCol(config[idxKey], grid.cols),
+        () => config[idxKey] % grid.cols,
         (v) => {
-            config[idxKey] = mapGenIdxWithCol(config[idxKey], grid, v);
+            const row = (config[idxKey] / grid.cols) | 0;
+            config[idxKey] = grid.worldToIdx(grid.gridCenterX(Math.round(v)), grid.gridCenterY(row));
         },
     );
     addBound(
         parent,
         rowLabel,
-        () => mapGenIdxRow(config[idxKey], grid.cols),
+        () => (config[idxKey] / grid.cols) | 0,
         (v) => {
-            config[idxKey] = mapGenIdxWithRow(config[idxKey], grid, v);
+            const col = config[idxKey] % grid.cols;
+            config[idxKey] = grid.worldToIdx(grid.gridCenterX(col), grid.gridCenterY(Math.round(v)));
         },
     );
 }
@@ -1964,9 +1952,6 @@ const DRAG_LAUNCH_BEHAVIORS = [
 export function createDragLaunchBehaviors(state) {
     return DRAG_LAUNCH_BEHAVIORS.map((entry) => buildDragLaunchBehavior(state, entry));
 }
-export function createDragLaunchBehavior(state) {
-    return buildDragLaunchBehavior(state, DRAG_LAUNCH_BEHAVIORS[0]);
-}
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
 const GRAB_ANCHOR_SCRATCH = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
 function resolveGrabDragAnchor(prop, world) {
@@ -2144,15 +2129,6 @@ export function removeChainLinkBetween(state, bodyAId, bodyBId) {
     removeKineticConstraint(state.kinetic, entry.id);
     return true;
 }
-export function clearChainLinksForMembers(state, memberIds) {
-    const members = new Set(memberIds);
-    const list = listKineticConstraints(state.kinetic);
-    for (let i = list.length - 1; i >= 0; i--) {
-        const entry = list[i];
-        if (entry.type !== "distance") continue;
-        if (members.has(entry.bodyAId) && members.has(entry.bodyBId)) removeKineticConstraint(state.kinetic, entry.id);
-    }
-}
 export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
     if (fromPropId === toPropId) return false;
     const bodyA = state.entityRegistry.getLive(fromPropId);
@@ -2179,27 +2155,10 @@ export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
         entry.restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     }
 }
-export function listChainLinkEndpoints(state, propId) {
-    const list = listKineticConstraints(state.kinetic);
-    const endpoints = [];
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== "distance") continue;
-        if (entry.bodyAId !== propId && entry.bodyBId !== propId) continue;
-        const target = entry.bodyAId === propId ? entry.bodyB : entry.bodyA;
-        if (target.isDead) continue;
-        endpoints.push({ constraintId: entry.id, targetId: target.id, label: `${formatPropTypeLabel(target.type)} · #${target.id}`, x: target.x, y: target.y });
-    }
-    return endpoints;
-}
 export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
     for (let i = 0; i < propIds.length; i++) if (entityMeta.isChainHead(propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     for (let i = 0; i < propIds.length; i++) if (isChainSteeringTarget(state, entityMeta, propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     return null;
-}
-export function findChainHeadProp(state) {
-    const meta = state.sandbox.entityMeta;
-    return findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
 }
 export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY) {
     if (inFlight) return null;
@@ -2719,24 +2678,6 @@ function constraintWireColor(strain) {
 }
 const overlayAnchorA = { x: 0, y: 0 };
 const overlayAnchorB = { x: 0, y: 0 };
-export function appendKineticConstraintOverlayCommands(out, state) {
-    const constraints = listKineticConstraints(state.kinetic);
-    for (let i = 0; i < constraints.length; i++) {
-        const entry = constraints[i];
-        if (entry.type !== "distance") continue;
-        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
-        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
-        if (!bodyA || !bodyB) continue;
-        const wa = worldAnchorFromBody(bodyA, entry.anchorA.x, entry.anchorA.y, overlayAnchorA);
-        const wb = worldAnchorFromBody(bodyB, entry.anchorB.x, entry.anchorB.y, overlayAnchorB);
-        const dist = distanceBetweenAnchors(bodyA, entry.anchorA, bodyB, entry.anchorB);
-        const strain = entry.restLength > 0 ? Math.abs(dist - entry.restLength) / entry.restLength : 0;
-        const color = constraintWireColor(strain);
-        out.push(overlayCachedCircleFillStroke(wa.x, wa.y, 4, { fill: color, stroke: color, lineWidth: 1 }, OVERLAY_RENDER_KEY.WireEndpoint, wireEndpointCacheKey(4, color), 1));
-        out.push(overlayCachedCircleFillStroke(wb.x, wb.y, 4, { fill: color, stroke: color, lineWidth: 1 }, OVERLAY_RENDER_KEY.WireEndpoint, wireEndpointCacheKey(4, color), 1));
-        appendOverlayWireLink(out, wa.x, wa.y, wb.x, wb.y, color, { lineWidth: 2, dash: [5, 4], endpointRadius: 4 });
-    }
-}
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_TILE_CELL_BOUNDS = createAabb();
@@ -3221,12 +3162,6 @@ const EDGE_SIDE_OPTIONS = [
 ];
 function maxWallHeightLevel(state) {
     return state.worldSurfaces.settings.maxWallHeightLevel;
-}
-export function appendRailWallHeightSlider(body, state, heightLevel, onChange) {
-    body.appendChild(new SliderControl("Rail height", 1, maxWallHeightLevel(state), 1, heightLevel, onChange).element);
-}
-export function appendRailWallThicknessSlider(body, controller, thicknessLevel, onChange) {
-    body.appendChild(new SliderControl("Rail thickness", 1, 8, 1, thicknessLevel, onChange).element);
 }
 export function appendWallPlaceParams(body, state, controller, { wallStampMode, inspector }) {
     const session = controller.session;
