@@ -1,9 +1,10 @@
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
 import { forEachCardinalNeighborIdx } from "./spatial.js";
+import { snapshotKineticBodySlab } from "../Physics/physics.js";
 export const PORTAL_NONE = -1;
 const PORTAL_STRIP_KEYS = ["exit", "entry"];
 const PORTAL_QUERY_BOUNDS = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-const PORTAL_TICK = { grid: null, exitIdx: -1, tx: 0, ty: 0 };
+const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, tx: 0, ty: 0 };
 function bumpFloorNavEpoch(grid) {
     grid.floorNavEpoch = (grid.floorNavEpoch + 1) | 0;
     grid.invalidateNavTopology();
@@ -47,6 +48,14 @@ function portalTeleportHandler(body) {
     if (t.grid.worldToIdx(body.x, body.y) !== t.exitIdx) return;
     body.x = t.tx;
     body.y = t.ty;
+    if (body.vx !== undefined) body.vx = 0;
+    if (body.vy !== undefined) body.vy = 0;
+    if (body._physId !== undefined) snapshotKineticBodySlab([body]);
+    if (t.spatialFrame?.entityGrid) {
+        t.spatialFrame.entityGrid.remove(body);
+        t.spatialFrame.entityGrid.insert(body);
+        body._neighborsFrameId = -1;
+    }
 }
 export class PortalLink {
     static isExit(grid, idx) {
@@ -119,6 +128,7 @@ export class FloorPortal {
         const eg = spatialFrame.entityGrid;
         const half = grid.cellHalfSize;
         PORTAL_TICK.grid = grid;
+        PORTAL_TICK.spatialFrame = spatialFrame;
         for (let i = 0; i < count; i++) {
             const exitIdx = pairs[i * 2];
             const entryIdx = pairs[i * 2 + 1];
