@@ -1197,43 +1197,51 @@ function ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, ma
     if (orphans.length === 0) return distToWall;
     return createRegionFromCells(orphans, blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph).distToWall;
 }
+function activePortalPairCount(activePortalCount) {
+    return activePortalCount ? (typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0]) : 0;
+}
+function forEachNavWalkNeighbor(idx, blocked, octileNeighbors, activePortalPairs, portalCount, visit) {
+    for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+        const nIdx = octileNeighbors[octileNeighborOffset(idx, dir)];
+        if (nIdx >= 0 && !blocked[nIdx]) visit(nIdx);
+    }
+    if (activePortalPairs && portalCount > 0)
+        for (let i = 0; i < portalCount; i++)
+            if (idx === activePortalPairs[i * 2]) {
+                const entryIdx = activePortalPairs[i * 2 + 1];
+                if (!blocked[entryIdx]) visit(entryIdx);
+            }
+}
 export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
     const cellToComponent = new Int16Array(size);
     cellToComponent.fill(REGION_CELL_UNASSIGNED);
     let componentId = 0;
-    const count = activePortalCount ? (typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0]) : 0;
+    const portalCount = activePortalPairCount(activePortalCount);
     for (let start = 0; start < size; start++) {
         if (blocked[start] || cellToComponent[start] >= 0) continue;
         const id = componentId++;
         bfsIndices([start], (idx, enqueue) => {
             if (blocked[idx] || cellToComponent[idx] >= 0) return;
             cellToComponent[idx] = id;
-            for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
-                const nIdx = octileNeighbors[octileNeighborOffset(idx, dir)];
-                if (nIdx >= 0 && !blocked[nIdx] && cellToComponent[nIdx] < 0) enqueue(nIdx);
-            }
-            if (activePortalPairs && count > 0)
-                for (let i = 0; i < count; i++)
-                    if (idx === activePortalPairs[i * 2]) {
-                        const entryIdx = activePortalPairs[i * 2 + 1];
-                        if (!blocked[entryIdx] && cellToComponent[entryIdx] < 0) enqueue(entryIdx);
-                    }
+            forEachNavWalkNeighbor(idx, blocked, octileNeighbors, activePortalPairs, portalCount, (nIdx) => {
+                if (cellToComponent[nIdx] < 0) enqueue(nIdx);
+            });
         });
     }
     return cellToComponent;
 }
-export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx) {
+export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
     const reachable = new Uint8Array(size);
     if (seedIdx < 0 || seedIdx >= size || blocked[seedIdx] || !octileNeighbors) return reachable;
+    const portalCount = activePortalPairCount(activePortalCount);
     bfsIndices([seedIdx], (idx, enqueue) => {
         if (blocked[idx] || reachable[idx]) return;
         reachable[idx] = 1;
-        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
-            const nIdx = octileNeighbors[octileNeighborOffset(idx, dir)];
-            if (nIdx >= 0 && !blocked[nIdx] && !reachable[nIdx]) enqueue(nIdx);
-        }
+        forEachNavWalkNeighbor(idx, blocked, octileNeighbors, activePortalPairs, portalCount, (nIdx) => {
+            if (!reachable[nIdx]) enqueue(nIdx);
+        });
     });
     return reachable;
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { bakeNavTopologyLocal, buildNavComponentMap, buildNavReachableMaskFromSeed } from "../Libraries/Navigation/navigation.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
+import { PortalLink } from "../Libraries/Spatial/portals.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 
 describe("buildNavReachableMaskFromSeed", () => {
@@ -46,5 +47,29 @@ describe("buildNavReachableMaskFromSeed", () => {
         const { topology } = bakeNavTopologyLocal(grid);
         const mask = buildNavReachableMaskFromSeed(topology.blocked, topology.octileNeighbors, grid.cols, grid.rows, -1);
         assert.equal(mask.some((v) => v !== 0), false);
+    });
+
+    it("forward portal hop reaches entry from exit seed only", () => {
+        const cols = 20;
+        const rows = 8;
+        const row = 4;
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, cols * 16, rows * 16);
+        for (let r = 0; r < rows; r++) grid.grid[grid.idx(10, r)] = 1;
+        const exitIdx = grid.idx(9, row);
+        const entryIdx = grid.idx(11, row);
+        PortalLink.setLink(grid, exitIdx, entryIdx);
+
+        const { topology } = bakeNavTopologyLocal(grid);
+        const blocked = topology.blocked;
+        const octileNeighbors = topology.octileNeighbors;
+
+        const fromExit = buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, exitIdx, grid.activePortalPairs, grid.activePortalCount);
+        assert.equal(fromExit[exitIdx], 1);
+        assert.equal(fromExit[entryIdx], 1);
+
+        const fromEntry = buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, entryIdx, grid.activePortalPairs, grid.activePortalCount);
+        assert.equal(fromEntry[entryIdx], 1);
+        assert.equal(fromEntry[exitIdx], 0);
     });
 });

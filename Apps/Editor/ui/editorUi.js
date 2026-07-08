@@ -1,7 +1,7 @@
 import { shippedSurfaceProfileIds } from "../../../Config/procedural/profiles.js";
 import { applySquareCanvasResize } from "./squareCanvasResize.js";
 import { initResizer } from "./lab-shared.js";
-import { ensureLabPathDebugCache, buildPathDebugCacheOpts } from "../../../Libraries/Render/render.js";
+import { getNavPathDebugCache } from "../../../Libraries/Navigation/navDebug.js";
 import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flushMapOverviewRepaint, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
@@ -143,7 +143,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     bindToolbarControls(
         {
             onOverlayChange: () => {
-                if (isLabPathDebugActive()) void ensureLabPathDebugCache(state, buildPathDebugCacheOpts(state, getLabPathDebugMode()));
+                if (isLabPathDebugActive()) void getNavPathDebugCache(state).ensureTopology(state, getLabPathDebugMode());
             },
             onRedraw: () => {
                 pushEditorProfile(state);
@@ -160,13 +160,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
     if (document.body.classList.contains("hide-sidebar")) fitEditorCanvasToStage(state);
     else {
         const { main } = EDITOR_CANVAS_DEFAULTS;
-        mapCanvasResize = applySquareCanvasResize(state.editor.canvas, {
-            host: document.getElementById("mapStage"),
-            initialSize: main.initialSize,
-            minSize: main.minSize,
-            maxSize: () => computeMapColumnSlotMax(state),
-            onResize: (size) => onMapCanvasResize(state, size),
-        });
+        mapCanvasResize = applySquareCanvasResize(state.editor.canvas, { host: document.getElementById("mapStage"), initialSize: main.initialSize, minSize: main.minSize, maxSize: () => computeMapColumnSlotMax(state), onResize: (size) => onMapCanvasResize(state, size) });
         initResizer("resizer", () => resizeCanvases(state));
     }
     resizeCanvases(state);

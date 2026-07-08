@@ -45,6 +45,8 @@ export class HpaPathWorker {
         this._damagePadding = 12;
         this._shutDown = false;
         this._topologySyncTarget = null;
+        this._debugViewCacheKey = "";
+        this._debugViewCellToComponent = null;
         this.graphIdToIdx = new Map();
         this.graphNodeIds = [];
         this.graphNodeCount = 0;
@@ -168,6 +170,13 @@ export class HpaPathWorker {
         if (this.graphNodeCount <= 0) return false;
         return this.sabCellToRegionIdx.byteLength >> 1 >= size;
     }
+    _regionGraphDebugViewCacheKey(grid) {
+        return `${gridNavCacheKey(grid)}:${this._syncedNavCacheKey}:${this._graphEpoch}`;
+    }
+    _invalidateRegionGraphDebugViewCache() {
+        this._debugViewCacheKey = "";
+        this._debugViewCellToComponent = null;
+    }
     getRegionGraphDebugView(grid) {
         const size = grid.cols * grid.rows;
         if (!this.isRegionGraphReady(grid)) return null;
@@ -176,7 +185,12 @@ export class HpaPathWorker {
         const topology = this.getNavTopology();
         const blocked = topology?.blocked ?? grid.grid;
         const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
-        const cellToComponent = topology?.octileNeighbors ? buildNavComponentMap(blocked, topology.octileNeighbors, grid.cols, grid.rows, grid.activePortalPairs, grid.activePortalCount) : new Int16Array(size).fill(-1);
+        const debugCacheKey = this._regionGraphDebugViewCacheKey(grid);
+        if (this._debugViewCacheKey !== debugCacheKey) {
+            this._debugViewCellToComponent = topology?.octileNeighbors ? buildNavComponentMap(blocked, topology.octileNeighbors, grid.cols, grid.rows, grid.activePortalPairs, grid.activePortalCount) : new Int16Array(size).fill(-1);
+            this._debugViewCacheKey = debugCacheKey;
+        }
+        const cellToComponent = this._debugViewCellToComponent;
         return {
             cols: grid.cols,
             rows: grid.rows,

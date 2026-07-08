@@ -1,7 +1,5 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustumInto, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPointInto, projectWorldQuadInto, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreenInto, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { BeltPacked } from "../Spatial/belts.js";
-import { findNearestOpenCellIdx, buildNavReachableMaskFromSeed } from "../Navigation/navigation.js";
 import { quantizeAngleIndex, normalizeXY, lengthXY, rotateXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, radiusAtT, scaleAtHeight } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -77,104 +75,6 @@ function bakeCanvas(width, height) {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     return createOffscreenCanvas(w, h);
 }
-function componentDebugFillColor(componentIdx) {
-    const hue = (componentIdx * 47 + 90) % 360;
-    return `hsla(${hue}, 72%, 58%, 0.2)`;
-}
-const PATH_DEBUG_BLOCKED_FILL = "rgba(244, 67, 54, 0.16)";
-const PATH_DEBUG_DIM_FILL = "rgba(120, 128, 140, 0.14)";
-const PATH_DEBUG_UNASSIGNED_FILL = "rgba(180, 190, 200, 0.16)";
-const PATH_DEBUG_REGION_BORDER = "rgba(255, 255, 255, 0.28)";
-const PATH_DEBUG_NODE_FILL = "rgba(0, 229, 255, 0.28)";
-function cellPathDebugIncluded(idx, bakeOpts, blocked) {
-    if (blocked[idx]) return false;
-    if (bakeOpts.mode === "hpa") return true;
-    return bakeOpts.reachableMask?.[idx] !== 0;
-}
-function bakePathDebugLayer(debugView, minX, minY, maxX, maxY, bakeOpts) {
-    const canvas = bakeCanvas(maxX - minX, maxY - minY);
-    if (!canvas || !debugView.grid) return null;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(-minX, -minY);
-    const endCol = debugView.cols - 1;
-    const endRow = debugView.rows - 1;
-    const cellToRegion = debugView.cellToRegion;
-    const cellToComponent = debugView.cellToComponent;
-    const floorPacked = debugView.floorPacked;
-    const blocked = debugView.grid;
-    for (let row = 0; row <= endRow; row++)
-        for (let col = 0; col <= endCol; col++) {
-            const idx = row * debugView.cols + col;
-            const isBlocked = blocked[idx] !== 0;
-            const wx = debugView.minX + col * debugView.cellSize;
-            const wy = debugView.minY + row * debugView.cellSize;
-            const cellSize = debugView.cellSize;
-            if (isBlocked) {
-                ctx.fillStyle = PATH_DEBUG_BLOCKED_FILL;
-                ctx.fillRect(wx, wy, cellSize, cellSize);
-            } else if (cellToComponent) {
-                const included = cellPathDebugIncluded(idx, bakeOpts, blocked);
-                if (!included) {
-                    ctx.fillStyle = PATH_DEBUG_DIM_FILL;
-                    ctx.fillRect(wx, wy, cellSize, cellSize);
-                } else {
-                    const component = cellToComponent[idx];
-                    if (component < 0) {
-                        ctx.fillStyle = PATH_DEBUG_UNASSIGNED_FILL;
-                        ctx.fillRect(wx, wy, cellSize, cellSize);
-                    } else {
-                        ctx.fillStyle = componentDebugFillColor(component);
-                        ctx.fillRect(wx, wy, cellSize, cellSize);
-                    }
-                }
-            }
-        }
-    if (cellToRegion) {
-        ctx.beginPath();
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = PATH_DEBUG_REGION_BORDER;
-        ctx.lineWidth = 1;
-        for (let row = 0; row <= endRow; row++)
-            for (let col = 0; col <= endCol; col++) {
-                const idx = row * debugView.cols + col;
-                if (blocked[idx]) continue;
-                if (!cellPathDebugIncluded(idx, bakeOpts, blocked)) continue;
-                const region = cellToRegion[idx];
-                if (region < 0) continue;
-                const wx = debugView.minX + col * debugView.cellSize;
-                const wy = debugView.minY + row * debugView.cellSize;
-                const cellSize = debugView.cellSize;
-                if (col + 1 < debugView.cols) {
-                    const rIdx = idx + 1;
-                    if (blocked[rIdx] === 0) {
-                        const rightRegion = cellToRegion[rIdx];
-                        if (rightRegion >= 0 && rightRegion !== region) traceSegment(ctx, wx + cellSize, wy, wx + cellSize, wy + cellSize);
-                    }
-                }
-                if (row + 1 < debugView.rows) {
-                    const bIdx = idx + debugView.cols;
-                    if (blocked[bIdx] === 0) {
-                        const bottomRegion = cellToRegion[bIdx];
-                        if (bottomRegion >= 0 && bottomRegion !== region) traceSegment(ctx, wx, wy + cellSize, wx + cellSize, wy + cellSize);
-                    }
-                }
-            }
-        ctx.stroke();
-        ctx.setLineDash([]);
-    }
-    const { nodeIdx, nodeCount } = debugView;
-    for (let i = 0; i < nodeCount; i++) {
-        const idx = nodeIdx[i];
-        if (!cellPathDebugIncluded(idx, bakeOpts, blocked)) continue;
-        if (floorPacked && BeltPacked.isValid(floorPacked[idx])) continue;
-        const wx = debugView.gridCenterXByIdx(idx);
-        const wy = debugView.gridCenterYByIdx(idx);
-        ctx.fillStyle = PATH_DEBUG_NODE_FILL;
-        fillCircle(ctx, wx, wy, 3);
-    }
-    return { canvas, minX, minY, maxX, maxY };
-}
 /** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} obstacleGrid @param {OffscreenCanvas | null | undefined} [reuseCanvas] */
 export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     const ppc = OVERVIEW_PIXELS_PER_CELL;
@@ -207,60 +107,6 @@ export function bakeObstacleOverviewCache(obstacleGrid, reuseCanvas = null) {
     );
     ctx.putImageData(data, 0, 0);
     return { canvas, minX: obstacleGrid.minX, minY: obstacleGrid.minY, maxX: obstacleGrid.maxX, maxY: obstacleGrid.maxY };
-}
-/** @param {import("../../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid @param {'off' | 'hpa' | 'reachable'} mode */
-export function buildPathDebugCacheOpts(state, mode) {
-    const grid = state.obstacleGrid;
-    const prop = state.sandbox?.controller?.session?.getSelectedProp();
-    const selectionPropId = prop?.id ?? "none";
-    let seedCellIdx = -1;
-    if (prop) {
-        let idx = grid.worldToIdx(prop.x, prop.y);
-        if (idx >= 0) seedCellIdx = findNearestOpenCellIdx(grid.grid, grid, idx);
-    }
-    return { mode, selectionPropId, seedCellIdx };
-}
-function resolvePathDebugBakeOpts(debugView, cacheOpts, octileNeighbors) {
-    if (cacheOpts.mode === "hpa") return { mode: "hpa", reachableMask: null };
-    const blocked = debugView.grid;
-    return { mode: "reachable", reachableMask: buildNavReachableMaskFromSeed(blocked, octileNeighbors, debugView.cols, debugView.rows, cacheOpts.seedCellIdx) };
-}
-/** @param {object} state @param {{ mode: string, selectionPropId: string, seedCellIdx: number }} cacheOpts */
-export function labPathDebugCacheKey(state, cacheOpts) {
-    const grid = state.obstacleGrid;
-    const base = `${gridNavCacheKey(grid)}:${state.nav.graphSyncGeneration}:${floorOccupancyStampDrawCacheKey(grid)}:${grid.cols}x${grid.rows}`;
-    return `${base}:${cacheOpts.mode}:${cacheOpts.selectionPropId}:${cacheOpts.seedCellIdx}`;
-}
-/** @param {object} state @param {{ mode: string, selectionPropId: string, seedCellIdx: number }} cacheOpts */
-export async function ensureLabPathDebugCache(state, cacheOpts) {
-    const key = labPathDebugCacheKey(state, cacheOpts);
-    if (state._labPathDebugKey === key && state.mapPathDebugCache) return state.mapPathDebugCache;
-    if (state._labPathDebugBake) return state._labPathDebugBake;
-    state._labPathDebugBake = (async () => {
-        const grid = state.obstacleGrid;
-        await state.nav.awaitWorkerNavReady();
-        const debugView = state.nav.worker.getRegionGraphDebugView(grid);
-        const topology = state.nav.worker.getNavTopology();
-        const bakeOpts = resolvePathDebugBakeOpts(debugView, cacheOpts, topology?.octileNeighbors ?? null);
-        state.mapPathDebugCache = debugView ? bakePathDebugLayer(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY, bakeOpts) : null;
-        state._labPathDebugKey = key;
-        state._labPathDebugBake = null;
-        return state.mapPathDebugCache;
-    })();
-    return state._labPathDebugBake;
-}
-export function drawLabPathDebugOverlay(ctx, viewport, state, cacheOpts, onCacheReady) {
-    const key = labPathDebugCacheKey(state, cacheOpts);
-    if (state._labPathDebugKey !== key && !state._labPathDebugRedrawScheduled) {
-        state._labPathDebugRedrawScheduled = true;
-        void ensureLabPathDebugCache(state, cacheOpts).then(() => {
-            state._labPathDebugRedrawScheduled = false;
-            onCacheReady?.();
-        });
-    }
-    const pathCache = state.mapPathDebugCache;
-    if (!pathCache) return;
-    ctx.drawImage(pathCache.canvas, pathCache.minX, pathCache.minY);
 }
 /** @param {object} state */
 export function rebuildLabMapOverviewCache(state) {

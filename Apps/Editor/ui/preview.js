@@ -8,7 +8,7 @@ import { floorEffectPass } from "../../../Libraries/Props/props.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
-import { drawLabPathDebugOverlay, buildPathDebugCacheOpts } from "../../../Libraries/Render/render.js";
+import { getNavPathDebugCache } from "../../../Libraries/Navigation/navDebug.js";
 import { drawOverlayCommands } from "../../../Libraries/Render/render.js";
 import { drawLosShadowOverlay } from "../../../Libraries/Render/render.js";
 import { buildProfileFromEditor, RUNTIME_LAB_PROFILE_ID } from "./profile/ProfileEditor.js";
@@ -38,8 +38,7 @@ const editorSceneHooks = {
             zIndex: 120,
             draw(state, viewport, ctx) {
                 if (!isLabPathDebugActive()) return;
-                const opts = buildPathDebugCacheOpts(state, getLabPathDebugMode());
-                drawLabPathDebugOverlay(ctx, viewport, state, opts, markLabViewDirty);
+                getNavPathDebugCache(state).draw(ctx, state, getLabPathDebugMode(), markLabViewDirty);
             },
         },
     ],
