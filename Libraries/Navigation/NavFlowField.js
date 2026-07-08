@@ -71,7 +71,9 @@ export class FlowFieldGrid {
         if (data.type === FLOW_WINDOW_DONE) this._onFlowWindowDone();
     }
     _setCenter(centerX, centerY) {
-        this.window.setCenter(centerX, centerY);
+        const snappedX = Math.round((centerX - this.offsetX) / this.cellSize) * this.cellSize + this.offsetX;
+        const snappedY = Math.round((centerY - this.offsetY) / this.cellSize) * this.cellSize + this.offsetY;
+        this.window.setCenter(snappedX, snappedY);
         this._syncWindowAliases();
     }
     invalidateLocalTopology() {
