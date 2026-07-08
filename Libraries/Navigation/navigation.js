@@ -518,14 +518,20 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
     cellCount++;
     bfsIndices([startIdx], (currIdx, enqueue) => {
         if (cellCount >= maxCellsPerChunk) return;
-        forEachCardinalNeighborIdx(currIdx, frame, (nIdx) => {
+        const col = currIdx % cols;
+        const row = (currIdx / cols) | 0;
+        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+            const nCol = col + OCTILE_DCOL[dir];
+            const nRow = row + OCTILE_DR[dir];
+            if (nCol < 0 || nCol >= cols || nRow < 0 || nRow >= rows) continue;
+            const nIdx = nRow * cols + nCol;
             if (navGraph) {
                 const canStepFwd = navGraph.canStepIdx(currIdx, nIdx);
                 const canStepRev = navGraph.canStepIdx(nIdx, currIdx);
-                if (!canStepFwd && !canStepRev) return;
+                if (!canStepFwd && !canStepRev) continue;
                 if (!canStepFwd || !canStepRev) {
-                    if (!floorPacked) return;
-                    if (floorPacked[currIdx] === 0 || floorPacked[nIdx] === 0) return;
+                    if (!floorPacked) continue;
+                    if (floorPacked[currIdx] === 0 || floorPacked[nIdx] === 0) continue;
                 }
             }
             if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
@@ -536,7 +542,7 @@ export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCel
                 cellCount++;
                 if (cellCount >= maxCellsPerChunk) return;
             }
-        });
+        }
     });
 }
 export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, startRow, endRow, navGraph = null) {
@@ -555,6 +561,14 @@ export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, 
                 const nodeBIdx = cellToNode[idx + cols];
                 if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
+            if (c + 1 <= endCol && r + 1 <= endRow) {
+                const nodeBIdx = cellToNode[idx + cols + 1];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols + 1) || navGraph.canStepIdx(idx + cols + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+            }
+            if (c - 1 >= startCol && r + 1 <= endRow) {
+                const nodeBIdx = cellToNode[idx + cols - 1];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols - 1) || navGraph.canStepIdx(idx + cols - 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+            }
         }
     return adjacencies;
 }
@@ -572,14 +586,23 @@ export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk,
             let neighborNode = null;
             for (let i = 0; i < nodeCells.length; i++) {
                 const cellIdx = nodeCells[i];
-                forEachCardinalNeighborIdx(cellIdx, frame, (nIdx) => {
-                    if (neighborNode) return;
-                    const nNodeIdx = cellToNode[nIdx];
-                    if (nNodeIdx !== -1 && nNodeIdx !== node.idx) {
-                        const nNode = nodesMap[nNodeIdx];
-                        if (nNode && (!navGraph || (navGraph.canStepIdx(cellIdx, nIdx) && navGraph.canStepIdx(nIdx, cellIdx)))) neighborNode = nNode;
+                const col = cellIdx % cols;
+                const row = (cellIdx / cols) | 0;
+                for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
+                    const nCol = col + OCTILE_DCOL[dir];
+                    const nRow = row + OCTILE_DR[dir];
+                    if (nCol >= 0 && nCol < cols && nRow >= 0 && nRow < rows) {
+                        const nIdx = nRow * cols + nCol;
+                        const nNodeIdx = cellToNode[nIdx];
+                        if (nNodeIdx !== -1 && nNodeIdx !== node.idx) {
+                            const nNode = nodesMap[nNodeIdx];
+                            if (nNode && (!navGraph || (navGraph.canStepIdx(cellIdx, nIdx) && navGraph.canStepIdx(nIdx, cellIdx)))) {
+                                neighborNode = nNode;
+                                break;
+                            }
+                        }
                     }
-                });
+                }
                 if (neighborNode) break;
             }
             if (neighborNode) {
@@ -686,6 +709,14 @@ export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) 
             if (r + 1 < rows) {
                 const nodeBIdx = cellToNode[idx + cols];
                 if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+            }
+            if (c + 1 < cols && r + 1 < rows) {
+                const nodeBIdx = cellToNode[idx + cols + 1];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols + 1) || navGraph.canStepIdx(idx + cols + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
+            }
+            if (c - 1 >= 0 && r + 1 < rows) {
+                const nodeBIdx = cellToNode[idx + cols - 1];
+                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols - 1) || navGraph.canStepIdx(idx + cols - 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
             }
         }
     return adjacencies;
