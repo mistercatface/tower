@@ -109,7 +109,7 @@ export class HpaTopologyArena {
         this.cardinalOpen = new Uint8Array(data.sabCardinalOpen);
         this.vertexPassability = new Uint8Array(data.sabVertexPassability);
         const edgePool = bindNavEdgePoolFromSab(new Uint8Array(this.sabEdgePool), this.edgePoolCount);
-        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorPacked, edgeSlots, edgePool, this.vertexPassability);
+        this.navSimView = createNavSimView(this.gridFrame, gridFill, floorPacked, edgeSlots, edgePool, this.vertexPassability, activePortalPairs, activePortalCount);
         this.activePortalPairs = activePortalPairs;
         this.activePortalCount = activePortalCount;
         this.navTopology = navTopologyFromSab(data.sabBlocked, data.sabOctileNeighbors, data.sabOctilePredecessors);

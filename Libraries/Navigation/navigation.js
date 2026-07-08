@@ -1417,7 +1417,7 @@ export class NavTopology {
         const arena = ensureLocalBakeArena(this.grid);
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
-        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability);
+        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability, arena.activePortalPairs, arena.activePortalCount);
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
@@ -1582,7 +1582,6 @@ export function growNavTopologyVertexSab(arena, vertCount) {
 export function packNavTopologyFromGrid(grid, arena, idx = null) {
     arena.activePortalPairs.set(grid.activePortalPairs.subarray(0, arena.activePortalPairs.length));
     arena.activePortalCount[0] = grid.activePortalCount;
-
     const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
         arena.gridFill.set(grid.grid);
@@ -1696,7 +1695,7 @@ export function createNavLocalView(frame, topology) {
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability) {
+export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability, activePortalPairs, activePortalCount) {
     const simView = {
         frame,
         grid: gridFill,
@@ -1704,6 +1703,8 @@ export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePo
         cellEdgeSlots: edgeSlots,
         cellEdgePool: edgePool,
         floorPacked: floorPacked,
+        activePortalPairs: activePortalPairs,
+        activePortalCount: activePortalCount,
         getCellEdge(idx, side) {
             const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
             if (ref < 0) return null;

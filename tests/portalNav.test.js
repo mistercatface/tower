@@ -250,7 +250,7 @@ describe("portal nav", () => {
         const prep = { legMaxCost: Math.max((cols + rows) * 21, 16384) };
         planner.activePortalPairs = grid.activePortalPairs;
         planner.activePortalCount = new Int32Array([grid.activePortalCount]);
-        const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, packed.cellToRegion);
+        const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, packed.cellToRegion, planner.activePortalPairs, planner.activePortalCount);
         assert.ok(legLen >= 3);
         const leg = planner.localPathScratch;
         assert.equal(leg[0], abstractGraph.nodeIdx[exitRegion]);
@@ -271,7 +271,7 @@ describe("portal nav", () => {
         const packed = packRegionGraphFlat(built.graph, built.graph.cellToNode, frame);
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const planner = createPortalPlanner(cols, rows);
-        const context = { frame, topology, graph: abstractGraph, cellToRegion: packed.cellToRegion, portalTargetIdx: grid.portalTargetIdx };
+        const context = { frame, topology, graph: abstractGraph, cellToRegion: packed.cellToRegion, activePortalPairs: grid.activePortalPairs, activePortalCount: new Int32Array([grid.activePortalCount]) };
         const result = planner.run(0, context, { startIdx, targetIdx });
         assert.ok(result?.pathLen > 0);
         const len = result.pathLen;
@@ -298,7 +298,7 @@ describe("portal nav", () => {
         assert.ok(built.graph.nodeForCell(targetIdx), "target region must survive prune");
         const abstractGraph = abstractGraphFromPacked(packed, cols);
         const planner = createPortalPlanner(cols, rows);
-        const context = { frame, topology, graph: abstractGraph, cellToRegion: packed.cellToRegion, portalTargetIdx: grid.portalTargetIdx };
+        const context = { frame, topology, graph: abstractGraph, cellToRegion: packed.cellToRegion, activePortalPairs: grid.activePortalPairs, activePortalCount: new Int32Array([grid.activePortalCount]) };
         const result = planner.run(0, context, { startIdx, targetIdx });
         assert.ok(result?.pathLen > 0, "must find a path to the portal-only far side");
         const len = result.pathLen;
