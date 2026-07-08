@@ -95,7 +95,9 @@ export class FlowFieldGrid {
         if (rebind) {
             const sabBlocked = this.hpaPathWorker.getNavBlockedSab();
             const sabOctilePredecessors = this.hpaPathWorker.getNavOctilePredecessorsSab();
-            this.protocol.postMessage({ type: "bindFlowNavArena", data: { sabBlocked, sabOctilePredecessors, navCols: navFrame.cols, navRows: navFrame.rows } });
+            const sabActivePortalPairs = this.hpaPathWorker.sabActivePortalPairs;
+            const sabActivePortalCount = this.hpaPathWorker.sabActivePortalCount;
+            this.protocol.postMessage({ type: "bindFlowNavArena", data: { sabBlocked, sabOctilePredecessors, sabActivePortalPairs, sabActivePortalCount, navCols: navFrame.cols, navRows: navFrame.rows } });
             this._navBlockedView = new Uint8Array(sabBlocked);
             this._flowNavBound = true;
             this._flowNavBoundSize = navSize;
@@ -323,11 +325,24 @@ export class FlowCacheManager {
         return slot;
     }
 }
-export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut }) {
+export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut, activePortalPairs = null, activePortalCount = null }) {
     bfsDistances.fill(-1);
     localVectorMap.fill(0);
     const startIdx = tx + ty * gridWidth;
     const isBlocked = (idx) => flowCellBlocked(flowToNavIdx, navBlocked, idx);
+    let navToFlow = null;
+    const portalCount = activePortalCount ? activePortalCount[0] : 0;
+    if (activePortalPairs && portalCount > 0) {
+        let maxNavIdx = -1;
+        for (let i = 0; i < gridSize; i++) if (flowToNavIdx[i] > maxNavIdx) maxNavIdx = flowToNavIdx[i];
+        if (maxNavIdx >= 0) {
+            navToFlow = new Int32Array(maxNavIdx + 1).fill(-1);
+            for (let i = 0; i < gridSize; i++) {
+                const navIdx = flowToNavIdx[i];
+                if (navIdx >= 0) navToFlow[navIdx] = i;
+            }
+        }
+    }
     if (startIdx >= 0 && startIdx < gridSize && !isBlocked(startIdx)) {
         localVectorMap[startIdx] = 4;
         let head = 0;
@@ -347,6 +362,23 @@ export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx,
                     bfsQueue[tail++] = nIdx;
                     localVectorMap[nIdx] = -dc + 1 + (-dr + 1) * 3;
                 }
+            }
+            if (navToFlow) {
+                const currNavIdx = flowToNavIdx[idx];
+                if (currNavIdx >= 0)
+                    for (let i = 0; i < portalCount; i++) {
+                        const exitIdx = activePortalPairs[i * 2];
+                        const entryIdx = activePortalPairs[i * 2 + 1];
+                        if (currNavIdx === entryIdx)
+                            if (exitIdx < navToFlow.length) {
+                                const exitFlowIdx = navToFlow[exitIdx];
+                                if (exitFlowIdx !== -1 && bfsDistances[exitFlowIdx] === -1 && !isBlocked(exitFlowIdx)) {
+                                    bfsDistances[exitFlowIdx] = currentDist + 1;
+                                    bfsQueue[tail++] = exitFlowIdx;
+                                    localVectorMap[exitFlowIdx] = 4;
+                                }
+                            }
+                    }
             }
         }
     }

@@ -41,12 +41,16 @@ export class FlowTopologyArena {
         this.navCols = 0;
         this.navRows = 0;
         this.navArenaBound = false;
+        this.activePortalPairs = null;
+        this.activePortalCount = null;
     }
     bind(data) {
         this.navBlocked = new Uint8Array(data.sabBlocked);
         this.octilePredecessors = new Int32Array(data.sabOctilePredecessors);
         this.navCols = data.navCols;
         this.navRows = data.navRows;
+        this.activePortalPairs = data.sabActivePortalPairs ? new Int32Array(data.sabActivePortalPairs) : null;
+        this.activePortalCount = data.sabActivePortalCount ? new Int32Array(data.sabActivePortalCount) : null;
         this.navArenaBound = true;
     }
     syncFlowWindow(buffers) {
@@ -77,21 +81,7 @@ export class FlowFieldWorker {
         if (type === "updateFlow") {
             if (!this.topology.navArenaBound) throw new Error("updateFlow requires bound flow nav arena");
             const vectorMap = this.buffers.getVectorMap(slot);
-            computeFlowField(vectorMap, {
-                gridWidth: this.buffers.gridWidth,
-                gridSize: this.buffers.gridSize,
-                flowToNavIdx: this.buffers.flowToNavIdx,
-                navBlocked: this.topology.navBlocked,
-                neighborGrid: this.buffers.neighborGrid,
-                neighborLayout: this.buffers.neighborLayout,
-                tx,
-                ty,
-                range,
-                bfsDistances: this.buffers.bfsDistances,
-                bfsQueue: this.buffers.bfsQueue,
-                localVectorMap: this.buffers.localVectorMap,
-                distancesOut: this.buffers.getDistanceMap(slot),
-            });
+            computeFlowField(vectorMap, { gridWidth: this.buffers.gridWidth, gridSize: this.buffers.gridSize, flowToNavIdx: this.buffers.flowToNavIdx, navBlocked: this.topology.navBlocked, neighborGrid: this.buffers.neighborGrid, neighborLayout: this.buffers.neighborLayout, tx, ty, range, bfsDistances: this.buffers.bfsDistances, bfsQueue: this.buffers.bfsQueue, localVectorMap: this.buffers.localVectorMap, distancesOut: this.buffers.getDistanceMap(slot), activePortalPairs: this.topology.activePortalPairs, activePortalCount: this.topology.activePortalCount });
             self.postMessage({ type: "flowDone", slot, requestId });
         }
     }

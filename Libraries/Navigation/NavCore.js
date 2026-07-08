@@ -246,6 +246,69 @@ export class FlatGridSearch {
         }
         return 0;
     }
+    localPortal(startIdx, targetIdx, maxPathLen, outPath, blocked, activePortalPairs, portalCount) {
+        if (startIdx === targetIdx) {
+            outPath[0] = startIdx;
+            return 1;
+        }
+        globalOpenSet.reset();
+        const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
+        const cols = this.cols;
+        const neighbors = this.neighbors;
+        if (!neighbors || !blocked) return 0;
+        const heuristic = (fromIdx) => {
+            let minDist = octileDistanceIdx(fromIdx, targetIdx, cols);
+            if (activePortalPairs && portalCount > 0)
+                for (let i = 0; i < portalCount; i++) {
+                    const exitIdx = activePortalPairs[i * 2];
+                    const entryIdx = activePortalPairs[i * 2 + 1];
+                    const distToExit = octileDistanceIdx(fromIdx, exitIdx, cols);
+                    const distFromEntry = octileDistanceIdx(entryIdx, targetIdx, cols);
+                    const total = distToExit + distFromEntry;
+                    if (total < minDist) minDist = total;
+                }
+            return minDist;
+        };
+        gScore[startIdx] = 0;
+        visited[startIdx] = runId;
+        cameFrom[startIdx] = -1;
+        globalOpenSet.push(startIdx, heuristic(startIdx));
+        const edgeCosts = OCTILE_COSTS;
+        while (globalOpenSet.size > 0) {
+            const currIdx = globalOpenSet.pop();
+            const currentG = gScore[currIdx];
+            if (globalOpenSet.lastPopPriority > currentG + heuristic(currIdx) + STALE_F_EPSILON) continue;
+            if (currentG > maxPathLen) continue;
+            if (currIdx === targetIdx) return reconstructIndexPathInto(cameFrom, currIdx, outPath);
+            // 1. Normal neighbors
+            const base = currIdx * 8;
+            for (let i = 0; i < 8; i++) {
+                const nIdx = neighbors[base + i];
+                if (nIdx === -1) continue;
+                const tentativeG = currentG + edgeCosts[i];
+                if (visited[nIdx] === runId && tentativeG >= gScore[nIdx]) continue;
+                visited[nIdx] = runId;
+                gScore[nIdx] = tentativeG;
+                cameFrom[nIdx] = currIdx;
+                globalOpenSet.push(nIdx, tentativeG + heuristic(nIdx));
+            }
+            // 2. Portals
+            if (activePortalPairs && portalCount > 0)
+                for (let i = 0; i < portalCount; i++) {
+                    const exitIdx = activePortalPairs[i * 2];
+                    const entryIdx = activePortalPairs[i * 2 + 1];
+                    if (currIdx === exitIdx && !blocked[entryIdx]) {
+                        const tentativeG = currentG + 0; // Portal traversal cost is 0
+                        if (visited[entryIdx] === runId && tentativeG >= gScore[entryIdx]) continue;
+                        visited[entryIdx] = runId;
+                        gScore[entryIdx] = tentativeG;
+                        cameFrom[entryIdx] = currIdx;
+                        globalOpenSet.push(entryIdx, tentativeG + heuristic(entryIdx));
+                    }
+                }
+        }
+        return 0;
+    }
 }
 export class FlatGraphView {
     constructor({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite = edgeTargets?.length ?? 0, nodeIds = null }) {
@@ -1974,518 +2037,25 @@ export const OCTILE_NEIGHBOR_GRID_LAYOUT = Object.freeze({
         for (let dir = 0; dir < this.directionCount; dir++) neighborGrid[base + dir] = -1;
     },
 });
-// --- HpaRegion.js ---
-export class RegionNode {
-    constructor(id, idx) {
-        this.id = id;
-        this.idx = idx;
-        this.edges = [];
-        this.cells = [];
-    }
-}
-export function floodFillRegion(startIdx, node, grid, frame, cellToNode, nodeCells, maxCellsPerChunk, navGraph, unassigned = null) {
-    const { cols, rows } = frame;
-    let cellCount = 0;
-    cellToNode[startIdx] = node.idx;
-    nodeCells.push(startIdx);
-    cellCount++;
-    bfsIndices([startIdx], (currIdx, enqueue) => {
-        if (cellCount >= maxCellsPerChunk) return;
-        const col = currIdx % cols;
-        const row = (currIdx / cols) | 0;
-        for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
-            const nCol = col + OCTILE_DCOL[dir];
-            const nRow = row + OCTILE_DR[dir];
-            if (nCol < 0 || nCol >= cols || nRow < 0 || nRow >= rows) continue;
-            const nIdx = nRow * cols + nCol;
-            if (navGraph) {
-                const canStepFwd = navGraph.canStepIdx(currIdx, nIdx);
-                const canStepRev = navGraph.canStepIdx(nIdx, currIdx);
-                if (!canStepFwd || !canStepRev) continue;
-            }
-            if (grid[nIdx] === 0 && cellToNode[nIdx] === -1 && (!unassigned || unassigned.has(nIdx))) {
-                if (unassigned) unassigned.delete(nIdx);
-                cellToNode[nIdx] = node.idx;
-                nodeCells.push(nIdx);
-                enqueue(nIdx);
-                cellCount++;
-                if (cellCount >= maxCellsPerChunk) return;
-            }
-        }
-    });
-}
-export function findRegionAdjacenciesInBox(cellToNode, frame, startCol, endCol, startRow, endRow, navGraph = null) {
-    const { cols } = frame;
-    const adjacencies = new Set();
-    for (let r = startRow; r <= endRow; r++)
-        for (let c = startCol; c <= endCol; c++) {
-            const idx = r * cols + c;
-            const nodeAIdx = cellToNode[idx];
-            if (nodeAIdx === -1) continue;
-            if (c + 1 <= endCol) {
-                const nodeBIdx = cellToNode[idx + 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-            if (r + 1 <= endRow) {
-                const nodeBIdx = cellToNode[idx + cols];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-            if (c + 1 <= endCol && r + 1 <= endRow) {
-                const nodeBIdx = cellToNode[idx + cols + 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols + 1) || navGraph.canStepIdx(idx + cols + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-            if (c - 1 >= startCol && r + 1 <= endRow) {
-                const nodeBIdx = cellToNode[idx + cols - 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols - 1) || navGraph.canStepIdx(idx + cols - 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-        }
-    return adjacencies;
-}
-export function mergeSmallRegions(nodesMap, cellToNode, frame, minCellsPerChunk, navGraph = null) {
-    const { cols, rows } = frame;
-    let merged;
-    do {
-        merged = false;
-        for (const idStr of Object.keys(nodesMap)) {
-            const id = Number(idStr);
-            const node = nodesMap[id];
-            if (!node) continue;
-            const nodeCells = node.cells;
-            if (!nodeCells || nodeCells.length === 0 || nodeCells.length >= minCellsPerChunk) continue;
-            let neighborNode = null;
-            for (let i = 0; i < nodeCells.length; i++) {
-                const cellIdx = nodeCells[i];
-                const col = cellIdx % cols;
-                const row = (cellIdx / cols) | 0;
-                for (let dir = 0; dir < OCTILE_DIR_COUNT; dir++) {
-                    const nCol = col + OCTILE_DCOL[dir];
-                    const nRow = row + OCTILE_DR[dir];
-                    if (nCol >= 0 && nCol < cols && nRow >= 0 && nRow < rows) {
-                        const nIdx = nRow * cols + nCol;
-                        const nNodeIdx = cellToNode[nIdx];
-                        if (nNodeIdx !== -1 && nNodeIdx !== node.idx) {
-                            const nNode = nodesMap[nNodeIdx];
-                            if (nNode && (!navGraph || (navGraph.canStepIdx(cellIdx, nIdx) && navGraph.canStepIdx(nIdx, cellIdx)))) {
-                                neighborNode = nNode;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (neighborNode) break;
-            }
-            if (neighborNode) {
-                const targetCells = neighborNode.cells;
-                for (let i = 0; i < nodeCells.length; i++) {
-                    const cellIdx = nodeCells[i];
-                    cellToNode[cellIdx] = neighborNode.idx;
-                    targetCells.push(cellIdx);
-                }
-                node.cells = [];
-                delete nodesMap[id];
-                merged = true;
-            }
-        }
-    } while (merged);
-}
-export function repositionRegionCentroids(nodesMap, grid, frame, cellToNode) {
-    const { cols } = frame;
-    for (const idStr of Object.keys(nodesMap)) {
-        const id = Number(idStr);
-        const node = nodesMap[id];
-        if (!node) continue;
-        const nodeCells = node.cells;
-        if (!nodeCells || nodeCells.length === 0) continue;
-        let sumCol = 0;
-        let sumRow = 0;
-        const count = nodeCells.length;
-        for (let i = 0; i < count; i++) {
-            const cellIdx = nodeCells[i];
-            sumCol += cellIdx % cols;
-            sumRow += (cellIdx / cols) | 0;
-        }
-        const startIdx = node.idx;
-        const centroidIdx = Math.floor(sumRow / count) * cols + Math.floor(sumCol / count);
-        const finalIdx = grid[centroidIdx] || cellToNode[centroidIdx] !== node.idx ? startIdx : centroidIdx;
-        if (finalIdx !== startIdx) {
-            node.idx = finalIdx;
-            const newId = finalIdx; // Pure integer ID
-            node.id = newId;
-            delete nodesMap[id];
-            nodesMap[newId] = node;
-            for (let i = 0; i < nodeCells.length; i++) cellToNode[nodeCells[i]] = finalIdx;
-        }
-    }
-}
-export function generateVoronoiRegions({ grid, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode = null, navGraph = null }) {
-    const { cols, rows } = frame;
-    const size = cols * rows;
-    const assignment = cellToNode ?? new Int32Array(size).fill(-1);
-    assignment.fill(-1);
-    const nodesMap = {};
-    const emptyCells = [];
-    for (let i = 0; i < size; i++) if (grid[i] === 0) emptyCells.push(i);
-    emptyCells.sort((a, b) => distToWall[b] - distToWall[a]);
-    for (const startIdx of emptyCells) {
-        if (assignment[startIdx] !== -1) continue;
-        const id = startIdx; // Pure integer ID
-        const node = new RegionNode(id, startIdx);
-        nodesMap[id] = node;
-        floodFillRegion(startIdx, node, grid, frame, assignment, node.cells, maxCellsPerChunk, navGraph);
-    }
-    if (minCellsPerChunk > 0) mergeSmallRegions(nodesMap, assignment, frame, minCellsPerChunk, navGraph);
-    repositionRegionCentroids(nodesMap, grid, frame, assignment);
-    return { nodesMap, cellToNode: assignment };
-}
-export function repositionNodeCentroid(node, cellToNode, grid, frame, nodesMap = null) {
-    const { cols } = frame;
-    const nodeCells = node.cells;
-    const count = nodeCells.length;
-    if (count === 0) return;
-    let sumCol = 0;
-    let sumRow = 0;
-    for (let i = 0; i < count; i++) {
-        const idx = nodeCells[i];
-        sumCol += idx % cols;
-        sumRow += (idx / cols) | 0;
-    }
-    const centroidIdx = Math.floor(sumRow / count) * cols + Math.floor(sumCol / count);
-    const finalIdx = grid[centroidIdx] || cellToNode[centroidIdx] !== node.idx ? nodeCells[0] : centroidIdx;
-    if (finalIdx !== node.idx) {
-        const oldId = node.id;
-        node.idx = finalIdx;
-        const newId = finalIdx; // Pure integer ID
-        node.id = newId;
-        if (nodesMap) {
-            delete nodesMap[oldId];
-            nodesMap[newId] = node;
-        }
-        for (let i = 0; i < nodeCells.length; i++) cellToNode[nodeCells[i]] = finalIdx;
-    }
-}
-export function findRegionAdjacencies(cellToNode, grid, frame, navGraph = null) {
-    const { cols, rows } = frame;
-    const adjacencies = new Set();
-    for (let r = 0; r < rows; r++)
-        for (let c = 0; c < cols; c++) {
-            const idx = r * cols + c;
-            const nodeAIdx = cellToNode[idx];
-            if (nodeAIdx === -1) continue;
-            if (c + 1 < cols) {
-                const nodeBIdx = cellToNode[idx + 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + 1) || navGraph.canStepIdx(idx + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-            if (r + 1 < rows) {
-                const nodeBIdx = cellToNode[idx + cols];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols) || navGraph.canStepIdx(idx + cols, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-            if (c + 1 < cols && r + 1 < rows) {
-                const nodeBIdx = cellToNode[idx + cols + 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols + 1) || navGraph.canStepIdx(idx + cols + 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-            if (c - 1 >= 0 && r + 1 < rows) {
-                const nodeBIdx = cellToNode[idx + cols - 1];
-                if (nodeBIdx !== -1 && nodeAIdx !== nodeBIdx && (!navGraph || navGraph.canStepIdx(idx, idx + cols - 1) || navGraph.canStepIdx(idx + cols - 1, idx))) adjacencies.add(makeAdjacencyKey(nodeAIdx, nodeBIdx));
-            }
-        }
-    return adjacencies;
-}
 export const REGION_CELL_UNASSIGNED = -1;
-export class HpaRegionGraph {
-    constructor(frame, nodesMap = {}, cellToNode = null, nodeIdCounter = 0) {
-        this.frame = frame;
-        this.nodesMap = nodesMap;
-        this.cellToNode = cellToNode ?? new Int32Array(frame.cols * frame.rows).fill(-1);
-        this.nodeIdCounter = nodeIdCounter;
-    }
-    static fromState(state, frame) {
-        return new HpaRegionGraph(frame, state.nodesMap, state.cellToNode, state.nodeIdCounter);
-    }
-    static fromVoronoiResult(result, frame) {
-        return new HpaRegionGraph(frame, result.nodesMap, result.cellToNode, 0);
-    }
-    exportState() {
-        return { nodesMap: this.nodesMap, cellToNode: this.cellToNode, nodeIdCounter: this.nodeIdCounter };
-    }
-    assignCell(node, idx) {
-        if (!node) return;
-        this.cellToNode[idx] = node.idx;
-        node.cells.push(idx);
-    }
-    unassignCell(idx) {
-        this.cellToNode[idx] = -1;
-    }
-    nodes() {
-        return Object.values(this.nodesMap);
-    }
-    nodeIds() {
-        return Object.keys(this.nodesMap);
-    }
-    clearEdges(node) {
-        if (node) node.edges = [];
-    }
-    clearAllEdges() {
-        for (const node of this.nodes()) this.clearEdges(node);
-    }
-    connectEdge(nodeA, nodeB) {
-        if (!nodeA || !nodeB || nodeA.id === nodeB.id) return;
-        const cols = this.frame.cols;
-        const costAB = octileDistanceIdx(nodeA.idx, nodeB.idx, cols);
-        if (costAB > 0 && !nodeA.edges.some((e) => e.targetId === nodeB.id)) nodeA.edges.push({ targetId: nodeB.id, cost: costAB });
-    }
-    stripEdgesBetween(nodeA, nodeB) {
-        if (!nodeA || !nodeB) return;
-        _removeEdgeByTargetId(nodeA.edges, nodeB.id);
-        _removeEdgeByTargetId(nodeB.edges, nodeA.id);
-    }
-    removeInboundEdges(targetId) {
-        for (const node of this.nodes()) _removeEdgeByTargetId(node.edges, targetId);
-    }
-    createRegionAtCell(startIdx) {
-        const id = startIdx;
-        const node = new RegionNode(id, startIdx);
-        this.nodesMap[id] = node;
-        return node;
-    }
-    getNode(idOrIdx) {
-        return this.nodesMap[idOrIdx] ?? null;
-    }
-    nodeForCell(idx) {
-        const nodeIdx = this.cellToNode[idx];
-        if (nodeIdx === undefined || nodeIdx === -1) return null;
-        return this.nodesMap[nodeIdx] ?? null;
-    }
-    removeRegion(node) {
-        if (!node) throw new Error("removeRegion: node must be defined");
-        for (let i = 0; i < node.cells.length; i++) this.cellToNode[node.cells[i]] = -1;
-        delete this.nodesMap[node.id];
-        this.removeInboundEdges(node.id);
-    }
-    collectRegionIdsInBounds(bounds) {
-        const ids = new Set();
-        forEachDenseCellInBounds(this.frame, bounds, (idx) => {
-            const node = this.nodeForCell(idx);
-            if (node) ids.add(node.id);
-        });
-        return ids;
-    }
-    stripCellFromRegion(idx) {
-        const node = this.nodeForCell(idx);
-        if (!node) return null;
-        _removeCellByIdx(node.cells, idx);
-        this.unassignCell(idx);
-        return node;
-    }
-    syncState(state) {
-        state.nodesMap = this.nodesMap;
-        state.cellToNode = this.cellToNode;
-        state.nodeIdCounter = this.nodeIdCounter;
-    }
-}
-export function expandRegionDamageBounds(idxOrBounds, frame, padding = 12) {
-    if (typeof idxOrBounds === "number") return padCellIdxToGrid(idxOrBounds, frame, padding);
-    return padCellBoundsInPlace({ startCol: idxOrBounds.startCol, endCol: idxOrBounds.endCol, startRow: idxOrBounds.startRow, endRow: idxOrBounds.endRow }, frame, padding);
-}
-export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount, octileNeighbors = null } = opts;
-    const { cols, rows } = frame;
+export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
-    const cellToNode = new Int32Array(size).fill(-1);
-    let distToWall = computeDistanceTransform(blocked, frame);
-    const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
-    const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
-    connectAllNodes(navGraph, blocked, frame, graph);
-    injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
-    distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
-    bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, graph, octileNeighbors, activePortalPairs, activePortalCount);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
-    return { ...graph.exportState(), graph };
-}
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount, octileNeighbors = null) {
-    const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
-    const { cols, rows } = frame;
-    if (!bounds || cols === 0 || rows === 0) return state;
-    const graph = state.graph instanceof HpaRegionGraph ? state.graph : HpaRegionGraph.fromState(state, frame);
-    graph.frame = frame;
-    let distToWall = state.distToWall;
-    const box = expandRegionDamageBounds(bounds, frame, damagePadding);
-    stripBlockedCellsFromRegions(blocked, frame, box, graph);
-    const { repackedIds, nodeIdCounter, distToWall: dist } = repackHullRegions(blocked, frame, maxCellsPerChunk, minCellsPerChunk, navGraph, distToWall, graph, box);
-    graph.nodeIdCounter = nodeIdCounter;
-    graph.syncState(state);
-    state.graph = graph;
-    state.nodeIdCounter = nodeIdCounter;
-    state.distToWall = dist;
-    const reconnectIds = new Set(repackedIds);
-    for (const id of graph.collectRegionIdsInBounds(box)) reconnectIds.add(id);
-    for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
-    for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
-    state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
-    injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
-    bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, graph, octileNeighbors, activePortalPairs, activePortalCount);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
-    graph.syncState(state);
-    return state;
-}
-export function packRegionGraphFlat(nodesMap, cellToNode, frame) {
-    const graph = nodesMap instanceof HpaRegionGraph ? nodesMap : new HpaRegionGraph(frame, nodesMap, cellToNode);
-    const size = frame.cols * frame.rows;
-    const cellToRegion = new Int16Array(size);
-    cellToRegion.fill(REGION_CELL_UNASSIGNED);
-    const idToIdx = new Int32Array(size);
-    idToIdx.fill(-1);
-    const nodes = Object.values(graph.nodesMap);
-    const nodeCount = nodes.length;
-    const nodeIdx = new Int32Array(nodeCount);
-    const nodeIds = new Int32Array(nodeCount);
-    for (let i = 0; i < nodeCount; i++) {
-        const node = nodes[i];
-        nodeIds[i] = node.id;
-        idToIdx[node.id] = i;
-        nodeIdx[i] = node.idx;
-        for (let c = 0; c < node.cells.length; c++) cellToRegion[node.cells[c]] = i;
+    const cellToComponent = new Int16Array(size);
+    cellToComponent.fill(REGION_CELL_UNASSIGNED);
+    let componentId = 0;
+    const portalCount = activePortalPairCount(activePortalCount);
+    for (let start = 0; start < size; start++) {
+        if (blocked[start] || cellToComponent[start] >= 0) continue;
+        const id = componentId++;
+        bfsIndices([start], (idx, enqueue) => {
+            if (blocked[idx] || cellToComponent[idx] >= 0) return;
+            cellToComponent[idx] = id;
+            forEachNavWalkNeighbor(idx, blocked, octileNeighbors, activePortalPairs, portalCount, (nIdx) => {
+                if (cellToComponent[nIdx] < 0) enqueue(nIdx);
+            });
+        });
     }
-    const edgeSources = [];
-    const edgeTargets = [];
-    const edgeCosts = [];
-    for (let i = 0; i < nodeCount; i++) {
-        const edges = nodes[i].edges;
-        for (let e = 0; e < edges.length; e++) {
-            const targetIdx = idToIdx[edges[e].targetId];
-            if (targetIdx === -1) continue;
-            edgeSources.push(i);
-            edgeTargets.push(targetIdx);
-            edgeCosts.push(edges[e].cost);
-        }
-    }
-    return { nodeCount, nodeIdx, cellToRegion, edgeSources: Int16Array.from(edgeSources), edgeTargets: Int16Array.from(edgeTargets), edgeCosts: Uint16Array.from(edgeCosts), edgeWrite: edgeSources.length, nodeIds, idToIdx };
-}
-// --- HpaNavigation.js ---
-export const HPA_REPLAN_FRAME_START_BUDGET = 12;
-export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
-export class HpaAbstractGraph extends FlatGraphView {
-    constructor(nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds) {
-        super({ nodeIdx, cols, edgeOffsets, edgeTargets, edgeCosts, nodeCount, edgeWrite, nodeIds });
-        this._candidateSeen = new Int32Array(nodeCount).fill(-1);
-        this._candidateGen = -1;
-        const extCount = nodeCount + 2;
-        const maxEdges = Math.max(edgeWrite + nodeCount * 2, nodeCount * 8 + 128);
-        this._extNodeIdx = new Int32Array(extCount);
-        this._targetConnectCost = new Int32Array(nodeCount);
-        this._startEdgesTarget = new Int32Array(nodeCount);
-        this._startEdgesCost = new Int32Array(nodeCount);
-        this._extEdgeOffsets = new Int32Array(extCount + 1);
-        this._extEdgeTargets = new Int16Array(maxEdges);
-        this._extEdgeCosts = new Uint16Array(maxEdges);
-    }
-    collectTempConnectCandidates(centerIdx, isStart, maxCellsPerChunk, anchorRegionIdx) {
-        const searchRadius = Math.ceil(Math.sqrt(maxCellsPerChunk)) * 2;
-        const out = [];
-        const seen = this._candidateSeen;
-        const gen = ++this._candidateGen;
-        const add = (idx) => {
-            if (idx < 0 || idx >= this.nodeCount || seen[idx] === gen) return;
-            seen[idx] = gen;
-            out.push(idx);
-        };
-        if (anchorRegionIdx >= 0) {
-            add(anchorRegionIdx);
-            if (isStart) {
-                const edgeStart = this.edgeOffsets[anchorRegionIdx];
-                const edgeEnd = this.edgeOffsets[anchorRegionIdx + 1];
-                for (let e = edgeStart; e < edgeEnd; e++) add(this.edgeTargets[e]);
-            } else
-                for (let i = 0; i < this.nodeCount; i++) {
-                    const edgeStart = this.edgeOffsets[i];
-                    const edgeEnd = this.edgeOffsets[i + 1];
-                    for (let e = edgeStart; e < edgeEnd; e++)
-                        if (this.edgeTargets[e] === anchorRegionIdx) {
-                            add(i);
-                            break;
-                        }
-                }
-            return out;
-        }
-        for (let i = 0; i < this.nodeCount; i++) {
-            const idx = this.nodeIdx[i];
-            if (octileDistanceIdx(centerIdx, idx, this.cols) <= searchRadius) add(i);
-        }
-        return out;
-    }
-    buildExtended(startIdx, targetIdx, cols, prep, maxCellsPerChunk, resolveLegCost) {
-        const startCandidates = this.collectTempConnectCandidates(startIdx, true, maxCellsPerChunk, prep.startRegion);
-        const targetCandidates = this.collectTempConnectCandidates(targetIdx, false, maxCellsPerChunk, prep.targetRegion);
-        const startTemp = this.nodeCount;
-        const targetTemp = this.nodeCount + 1;
-        const extCount = this.nodeCount + 2;
-        const extNodeIdx = this._extNodeIdx;
-        extNodeIdx.set(this.nodeIdx);
-        extNodeIdx[startTemp] = startIdx;
-        extNodeIdx[targetTemp] = targetIdx;
-        const targetConnectCost = this._targetConnectCost;
-        targetConnectCost.fill(0, 0, this.nodeCount);
-        let currentOffset = 0;
-        for (let i = 0; i < targetCandidates.length; i++) {
-            const cIdx = targetCandidates[i];
-            const legKey = (cIdx << 16) | targetTemp;
-            const cNodeIdx = extNodeIdx[cIdx];
-            const cost = resolveLegCost(cNodeIdx, targetIdx, legKey, currentOffset);
-            if (cost > 0) {
-                targetConnectCost[cIdx] = cost;
-                currentOffset += cost;
-            }
-        }
-        const startEdgesTarget = this._startEdgesTarget;
-        const startEdgesCost = this._startEdgesCost;
-        let startEdgesCount = 0;
-        for (let i = 0; i < startCandidates.length; i++) {
-            const cIdx = startCandidates[i];
-            const legKey = (startTemp << 16) | cIdx;
-            const cNodeIdx = extNodeIdx[cIdx];
-            const cost = resolveLegCost(startIdx, cNodeIdx, legKey, currentOffset);
-            if (cost > 0) {
-                startEdgesTarget[startEdgesCount] = cIdx;
-                startEdgesCost[startEdgesCount] = cost;
-                startEdgesCount++;
-                currentOffset += cost;
-            }
-        }
-        const extEdgeOffsets = this._extEdgeOffsets;
-        extEdgeOffsets[0] = 0;
-        for (let i = 0; i < this.nodeCount; i++) {
-            const baseCount = this.edgeOffsets[i + 1] - this.edgeOffsets[i];
-            const extraCount = targetConnectCost[i] > 0 ? 1 : 0;
-            extEdgeOffsets[i + 1] = extEdgeOffsets[i] + baseCount + extraCount;
-        }
-        extEdgeOffsets[startTemp + 1] = extEdgeOffsets[startTemp] + startEdgesCount;
-        extEdgeOffsets[targetTemp + 1] = extEdgeOffsets[targetTemp];
-        const totalEdges = extEdgeOffsets[extCount];
-        const extEdgeTargets = this._extEdgeTargets;
-        const extEdgeCosts = this._extEdgeCosts;
-        for (let i = 0; i < this.nodeCount; i++) {
-            let write = extEdgeOffsets[i];
-            const baseStart = this.edgeOffsets[i];
-            const baseEnd = this.edgeOffsets[i + 1];
-            for (let e = baseStart; e < baseEnd; e++) {
-                extEdgeTargets[write] = this.edgeTargets[e];
-                extEdgeCosts[write] = this.edgeCosts[e];
-                write++;
-            }
-            if (targetConnectCost[i] > 0) {
-                extEdgeTargets[write] = targetTemp;
-                extEdgeCosts[write] = targetConnectCost[i];
-                write++;
-            }
-        }
-        let startWrite = extEdgeOffsets[startTemp];
-        for (let i = 0; i < startEdgesCount; i++) {
-            extEdgeTargets[startWrite] = startEdgesTarget[i];
-            extEdgeCosts[startWrite] = startEdgesCost[i];
-            startWrite++;
-        }
-        const extendedGraph = new FlatGraphView({ nodeIdx: extNodeIdx, cols, edgeOffsets: extEdgeOffsets, edgeTargets: extEdgeTargets, edgeCosts: extEdgeCosts, nodeCount: extCount, edgeWrite: totalEdges, nodeIds: this.nodeIds });
-        return { extendedGraph, startTemp, targetTemp };
-    }
+    return cellToComponent;
 }
 export class HpaReplanRequest {
     constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, state = null }) {
@@ -2527,47 +2097,8 @@ export class HpaReplanRequest {
         navState.lastTargetY = this.targetY;
     }
 }
-export function prepareHpaReplanPrep(cols, rows, cellToRegion, graphMeta, startIdx, targetIdx, cellToComponent = null) {
-    const legMaxCost = Math.max((cols + rows) * 21, 16384);
-    const localMaxCost = cols * rows * 15;
-    if (cellToComponent && cellToComponent[startIdx] >= 0 && cellToComponent[startIdx] === cellToComponent[targetIdx]) return { mode: "local", startIdx, targetIdx, legMaxCost: localMaxCost };
-    const startRegion = cellToRegion[startIdx];
-    const targetRegion = cellToRegion[targetIdx];
-    if (startRegion >= 0 && startRegion === targetRegion) return { mode: "local", startIdx, targetIdx, legMaxCost: localMaxCost };
-    const { nodeIds, nodeIdx } = graphMeta;
-    return { mode: "hpa", startIdx, targetIdx, nodeCount: graphMeta.nodeCount, nodeIds, nodeIdx, legMaxCost, startRegion, targetRegion };
-}
-export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activePortalPairs = null, activePortalCount = null) {
-    const size = cols * rows;
-    const cellToComponent = new Int16Array(size);
-    cellToComponent.fill(REGION_CELL_UNASSIGNED);
-    let componentId = 0;
-    const portalCount = activePortalPairCount(activePortalCount);
-    for (let start = 0; start < size; start++) {
-        if (blocked[start] || cellToComponent[start] >= 0) continue;
-        const id = componentId++;
-        bfsIndices([start], (idx, enqueue) => {
-            if (blocked[idx] || cellToComponent[idx] >= 0) return;
-            cellToComponent[idx] = id;
-            forEachNavWalkNeighbor(idx, blocked, octileNeighbors, activePortalPairs, portalCount, (nIdx) => {
-                if (cellToComponent[nIdx] < 0) enqueue(nIdx);
-            });
-        });
-    }
-    return cellToComponent;
-}
-export function findPortalLegBetweenRegions(cellToRegion, pairs, count, regionAIdx, regionBIdx, scratch) {
-    for (let i = 0; i < count; i++) {
-        const exitIdx = pairs[i * 2];
-        const entryIdx = pairs[i * 2 + 1];
-        if (cellToRegion[exitIdx] !== regionAIdx) continue;
-        if (cellToRegion[entryIdx] !== regionBIdx) continue;
-        scratch[0] = exitIdx;
-        scratch[1] = entryIdx;
-        return 2;
-    }
-    return 0;
-}
+export const HPA_REPLAN_FRAME_START_BUDGET = 12;
+export const HPA_REPLAN_PEAK_INFLIGHT_CAP = 16;
 export class HpaPathSession {
     constructor(hpaPathWorker, { frameStartBudget = HPA_REPLAN_FRAME_START_BUDGET, peakInflightCap = HPA_REPLAN_PEAK_INFLIGHT_CAP } = {}) {
         this.worker = hpaPathWorker;

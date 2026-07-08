@@ -1,23 +1,17 @@
-import { expandRegionDamageBounds, createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, buildNavComponentMap } from "../Navigation/navigation.js";
+import { createNavTopologySabArena, growNavTopologyVertexSab, packNavTopologyFromGrid, buildNavComponentMap } from "../Navigation/navigation.js";
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
 import { gridFrameFromGrid } from "../Navigation/navigation.js";
 import { gridNavCacheKey, isNavTopologyReady, unionCellBounds } from "../Spatial/spatial.js";
-import { createHpaWorkerSabPools, growHpaCellToRegionSab, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
+import { createHpaWorkerSabPools, growHpaPathIdxSab, hpaPathSlotMeta, hpaPathSlotIdx, hpaPathSlotAbstractIdx } from "./hpaWorkerSab.js";
 import { gridSettings } from "../../Config/world.js";
 import { navEdgePoolSabByteLength, packEdgePoolToSab } from "../Spatial/spatial.js";
 export const MAX_HPA_REPLAN_SLOTS = 512;
 export const MAX_HPA_PATH_LEN = 1024;
 export const MAX_HPA_GRAPH_NODES = 4096 * 2;
 export const MAX_HPA_ABSTRACT_LEN = MAX_HPA_GRAPH_NODES + 2;
-const MAX_GRAPH_EDGES = MAX_HPA_GRAPH_NODES * 32;
 const HPA_DONE = "hpaDone";
 const SYNC_NAV_DONE = "syncNavDone";
-const GRAPH_PATCH_DONE = "graphPatchDone";
-const GRAPH_PATCH_ERROR = "graphPatchError";
 const GROW_PATH_SAB_DONE = "growPathSabDone";
-/**
- * Multi-slot HPA worker — persistent nav topology + abstract graph on worker thread.
- */
 export class HpaPathWorker {
     constructor(workerUrl, navGraph) {
         this.workerUrl = workerUrl;
@@ -36,22 +30,13 @@ export class HpaPathWorker {
         this._workerBoundEdgePoolSab = 0;
         this._deferFullNavSync = false;
         this._deferNavBounds = undefined;
-        this._graphEpoch = -1;
-        this._graphPatchTargetEpoch = -1;
-        this._graphPatchChain = Promise.resolve();
         this._pathSabGrowChain = Promise.resolve();
         this._pathSabGrowResolve = null;
-        this._graphSize = 0;
-        this._damagePadding = 12;
         this._shutDown = false;
         this._topologySyncTarget = null;
         this._debugViewCacheKey = "";
         this._debugViewCellToComponent = null;
-        this.graphIdToIdx = new Map();
-        this.graphNodeIds = [];
-        this.graphNodeCount = 0;
-        Object.assign(this, createHpaWorkerSabPools({ maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: MAX_HPA_PATH_LEN, maxAbstractLen: MAX_HPA_ABSTRACT_LEN, maxGraphNodes: MAX_HPA_GRAPH_NODES, maxGraphEdges: MAX_GRAPH_EDGES }));
-        this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
+        Object.assign(this, createHpaWorkerSabPools({ maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: MAX_HPA_PATH_LEN, maxAbstractLen: MAX_HPA_ABSTRACT_LEN }));
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
         /** @type {(object | null)[]} */
@@ -61,7 +46,7 @@ export class HpaPathWorker {
         this.protocol.postMessage({ type: "init", data: this._workerInitData() });
     }
     _workerInitData() {
-        return { maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: this.maxPathLen, maxAbstractLen: MAX_HPA_ABSTRACT_LEN, maxGraphNodes: MAX_HPA_GRAPH_NODES, maxGraphEdges: MAX_GRAPH_EDGES, maxCellsPerChunk: gridSettings.maxCellsPerChunk, minCellsPerChunk: gridSettings.minCellsPerChunk, sabPathMetaPool: this.sabPathMetaPool, sabPathIdxPool: this.sabPathIdxPool, sabAbstractIdxPool: this.sabAbstractIdxPool, sabPersistGraphNodeIdx: this.sabPersistGraphNodeIdx, sabPersistGraphEdgeOffsets: this.sabPersistGraphEdgeOffsets, sabPersistGraphEdgeTargets: this.sabPersistGraphEdgeTargets, sabPersistGraphEdgeCosts: this.sabPersistGraphEdgeCosts, sabPersistGraphEdgeSources: this.sabPersistGraphEdgeSources, sabCellToRegionIdx: this.sabCellToRegionIdx };
+        return { maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: this.maxPathLen, maxAbstractLen: MAX_HPA_ABSTRACT_LEN, sabPathMetaPool: this.sabPathMetaPool, sabPathIdxPool: this.sabPathIdxPool, sabAbstractIdxPool: this.sabAbstractIdxPool };
     }
     _handleWorkerMessage(data) {
         const { type, slot, requestId } = data;
@@ -82,26 +67,6 @@ export class HpaPathWorker {
             }
             return;
         }
-        if (type === GRAPH_PATCH_DONE) {
-            this.graphNodeCount = data.nodeCount;
-            this.graphNodeIds = data.nodeIds ?? [];
-            this.graphIdToIdx = new Map();
-            for (let i = 0; i < this.graphNodeIds.length; i++) this.graphIdToIdx.set(this.graphNodeIds[i], i);
-            this._graphEpoch = this._graphPatchTargetEpoch;
-            const expectedSize = this.navGraph.cols * this.navGraph.rows;
-            if (expectedSize > 0) this._ensureGraphCellBuffers(this.navGraph.cols, this.navGraph.rows);
-            const resolve = this._graphPatchResolve;
-            this._graphPatchResolve = null;
-            resolve?.();
-            return;
-        }
-        if (type === GRAPH_PATCH_ERROR) {
-            console.error("HPA region graph patch failed:", data.message);
-            const resolve = this._graphPatchResolve;
-            this._graphPatchResolve = null;
-            resolve?.();
-            return;
-        }
         if (type === GROW_PATH_SAB_DONE) {
             const resolve = this._pathSabGrowResolve;
             this._pathSabGrowResolve = null;
@@ -117,11 +82,6 @@ export class HpaPathWorker {
     _ensureGraphCellBuffers(cols, rows) {
         const size = cols * rows;
         if (size <= 0) return;
-        if (this._graphSize !== size) {
-            this._graphSize = size;
-            this.sabCellToRegionIdx = growHpaCellToRegionSab(this.sabCellToRegionIdx, size);
-            this.graphCellToRegion = new Int16Array(this.sabCellToRegionIdx);
-        }
         const stitchedMax = size;
         if (stitchedMax > this.maxPathLen) {
             this.sabPathIdxPool = growHpaPathIdxSab(this.sabPathIdxPool, MAX_HPA_REPLAN_SLOTS, stitchedMax);
@@ -136,42 +96,14 @@ export class HpaPathWorker {
             this.protocol.postMessage({ type: "growPathSab", sabPathIdxPool: this.sabPathIdxPool, maxPathLen: this.maxPathLen });
         });
     }
-    _postGraphPatch(type, payload, graphEpoch) {
-        const run = () => {
-            this._graphPatchTargetEpoch = graphEpoch;
-            return new Promise((resolve) => {
-                this._graphPatchResolve = resolve;
-                this.protocol.postMessage({ type, sabCellToRegionIdx: this.sabCellToRegionIdx, ...payload });
-            });
-        };
-        this._graphPatchChain = this._graphPatchChain.then(run, run);
-        return this._graphPatchChain;
-    }
-    async syncObstacleNavGraph(grid, idx, graphEpoch, fullGraph) {
-        const boundsOrIdx = fullGraph ? null : idx;
-        await this.scheduleNavTopologySyncAwait(grid, boundsOrIdx);
-        const size = grid.cols * grid.rows;
-        this._ensureGraphCellBuffers(grid.cols, grid.rows);
-        if (fullGraph) {
-            await this._postGraphPatch("buildRegionGraphFull", { gridFrameKey: this._gridFrame.key, damagePadding: this._damagePadding, minCellsPerChunk: gridSettings.minCellsPerChunk }, graphEpoch);
-            return;
-        }
-        const box = expandRegionDamageBounds(boundsOrIdx, this._gridFrame, this._damagePadding);
-        await this._postGraphPatch("patchRegionGraph", { gridFrameKey: this._gridFrame.key, bounds: box }, graphEpoch);
-    }
     async awaitGraphReady() {
         if (this._navSyncPromise) await this._navSyncPromise;
-        await this._graphPatchChain;
     }
-    /** @param {import("../Spatial/grid/WorldObstacleGrid.js").WorldObstacleGrid} grid */
     isRegionGraphReady(grid = this.navGraph) {
-        const size = grid.cols * grid.rows;
-        if (size <= 0 || this._graphSize !== size) return false;
-        if (this.graphNodeCount <= 0) return false;
-        return this.sabCellToRegionIdx.byteLength >> 1 >= size;
+        return isNavTopologyReady(this, grid);
     }
     _regionGraphDebugViewCacheKey(grid) {
-        return `${gridNavCacheKey(grid)}:${this._syncedNavCacheKey}:${this._graphEpoch}`;
+        return `${gridNavCacheKey(grid)}:${this._syncedNavCacheKey}`;
     }
     _invalidateRegionGraphDebugViewCache() {
         this._debugViewCacheKey = "";
@@ -179,12 +111,8 @@ export class HpaPathWorker {
     }
     getRegionGraphDebugView(grid) {
         const size = grid.cols * grid.rows;
-        if (!this.isRegionGraphReady(grid)) return null;
-        const nodeCount = this.graphNodeCount;
-        const nodeIdx = new Int32Array(this.sabPersistGraphNodeIdx, 0, nodeCount);
         const topology = this.getNavTopology();
         const blocked = topology?.blocked ?? grid.grid;
-        const cellToRegion = size > 0 ? new Int16Array(this.sabCellToRegionIdx, 0, size) : this.graphCellToRegion;
         const debugCacheKey = this._regionGraphDebugViewCacheKey(grid);
         if (this._debugViewCacheKey !== debugCacheKey) {
             this._debugViewCellToComponent = topology?.octileNeighbors ? buildNavComponentMap(blocked, topology.octileNeighbors, grid.cols, grid.rows, grid.activePortalPairs, grid.activePortalCount) : new Int16Array(size).fill(-1);
@@ -199,11 +127,11 @@ export class HpaPathWorker {
             cellSize: grid.cellSize,
             grid: blocked,
             floorPacked: grid.floorPacked,
-            cellToRegion,
+            cellToRegion: null,
             cellToComponent,
-            nodeCount,
-            nodeIdx,
-            nodeIds: this.graphNodeIds,
+            nodeCount: 0,
+            nodeIdx: null,
+            nodeIds: [],
             gridCenterXByIdx(idx) {
                 return grid.gridCenterXByIdx(idx);
             },
@@ -240,7 +168,7 @@ export class HpaPathWorker {
         return this._abstractIdx(slot)[i];
     }
     graphNodeIdx(idx) {
-        return new Int32Array(this.sabPersistGraphNodeIdx, 0, this.graphNodeCount)[idx];
+        return -1;
     }
     _pathMeta(slot) {
         return hpaPathSlotMeta(this.sabPathMetaPool, slot);
@@ -318,6 +246,10 @@ export class HpaPathWorker {
             if (damageBounds != null) break;
         }
     }
+    async syncObstacleNavGraph(grid, idx, graphEpoch, fullGraph) {
+        const boundsOrIdx = fullGraph ? null : idx;
+        await this.scheduleNavTopologySyncAwait(grid, boundsOrIdx);
+    }
     _navTopologySyncMessage(grid, cacheKey, rebindArena, damageBounds) {
         this._gridFrame = gridFrameFromGrid(grid);
         const payload = { type: "buildNavTopology", navCacheKey: cacheKey, gridFrame: this._gridFrame, edgePoolCount: this._edgePoolSabRefs, rebindArena, damageBounds };
@@ -365,10 +297,6 @@ export class HpaPathWorker {
             this.protocol.postMessage(this._navTopologySyncMessage(grid, this._inFlightNavCacheKey, rebindArena, rebindArena ? null : damageBounds));
         });
     }
-    async _ensureWorkerGraphReady(graphEpoch) {
-        await this.awaitGraphReady();
-        return this._graphEpoch >= graphEpoch && this.graphNodeCount > 0;
-    }
     recycleWorker() {
         console.warn("HpaPathWorker: Web Worker hung or timed out. Recycling worker thread...");
         this._recycleWorkerThread();
@@ -378,16 +306,10 @@ export class HpaPathWorker {
         this._workerNavArenaBound = false;
         this._syncedNavCacheKey = "";
         this._inFlightNavCacheKey = "";
-        this._graphEpoch = -1;
-        this._graphPatchTargetEpoch = -1;
         this.protocol.invalidateSlots();
         if (this._navSyncResolve) {
             this._navSyncResolve();
             this._navSyncResolve = null;
-        }
-        if (this._graphPatchResolve) {
-            this._graphPatchResolve();
-            this._graphPatchResolve = null;
         }
         this.protocol.postMessage({ type: "init", data: this._workerInitData() });
     }
@@ -421,8 +343,6 @@ export class HpaPathWorker {
         await this.scheduleNavTopologySyncAwait(request.obstacleGrid, null);
         if (!isNavTopologyReady(this, request.obstacleGrid)) return null;
         this.releaseOwnedPathSlot(navState);
-        if (this._graphEpoch < request.graphEpoch) await this.syncObstacleNavGraph(request.obstacleGrid, null, request.graphEpoch, true);
-        if (!(await this._ensureWorkerGraphReady(request.graphEpoch))) return null;
         const slot = this.leaseSlot();
         let workerOut = null;
         try {
@@ -438,7 +358,6 @@ export class HpaPathWorker {
         workerOut.result.pathSlot = slot;
         return workerOut;
     }
-    /** Release pending slot waiters and worker handlers before thread termination (tests). */
     shutdown() {
         this._shutDown = true;
         this.protocol.shutdown();
@@ -446,11 +365,6 @@ export class HpaPathWorker {
         if (this._navSyncResolve) {
             this._navSyncResolve();
             this._navSyncResolve = null;
-        }
-        this._graphPatchChain = Promise.resolve();
-        if (this._graphPatchResolve) {
-            this._graphPatchResolve();
-            this._graphPatchResolve = null;
         }
     }
 }
