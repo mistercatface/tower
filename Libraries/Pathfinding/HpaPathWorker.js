@@ -252,7 +252,8 @@ export class HpaPathWorker {
         this.sabBlocked = arena.sabBlocked;
         this.sabGridFill = arena.sabGridFill;
         this.sabFloorPacked = arena.sabFloorPacked;
-        this.sabPortalTargetIdx = arena.sabPortalTargetIdx;
+        this.sabActivePortalPairs = arena.sabActivePortalPairs;
+        this.sabActivePortalCount = arena.sabActivePortalCount;
         this.sabEdgeSlots = arena.sabEdgeSlots;
         this.sabOctileNeighbors = arena.sabOctileNeighbors;
         this.sabOctilePredecessors = arena.sabOctilePredecessors;
@@ -306,7 +307,7 @@ export class HpaPathWorker {
         this._gridFrame = gridFrameFromGrid(grid);
         const payload = { type: "buildNavTopology", navCacheKey: cacheKey, gridFrame: this._gridFrame, edgePoolCount: this._edgePoolSabRefs, rebindArena, damageBounds };
         if (!rebindArena) return payload;
-        return { ...payload, sabBlocked: this.sabBlocked, sabCardinalOpen: this.sabCardinalOpen, sabVertexPassability: this.sabVertexPassability, sabOctileNeighbors: this.sabOctileNeighbors, sabOctilePredecessors: this.sabOctilePredecessors, sabEdgePool: this.sabEdgePool, sabGridFill: this.sabGridFill, sabFloorPacked: this.sabFloorPacked, sabPortalTargetIdx: this.sabPortalTargetIdx, sabEdgeSlots: this.sabEdgeSlots };
+        return { ...payload, sabBlocked: this.sabBlocked, sabCardinalOpen: this.sabCardinalOpen, sabVertexPassability: this.sabVertexPassability, sabOctileNeighbors: this.sabOctileNeighbors, sabOctilePredecessors: this.sabOctilePredecessors, sabEdgePool: this.sabEdgePool, sabGridFill: this.sabGridFill, sabFloorPacked: this.sabFloorPacked, sabActivePortalPairs: this.sabActivePortalPairs, sabActivePortalCount: this.sabActivePortalCount, sabEdgeSlots: this.sabEdgeSlots };
     }
     scheduleNavTopologySync(grid = this.navGraph, damageBounds = null) {
         if (this._shutDown || (damageBounds == null && isNavTopologyReady(this, grid))) return;

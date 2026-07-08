@@ -19,8 +19,16 @@ import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
 import { mockCircleProp } from "./harness/kineticTickHarness.js";
 
 function portalLinkPairsFromTargetIdx(portalTargetIdx) {
-    const collected = PortalNavGraph.collectActiveLinks(portalTargetIdx, new Int32Array(8));
-    return { pairs: collected.pairs, count: collected.count };
+    const pairs = new Int32Array(8);
+    let count = 0;
+    for (let i = 0; i < portalTargetIdx.length; i++) {
+        if (portalTargetIdx[i] >= 0) {
+            pairs[count * 2] = i;
+            pairs[count * 2 + 1] = portalTargetIdx[i];
+            count++;
+        }
+    }
+    return { pairs, count };
 }
 
 function buildTestRegionGraph(opts) {
@@ -240,7 +248,8 @@ describe("portal nav", () => {
         planner.gridSearch.neighbors = topology.octileNeighbors;
         planner.gridSearch.cols = cols;
         const prep = { legMaxCost: Math.max((cols + rows) * 21, 16384) };
-        planner.syncPortalLinkPairs(grid.portalTargetIdx);
+        planner.activePortalPairs = grid.activePortalPairs;
+        planner.activePortalCount = new Int32Array([grid.activePortalCount]);
         const legLen = planner.resolveRegionLeg(planner.gridSearch, abstractGraph, prep, exitRegion, entryRegion, cols, packed.cellToRegion);
         assert.ok(legLen >= 3);
         const leg = planner.localPathScratch;

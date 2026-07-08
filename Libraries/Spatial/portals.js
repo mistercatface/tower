@@ -49,11 +49,25 @@ function portalTeleportHandler(body) {
 }
 export class PortalLink {
     static isExit(grid, idx) {
-        return grid.portalTargetIdx[idx] >= 0;
+        if (grid.portalTargetIdx) return grid.portalTargetIdx[idx] >= 0;
+        const pairs = grid.activePortalPairs;
+        if (!pairs) return false;
+        const count = grid.activePortalCount;
+        const len = typeof count === "number" ? count : count[0];
+        for (let i = 0; i < len; i++) if (pairs[i * 2] === idx) return true;
+        return false;
     }
     static targetIdx(grid, idx) {
-        const target = grid.portalTargetIdx[idx];
-        return target >= 0 ? target : PORTAL_NONE;
+        if (grid.portalTargetIdx) {
+            const target = grid.portalTargetIdx[idx];
+            return target >= 0 ? target : PORTAL_NONE;
+        }
+        const pairs = grid.activePortalPairs;
+        if (!pairs) return PORTAL_NONE;
+        const count = grid.activePortalCount;
+        const len = typeof count === "number" ? count : count[0];
+        for (let i = 0; i < len; i++) if (pairs[i * 2] === idx) return pairs[i * 2 + 1];
+        return PORTAL_NONE;
     }
     static blocksStep(grid, fromIdx, toIdx) {
         if (PortalLink.isExit(grid, fromIdx)) return true;
@@ -122,26 +136,6 @@ export class FloorPortal {
 }
 export class PortalNavGraph {
     static COST = 8;
-    static collectActiveLinks(portalTargetIdx, outPairs) {
-        let count = 0;
-        let buf = outPairs;
-        const size = portalTargetIdx.length;
-        for (let exitIdx = 0; exitIdx < size; exitIdx++) {
-            const entryIdx = portalTargetIdx[exitIdx];
-            if (entryIdx < 0) continue;
-            const need = (count + 1) * 2;
-            if (need > buf.length) {
-                const grown = new Int32Array(Math.max(need, buf.length * 2));
-                grown.set(buf);
-                buf = grown;
-            }
-            const w = count * 2;
-            buf[w] = exitIdx;
-            buf[w + 1] = entryIdx;
-            count++;
-        }
-        return { pairs: buf, count };
-    }
     static injectRegionEdges(graph, blocked, pairs, count) {
         for (const node of graph.nodes()) node.edges = node.edges.filter((edge) => edge.cost !== PortalNavGraph.COST);
         for (let i = 0; i < count; i++) {

@@ -1417,7 +1417,7 @@ export class NavTopology {
         const arena = ensureLocalBakeArena(this.grid);
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
-        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability, arena.portalTargetIdx);
+        const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability);
         const topology = navTopologyFromArena(arena);
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
@@ -1519,7 +1519,8 @@ export function octileNeighborOffset(cellIdx, dirIdx) {
  * @property {SharedArrayBuffer} sabBlocked
  * @property {SharedArrayBuffer} sabGridFill
  * @property {SharedArrayBuffer} sabFloorPacked
- * @property {SharedArrayBuffer} sabPortalTargetIdx
+ * @property {SharedArrayBuffer} sabActivePortalPairs
+ * @property {SharedArrayBuffer} sabActivePortalCount
  * @property {SharedArrayBuffer} sabEdgeSlots
  * @property {SharedArrayBuffer} sabOctileNeighbors
  * @property {SharedArrayBuffer} sabOctilePredecessors
@@ -1549,7 +1550,7 @@ export function createNavTopologySabArena(cellCount, vertCount, cols = 0, rows =
     const vertBytes = Math.max(vertCount, 4);
     const expCellCount = cols > 0 && rows > 0 ? (cols + 1) * (rows + 1) : cellCount;
     /** @type {NavTopologySabArena} */
-    const arena = { cellCount, sabBlocked: new SharedArrayBuffer(cellCount), sabGridFill: new SharedArrayBuffer(cellCount), sabFloorPacked: new SharedArrayBuffer(cellCount), sabPortalTargetIdx: new SharedArrayBuffer(cellCount * 4), sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES), sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabCardinalOpen: new SharedArrayBuffer(cellCount), sabVertexPassability: new SharedArrayBuffer(vertBytes), blocked: undefined, gridFill: undefined, floorPacked: undefined, portalTargetIdx: undefined, edgeSlots: undefined, octileNeighbors: undefined, octilePredecessors: undefined, cardinalOpen: undefined, vertexPassability: undefined, topologyHandle: undefined };
+    const arena = { cellCount, sabBlocked: new SharedArrayBuffer(cellCount), sabGridFill: new SharedArrayBuffer(cellCount), sabFloorPacked: new SharedArrayBuffer(cellCount), sabActivePortalPairs: new SharedArrayBuffer(512), sabActivePortalCount: new SharedArrayBuffer(4), sabEdgeSlots: new SharedArrayBuffer(expCellCount * CELL_EDGE_SLOT_BYTES), sabOctileNeighbors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabOctilePredecessors: new SharedArrayBuffer(cellCount * OCTILE_NEIGHBOR_BYTES), sabCardinalOpen: new SharedArrayBuffer(cellCount), sabVertexPassability: new SharedArrayBuffer(vertBytes), blocked: undefined, gridFill: undefined, floorPacked: undefined, activePortalPairs: undefined, activePortalCount: undefined, edgeSlots: undefined, octileNeighbors: undefined, octilePredecessors: undefined, cardinalOpen: undefined, vertexPassability: undefined, topologyHandle: undefined };
     bindNavTopologySabViews(arena);
     return arena;
 }
@@ -1558,8 +1559,8 @@ export function bindNavTopologySabViews(arena) {
     arena.blocked = new Uint8Array(arena.sabBlocked);
     arena.gridFill = new Uint8Array(arena.sabGridFill);
     arena.floorPacked = new Uint8Array(arena.sabFloorPacked);
-    arena.portalTargetIdx = new Int32Array(arena.sabPortalTargetIdx);
-    arena.portalTargetIdx.fill(-1);
+    arena.activePortalPairs = new Int32Array(arena.sabActivePortalPairs);
+    arena.activePortalCount = new Int32Array(arena.sabActivePortalCount);
     arena.edgeSlots = new Int32Array(arena.sabEdgeSlots);
     arena.octileNeighbors = new Int32Array(arena.sabOctileNeighbors);
     arena.octilePredecessors = new Int32Array(arena.sabOctilePredecessors);
@@ -1579,11 +1580,13 @@ export function growNavTopologyVertexSab(arena, vertCount) {
     arena.vertexPassability = new Uint8Array(arena.sabVertexPassability);
 }
 export function packNavTopologyFromGrid(grid, arena, idx = null) {
+    arena.activePortalPairs.set(grid.activePortalPairs.subarray(0, arena.activePortalPairs.length));
+    arena.activePortalCount[0] = grid.activePortalCount;
+
     const isBounds = idx !== null && typeof idx === "object";
     if (idx === null) {
         arena.gridFill.set(grid.grid);
         arena.floorPacked.set(grid.floorPacked);
-        arena.portalTargetIdx.set(grid.portalTargetIdx);
         arena.edgeSlots.set(grid.cellEdgeSlots);
         return;
     }
@@ -1591,7 +1594,6 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
         forEachDenseCellInBounds(grid, idx, (cellIdx) => {
             arena.gridFill[cellIdx] = grid.grid[cellIdx];
             arena.floorPacked[cellIdx] = grid.floorPacked[cellIdx];
-            arena.portalTargetIdx[cellIdx] = grid.portalTargetIdx[cellIdx];
             for (let side = 0; side < 4; side++) {
                 const offset = cellEdgeSlotOffset(cellIdx, side);
                 arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
@@ -1600,7 +1602,6 @@ export function packNavTopologyFromGrid(grid, arena, idx = null) {
     else {
         arena.gridFill[idx] = grid.grid[idx];
         arena.floorPacked[idx] = grid.floorPacked[idx];
-        arena.portalTargetIdx[idx] = grid.portalTargetIdx[idx];
         for (let side = 0; side < 4; side++) {
             const offset = cellEdgeSlotOffset(idx, side);
             arena.edgeSlots[offset] = grid.cellEdgeSlots[offset];
@@ -1695,7 +1696,7 @@ export function createNavLocalView(frame, topology) {
  * @param {object[]} edgePool
  * @param {Uint8Array} vertexPassability
  */
-export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability, portalTargetIdx) {
+export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePool, vertexPassability) {
     const simView = {
         frame,
         grid: gridFill,
@@ -1703,7 +1704,6 @@ export function createNavSimView(frame, gridFill, floorPacked, edgeSlots, edgePo
         cellEdgeSlots: edgeSlots,
         cellEdgePool: edgePool,
         floorPacked: floorPacked,
-        portalTargetIdx: portalTargetIdx,
         getCellEdge(idx, side) {
             const ref = edgeSlots[cellEdgeSlotOffset(idx, side)];
             if (ref < 0) return null;
