@@ -343,35 +343,14 @@ function appendNormalPathOverlayCommands(out, overlay) {
     }
     if (pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(156, 39, 176, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
 }
-function appendAbstractPathCommands(out, abstractPath, grid, pathPlanner = "hpa") {
-    if (abstractPath.length < 2) return;
-    const isLocal = pathPlanner === "local";
-    const lineColor = isLocal ? "#ff9800" : "#ffeb3b";
-    const nodeColor = isLocal ? "#ffb74d" : "#ffeb3b";
-    const endpointColor = isLocal ? "#f57c00" : "#ff9800";
-    const points = [];
-    for (let i = 0; i < abstractPath.length; i++) {
-        const idx = abstractPath[i];
-        points.push({ x: grid.gridCenterXByIdx(idx), y: grid.gridCenterYByIdx(idx) });
-    }
-    out.push(overlayPolyline(points, { stroke: lineColor, lineWidth: 5, dash: [12, 8] }));
-    for (let i = 0; i < abstractPath.length; i++) {
-        const idx = abstractPath[i];
-        const isEndpoint = i === 0 || i === abstractPath.length - 1;
-        const x = grid.gridCenterXByIdx(idx);
-        const y = grid.gridCenterYByIdx(idx);
-        out.push(overlayCachedCircleFillStroke(x, y, isEndpoint ? 8 : 10, { fill: isEndpoint ? endpointColor : nodeColor }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(isEndpoint ? 8 : 10, isEndpoint ? endpointColor : nodeColor)));
-    }
-}
 export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") {
     if (!overlay) return;
     if (visual === "normal") {
         appendNormalPathOverlayCommands(out, overlay);
         return;
     }
-    const { mode, targetX, targetY, pathNodes, abstractPath, pathPlanner } = overlay;
+    const { mode, pathNodes } = overlay;
     if (mode === "hpa") {
-        if (abstractPath) appendAbstractPathCommands(out, abstractPath, grid, pathPlanner ?? "hpa");
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
         for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
         return;

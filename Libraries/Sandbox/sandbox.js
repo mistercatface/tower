@@ -1165,7 +1165,23 @@ export function createSandboxSession(state) {
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
         return visualOverride;
     };
-    const spawnCtx = (options = {}) => ({ spawnPropId: spawnPropIdFromPalette(), spawnFaction, resolveSpawnPropTypeId: spawnPropIdFromPalette, resolveSpawnVisualOverride, get spawnBallRadius() { return spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]); }, spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 }, spawnCrossLength, spawnCrossThickness, spawnSnakeLength, pickSelection, notifyUi, placement, selectSpawned: options.selectSpawned !== false });
+    const spawnCtx = (options = {}) => ({
+        spawnPropId: spawnPropIdFromPalette(),
+        spawnFaction,
+        resolveSpawnPropTypeId: spawnPropIdFromPalette,
+        resolveSpawnVisualOverride,
+        get spawnBallRadius() {
+            return spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]);
+        },
+        spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
+        spawnCrossLength,
+        spawnCrossThickness,
+        spawnSnakeLength,
+        pickSelection,
+        notifyUi,
+        placement,
+        selectSpawned: options.selectSpawned !== false,
+    });
     const spawnAt = (worldX, worldY, options = {}) => {
         const asset = propCatalog[spawnPropIdFromPalette()];
         if (!asset) return false;
@@ -2400,10 +2416,7 @@ export function traceFlowFieldPath(startX, startY, targetX, targetY, flowFieldGr
             const nextIdx = PortalLink.targetIdx(grid, currentIdx);
             if (nextIdx >= 0 && nextIdx < flowFieldGrid.cols * flowFieldGrid.rows && !visited.has(nextIdx)) {
                 visited.add(nextIdx);
-                path.push({
-                    x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextIdx % flowFieldGrid.cols),
-                    y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(Math.floor(nextIdx / flowFieldGrid.cols))
-                });
+                path.push({ x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextIdx % flowFieldGrid.cols), y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(Math.floor(nextIdx / flowFieldGrid.cols)) });
                 currentIdx = nextIdx;
                 continue;
             }
@@ -2418,10 +2431,7 @@ export function traceFlowFieldPath(startX, startY, targetX, targetY, flowFieldGr
         const nextIdx = nextRow * flowFieldGrid.cols + nextCol;
         if (visited.has(nextIdx)) break;
         visited.add(nextIdx);
-        path.push({
-            x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextCol),
-            y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(nextRow)
-        });
+        path.push({ x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextCol), y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(nextRow) });
         currentIdx = nextIdx;
     }
     path.push({ x: targetX, y: targetY });
