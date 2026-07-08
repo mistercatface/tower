@@ -1252,7 +1252,7 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
-function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable = null, activePortalPairs = null, activePortalCount = null) {
+function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, activePortalPairs = null, activePortalCount = null) {
     const { cols, rows } = frame;
     const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
     const startIdx = findNearestOpenCellIdx(blocked, frame, seedIdx);
@@ -1274,7 +1274,6 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
                     enqueue(pairs[i * 2 + 1]);
                 }
         }
-        if (expandReachable) expandReachable(idx, blocked, reachable, enqueue);
     });
     for (const node of graph.nodes()) {
         let hasReachableCell = false;
@@ -1288,10 +1287,10 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     }
     for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (!graph.getNode(node.edges[i].targetId)) node.edges.splice(i, 1);
 }
-function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable = null, activePortalPairs = null, activePortalCount = null) {
+function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs = null, activePortalCount = null) {
     const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
     const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
-    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable, activePortalPairs, activePortalCount);
+    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, activePortalPairs, activePortalCount);
 }
 function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph) {
     if (!activePortalPairs || !activePortalCount) return;
@@ -1309,7 +1308,7 @@ function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph)
     }
 }
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, injectEdges, expandReachable, activePortalPairs, activePortalCount } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, activePortalPairs, activePortalCount } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
@@ -1319,10 +1318,10 @@ export function buildFullRegionGraph(opts) {
     connectAllNodes(navGraph, blocked, frame, graph);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
     distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable, activePortalPairs, activePortalCount);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     return { ...graph.exportState(), graph };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, injectEdges, expandReachable, activePortalPairs, activePortalCount) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, activePortalPairs, activePortalCount) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1343,7 +1342,7 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
     state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
     injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable, activePortalPairs, activePortalCount);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs, activePortalCount);
     graph.syncState(state);
     return state;
 }

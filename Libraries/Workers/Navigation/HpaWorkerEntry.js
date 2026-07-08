@@ -181,7 +181,7 @@ export class HpaRegionGraphManager {
     }
     patchRegionGraph(gridFrame, topology, navView, activePortalPairs, activePortalCount, data) {
         if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, activePortalPairs, activePortalCount, data);
-        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, null, null, activePortalPairs, activePortalCount);
+        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, activePortalPairs, activePortalCount);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }
