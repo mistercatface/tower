@@ -16,12 +16,11 @@ function growActivePortalPairsIfNeeded(grid, minLength) {
 function upsertActivePortalPair(grid, exitIdx, entryIdx) {
     const pairs = grid.activePortalPairs;
     const count = grid.activePortalCount;
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++)
         if (pairs[i * 2] === exitIdx) {
             pairs[i * 2 + 1] = entryIdx;
             return;
         }
-    }
     growActivePortalPairsIfNeeded(grid, (count + 1) * 2);
     const w = count * 2;
     grid.activePortalPairs[w] = exitIdx;
@@ -143,13 +142,11 @@ export class PortalNavGraph {
         }
         return { pairs: buf, count };
     }
-    static injectRegionEdges(graph, blocked, portalTargetIdx) {
-        if (!portalTargetIdx) return;
+    static injectRegionEdges(graph, blocked, pairs, count) {
         for (const node of graph.nodes()) node.edges = node.edges.filter((edge) => edge.cost !== PortalNavGraph.COST);
-        const size = portalTargetIdx.length;
-        for (let exitIdx = 0; exitIdx < size; exitIdx++) {
-            const entryIdx = portalTargetIdx[exitIdx];
-            if (entryIdx < 0) continue;
+        for (let i = 0; i < count; i++) {
+            const exitIdx = pairs[i * 2];
+            const entryIdx = pairs[i * 2 + 1];
             if (blocked[exitIdx] || blocked[entryIdx]) continue;
             const exitNode = graph.nodeForCell(exitIdx);
             const entryNode = graph.nodeForCell(entryIdx);
@@ -170,13 +167,16 @@ export class PortalNavGraph {
         }
         return 0;
     }
-    static expandReachable(portalTargetIdx, idx, blocked, reachable, enqueue) {
-        if (!portalTargetIdx) return;
-        const entryIdx = portalTargetIdx[idx];
-        if (entryIdx >= 0 && !blocked[entryIdx] && !reachable[entryIdx]) {
-            reachable[entryIdx] = 1;
-            enqueue(entryIdx);
-        }
+    static expandReachable(pairs, count, idx, blocked, reachable, enqueue) {
+        for (let i = 0; i < count; i++)
+            if (pairs[i * 2] === idx) {
+                const entryIdx = pairs[i * 2 + 1];
+                if (!blocked[entryIdx] && !reachable[entryIdx]) {
+                    reachable[entryIdx] = 1;
+                    enqueue(entryIdx);
+                }
+                break;
+            }
     }
 }
 const PORTAL_EXIT_PALETTE = { ring: "#ff7a2f", glow: "rgba(255,122,47,0.35)", core: "#ffd9b0" };

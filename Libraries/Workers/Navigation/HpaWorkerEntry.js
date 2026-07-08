@@ -152,8 +152,17 @@ export class HpaRegionGraphManager {
         this.regionGraphState = null;
         this.persistNodeCount = 0;
         this.persistEdgeWrite = 0;
+        this.persistEdgeWrite = 0;
         /** @type {string[]} */
         this.persistNodeIds = [];
+        this.portalLinkPairs = new Int32Array(8);
+    }
+    _getPortalCallbacks(portalTargetIdx) {
+        if (!portalTargetIdx) return { injectEdges: null, expandReachable: null };
+        const { pairs, count } = PortalNavGraph.collectActiveLinks(portalTargetIdx, this.portalLinkPairs);
+        this.portalLinkPairs = pairs;
+        if (count === 0) return { injectEdges: null, expandReachable: null };
+        return { injectEdges: (graph, blocked) => PortalNavGraph.injectRegionEdges(graph, blocked, pairs, count), expandReachable: (idx, blocked, reachable, enqueue) => PortalNavGraph.expandReachable(pairs, count, idx, blocked, reachable, enqueue) };
     }
     writeRegionGraphToSab(gridFrame) {
         if (!this.regionGraphState) return null;
@@ -172,13 +181,15 @@ export class HpaRegionGraphManager {
     buildRegionGraphFull(gridFrame, topology, navView, data) {
         const frame = gridFrame;
         const portalTargetIdx = data.portalTargetIdx ?? null;
-        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, portalTargetIdx });
+        const { injectEdges, expandReachable } = this._getPortalCallbacks(portalTargetIdx);
+        const built = buildFullRegionGraph({ blocked: topology.blocked, frame, navGraph: navView, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, injectEdges, expandReachable });
         this.regionGraphState = { ...built, maxCellsPerChunk: this.buffers.maxCellsPerChunk, minCellsPerChunk: data.minCellsPerChunk ?? this.buffers.minCellsPerChunk, damagePadding: data.damagePadding, distToWall: null };
         return this.writeRegionGraphToSab(gridFrame);
     }
     patchRegionGraph(gridFrame, topology, navView, data) {
         if (!this.regionGraphState) return this.buildRegionGraphFull(gridFrame, topology, navView, data);
-        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, data.portalTargetIdx ?? null);
+        const { injectEdges, expandReachable } = this._getPortalCallbacks(data.portalTargetIdx ?? null);
+        rebuildDamagedRegionGraph(this.regionGraphState, data.bounds, gridFrame, topology.blocked, navView, injectEdges, expandReachable);
         return this.writeRegionGraphToSab(gridFrame);
     }
 }

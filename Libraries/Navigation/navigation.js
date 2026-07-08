@@ -3,7 +3,7 @@ import { PathfindingWorkerClient } from "../Workers/PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, forEachCardinalNeighborIdx, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrameInto, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { PortalLink, PortalNavGraph } from "../Spatial/portals.js";
+import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "../Pathfinding/HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, snapMoveTargetToCellCenter, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
@@ -1232,7 +1232,7 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
-function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, portalTargetIdx = null) {
+function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable = null) {
     const { cols, rows } = frame;
     const seedIdx = snapshotWorldToIdx(frame, seedWorldX, seedWorldY);
     const startIdx = findNearestOpenCellIdx(blocked, frame, seedIdx);
@@ -1245,7 +1245,7 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
             reachable[nIdx] = 1;
             enqueue(nIdx);
         });
-        PortalNavGraph.expandReachable(portalTargetIdx, idx, blocked, reachable, enqueue);
+        if (expandReachable) expandReachable(idx, blocked, reachable, enqueue);
     });
     for (const node of graph.nodes()) {
         let hasReachableCell = false;
@@ -1259,13 +1259,13 @@ function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, se
     }
     for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (!graph.getNode(node.edges[i].targetId)) node.edges.splice(i, 1);
 }
-function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx = null) {
+function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable = null) {
     const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
     const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
-    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, portalTargetIdx);
+    pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, expandReachable);
 }
 export function buildFullRegionGraph(opts) {
-    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, portalTargetIdx = null } = opts;
+    const { blocked, frame, navGraph, maxCellsPerChunk, minCellsPerChunk, injectEdges, expandReachable } = opts;
     const { cols, rows } = frame;
     const size = cols * rows;
     const cellToNode = new Int32Array(size).fill(-1);
@@ -1273,12 +1273,12 @@ export function buildFullRegionGraph(opts) {
     const result = generateVoronoiRegions({ grid: blocked, distToWall, frame, maxCellsPerChunk, minCellsPerChunk, cellToNode, navGraph });
     const graph = HpaRegionGraph.fromVoronoiResult(result, frame);
     connectAllNodes(navGraph, blocked, frame, graph);
-    PortalNavGraph.injectRegionEdges(graph, blocked, portalTargetIdx);
+    if (injectEdges) injectEdges(graph, blocked);
     distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, distToWall, maxCellsPerChunk, minCellsPerChunk);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable);
     return { ...graph.exportState(), graph };
 }
-export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, portalTargetIdx = null) {
+export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGraph, injectEdges, expandReachable) {
     const { maxCellsPerChunk, minCellsPerChunk, damagePadding = 12 } = state;
     const { cols, rows } = frame;
     if (!bounds || cols === 0 || rows === 0) return state;
@@ -1298,8 +1298,8 @@ export function rebuildDamagedRegionGraph(state, bounds, frame, blocked, navGrap
     for (const id of reconnectIds) reconnectRegionEdges(navGraph, blocked, frame, graph, graph.getNode(id));
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
     state.distToWall = ensureOpenCellsAssigned(graph, blocked, frame, navGraph, state.distToWall, maxCellsPerChunk, minCellsPerChunk);
-    if (portalTargetIdx) PortalNavGraph.injectRegionEdges(graph, blocked, portalTargetIdx);
-    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, portalTargetIdx);
+    if (injectEdges) injectEdges(graph, blocked);
+    pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, expandReachable);
     graph.syncState(state);
     return state;
 }
