@@ -327,7 +327,7 @@ export class FlowCacheManager {
 }
 export function computeFlowField(vectorMap, { gridWidth, gridSize, flowToNavIdx, navBlocked, neighborGrid, neighborLayout = OCTILE_NEIGHBOR_GRID_LAYOUT, tx, ty, range, bfsDistances, bfsQueue, localVectorMap, distancesOut, activePortalPairs = null, activePortalCount = null }) {
     bfsDistances.fill(-1);
-    localVectorMap.fill(0);
+    localVectorMap.fill(255);
     const startIdx = tx + ty * gridWidth;
     const isBlocked = (idx) => flowCellBlocked(flowToNavIdx, navBlocked, idx);
     let navToFlow = null;

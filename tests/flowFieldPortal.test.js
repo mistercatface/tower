@@ -95,5 +95,10 @@ describe("flow field portals and belts", () => {
         // It must have a valid distance and a vector pointing towards the portal.
         assert.notEqual(bfsDistances[startFlowIdx], -1, "flow must propagate to the far side of the portal");
         assert.notEqual(bfsDistances[flowEntry], -1, "portal entry must have a valid flow distance");
+
+        // Verify that blocked/unreached cells are set to 255 (not moving) rather than 0 (diagonal)
+        const blockedFlowIdx = flowToNavIdx.indexOf(grid.idx(12, 0));
+        assert.ok(blockedFlowIdx >= 0);
+        assert.equal(vectorMap[blockedFlowIdx], 255, "blocked cells should have vector code 255");
     });
 });

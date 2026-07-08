@@ -119,4 +119,62 @@ describe("snake game launch actions", () => {
         assert.equal(state.worldProps.length, 1);
         assert.equal(state.worldProps[0].id, ctx.boid.id);
     });
+
+    it("toggles navMode between hpa and flow and switches active behavior", async () => {
+        const state = createEditorTestState();
+        state.flowFieldGrid = {
+            invalidateNavTopology() {},
+            ensureRollTargetWindow() {},
+            getReadyFlowField() {
+                return new Uint8Array(24 * 10).fill(5);
+            },
+            frame: {
+                cellSize: 16,
+                cols: 24,
+                rows: 10,
+                offsetX: 192,
+                offsetY: 80,
+                centerX: 0,
+                centerY: 0
+            }
+        };
+        state.appLaunch = { id: "snake", launcher: GAME_LAUNCHERS.snake };
+        const ctx = await runGameLaunch(state, GAME_LAUNCHERS.snake);
+        const boid = ctx.boid;
+
+        // Initialize sandbox controller and behaviors
+        const { createSandboxController, createDefaultSandboxBehaviors } = await import("../Libraries/Sandbox/sandbox.js");
+        state.sandbox.controller = createSandboxController(state, {
+            getCanvas: () => null,
+            clientToWorld: (x, y) => ({ x, y }),
+            behaviors: createDefaultSandboxBehaviors(state)
+        });
+
+        // Set default navMode
+        state.editor.navMode = "hpa";
+        
+        // Simulate setting active behavior on the boid
+        state.sandbox.entityMeta.setActiveBehaviorId(boid.id, "rollToCursorHpa");
+
+        // Set a target on the old behavior
+        const hpaBehavior = state.sandbox.behaviorById.get("rollToCursorHpa");
+        hpaBehavior.setMoveTarget(boid, { x: 100, y: 120 });
+        
+        // Verify current state
+        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorHpa");
+        
+        // Toggle mode to flow using setEditorNavMode
+        const { setEditorNavMode } = await import("../Apps/Editor/ui/editorUi.js");
+        setEditorNavMode(state, "flow");
+        
+        // Verify state is updated to rollToCursorFlow and target is preserved
+        assert.equal(state.editor.navMode, "flow");
+        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorFlow");
+        
+        const flowBehavior = state.sandbox.behaviorById.get("rollToCursorFlow");
+        const overlay = flowBehavior.getPathOverlay(boid);
+        assert.ok(overlay);
+        assert.equal(overlay.targetX, 104);
+        assert.equal(overlay.targetY, 120);
+    });
 });

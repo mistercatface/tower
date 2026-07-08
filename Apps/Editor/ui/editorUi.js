@@ -95,6 +95,25 @@ export function mountEditorUi(state, { playbackHandlers }) {
     const scheduleMapOverviewRepaint = () => requestMapOverviewRepaint();
     const uiRoot = document.getElementById("ui-root");
     uiRoot.innerHTML = TILELAB_UI_HTML;
+    if (state.appLaunch?.id === "snake") {
+        const titleEl = document.querySelector(".toolbar h1");
+        if (titleEl) titleEl.textContent = "Snake";
+        const pathDebugBtn = document.getElementById("pathDebugModeBtn");
+        if (pathDebugBtn) {
+            const toggleBtn = document.createElement("button");
+            toggleBtn.type = "button";
+            toggleBtn.id = "navModeToggleBtn";
+            toggleBtn.className = "toolbar-cycle-btn";
+            toggleBtn.style.marginLeft = "10px";
+            toggleBtn.textContent = state.editor.navMode === "flow" ? "Mode: Flow" : "Mode: A*";
+            pathDebugBtn.insertAdjacentElement("afterend", toggleBtn);
+            toggleBtn.addEventListener("click", () => {
+                const nextMode = state.editor.navMode === "flow" ? "hpa" : "flow";
+                setEditorNavMode(state, nextMode);
+                toggleBtn.textContent = nextMode === "flow" ? "Mode: Flow" : "Mode: A*";
+            });
+        }
+    }
     const mapStage = document.getElementById("mapStage");
     const canvas = document.getElementById("gameCanvas");
     if (canvas.parentElement !== mapStage) mapStage.appendChild(canvas);
@@ -172,4 +191,28 @@ export function mountEditorUi(state, { playbackHandlers }) {
 export function refreshEditorUi(state) {
     refreshLabSpeed(state);
     repaintUntilBakesDone(state);
+}
+export function setEditorNavMode(state, mode) {
+    state.editor.navMode = mode;
+    const boid = state.worldProps.find((p) => p.type === "boid_triangle");
+    if (!boid) return;
+    const entityMeta = state.sandbox.entityMeta;
+    const currentBehaviorId = entityMeta.getActiveBehaviorId(boid.id);
+    if (currentBehaviorId === "rollToCursorHpa" || currentBehaviorId === "rollToCursorFlow") {
+        const nextBehaviorId = mode === "flow" ? "rollToCursorFlow" : "rollToCursorHpa";
+        if (currentBehaviorId !== nextBehaviorId) {
+            const behaviorById = state.sandbox.behaviorById;
+            const oldBehavior = behaviorById?.get(currentBehaviorId);
+            const nextBehavior = behaviorById?.get(nextBehaviorId);
+            if (oldBehavior && nextBehavior) {
+                const overlay = oldBehavior.getPathOverlay(boid);
+                const targetWorld = overlay?.targetX != null ? { x: overlay.targetX, y: overlay.targetY } : null;
+                if (oldBehavior.clearMoveTarget) oldBehavior.clearMoveTarget(boid);
+                entityMeta.setActiveBehaviorId(boid.id, nextBehaviorId);
+                if (targetWorld) {
+                    nextBehavior.setMoveTarget(boid, targetWorld);
+                }
+            }
+        }
+    }
 }

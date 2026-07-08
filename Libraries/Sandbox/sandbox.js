@@ -2882,7 +2882,8 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
             }
             if (isDoubleTap && targetBoidId && (state.editor.lockSelection || now - lastSelectedBoidTime < 500)) {
                 session.select({ kind: "prop", ids: [targetBoidId] });
-                if (issueGroundNavToSelected("rollToCursorHpa", world)) {
+                const behaviorId = state.editor.navMode === "flow" ? "rollToCursorFlow" : "rollToCursorHpa";
+                if (issueGroundNavToSelected(behaviorId, world)) {
                     lastClickTime = now;
                     lastClickX = world.x;
                     lastClickY = world.y;

@@ -18,5 +18,6 @@ export class TileLabEditorState {
         this.showSelectionRings = false;
         this.lockSelection = false;
         this.navWalkableCellsCache = null;
+        this.navMode = "hpa";
     }
 }
