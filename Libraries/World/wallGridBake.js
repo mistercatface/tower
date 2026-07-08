@@ -1,35 +1,11 @@
-import { cellIdxToChunkKey, forEachObstacleGridCellInAabb, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
-import { railWallEdgeShouldEmit, railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx } from "../Spatial/spatial.js";
+import { cellIdxToChunkKey, boundsToCellRect, forEachObstacleGridCellInAabb, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
+import { railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx, edgeRailEmitOwner, railWallEdgeShouldEmit } from "../Spatial/spatial.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
-export const RAIL_BOX = {
-    chunkKey: 0,
-    gridIdx: 1,
-    gridSide: 2,
-    minX: 3,
-    minY: 4,
-    maxX: 5,
-    maxY: 6,
-    innerP1x: 7,
-    innerP1y: 8,
-    innerP2x: 9,
-    innerP2y: 10,
-    outerP1x: 11,
-    outerP1y: 12,
-    outerP2x: 13,
-    outerP2y: 14,
-    inwardX: 15,
-    inwardY: 16,
-    wallBaseZ: 17,
-    wallHeight: 18,
-    wallCapHeight: 19,
-    edgeThickness: 20,
-    cx: 21,
-    cy: 22,
-};
+export const RAIL_BOX = { chunkKey: 0, gridIdx: 1, gridSide: 2, minX: 3, minY: 4, maxX: 5, maxY: 6, innerP1x: 7, innerP1y: 8, innerP2x: 9, innerP2y: 10, outerP1x: 11, outerP1y: 12, outerP2x: 13, outerP2y: 14, inwardX: 15, inwardY: 16, wallBaseZ: 17, wallHeight: 18, wallCapHeight: 19, edgeThickness: 20, cx: 21, cy: 22 };
 export const RAIL_BOX_STRIDE = 23;
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
@@ -45,7 +21,9 @@ export function railWallTopZAt(grid, idx, side) {
     return railWallHeightPx(edge, grid, neighborFillLevel(grid, idx, side));
 }
 export function railWallAtZLevel(grid, idx, side, zLevel) {
-    return railWallEdgeShouldEmit(grid, idx, side) && railWallTopZAt(grid, idx, side) === zLevel;
+    const edge = railWallEdgeAt(grid, idx, side);
+    if (!edge) return false;
+    return edgeRailEmitOwner(grid, idx, side) && railWallHeightPx(edge, grid, neighborFillLevel(grid, idx, side)) === zLevel;
 }
 export function railWallFootprintHalfThickness(grid, idx, side) {
     const railEdge = railWallEdgeAt(grid, idx, side);
@@ -61,14 +39,6 @@ export function resolveRailWallNeighborContext(grid, idx, side) {
     const railEdge = railWallEdgeAt(grid, idx, side);
     const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid, fillLevel) : 0;
     return { neighborFillLevel: fillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
-}
-export function forEachEmittingRailWallAtZLevel(grid, aabb, zLevel, fn) {
-    forEachObstacleGridCellInAabb(grid, aabb, (idx) => {
-        for (let side = 0; side < 4; side++) {
-            if (!railWallAtZLevel(grid, idx, side, zLevel)) continue;
-            fn(idx, side);
-        }
-    });
 }
 export function railWallFootprintAabb(grid, idx, edge) {
     const halfT = railWallFootprintHalfThickness(grid, idx, edge);
@@ -247,12 +217,7 @@ function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex, cols) {
     const a = aIndex * RAIL_BOX_STRIDE;
     const b = bIndex * RAIL_BOX_STRIDE;
     if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return false;
-    if (
-        data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight] ||
-        data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ] ||
-        data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]
-    )
-        return false;
+    if (data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight] || data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ] || data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]) return false;
     if (data[a + RAIL_BOX.inwardX] !== data[b + RAIL_BOX.inwardX] || data[a + RAIL_BOX.inwardY] !== data[b + RAIL_BOX.inwardY]) return false;
     const aRow = (data[a + RAIL_BOX.gridIdx] / cols) | 0;
     const aCol = data[a + RAIL_BOX.gridIdx] - aRow * cols;
@@ -379,19 +344,36 @@ export function resolveWallCapHeightPx(capHeight, settings) {
     return capHeight ?? defaultWallCapPx(settings);
 }
 export function chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) {
-    let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
-        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) found = true;
-    });
-    return found;
+    const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+    const cols = obstacleGrid.cols;
+    const rows = obstacleGrid.rows;
+    const startCol = Math.max(0, rect.minCol);
+    const endCol = Math.min(cols - 1, rect.maxCol);
+    const startRow = Math.max(0, rect.minRow);
+    const endRow = Math.min(rows - 1, rect.maxRow);
+    for (let r = startRow; r <= endRow; r++) {
+        const rowOffset = r * cols;
+        for (let c = startCol; c <= endCol; c++) if (resolveCellWallHeightAtIdx(obstacleGrid, rowOffset + c) === zLevel) return true;
+    }
+    return false;
 }
 export function chunkHasStaticStructureAtLevel(obstacleGrid, bounds, zLevel) {
     return chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) || chunkHasStaticEdgeRailsAtLevel(obstacleGrid, bounds, zLevel);
 }
 export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, bounds, zLevel) {
-    let found = false;
-    forEachEmittingRailWallAtZLevel(obstacleGrid, bounds, zLevel, () => {
-        found = true;
-    });
-    return found;
+    const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+    const cols = obstacleGrid.cols;
+    const rows = obstacleGrid.rows;
+    const startCol = Math.max(0, rect.minCol);
+    const endCol = Math.min(cols - 1, rect.maxCol);
+    const startRow = Math.max(0, rect.minRow);
+    const endRow = Math.min(rows - 1, rect.maxRow);
+    for (let r = startRow; r <= endRow; r++) {
+        const rowOffset = r * cols;
+        for (let c = startCol; c <= endCol; c++) {
+            const idx = rowOffset + c;
+            for (let side = 0; side < 4; side++) if (railWallAtZLevel(obstacleGrid, idx, side, zLevel)) return true;
+        }
+    }
+    return false;
 }

@@ -1,13 +1,13 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbWidth, aabbHeight, intersectAabbOptionalInto } from "../Math/math.js";
-import { projectWorldAabbCornersIntoFlat, forEachObstacleGridCellInAabb, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBoundsInto, wrapChunkKey, forEachChunkKeyInRange, cellIdxToChunkKey } from "../Spatial/spatial.js";
+import { projectWorldAabbCornersIntoFlat, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBoundsInto, wrapChunkKey, forEachChunkKeyInRange, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
 import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfaceProfileIds, surfaceProfileKnown } from "../../Config/procedural/profiles.js";
 import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { MinHeap } from "../DataStructures/MinHeap.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
-import { railWallFootprintAabb, forEachEmittingRailWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { railWallFootprintAabb, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();
@@ -821,11 +821,18 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
  * Elevated-chunk clip helpers live in ChunkDrawPass.js.
  */
 export function chunkHasBlockedCells(obstacleGrid, bounds) {
-    let found = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
-        if (obstacleGrid.grid[idx] !== 0) found = true;
-    });
-    return found;
+    const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+    const cols = obstacleGrid.cols;
+    const rows = obstacleGrid.rows;
+    const startCol = Math.max(0, rect.minCol);
+    const endCol = Math.min(cols - 1, rect.maxCol);
+    const startRow = Math.max(0, rect.minRow);
+    const endRow = Math.min(rows - 1, rect.maxRow);
+    for (let r = startRow; r <= endRow; r++) {
+        const rowOffset = r * cols;
+        for (let c = startCol; c <= endCol; c++) if (obstacleGrid.grid[rowOffset + c] !== 0) return true;
+    }
+    return false;
 }
 export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings) {
     const surfaceBakeScale = settings.surfaceBakeScale;
@@ -835,30 +842,56 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     let any = false;
-    forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
-        if (resolveCellWallHeightAtIdx(obstacleGrid, idx) !== zLevel) return;
-        const cellBounds = obstacleGrid.getCellBoundsByIdx(idx);
-        const x = Math.round((cellBounds.minX - bounds.minX) * surfaceBakeScale);
-        const y = Math.round((cellBounds.minY - bounds.minY) * surfaceBakeScale);
-        ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
-        any = true;
-    });
+    const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+    const cols = obstacleGrid.cols;
+    const rows = obstacleGrid.rows;
+    const startCol = Math.max(0, rect.minCol);
+    const endCol = Math.min(cols - 1, rect.maxCol);
+    const startRow = Math.max(0, rect.minRow);
+    const endRow = Math.min(rows - 1, rect.maxRow);
+    for (let r = startRow; r <= endRow; r++) {
+        const rowOffset = r * cols;
+        for (let c = startCol; c <= endCol; c++) {
+            const idx = rowOffset + c;
+            if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
+                const cellBounds = obstacleGrid.getCellBoundsByIdx(idx);
+                const x = Math.round((cellBounds.minX - bounds.minX) * surfaceBakeScale);
+                const y = Math.round((cellBounds.minY - bounds.minY) * surfaceBakeScale);
+                ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
+                any = true;
+            }
+        }
+    }
     return any ? canvas : null;
 }
 export function clipChunkToFlatWallFootprints(ctx, obstacleGrid, bounds, zLevel) {
     return clipToPath(ctx, (clipCtx) => {
         let clippedAny = false;
-        forEachObstacleGridCellInAabb(obstacleGrid, bounds, (idx) => {
-            const cellZ = resolveCellWallHeightAtIdx(obstacleGrid, idx);
-            if (cellZ === zLevel) {
-                traceAabbRect(clipCtx, obstacleGrid.getCellBoundsByIdx(idx));
-                clippedAny = true;
+        const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+        const cols = obstacleGrid.cols;
+        const rows = obstacleGrid.rows;
+        const startCol = Math.max(0, rect.minCol);
+        const endCol = Math.min(cols - 1, rect.maxCol);
+        const startRow = Math.max(0, rect.minRow);
+        const endRow = Math.min(rows - 1, rect.maxRow);
+        for (let r = startRow; r <= endRow; r++) {
+            const rowOffset = r * cols;
+            for (let c = startCol; c <= endCol; c++) {
+                const idx = rowOffset + c;
+                // 1. Voxel wall footprints
+                const cellZ = resolveCellWallHeightAtIdx(obstacleGrid, idx);
+                if (cellZ === zLevel) {
+                    traceAabbRect(clipCtx, obstacleGrid.getCellBoundsByIdx(idx));
+                    clippedAny = true;
+                }
+                // 2. Rail wall footprints
+                for (let side = 0; side < 4; side++)
+                    if (railWallAtZLevel(obstacleGrid, idx, side, zLevel)) {
+                        traceAabbRect(clipCtx, railWallFootprintAabb(obstacleGrid, idx, side));
+                        clippedAny = true;
+                    }
             }
-        });
-        forEachEmittingRailWallAtZLevel(obstacleGrid, bounds, zLevel, (idx, side) => {
-            traceAabbRect(clipCtx, railWallFootprintAabb(obstacleGrid, idx, side));
-            clippedAny = true;
-        });
+        }
         return clippedAny;
     });
 }

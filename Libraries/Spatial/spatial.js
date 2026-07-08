@@ -191,7 +191,7 @@ export function cellEdgeEndpointsIdx(grid, idx, side, p1, p2, inset = 0) {
     }
     return p1;
 }
-function edgeRailEmitOwner(grid, idx, side) {
+export function edgeRailEmitOwner(grid, idx, side) {
     if (side === 2 || side === 1) return true;
     if (side === 0) return idx < grid.cols;
     return idx % grid.cols === 0;
