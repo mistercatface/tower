@@ -1085,10 +1085,20 @@ function regionsShareDirectedPassableLink(navGraph, frame, nodeA, nodeB) {
     for (let i = 0; i < nodeA.cells.length; i++) {
         const idx = nodeA.cells[i];
         let linked = false;
-        forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        const check = (nIdx) => {
             if (linked || !targetCells.has(nIdx)) return;
             if (navGraph.canStepIdx(idx, nIdx)) linked = true;
-        });
+        };
+        if (row > 0) check(idx - cols);
+        if (col < cols - 1) check(idx + 1);
+        if (row < rows - 1) check(idx + cols);
+        if (col > 0) check(idx - 1);
+        if (row > 0 && col < cols - 1) check(idx - cols + 1);
+        if (row < rows - 1 && col < cols - 1) check(idx + cols + 1);
+        if (row < rows - 1 && col > 0) check(idx + cols - 1);
+        if (row > 0 && col > 0) check(idx - cols - 1);
         if (linked) return true;
     }
     return false;
@@ -1109,12 +1119,22 @@ function reconnectRegionEdges(navGraph, blocked, frame, graph, node) {
     const nodeCells = node.cells;
     for (let i = 0; i < nodeCells.length; i++) {
         const idx = nodeCells[i];
-        forEachCardinalNeighborIdx(idx, frame, (nIdx) => {
+        const col = idx % cols;
+        const row = (idx / cols) | 0;
+        const check = (nIdx) => {
             if (blocked[nIdx]) return;
             if (!navGraph.canStepIdx(idx, nIdx) && !navGraph.canStepIdx(nIdx, idx)) return;
             const other = graph.nodeForCell(nIdx);
             if (other && other.id !== node.id) neighborIds.add(other.id);
-        });
+        };
+        if (row > 0) check(idx - cols);
+        if (col < cols - 1) check(idx + 1);
+        if (row < rows - 1) check(idx + cols);
+        if (col > 0) check(idx - 1);
+        if (row > 0 && col < cols - 1) check(idx - cols + 1);
+        if (row < rows - 1 && col < cols - 1) check(idx + cols + 1);
+        if (row < rows - 1 && col > 0) check(idx + cols - 1);
+        if (row > 0 && col > 0) check(idx - cols - 1);
     }
     for (const otherId of neighborIds) {
         const other = graph.getNode(otherId);
@@ -1235,20 +1255,17 @@ function connectAllNodes(navGraph, blocked, frame, graph) {
         const row = (idx / cols) | 0;
         const node = graph.nodeForCell(idx);
         if (!node) return;
-        if (col + 1 < cols) {
-            const right = graph.nodeForCell(idx + 1);
-            if (right && right.id !== node.id) {
-                if (navGraph.canStepIdx(idx, idx + 1)) graph.connectEdge(node, right);
-                if (navGraph.canStepIdx(idx + 1, idx)) graph.connectEdge(right, node);
+        const check = (nIdx) => {
+            const other = graph.nodeForCell(nIdx);
+            if (other && other.id !== node.id) {
+                if (navGraph.canStepIdx(idx, nIdx)) graph.connectEdge(node, other);
+                if (navGraph.canStepIdx(nIdx, idx)) graph.connectEdge(other, node);
             }
-        }
-        if (row + 1 < rows) {
-            const down = graph.nodeForCell(idx + cols);
-            if (down && down.id !== node.id) {
-                if (navGraph.canStepIdx(idx, idx + cols)) graph.connectEdge(node, down);
-                if (navGraph.canStepIdx(idx + cols, idx)) graph.connectEdge(down, node);
-            }
-        }
+        };
+        if (col + 1 < cols) check(idx + 1);
+        if (row + 1 < rows) check(idx + cols);
+        if (col + 1 < cols && row + 1 < rows) check(idx + cols + 1);
+        if (col - 1 >= 0 && row + 1 < rows) check(idx + cols - 1);
     });
     for (const node of graph.nodes()) validateRegionEdges(navGraph, frame, node, graph);
 }
