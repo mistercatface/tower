@@ -4,7 +4,16 @@ import { FloorBelt } from "../Spatial/belts.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
-export const GAME_LAUNCHERS = { snake: { title: "Snake", hideEditor: false } };
+export const GAME_LAUNCHERS = {
+    snake: {
+        title: "Snake",
+        hideEditor: false,
+        defaultPathDebugMode: "reachable",
+        async launch(state, ctx) {
+            await runSnakeLaunch(state, ctx);
+        },
+    },
+};
 export function parseGameLaunchQuery(search = window.location.search) {
     const game = new URLSearchParams(search).get("game");
     return game || null;
@@ -82,7 +91,7 @@ async function runSnakeLaunch(state, ctx) {
 export async function runGameLaunch(state, launcher, launchOptions = {}) {
     const ctx = {};
     if (launcher.setup) state.appLaunch.session = await launcher.setup(state, launchOptions);
-    if (state.appLaunch?.id === "snake") await runSnakeLaunch(state, ctx);
+    if (launcher.launch) await launcher.launch(state, ctx);
     // Refresh world caches
     await state.nav.commitEdit(null, { fullNavSync: true });
     state.worldSurfaces.clearBakeCache();

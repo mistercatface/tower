@@ -5,7 +5,7 @@ import { getNavPathDebugCache } from "../../../Libraries/Navigation/navDebug.js"
 import { mountMapOverview, paintMapOverviewFrame, requestMapOverviewRepaint, flushMapOverviewRepaint, syncMapOverviewCanvasSize } from "./mapOverview.js";
 import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
-import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode } from "./preview.js";
+import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode, setLabPathDebugMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { initTileLabWorld } from "../../../Libraries/Spatial/spatial.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
@@ -192,7 +192,10 @@ export function mountEditorUi(state, { playbackHandlers }) {
     );
     void initTileLabWorld(state).then(async () => {
         resizeCanvases(state);
-        if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
+        if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) {
+            await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
+            if (state.appLaunch.launcher.defaultPathDebugMode) setLabPathDebugMode(state.appLaunch.launcher.defaultPathDebugMode);
+        }
         drawLabAndWaitForBakes();
     });
     mountTilelabSandbox(state);

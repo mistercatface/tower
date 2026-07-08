@@ -73,6 +73,11 @@ function cycleLabPathDebugMode() {
 export function getLabPathDebugMode() {
     return labPathDebugMode;
 }
+export function setLabPathDebugMode(mode) {
+    labPathDebugMode = mode;
+    syncPathDebugModeButtonLabel();
+    markLabViewDirty();
+}
 export function isLabPathDebugActive() {
     return labPathDebugMode !== "off";
 }
