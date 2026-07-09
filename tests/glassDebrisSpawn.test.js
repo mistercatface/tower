@@ -43,7 +43,7 @@ describe("glass debris slab spawn", () => {
         addWorldPropsToState(world, [prop]);
         const fracture = FractureEngine.fracturePropOnImpact(prop, 50, 50, 30);
         assert.ok(fracture);
-        const spatialFrame = { evictKineticProp() {}, admitKineticProps(props) { for (let i = 0; i < props.length; i++) spatialFrame.admitKineticProp(props[i]); }, admitKineticProp() {} };
+        const spatialFrame = { evictKineticProp() {}, admitKineticProps() {} };
         const shards = FractureEngine.commitFractureResult(world, prop, fracture, spatialFrame);
         assert.ok(shards.length >= 2);
         assert.ok(shards.every((s) => s.isKineticDebris));

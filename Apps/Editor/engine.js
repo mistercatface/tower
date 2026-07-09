@@ -6,7 +6,7 @@ import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
 import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
-import { createGridWallDamage, flushPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
+import { createGridWallDamage, applyPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
@@ -50,7 +50,7 @@ function simulationKineticHooks(state) {
         },
         afterKineticPhysics(tick, dt) {
             state.appLaunch?.session?.afterKineticPhysics?.();
-            const flushResult = flushPendingWallDamage(state);
+            const flushResult = applyPendingWallDamage(state);
             if (flushResult?.spawned?.length) state.fractureEngine.debris.integrateSpawned(tick.frame, flushResult.spawned, dt);
         },
     };

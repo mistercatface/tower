@@ -63,9 +63,25 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.equal(frame._nextPhysId, 3);
 
         const propNew = new WorldProp(300, 0, "crate", 0);
-        frame.admitKineticProp(propNew, world);
+        frame.admitKineticProps([propNew], world);
 
         assert.equal(propNew._physId, 3);
         assert.equal(frame._nextPhysId, 4);
+    });
+
+    it("begin() reassigns physIds from zero each frame (Phase 2 will change this)", () => {
+        const world = createFractureWorld();
+        const frame = new KineticSpatialFrame();
+        const prop = new WorldProp(0, 0, "crate", 0);
+        world.worldProps.push(prop);
+        frame.begin(world);
+        assert.equal(prop._physId, 0);
+        const propB = new WorldProp(100, 0, "crate", 0);
+        frame.admitKineticProps([propB], world);
+        assert.equal(propB._physId, 1);
+        world.worldProps.push(propB);
+        frame.begin(world);
+        assert.equal(prop._physId, 0);
+        assert.equal(propB._physId, 1);
     });
 });

@@ -16,7 +16,7 @@ export function createFractureWorld(overrides = {}) {
         worldProps: [],
         kinetic: new KineticSession(),
         sandbox: new SandboxWorldState(),
-        spatialFrame: { evictKineticProp() {}, admitKineticProp() {}, admitKineticProps() {} },
+        spatialFrame: { evictKineticProp() {}, admitKineticProps() {} },
         ...overrides,
     };
     world.fractureEngine = new FractureEngine(world);

@@ -84,7 +84,7 @@ describe("active kinetic bodies", () => {
         frame._kineticBodies.push(anchor);
         frame._nextPhysId = 1;
         const fragment = mockCircleProp(24, 0, 8);
-        frame.admitKineticProp(fragment, mockState);
+        frame.admitKineticProps([fragment], mockState);
         const neighbors = frame.getNeighbors(anchor);
         assert.ok(neighbors.includes(fragment));
         assert.ok(frame._activeKineticBodies.includes(fragment));
@@ -98,7 +98,7 @@ describe("active kinetic bodies", () => {
         frame._kineticBodies.push(anchor);
         frame._nextPhysId = 1;
         const fragment = mockCircleProp(240, 180, 8);
-        frame.admitKineticProp(fragment, mockState);
+        frame.admitKineticProps([fragment], mockState);
         assert.equal(kineticDynamicSlab.x[fragment._physId], 240);
         assert.equal(kineticDynamicSlab.y[fragment._physId], 180);
         writebackActiveKineticBodySlab(frame._activeKineticBodies);
@@ -113,10 +113,10 @@ describe("active kinetic bodies", () => {
         frame._kineticBodies.push(mover);
         frame._nextPhysId = 1;
         const witness = mockCircleProp(200, 0, 8);
-        frame.admitKineticProp(witness, mockState);
+        frame.admitKineticProps([witness], mockState);
         assert.equal(frame.getNeighbors(witness).includes(mover), false);
         mover.x = 200;
-        frame.admitKineticProp(mover, mockState);
+        frame.admitKineticProps([mover], mockState);
         assert.ok(frame.getNeighbors(witness).includes(mover));
     });
     it("activateKineticBody skips island peers missing _physId", () => {

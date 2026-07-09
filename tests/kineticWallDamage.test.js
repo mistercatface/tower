@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
-import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, flushPendingWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Physics/fracture.js";
+import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, queueWallHits, resolveKineticWallDamage, resolveWallDamageTarget, wallDamageKey } from "../Libraries/Physics/fracture.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
@@ -46,7 +46,6 @@ function stampVoxel(grid, col, row, level = 1) {
 function wallDebrisTestFrame(extra = {}) {
     return {
         frameId: 1,
-        admitKineticProp() {},
         admitKineticProps() {},
         evictKineticProp() {},
         ...extra,
@@ -82,7 +81,7 @@ describe("kinetic wall damage", () => {
         };
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
         assert.equal(state.gridWallDamage.pendingBreaks.get("v:54").strength, 1);
-        flushPendingWallDamage(state);
+        applyPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,6, 6)));
         assert.equal(state.gridWallDamage.pendingBreaks.size, 0);
         terminateWorkerNavigation(state.nav);
@@ -192,7 +191,7 @@ describe("kinetic wall damage", () => {
         assert.equal(queued.sourceSpeed, 560);
         assert.equal(queued.sourceMass, 1);
         
-        flushPendingWallDamage(state);
+        applyPendingWallDamage(state);
         
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,3, 3)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_voxel_chunk");
@@ -218,7 +217,7 @@ describe("kinetic wall damage", () => {
                 return { collided: true, hits: [{ approachDot: -560, normalX: 1, normalY: 0, segment, contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 }] };
             },
         });
-        flushPendingWallDamage(state);
+        applyPendingWallDamage(state);
         const shard = kineticDebrisList(state).find((p) => p.type === "wall_voxel_chunk");
         assert.ok(shard);
         shard.vx = 120;
@@ -263,7 +262,7 @@ describe("kinetic wall damage", () => {
         assert.equal(queued.contactY, 4 * 16 + 16);
         assert.equal(queued.normalY, -1);
         
-        flushPendingWallDamage(state);
+        applyPendingWallDamage(state);
         
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,4, 4), 1)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
@@ -300,7 +299,7 @@ describe("kinetic wall damage", () => {
         resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);
         assert.ok(state.gridWallDamage.pendingBreaks.has("r:36:1"));
         
-        flushPendingWallDamage(state);
+        applyPendingWallDamage(state);
         
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,4, 4), 1)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
@@ -327,7 +326,7 @@ describe("kinetic wall damage", () => {
         const startX = ball.x;
         const spatialFrame = wallDebrisTestFrame({ frameId: 7, getWallCandidates: () => candidates });
         resolveKineticWallDamage(state, ball, spatialFrame, new WallCollisionResolver());
-        flushPendingWallDamage(state);
+        applyPendingWallDamage(state);
         assert.ok(Math.abs(ball.x - startX) < 1, `expected bounded displacement, got ${ball.x - startX}`);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,6, 6)));
         terminateWorkerNavigation(state.nav);

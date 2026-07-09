@@ -481,9 +481,6 @@ function clipContactSegmentToHalfPlane(x0, y0, x1, y1, nx, ny, offset) {
     }
     return clipCount === 1 ? 2 : clipCount;
 }
-function clipContactSegmentInPlaceToHalfPlane(nx, ny, offset) {
-    return clipContactSegmentToHalfPlane(clipX[0], clipY[0], clipX[1], clipY[1], nx, ny, offset);
-}
 function nearestIncidentVertexIndex(vertices, pxVal, pyVal, cos, sin, px, py) {
     let bestDistSq = Infinity;
     let bestIndex = 0;
@@ -502,9 +499,6 @@ function nearestIncidentVertexIndex(vertices, pxVal, pyVal, cos, sin, px, py) {
         }
     }
     return bestIndex;
-}
-function worldEdgeNormalInto(out, normals, edgeIndex, cos, sin) {
-    return rotateXYInto(out, normals[edgeIndex * 2], normals[edgeIndex * 2 + 1], cos, sin);
 }
 function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, nx, ny, refPolyIsA, refEdgeIndex) {
     const refShape = refPolyIsA ? shapeA : shapeB;
@@ -546,10 +540,10 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const incY1 = incY + incVerts[incEdgeNext * 2] * incSin + incVerts[incEdgeNext * 2 + 1] * incCos;
     let clipCount = clipContactSegmentToHalfPlane(incX0, incY0, incX1, incY1, sideANx, sideANy, sideAOffset);
     if (clipCount === 0) return null;
-    clipCount = clipContactSegmentInPlaceToHalfPlane(sideBNx, sideBNy, sideBOffset);
+    clipCount = clipContactSegmentToHalfPlane(clipX[0], clipY[0], clipX[1], clipY[1], sideBNx, sideBNy, sideBOffset);
     if (clipCount === 0) return null;
     const frontOffset = refFaceNx * edgeAx + refFaceNy * edgeAy;
-    clipCount = clipContactSegmentInPlaceToHalfPlane(refFaceNx, refFaceNy, frontOffset);
+    clipCount = clipContactSegmentToHalfPlane(clipX[0], clipY[0], clipX[1], clipY[1], refFaceNx, refFaceNy, frontOffset);
     if (clipCount === 0) return null;
     let pointCount = 0;
     for (let i = 0; i < clipCount && pointCount < MANIFOLD_MAX_POINTS; i++) {
@@ -630,14 +624,39 @@ export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
     SAT_RESULT[12] = 0;
     return true;
 }
-export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.y, xB = bodyB.x, yB = bodyB.y) {
-    const partsA = getEntityCollisionParts(bodyA);
-    const partsB = getEntityCollisionParts(bodyB);
+function satSwapCirclePolyContactFeatures() {
+    SAT_RESULT[1] = -SAT_RESULT[1];
+    SAT_RESULT[2] = -SAT_RESULT[2];
+    const featA = SAT_RESULT[6];
+    SAT_RESULT[6] = SAT_RESULT[7];
+    SAT_RESULT[7] = featA;
+    const pointCount = SAT_RESULT[8];
+    for (let p = 0; p < pointCount; p++) {
+        const offset = 9 + p * 4;
+        const fA = SAT_RESULT[offset + 2];
+        SAT_RESULT[offset + 2] = SAT_RESULT[offset + 3];
+        SAT_RESULT[offset + 3] = fA;
+    }
+}
+function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
+    if (!shapeA || !shapeB) return false;
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satCirclePolygon(xA, yA, shapeA, xB, yB, cosB, sinB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+        const hit = satCirclePolygon(xB, yB, shapeB, xA, yA, cosA, sinA, shapeA);
+        if (hit) satSwapCirclePolyContactFeatures();
+        return hit;
+    }
+    return false;
+}
+function bestEntityPairContactAtPose(partsA, partsB, xA, yA, cosA, sinA, xB, yB, cosB, sinB) {
     let bestOverlap = -Infinity;
     let found = false;
-    for (let i = 0; i < partsA.length; i++)
+    for (let i = 0; i < partsA.length; i++) {
+        const shapeA = partsA[i];
         for (let j = 0; j < partsB.length; j++)
-            if (satCheckCollision(xA, yA, entityFacing(bodyA), partsA[i], xB, yB, entityFacing(bodyB), partsB[j])) {
+            if (satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, partsB[j])) {
                 const overlap = SAT_RESULT[0];
                 if (overlap > bestOverlap) {
                     bestOverlap = overlap;
@@ -645,55 +664,42 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
                     SAT_BEST_RESULT.set(SAT_RESULT);
                 }
             }
+    }
     if (found) {
         SAT_RESULT.set(SAT_BEST_RESULT);
         return true;
     }
     return false;
 }
-export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
-    if (!shapeA || !shapeB) return false;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satCirclePolygon(xA, yA, shapeA, xB, yB, angleB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) {
-        const res = satCirclePolygon(xB, yB, shapeB, xA, yA, angleA, shapeA);
-        if (res) {
-            SAT_RESULT[1] = -SAT_RESULT[1];
-            SAT_RESULT[2] = -SAT_RESULT[2];
-            const featA = SAT_RESULT[6];
-            SAT_RESULT[6] = SAT_RESULT[7];
-            SAT_RESULT[7] = featA;
-            const pointCount = SAT_RESULT[8];
-            for (let p = 0; p < pointCount; p++) {
-                const offset = 9 + p * 4;
-                const fA = SAT_RESULT[offset + 2];
-                SAT_RESULT[offset + 2] = SAT_RESULT[offset + 3];
-                SAT_RESULT[offset + 3] = fA;
-            }
-            return true;
-        }
-        return false;
-    }
-    return false;
+export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.y, xB = bodyB.x, yB = bodyB.y) {
+    const facingA = entityFacing(bodyA);
+    const facingB = entityFacing(bodyB);
+    return bestEntityPairContactAtPose(getEntityCollisionParts(bodyA), getEntityCollisionParts(bodyB), xA, yA, Math.cos(facingA), Math.sin(facingA), xB, yB, Math.cos(facingB), Math.sin(facingB));
 }
-function satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
+export function checkEntityPairCollisionAtSlabPose(bodyA, bodyB, physIdA, physIdB, xA, yA, xB, yB) {
+    const slab = kineticDynamicSlab;
+    return bestEntityPairContactAtPose(getEntityCollisionParts(bodyA), getEntityCollisionParts(bodyB), xA, yA, slab.cos[physIdA], slab.sin[physIdA], xB, yB, slab.cos[physIdB], slab.sin[physIdB]);
+}
+export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
+    return satCheckShapesAtPose(xA, yA, Math.cos(angleA), Math.sin(angleA), shapeA, xB, yB, Math.cos(angleB), Math.sin(angleB), shapeB);
+}
+function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
     const overlapState = { minOverlap: Infinity, minNormalX: 0, minNormalY: 0 };
     let refPolyIsA = true;
     let refEdgeIndex = 0;
     const projectPolyPair = (rNx, rNy) => {
-        satProjectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, angleA);
-        satProjectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, angleB);
+        satProjectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, cosA, sinA);
+        satProjectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, cosB, sinB);
     };
     if (
-        !satMinOverlapOnAxes(shapeA.normals, Math.cos(angleA), Math.sin(angleA), projectPolyPair, overlapState, (edgeIndex) => {
+        !satMinOverlapOnAxes(shapeA.normals, cosA, sinA, projectPolyPair, overlapState, (edgeIndex) => {
             refPolyIsA = true;
             refEdgeIndex = edgeIndex;
         })
     )
         return false;
     if (
-        !satMinOverlapOnAxes(shapeB.normals, Math.cos(angleB), Math.sin(angleB), projectPolyPair, overlapState, (edgeIndex) => {
+        !satMinOverlapOnAxes(shapeB.normals, cosB, sinB, projectPolyPair, overlapState, (edgeIndex) => {
             refPolyIsA = false;
             refEdgeIndex = edgeIndex;
         })
@@ -708,13 +714,11 @@ function satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
         minNormalX = -minNormalX;
         minNormalY = -minNormalY;
     }
+    const angleA = Math.atan2(sinA, cosA);
+    const angleB = Math.atan2(sinB, cosB);
     const pointCount = buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, minNormalX, minNormalY, refPolyIsA, refEdgeIndex);
     if (pointCount == null) {
-        const cosB = Math.cos(angleB);
-        const sinB = Math.sin(angleB);
         const featureB = findExtremeVertexIndex(shapeB.vertices, xB, yB, cosB, sinB, minNormalX, minNormalY, false);
-        const cosA = Math.cos(angleA);
-        const sinA = Math.sin(angleA);
         const featureA = findExtremeVertexIndex(shapeA.vertices, xA, yA, cosA, sinA, minNormalX, minNormalY, true);
         const vertsA = shapeA.vertices;
         const vertsB = shapeB.vertices;
@@ -752,14 +756,12 @@ function satPolygonPolygon(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     SAT_RESULT[8] = pointCount;
     return true;
 }
-function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, anglePoly, polyShape) {
+function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP, sinP, polyShape) {
     if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
     const overlapState = { minOverlap: Infinity, minNormalX: 0, minNormalY: 0 };
-    const cosP = Math.cos(anglePoly);
-    const sinP = Math.sin(anglePoly);
     const projectCirclePolyPair = (rNx, rNy) => {
         satProjectCircle(PROJ_A, rNx, rNy, cxCircle, cyCircle, circleShape);
-        satProjectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, anglePoly);
+        satProjectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, cosP, sinP);
     };
     if (!satMinOverlapOnAxes(polyShape.normals, cosP, sinP, projectCirclePolyPair, overlapState)) return false;
     const featureB = findClosestWorldVertexIndex(polyShape.vertices, pxPoly, pyPoly, cosP, sinP, cxCircle, cyCircle);
@@ -773,7 +775,7 @@ function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, angle
         const nX = dx / len;
         const nY = dy / len;
         satProjectCircle(PROJ_A, nX, nY, cxCircle, cyCircle, circleShape);
-        satProjectPolygon(PROJ_B, nX, nY, polyShape, pxPoly, pyPoly, anglePoly);
+        satProjectPolygon(PROJ_B, nX, nY, polyShape, pxPoly, pyPoly, cosP, sinP);
         if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
         const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
         if (overlap < overlapState.minOverlap) {
@@ -808,11 +810,9 @@ function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, angle
     SAT_RESULT[12] = featureB;
     return true;
 }
-function satProjectPolygon(out, axisX, axisY, shape, px, py, angle = 0) {
+function satProjectPolygon(out, axisX, axisY, shape, px, py, cos, sin) {
     let min = Infinity;
     let max = -Infinity;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
     const count = shape.vertices.length;
     for (let i = 0; i < count; i += 2) {
         const vx_local = shape.vertices[i];
@@ -984,10 +984,6 @@ export function neighborQueryPadForExtent(extent) {
     const pad = kineticActivity().neighborQueryPad;
     return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
 }
-/** Bounds queries with no anchor entity — conservative upper pad. */
-export function maxNeighborQueryPad() {
-    return kineticActivity().neighborQueryPad.maxPad;
-}
 export function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
@@ -1060,10 +1056,12 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1) return shouldResolveKineticPairSlab(physIdA, physIdB, overlaps);
     return shouldResolveKineticPair(primary, other, overlaps);
 }
-function kineticOverlapsWallCandidates(readPose, body, candidates) {
+function kineticOverlapsWallCandidates(px, py, body, candidates) {
     if (!candidates.length) return false;
     const parts = getEntityCollisionParts(body);
-    const { x: px, y: py } = readPose();
+    const bodyFacing = entityFacing(body);
+    const bodyCos = Math.cos(bodyFacing);
+    const bodySin = Math.sin(bodyFacing);
     for (let p = 0; p < parts.length; p++) {
         const shape = parts[p];
         if (shape.type === "Circle") {
@@ -1073,23 +1071,19 @@ function kineticOverlapsWallCandidates(readPose, body, candidates) {
         }
         for (let i = 0; i < candidates.length; i++) {
             const seg = candidates[i];
+            const segFacing = entityFacing(seg);
             const segShape = ensureWallSegmentPolygonShape(seg);
-            if (satCheckCollision(px, py, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) return true;
+            if (satCheckShapesAtPose(px, py, bodyCos, bodySin, shape, seg.x, seg.y, Math.cos(segFacing), Math.sin(segFacing), segShape)) return true;
         }
     }
     return false;
 }
-function kineticBodyOverlapsWallCandidates(body, candidates) {
-    return kineticOverlapsWallCandidates(() => ({ x: body.x, y: body.y }), body, candidates);
-}
-function kineticSlabOverlapsWallCandidates(physId, body, candidates) {
-    return kineticOverlapsWallCandidates(() => ({ x: kineticDynamicSlab.x[physId], y: kineticDynamicSlab.y[physId] }), body, candidates);
-}
 export function shouldResolveKineticBodyAgainstWalls(body, candidates) {
     if (!body.strategy?.isKinetic) return false;
     if (body.needsWallCollision?.()) return true;
-    if (body._physId !== undefined && body._physId !== -1) return kineticSlabOverlapsWallCandidates(body._physId, body, candidates);
-    return kineticBodyOverlapsWallCandidates(body, candidates);
+    const physId = body._physId;
+    if (physId !== undefined && physId !== -1) return kineticOverlapsWallCandidates(kineticDynamicSlab.x[physId], kineticDynamicSlab.y[physId], body, candidates);
+    return kineticOverlapsWallCandidates(body.x, body.y, body, candidates);
 }
 function createBodyImpulseMotion(body) {
     return {
@@ -2482,7 +2476,7 @@ function narrowPhaseSatContact(spatialFrame, pairs, pairIndex, contacts) {
     const bodyB = spatialFrame.entityGrid.entities[physIdB]?._physId === physIdB ? spatialFrame.entityGrid.entities[physIdB] : null;
     if (!bodyA || !bodyB) return;
     const slab = kineticDynamicSlab;
-    const collided = checkEntityPairCollision(bodyA, bodyB, slab.x[physIdA], slab.y[physIdA], slab.x[physIdB], slab.y[physIdB]);
+    const collided = checkEntityPairCollisionAtSlabPose(bodyA, bodyB, physIdA, physIdB, slab.x[physIdA], slab.y[physIdA], slab.x[physIdB], slab.y[physIdB]);
     if (!collided) return;
     const overlap = SAT_RESULT[0];
     const nx = SAT_RESULT[1];
@@ -3016,7 +3010,7 @@ function clearBodyIslandFields(body) {
     delete body._kineticIslandRoot;
 }
 export function bakeKineticIslandPlan(session, kineticBodies) {
-    const adjacent = getKineticConstraintGraph(session);
+    const adjacent = getGraphCache(session).adjacency;
     const bodyById = new Map();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
@@ -3238,13 +3232,10 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSl
     entity._sleepFrames++;
     if (entity._sleepFrames >= requiredFrames) entity.isSleeping = true;
 }
-function isKineticSleepNeighbor(other) {
-    return Boolean(other.strategy?.isKinetic);
-}
 export function hasSleepBlockingNeighbor(prop, neighbors) {
     for (let i = 0; i < neighbors.length; i++) {
         const other = neighbors[i];
-        if (other === prop || !isKineticSleepNeighbor(other)) continue;
+        if (other === prop || !other.strategy?.isKinetic) continue;
         if (shareKineticIsland(prop, other)) continue;
         if (!pairBroadphaseOverlapSlab(prop._physId, other._physId)) continue;
         if (other.isSleeping) continue;
