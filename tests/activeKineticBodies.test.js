@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, writebackActiveKineticBodySlab, clearActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { mockKineticBody, mockCircleProp } from "./harness/kineticTickHarness.js";
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
+import { createFractureWorld } from "./harness/fractureHarness.js";
+import { WorldProp } from "../Libraries/Props/props.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
 const mockState = createKineticAdmitTestState();
@@ -76,9 +78,20 @@ describe("active kinetic bodies", () => {
         assert.equal(frame._activeKineticBodies.length, 0);
         assert.equal(kineticDynamicSlab.activePhysCount, 0);
     });
+    it("begin() keeps admitted prop physId across consecutive frames", () => {
+        const world = createFractureWorld();
+        const frame = new KineticSpatialFrame(50);
+        const prop = new WorldProp(0, 0, "crate", 0);
+        world.worldProps.push(prop);
+        frame.begin(world);
+        const physId = prop._physId;
+        frame.begin(world);
+        assert.equal(prop._physId, physId);
+    });
     it("admitKineticProp makes mid-frame spawns visible to neighbor queries", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);
+        clearActiveKineticBodySlab();
         const anchor = mockCircleProp(0, 0, 10);
         frame.insertEntity(anchor, 0);
         frame._kineticBodies.push(anchor);
@@ -93,6 +106,7 @@ describe("active kinetic bodies", () => {
     it("mid-frame admit syncs slab pose so writeback does not snap spawns to origin", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);
+        clearActiveKineticBodySlab();
         const anchor = mockCircleProp(0, 0, 10);
         frame.insertEntity(anchor, 0);
         frame._kineticBodies.push(anchor);
@@ -108,6 +122,7 @@ describe("active kinetic bodies", () => {
     it("admitKineticProp reindexes props after geometry or position changes", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);
+        clearActiveKineticBodySlab();
         const mover = mockCircleProp(0, 0, 10);
         frame.insertEntity(mover, 0);
         frame._kineticBodies.push(mover);

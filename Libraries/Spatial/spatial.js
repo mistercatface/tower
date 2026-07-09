@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb } from "../Math/math.js";
-import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Physics/physics.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -3342,28 +3342,34 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         /** Registry membershipGen when this frame was last populated. */
         this.populatedMembershipGen = 0;
         this._nextPhysId = 0;
+        this._physIdFreeList = [];
         this._activationScheduled = new Set();
         this._patchPrimarySeen = new Uint8Array(MAX_ENTITIES);
         this._patchPrimarySeenIds = new Int32Array(MAX_ENTITIES);
     }
     allocatePhysId() {
+        const free = this._physIdFreeList;
+        if (free.length) return free.pop();
         const physId = this._nextPhysId++;
         if (physId >= MAX_ENTITIES) throw new Error(`PhysId limit exceeded: ${physId} >= ${MAX_ENTITIES}`);
         return physId;
     }
     releasePhysId(physId, prop, session) {
-        kineticDynamicSlab.islandRoot[physId] = -1;
+        invalidateKineticSlabSlot(physId);
+        this.entityGrid.entities[physId] = null;
+        this.entityGrid.entityNext[physId] = -1;
         delete prop._physId;
+        this._physIdFreeList.push(physId);
         if (session) bumpKineticTopologyGeneration(session);
     }
     _insertKineticMember(prop) {
+        const physId = prop._physId ?? this.allocatePhysId();
         prop.ax = 0;
         prop.ay = 0;
-        this.insertEntity(prop, this.allocatePhysId());
+        this.insertEntity(prop, physId);
         if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
     }
     repopulateFrameMembership(state) {
-        this._nextPhysId = 0;
         this._kineticBodies.length = 0;
         const worldProps = state.worldProps;
         for (let i = 0; i < worldProps.length; i++) this._insertKineticMember(worldProps[i]);

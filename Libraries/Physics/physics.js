@@ -282,6 +282,30 @@ export function clearActiveKineticBodySlab() {
     for (let i = 0; i < slab.activePhysCount; i++) slab.activeSlot[slab.activePhysIds[i]] = -1;
     slab.activePhysCount = 0;
 }
+export function invalidateKineticSlabSlot(physId) {
+    const dyn = kineticDynamicSlab;
+    dyn.x[physId] = 0;
+    dyn.y[physId] = 0;
+    dyn.vx[physId] = 0;
+    dyn.vy[physId] = 0;
+    dyn.w[physId] = 0;
+    dyn.cos[physId] = 1;
+    dyn.sin[physId] = 0;
+    dyn.bpKind[physId] = 0;
+    dyn.r[physId] = 0;
+    dyn.hx[physId] = 0;
+    dyn.hy[physId] = 0;
+    dyn.activeSlot[physId] = -1;
+    dyn.islandRoot[physId] = -1;
+    const stat = kineticStaticSlab;
+    stat.mass[physId] = 0;
+    stat.invMass[physId] = 0;
+    stat.invI[physId] = 0;
+    stat.pinned[physId] = 0;
+    stat.entityId[physId] = -1;
+    stat.restitution[physId] = 0;
+    stat.friction[physId] = 0;
+}
 export function appendActiveKineticBodySlabPhysId(physId) {
     const slab = kineticDynamicSlab;
     slab.activeSlot[physId] = slab.activePhysCount;

@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
+import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
@@ -69,7 +70,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.equal(frame._nextPhysId, 4);
     });
 
-    it("begin() reassigns physIds from zero each frame (Phase 2 will change this)", () => {
+    it("begin() keeps physIds stable when membership is unchanged", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
         const prop = new WorldProp(0, 0, "crate", 0);
@@ -83,5 +84,26 @@ describe("Shatter / Debris Performance Fixes", () => {
         frame.begin(world);
         assert.equal(prop._physId, 0);
         assert.equal(propB._physId, 1);
+    });
+
+    it("evict returns physId to free list and scrubs slab on reuse", () => {
+        const world = createFractureWorld();
+        const frame = new KineticSpatialFrame();
+        const prop = new WorldProp(0, 0, "crate", 0);
+        world.worldProps.push(prop);
+        frame.begin(world);
+        const releasedId = prop._physId;
+        assert.equal(releasedId, 0);
+        prop.vx = 999;
+        const idx = world.worldProps.indexOf(prop);
+        if (idx >= 0) world.worldProps.splice(idx, 1);
+        frame.evictKineticProp(prop, world.kinetic);
+        assert.equal(prop._physId, undefined);
+        assert.equal(frame._physIdFreeList.length, 1);
+        const replacement = new WorldProp(50, 0, "crate", 0);
+        world.worldProps.push(replacement);
+        frame.begin(world);
+        assert.equal(replacement._physId, releasedId);
+        assert.equal(kineticDynamicSlab.vx[releasedId], 0);
     });
 });
