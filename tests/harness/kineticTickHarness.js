@@ -75,9 +75,7 @@ export function mockBall(x, y, overrides = {}) {
 export function mockRollingProp(overrides = {}) {
     const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
     body.strategy = { rolls: true, friction: 0, isKinetic: true, ...(overrides.strategy || {}) };
-    if (!body.strategy || body.strategy.isKinetic !== true) {
-        console.error("DEBUG mockRollingProp bad strategy:", body.strategy);
-    }
+    if (!body.strategy || body.strategy.isKinetic !== true) console.error("DEBUG mockRollingProp bad strategy:", body.strategy);
     normalizeKineticBody(body);
     return body;
 }
@@ -140,6 +138,7 @@ export function createKineticTestWorld(initialProps, { constraints = [], constra
     const worldProps = initialProps.slice();
     const liveProps = initialProps.slice();
     const world = { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraints, constraintsDirty }) };
+    world.obstacleGrid = { floorBeltCount: 0, activePortalCount: 0 };
     world.fractureEngine = new FractureEngine(world);
     return world;
 }

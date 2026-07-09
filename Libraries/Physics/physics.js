@@ -3037,6 +3037,7 @@ function portalTeleportHandler(body) {
     body.vx = 0;
     body.vy = 0;
     body.angularVelocity = 0;
+    delete body._groundRollDrive;
     if (body._physId !== undefined) snapshotKineticBodySlab([body]);
     const eg = t.spatialFrame.entityGrid;
     if (eg) {
