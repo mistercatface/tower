@@ -249,69 +249,6 @@ export class FloorBelt {
         grid.floorBeltCount = beltCount;
         return bounds;
     }
-    static tick(state, spatialFrame, dt, applyKineticAccel) {
-        const grid = state.obstacleGrid;
-        if (grid.floorBeltCount === 0) return;
-        const kineticBodies = spatialFrame._kineticBodies;
-        if (!kineticBodies?.length) return;
-        const dtSec = dt / 1000;
-        const force = DEFAULT_FLOOR_BELT_FORCE;
-        for (let i = 0; i < kineticBodies.length; i++) {
-            const entity = kineticBodies[i];
-            const idx = grid.worldToIdx(entity.x, entity.y);
-            if (idx < 0) continue;
-            const packed = grid.floorPacked[idx];
-            if (!packed) continue;
-            const cx = grid.gridCenterXByIdx(idx);
-            const cy = grid.gridCenterYByIdx(idx);
-            let ax = 0,
-                ay = 0;
-            const turn = BeltPacked.turn(packed);
-            if (turn === 1) {
-                const beltAngle = BeltPacked.flowAngle(packed);
-                const flowX = Math.cos(beltAngle);
-                const flowY = Math.sin(beltAngle);
-                const normalX = -flowY;
-                const normalY = flowX;
-                const dispX = cx - entity.x;
-                const dispY = cy - entity.y;
-                const lateralOffset = dispX * normalX + dispY * normalY;
-                const lateralForceMagnitude = (lateralOffset / grid.cellHalfSize) * force * 1.5;
-                const v_lateral = (entity.vx || 0) * normalX + (entity.vy || 0) * normalY;
-                const lateralDamping = -v_lateral * 5.0;
-                ax = flowX * force + normalX * (lateralForceMagnitude + lateralDamping);
-                ay = flowY * force + normalY * (lateralForceMagnitude + lateralDamping);
-            } else {
-                const pivotX = cx + BeltPacked.pivotDx(packed) * grid.cellHalfSize;
-                const pivotY = cy + BeltPacked.pivotDy(packed) * grid.cellHalfSize;
-                const dx = entity.x - pivotX;
-                const dy = entity.y - pivotY;
-                const dist = Math.hypot(dx, dy);
-                const isLeft = turn === 0;
-                let rX = 0,
-                    rY = 0,
-                    tX = 0,
-                    tY = 0;
-                if (dist > 0.001) {
-                    rX = dx / dist;
-                    rY = dy / dist;
-                    tX = isLeft ? -rY : rY;
-                    tY = isLeft ? rX : -rX;
-                } else {
-                    const angle = BeltPacked.flowAngle(packed);
-                    tX = Math.cos(angle);
-                    tY = Math.sin(angle);
-                }
-                const diff = dist - grid.cellHalfSize;
-                const springForce = -(diff / (grid.cellHalfSize * 0.5)) * force * 1.5;
-                const v_radial = (entity.vx || 0) * rX + (entity.vy || 0) * rY;
-                const damping = -v_radial * 5.0;
-                ax = tX * force + rX * (springForce + damping);
-                ay = tY * force + rY * (springForce + damping);
-            }
-            applyKineticAccel(entity, ax, ay, dtSec);
-        }
-    }
     static syncAnimFromBodies(state, spatialFrame, dt) {
         const grid = state.obstacleGrid;
         if (grid.floorBeltCount === 0) return;

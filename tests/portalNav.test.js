@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { WorldObstacleGrid, EntityGrid } from "../Libraries/Spatial/spatial.js";
-import { PortalLink, FloorPortal } from "../Libraries/Spatial/portals.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { PortalLink } from "../Libraries/Spatial/portals.js";
+import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import {
     bakeNavTopologyLocal,
     navCanStep,
@@ -11,7 +12,7 @@ import {
 import { createHpaWorkerSabPools, hpaPathSlotIdx } from "../Libraries/Navigation/hpaWorkerSab.js";
 import { HpaBufferManager, HpaReplanPlanner } from "../Libraries/Navigation/HpaWorkerEntry.js";
 import { mockHpaPathWorker } from "./harness/hpaPathSlotHarness.js";
-import { mockCircleProp } from "./harness/kineticTickHarness.js";
+import { mockCircleProp, createKineticTestTick, kineticPhysicsHooks } from "./harness/kineticTickHarness.js";
 
 function createPortalPlanner(cols, rows) {
     const cellCount = cols * rows;
@@ -114,21 +115,47 @@ describe("portal nav", () => {
         assert.ok(progress >= 2);
     });
 
-    it("FloorPortal.tick teleports body from exit to entry", () => {
+    it("runKineticPhysics teleports body from exit to exact entry center", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 160, 160);
         const exitIdx = grid.idx(2, 2);
         const entryIdx = grid.idx(8, 8);
         PortalLink.setLink(grid, exitIdx, entryIdx);
+        const entryX = grid.gridCenterXByIdx(entryIdx);
+        const entryY = grid.gridCenterYByIdx(entryIdx);
         const body = mockCircleProp(grid.gridCenterXByIdx(exitIdx), grid.gridCenterYByIdx(exitIdx), 5);
-        body._physId = 0;
-        const entityGrid = new EntityGrid(grid.cellSize);
-        entityGrid.syncBounds(grid);
-        entityGrid.insert(body);
-        const spatialFrame = { entityGrid };
-        const state = { obstacleGrid: grid };
-        FloorPortal.tick(state, spatialFrame);
-        assert.equal(grid.worldToIdx(body.x, body.y), entryIdx);
+        const tick = createKineticTestTick([body], { cellSize: grid.cellSize });
+        tick.world.obstacleGrid = grid;
+        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        assert.equal(body.x, entryX);
+        assert.equal(body.y, entryY);
+        assert.equal(body.vx, 0);
+        assert.equal(body.vy, 0);
+        assert.equal(body.angularVelocity, 0);
+    });
+
+    it("runKineticPhysics captures fast approach overlapping exit and zeros velocity at entry", () => {
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 160, 160);
+        const exitIdx = grid.idx(2, 2);
+        const entryIdx = grid.idx(8, 8);
+        PortalLink.setLink(grid, exitIdx, entryIdx);
+        const exitX = grid.gridCenterXByIdx(exitIdx);
+        const exitY = grid.gridCenterYByIdx(exitIdx);
+        const entryX = grid.gridCenterXByIdx(entryIdx);
+        const entryY = grid.gridCenterYByIdx(entryIdx);
+        const body = mockCircleProp(exitX - 6, exitY, 4);
+        body.vx = 500;
+        body.vy = 120;
+        body.angularVelocity = 3;
+        const tick = createKineticTestTick([body], { cellSize: grid.cellSize });
+        tick.world.obstacleGrid = grid;
+        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        assert.equal(body.x, entryX);
+        assert.equal(body.y, entryY);
+        assert.equal(body.vx, 0);
+        assert.equal(body.vy, 0);
+        assert.equal(body.angularVelocity, 0);
     });
 
     it("simplified replan finds and writes path through portal shortcut", () => {

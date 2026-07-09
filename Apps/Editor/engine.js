@@ -5,14 +5,12 @@ import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
-import { applyKineticAcceleration } from "../../Libraries/Physics/physics.js";
 import { createGridWallDamage, applyPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
 import { registerMapGenBoundsGridExpansionListener } from "../../Libraries/Spatial/spatial.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
-import { FloorPortal } from "../../Libraries/Spatial/portals.js";
 import { installRadioOverlay } from "../../Libraries/Radio/installRadioOverlay.js";
 import { tickSandboxCameraFollow } from "../../Libraries/Sandbox/sandbox.js";
 import { fitLabStageToView, tickLabViewportNavigation } from "./ui/labViewport.js";
@@ -57,15 +55,13 @@ function simulationKineticHooks(state) {
 }
 /** @param {import("./state.js").TileLabGameState} state @param {import("../../Libraries/Spatial/spatial.js").KineticSpatialFrame} frame */
 function kineticTickFromState(state, frame) {
-    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks, fractureEngine: state.fractureEngine } };
+    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks, fractureEngine: state.fractureEngine, obstacleGrid: state.obstacleGrid } };
 }
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
     const spatialFrame = kineticSpatial.begin(state);
-    FloorBelt.tick(state, spatialFrame, simDt, applyKineticAcceleration);
-    FloorPortal.tick(state, spatialFrame);
     runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
     FloorBelt.syncAnimFromBodies(state, spatialFrame, simDt);
     FloatingText.updateAll(state, simDt);

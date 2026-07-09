@@ -1,4 +1,5 @@
 import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
+import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -2951,10 +2952,132 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
         tick.world.kinetic.kineticSolverStats = { outerIterations: outerIterationsRun, maxIterations: kineticIterations, pairCount: persistedKineticPairBuffer.count };
     } else tick.world.kinetic.kineticSolverStats = { outerIterations: 0, maxIterations: kineticIterations, pairCount: 0 };
 }
+function applyKineticAcceleration(body, ax, ay, dtSec) {
+    body.vx = (body.vx ?? 0) + ax * dtSec;
+    body.vy = (body.vy ?? 0) + ay * dtSec;
+    wakeKineticBody(body);
+}
+function applyFloorBeltForces(world, spatialFrame, dtMs) {
+    const grid = world.obstacleGrid;
+    if (grid.floorBeltCount === 0) return;
+    const kineticBodies = spatialFrame._kineticBodies;
+    if (!kineticBodies?.length) return;
+    const dtSec = dtMs / 1000;
+    const force = DEFAULT_FLOOR_BELT_FORCE;
+    for (let i = 0; i < kineticBodies.length; i++) {
+        const entity = kineticBodies[i];
+        const idx = grid.worldToIdx(entity.x, entity.y);
+        if (idx < 0) continue;
+        const packed = grid.floorPacked[idx];
+        if (!packed) continue;
+        const cx = grid.gridCenterXByIdx(idx);
+        const cy = grid.gridCenterYByIdx(idx);
+        let ax = 0,
+            ay = 0;
+        const turn = BeltPacked.turn(packed);
+        if (turn === 1) {
+            const beltAngle = BeltPacked.flowAngle(packed);
+            const flowX = Math.cos(beltAngle);
+            const flowY = Math.sin(beltAngle);
+            const normalX = -flowY;
+            const normalY = flowX;
+            const dispX = cx - entity.x;
+            const dispY = cy - entity.y;
+            const lateralOffset = dispX * normalX + dispY * normalY;
+            const lateralForceMagnitude = (lateralOffset / grid.cellHalfSize) * force * 1.5;
+            const v_lateral = (entity.vx || 0) * normalX + (entity.vy || 0) * normalY;
+            const lateralDamping = -v_lateral * 5.0;
+            ax = flowX * force + normalX * (lateralForceMagnitude + lateralDamping);
+            ay = flowY * force + normalY * (lateralForceMagnitude + lateralDamping);
+        } else {
+            const pivotX = cx + BeltPacked.pivotDx(packed) * grid.cellHalfSize;
+            const pivotY = cy + BeltPacked.pivotDy(packed) * grid.cellHalfSize;
+            const dx = entity.x - pivotX;
+            const dy = entity.y - pivotY;
+            const dist = Math.hypot(dx, dy);
+            const isLeft = turn === 0;
+            let rX = 0,
+                rY = 0,
+                tX = 0,
+                tY = 0;
+            if (dist > 0.001) {
+                rX = dx / dist;
+                rY = dy / dist;
+                tX = isLeft ? -rY : rY;
+                tY = isLeft ? rX : -rX;
+            } else {
+                const angle = BeltPacked.flowAngle(packed);
+                tX = Math.cos(angle);
+                tY = Math.sin(angle);
+            }
+            const diff = dist - grid.cellHalfSize;
+            const springForce = -(diff / (grid.cellHalfSize * 0.5)) * force * 1.5;
+            const v_radial = (entity.vx || 0) * rX + (entity.vy || 0) * rY;
+            const damping = -v_radial * 5.0;
+            ax = tX * force + rX * (springForce + damping);
+            ay = tY * force + rY * (springForce + damping);
+        }
+        applyKineticAcceleration(entity, ax, ay, dtSec);
+    }
+}
+const PORTAL_QUERY_BOUNDS = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, exitCx: 0, exitCy: 0, tx: 0, ty: 0 };
+function portalTeleportHandler(body) {
+    const t = PORTAL_TICK;
+    const grid = t.grid;
+    if (grid.worldToIdx(body.x, body.y) !== t.exitIdx) {
+        const r = resolveBodyRadius(body);
+        const capture = grid.cellHalfSize + r;
+        const dx = body.x - t.exitCx;
+        const dy = body.y - t.exitCy;
+        if (dx * dx + dy * dy > capture * capture) return;
+    }
+    body.x = t.tx;
+    body.y = t.ty;
+    body.vx = 0;
+    body.vy = 0;
+    body.angularVelocity = 0;
+    if (body._physId !== undefined) snapshotKineticBodySlab([body]);
+    const eg = t.spatialFrame.entityGrid;
+    if (eg) {
+        eg.remove(body);
+        eg.insert(body);
+        body._neighborsFrameId = -1;
+    }
+    wakeKineticBody(body);
+}
+function applyFloorPortalTeleports(world, spatialFrame) {
+    const grid = world.obstacleGrid;
+    const count = grid.activePortalCount;
+    if (count === 0) return;
+    const pairs = grid.activePortalPairs;
+    const eg = spatialFrame.entityGrid;
+    const half = grid.cellHalfSize;
+    PORTAL_TICK.grid = grid;
+    PORTAL_TICK.spatialFrame = spatialFrame;
+    for (let i = 0; i < count; i++) {
+        const exitIdx = pairs[i * 2];
+        const entryIdx = pairs[i * 2 + 1];
+        const ex = grid.gridCenterXByIdx(exitIdx);
+        const ey = grid.gridCenterYByIdx(exitIdx);
+        PORTAL_QUERY_BOUNDS.minX = ex - half;
+        PORTAL_QUERY_BOUNDS.maxX = ex + half;
+        PORTAL_QUERY_BOUNDS.minY = ey - half;
+        PORTAL_QUERY_BOUNDS.maxY = ey + half;
+        PORTAL_TICK.exitIdx = exitIdx;
+        PORTAL_TICK.exitCx = ex;
+        PORTAL_TICK.exitCy = ey;
+        PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
+        PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
+        eg.forEachInBounds(PORTAL_QUERY_BOUNDS, null, ++eg.queryGen, portalTeleportHandler);
+    }
+}
 export function runKineticPhysics(tick, dt, hooks) {
     const world = tick.world;
     world.simulationFrameHooks?.beforePhysics?.(world);
     const spatialFrame = tick.frame;
+    applyFloorBeltForces(world, spatialFrame, dt);
+    applyFloorPortalTeleports(world, spatialFrame);
     const session = world.kinetic;
     ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
     session.kineticConstraintsDirty = false;
@@ -3281,20 +3404,6 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     const neighbors = spatialFrame.collectEntitiesInBounds(ISLAND_SLEEP_QUERY_BOUNDS);
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
-}
-/**
- * Continuous world acceleration (units/s²) — same semantics as floor belts.
- * Not mass-weighted; instant velocity changes use direct vx/vy writes at contact sites.
- *
- * @param {{ vx?: number, vy?: number }} body
- * @param {number} ax
- * @param {number} ay
- * @param {number} dtSec
- */
-export function applyKineticAcceleration(body, ax, ay, dtSec) {
-    body.vx = (body.vx ?? 0) + ax * dtSec;
-    body.vy = (body.vy ?? 0) + ay * dtSec;
-    wakeKineticBody(body);
 }
 /**
  * Velocity and angular drag for coasting / knockback decay (top-down locomotion).
