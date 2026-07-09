@@ -21,6 +21,15 @@ let wallDebrisNextId = 0x50000000;
 function isWallChunkPropType(type) {
     return type === "wall_voxel_chunk" || type === "wall_rail_chunk";
 }
+function resetDebrisBodyPresentation(body, type) {
+    const asset = propCatalog[type];
+    body.height = asset?.visuals?.world?.height ?? 12;
+    body.visualOverride = undefined;
+    body.wallChunkProfileId = undefined;
+    body.wallChunkHeightPx = undefined;
+    body._wallChunkTextures = undefined;
+    body._wallChunkTextureReady = undefined;
+}
 class FractureGeomPool {
     constructor() {
         this.buckets = GEOM_VERT_BUCKETS.map(() => []);
@@ -337,6 +346,7 @@ class WallDebrisStore {
         body.id = wallDebrisNextId++;
         body.type = type;
         body.strategy = buildWorldPropStrategyFromAsset(propCatalog[type]);
+        resetDebrisBodyPresentation(body, type);
         body.isDead = false;
         body.isSleeping = false;
         body.shape = undefined;
@@ -450,6 +460,11 @@ class WallDebrisStore {
             if (wallChunkProfileId !== undefined) {
                 body.wallChunkProfileId = wallChunkProfileId;
                 body.wallChunkHeightPx = wallChunkHeightPx;
+            } else {
+                body.wallChunkProfileId = undefined;
+                body.wallChunkHeightPx = undefined;
+                body._wallChunkTextures = undefined;
+                body._wallChunkTextureReady = undefined;
             }
             if (shardHeight != null) body.height = shardHeight;
             if (configureShard) configureShard(body, { centroid: { cx, cy } }, i - fracture.debrisStart);

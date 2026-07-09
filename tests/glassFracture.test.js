@@ -13,6 +13,7 @@ import { transformPoint2DInto } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { liveGlassCount, createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards } from "./harness/fractureHarness.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
@@ -58,21 +59,6 @@ function analyzeShards(shards, parentArea) {
         minThin = Math.min(minThin, metrics.thin);
     }
     return { totalArea, maxAspect, minThin, count: shards.length };
-}
-function liveGlassCount(world) {
-    let count = 0;
-    for (let i = 0; i < world.worldProps.length; i++) {
-        const prop = world.worldProps[i];
-        if (!prop.isDead && prop.type === "glass_pane") count++;
-    }
-    const debris = world.fractureEngine?.wallDebris?.list();
-    if (debris) {
-        for (let i = 0; i < debris.length; i++) {
-            const body = debris[i];
-            if (!body.isDead && body.type === "glass_pane") count++;
-        }
-    }
-    return count;
 }
 function makeOverlappingGlassShards() {
     const shards = FractureEngine.shatterGlassFootprint(20, 14, 0, 0, 40, deterministicRandom);
@@ -195,23 +181,16 @@ describe("glass fracture", () => {
     });
     it("spawnGlassShatter sets fracture cooldown on new shards", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
-        prop._physId = 0;
-        kineticDynamicSlab.x[0] = 0;
-        kineticDynamicSlab.y[0] = 0;
-        applyPropBoxFootprint(prop, 32, 32);
-        const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
-        assert.ok(fracture);
-        const state = {
-            worldProps: [],
-            fractureEngine: new FractureEngine({ worldProps: [], kinetic: {} }),
-        };
-        const spawned = FractureEngine.spawnFractureShards(state, prop, fracture, null);
-        assert.ok(spawned.length >= 2);
-        for (const frag of spawned) {
+        setupGlassPaneForFracture(prop, 32, 32);
+        const world = createFractureWorld();
+        const result = spawnGlassFractureShards(world, prop, 30);
+        assert.ok(result);
+        assert.ok(result.shards.length >= 2);
+        for (const frag of result.shards) {
             assert.ok(frag.isWallDebris);
             assert.ok(frag._fractureCooldown > 0);
         }
-        assert.equal(state.worldProps.length, 0);
+        assert.equal(world.worldProps.length, 0);
     });
     it("glass shard on glass shard does not reproduce on kinetic contact", () => {
         const { a, b } = makeOverlappingGlassShards();
