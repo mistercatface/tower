@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { createKineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
-import { getMapGenBoundsCenterWorld, hasMapGenStamp, packChunkKey, cellToChunkCoord } from "../Libraries/Spatial/spatial.js";
+import { getMapGenBoundsCenterWorld, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
+import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
 
 const CELLS_PER_CHUNK = 16;
 
@@ -31,6 +33,7 @@ function createEditorTestState() {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: createKineticSession(),
         selectedIds,
         sandbox: {
             ...new SandboxWorldState(),
@@ -102,8 +105,10 @@ describe("snake game launch actions", () => {
         // Verify Boid
         assert.ok(ctx.boid);
         assert.equal(ctx.boid.type, "boid_triangle");
-        assert.equal(ctx.boid.x, state.viewport.x);
-        assert.equal(ctx.boid.y, state.viewport.y);
+        const playerIdx = grid.worldToIdx(ctx.boid.x, ctx.boid.y);
+        assert.ok(isIdxInMapGenBounds(state.editor.railMazeConfig, grid, playerIdx));
+        assert.ok(isNavWalkableCellAt(state, playerIdx, state.editor.railMazeConfig, { boundsMode: "rect", boundsIdx: state.editor.railMazeConfig.boundsIdx + ((state.editor.railMazeConfig.boundsRows / 2) | 0) * grid.cols + ((state.editor.railMazeConfig.boundsCols / 2) | 0), boundsCols: 1, boundsRows: 1 }));
+        assert.ok(Math.hypot(ctx.boid.x - mazeCenter.x, ctx.boid.y - mazeCenter.y) < grid.cellSize * 4);
         assert.deepEqual(state.selectedIds, [ctx.boid.id]);
         
         // Verify Focus
@@ -115,9 +120,21 @@ describe("snake game launch actions", () => {
         // Verify Selection Lock
         assert.equal(state.editor.lockSelection, true);
 
-        // Verify only the player boid is spawned
-        assert.equal(state.worldProps.length, 1);
-        assert.equal(state.worldProps[0].id, ctx.boid.id);
+        // Verify player + enemy snake chain
+        assert.ok(ctx.enemyChain);
+        assert.equal(ctx.enemyChain.members.length, 3);
+        assert.equal(state.worldProps.length, 4);
+        assert.equal(state.kinetic.kineticConstraints.length, 2);
+        assert.equal(ctx.enemyChain.head.type, "snake");
+        assert.equal(ctx.enemyChain.members[1].type, "ball");
+        assert.equal(ctx.enemyChain.members[2].type, "ball");
+        const enemyIdx = grid.worldToIdx(ctx.enemyChain.head.x, ctx.enemyChain.head.y);
+        assert.ok(isIdxInMapGenBounds(state.editor.railMazeConfig, grid, enemyIdx));
+        assert.ok(isNavWalkableCellAt(state, enemyIdx, state.editor.railMazeConfig, { boundsMode: "rect", boundsIdx: state.editor.railMazeConfig.boundsIdx + ((state.editor.railMazeConfig.boundsRows / 2) | 0) * grid.cols + ((state.editor.railMazeConfig.boundsCols / 2) | 0), boundsCols: 1, boundsRows: 1 }));
+        assert.ok(Math.hypot(ctx.enemyChain.head.x - ctx.boid.x, ctx.enemyChain.head.y - ctx.boid.y) > grid.cellSize);
+        assert.ok(state.sandbox.entityMeta.isChainHead(ctx.enemyChain.head.id));
+        assert.ok(!state.sandbox.entityMeta.isChainHead(ctx.boid.id));
+        assert.ok(state.appLaunch.session);
     });
 
     it("toggles navMode between hpa and flow and switches active behavior", async () => {
@@ -154,6 +171,7 @@ describe("snake game launch actions", () => {
         };
         state.appLaunch = { id: "snake", launcher: GAME_LAUNCHERS.snake };
         const ctx = await runGameLaunch(state, GAME_LAUNCHERS.snake);
+        assert.ok(state.appLaunch.session);
         const boid = ctx.boid;
 
         // Initialize sandbox controller and behaviors

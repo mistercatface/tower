@@ -1,14 +1,19 @@
-import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces, isIdxInMapGenBounds } from "../Spatial/spatial.js";
+import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces, isIdxInMapGenBounds, getMapGenBoundsCenterIdx, getMapGenBoundsCenterWorld } from "../Spatial/spatial.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
+import { spawnPlacedSandboxProp, spawnLinkedBallChain, resolveChainLinkRestLength } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
+import { createSnakeGameSession } from "./snakeGameSession.js";
+import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",
         hideEditor: false,
         defaultPathDebugMode: "reachable",
+        async setup(state) {
+            return createSnakeGameSession(state);
+        },
         async launch(state, ctx) {
             await runSnakeLaunch(state, ctx);
         },
@@ -20,6 +25,61 @@ export function parseGameLaunchQuery(search = window.location.search) {
 }
 const SNAKE_RAIL_MAZE_COLS = 64;
 const SNAKE_RAIL_MAZE_ROWS = 64;
+const CHAIN_GROW_DIRS = [
+    { growDirX: -1, growDirY: 0 },
+    { growDirX: 1, growDirY: 0 },
+    { growDirX: 0, growDirY: -1 },
+    { growDirX: 0, growDirY: 1 },
+];
+function mazeFloodSeedBounds(grid, config) {
+    const centerIdx = getMapGenBoundsCenterIdx(grid, config);
+    return { boundsMode: "rect", boundsIdx: centerIdx, boundsCols: 1, boundsRows: 1 };
+}
+function collectMazeWalkableCells(state, config) {
+    const index = getNavWalkableCellIndex(state, config, mazeFloodSeedBounds(state.obstacleGrid, config));
+    return filterWalkableCellsInBounds(index.cells, state.obstacleGrid, config);
+}
+function pickWalkableCellIdxByDistance(state, config, worldX, worldY, pickFarthest) {
+    const grid = state.obstacleGrid;
+    const cells = collectMazeWalkableCells(state, config);
+    if (cells.length === 0) return -1;
+    let bestIdx = cells[0];
+    let bestDist = pickFarthest ? -1 : Infinity;
+    for (let i = 0; i < cells.length; i++) {
+        const idx = cells[i];
+        const cx = grid.gridCenterXByIdx(idx);
+        const cy = grid.gridCenterYByIdx(idx);
+        const dist = Math.hypot(cx - worldX, cy - worldY);
+        if (pickFarthest ? dist > bestDist : dist < bestDist) {
+            bestDist = dist;
+            bestIdx = idx;
+        }
+    }
+    return bestIdx;
+}
+function pickChainGrowDirOnWalkableCells(state, config, anchorIdx, segmentCount, spacing) {
+    const grid = state.obstacleGrid;
+    const walkable = new Set(collectMazeWalkableCells(state, config));
+    const anchorX = grid.gridCenterXByIdx(anchorIdx);
+    const anchorY = grid.gridCenterYByIdx(anchorIdx);
+    for (let i = 0; i < CHAIN_GROW_DIRS.length; i++) {
+        const { growDirX, growDirY } = CHAIN_GROW_DIRS[i];
+        let lastX = anchorX;
+        let lastY = anchorY;
+        let ok = true;
+        for (let seg = 1; seg < segmentCount; seg++) {
+            lastX += growDirX * spacing;
+            lastY += growDirY * spacing;
+            const nIdx = grid.worldToIdx(lastX, lastY);
+            if (nIdx < 0 || !walkable.has(nIdx)) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) return CHAIN_GROW_DIRS[i];
+    }
+    return CHAIN_GROW_DIRS[0];
+}
 function collectOpenCells(grid, config) {
     const size = grid.cols * grid.rows;
     const open = [];
@@ -73,16 +133,40 @@ async function runSnakeLaunch(state, ctx) {
     refreshAllStampedRegionSurfaces(state);
     for (let i = 0; i < 5; i++) placeRandomPortalPair(state, railMazeConfig);
     await state.nav.commitEdit(null, { fullNavSync: true });
-    const x = state.viewport.x;
-    const y = state.viewport.y;
-    const boid = spawnPlacedSandboxProp(state, x, y, "boid_triangle", "alpha");
+    const grid = state.obstacleGrid;
+    const mazeCenter = getMapGenBoundsCenterWorld(grid, railMazeConfig);
+    const playerAnchorIdx = pickWalkableCellIdxByDistance(state, railMazeConfig, mazeCenter.x, mazeCenter.y, false);
+    if (playerAnchorIdx < 0) throw new Error("snake launch: no walkable maze cell for player spawn");
+    const playerX = grid.gridCenterXByIdx(playerAnchorIdx);
+    const playerY = grid.gridCenterYByIdx(playerAnchorIdx);
+    const boid = spawnPlacedSandboxProp(state, playerX, playerY, "boid_triangle", "alpha");
     ctx.boid = boid;
+    const enemyAnchorIdx = pickWalkableCellIdxByDistance(state, railMazeConfig, playerX, playerY, true);
+    if (enemyAnchorIdx < 0) throw new Error("snake launch: no walkable maze cell for enemy spawn");
+    const chainSpacing = resolveChainLinkRestLength(
+        { radius: 4 },
+        { radius: 4 },
+        1.0,
+    );
+    const growDir = pickChainGrowDirOnWalkableCells(state, railMazeConfig, enemyAnchorIdx, 3, chainSpacing);
+    const enemyChain = spawnLinkedBallChain(state, enemyAnchorIdx, {
+        headBallType: "snake",
+        ballType: "ball",
+        segmentCount: 3,
+        linkSlack: 1.0,
+        faction: "beta",
+        spacing: chainSpacing,
+        growDirX: growDir.growDirX,
+        growDirY: growDir.growDirY,
+    });
+    ctx.enemyChain = enemyChain;
+    state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [boid.id] });
         state.sandbox.controller.session.sync();
     }
-    // 3. Focus Camera and Zoom to 2.0
     state.sandbox.entityMeta.setCameraTarget(boid.id, true);
+    state.viewport.snapTo(playerX, playerY);
     state.viewport.zoom = 2.0;
     syncLabViewportZoomUi(state);
     state.editor.lockSelection = true;
