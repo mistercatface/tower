@@ -71,7 +71,7 @@ async function runSnakeLaunch(state, ctx) {
     centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railMazeConfig);
     await generateLabRailMaze(state);
     refreshAllStampedRegionSurfaces(state);
-    ctx.portalPair = placeRandomPortalPair(state, railMazeConfig);
+    for (let i = 0; i < 5; i++) placeRandomPortalPair(state, railMazeConfig);
     await state.nav.commitEdit(null, { fullNavSync: true });
     const x = state.viewport.x;
     const y = state.viewport.y;
