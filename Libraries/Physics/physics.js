@@ -3291,26 +3291,9 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
  * @param {number} ay
  * @param {number} dtSec
  */
-export function applyAcceleration(body, ax, ay, dtSec) {
-    if (body.vx === undefined || body.vy === undefined) return;
-    body.vx += ax * dtSec;
-    body.vy += ay * dtSec;
-}
-/**
- * @param {object} body
- * @param {number} ax
- * @param {number} ay
- * @param {number} dtSec
- */
 export function applyKineticAcceleration(body, ax, ay, dtSec) {
-    if (body.ax === undefined || body.ay === undefined) {
-        body.vx = (body.vx ?? 0) + ax * dtSec;
-        body.vy = (body.vy ?? 0) + ay * dtSec;
-        wakeKineticBody(body);
-        return;
-    }
-    body.ax += ax;
-    body.ay += ay;
+    body.vx = (body.vx ?? 0) + ax * dtSec;
+    body.vy = (body.vy ?? 0) + ay * dtSec;
     wakeKineticBody(body);
 }
 /**
@@ -3331,10 +3314,6 @@ export function applyKineticAcceleration(body, ax, ay, dtSec) {
  * @param {{ friction?: number, integrateFacing?: boolean, snapSpeed?: number }} [options]
  */
 export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFacing = true, snapSpeed = 1 } = {}) {
-    if (body.ax || body.ay) {
-        body.vx = (body.vx ?? 0) + body.ax * (dtMs / 1000);
-        body.vy = (body.vy ?? 0) + body.ay * (dtMs / 1000);
-    }
     if (body.vx || body.vy) {
         addXY(body, (body.vx ?? 0) * (dtMs / 1000), (body.vy ?? 0) * (dtMs / 1000));
         const dragFactor = Math.exp(-friction * (dtMs / 1000));

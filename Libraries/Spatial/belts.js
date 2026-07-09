@@ -249,7 +249,7 @@ export class FloorBelt {
         grid.floorBeltCount = beltCount;
         return bounds;
     }
-    static tick(state, spatialFrame, dt, applyAcceleration) {
+    static tick(state, spatialFrame, dt, applyKineticAccel) {
         const grid = state.obstacleGrid;
         if (grid.floorBeltCount === 0) return;
         const kineticBodies = spatialFrame._kineticBodies;
@@ -309,7 +309,7 @@ export class FloorBelt {
                 ax = tX * force + rX * (springForce + damping);
                 ay = tY * force + rY * (springForce + damping);
             }
-            applyAcceleration(entity, ax, ay, dtSec);
+            applyKineticAccel(entity, ax, ay, dtSec);
         }
     }
     static syncAnimFromBodies(state, spatialFrame, dt) {

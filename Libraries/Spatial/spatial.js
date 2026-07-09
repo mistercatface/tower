@@ -3362,21 +3362,22 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._physIdFreeList.push(physId);
         if (session) bumpKineticTopologyGeneration(session);
     }
-    _insertKineticMember(prop) {
-        const physId = prop._physId ?? this.allocatePhysId();
-        prop.ax = 0;
-        prop.ay = 0;
-        this.insertEntity(prop, physId);
-        if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
-    }
     repopulateFrameMembership(state) {
         this._kineticBodies.length = 0;
         const worldProps = state.worldProps;
-        for (let i = 0; i < worldProps.length; i++) this._insertKineticMember(worldProps[i]);
+        for (let i = 0; i < worldProps.length; i++) {
+            const prop = worldProps[i];
+            const physId = prop._physId ?? this.allocatePhysId();
+            this.insertEntity(prop, physId);
+            if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
+        }
         const debrisBodies = state.fractureEngine.debris.list();
         for (let i = 0; i < debrisBodies.length; i++) {
             const body = debrisBodies[i];
-            if (!body.isDead) this._insertKineticMember(body);
+            if (body.isDead) continue;
+            const physId = body._physId ?? this.allocatePhysId();
+            this.insertEntity(body, physId);
+            if (body.strategy?.isKinetic) this._kineticBodies.push(body);
         }
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
     }
