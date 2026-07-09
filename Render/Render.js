@@ -26,11 +26,10 @@ export class Renderer {
             { zIndex: 71, fn: (state) => this.drawWorldSceneBloom(state) },
         ];
     }
-    /** Ground tiles and debris props — zIndex -5. */
+    /** Ground tiles — zIndex -5. */
     drawWorldSceneBackdrop(state, viewport) {
         state.worldSurfaces.drawGround(this.ctx, state, viewport);
         this.sceneHooks.drawGroundOverlays?.(state, viewport, this.ctx);
-        this.render3D.drawDebrisProps(this.ctx, state, viewport);
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {

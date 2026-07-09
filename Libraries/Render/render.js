@@ -357,11 +357,7 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") 
     }
     if (mode === "flow") {
         if (pathNodes && pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#4caf50", lineWidth: 4 }));
-        if (pathNodes) {
-            for (let i = 0; i < pathNodes.length; i++) {
-                out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#4caf50" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#4caf50")));
-            }
-        }
+        if (pathNodes) for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#4caf50" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#4caf50")));
         return;
     }
     if (pathNodes.length < 2) return;
@@ -2028,8 +2024,6 @@ export function createConveyorDraw(options = {}) {
     };
 }
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
-const matchDebris = (p) => p.strategy?.renderMode === "debris";
-const DEBRIS_QUERY_OPTIONS = { filterId: "debris", match: matchDebris };
 const match3d = (p) => p.strategy?.renderMode === "3d";
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
 function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
@@ -2070,10 +2064,6 @@ export class WorldSceneRenderer {
     constructor() {
         this.visibleDrawQueue = new VisibleDrawQueue();
         this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
-    }
-    drawDebrisProps(ctx, state, viewport, options = {}) {
-        const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, DEBRIS_QUERY_OPTIONS);
-        for (let i = 0; i < props.length; i++) this._drawProp(ctx, props[i], viewport);
     }
     _appendVisible3dProps(state, viewport) {
         const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, THREE_D_QUERY_OPTIONS);
