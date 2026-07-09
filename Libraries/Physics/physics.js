@@ -2956,7 +2956,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     let substepsRun = steps;
     const resolveWalls = (entity) => hooks.resolveWalls(entity, spatialFrame);
     for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, spatialFrame);
-    world.fractureEngine.wallDebris.tickFrames(dt, spatialFrame);
+    world.fractureEngine.debris.tickFrames(dt, spatialFrame);
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
         for (let i = 0; i < activeBodies.length; i++) hooks.updatePropSubstep(activeBodies[i], subDt, spatialFrame);

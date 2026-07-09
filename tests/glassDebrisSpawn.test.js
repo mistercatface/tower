@@ -23,7 +23,7 @@ describe("glass debris slab spawn", () => {
 
     it("pooled debris bodies reset wall-chunk presentation before glass spawn", () => {
         const world = createFractureWorld();
-        const store = world.fractureEngine.wallDebris;
+        const store = world.fractureEngine.debris;
         const wall = store.acquireBody("wall_voxel_chunk", 0, 0, 0);
         wall.wallChunkProfileId = "stale_profile";
         wall.wallChunkHeightPx = 64;
@@ -46,9 +46,9 @@ describe("glass debris slab spawn", () => {
         const spatialFrame = { evictKineticProp() {}, admitKineticProps(props) { for (let i = 0; i < props.length; i++) spatialFrame.admitKineticProp(props[i]); }, admitKineticProp() {} };
         const shards = FractureEngine.commitFractureResult(world, prop, fracture, spatialFrame);
         assert.ok(shards.length >= 2);
-        assert.ok(shards.every((s) => s.isWallDebris));
+        assert.ok(shards.every((s) => s.isKineticDebris));
         assert.equal(world.worldProps.length, 0);
-        assert.equal(world.fractureEngine.wallDebris.list().length, shards.length);
+        assert.equal(world.fractureEngine.debris.list().length, shards.length);
     });
 
     it("spawnGlassFractureShards leaves registry empty", () => {
@@ -71,6 +71,6 @@ describe("glass debris slab spawn", () => {
         setupGlassPaneForFracture(pane, 32, 32);
         const result = spawnGlassFractureShards(world, pane, 30);
         assert.ok(result);
-        assert.ok(result.shards.every((s) => s.isWallDebris));
+        assert.ok(result.shards.every((s) => s.isKineticDebris));
     });
 });

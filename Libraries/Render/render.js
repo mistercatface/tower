@@ -2079,7 +2079,7 @@ export class WorldSceneRenderer {
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
             this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, p, distSq);
         }
-        state.fractureEngine.wallDebris.appendVisibleProps(this.visibleDrawQueue, viewport, DRAW_KIND_PROP);
+        state.fractureEngine.debris.appendVisibleProps(this.visibleDrawQueue, viewport, DRAW_KIND_PROP);
     }
     _appendVisibleStaticGridWalls(state, viewport) {
         collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);

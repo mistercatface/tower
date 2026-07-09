@@ -31,16 +31,17 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         const originalBodies = result.shards.slice();
-        assert.ok(result.shards.every((s) => s.isWallDebris));
+        assert.ok(result.shards.every((s) => s.isKineticDebris));
         assert.equal(world.worldProps.length, 0);
 
         const spatialFrame = { evictKineticProp() {} };
         for (let i = result.shards.length - 1; i >= 0; i--) {
-            world.fractureEngine.wallDebris.remove(result.shards[i], spatialFrame);
+            world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
         }
 
         const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
-        const spawnedAgain = FractureEngine.spawnFractureShards(world, prop, fractureAgain, null);
+        const stores = fractureAgain._stores ?? world.fractureEngine.stores;
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, fractureAgain, stores);
         assert.ok(spawnedAgain.length >= 2);
 
         for (const body of spawnedAgain) {

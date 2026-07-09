@@ -17,7 +17,7 @@ describe("fracture debris slab ownership", () => {
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         for (const shard of result.shards) {
-            assert.equal(shard.isWallDebris, true);
+            assert.equal(shard.isKineticDebris, true);
             assert.ok(shard.id !== editorId);
         }
         assert.equal(world.worldProps.length, 0);
@@ -32,10 +32,11 @@ describe("fracture debris slab ownership", () => {
         const originalBodies = result.shards.slice();
         const spatialFrame = { evictKineticProp() {} };
         for (let i = result.shards.length - 1; i >= 0; i--) {
-            world.fractureEngine.wallDebris.remove(result.shards[i], spatialFrame);
+            world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
         }
         const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
-        const spawnedAgain = FractureEngine.spawnFractureShards(world, prop, fractureAgain, null);
+        const stores = fractureAgain._stores ?? world.fractureEngine.stores;
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, fractureAgain, stores);
         for (const body of spawnedAgain) {
             assert.ok(originalBodies.includes(body));
         }

@@ -51,7 +51,7 @@ function simulationKineticHooks(state) {
         afterKineticPhysics(tick, dt) {
             state.appLaunch?.session?.afterKineticPhysics?.();
             const flushResult = flushPendingWallDamage(state);
-            if (flushResult?.spawned?.length) state.fractureEngine.wallDebris.integrateSpawned(tick.frame, flushResult.spawned, dt);
+            if (flushResult?.spawned?.length) state.fractureEngine.debris.integrateSpawned(tick.frame, flushResult.spawned, dt);
         },
     };
 }

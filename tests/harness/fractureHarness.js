@@ -29,7 +29,7 @@ export function liveGlassCount(world) {
         const prop = world.worldProps[i];
         if (!prop.isDead && prop.type === "glass_pane") count++;
     }
-    const debris = world.fractureEngine?.wallDebris?.list();
+    const debris = world.fractureEngine?.debris?.list();
     if (debris) {
         for (let i = 0; i < debris.length; i++) {
             const body = debris[i];
@@ -50,7 +50,8 @@ export function setupGlassPaneForFracture(prop, hx, hy, physId = 0) {
 export function spawnGlassFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
     const fracture = FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce);
     if (!fracture) return null;
-    const shards = FractureEngine.spawnFractureShards(world, prop, fracture, null);
+    const stores = fracture._stores ?? world.fractureEngine.stores;
+    const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores);
     return { fracture, shards };
 }
 

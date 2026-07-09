@@ -102,7 +102,7 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(prop, 16, 10);
         const fracture = FractureEngine.fracturePropOnImpact(prop, 50, 50, 25);
         assert.ok(fracture);
-        assert.ok(FractureEngine.fractureDebrisGeometries(fracture).length >= 4);
+        assert.ok(FractureEngine.materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount).length >= 4);
         assert.ok(Number.isFinite(fracture.impactLocalX));
         assert.ok(Number.isFinite(fracture.impactLocalY));
         assert.equal(prop.poxels, undefined);
@@ -118,7 +118,7 @@ describe("glass fracture", () => {
         assert.ok(FractureEngine.canFracturePropSplit(prop));
         const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 25);
         assert.ok(fracture);
-        const debris = FractureEngine.fractureDebrisGeometries(fracture);
+        const debris = FractureEngine.materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount);
         assert.ok(debris.length >= 2);
         for (const piece of debris) assert.ok(piece.footprintArea < big.footprintArea);
     });
@@ -187,7 +187,7 @@ describe("glass fracture", () => {
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         for (const frag of result.shards) {
-            assert.ok(frag.isWallDebris);
+            assert.ok(frag.isKineticDebris);
             assert.ok(frag._fractureCooldown > 0);
         }
         assert.equal(world.worldProps.length, 0);
