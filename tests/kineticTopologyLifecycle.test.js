@@ -11,7 +11,6 @@ import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 
 function createTestWorld(initialProps, constraints = []) {
@@ -20,6 +19,22 @@ function createTestWorld(initialProps, constraints = []) {
 
 function chainLinkState(world) {
     return { ...world, sandbox: {} };
+}
+
+function liveGlassCount(world) {
+    let count = 0;
+    for (let i = 0; i < world.worldProps.length; i++) {
+        const prop = world.worldProps[i];
+        if (!prop.isDead && prop.type === "glass_pane") count++;
+    }
+    const debris = world.fractureEngine?.wallDebris?.list();
+    if (debris) {
+        for (let i = 0; i < debris.length; i++) {
+            const body = debris[i];
+            if (!body.isDead && body.type === "glass_pane") count++;
+        }
+    }
+    return count;
 }
 
 describe("kinetic topology lifecycle", () => {
@@ -56,10 +71,9 @@ describe("kinetic topology lifecycle", () => {
         tick.frame.admitKineticProp(mockKineticCircle(40, 0, 10), tick.world);
         assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.frame.entityGrid.entities[glass._physId]?._physId === glass._physId && tick.frame.entityGrid.entities[ball._physId]?._physId === ball._physId) ? { bodyA: tick.frame.entityGrid.entities[glass._physId], bodyB: tick.frame.entityGrid.entities[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
-        assert.ok(tick.world.worldProps.filter((p) => p.type === "glass_pane").length > 2);
+        assert.ok(liveGlassCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
-
 
     it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {
         const a = mockKineticCircle(0, 0, 10);
@@ -89,7 +103,7 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
-        assert.ok(tick.world.worldProps.length > 2);
+        assert.ok(liveGlassCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 });

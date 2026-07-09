@@ -12,7 +12,8 @@ export default {
         fracture: { mode: "glass" },
     },
     visuals: {
-        colors: { side: "#B3E5FC", sideShadow: "#81D4FA", top: "#E1F5FE", topHighlight: "#FFFFFF", bottom: "#4FC3F7", bodyInspect: "#81D4FA", stroke: "rgba(1, 87, 155, 0.5)" },
+        flatFill: true,
+        colors: { side: "#B3E5FC", sideShadow: "#81D4FA", top: "#E1F5FE", stroke: "rgba(1, 87, 155, 0.45)" },
         world: { height: 2 },
         lineWidth: 0.4,
     },

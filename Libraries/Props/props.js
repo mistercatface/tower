@@ -218,8 +218,7 @@ function resolvePropSpawnFacing(prop, facing) {
     if (prop.strategy.cardinalFacing) return quantizeCardinalAngle(0);
     return deterministicUnitRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
 }
-// WorldProp lifecycle: (1) birth - new WorldProp() or FractureEngine.acquireShard pool pop + initializeSpawn;
-// (2) live - registry/kinetic membership; (3) death - removeWorldPropFromState, releaseShard if _fractureSpawned.
+// WorldProp lifecycle: (1) birth - new WorldProp() or sandbox spawn; (2) live - registry/kinetic membership; (3) death - removeWorldPropFromState.
 export class WorldProp {
     constructor(x, y, type, facing = null) {
         this.id = nextWorldPropId++;
@@ -275,7 +274,6 @@ export class WorldProp {
         this._neighborsFrameId = -1;
         delete this._physId;
         delete this._activeSlot;
-        delete this._fractureSpawned;
     }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);

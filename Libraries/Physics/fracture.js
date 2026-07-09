@@ -1,9 +1,9 @@
-import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
+import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, pruneKineticConstraintsForBody, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch } from "../Spatial/spatial.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, deterministicUnitRandom } from "../Math/math.js";
-import { WorldProp, applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
+import { applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
 const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
@@ -14,7 +14,7 @@ const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 const MAX_FRACTURE_DEBRIS = FRACTURE_TUNING.burst.maxBurst;
 const MAX_CLIP_VERTS = 512;
-const MAX_WALL_DEBRIS = 2048;
+const MAX_WALL_DEBRIS = 4096;
 const wallDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_WALL_DEBRIS), y: new Float32Array(MAX_WALL_DEBRIS), vx: new Float32Array(MAX_WALL_DEBRIS), vy: new Float32Array(MAX_WALL_DEBRIS), w: new Float32Array(MAX_WALL_DEBRIS), facing: new Float32Array(MAX_WALL_DEBRIS), ageMs: new Float32Array(MAX_WALL_DEBRIS), alpha: new Float32Array(MAX_WALL_DEBRIS) };
 const wallDebrisFreePool = [];
 let wallDebrisNextId = 0x50000000;
@@ -180,7 +180,6 @@ moduleStores.debris.geomPool = moduleStores.geom;
 function fractureStoresFor(engine) {
     return engine?.stores ?? moduleStores;
 }
-const shardPools = new Map();
 function admitKineticPropsBatch(spatialFrame, props, world) {
     if (!props.length) return;
     if (spatialFrame?.admitKineticProps) spatialFrame.admitKineticProps(props, world);
@@ -446,6 +445,8 @@ class WallDebrisStore {
             body.vy = motion.vy ?? 0;
             body.angularVelocity = motion.w ?? 0;
             body._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
+            if (sourceProp.faction !== undefined) body.faction = sourceProp.faction;
+            if (sourceProp.visualOverride !== undefined) body.visualOverride = { ...sourceProp.visualOverride };
             if (wallChunkProfileId !== undefined) {
                 body.wallChunkProfileId = wallChunkProfileId;
                 body.wallChunkHeightPx = wallChunkHeightPx;
@@ -715,39 +716,6 @@ export class FractureEngine {
         item.facing = fracture.facing;
         this.deferredFracturesCount = count + 1;
     }
-    static acquireShard(x, y, shardPropId, facing = null) {
-        let list = shardPools.get(shardPropId);
-        if (!list) {
-            list = [];
-            shardPools.set(shardPropId, list);
-        }
-        let prop;
-        if (list.length > 0) {
-            prop = list.pop();
-            prop.initializeSpawn(x, y, shardPropId, facing);
-            prop.changeState("normal");
-        } else prop = new WorldProp(x, y, shardPropId, facing);
-        prop._fractureSpawned = true;
-        return prop;
-    }
-    static releaseShard(prop) {
-        if (!prop?._fractureSpawned) return;
-        const type = prop.type;
-        if (prop._footprintGeomHandle) {
-            moduleStores.geom.release(prop._footprintGeomHandle);
-            delete prop._footprintGeomHandle;
-        }
-        prop.shape = undefined;
-        prop.collisionParts = undefined;
-        prop.footprintVertices = undefined;
-        delete prop._fractureSpawned;
-        let list = shardPools.get(type);
-        if (!list) {
-            list = [];
-            shardPools.set(type, list);
-        }
-        if (list.indexOf(prop) === -1) list.push(prop);
-    }
     static commitFractureResult(world, prop, fracture, spatialFrame, { height = null, propsToAdmitOut = null, stores = null, resetDebrisStore = true } = {}) {
         const sourceMotion = FractureEngine._currentPropMotion(prop);
         if (prop.isWallDebris) world.fractureEngine.wallDebris.remove(prop, spatialFrame);
@@ -769,8 +737,15 @@ export class FractureEngine {
         return shards;
     }
     static spawnFractureShards(world, sourceProp, fracture, spatialFrame = null, stores = null, sourceMotion = null) {
-        if (sourceProp.isWallDebris || isWallChunkPropType(sourceProp.type)) return world.fractureEngine.wallDebris.spawnShardsFromFracture(world, sourceProp, fracture, stores ?? fracture._stores ?? moduleStores, null, sourceMotion);
-        return FractureEngine._spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame, stores ?? fracture._stores ?? moduleStores);
+        const resolvedStores = stores ?? fracture._stores ?? moduleStores;
+        let configureShard = null;
+        if (!sourceProp.isWallDebris && sourceProp.strategy?.fracture?.mode === "glass") {
+            const random = FractureEngine._fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
+            configureShard = (body, geom, _index) => {
+                FractureEngine._applyShardBurstImpulse(fracture, body, geom, random);
+            };
+        }
+        return world.fractureEngine.wallDebris.spawnShardsFromFracture(world, sourceProp, fracture, resolvedStores, configureShard, sourceMotion);
     }
     static materializeDebrisGeometries(stores, debrisStart, debrisCount) {
         const geometries = [];
@@ -797,44 +772,6 @@ export class FractureEngine {
         const cos = Math.cos(entityFacing(prop));
         const sin = Math.sin(entityFacing(prop));
         return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
-    }
-    static spawnShardPropsFromDebrisStore(world, sourceProp, fracture, shardPropId, stores, spatialFrame = null, configureShard = null) {
-        const facing = fracture.facing;
-        const cos = Math.cos(facing);
-        const sin = Math.sin(facing);
-        const motion = FractureEngine._currentPropMotion(sourceProp);
-        const faction = sourceProp.faction;
-        const wallChunkProfileId = sourceProp.wallChunkProfileId;
-        const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
-        const spawned = [];
-        const debris = stores.debris;
-        for (let i = fracture.debrisStart; i < fracture.debrisStart + fracture.debrisCount; i++) {
-            const cx = debris.centroidX[i];
-            const cy = debris.centroidY[i];
-            const worldPos = transformPoint2DInto({ x: 0, y: 0 }, fracture.originX, fracture.originY, cx, cy, cos, sin);
-            const shard = FractureEngine.acquireShard(worldPos.x, worldPos.y, shardPropId, facing);
-            const geom = materializePolygonDebris(stores, i);
-            FractureEngine.applyPropFractureGeometry(shard, geom);
-            stores.geom.release(debris.vertHandle[i]);
-            debris.vertHandle[i] = 0;
-            shard.faction = faction;
-            shard.vx = motion.vx;
-            shard.vy = motion.vy;
-            shard.angularVelocity = motion.w;
-            shard._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
-            if (sourceProp.visualOverride !== undefined) shard.visualOverride = { ...sourceProp.visualOverride };
-            if (wallChunkProfileId !== undefined) {
-                shard.wallChunkProfileId = wallChunkProfileId;
-                shard.wallChunkHeightPx = wallChunkHeightPx;
-            }
-            if (configureShard) configureShard(shard, { centroid: { cx, cy } }, i - fracture.debrisStart);
-            spawned.push(shard);
-        }
-        if (spawned.length > 0) {
-            addWorldPropsToState(world, spawned);
-            for (let i = 0; i < spawned.length; i++) wakeKineticBody(spawned[i]);
-        }
-        return spawned;
     }
     static applyPropFractureGeometry(prop, geometry) {
         prop.chunks = undefined;
@@ -1007,12 +944,6 @@ export class FractureEngine {
         }
         frag.angularVelocity += (random() - 0.5) * FRACTURE_TUNING.burst.spinScale;
         frag._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
-    }
-    static _spawnGlassShatterShards(world, sourceProp, fracture, spatialFrame = null, stores = moduleStores) {
-        const random = FractureEngine._fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991);
-        return FractureEngine.spawnShardPropsFromDebrisStore(world, sourceProp, fracture, sourceProp.type, stores, spatialFrame, (frag, geom) => {
-            FractureEngine._applyShardBurstImpulse(fracture, frag, geom, random);
-        });
     }
     static _fractureImpactContext(prop, worldHitX, worldHitY, impactForce) {
         const origin = FractureEngine._propWorldPosition(prop);

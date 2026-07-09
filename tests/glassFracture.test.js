@@ -59,8 +59,20 @@ function analyzeShards(shards, parentArea) {
     }
     return { totalArea, maxAspect, minThin, count: shards.length };
 }
-function liveGlassPropCount(world) {
-    return world.worldProps.length;
+function liveGlassCount(world) {
+    let count = 0;
+    for (let i = 0; i < world.worldProps.length; i++) {
+        const prop = world.worldProps[i];
+        if (!prop.isDead && prop.type === "glass_pane") count++;
+    }
+    const debris = world.fractureEngine?.wallDebris?.list();
+    if (debris) {
+        for (let i = 0; i < debris.length; i++) {
+            const body = debris[i];
+            if (!body.isDead && body.type === "glass_pane") count++;
+        }
+    }
+    return count;
 }
 function makeOverlappingGlassShards() {
     const shards = FractureEngine.shatterGlassFootprint(20, 14, 0, 0, 40, deterministicRandom);
@@ -189,33 +201,30 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(prop, 32, 32);
         const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
         assert.ok(fracture);
-        const spawned = [];
         const state = {
-            worldProps: spawned,
-            entityRegistry: {
-                register(_kind, frag) {
-                    spawned.push(frag);
-                },
-                beginMembershipBatch() {},
-                endMembershipBatch() {},
-            },
+            worldProps: [],
+            fractureEngine: new FractureEngine({ worldProps: [], kinetic: {} }),
         };
-        FractureEngine.spawnFractureShards(state, prop, fracture, { admitKineticProps() {}, admitKineticProp() {}, entityGrid: { remove() {} } });
+        const spawned = FractureEngine.spawnFractureShards(state, prop, fracture, null);
         assert.ok(spawned.length >= 2);
-        for (const frag of spawned) assert.ok(frag._fractureCooldown > 0);
+        for (const frag of spawned) {
+            assert.ok(frag.isWallDebris);
+            assert.ok(frag._fractureCooldown > 0);
+        }
+        assert.equal(state.worldProps.length, 0);
     });
     it("glass shard on glass shard does not reproduce on kinetic contact", () => {
         const { a, b } = makeOverlappingGlassShards();
         const tick = createKineticTestTick([a, b]);
         tryFractureKineticContact(tick, a, b, 4, 0, 240);
-        assert.equal(liveGlassPropCount(tick.world), 2);
+        assert.equal(liveGlassCount(tick.world), 2);
     });
     it("resolveKineticContactPassWithEffects keeps glass shard count stable across substeps", () => {
         const { a, b } = makeOverlappingGlassShards();
         const tick = createKineticTestTick([a, b]);
         for (let step = 0; step < 8; step++) {
             resolveKineticContactPassWithEffects(tick);
-            assert.equal(liveGlassPropCount(tick.world), 2, `reproduced on substep ${step}`);
+            assert.equal(liveGlassCount(tick.world), 2, `reproduced on substep ${step}`);
         }
     });
     it("glass shard still shatters against a non-glass kinetic prop", () => {
@@ -229,7 +238,7 @@ describe("glass fracture", () => {
         const tick = createKineticTestTick([glass, crate]);
         assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, crate.x, crate.y, entityFacing(crate), crate.shape));
         resolveKineticContactPassWithEffects(tick);
-        assert.ok(liveGlassPropCount(tick.world) > 2);
+        assert.ok(liveGlassCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
     it("runCollisionPipeline does not reproduce glass across persisted pair iterations", () => {
@@ -241,7 +250,7 @@ describe("glass fracture", () => {
         assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
-        const count = liveGlassPropCount(tick.world);
+        const count = liveGlassCount(tick.world);
         assert.ok(count > 2);
         assert.ok(count <= GLASS_MAX_SHARDS_PER_SHATTER + 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);

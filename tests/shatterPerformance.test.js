@@ -1,7 +1,7 @@
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EntityRegistry, addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
+import { EntityRegistry, addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
@@ -40,37 +40,34 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.equal(state.worldProps.length, 18);
     });
 
-    it("WorldProp instances are correctly pooled and reused", () => {
+    it("debris slab bodies are pooled and reused after glass shatter", () => {
         const state = createTestState();
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         prop._physId = 0;
         kineticDynamicSlab.x[0] = 0;
         kineticDynamicSlab.y[0] = 0;
         applyPropBoxFootprint(prop, 32, 32);
-        
+
         const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
         assert.ok(fracture);
 
-        // Spawn shards
         const spawned = FractureEngine.spawnFractureShards(state, prop, fracture, null);
         assert.ok(spawned.length >= 2);
-        const originalShardIds = spawned.map(s => s.id);
+        const originalBodies = spawned.slice();
+        assert.ok(spawned.every((s) => s.isWallDebris));
+        assert.equal(state.worldProps.length, 0);
 
-        // Clean up spawned shards (which releases them to the pool)
+        const spatialFrame = { evictKineticProp() {} };
         for (let i = spawned.length - 1; i >= 0; i--) {
-            removeWorldPropFromState(state, spawned[i], { evictKineticProp() {} });
+            state.fractureEngine.wallDebris.remove(spawned[i], spatialFrame);
         }
 
         const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
         const spawnedAgain = FractureEngine.spawnFractureShards(state, prop, fractureAgain, null);
         assert.ok(spawnedAgain.length >= 2);
-        
-        // Identity check: pooled props should have the same IDs (since references are reused)
-        const reacquiredIds = spawnedAgain.map(s => s.id);
-        
-        // Assert we reused the exact same instances from the pool
-        for (const id of reacquiredIds) {
-            assert.ok(originalShardIds.includes(id));
+
+        for (const body of spawnedAgain) {
+            assert.ok(originalBodies.includes(body));
         }
     });
 

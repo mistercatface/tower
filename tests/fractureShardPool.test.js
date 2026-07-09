@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { removeWorldPropFromState, EntityRegistry } from "../GameState/EntityRegistry.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { EntityRegistry } from "../GameState/EntityRegistry.js";
 
 function createEditorState() {
     const grid = new WorldObstacleGrid(16);
@@ -28,13 +28,12 @@ function createFractureState() {
     return state;
 }
 
-describe("fracture shard pool ownership", () => {
-    it("editor spawn and delete does not feed fracture shard pool", () => {
-        const state = createEditorState();
-        const beforeMaxId = nextWorldPropIdSnapshot();
+describe("fracture debris slab ownership", () => {
+    it("editor spawn and delete does not feed debris slab pool", () => {
+        const state = createFractureState();
         const prop = spawnPlacedSandboxProp(state, 0, 0, "glass_pane", null, 0);
         const editorId = prop.id;
-        removeWorldPropFromState(state, prop, state.spatialFrame);
+        removeEditorProp(state, prop);
         const prop2 = new WorldProp(0, 0, "glass_pane", 0);
         applyPropBoxFootprint(prop2, 32, 32);
         const fracture = FractureEngine.fracturePropOnImpact(prop2, 0, 0, 30);
@@ -42,13 +41,13 @@ describe("fracture shard pool ownership", () => {
         const spawned = FractureEngine.spawnFractureShards(state, prop2, fracture, null);
         assert.ok(spawned.length >= 2);
         for (const shard of spawned) {
-            assert.ok(shard._fractureSpawned);
-            assert.ok(shard.id > editorId, "shard ids should not reuse editor-deleted prop");
+            assert.equal(shard.isWallDebris, true);
+            assert.ok(shard.id !== editorId);
         }
-        assert.ok(spawned[0].id >= beforeMaxId);
+        assert.equal(state.worldProps.length, 0);
     });
 
-    it("fracture debris release reuses instances via acquireShard", () => {
+    it("debris slab bodies are pooled and reused after removal", () => {
         const state = createFractureState();
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         prop._physId = 0;
@@ -58,19 +57,23 @@ describe("fracture shard pool ownership", () => {
         const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
         assert.ok(fracture);
         const spawned = FractureEngine.spawnFractureShards(state, prop, fracture, null);
-        const originalIds = spawned.map((s) => s.id);
+        const originalBodies = spawned.slice();
+        const spatialFrame = { evictKineticProp() {} };
         for (let i = spawned.length - 1; i >= 0; i--) {
-            removeWorldPropFromState(state, spawned[i], { evictKineticProp() {} });
+            state.fractureEngine.wallDebris.remove(spawned[i], spatialFrame);
         }
         const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
         const spawnedAgain = FractureEngine.spawnFractureShards(state, prop, fractureAgain, null);
-        for (const id of spawnedAgain.map((s) => s.id)) {
-            assert.ok(originalIds.includes(id));
+        for (const body of spawnedAgain) {
+            assert.ok(originalBodies.includes(body));
         }
     });
 });
 
-function nextWorldPropIdSnapshot() {
-    const probe = new WorldProp(0, 0, "ball", 0);
-    return probe.id;
+function removeEditorProp(state, prop) {
+    const index = state.worldProps.indexOf(prop);
+    if (index >= 0) state.worldProps.splice(index, 1);
+    state.entityRegistry.unregister(prop);
+    state.spatialFrame.evictKineticProp(prop, state.kinetic);
+    prop.isDead = true;
 }
