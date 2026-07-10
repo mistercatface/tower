@@ -1,11 +1,14 @@
-import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces, isIdxInMapGenBounds, getMapGenBoundsCenterIdx, getMapGenBoundsCenterWorld } from "../Spatial/spatial.js";
+import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces, isIdxInMapGenBounds, getMapGenBoundsCenterIdx, getMapGenBoundsCenterWorld, generateLabRailCaverns } from "../Spatial/spatial.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { spawnPlacedSandboxProp, spawnLinkedBallChain, resolveChainLinkRestLength } from "../Sandbox/sandbox.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 import { createSnakeGameSession } from "./snakeGameSession.js";
+import { createGlassGameSession } from "./glassGameSession.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
+import { setPropVisualTint } from "../Color/visualOverride.js";
+import { applyPropBoxFootprint } from "../Props/props.js";
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",
@@ -16,6 +19,17 @@ export const GAME_LAUNCHERS = {
         },
         async launch(state, ctx) {
             await runSnakeLaunch(state, ctx);
+        },
+    },
+    glass: {
+        title: "Glass Playground",
+        hideEditor: false,
+        defaultPathDebugMode: "reachable",
+        async setup(state) {
+            return createGlassGameSession(state);
+        },
+        async launch(state, ctx) {
+            await runGlassLaunch(state, ctx);
         },
     },
 };
@@ -181,4 +195,144 @@ export async function runGameLaunch(state, launcher, launchOptions = {}) {
     state.worldSurfaces.clearBakeCache();
     await rebuildLabMapCaches(state);
     return ctx;
+}
+
+const RANDOM_COLORS = ["#f44336", "#e91e63", "#9c27b0", "#673ab7", "#3f51b5", "#2196f3", "#03a9f4", "#00bcd4", "#009688", "#4caf50", "#8bc34a", "#cddc39", "#ffeb3b", "#ffc107", "#ff9800", "#ff5722"];
+
+async function runGlassLaunch(state, ctx) {
+    const railConfig = state.editor.railConfig;
+    railConfig.edgeThickness = 4;
+    railConfig.wallHeightLevel = 1;
+    railConfig.surfaceProfileId = "poolTableFelt";
+    railConfig.boundsMode = "rect";
+    railConfig.boundsCols = 64;
+    railConfig.boundsRows = 64;
+    railConfig.fillChance = 0.35;
+    centerMapGenBoundsOnViewport(state.obstacleGrid, { x: 0, y: 0 }, railConfig);
+    
+    await generateLabRailCaverns(state);
+    refreshAllStampedRegionSurfaces(state);
+    await state.nav.commitEdit(null, { fullNavSync: true });
+
+    const grid = state.obstacleGrid;
+    const cells = collectMazeWalkableCells(state, railConfig);
+    if (cells.length === 0) throw new Error("glass launch: no walkable cells");
+
+    const walkableSet = new Set(cells);
+    const chosenIndices = [];
+    function pickRandomCellIdx(clearanceCells = 0) {
+        for (let attempt = 0; attempt < 50; attempt++) {
+            const idx = cells[Math.floor(Math.random() * cells.length)];
+            const cols = grid.cols;
+            const centerCol = idx % cols;
+            const centerRow = Math.floor(idx / cols);
+            
+            let ok = true;
+            if (clearanceCells > 0) {
+                for (let r = -clearanceCells; r <= clearanceCells; r++) {
+                    for (let c = -clearanceCells; c <= clearanceCells; c++) {
+                        const nIdx = (centerRow + r) * cols + (centerCol + c);
+                        if (!walkableSet.has(nIdx)) {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if (!ok) break;
+                }
+            }
+            if (!ok) continue;
+
+            const cx = grid.gridCenterXByIdx(idx);
+            const cy = grid.gridCenterYByIdx(idx);
+            for (let i = 0; i < chosenIndices.length; i++) {
+                const c = chosenIndices[i];
+                const ox = grid.gridCenterXByIdx(c);
+                const oy = grid.gridCenterYByIdx(c);
+                if (Math.hypot(cx - ox, cy - oy) < 60) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) {
+                chosenIndices.push(idx);
+                return idx;
+            }
+        }
+        return cells[Math.floor(Math.random() * cells.length)];
+    }
+
+    const playerIdx = pickRandomCellIdx(2);
+    const playerX = grid.gridCenterXByIdx(playerIdx);
+    const playerY = grid.gridCenterYByIdx(playerIdx);
+    const playerChainSpacing = resolveChainLinkRestLength({ radius: 4 }, { radius: 4 }, 1.0);
+    const playerChain = spawnLinkedBallChain(state, playerIdx, {
+        ballType: "snake",
+        headBallType: "snake",
+        segmentCount: 5,
+        segmentRadius: 4,
+        spacing: playerChainSpacing,
+        growDirX: 1,
+        growDirY: 0
+    });
+    const playerProp = playerChain.leader;
+    ctx.boid = playerProp;
+    
+    for (let i = 0; i < 8; i++) {
+        const idx = pickRandomCellIdx(3);
+        const x = grid.gridCenterXByIdx(idx);
+        const y = grid.gridCenterYByIdx(idx);
+        const pane = spawnPlacedSandboxProp(state, x, y, "glass_pane", "alpha");
+        const width = 10 + Math.random() * 30;
+        const height = 4 + Math.random() * 8;
+        applyPropBoxFootprint(pane, width, height);
+        const color = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
+        setPropVisualTint(pane, color);
+    }
+    
+    for (let i = 0; i < 4; i++) {
+        const idx = pickRandomCellIdx(2);
+        const radius = 3 + Math.random() * 5;
+        const segmentCount = 6 + Math.floor(Math.random() * 10);
+        const chainSpacing = resolveChainLinkRestLength({ radius }, { radius }, 1.0);
+        
+        const chain = spawnLinkedBallChain(state, idx, {
+            ballType: "snake",
+            headBallType: "snake",
+            segmentCount,
+            segmentRadius: radius,
+            spacing: chainSpacing,
+            growDirX: 1,
+            growDirY: 0
+        });
+        
+        const color = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
+        for (const prop of chain.members) {
+            setPropVisualTint(prop, color);
+        }
+    }
+    
+    for (let i = 0; i < 4; i++) {
+        const idx = pickRandomCellIdx(1);
+        const x = grid.gridCenterXByIdx(idx);
+        const y = grid.gridCenterYByIdx(idx);
+        spawnPlacedSandboxProp(state, x, y, "cross_pinwheel", "alpha");
+    }
+    
+    for (let i = 0; i < 5; i++) {
+        const idx = pickRandomCellIdx(1);
+        const x = grid.gridCenterXByIdx(idx);
+        const y = grid.gridCenterYByIdx(idx);
+        spawnPlacedSandboxProp(state, x, y, "boid_triangle", "alpha");
+    }
+    
+    state.appLaunch?.session?.bind(ctx);
+    if (state.sandbox?.controller?.session) {
+        state.sandbox.controller.session.select({ kind: "prop", ids: [playerProp.id] });
+        state.sandbox.controller.session.sync();
+    }
+    state.sandbox.entityMeta.setCameraTarget(playerProp.id, true);
+    state.viewport.snapTo(playerX, playerY);
+    state.viewport.zoom = 2.0;
+    syncLabViewportZoomUi(state);
+    state.editor.lockSelection = false;
 }
