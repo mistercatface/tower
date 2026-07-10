@@ -1,13 +1,18 @@
 import propCatalog from "../../Assets/props/index.js";
-import { normalizeXY, findClosestPolygonBoundaryGrabPointInto } from "../Math/math.js";
+import { normalizeXY, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
-import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
+const REFERENCE_GRAB_INERTIA = (() => {
+    const body = { shape: { type: "Circle", radius: 4 }, radius: 4, strategy: { isKinetic: true, density: 0.007958 } };
+    body.mass = kineticMassFromFootprint(body);
+    return kineticInertiaFromBody(body);
+})();
 const GRAB_ANCHOR_SCRATCH = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
 function hueFromPullRatio(ratio) {
     return 180 - ratio * 180;
@@ -189,6 +194,12 @@ function resolveGrabDragAnchor(prop, world) {
         findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
         return { anchorLocalX: GRAB_ANCHOR_SCRATCH.localX, anchorLocalY: GRAB_ANCHOR_SCRATCH.localY, offsetX: GRAB_ANCHOR_SCRATCH.worldX - world.x, offsetY: GRAB_ANCHOR_SCRATCH.worldY - world.y };
     }
+    if (asset?.primitive === "sphere" && asset.physics?.isKinetic !== false) {
+        const facing = entityFacing(prop);
+        const radius = resolveBodyRadius(prop);
+        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, prop.x, prop.y, facing, radius, world.x, world.y);
+        return { anchorLocalX: GRAB_ANCHOR_SCRATCH.localX, anchorLocalY: GRAB_ANCHOR_SCRATCH.localY, offsetX: GRAB_ANCHOR_SCRATCH.worldX - world.x, offsetY: GRAB_ANCHOR_SCRATCH.worldY - world.y };
+    }
     return { anchorLocalX: 0, anchorLocalY: 0, offsetX: prop.x - world.x, offsetY: prop.y - world.y };
 }
 export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
@@ -221,8 +232,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const fx = (dx / dist) * power;
             const fy = (dy / dist) * power;
             const torque = rx * fy - ry * fx;
-            const invI = prop.momentOfInertia > 0 ? 1 / prop.momentOfInertia : 0;
-            prop.angularVelocity = (prop.angularVelocity ?? 0) + torque * invI * GRAB_DRAG_TORQUE_GAIN;
+            prop.angularVelocity = (prop.angularVelocity ?? 0) + torque * (1 / REFERENCE_GRAB_INERTIA) * GRAB_DRAG_TORQUE_GAIN;
             wakeKineticBody(prop);
         }
     };

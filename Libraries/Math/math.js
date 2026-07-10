@@ -264,6 +264,31 @@ export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX
     }
     return bestIndex;
 }
+export function findCircleRimGrabPointInto(out, posX, posY, facing, radius, targetX, targetY) {
+    let dx = targetX - posX;
+    let dy = targetY - posY;
+    let len = Math.hypot(dx, dy);
+    if (len < 1e-6) {
+        dx = Math.cos(facing);
+        dy = Math.sin(facing);
+        len = 1;
+    }
+    const nx = dx / len;
+    const ny = dy / len;
+    const worldX = posX + nx * radius;
+    const worldY = posY + ny * radius;
+    const wdx = worldX - posX;
+    const wdy = worldY - posY;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    out.worldX = worldX;
+    out.worldY = worldY;
+    out.x = worldX;
+    out.y = worldY;
+    out.localX = wdx * cos + wdy * sin;
+    out.localY = -wdx * sin + wdy * cos;
+    return out;
+}
 export function findClosestPolygonBoundaryGrabPointInto(out, vertices, posX, posY, facing, targetX, targetY) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);

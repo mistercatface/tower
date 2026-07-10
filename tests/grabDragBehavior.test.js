@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { findClosestPolygonBoundaryGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
+import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
 import { createGrabDragBehavior, getGrabDragConfig, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
 import { createDefaultSandboxBehaviors, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
+import { CircleShape } from "../Libraries/Physics/physics.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("grabDrag behavior", () => {
@@ -90,6 +91,16 @@ describe("grabDrag behavior", () => {
         assert.ok(ids.includes(GRAB_DRAG_BEHAVIOR_ID));
     });
 
+    it("findCircleRimGrabPointInto places grab on rim toward cursor", () => {
+        const out = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
+        findCircleRimGrabPointInto(out, 0, 0, 0, 8, 12, 0);
+        assert.ok(Math.abs(out.worldX - 8) < 0.01);
+        assert.ok(Math.abs(out.worldY) < 0.01);
+        assert.ok(Math.abs(out.localX - 8) < 0.01);
+        findCircleRimGrabPointInto(out, 0, 0, 0, 8, 0, 0);
+        assert.ok(Math.abs(out.worldX - 8) < 0.01);
+    });
+
     it("findClosestPolygonBoundaryGrabPointInto snaps to corner or edge", () => {
         const out = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
         const box = boxLocalFootprint(12, 8);
@@ -114,13 +125,30 @@ describe("grabDrag behavior", () => {
         assert.notEqual(prop.angularVelocity, 0);
     });
 
-    it("ball center grab does not apply off-center torque", () => {
+    it("sphere rim grab applies torque when pull is off-center", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0 }));
-        behavior.onPointerDown(prop, { x: 0, y: 0 });
-        behavior.onPointerMove(prop, { x: 100, y: 0 });
+        behavior.onPointerDown(prop, { x: 10, y: 0 });
+        behavior.onPointerMove(prop, { x: 10, y: 100 });
         behavior.tickWorld(16);
-        assert.equal(prop.angularVelocity, 0);
+        assert.ok(prop._groundRollDrive);
+        assert.notEqual(prop.angularVelocity, 0);
+    });
+
+    it("reference grab inertia matches spin for light and heavy spheres", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state);
+        const light = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0, radius: 4, mass: 4, shape: new CircleShape(4) }));
+        const heavy = registerGrabDragTestProp(state, mockRollingProp({ id: 2, x: 100, y: 0, type: "ball", angularVelocity: 0, radius: 4, mass: 400, shape: new CircleShape(4) }));
+        behavior.onPointerDown(light, { x: 5, y: 0 });
+        behavior.onPointerMove(light, { x: 0, y: 80 });
+        behavior.tickWorld(16);
+        const lightSpin = light.angularVelocity;
+        behavior.onPointerDown(heavy, { x: 105, y: 0 });
+        behavior.onPointerMove(heavy, { x: 100, y: 80 });
+        behavior.tickWorld(16);
+        assert.ok(Math.abs(lightSpin) > 0);
+        assert.ok(Math.abs(heavy.angularVelocity - lightSpin) < 1e-6);
     });
 });
