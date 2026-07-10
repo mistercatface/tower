@@ -23,7 +23,7 @@ export const GAME_LAUNCHERS = {
         },
     },
     glass: {
-        title: "Glass Playground",
+        title: "Glass",
         hideEditor: false,
         defaultPathDebugMode: "off",
         async setup(state) {
