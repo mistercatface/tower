@@ -427,14 +427,30 @@ export class PolygonShape extends Shape {
         this._vertCap = verts instanceof Float32Array ? verts : new Float32Array(verts);
         this.vertices = this._vertCap;
         this.normals = this._computeNormals();
+        this._normCap = this.normals;
         this.boundingRadius = this._computeBoundingRadius();
     }
-    setFlatVerts(src, floatCount) {
-        let cap = this._vertCap;
-        if (!(cap instanceof Float32Array) || cap.length < floatCount) {
-            cap = new Float32Array(floatCount);
-            this._vertCap = cap;
+    ensureVertCapacity(floatCount) {
+        if (!(this._vertCap instanceof Float32Array) || this._vertCap.length < floatCount) {
+            const next = new Float32Array(floatCount);
+            const old = this.vertices;
+            const oldLen = old?.length ?? 0;
+            for (let i = 0; i < oldLen; i++) next[i] = old[i];
+            this._vertCap = next;
+            this.vertices = oldLen > 0 ? next.subarray(0, oldLen) : next.subarray(0, Math.min(8, floatCount));
         }
+        if (!(this._normCap instanceof Float32Array) || this._normCap.length < floatCount) {
+            this._normCap = new Float32Array(floatCount);
+            if (this.vertices.length >= 6) {
+                this._fillNormals(this._normCap, this.vertices.length / 2);
+                this.normals = this._normCap.subarray(0, this.vertices.length);
+            } else this.normals = this._normCap.subarray(0, Math.min(8, floatCount));
+        }
+    }
+    setFlatVerts(src, floatCount) {
+        const cap = this._vertCap;
+        if (!(cap instanceof Float32Array)) throw new Error("PolygonShape.setFlatVerts missing _vertCap");
+        if (cap.length < floatCount) throw new Error(`PolygonShape.setFlatVerts capacity ${cap.length} < ${floatCount}`);
         for (let i = 0; i < floatCount; i++) cap[i] = src[i];
         this.vertices = floatCount === cap.length ? cap : cap.subarray(0, floatCount);
         if (floatCount >= 6 && polygonSignedArea2D(this.vertices) < 0) {
@@ -472,13 +488,12 @@ export class PolygonShape extends Shape {
         return normals;
     }
     _rebuildNormalsInPlace() {
-        const count = this.vertices.length / 2;
-        let normals = this.normals;
-        if (!(normals instanceof Float32Array) || normals.length < count * 2) {
-            normals = new Float32Array(count * 2);
-            this.normals = normals;
-        }
-        this._fillNormals(normals, count);
+        const floatCount = this.vertices.length;
+        const count = floatCount / 2;
+        let cap = this._normCap;
+        if (!(cap instanceof Float32Array) || cap.length < floatCount) throw new Error(`PolygonShape normals capacity ${cap?.length ?? 0} < ${floatCount}`);
+        this._fillNormals(cap, count);
+        this.normals = floatCount === cap.length ? cap : cap.subarray(0, floatCount);
     }
     _fillNormals(normals, count) {
         for (let i = 0; i < count; i++) {
@@ -499,6 +514,19 @@ export class PolygonShape extends Shape {
             }
         }
     }
+}
+export function createPolygonShapeCapacity(floatCapacity) {
+    if (floatCapacity < 8) throw new Error(`createPolygonShapeCapacity requires >= 8 floats, got ${floatCapacity}`);
+    const shape = new PolygonShape([-1, -1, 1, -1, 1, 1, -1, 1]);
+    const cap = new Float32Array(floatCapacity);
+    for (let i = 0; i < 8; i++) cap[i] = shape.vertices[i];
+    shape._vertCap = cap;
+    shape.vertices = cap.subarray(0, 8);
+    shape._normCap = new Float32Array(floatCapacity);
+    shape._fillNormals(shape._normCap, 4);
+    shape.normals = shape._normCap.subarray(0, 8);
+    shape.boundingRadius = shape._computeBoundingRadius();
+    return shape;
 }
 const MANIFOLD_MAX_POINTS = 2;
 export const SAT_RESULT = ENGINE_F32.subarray(P_SAT, P_SAT + 25);

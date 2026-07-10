@@ -1,7 +1,7 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
+import { PolygonShape, createPolygonShapeCapacity, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
-import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
@@ -75,13 +75,16 @@ export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;
     if (shape?.type !== "Polygon") throw new Error(`scalePolygonPropFootprint requires a polygon prop, got ${shape?.type ?? "none"}`);
-    const scaled = new Float32Array(shape.vertices);
-    scaleFlatVerts(scaled, scale);
-    prop.shape = new PolygonShape(scaled);
+    const n = shape.vertices.length;
+    ensurePropPolygonFootprintCapacity(prop, n);
+    const fp = prop.footprintVertices;
+    const verts = shape.vertices;
+    for (let i = 0; i < n; i++) fp[i] = verts[i] * scale;
+    prop.shape.setFlatVerts(fp, n);
     prop.radius = prop.shape.getBoundingRadius();
-    if (prop.strategy?.localFootprint) scaleFlatVerts(prop.strategy.localFootprint, scale);
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
+    invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
@@ -103,7 +106,7 @@ export function setCirclePropRadius(prop, radius) {
     if (shape?.type !== "Circle") throw new Error(`setCirclePropRadius requires a circle prop, got ${shape?.type ?? "none"}`);
     prop.shape = new CircleShape(radius);
     prop.radius = radius;
-    if (prop.strategy) prop.strategy.radius = radius;
+    invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
@@ -111,10 +114,22 @@ export function setCirclePropRadius(prop, radius) {
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
+export function invalidatePropFootprintKey(prop) {
+    prop._footprintKey = undefined;
+}
+export function ensurePropPolygonFootprintCapacity(prop, floatCount) {
+    let fp = prop.footprintVertices;
+    if (!(fp instanceof Float32Array) || fp.length < floatCount) {
+        fp = new Float32Array(floatCount);
+        prop.footprintVertices = fp;
+    }
+    if (prop.shape?.type === "Polygon") prop.shape.ensureVertCapacity(floatCount);
+    else prop.shape = createPolygonShapeCapacity(Math.max(floatCount, 8));
+}
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;
-    let fp = prop.footprintVertices;
-    if (!(fp instanceof Float32Array) || fp.length < n) fp = new Float32Array(n);
+    ensurePropPolygonFootprintCapacity(prop, n);
+    const fp = prop.footprintVertices;
     fp[0] = -hx;
     fp[1] = -hy;
     fp[2] = hx;
@@ -123,10 +138,9 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     fp[5] = hy;
     fp[6] = -hx;
     fp[7] = hy;
-    prop.footprintVertices = fp;
-    if (prop.shape?.type === "Polygon") prop.shape.setFlatVerts(fp, n);
-    else prop.shape = new PolygonShape(n === fp.length ? fp : fp.subarray(0, n));
+    prop.shape.setFlatVerts(fp, n);
     prop.radius = prop.shape.getBoundingRadius();
+    invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
@@ -148,20 +162,27 @@ export function initWorldPropShape(prop) {
         for (let i = 0; i < prop.collisionParts.length; i++) maxR = Math.max(maxR, prop.collisionParts[i].getBoundingRadius());
         prop.radius = maxR;
         prop.shape = prop.collisionParts[0];
+        invalidatePropFootprintKey(prop);
         return;
     }
-    const footprint = prop.strategy.localFootprint;
-    if (footprint && vertCount(footprint) >= 3) {
-        prop.shape = new PolygonShape(footprint);
+    const template = prop.strategy.localFootprint;
+    if (template && vertCount(template) >= 3) {
+        const n = template.length;
+        ensurePropPolygonFootprintCapacity(prop, n);
+        const fp = prop.footprintVertices;
+        for (let i = 0; i < n; i++) fp[i] = template[i];
+        prop.shape.setFlatVerts(fp, n);
         prop.radius = prop.shape.getBoundingRadius();
         if (prop.strategy.drawOutline === true) {
             const verts = prop.shape.vertices;
             ensureDrawOutline(prop, verts.length).set(verts);
         }
+        invalidatePropFootprintKey(prop);
         return;
     }
     prop.radius = prop.strategy.radius ?? 0;
     prop.shape = new CircleShape(prop.radius);
+    invalidatePropFootprintKey(prop);
 }
 export function propFootprintHalfExtentsInto(buf, o, prop) {
     const shape = prop.shape;
@@ -174,7 +195,9 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
     buf[o + 1] = radius;
 }
 function propShapeFootprintKey(prop) {
+    if (prop._footprintKey !== undefined) return prop._footprintKey;
     const shape = prop.shape;
+    let key;
     if (shape?.type === "Polygon") {
         let hash = 2166136261;
         const verts = shape.vertices;
@@ -184,12 +207,14 @@ function propShapeFootprintKey(prop) {
             hash ^= q;
             hash = Math.imul(hash, 16777619);
         }
-        let key = `p${hash >>> 0}`;
+        key = `p${hash >>> 0}`;
         if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;
-        return key;
+    } else {
+        const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? 0);
+        key = `c${Math.round(radius * 4)}`;
     }
-    const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? 0);
-    return `c${Math.round(radius * 4)}`;
+    prop._footprintKey = key;
+    return key;
 }
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
@@ -200,19 +225,21 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
     const scaled = Math.round((baselineSteps * worldDiameter * 6) / FACING_STEPS_BASELINE_DIAMETER);
     return Math.min(FACING_STEPS_MAX, scaled);
 }
+const sQuantizeSteps = { facing: 0, view: 0 };
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;
     const derivedFacing = deriveFacingStepsFromFootprint(prop, defaults.facing);
-    const facing = override?.facing ?? derivedFacing;
-    const view = override?.view ?? defaults.view ?? 30;
-    return { facing, view };
+    sQuantizeSteps.facing = override?.facing ?? derivedFacing;
+    sQuantizeSteps.view = override?.view ?? defaults.view ?? 30;
+    return sQuantizeSteps;
 }
 export function getBaseSpriteCacheKey(prop, deps) {
     const { quantizeAngleIndex, buildRollOrientKey } = deps;
+    const steps = resolvePropQuantizeSteps(prop);
     let orientKey = "";
-    if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing);
-    else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing)}`;
+    if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, steps.facing);
+    else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, steps.facing)}`;
     let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
     key += visualOverrideCacheKey(prop);
     return key;
@@ -220,7 +247,8 @@ export function getBaseSpriteCacheKey(prop, deps) {
 export function getPropStageBakeState(prop, deps) {
     const { quantizeAngle, quantizeRollQuat, anchorX, anchorY } = deps;
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-    return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat };
+    const steps = resolvePropQuantizeSteps(prop);
+    return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, facing: quantizeAngle(prop.facing ?? 0, steps.facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, steps.facing) : prop.rollQuat };
 }
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) {
@@ -238,6 +266,14 @@ export function buildWorldPropStrategyFromAsset(asset) {
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
     return built;
+}
+const worldPropStrategyByType = new Map();
+export function sharedWorldPropStrategy(type) {
+    let strategy = worldPropStrategyByType.get(type);
+    if (strategy) return strategy;
+    strategy = buildWorldPropStrategyFromAsset(propCatalog[type]);
+    worldPropStrategyByType.set(type, strategy);
+    return strategy;
 }
 let nextWorldPropId = 1;
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
@@ -259,7 +295,7 @@ export class WorldProp {
     initializeSpawn(x, y, type, facing = null) {
         const asset = propCatalog[type];
         this.type = type;
-        this.strategy = buildWorldPropStrategyFromAsset(asset);
+        this.strategy = sharedWorldPropStrategy(type);
         this._poseX = x;
         this._poseY = y;
         this.z = 0;
@@ -292,6 +328,7 @@ export class WorldProp {
         this.wallChunkHeightPx = undefined;
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
+        this._footprintKey = undefined;
         initWorldPropShape(this);
         if (type === "cross_pinwheel") applyCrossPinwheelFootprint(this, this.crossLength ?? 32, this.crossThickness ?? 8);
         this.mass = kineticMassFromFootprint(this);
@@ -414,6 +451,7 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     prop.crossLength = length;
     prop.crossThickness = thickness;
     crossPinwheelOutlineInto(ensureDrawOutline(prop, 24), length, thickness);
+    invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
@@ -461,15 +499,19 @@ function scaleVirtualPropShape(prop, scale) {
         prop.shape = new CircleShape(shape.radius * scale);
         prop.radius = prop.shape.radius;
         if (prop.height != null) prop.height *= scale;
+        invalidatePropFootprintKey(prop);
         return;
     }
     if (shape?.type === "Polygon") {
-        const count = shape.vertices.length;
-        const scaled = new Float32Array(count);
-        for (let i = 0; i < count; i++) scaled[i] = shape.vertices[i] * scale;
-        prop.shape = new PolygonShape(scaled);
+        const n = shape.vertices.length;
+        ensurePropPolygonFootprintCapacity(prop, n);
+        const fp = prop.footprintVertices;
+        const verts = shape.vertices;
+        for (let i = 0; i < n; i++) fp[i] = verts[i] * scale;
+        prop.shape.setFlatVerts(fp, n);
         prop.radius = prop.shape.getBoundingRadius();
         if (prop.height != null) prop.height *= scale;
+        invalidatePropFootprintKey(prop);
     }
 }
 function resolveVirtualPropScale(parentProp, childProp, cfg) {
@@ -506,13 +548,13 @@ export function getVisualAttachmentSpriteCacheKey(prop, deps) {
 function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const childAsset = propCatalog[cfg.propId];
     if (!childAsset) return null;
-    const strategy = buildWorldPropStrategyFromAsset(childAsset);
+    const strategy = sharedWorldPropStrategy(cfg.propId);
     const offset = cfg.offset ?? {};
     const offsetScale = resolveAttachmentOffsetScale(parentProp, cfg);
     const localX = (offset.x ?? 0) * offsetScale;
     const localY = (offset.y ?? 0) * offsetScale;
     rotateXYIntoF32(ENGINE_F32, M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
-    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: cfg.inheritTint === true && parentProp.visualOverride ? { ...parentProp.visualOverride } : undefined, _visualAttachmentId: cfg.id };
+    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: cfg.inheritTint === true && parentProp.visualOverride ? { ...parentProp.visualOverride } : undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
     initWorldPropShape(prop);
     scaleVirtualPropShape(prop, resolveVirtualPropScale(parentProp, prop, cfg));
     return prop;
