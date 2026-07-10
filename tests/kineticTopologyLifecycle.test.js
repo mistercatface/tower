@@ -78,7 +78,7 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(getKineticTopologyGeneration(world.kinetic) > genBefore);
         ensureKineticIslandPlan(world.kinetic, frame._kineticBodies);
         assert.equal(c._kineticIslandPeers, undefined);
-        assert.equal(b._kineticLinkNeighbors.length, 1);
+        assert.equal(b._linkNeighborEidCount, 1);
     });
 
     it("runCollisionPipeline does not reproduce glass after persisted pair gather", () => {

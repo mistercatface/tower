@@ -3502,11 +3502,12 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._activationScheduled.add(prop);
     }
     _wakeConstraintLinkedPeers(prop, patchOut) {
-        const linked = prop._kineticLinkNeighbors;
-        if (linked?.length) {
-            for (let i = 0; i < linked.length; i++) {
-                const peer = linked[i];
-                if (peer === prop || peer._physId === undefined) continue;
+        const eids = prop._linkNeighborEids;
+        const count = prop._linkNeighborEidCount ?? 0;
+        if (eids && count > 0) {
+            for (let i = 0; i < count; i++) {
+                const peer = entityRefs[eids[i]];
+                if (!peer || peer === prop || peer._physId === undefined || peer._physId !== eids[i]) continue;
                 if (peer.isSleeping) wakeKineticBody(peer);
                 this._ensureActive(peer);
                 if (patchOut) patchOut.push(peer);

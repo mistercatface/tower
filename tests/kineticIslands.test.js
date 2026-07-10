@@ -134,7 +134,8 @@ describe("kinetic islands", () => {
         const bodies = [a, b, c];
         const state = createState(bodies);
         linkChain(state, bodies, 18);
-        bakeKineticIslandPlan(state.kinetic, bodies);
+        const frame = setupKineticTestFrame(bodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         for (let i = 0; i < bodies.length; i++) {
             bodies[i].isSleeping = true;
             bodies[i]._sleepFrames = SLEEP_FRAMES;
@@ -152,12 +153,13 @@ describe("kinetic islands", () => {
         const bodies = [a, b, c];
         const state = createState(bodies);
         linkChain(state, bodies, 18);
-        bakeKineticIslandPlan(state.kinetic, bodies);
-        assert.equal(a._kineticLinkNeighbors.length, 1);
-        assert.equal(a._kineticLinkNeighbors[0], b);
-        assert.equal(b._kineticLinkNeighbors.length, 2);
-        assert.equal(c._kineticLinkNeighbors.length, 1);
-        assert.equal(c._kineticLinkNeighbors[0], b);
+        const frame = setupKineticTestFrame(bodies);
+        bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
+        assert.equal(a._linkNeighborEidCount, 1);
+        assert.equal(a._linkNeighborEids[0], b._physId);
+        assert.equal(b._linkNeighborEidCount, 2);
+        assert.equal(c._linkNeighborEidCount, 1);
+        assert.equal(c._linkNeighborEids[0], b._physId);
     });
 
     it("bakeKineticIslandPlan fills islandRootByPhysId for in-frame bodies", () => {

@@ -1453,8 +1453,6 @@ export const kineticConstraintSlab = {
     groupCount: 0,
     groupCounts: new Int32Array(MAX_ISLAND_GROUPS),
     type: new Array(MAX_KINETIC_CONSTRAINTS),
-    bodyA: new Array(MAX_KINETIC_CONSTRAINTS),
-    bodyB: new Array(MAX_KINETIC_CONSTRAINTS),
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     dynamic: { accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS), nx: new Float32Array(MAX_KINETIC_CONSTRAINTS), ny: new Float32Array(MAX_KINETIC_CONSTRAINTS), rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS), rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS), k: new Float32Array(MAX_KINETIC_CONSTRAINTS), error: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
@@ -1468,7 +1466,6 @@ export const kineticConstraintSlab = {
 };
 const constraintPhysSyncSeen = new Set();
 const constraintBridgePhysIds = [];
-const orderBodyByPhysId = new Array(MAX_PHYS_BODIES);
 const orderSeenPhysIds = new Uint8Array(MAX_PHYS_BODIES);
 const orderUniquePhysIds = [];
 const orderUsedItems = new Uint8Array(MAX_KINETIC_CONSTRAINTS);
@@ -1488,39 +1485,41 @@ function getPoolArray() {
 const itemPool = [];
 let itemPoolUseCount = 0;
 function getPoolItem() {
-    if (itemPoolUseCount >= itemPool.length) itemPool.push({ entry: null, bodyA: null, bodyB: null });
+    if (itemPoolUseCount >= itemPool.length) itemPool.push({ entry: null, physIdA: -1, physIdB: -1 });
     return itemPool[itemPoolUseCount++];
+}
+function constraintBodyAt(physId) {
+    const body = entityRefs[physId];
+    return body?._physId === physId ? body : null;
 }
 function orderIslandConstraintItems(items) {
     if (items.length <= 1) return items;
     orderUniquePhysIds.length = 0;
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const physA = item.bodyA._physId;
-        const physB = item.bodyB._physId;
-        if (physA !== undefined && physA !== -1 && orderSeenPhysIds[physA] === 0) {
+        const physA = item.physIdA;
+        const physB = item.physIdB;
+        if (physA !== -1 && orderSeenPhysIds[physA] === 0) {
             orderSeenPhysIds[physA] = 1;
             orderUniquePhysIds.push(physA);
-            orderBodyByPhysId[physA] = item.bodyA;
         }
-        if (physB !== undefined && physB !== -1 && orderSeenPhysIds[physB] === 0) {
+        if (physB !== -1 && orderSeenPhysIds[physB] === 0) {
             orderSeenPhysIds[physB] = 1;
             orderUniquePhysIds.push(physB);
-            orderBodyByPhysId[physB] = item.bodyB;
         }
     }
     let startId = null;
     let startPhysId = null;
     for (let i = 0; i < orderUniquePhysIds.length; i++) {
         const physId = orderUniquePhysIds[i];
-        const body = orderBodyByPhysId[physId];
-        const neighbors = body._kineticLinkNeighbors;
+        const body = constraintBodyAt(physId);
+        const eids = body._linkNeighborEids;
+        const nCount = body._linkNeighborEidCount ?? 0;
         let inIslandCount = 0;
-        if (neighbors)
-            for (let j = 0; j < neighbors.length; j++) {
-                const neighborPhys = neighbors[j]._physId;
-                if (neighborPhys !== undefined && neighborPhys !== -1 && orderSeenPhysIds[neighborPhys] === 1) inIslandCount++;
-            }
+        for (let j = 0; j < nCount; j++) {
+            const neighborPhys = eids[j];
+            if (neighborPhys !== -1 && orderSeenPhysIds[neighborPhys] === 1) inIslandCount++;
+        }
         if (inIslandCount <= 1) {
             startPhysId = physId;
             startId = body.id;
@@ -1531,7 +1530,7 @@ function orderIslandConstraintItems(items) {
         let minId = Infinity;
         for (let i = 0; i < orderUniquePhysIds.length; i++) {
             const physId = orderUniquePhysIds[i];
-            const body = orderBodyByPhysId[physId];
+            const body = constraintBodyAt(physId);
             if (body.id < minId) {
                 minId = body.id;
                 startPhysId = physId;
@@ -1543,19 +1542,19 @@ function orderIslandConstraintItems(items) {
     orderUsedItems.fill(0, 0, items.length);
     let currentPhysId = startPhysId;
     while (orderOrdered.length < items.length) {
-        const body = orderBodyByPhysId[currentPhysId];
-        const neighbors = body._kineticLinkNeighbors ?? [];
+        const body = constraintBodyAt(currentPhysId);
+        const eids = body._linkNeighborEids;
+        const nCount = body._linkNeighborEidCount ?? 0;
         let advanced = false;
-        for (let i = 0; i < neighbors.length; i++) {
-            const neighbor = neighbors[i];
-            const neighborPhys = neighbor._physId;
-            if (neighborPhys === undefined || neighborPhys === -1 || orderSeenPhysIds[neighborPhys] === 0) continue;
+        for (let i = 0; i < nCount; i++) {
+            const neighborPhys = eids[i];
+            if (neighborPhys === -1 || orderSeenPhysIds[neighborPhys] === 0) continue;
             let itemIdx = -1;
             for (let k = 0; k < items.length; k++) {
                 if (orderUsedItems[k] === 1) continue;
                 const item = items[k];
-                const physA = item.bodyA._physId;
-                const physB = item.bodyB._physId;
+                const physA = item.physIdA;
+                const physB = item.physIdB;
                 if ((physA === currentPhysId && physB === neighborPhys) || (physA === neighborPhys && physB === currentPhysId)) {
                     itemIdx = k;
                     break;
@@ -1571,11 +1570,7 @@ function orderIslandConstraintItems(items) {
         if (!advanced) break;
     }
     for (let i = 0; i < items.length; i++) if (orderUsedItems[i] === 0) orderOrdered.push(items[i]);
-    for (let i = 0; i < orderUniquePhysIds.length; i++) {
-        const physId = orderUniquePhysIds[i];
-        orderBodyByPhysId[physId] = undefined;
-        orderSeenPhysIds[physId] = 0;
-    }
+    for (let i = 0; i < orderUniquePhysIds.length; i++) orderSeenPhysIds[orderUniquePhysIds[i]] = 0;
     return orderOrdered;
 }
 function circleRadiusFromBody(body) {
@@ -1588,13 +1583,13 @@ function linkCapsuleRadius(bodyA, bodyB) {
 }
 function appendConstraintEntry(slab, item) {
     const idx = slab.count++;
-    const bodyA = item.bodyA;
-    const bodyB = item.bodyB;
+    const physIdA = item.physIdA;
+    const physIdB = item.physIdB;
+    const bodyA = constraintBodyAt(physIdA);
+    const bodyB = constraintBodyAt(physIdB);
     slab.type[idx] = item.entry.type ?? "distance";
-    slab.bodyA[idx] = bodyA;
-    slab.bodyB[idx] = bodyB;
-    slab.physIdA[idx] = bodyA._physId ?? -1;
-    slab.physIdB[idx] = bodyB._physId ?? -1;
+    slab.physIdA[idx] = physIdA;
+    slab.physIdB[idx] = physIdB;
     if (slab.type[idx] === "angle") {
         slab.static.referenceAngle[idx] = item.entry.referenceAngle ?? 0;
         slab.static.anchorAx[idx] = 0;
@@ -1625,7 +1620,8 @@ function appendConstraintEntry(slab, item) {
 }
 function islandItemsAsleep(items) {
     for (let i = 0; i < items.length; i++) {
-        const { bodyA, bodyB } = items[i];
+        const bodyA = constraintBodyAt(items[i].physIdA);
+        const bodyB = constraintBodyAt(items[i].physIdB);
         if (!bodyA.isSleeping || !bodyB.isSleeping) return false;
     }
     return items.length > 0;
@@ -1648,11 +1644,11 @@ function syncConstraintSlabBodies(slab) {
         const physIdB = slab.physIdB[i];
         if (!constraintPhysSyncSeen.has(physIdA)) {
             constraintPhysSyncSeen.add(physIdA);
-            syncEntitySlotPoseFromRef(slab.bodyA[i]._physId, slab.bodyA[i]);
+            syncEntitySlotPoseFromRef(physIdA, constraintBodyAt(physIdA));
         }
         if (!constraintPhysSyncSeen.has(physIdB)) {
             constraintPhysSyncSeen.add(physIdB);
-            syncEntitySlotPoseFromRef(slab.bodyB[i]._physId, slab.bodyB[i]);
+            syncEntitySlotPoseFromRef(physIdB, constraintBodyAt(physIdB));
         }
     }
 }
@@ -1685,15 +1681,17 @@ export function gatherKineticConstraintSlab(tick) {
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance" && entry.type !== "angle") continue;
-        const bodyA = entry.bodyA;
-        const bodyB = entry.bodyB;
-        if (bodyA.isDead || bodyB.isDead) continue;
+        const physIdA = entry.physIdA;
+        const physIdB = entry.physIdB;
+        if (physIdA < 0 || physIdB < 0) continue;
+        const bodyA = constraintBodyAt(physIdA);
+        const bodyB = constraintBodyAt(physIdB);
+        if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
+        if (bodyA.id !== entry.bodyAId || bodyB.id !== entry.bodyBId) continue;
         if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
         let root = bodyA.id;
-        if (bodyA._physId !== undefined) {
-            const r = kineticDynamicSlab.islandRoot[bodyA._physId];
-            if (r !== -1) root = r;
-        }
+        const r = kineticDynamicSlab.islandRoot[physIdA];
+        if (r !== -1) root = r;
         let bucketIdx = -1;
         for (let j = 0; j < bucketCount; j++)
             if (bucketRoots[j] === root) {
@@ -1710,8 +1708,8 @@ export function gatherKineticConstraintSlab(tick) {
         if (bucketIdx !== -1) {
             const item = getPoolItem();
             item.entry = entry;
-            item.bodyA = bodyA;
-            item.bodyB = bodyB;
+            item.physIdA = physIdA;
+            item.physIdB = physIdB;
             gatherBuckets[bucketIdx].push(item);
         }
     }
@@ -1766,8 +1764,8 @@ function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gather
     out.length = 0;
     islandLinkWallSegmentSet.clear();
     for (let i = start; i < start + count; i++) {
-        appendBodyWallCandidates(spatialFrame, slab.bodyA[i], gatherMark, out);
-        appendBodyWallCandidates(spatialFrame, slab.bodyB[i], gatherMark, out);
+        appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdA[i]), gatherMark, out);
+        appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdB[i]), gatherMark, out);
     }
 }
 function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) {
@@ -1778,15 +1776,17 @@ function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) 
     }
 }
 function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWalls, linkWallsOut) {
-    const bodyA = slab.bodyA[i];
-    const bodyB = slab.bodyB[i];
+    const physIdA = slab.physIdA[i];
+    const physIdB = slab.physIdB[i];
+    const bodyA = constraintBodyAt(physIdA);
+    const bodyB = constraintBodyAt(physIdB);
     if (bodyA.isSleeping && bodyB.isSleeping) {
         linkWallsOut.length = 0;
         return false;
     }
     const dynSlab = kineticDynamicSlab;
-    worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-    worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+    worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
     const waX = ENGINE_F32[P_VEC_A];
     const waY = ENGINE_F32[P_VEC_A + 1];
     const wbX = ENGINE_F32[P_VEC_B];
@@ -1800,14 +1800,14 @@ function translateLinkAwayFromSlabWall(physIdA, physIdB, normalX, normalY, overl
 }
 function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame) {
     if (!linkWalls.length) return;
-    const bodyA = slab.bodyA[i];
-    const bodyB = slab.bodyB[i];
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
+    const bodyA = constraintBodyAt(physIdA);
+    const bodyB = constraintBodyAt(physIdB);
     const capsuleRadius = slab.static.capsuleRadius[i];
-    const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
-    const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
     const dynSlab = kineticDynamicSlab;
+    const approachX = (dynSlab.vx[physIdA] + dynSlab.vx[physIdB]) * 0.5;
+    const approachY = (dynSlab.vy[physIdA] + dynSlab.vy[physIdB]) * 0.5;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
         worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
         worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
@@ -1859,8 +1859,8 @@ function projectDistanceConstraint(slab, index) {
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     const dynSlab = kineticDynamicSlab;
-    worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, P_VEC_A);
-    worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, P_VEC_B);
+    worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(constraintBodyAt(physIdB), physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, P_VEC_B);
     const waX = ENGINE_F32[P_VEC_A];
     const waY = ENGINE_F32[P_VEC_A + 1];
     const wbX = ENGINE_F32[P_VEC_B];
@@ -1876,8 +1876,8 @@ function projectDistanceConstraint(slab, index) {
     separateAlongNormalSlab(physIdA, physIdB, nx, ny, -error);
 }
 function projectAngleConstraint(slab, index) {
-    const bodyA = slab.bodyA[index];
-    const bodyB = slab.bodyB[index];
+    const bodyA = constraintBodyAt(slab.physIdA[index]);
+    const bodyB = constraintBodyAt(slab.physIdB[index]);
     if (bodyA.isSleeping && bodyB.isSleeping) return;
     const facingA = bodyA.facing ?? 0;
     const facingB = bodyB.facing ?? 0;
@@ -1906,10 +1906,10 @@ function projectConstraint(slab, index) {
 function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     const k = slab.dynamic.k[index];
     if (k <= 1e-12) return 0;
-    const bodyA = slab.bodyA[index];
-    const bodyB = slab.bodyB[index];
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
+    const bodyA = constraintBodyAt(physIdA);
+    const bodyB = constraintBodyAt(physIdB);
     const dynSlab = kineticDynamicSlab;
     const nx = slab.dynamic.nx[index];
     const ny = slab.dynamic.ny[index];
@@ -1939,10 +1939,10 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
 function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     const k = slab.dynamic.k[index];
     if (k <= 1e-12) return 0;
-    const bodyA = slab.bodyA[index];
-    const bodyB = slab.bodyB[index];
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
+    const bodyA = constraintBodyAt(physIdA);
+    const bodyB = constraintBodyAt(physIdB);
     const dynSlab = kineticDynamicSlab;
     const error = slab.dynamic.error[index];
     const vRelN = dynSlab.w[physIdB] - dynSlab.w[physIdA];
@@ -1967,12 +1967,10 @@ function projectKineticConstraintSlab() {
     for (let i = 1; i < slab.activeCount; i += 2) projectConstraint(slab, i);
 }
 function warmStartDistanceConstraint(slab, i, dynSlab) {
-    const bodyA = slab.bodyA[i];
-    const bodyB = slab.bodyB[i];
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-    worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+    worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(constraintBodyAt(physIdB), physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
     const waX = ENGINE_F32[P_VEC_A];
     const waY = ENGINE_F32[P_VEC_A + 1];
     const wbX = ENGINE_F32[P_VEC_B];
@@ -2023,8 +2021,8 @@ function warmStartDistanceConstraint(slab, i, dynSlab) {
     }
 }
 function warmStartAngleConstraint(slab, i, dynSlab) {
-    const bodyA = slab.bodyA[i];
-    const bodyB = slab.bodyB[i];
+    const bodyA = constraintBodyAt(slab.physIdA[i]);
+    const bodyB = constraintBodyAt(slab.physIdB[i]);
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
     const facingA = bodyA.facing ?? 0;
@@ -2076,13 +2074,7 @@ function solveKineticConstraintSlab(spatialFrame) {
     for (let i = 0; i < slab.activeCount; i++) slab.entry[i].accumulatedImpulse = slab.dynamic.accumulatedImpulse[i];
 }
 function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
-    const entities = entityRefs;
-    for (let i = 0; i < slab.activeCount; i++) {
-        const bodyA = slab.bodyA[i];
-        const bodyB = slab.bodyB[i];
-        if (bodyA._physId === undefined || bodyB._physId === undefined) return true;
-        if (entities[slab.physIdA[i]] !== bodyA || entities[slab.physIdB[i]] !== bodyB) return true;
-    }
+    for (let i = 0; i < slab.activeCount; i++) if (!constraintBodyAt(slab.physIdA[i]) || !constraintBodyAt(slab.physIdB[i])) return true;
     return false;
 }
 /** Collision substep: slab is authoritative pose; body synced only at pipeline boundaries. */
@@ -2104,10 +2096,10 @@ export function measureConstraintSlabMaxError() {
     let max = 0;
     for (let i = 0; i < slab.activeCount; i++) {
         if (slab.type[i] === "angle") continue;
-        const bodyA = slab.bodyA[i];
-        const bodyB = slab.bodyB[i];
-        worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-        worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+        const physIdA = slab.physIdA[i];
+        const physIdB = slab.physIdB[i];
+        worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+        worldAnchorFromSlab(constraintBodyAt(physIdB), physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
         const waX = ENGINE_F32[P_VEC_A];
         const waY = ENGINE_F32[P_VEC_A + 1];
         const wbX = ENGINE_F32[P_VEC_B];
@@ -2235,13 +2227,13 @@ export function getKineticConstraintsVersion(session) {
     return session.kineticConstraintsVersion ?? 0;
 }
 export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0, y: 0 }, anchorB = { x: 0, y: 0 }, restLength }) {
-    const constraint = { id: session.nextConstraintId++, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, anchorA: { x: anchorA.x, y: anchorA.y }, anchorB: { x: anchorB.x, y: anchorB.y }, restLength, accumulatedImpulse: 0 };
+    const constraint = { id: session.nextConstraintId++, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, anchorA: { x: anchorA.x, y: anchorA.y }, anchorB: { x: anchorB.x, y: anchorB.y }, restLength, accumulatedImpulse: 0 };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
     return constraint;
 }
 export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
-    const constraint = { id: session.nextConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, bodyA, bodyB, referenceAngle, accumulatedImpulse: 0 };
+    const constraint = { id: session.nextConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, referenceAngle, accumulatedImpulse: 0 };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
     return constraint;
@@ -3175,9 +3167,19 @@ export function maxActiveKineticSpeedSq(bodies) {
     return max;
 }
 function clearBodyIslandFields(body) {
-    delete body._kineticLinkNeighbors;
+    body._linkNeighborEidCount = 0;
     delete body._kineticIslandPeers;
     delete body._kineticIslandRoot;
+}
+function ensureLinkNeighborEids(body, needed) {
+    let buf = body._linkNeighborEids;
+    if (!buf || buf.length < needed) {
+        const next = new Int32Array(Math.max(needed, buf ? buf.length * 2 : 4));
+        if (buf) next.set(buf.subarray(0, body._linkNeighborEidCount ?? 0));
+        body._linkNeighborEids = next;
+        buf = next;
+    }
+    return buf;
 }
 export function bakeKineticIslandPlan(session, kineticBodies) {
     const adjacent = getGraphCache(session).adjacency;
@@ -3188,18 +3190,27 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         clearBodyIslandFields(body);
         if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = -1;
     }
+    const constraints = session.kineticConstraints;
+    for (let i = 0; i < constraints.length; i++) {
+        const entry = constraints[i];
+        const a = bodyById.get(entry.bodyAId);
+        const b = bodyById.get(entry.bodyBId);
+        entry.physIdA = a?._physId ?? -1;
+        entry.physIdB = b?._physId ?? -1;
+    }
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
         const neighborIds = adjacent.get(body.id);
-        let linkNeighbors = null;
-        if (neighborIds)
+        let count = 0;
+        if (neighborIds) {
+            const eids = ensureLinkNeighborEids(body, neighborIds.length);
             for (let j = 0; j < neighborIds.length; j++) {
                 const neighbor = bodyById.get(neighborIds[j]);
-                if (!neighbor) continue;
-                if (!linkNeighbors) linkNeighbors = [];
-                linkNeighbors.push(neighbor);
+                if (!neighbor || neighbor._physId === undefined) continue;
+                eids[count++] = neighbor._physId;
             }
-        if (linkNeighbors) body._kineticLinkNeighbors = linkNeighbors;
+        }
+        body._linkNeighborEidCount = count;
     }
     const assigned = new Set();
     for (let i = 0; i < kineticBodies.length; i++) {
@@ -3246,9 +3257,11 @@ export function shareKineticIsland(bodyA, bodyB) {
     return Boolean(bodyA._kineticIslandPeers);
 }
 export function areKineticLinkNeighbors(bodyA, bodyB) {
-    const neighbors = bodyA._kineticLinkNeighbors;
-    if (!neighbors) return false;
-    for (let i = 0; i < neighbors.length; i++) if (neighbors[i] === bodyB) return true;
+    const eids = bodyA._linkNeighborEids;
+    const count = bodyA._linkNeighborEidCount ?? 0;
+    if (!eids || count === 0) return false;
+    const eidB = bodyB._physId;
+    for (let i = 0; i < count; i++) if (eids[i] === eidB) return true;
     return false;
 }
 const parent = new Int32Array(MAX_PHYS_BODIES);
@@ -3372,11 +3385,12 @@ export function wakeKineticBody(entity) {
     if (!entity.isSleeping && entity._sleepFrames === 0) return;
     entity._sleepFrames = 0;
     entity.isSleeping = false;
-    const linked = entity._kineticLinkNeighbors;
-    if (linked?.length) {
-        for (let i = 0; i < linked.length; i++) {
-            const peer = linked[i];
-            if (peer === entity) continue;
+    const eids = entity._linkNeighborEids;
+    const count = entity._linkNeighborEidCount ?? 0;
+    if (eids && count > 0) {
+        for (let i = 0; i < count; i++) {
+            const peer = constraintBodyAt(eids[i]);
+            if (!peer || peer === entity) continue;
             peer._sleepFrames = 0;
             peer.isSleeping = false;
         }

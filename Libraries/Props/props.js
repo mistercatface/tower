@@ -267,7 +267,7 @@ export class WorldProp {
         initWorldPropShape(this);
         this.mass = kineticMassFromFootprint(this);
         normalizeKineticBody(this);
-        if (this._kineticLinkNeighbors) this._kineticLinkNeighbors.length = 0;
+        this._linkNeighborEidCount = 0;
         this._kineticIslandPeers = null;
         this._neighborEidCount = 0;
         this._neighborsFrameId = -1;

@@ -1715,9 +1715,9 @@ export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
         const entry = list[i];
         if (entry.type !== "distance") continue;
         if (!members.has(entry.bodyAId) || !members.has(entry.bodyBId)) continue;
-        const bodyA = entry.bodyA;
-        const bodyB = entry.bodyB;
-        if (bodyA.isDead || bodyB.isDead) continue;
+        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
+        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
+        if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
         entry.restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     }
 }
