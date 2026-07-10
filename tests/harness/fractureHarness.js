@@ -1,4 +1,5 @@
-import { FractureEngine } from "../../Libraries/Physics/fracture.js";
+import { FractureEngine, moduleStores, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, seedFractureRand } from "../../Libraries/Physics/fracture.js";
+import { ENGINE_F32, boxLocalFootprint } from "../../Libraries/Math/math.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
@@ -47,10 +48,68 @@ export function setupGlassPaneForFracture(prop, hx, hy, physId = 0) {
     return prop;
 }
 
+function releaseDebrisGeom(stores, start, count) {
+    const debris = stores.debris;
+    for (let i = start; i < start + count; i++) if (debris.vertHandle[i]) stores.geom.release(debris.vertHandle[i]);
+}
+
+export function materializeDebrisGeometries(stores, debrisStart, debrisCount) {
+    const geometries = [];
+    const debris = stores.debris;
+    for (let i = debrisStart; i < debrisStart + debrisCount; i++) {
+        const handle = debris.vertHandle[i];
+        const vertCount = debris.vertCount[i];
+        const src = stores.geom.buffer(handle);
+        const n = vertCount * 2;
+        const footprintVertices = new Float32Array(n);
+        for (let j = 0; j < n; j++) footprintVertices[j] = src[j];
+        geometries.push({
+            footprintVertices,
+            footprintArea: debris.footprintArea[i],
+            boundingRadius: debris.boundingRadius[i],
+            centroid: { cx: debris.centroidX[i], cy: debris.centroidY[i] },
+        });
+    }
+    return geometries;
+}
+
+export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, stores = moduleStores) {
+    if (flatVerts.length < 6) return [];
+    seedFractureRand(hitX, hitY, impactForce);
+    stores.debris.reset();
+    FractureEngine._shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce);
+    if (ENGINE_F32[F_OUT_DEBRIS_COUNT] < 2) {
+        stores.debris.reset();
+        return [];
+    }
+    const geometries = materializeDebrisGeometries(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
+    releaseDebrisGeom(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
+    stores.debris.reset();
+    return geometries;
+}
+
+export function shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10) {
+    return shatterGlassPolygon(boxLocalFootprint(hx, hy), hitX, hitY, impactForce);
+}
+
+export function readImpactFracture(stores = moduleStores) {
+    return {
+        debrisStart: ENGINE_F32[F_OUT_DEBRIS_START],
+        debrisCount: ENGINE_F32[F_OUT_DEBRIS_COUNT],
+        originX: ENGINE_F32[F_OUT_ORIGIN_X],
+        originY: ENGINE_F32[F_OUT_ORIGIN_Y],
+        facing: ENGINE_F32[F_OUT_FACING],
+        impactLocalX: ENGINE_F32[F_OUT_IMPACT_LOCAL_X],
+        impactLocalY: ENGINE_F32[F_OUT_IMPACT_LOCAL_Y],
+        impactForce: ENGINE_F32[F_OUT_IMPACT_FORCE],
+        _stores: stores,
+    };
+}
+
 export function spawnGlassFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
-    const fracture = FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce);
-    if (!fracture) return null;
-    const stores = fracture._stores ?? world.fractureEngine.stores;
+    if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce)) return null;
+    const stores = world.fractureEngine.stores;
+    const fracture = readImpactFracture(stores);
     const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores);
     return { fracture, shards };
 }

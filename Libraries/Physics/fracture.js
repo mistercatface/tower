@@ -4,7 +4,7 @@ import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, P
 import { entityRefs } from "../Entity/entitySlots.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx } from "../Spatial/spatial.js";
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
-import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
+import { transformPoint2DInto, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
@@ -13,11 +13,13 @@ const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
 export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
 const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
 const SHATTER_SEEDS = new Float32Array(GLASS_MAX_SHARDS_PER_SHATTER * 2);
-const sVoronoiCell = { handle: 0, vertCount: 0 };
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 const MAX_FRACTURE_DEBRIS = 64;
 const MAX_CLIP_VERTS = 512;
 const MAX_KINETIC_DEBRIS = 4096 * 4;
+const MAX_PENDING_WALL_BREAKS = 256;
+const WALL_KIND_VOXEL = 0;
+const WALL_KIND_RAIL = 1;
 const debrisStrategyByType = new Map();
 function strategyForDebrisType(type) {
     let strategy = debrisStrategyByType.get(type);
@@ -46,6 +48,63 @@ export const F_VEC_A = ENGINE_FRAC_BASE + 14;
 export const F_VEC_B = ENGINE_FRAC_BASE + 16;
 export const F_VEC_C = ENGINE_FRAC_BASE + 18;
 export const F_VEC_D = ENGINE_FRAC_BASE + 20;
+export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
+export const F_OUT_ORIGIN_Y = ENGINE_FRAC_BASE + 23;
+export const F_OUT_FACING = ENGINE_FRAC_BASE + 24;
+export const F_OUT_IMPACT_LOCAL_X = ENGINE_FRAC_BASE + 25;
+export const F_OUT_IMPACT_LOCAL_Y = ENGINE_FRAC_BASE + 26;
+export const F_OUT_IMPACT_FORCE = ENGINE_FRAC_BASE + 27;
+export const F_OUT_VORONOI_HANDLE = ENGINE_FRAC_BASE + 28;
+export const F_OUT_VORONOI_VERTS = ENGINE_FRAC_BASE + 29;
+export const F_EDGE_P1X = ENGINE_FRAC_BASE + 30;
+export const F_EDGE_P1Y = ENGINE_FRAC_BASE + 31;
+export const F_EDGE_P2X = ENGINE_FRAC_BASE + 32;
+export const F_EDGE_P2Y = ENGINE_FRAC_BASE + 33;
+const edgeEpA = {
+    get x() {
+        return ENGINE_F32[F_EDGE_P1X];
+    },
+    set x(v) {
+        ENGINE_F32[F_EDGE_P1X] = v;
+    },
+    get y() {
+        return ENGINE_F32[F_EDGE_P1Y];
+    },
+    set y(v) {
+        ENGINE_F32[F_EDGE_P1Y] = v;
+    },
+};
+const edgeEpB = {
+    get x() {
+        return ENGINE_F32[F_EDGE_P2X];
+    },
+    set x(v) {
+        ENGINE_F32[F_EDGE_P2X] = v;
+    },
+    get y() {
+        return ENGINE_F32[F_EDGE_P2Y];
+    },
+    set y(v) {
+        ENGINE_F32[F_EDGE_P2Y] = v;
+    },
+};
+const spawnedScratch = [];
+const voxelScratch = [];
+const admitScratch = [];
+const sImpactFracture = { debrisStart: 0, debrisCount: 0, originX: 0, originY: 0, facing: 0, impactLocalX: 0, impactLocalY: 0, impactForce: 0, _stores: null };
+const sMotion = { vx: 0, vy: 0, w: 0 };
+function bindImpactFractureView(stores) {
+    sImpactFracture.debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
+    sImpactFracture.debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+    sImpactFracture.originX = ENGINE_F32[F_OUT_ORIGIN_X];
+    sImpactFracture.originY = ENGINE_F32[F_OUT_ORIGIN_Y];
+    sImpactFracture.facing = ENGINE_F32[F_OUT_FACING];
+    sImpactFracture.impactLocalX = ENGINE_F32[F_OUT_IMPACT_LOCAL_X];
+    sImpactFracture.impactLocalY = ENGINE_F32[F_OUT_IMPACT_LOCAL_Y];
+    sImpactFracture.impactForce = ENGINE_F32[F_OUT_IMPACT_FORCE];
+    sImpactFracture._stores = stores;
+    return sImpactFracture;
+}
 let fractureRandBase = 0;
 let fractureRandCall = 0;
 export function seedFractureRand(worldHitX, worldHitY, impactForce, salt = 0) {
@@ -57,8 +116,6 @@ export function nextFractureRand() {
 }
 let clipLastX = NaN,
     clipLastY = NaN;
-const sEdgeP1 = { x: 0, y: 0 };
-const sEdgeP2 = { x: 0, y: 0 };
 function clipPushVert(dst, outCount, x, y) {
     if (outCount > 0) {
         const dx = clipLastX - x;
@@ -74,7 +131,9 @@ function clipPushVert(dst, outCount, x, y) {
 class FractureGeomPool {
     constructor() {
         this.buckets = GEOM_VERT_BUCKETS.map(() => []);
-        this.live = new Map();
+        this.buffers = [null];
+        this.bucketOf = new Uint8Array(1);
+        this.freeHandles = [];
         this.nextHandle = 1;
         this.clipA = new Float32Array(MAX_CLIP_VERTS * 2);
         this.clipB = new Float32Array(MAX_CLIP_VERTS * 2);
@@ -83,25 +142,39 @@ class FractureGeomPool {
         for (let i = 0; i < GEOM_VERT_BUCKETS.length; i++) if (GEOM_VERT_BUCKETS[i] >= minCap) return i;
         return GEOM_VERT_BUCKETS.length - 1;
     }
+    _ensureHandleCapacity(handle) {
+        if (handle < this.buffers.length) return;
+        const next = Math.max(handle + 1, this.buffers.length * 2);
+        const grown = new Array(next);
+        for (let i = 0; i < this.buffers.length; i++) grown[i] = this.buffers[i];
+        this.buffers = grown;
+        const buckets = new Uint8Array(next);
+        buckets.set(this.bucketOf);
+        this.bucketOf = buckets;
+    }
     borrow(minVertCapacity) {
         const bucket = this._bucketIndex(minVertCapacity);
         const capacity = GEOM_VERT_BUCKETS[bucket];
         const floatCapacity = capacity * 2;
         let buffer = this.buckets[bucket].pop();
         if (!buffer || buffer.length < floatCapacity) buffer = new Float32Array(floatCapacity);
-        const handle = this.nextHandle++;
-        this.live.set(handle, { buffer, bucket });
+        let handle = this.freeHandles.pop();
+        if (handle === undefined) handle = this.nextHandle++;
+        this._ensureHandleCapacity(handle);
+        this.buffers[handle] = buffer;
+        this.bucketOf[handle] = bucket;
         return handle;
     }
     release(handle) {
         if (!handle) return;
-        const entry = this.live.get(handle);
-        if (!entry) return;
-        this.live.delete(handle);
-        this.buckets[entry.bucket].push(entry.buffer);
+        const buffer = this.buffers[handle];
+        if (!buffer) return;
+        this.buckets[this.bucketOf[handle]].push(buffer);
+        this.buffers[handle] = null;
+        this.freeHandles.push(handle);
     }
     buffer(handle) {
-        return this.live.get(handle).buffer;
+        return this.buffers[handle];
     }
     copyVerts(handle, src, vertCount) {
         const dst = this.buffer(handle);
@@ -146,7 +219,7 @@ class FractureGeomPool {
         }
         return outCount;
     }
-    voronoiCellInto(out, flatVerts, vertCount, seeds, seedIndex, seedCount) {
+    voronoiCellIntoEngine(flatVerts, vertCount, seeds, seedIndex, seedCount) {
         let count = vertCount;
         for (let k = 0; k < count; k++) {
             this.clipA[k * 2] = flatVerts[k * 2];
@@ -164,9 +237,9 @@ class FractureGeomPool {
             const my = (siy + sjy) * 0.5;
             count = this.clipHalfPlaneInPlace(src, count, mx, my, six - sjx, siy - sjy, dst);
             if (count < 3) {
-                out.handle = 0;
-                out.vertCount = 0;
-                return out;
+                ENGINE_F32[F_OUT_VORONOI_HANDLE] = 0;
+                ENGINE_F32[F_OUT_VORONOI_VERTS] = 0;
+                return;
             }
             const tmp = src;
             src = dst;
@@ -174,9 +247,8 @@ class FractureGeomPool {
         }
         const handle = this.borrow(count);
         this.copyVerts(handle, src, count);
-        out.handle = handle;
-        out.vertCount = count;
-        return out;
+        ENGINE_F32[F_OUT_VORONOI_HANDLE] = handle;
+        ENGINE_F32[F_OUT_VORONOI_VERTS] = count;
     }
     centerVertsInPlace(handle, vertCount) {
         const buf = this.buffer(handle);
@@ -232,25 +304,11 @@ class FractureDebrisStore {
     }
 }
 const moduleGeomPool = new FractureGeomPool();
-const moduleStores = { geom: moduleGeomPool, debris: new FractureDebrisStore(moduleGeomPool) };
+export const moduleStores = { geom: moduleGeomPool, debris: new FractureDebrisStore(moduleGeomPool) };
 function admitKineticPropsBatch(spatialFrame, props, world) {
     if (!props.length) return;
     if (!spatialFrame?.admitKineticProps) throw new Error("Kinetic shard admission requires spatial frame admitKineticProps");
     spatialFrame.admitKineticProps(props, world);
-}
-function copyDebrisFootprint(stores, debrisIndex) {
-    const debris = stores.debris;
-    const handle = debris.vertHandle[debrisIndex];
-    const vertCount = debris.vertCount[debrisIndex];
-    const src = stores.geom.buffer(handle);
-    const n = vertCount * 2;
-    const footprintVertices = new Float32Array(n);
-    for (let i = 0; i < n; i++) footprintVertices[i] = src[i];
-    return footprintVertices;
-}
-function materializePolygonDebris(stores, debrisIndex) {
-    const debris = stores.debris;
-    return { footprintVertices: copyDebrisFootprint(stores, debrisIndex), footprintArea: debris.footprintArea[debrisIndex], boundingRadius: debris.boundingRadius[debrisIndex], centroid: { cx: debris.centroidX[debrisIndex], cy: debris.centroidY[debrisIndex] } };
 }
 function releaseDebrisGeomHandles(stores, start, count) {
     const debris = stores.debris;
@@ -264,6 +322,14 @@ function dropShatterSeed(seeds, seedIndex, seedCount) {
     }
     return last;
 }
+function createPendingWallBreaks() {
+    return { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
+}
+function clearPendingWallBreaks(pending) {
+    pending.keyToRow.clear();
+    pending.count = 0;
+}
+const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 class KineticDebrisBody {
     constructor(store) {
         this.isKineticDebris = true;
@@ -409,10 +475,8 @@ class KineticDebrisStore {
         body._wallChunkTextureReady = undefined;
         body.isDead = false;
         body.isSleeping = false;
-        body.shape = undefined;
         body.collisionParts = undefined;
         body.chunks = undefined;
-        body.footprintVertices = undefined;
         body.footprintArea = undefined;
         body.radius = 0;
         body.mass = 1;
@@ -444,37 +508,40 @@ class KineticDebrisStore {
         body.isDead = true;
         kineticDebrisFreePool.push(body);
     }
-    spawnFromBreak(desc, spatialFrame) {
+    spawnFromBreakRow(spawn, row, spatialFrame) {
         if (!spatialFrame) throw new Error("Kinetic debris break spawn requires spatial frame");
-        const propType = desc.kind === "voxel" ? "wall_voxel_chunk" : "wall_rail_chunk";
+        const propType = spawn.kind[row] === WALL_KIND_VOXEL ? "wall_voxel_chunk" : "wall_rail_chunk";
         const parent = this._breakSource;
         parent.type = propType;
         parent.strategy = strategyForDebrisType(propType);
-        parent.x = desc.x;
-        parent.y = desc.y;
+        parent.x = spawn.x[row];
+        parent.y = spawn.y[row];
         parent.vx = 0;
         parent.vy = 0;
         parent.angularVelocity = 0;
-        parent.facing = desc.angle;
+        parent.facing = spawn.angle[row];
         parent.shape = undefined;
         parent.collisionParts = undefined;
         parent.chunks = undefined;
         parent.footprintVertices = undefined;
         parent.footprintArea = undefined;
-        applyPropBoxFootprint(parent, desc.width / 2, desc.height / 2);
-        parent.height = desc.wallHeight;
-        parent.wallChunkProfileId = desc.wallChunkProfileId;
-        parent.wallChunkHeightPx = desc.wallChunkHeightPx;
-        const sourceMass = desc.sourceMass ?? 1;
+        applyPropBoxFootprint(parent, spawn.width[row] / 2, spawn.height[row] / 2);
+        parent.height = spawn.wallHeight[row];
+        parent.wallChunkProfileId = spawn.profileId[row];
+        parent.wallChunkHeightPx = spawn.wallHeight[row];
+        const sourceMass = spawn.sourceMass[row];
         const massFactor = sourceMass / (sourceMass + parent.mass);
-        const speed = Math.max(20, desc.sourceSpeed * 0.6 * (massFactor * 2));
-        parent.vx = -desc.normalX * speed;
-        parent.vy = -desc.normalY * speed;
-        parent.angularVelocity = (deterministicUnitRandom(Math.imul(desc.idx | 0, 1597334677)) - 0.5) * 2.0;
-        const sourceMotion = FractureEngine._currentPropMotion(parent);
-        const force = FractureEngine.impactForceFromContact(desc.sourceSpeed, sourceMass, parent.mass ?? 1) + FRACTURE_TUNING.wallSpawn.forceBias;
-        const fracture = FractureEngine.fracturePropOnImpact(parent, desc.contactX, desc.contactY, force, this.engine);
-        if (!fracture) {
+        const speed = Math.max(20, spawn.sourceSpeed[row] * 0.6 * (massFactor * 2));
+        parent.vx = -spawn.normalX[row] * speed;
+        parent.vy = -spawn.normalY[row] * speed;
+        parent.angularVelocity = (deterministicUnitRandom(Math.imul(spawn.idx[row] | 0, 1597334677)) - 0.5) * 2.0;
+        FractureEngine._currentPropMotion(parent);
+        sMotion.vx = ENGINE_F32[F_OUT_MOTION_VX];
+        sMotion.vy = ENGINE_F32[F_OUT_MOTION_VY];
+        sMotion.w = ENGINE_F32[F_OUT_MOTION_W];
+        const force = FractureEngine.impactForceFromContact(spawn.sourceSpeed[row], sourceMass, parent.mass ?? 1) + FRACTURE_TUNING.wallSpawn.forceBias;
+        const ok = FractureEngine.fracturePropOnImpact(parent, spawn.contactX[row], spawn.contactY[row], force, this.engine);
+        if (!ok) {
             const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
             body.vx = parent.vx;
             body.vy = parent.vy;
@@ -489,11 +556,17 @@ class KineticDebrisStore {
             body.shape = parent.shape;
             this._pushBody(body);
             wakeKineticBody(body);
-            admitKineticPropsBatch(spatialFrame, [body], this.world);
-            return [body];
+            admitScratch.length = 0;
+            admitScratch.push(body);
+            admitKineticPropsBatch(spatialFrame, admitScratch, this.world);
+            admitScratch.length = 0;
+            spawnedScratch.length = 0;
+            spawnedScratch.push(body);
+            return spawnedScratch;
         }
-        const stores = fracture._stores ?? this.engine.stores;
-        const spawned = this.spawnShardsFromFracture(parent, fracture, stores, sourceMotion);
+        const stores = this.engine.stores;
+        const fracture = bindImpactFractureView(stores);
+        const spawned = this.spawnShardsFromFracture(parent, fracture, stores, sMotion);
         if (!spawned.length) {
             releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
             stores.debris.reset();
@@ -511,8 +584,13 @@ class KineticDebrisStore {
             body.shape = parent.shape;
             this._pushBody(body);
             wakeKineticBody(body);
-            admitKineticPropsBatch(spatialFrame, [body], this.world);
-            return [body];
+            admitScratch.length = 0;
+            admitScratch.push(body);
+            admitKineticPropsBatch(spatialFrame, admitScratch, this.world);
+            admitScratch.length = 0;
+            spawnedScratch.length = 0;
+            spawnedScratch.push(body);
+            return spawnedScratch;
         }
         admitKineticPropsBatch(spatialFrame, spawned, this.world);
         releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
@@ -524,10 +602,12 @@ class KineticDebrisStore {
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
         FractureEngine._currentPropMotion(sourceProp);
-        const sourceVx = ENGINE_F32[F_OUT_MOTION_VX];
-        const sourceVy = ENGINE_F32[F_OUT_MOTION_VY];
-        const sourceW = ENGINE_F32[F_OUT_MOTION_W];
-        const motion = sourceMotion ?? { vx: sourceVx, vy: sourceVy, w: sourceW };
+        if (!sourceMotion) {
+            sMotion.vx = ENGINE_F32[F_OUT_MOTION_VX];
+            sMotion.vy = ENGINE_F32[F_OUT_MOTION_VY];
+            sMotion.w = ENGINE_F32[F_OUT_MOTION_W];
+            sourceMotion = sMotion;
+        }
         const glassBurst = !sourceProp.isKineticDebris && sourceProp.strategy?.fracture?.mode === "glass";
         const burstSalt = glassBurst ? 991 : 0;
         if (glassBurst) seedFractureRand(fracture.originX, fracture.originY, fracture.impactForce, burstSalt);
@@ -536,7 +616,7 @@ class KineticDebrisStore {
         const shardHeight = sourceProp.height;
         const shardType = sourceProp.type;
         const debris = stores.debris;
-        const spawned = [];
+        spawnedScratch.length = 0;
         for (let i = fracture.debrisStart; i < fracture.debrisStart + fracture.debrisCount; i++) {
             const cx = debris.centroidX[i];
             const cy = debris.centroidY[i];
@@ -546,9 +626,9 @@ class KineticDebrisStore {
             FractureEngine.applyPropFractureGeometryFromDebris(body, stores, i);
             stores.geom.release(debris.vertHandle[i]);
             debris.vertHandle[i] = 0;
-            body.vx = motion.vx ?? 0;
-            body.vy = motion.vy ?? 0;
-            body.angularVelocity = motion.w ?? 0;
+            body.vx = sourceMotion.vx ?? 0;
+            body.vy = sourceMotion.vy ?? 0;
+            body.angularVelocity = sourceMotion.w ?? 0;
             body._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
             if (sourceProp.faction !== undefined) body.faction = sourceProp.faction;
             if (sourceProp.visualOverride !== undefined) body.visualOverride = sourceProp.visualOverride;
@@ -558,13 +638,13 @@ class KineticDebrisStore {
             }
             if (shardHeight != null) body.height = shardHeight;
             if (glassBurst) FractureEngine._applyShardBurstImpulse(fracture, body, cx, cy);
-            spawned.push(body);
+            spawnedScratch.push(body);
         }
-        for (let i = 0; i < spawned.length; i++) {
-            this._pushBody(spawned[i]);
-            wakeKineticBody(spawned[i]);
+        for (let i = 0; i < spawnedScratch.length; i++) {
+            this._pushBody(spawnedScratch[i]);
+            wakeKineticBody(spawnedScratch[i]);
         }
-        return spawned;
+        return spawnedScratch;
     }
     tickFrames(dt, spatialFrame) {
         for (let i = this._bodies.length - 1; i >= 0; i--) this._bodies[i].tickPropFrame(dt, this.world, spatialFrame);
@@ -627,6 +707,10 @@ export function wallDamageKey(target, grid) {
     }
     return `r:${idx}:${side}`;
 }
+export function wallDamageKeyFromPending(pending, row, grid) {
+    if (pending.kind[row] === WALL_KIND_VOXEL) return `v:${pending.idx[row]}`;
+    return wallDamageKey({ kind: "rail", idx: pending.idx[row], side: pending.side[row] }, grid);
+}
 export function resolveWallDamageTarget(grid, segment) {
     if (!segment) return null;
     const idx = segment.gridIdx;
@@ -641,8 +725,13 @@ export function resolveWallDamageTarget(grid, segment) {
     }
     return null;
 }
+function pendingTargetStillValid(grid, pending, row) {
+    if (pending.kind[row] === WALL_KIND_VOXEL) return cellIsStaticWall(grid, pending.idx[row]);
+    const edge = grid.getCellEdge(pending.idx[row], pending.side[row]);
+    return isRailWallEdge(edge);
+}
 export function createGridWallDamage(state, config) {
-    return { config, pendingBreaks: new Map(), commit: createDeferredGridWallCommit(state), spatialFrame: null };
+    return { config, pending: createPendingWallBreaks(), commit: createDeferredGridWallCommit(state), spatialFrame: null, lastCommitBounds: null, lastSpawned: [], lastSpawnedCount: 0 };
 }
 export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
     const wallDamage = state.gridWallDamage;
@@ -656,12 +745,9 @@ export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolv
     queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, entity);
     return collided;
 }
-function targetToSegment(target) {
-    if (target.kind === "voxel") return { gridIdx: target.idx, isStaticGridProxy: true, isEdgeRail: false };
-    return { gridIdx: target.idx, gridSide: target.side, isEdgeRail: true, isStaticGridProxy: false };
-}
 export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
     const config = wallDamage.config;
+    const pending = wallDamage.pending;
     for (let i = 0; i < hits.length; i++) {
         const hit = hits[i];
         const target = resolveWallDamageTarget(grid, hit.segment);
@@ -669,22 +755,33 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
         const strength = computeWallBreakStrength(preSpeed, hit.approachDot, config);
         if (strength < config.minBreakStrength) continue;
         const key = wallDamageKey(target, grid);
-        if (!wallDamage.pendingBreaks.has(key)) {
-            const cx = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
-            const cy = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
-            wallDamage.pendingBreaks.set(key, { target, strength, hit, contactX: cx, contactY: cy, normalX: hit.normalX ?? 0, normalY: hit.normalY ?? 0, sourceSpeed: preSpeed, sourceMass: entity ? (entity.mass ?? 1) : 1 });
-        }
+        if (pending.keyToRow.has(key)) continue;
+        if (pending.count >= MAX_PENDING_WALL_BREAKS) throw new Error("pending wall breaks capacity exceeded");
+        const row = pending.count++;
+        pending.keyToRow.set(key, row);
+        pending.kind[row] = target.kind === "voxel" ? WALL_KIND_VOXEL : WALL_KIND_RAIL;
+        pending.idx[row] = target.idx;
+        pending.side[row] = target.side ?? 0;
+        pending.strength[row] = strength;
+        pending.contactX[row] = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
+        pending.contactY[row] = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
+        pending.normalX[row] = hit.normalX ?? 0;
+        pending.normalY[row] = hit.normalY ?? 0;
+        pending.sourceSpeed[row] = preSpeed;
+        pending.sourceMass[row] = entity ? (entity.mass ?? 1) : 1;
     }
 }
 export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage) {
-    if (!wallDamage?.pendingBreaks.size) return null;
+    if (!wallDamage?.pending.count) return;
     const grid = state.obstacleGrid;
-    const descriptors = [];
-    for (const item of wallDamage.pendingBreaks.values()) {
-        const target = item.target;
-        if (!resolveWallDamageTarget(grid, targetToSegment(target))) continue;
-        const idx = target.idx;
-        if (target.kind === "voxel") {
+    const pending = wallDamage.pending;
+    const spawn = wallSpawnScratch;
+    spawn.count = 0;
+    for (let row = 0; row < pending.count; row++) {
+        if (!pendingTargetStillValid(grid, pending, row)) continue;
+        const idx = pending.idx[row];
+        const out = spawn.count;
+        if (pending.kind[row] === WALL_KIND_VOXEL) {
             const info = getVoxelWallInfo(grid, idx);
             if (info == null) continue;
             const cx = grid.gridCenterXByIdx(idx);
@@ -692,41 +789,77 @@ export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage)
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
             const profileId = resolveCellSurfaceProfileId(grid, idx, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const wallHeightPx = grid.grid[idx] * grid.cellSize;
-            descriptors.push({ kind: "voxel", idx: idx, x: cx, y: cy, angle: 0, width: grid.cellSize, height: grid.cellSize, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
+            spawn.kind[out] = WALL_KIND_VOXEL;
+            spawn.idx[out] = idx;
+            spawn.side[out] = 0;
+            spawn.x[out] = cx;
+            spawn.y[out] = cy;
+            spawn.angle[out] = 0;
+            spawn.width[out] = grid.cellSize;
+            spawn.height[out] = grid.cellSize;
+            spawn.wallHeight[out] = wallHeightPx;
+            spawn.profileId[out] = profileId;
+            spawn.strength[out] = pending.strength[row];
+            spawn.contactX[out] = pending.contactX[row] || cx;
+            spawn.contactY[out] = pending.contactY[row] || cy;
+            spawn.normalX[out] = pending.normalX[row];
+            spawn.normalY[out] = pending.normalY[row];
+            spawn.sourceSpeed[out] = pending.sourceSpeed[row];
+            spawn.sourceMass[out] = pending.sourceMass[row];
+            spawn.count++;
         } else {
-            const info = getRailWallInfo(grid, idx, target.side);
+            const side = pending.side[row];
+            const info = getRailWallInfo(grid, idx, side);
             if (!info) continue;
-            cellEdgeEndpointsIdx(grid, idx, target.side, sEdgeP1, sEdgeP2, 0);
-            const cx = (sEdgeP1.x + sEdgeP2.x) * 0.5;
-            const cy = (sEdgeP1.y + sEdgeP2.y) * 0.5;
-            const angle = Math.atan2(sEdgeP2.y - sEdgeP1.y, sEdgeP2.x - sEdgeP1.x);
+            cellEdgeEndpointsIdx(grid, idx, side, edgeEpA, edgeEpB, 0);
+            const cx = (ENGINE_F32[F_EDGE_P1X] + ENGINE_F32[F_EDGE_P2X]) * 0.5;
+            const cy = (ENGINE_F32[F_EDGE_P1Y] + ENGINE_F32[F_EDGE_P2Y]) * 0.5;
+            const angle = Math.atan2(ENGINE_F32[F_EDGE_P2Y] - ENGINE_F32[F_EDGE_P1Y], ENGINE_F32[F_EDGE_P2X] - ENGINE_F32[F_EDGE_P1X]);
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-            const profileId = resolveEdgeSurfaceProfileId(grid, idx, target.side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
-            const thicknessPx = edgeRailCollisionThicknessPx(grid, idx, target.side);
+            const profileId = resolveEdgeSurfaceProfileId(grid, idx, side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
+            const thicknessPx = edgeRailCollisionThicknessPx(grid, idx, side);
             const wallHeightPx = info.heightLevel * grid.cellSize;
-            descriptors.push({ kind: "rail", idx: idx, side: target.side, x: cx, y: cy, angle: angle, width: grid.cellSize, height: thicknessPx, wallHeight: wallHeightPx, wallChunkProfileId: profileId, wallChunkHeightPx: wallHeightPx, strength: item.strength, contactX: item.contactX ?? cx, contactY: item.contactY ?? cy, normalX: item.normalX, normalY: item.normalY, sourceSpeed: item.sourceSpeed, sourceMass: item.sourceMass ?? 1 });
+            spawn.kind[out] = WALL_KIND_RAIL;
+            spawn.idx[out] = idx;
+            spawn.side[out] = side;
+            spawn.x[out] = cx;
+            spawn.y[out] = cy;
+            spawn.angle[out] = angle;
+            spawn.width[out] = grid.cellSize;
+            spawn.height[out] = thicknessPx;
+            spawn.wallHeight[out] = wallHeightPx;
+            spawn.profileId[out] = profileId;
+            spawn.strength[out] = pending.strength[row];
+            spawn.contactX[out] = pending.contactX[row] || cx;
+            spawn.contactY[out] = pending.contactY[row] || cy;
+            spawn.normalX[out] = pending.normalX[row];
+            spawn.normalY[out] = pending.normalY[row];
+            spawn.sourceSpeed[out] = pending.sourceSpeed[row];
+            spawn.sourceMass[out] = pending.sourceMass[row];
+            spawn.count++;
         }
     }
-    wallDamage.pendingBreaks.clear();
-    const voxels = [];
-    const railBatch = new RailWallBatch(Math.max(1, descriptors.length));
-    for (const desc of descriptors)
-        if (desc.kind === "voxel") voxels.push(desc.idx);
-        else railBatch.add(desc.idx, desc.side, 1, 1);
+    clearPendingWallBreaks(pending);
+    voxelScratch.length = 0;
+    const railBatch = new RailWallBatch(Math.max(1, spawn.count));
+    for (let i = 0; i < spawn.count; i++)
+        if (spawn.kind[i] === WALL_KIND_VOXEL) voxelScratch.push(spawn.idx[i]);
+        else railBatch.add(spawn.idx[i], spawn.side[i], 1, 1);
     let commitBounds = null;
-    if (voxels.length || railBatch.count) {
-        wallDamage.commit.clearWalls({ voxels, rails: railBatch });
+    if (voxelScratch.length || railBatch.count) {
+        wallDamage.commit.clearWalls({ voxels: voxelScratch, rails: railBatch });
         commitBounds = wallDamage.commit.flush();
     }
     const spatialFrame = wallDamage.spatialFrame ?? null;
     wallDamage.spatialFrame = null;
-    const spawned = [];
-    for (const desc of descriptors) {
-        const shards = state.fractureEngine.debris.spawnFromBreak(desc, spatialFrame);
-        for (let i = 0; i < shards.length; i++) spawned.push(shards[i]);
+    const lastSpawned = wallDamage.lastSpawned;
+    lastSpawned.length = 0;
+    for (let i = 0; i < spawn.count; i++) {
+        const shards = state.fractureEngine.debris.spawnFromBreakRow(spawn, i, spatialFrame);
+        for (let j = 0; j < shards.length; j++) lastSpawned.push(shards[j]);
     }
-    if (!spawned.length && !commitBounds) return null;
-    return { commitBounds, spawned };
+    wallDamage.lastCommitBounds = commitBounds;
+    wallDamage.lastSpawnedCount = lastSpawned.length;
 }
 export class FractureEngine {
     constructor(world) {
@@ -767,7 +900,7 @@ export class FractureEngine {
         const count = this.deferredFracturesCount;
         if (count === 0) return;
         world.entityRegistry.beginMembershipBatch();
-        const propsToAdmit = [];
+        admitScratch.length = 0;
         const deferredFractures = this.deferredFractures;
         const stores = this.stores;
         try {
@@ -775,19 +908,23 @@ export class FractureEngine {
                 const item = deferredFractures[i];
                 const prop = item.prop;
                 delete prop._pendingEviction;
-                const sourceMotion = FractureEngine._currentPropMotion(prop);
+                FractureEngine._currentPropMotion(prop);
+                sMotion.vx = ENGINE_F32[F_OUT_MOTION_VX];
+                sMotion.vy = ENGINE_F32[F_OUT_MOTION_VY];
+                sMotion.w = ENGINE_F32[F_OUT_MOTION_W];
                 if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
                 else removeWorldPropFromState(world, prop, spatialFrame);
-                const shards = this.debris.spawnShardsFromFracture(prop, item, stores, sourceMotion);
-                for (let j = 0; j < shards.length; j++) propsToAdmit.push(shards[j]);
+                const shards = this.debris.spawnShardsFromFracture(prop, item, stores, sMotion);
+                for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
                 releaseDebrisGeomHandles(stores, item.debrisStart, item.debrisCount);
                 item.prop = null;
             }
-            admitKineticPropsBatch(spatialFrame, propsToAdmit, world);
+            admitKineticPropsBatch(spatialFrame, admitScratch, world);
         } finally {
             world.entityRegistry.endMembershipBatch();
             stores.debris.reset();
             this.deferredFracturesCount = 0;
+            admitScratch.length = 0;
         }
     }
     queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
@@ -803,15 +940,13 @@ export class FractureEngine {
             if (prop._fractureCooldown > 0) continue;
             if (other.strategy?.fracture?.mode === "glass") continue;
             if (prop._pendingEviction) continue;
-            const fracture = FractureEngine.fracturePropOnImpact(prop, hitX, hitY, force, this);
-            if (!fracture) continue;
+            if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, force, this)) continue;
             prop._pendingEviction = true;
-            this.enqueueDeferredFracture(prop, fracture);
-            // One contact -> at most one fracture event (avoid double-spawn cascades).
+            this.enqueueDeferredFracture(prop);
             return;
         }
     }
-    enqueueDeferredFracture(prop, fracture) {
+    enqueueDeferredFracture(prop) {
         const deferredFractures = this.deferredFractures;
         let count = this.deferredFracturesCount;
         let item = deferredFractures[count];
@@ -820,38 +955,37 @@ export class FractureEngine {
             deferredFractures[count] = item;
         }
         item.prop = prop;
-        item.debrisStart = fracture.debrisStart;
-        item.debrisCount = fracture.debrisCount;
-        item.originX = fracture.originX;
-        item.originY = fracture.originY;
-        item.impactLocalX = fracture.impactLocalX;
-        item.impactLocalY = fracture.impactLocalY;
-        item.impactForce = fracture.impactForce;
-        item.facing = fracture.facing;
+        item.debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
+        item.debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+        item.originX = ENGINE_F32[F_OUT_ORIGIN_X];
+        item.originY = ENGINE_F32[F_OUT_ORIGIN_Y];
+        item.impactLocalX = ENGINE_F32[F_OUT_IMPACT_LOCAL_X];
+        item.impactLocalY = ENGINE_F32[F_OUT_IMPACT_LOCAL_Y];
+        item.impactForce = ENGINE_F32[F_OUT_IMPACT_FORCE];
+        item.facing = ENGINE_F32[F_OUT_FACING];
         this.deferredFracturesCount = count + 1;
     }
-    static commitFractureResult(world, prop, fracture, spatialFrame) {
+    static commitFractureResult(world, prop, spatialFrame) {
         if (!spatialFrame) throw new Error("commitFractureResult requires spatial frame");
-        const sourceMotion = FractureEngine._currentPropMotion(prop);
+        FractureEngine._currentPropMotion(prop);
+        sMotion.vx = ENGINE_F32[F_OUT_MOTION_VX];
+        sMotion.vy = ENGINE_F32[F_OUT_MOTION_VY];
+        sMotion.w = ENGINE_F32[F_OUT_MOTION_W];
         if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
         else removeWorldPropFromState(world, prop, spatialFrame);
-        const stores = fracture._stores ?? world.fractureEngine.stores;
-        const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores, sourceMotion);
+        const stores = world.fractureEngine.stores;
+        const fracture = bindImpactFractureView(stores);
+        const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores, sMotion);
         admitKineticPropsBatch(spatialFrame, shards, world);
         releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
         stores.debris.reset();
         return shards;
     }
-    static materializeDebrisGeometries(stores, debrisStart, debrisCount) {
-        const geometries = [];
-        for (let i = debrisStart; i < debrisStart + debrisCount; i++) geometries.push(materializePolygonDebris(stores, i));
-        return geometries;
-    }
     static fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce, engine = null) {
         const stores = engine?.stores ?? moduleStores;
         if (!engine || engine.deferredFracturesCount === 0) stores.debris.reset();
-        if (prop.strategy?.fracture?.mode !== "glass") return null;
-        if (!FractureEngine.canFracturePropSplit(prop)) return null;
+        if (prop.strategy?.fracture?.mode !== "glass") return false;
+        if (!FractureEngine.canFracturePropSplit(prop)) return false;
         const physId = prop._physId;
         const originX = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
         const originY = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
@@ -864,8 +998,14 @@ export class FractureEngine {
         const impactLocalY = -dx * sin + dy * cos;
         seedFractureRand(worldHitX, worldHitY, impactForce);
         FractureEngine._shatterPolygonIntoStore(stores, prop.shape.vertices, impactLocalX, impactLocalY, impactForce);
-        if (ENGINE_F32[F_OUT_DEBRIS_COUNT] < 2) return null;
-        return { debrisStart: ENGINE_F32[F_OUT_DEBRIS_START], debrisCount: ENGINE_F32[F_OUT_DEBRIS_COUNT], originX, originY, facing, impactLocalX, impactLocalY, impactForce, _stores: stores };
+        if (ENGINE_F32[F_OUT_DEBRIS_COUNT] < 2) return false;
+        ENGINE_F32[F_OUT_ORIGIN_X] = originX;
+        ENGINE_F32[F_OUT_ORIGIN_Y] = originY;
+        ENGINE_F32[F_OUT_FACING] = facing;
+        ENGINE_F32[F_OUT_IMPACT_LOCAL_X] = impactLocalX;
+        ENGINE_F32[F_OUT_IMPACT_LOCAL_Y] = impactLocalY;
+        ENGINE_F32[F_OUT_IMPACT_FORCE] = impactForce;
+        return true;
     }
     static impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
         return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
@@ -876,7 +1016,8 @@ export class FractureEngine {
         prop.footprintVertices = geometry.footprintVertices;
         prop.footprintArea = geometry.footprintArea;
         prop.radius = geometry.boundingRadius;
-        prop.shape = new PolygonShape(geometry.footprintVertices);
+        if (prop.shape?.type === "Polygon") prop.shape.setFlatVerts(geometry.footprintVertices, geometry.footprintVertices.length);
+        else prop.shape = new PolygonShape(geometry.footprintVertices);
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
@@ -895,7 +1036,8 @@ export class FractureEngine {
         prop.footprintVertices = fp;
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];
-        prop.shape = new PolygonShape(fp);
+        if (prop.shape?.type === "Polygon") prop.shape.setFlatVerts(fp, n);
+        else prop.shape = new PolygonShape(fp);
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
@@ -909,24 +1051,6 @@ export class FractureEngine {
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
         return FractureEngine._glassFootprintArea(prop) >= minArea;
     }
-    static shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10) {
-        const flat = boxLocalFootprint(hx, hy);
-        return FractureEngine.shatterGlassPolygon(flat, hitX, hitY, impactForce);
-    }
-    static shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, stores = moduleStores) {
-        if (flatVerts.length < 6) return [];
-        seedFractureRand(hitX, hitY, impactForce);
-        stores.debris.reset();
-        FractureEngine._shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce);
-        if (ENGINE_F32[F_OUT_DEBRIS_COUNT] < 2) {
-            stores.debris.reset();
-            return [];
-        }
-        const geometries = FractureEngine.materializeDebrisGeometries(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
-        releaseDebrisGeomHandles(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
-        stores.debris.reset();
-        return geometries;
-    }
     static _shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce) {
         let seedCount = FractureEngine._seedCountForPolygon(flatVerts, impactForce);
         FractureEngine._buildShatterSeeds(flatVerts, hitX, hitY, seedCount, SHATTER_SEEDS);
@@ -936,16 +1060,18 @@ export class FractureEngine {
         while (attempts < 10 && seedCount > 1) {
             let dropIndex = -1;
             for (let i = 0; i < seedCount; i++) {
-                stores.geom.voronoiCellInto(sVoronoiCell, flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
-                if (sVoronoiCell.vertCount < 3) {
-                    if (sVoronoiCell.handle) stores.geom.release(sVoronoiCell.handle);
+                stores.geom.voronoiCellIntoEngine(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
+                const cellHandle = ENGINE_F32[F_OUT_VORONOI_HANDLE];
+                const cellVerts = ENGINE_F32[F_OUT_VORONOI_VERTS];
+                if (cellVerts < 3) {
+                    if (cellHandle) stores.geom.release(cellHandle);
                     dropIndex = i;
                     break;
                 }
-                stores.debris.appendCenteredPolygon(sVoronoiCell.handle, sVoronoiCell.vertCount);
+                stores.debris.appendCenteredPolygon(cellHandle, cellVerts);
                 if (ENGINE_F32[F_OUT_AREA] < GLASS_MIN_SHARD_AREA) {
                     stores.debris.write--;
-                    stores.geom.release(sVoronoiCell.handle);
+                    stores.geom.release(cellHandle);
                     stores.debris.vertHandle[stores.debris.write] = 0;
                     dropIndex = i;
                     break;
@@ -963,15 +1089,17 @@ export class FractureEngine {
         }
         ENGINE_F32[F_OUT_DEBRIS_START] = debrisStart;
         for (let i = 0; i < seedCount; i++) {
-            stores.geom.voronoiCellInto(sVoronoiCell, flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
-            if (sVoronoiCell.vertCount < 3) {
-                if (sVoronoiCell.handle) stores.geom.release(sVoronoiCell.handle);
+            stores.geom.voronoiCellIntoEngine(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
+            const cellHandle = ENGINE_F32[F_OUT_VORONOI_HANDLE];
+            const cellVerts = ENGINE_F32[F_OUT_VORONOI_VERTS];
+            if (cellVerts < 3) {
+                if (cellHandle) stores.geom.release(cellHandle);
                 continue;
             }
-            stores.debris.appendCenteredPolygon(sVoronoiCell.handle, sVoronoiCell.vertCount);
+            stores.debris.appendCenteredPolygon(cellHandle, cellVerts);
             if (ENGINE_F32[F_OUT_AREA] < GLASS_MIN_SHARD_AREA) {
                 stores.debris.write--;
-                stores.geom.release(sVoronoiCell.handle);
+                stores.geom.release(cellHandle);
                 stores.debris.vertHandle[stores.debris.write] = 0;
             }
         }

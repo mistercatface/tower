@@ -87,10 +87,10 @@ describe("kinetic wall damage", () => {
             },
         };
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
-        assert.equal(state.gridWallDamage.pendingBreaks.get("v:54").strength, 1);
+        assert.equal(state.gridWallDamage.pending.strength[state.gridWallDamage.pending.keyToRow.get("v:54")], 1);
         applyPendingWallDamage(state);
-        assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,6, 6)));
-        assert.equal(state.gridWallDamage.pendingBreaks.size, 0);
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid, 6, 6)));
+        assert.equal(state.gridWallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("does not queue wall breaks without per-body overlap hits", async () => {
@@ -105,7 +105,7 @@ describe("kinetic wall damage", () => {
             },
         };
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
-        assert.equal(state.gridWallDamage.pendingBreaks.size, 0);
+        assert.equal(state.gridWallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("resolveWallDamageTarget distinguishes voxel and rail segments", async () => {
@@ -130,7 +130,7 @@ describe("kinetic wall damage", () => {
         wallDamage.spatialFrame = wallDebrisTestFrame();
         await applyPendingWallDamage(state, wallDamage);
         assert.ok(!cellIsStaticWall(grid, worldIdxAtCell(state.obstacleGrid,3, 3)));
-        assert.equal(wallDamage.pendingBreaks.size, 0);
+        assert.equal(wallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("one max-power head-on hit destroys a rail wall", async () => {
@@ -144,7 +144,7 @@ describe("kinetic wall damage", () => {
         wallDamage.spatialFrame = wallDebrisTestFrame();
         await applyPendingWallDamage(state, wallDamage);
         assert.ok(!isRailWallEdge(grid.getCellEdge(worldIdxAtCell(state.obstacleGrid,5, 5), 0)));
-        assert.equal(wallDamage.pendingBreaks.size, 0);
+        assert.equal(wallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
     });
     it("wallDamageKey round-trips voxel and rail targets", () => {
@@ -193,12 +193,13 @@ describe("kinetic wall damage", () => {
         
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
         
-        const queued = state.gridWallDamage.pendingBreaks.get("v:27");
-        assert.ok(queued);
-        assert.equal(queued.contactX, 3 * 16 + 8);
-        assert.equal(queued.normalX, 1);
-        assert.equal(queued.sourceSpeed, 560);
-        assert.equal(queued.sourceMass, 1);
+        const pending = state.gridWallDamage.pending;
+        const row = pending.keyToRow.get("v:27");
+        assert.ok(row !== undefined);
+        assert.equal(pending.contactX[row], 3 * 16 + 8);
+        assert.equal(pending.normalX[row], 1);
+        assert.equal(pending.sourceSpeed[row], 560);
+        assert.equal(pending.sourceMass[row], 1);
         
         applyPendingWallDamage(state);
         
@@ -303,10 +304,11 @@ describe("kinetic wall damage", () => {
         
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
         
-        const queued = state.gridWallDamage.pendingBreaks.get("r:36:1");
-        assert.ok(queued);
-        assert.equal(queued.contactY, 4 * 16 + 16);
-        assert.equal(queued.normalY, -1);
+        const pending = state.gridWallDamage.pending;
+        const row = pending.keyToRow.get("r:36:1");
+        assert.ok(row !== undefined);
+        assert.equal(pending.contactY[row], 4 * 16 + 16);
+        assert.equal(pending.normalY[row], -1);
         
         applyPendingWallDamage(state);
         
@@ -375,7 +377,7 @@ describe("kinetic wall damage", () => {
         });
         
         resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);
-        assert.ok(state.gridWallDamage.pendingBreaks.has("r:36:1"));
+        assert.ok(state.gridWallDamage.pending.keyToRow.has("r:36:1"));
         
         applyPendingWallDamage(state);
         

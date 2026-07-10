@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { createFractureWorld, removeEditorPropFromWorld, setupGlassPaneForFracture, spawnGlassFractureShards } from "./harness/fractureHarness.js";
+import { createFractureWorld, removeEditorPropFromWorld, setupGlassPaneForFracture, spawnGlassFractureShards, readImpactFracture } from "./harness/fractureHarness.js";
 
 describe("fracture debris slab ownership", () => {
     it("editor spawn and delete does not feed debris slab pool", () => {
@@ -34,9 +34,9 @@ describe("fracture debris slab ownership", () => {
         for (let i = result.shards.length - 1; i >= 0; i--) {
             world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
         }
-        const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
-        const stores = fractureAgain._stores ?? world.fractureEngine.stores;
-        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, fractureAgain, stores);
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30));
+        const stores = world.fractureEngine.stores;
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, readImpactFracture(stores), stores);
         for (const body of spawnedAgain) {
             assert.ok(originalBodies.includes(body));
         }

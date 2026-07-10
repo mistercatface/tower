@@ -428,6 +428,27 @@ export class PolygonShape extends Shape {
         this.normals = this._computeNormals();
         this.boundingRadius = this._computeBoundingRadius();
     }
+    setFlatVerts(src, floatCount) {
+        let verts = this.vertices;
+        if (!(verts instanceof Float32Array) || verts.length !== floatCount) {
+            verts = new Float32Array(floatCount);
+            this.vertices = verts;
+        }
+        for (let i = 0; i < floatCount; i++) verts[i] = src[i];
+        if (floatCount >= 6 && polygonSignedArea2D(verts) < 0) {
+            const n = floatCount;
+            for (let i = 0, j = n - 2; i < j; i += 2, j -= 2) {
+                const x = verts[i];
+                const y = verts[i + 1];
+                verts[i] = verts[j];
+                verts[i + 1] = verts[j + 1];
+                verts[j] = x;
+                verts[j + 1] = y;
+            }
+        }
+        this._rebuildNormalsInPlace();
+        this.boundingRadius = this._computeBoundingRadius();
+    }
     getBoundingRadius() {
         return this.boundingRadius;
     }
@@ -445,6 +466,19 @@ export class PolygonShape extends Shape {
     _computeNormals() {
         const count = this.vertices.length / 2;
         const normals = new Float32Array(count * 2);
+        this._fillNormals(normals, count);
+        return normals;
+    }
+    _rebuildNormalsInPlace() {
+        const count = this.vertices.length / 2;
+        let normals = this.normals;
+        if (!(normals instanceof Float32Array) || normals.length < count * 2) {
+            normals = new Float32Array(count * 2);
+            this.normals = normals;
+        }
+        this._fillNormals(normals, count);
+    }
+    _fillNormals(normals, count) {
         for (let i = 0; i < count; i++) {
             const p1x = this.vertices[i * 2];
             const p1y = this.vertices[i * 2 + 1];
@@ -462,7 +496,6 @@ export class PolygonShape extends Shape {
                 normals[i * 2 + 1] = 0;
             }
         }
-        return normals;
     }
 }
 const MANIFOLD_MAX_POINTS = 2;

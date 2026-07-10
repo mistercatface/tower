@@ -4,7 +4,7 @@ import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { buildRollOrientKey } from "../Libraries/Physics/physics.js";
-import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, shatterGlassFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 
@@ -15,7 +15,7 @@ describe("glass debris slab spawn", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         setupGlassPaneForFracture(prop, 32, 32);
         const before = getBaseSpriteCacheKey(prop, spriteCacheKeyDeps);
-        const shards = FractureEngine.shatterGlassFootprint(32, 32, 0, 0, 30, () => 0.5);
+        const shards = shatterGlassFootprint(32, 32, 0, 0, 30);
         FractureEngine.applyPropFractureGeometry(prop, shards[0]);
         const after = getBaseSpriteCacheKey(prop, spriteCacheKeyDeps);
         assert.notEqual(before, after);
@@ -41,10 +41,9 @@ describe("glass debris slab spawn", () => {
         const prop = new WorldProp(50, 50, "glass_pane", 0);
         setupGlassPaneForFracture(prop, 32, 32, 0);
         addWorldPropsToState(world, [prop]);
-        const fracture = FractureEngine.fracturePropOnImpact(prop, 50, 50, 30);
-        assert.ok(fracture);
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 50, 50, 30));
         const spatialFrame = { evictKineticProp() {}, admitKineticProps() {} };
-        const shards = FractureEngine.commitFractureResult(world, prop, fracture, spatialFrame);
+        const shards = FractureEngine.commitFractureResult(world, prop, spatialFrame);
         assert.ok(shards.length >= 2);
         assert.ok(shards.every((s) => s.isKineticDebris));
         assert.equal(world.worldProps.length, 0);

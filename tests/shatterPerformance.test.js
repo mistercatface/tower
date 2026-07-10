@@ -5,7 +5,7 @@ import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
-import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, readImpactFracture } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
     it("EntityRegistry membershipGen increments once for batch operations", () => {
@@ -40,9 +40,9 @@ describe("Shatter / Debris Performance Fixes", () => {
             world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
         }
 
-        const fractureAgain = FractureEngine.fracturePropOnImpact(prop, 0, 0, 30);
-        const stores = fractureAgain._stores ?? world.fractureEngine.stores;
-        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, fractureAgain, stores);
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30));
+        const stores = world.fractureEngine.stores;
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, readImpactFracture(stores), stores);
         assert.ok(spawnedAgain.length >= 2);
 
         for (const body of spawnedAgain) {

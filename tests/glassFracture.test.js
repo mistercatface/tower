@@ -13,7 +13,7 @@ import { ENGINE_F32, transformPoint2DInto } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
-import { liveGlassCount, createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards } from "./harness/fractureHarness.js";
+import { liveGlassCount, createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, shatterGlassFootprint, shatterGlassPolygon, materializeDebrisGeometries, readImpactFracture } from "./harness/fractureHarness.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
@@ -61,7 +61,7 @@ function analyzeShards(shards, parentArea) {
     return { totalArea, maxAspect, minThin, count: shards.length };
 }
 function makeOverlappingGlassShards() {
-    const shards = FractureEngine.shatterGlassFootprint(20, 14, 0, 0, 40);
+    const shards = shatterGlassFootprint(20, 14, 0, 0, 40);
     const a = new WorldProp(0, 0, "glass_pane", 0);
     const b = new WorldProp(8, 0, "glass_pane", 0);
     FractureEngine.applyPropFractureGeometry(a, shards[0]);
@@ -86,7 +86,7 @@ describe("glass fracture", () => {
         assert.ok(FractureEngine.canFracturePropSplit(prop));
     });
     it("shatterGlassFootprint produces radial shards without poxels", () => {
-        const shards = FractureEngine.shatterGlassFootprint(12, 8, 2, -1, 20);
+        const shards = shatterGlassFootprint(12, 8, 2, -1, 20);
         assert.ok(shards.length >= 4);
         for (const shard of shards) {
             assert.ok(shard.footprintArea > 0);
@@ -100,19 +100,19 @@ describe("glass fracture", () => {
         kineticDynamicSlab.x[0] = 50;
         kineticDynamicSlab.y[0] = 50;
         applyPropBoxFootprint(prop, 16, 10);
-        const fracture = FractureEngine.fracturePropOnImpact(prop, 50, 50, 25);
-        assert.ok(fracture);
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 50, 50, 25));
+        const fracture = readImpactFracture();
         assert.equal(ENGINE_F32[F_OUT_DEBRIS_START], fracture.debrisStart);
         assert.equal(ENGINE_F32[F_OUT_DEBRIS_COUNT], fracture.debrisCount);
         assert.ok(fracture.debrisCount >= 2);
-        assert.ok(FractureEngine.materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount).length >= 4);
+        assert.ok(materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount).length >= 4);
         assert.ok(Number.isFinite(fracture.impactLocalX));
         assert.ok(Number.isFinite(fracture.impactLocalY));
         assert.equal(prop.poxels, undefined);
     });
     it("shatterGlassPolygon outside-hit path builds seeds via ENGINE_F32 centroid Into", () => {
         const flat = new Float32Array([-12, -8, 12, -8, 12, 8, -12, 8]);
-        const shards = FractureEngine.shatterGlassPolygon(flat, 80, 80, 25);
+        const shards = shatterGlassPolygon(flat, 80, 80, 25);
         assert.ok(shards.length >= 2);
         assert.ok(ENGINE_F32[F_OUT_DEBRIS_COUNT] >= 2);
         assert.ok(ENGINE_F32[F_OUT_AREA] > 0);
@@ -123,7 +123,7 @@ describe("glass fracture", () => {
         }
     });
     it("glass shard fractures again on its actual polygon footprint", () => {
-        const shards = FractureEngine.shatterGlassFootprint(12, 8, 0, 0, 30);
+        const shards = shatterGlassFootprint(12, 8, 0, 0, 30);
         const big = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         prop._physId = 0;
@@ -131,16 +131,16 @@ describe("glass fracture", () => {
         kineticDynamicSlab.y[0] = 0;
         FractureEngine.applyPropFractureGeometry(prop, big);
         assert.ok(FractureEngine.canFracturePropSplit(prop));
-        const fracture = FractureEngine.fracturePropOnImpact(prop, 0, 0, 25);
-        assert.ok(fracture);
-        const debris = FractureEngine.materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount);
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 25));
+        const fracture = readImpactFracture();
+        const debris = materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount);
         assert.ok(debris.length >= 2);
         for (const piece of debris) assert.ok(piece.footprintArea < big.footprintArea);
     });
     it("shatterGlassPolygon splits non-rect shard geometry", () => {
-        const parentShards = FractureEngine.shatterGlassFootprint(10, 6, 1, 0, 25);
+        const parentShards = shatterGlassFootprint(10, 6, 1, 0, 25);
         const shard = parentShards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
-        const again = FractureEngine.shatterGlassPolygon(shard.footprintVertices, 0, 0, 25);
+        const again = shatterGlassPolygon(shard.footprintVertices, 0, 0, 25);
         assert.ok(again.length >= 2);
     });
     it("tiny glass pieces stop splitting at min size", () => {
@@ -158,7 +158,7 @@ describe("glass fracture", () => {
             [-50, 40],
         ];
         for (const [hitX, hitY] of hits) {
-            const shards = FractureEngine.shatterGlassFootprint(64, 64, hitX, hitY, 25);
+            const shards = shatterGlassFootprint(64, 64, hitX, hitY, 25);
             const stats = analyzeShards(shards, parentArea);
             assert.ok(stats.count >= 4, `hit ${hitX},${hitY} produced too few shards`);
             assert.ok(stats.count <= GLASS_MAX_SHARDS_PER_SHATTER, `hit ${hitX},${hitY} exceeded shard cap`);
@@ -167,9 +167,9 @@ describe("glass fracture", () => {
         }
     });
     it("128x128 cascade from largest shard conserves area for two generations", () => {
-        let shard = FractureEngine.shatterGlassFootprint(64, 64, 0, 0, 25).reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
+        let shard = shatterGlassFootprint(64, 64, 0, 0, 25).reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         for (let gen = 1; gen <= 2; gen++) {
-            const pieces = FractureEngine.shatterGlassPolygon(shard.footprintVertices, 0, 0, 25);
+            const pieces = shatterGlassPolygon(shard.footprintVertices, 0, 0, 25);
             const stats = analyzeShards(pieces, shard.footprintArea);
             assert.ok(stats.count >= 2);
             assert.ok(stats.count <= GLASS_MAX_SHARDS_PER_SHATTER);
@@ -181,7 +181,7 @@ describe("glass fracture", () => {
     it("offset thin rectangle corner hit partitions exactly", () => {
         const flat = new Float32Array([-20, -6, 20, -6, 20, 6, -20, 6]);
         const parentArea = 40 * 12;
-        const shards = FractureEngine.shatterGlassPolygon(flat, 20, 6, 25);
+        const shards = shatterGlassPolygon(flat, 20, 6, 25);
         const stats = analyzeShards(shards, parentArea);
         assert.ok(stats.count >= 2);
         assert.ok(Math.abs(stats.totalArea - parentArea) < parentArea * 1e-3);
@@ -190,7 +190,7 @@ describe("glass fracture", () => {
     it("128x128 min shard area scales with pane size", () => {
         const minArea = FractureEngine.minShardAreaForPolygon(new Float32Array([-64, -64, 64, -64, 64, 64, -64, 64]));
         assert.ok(minArea > 900);
-        const shards = FractureEngine.shatterGlassFootprint(64, 64, 0, 0, 25);
+        const shards = shatterGlassFootprint(64, 64, 0, 0, 25);
         const largest = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         assert.ok(largest.footprintArea >= minArea * 0.5);
     });
@@ -222,7 +222,7 @@ describe("glass fracture", () => {
         }
     });
     it("glass shard still shatters against a non-glass kinetic prop", () => {
-        const shards = FractureEngine.shatterGlassFootprint(24, 18, 0, 0, 40);
+        const shards = shatterGlassFootprint(24, 18, 0, 0, 40);
         const glass = new WorldProp(0, 0, "glass_pane", 0);
         const crate = new WorldProp(14, 0, "crate", 0);
         FractureEngine.applyPropFractureGeometry(glass, shards[0]);
@@ -256,7 +256,7 @@ describe("glass fracture", () => {
         for (let i = 0; i < 5; i++) {
             const hitX = (Math.random() - 0.5) * 20;
             const hitY = (Math.random() - 0.5) * 20;
-            const shards = FractureEngine.shatterGlassPolygon(flat, hitX, hitY, 30);
+            const shards = shatterGlassPolygon(flat, hitX, hitY, 30);
             assert.ok(shards.length >= 2, "Should produce at least 2 shards");
             let totalArea = 0;
             for (const shard of shards) totalArea += shard.footprintArea;
