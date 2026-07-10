@@ -77,10 +77,9 @@ export function snapshotWorldToIdx(frame, x, y) {
     if (col < 0 || col >= frame.cols || row < 0 || row >= frame.rows) return -1;
     return row * frame.cols + col;
 }
-export function snapshotGridToWorldIdx(frame, idx) {
-    const col = idx % frame.cols;
-    const row = (idx / frame.cols) | 0;
-    return { x: snapshotGridCenterX(frame, col), y: snapshotGridCenterY(frame, row) };
+export function snapshotGridToWorldIdx(buf, o, frame, idx) {
+    buf[o] = snapshotGridCenterX(frame, idx % frame.cols);
+    buf[o + 1] = snapshotGridCenterY(frame, (idx / frame.cols) | 0);
 }
 // --- NavSearch.js ---
 export class SearchState {

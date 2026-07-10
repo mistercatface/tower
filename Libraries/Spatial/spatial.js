@@ -441,10 +441,6 @@ export function projectWorldPoint(buf, offset, worldX, worldY, height, viewport)
         buf[offset + 1] = worldY + (worldY - viewport.y) * alpha;
     }
 }
-export function projectWorldPointAtHeight(worldX, worldY, height, viewport) {
-    projectWorldPoint(ENGINE_F32, S_OUT_XY, worldX, worldY, height, viewport);
-    return { x: ENGINE_F32[S_OUT_XY], y: ENGINE_F32[S_OUT_XY + 1] };
-}
 export function projectWorldPointToScreen(buf, offset, viewport, worldX, worldY, height) {
     projectWorldPoint(buf, offset, worldX, worldY, height, viewport);
     const wx = buf[offset];
@@ -553,33 +549,40 @@ export function pointOnFrustum(buf, offset, projection, baseRadius, topRadius, t
     buf[offset + 1] = centerY + Math.sin(angle) * radius;
 }
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
-export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {
+export function shadowGroundContact(buf, o, lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {
     if (lightZ <= wallTopZ) {
         if (farDistance > 0) {
             const dx = wx - lx;
             const dy = wy - ly;
             const dist = Math.hypot(dx, dy);
-            if (dist > 0) return { x: lx + (dx / dist) * farDistance, y: ly + (dy / dist) * farDistance };
+            if (dist > 0) {
+                buf[o] = lx + (dx / dist) * farDistance;
+                buf[o + 1] = ly + (dy / dist) * farDistance;
+                return;
+            }
         }
-        return { x: wx, y: wy };
+        buf[o] = wx;
+        buf[o + 1] = wy;
+        return;
     }
     const t = lightZ / (lightZ - wallTopZ);
-    return { x: lx + (wx - lx) * t, y: ly + (wy - ly) * t };
+    buf[o] = lx + (wx - lx) * t;
+    buf[o + 1] = ly + (wy - ly) * t;
 }
 /** Screen-space shadow quad: near edge at projected wall top, far edge at ground contacts at z = 0. */
 export function projectWallShadowQuadScreen(buf, o, viewport, lx, ly, lightZ, x1, y1, x2, y2, wallTopZ, farDistance = 0) {
-    const floor1xy = shadowGroundContactXY(lx, ly, lightZ, x1, y1, wallTopZ, farDistance);
-    const floor2xy = shadowGroundContactXY(lx, ly, lightZ, x2, y2, wallTopZ, farDistance);
     projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, x1, y1, wallTopZ);
     buf[o] = ENGINE_F32[S_OUT_SCREEN];
     buf[o + 1] = ENGINE_F32[S_OUT_SCREEN + 1];
     projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, x2, y2, wallTopZ);
     buf[o + 2] = ENGINE_F32[S_OUT_SCREEN];
     buf[o + 3] = ENGINE_F32[S_OUT_SCREEN + 1];
-    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, floor2xy.x, floor2xy.y, 0);
+    shadowGroundContact(ENGINE_F32, S_OUT_XY, lx, ly, lightZ, x2, y2, wallTopZ, farDistance);
+    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, ENGINE_F32[S_OUT_XY], ENGINE_F32[S_OUT_XY + 1], 0);
     buf[o + 4] = ENGINE_F32[S_OUT_SCREEN];
     buf[o + 5] = ENGINE_F32[S_OUT_SCREEN + 1];
-    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, floor1xy.x, floor1xy.y, 0);
+    shadowGroundContact(ENGINE_F32, S_OUT_XY, lx, ly, lightZ, x1, y1, wallTopZ, farDistance);
+    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, ENGINE_F32[S_OUT_XY], ENGINE_F32[S_OUT_XY + 1], 0);
     buf[o + 6] = ENGINE_F32[S_OUT_SCREEN];
     buf[o + 7] = ENGINE_F32[S_OUT_SCREEN + 1];
     return 4;

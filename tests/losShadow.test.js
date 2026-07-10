@@ -3,8 +3,8 @@ import { describe, it } from "node:test";
 import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
 import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabb, EdgeList } from "../Libraries/Render/render.js";
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
-import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContactXY  } from "../Libraries/Spatial/spatial.js";
-import { ENGINE_F32, S_OUT_SCREEN, S_QUAD } from "../Libraries/Math/math.js";
+import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContact  } from "../Libraries/Spatial/spatial.js";
+import { ENGINE_F32, S_OUT_SCREEN, S_OUT_XY, S_QUAD } from "../Libraries/Math/math.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./harness/losShadowHarness.js";
@@ -25,26 +25,29 @@ describe("projectWorldPointToScreen", () => {
         assertNear(local[1], ENGINE_F32[S_OUT_SCREEN + 1]);
     });
 });
-describe("shadowGroundContactXY", () => {
+describe("shadowGroundContact", () => {
     it("extends ray from light above wall top to ground", () => {
-        const tip = shadowGroundContactXY(0, 0, 32, 10, 0, 16);
-        assertNear(tip.x, 20);
-        assertNear(tip.y, 0);
+        shadowGroundContact(ENGINE_F32, S_OUT_XY, 0, 0, 32, 10, 0, 16);
+        assertNear(ENGINE_F32[S_OUT_XY], 20);
+        assertNear(ENGINE_F32[S_OUT_XY + 1], 0);
     });
     it("drops vertically when light is at or below wall top", () => {
-        assertNear(shadowGroundContactXY(0, 0, 16, 10, 5, 16).x, 10);
-        assertNear(shadowGroundContactXY(0, 0, 16, 10, 5, 16).y, 5);
-        assertNear(shadowGroundContactXY(0, 0, 8, 10, 5, 16).x, 10);
-        assertNear(shadowGroundContactXY(0, 0, 8, 10, 5, 16).y, 5);
+        shadowGroundContact(ENGINE_F32, S_OUT_XY, 0, 0, 16, 10, 5, 16);
+        assertNear(ENGINE_F32[S_OUT_XY], 10);
+        assertNear(ENGINE_F32[S_OUT_XY + 1], 5);
+        shadowGroundContact(ENGINE_F32, S_OUT_XY, 0, 0, 8, 10, 5, 16);
+        assertNear(ENGINE_F32[S_OUT_XY], 10);
+        assertNear(ENGINE_F32[S_OUT_XY + 1], 5);
     });
     it("extrudes along light direction when farDistance is set", () => {
-        assertNear(shadowGroundContactXY(0, 0, 16, 10, 0, 16, 20).x, 20);
-        assertNear(shadowGroundContactXY(0, 0, 16, 10, 0, 16, 20).y, 0);
+        shadowGroundContact(ENGINE_F32, S_OUT_XY, 0, 0, 16, 10, 0, 16, 20);
+        assertNear(ENGINE_F32[S_OUT_XY], 20);
+        assertNear(ENGINE_F32[S_OUT_XY + 1], 0);
     });
     it("matches classic ratio when light is above a flat wall", () => {
-        const tip = shadowGroundContactXY(0, 0, 32, 10, 0, 0);
-        assertNear(tip.x, 10);
-        assertNear(tip.y, 0);
+        shadowGroundContact(ENGINE_F32, S_OUT_XY, 0, 0, 32, 10, 0, 0);
+        assertNear(ENGINE_F32[S_OUT_XY], 10);
+        assertNear(ENGINE_F32[S_OUT_XY + 1], 0);
     });
 });
 describe("shadowProjection", () => {
