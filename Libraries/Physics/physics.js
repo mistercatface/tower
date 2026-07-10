@@ -1,4 +1,4 @@
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -3904,16 +3904,13 @@ function integrateGroundRoll(body, dtMs) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
     const speed = lengthXY(vx, vy);
-    if (speed < 0.5) {
-        if (body.rollQuat) body.rollQuat = dampQuatTwist(body.rollQuat, dtMs, 3.0);
-        return;
-    }
+    if (speed < 0.01) return;
     const r = getRollRadius(body);
     const angle = -(speed / r) * (dtMs / 1000);
-    const { nx: ax, ny: ay } = normalizeXY(-vy, vx);
-    const delta = axisAngleQuat(ax, ay, 0, angle);
-    const q = multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT);
-    body.rollQuat = dampQuatTwist(normalizeQuat(q), dtMs, 1.8);
+    const ax = -vy / speed;
+    const ay = vx / speed;
+    const rollDelta = axisAngleQuat(ax, ay, 0, angle);
+    body.rollQuat = normalizeQuat(multiplyQuat(rollDelta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
 }
 export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
     const w = q.w ?? 1;
@@ -3938,6 +3935,7 @@ export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
     return normalizeQuat(multiplyQuat(q_swing, { w: w_t_new, x: 0, y: 0, z: z_t_new }));
 }
 export function absorbCollisionRollImpulse(body, dtMs) {
+    if (body.strategy?.rolls) return;
     const w = body.angularVelocity ?? 0;
     if (Math.abs(w) < 0.02) return;
     const angle = -w * (dtMs / 1000);
@@ -3994,11 +3992,6 @@ export function applyGroundRollDrive(prop, dtSec) {
     applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
     return true;
 }
-export function applyRollSpin(prop) {
-    if (!prop.strategy?.rolls) return;
-    const speed = Math.hypot(prop.vx, prop.vy);
-    prop.angularVelocity = (speed / (prop.radius || 8)) * 0.12;
-}
 function applyRollBrake(prop, dtSec, accel) {
     const speed = Math.hypot(prop.vx, prop.vy);
     if (speed <= 0) return false;
@@ -4010,7 +4003,6 @@ function applyRollBrake(prop, dtSec, accel) {
     } else {
         prop.vx -= (prop.vx / speed) * decel;
         prop.vy -= (prop.vy / speed) * decel;
-        applyRollSpin(prop);
     }
     wakeKineticBody(prop);
     return true;
@@ -4035,7 +4027,6 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
         prop.vx = (prop.vx / speed) * maxSpeed;
         prop.vy = (prop.vy / speed) * maxSpeed;
     }
-    applyRollSpin(prop);
     wakeKineticBody(prop);
 }
 export function snapMoveTargetToCellCenter(grid, world) {
