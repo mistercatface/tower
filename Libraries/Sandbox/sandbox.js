@@ -2421,13 +2421,21 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
             const now = e.timeStamp || Date.now();
             const hasClient = e.clientX !== undefined && e.clientY !== undefined;
             const isDoubleTap = e.detail === 2 || (now - lastClickTime < 300 && (hasClient ? Math.hypot(e.clientX - lastClickClientX, e.clientY - lastClickClientY) < 20.0 : Math.hypot(world.x - lastClickX, world.y - lastClickY) < 8.0));
-            let targetBoidId = lastSelectedBoidId;
-            if (state.editor.lockSelection) {
-                const boid = state.worldProps.find((p) => p.type === "boid_triangle");
-                if (boid) targetBoidId = boid.id;
+            let targetNavId = lastSelectedBoidId;
+            const cameraTargetId = state.sandbox.entityMeta.cameraTargetId;
+            if (!targetNavId && cameraTargetId) targetNavId = cameraTargetId;
+            if (state.editor.lockSelection && !targetNavId) {
+                const navProp = state.worldProps.find((p) => propCatalog[p.type]?.sandbox?.tags?.includes("nav"));
+                if (navProp) targetNavId = navProp.id;
             }
-            if (isDoubleTap && targetBoidId && (state.editor.lockSelection || now - lastSelectedBoidTime < 500)) {
-                session.select({ kind: "prop", ids: [targetBoidId] });
+            const isTargetNavCapable = () => {
+                if (!targetNavId) return false;
+                const p = state.entityRegistry.getLive(targetNavId);
+                return p && propCatalog[p.type]?.sandbox?.tags?.includes("nav");
+            };
+            const canNav = targetNavId && isTargetNavCapable() && (state.editor.lockSelection || targetNavId === cameraTargetId || now - lastSelectedBoidTime < 500);
+            if (isDoubleTap && canNav) {
+                session.select({ kind: "prop", ids: [targetNavId] });
                 const behaviorId = state.editor.navMode === "flow" ? "rollToCursorFlow" : "rollToCursorHpa";
                 if (issueGroundNavToSelected(behaviorId, world)) {
                     lastClickTime = now;
@@ -2439,7 +2447,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
                 }
             }
             const selectedPropBeforeClick = session.getSelectedProp();
-            if (selectedPropBeforeClick && selectedPropBeforeClick.type === "boid_triangle") {
+            if (selectedPropBeforeClick && propCatalog[selectedPropBeforeClick.type]?.sandbox?.tags?.includes("nav")) {
                 lastSelectedBoidId = selectedPropBeforeClick.id;
                 lastSelectedBoidTime = now;
             } else {
