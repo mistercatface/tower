@@ -255,8 +255,6 @@ async function runGlassLaunch(state, ctx) {
         const width = 10 + Math.random() * 30;
         const height = 4 + Math.random() * 8;
         applyPropBoxFootprint(pane, width, height);
-        const color = RANDOM_COLORS[Math.floor(Math.random() * RANDOM_COLORS.length)];
-        setPropVisualTint(pane, color);
     }
     for (let i = 0; i < 4; i++) {
         const idx = pickRandomCellIdx(2);
