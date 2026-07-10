@@ -14,10 +14,44 @@ const SHARED_CENTROID = { cx: 0, cy: 0, signedArea: 0 };
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 const MAX_FRACTURE_DEBRIS = FRACTURE_TUNING.burst.maxBurst;
 const MAX_CLIP_VERTS = 512;
-const MAX_KINETIC_DEBRIS = 4096;
+const MAX_KINETIC_DEBRIS = 4096 * 4;
 const kineticDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_KINETIC_DEBRIS), y: new Float32Array(MAX_KINETIC_DEBRIS), vx: new Float32Array(MAX_KINETIC_DEBRIS), vy: new Float32Array(MAX_KINETIC_DEBRIS), w: new Float32Array(MAX_KINETIC_DEBRIS), facing: new Float32Array(MAX_KINETIC_DEBRIS), ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 const kineticDebrisFreePool = [];
 let kineticDebrisNextId = 0x50000000;
+export let outCentroidX = 0;
+export let outCentroidY = 0;
+export let outArea = 0;
+export let outRadius = 0;
+export let outClosestX = 0;
+export let outClosestY = 0;
+export let outDebrisStart = 0;
+export let outDebrisCount = 0;
+export let outMotionVx = 0;
+export let outMotionVy = 0;
+export let outMotionW = 0;
+let fractureRandBase = 0;
+let fractureRandCall = 0;
+export function seedFractureRand(worldHitX, worldHitY, impactForce, salt = 0) {
+    fractureRandCall = 0;
+    fractureRandBase = Math.imul(Math.floor(worldHitX * 1000), 73856093) ^ Math.imul(Math.floor(worldHitY * 1000), 19349663) ^ Math.imul(Math.floor(impactForce * 100), 83492791) ^ salt;
+}
+export function nextFractureRand() {
+    return deterministicUnitRandom(fractureRandBase ^ Math.imul(++fractureRandCall, 2654435761));
+}
+let clipLastX = NaN,
+    clipLastY = NaN;
+function clipPushVert(dst, outCount, x, y) {
+    if (outCount > 0) {
+        const dx = clipLastX - x;
+        const dy = clipLastY - y;
+        if (dx * dx + dy * dy < 1e-6) return outCount;
+    }
+    dst[outCount * 2] = x;
+    dst[outCount * 2 + 1] = y;
+    clipLastX = x;
+    clipLastY = y;
+    return outCount + 1;
+}
 class FractureGeomPool {
     constructor() {
         this.buckets = GEOM_VERT_BUCKETS.map(() => []);
@@ -58,6 +92,8 @@ class FractureGeomPool {
     clipHalfPlaneInPlace(src, srcVertCount, ax, ay, nx, ny, dst) {
         if (srcVertCount === 0) return 0;
         let outCount = 0;
+        clipLastX = NaN;
+        clipLastY = NaN;
         for (let i = 0; i < srcVertCount; i++) {
             const j = (i + 1) % srcVertCount;
             const cx = src[i * 2];
@@ -66,30 +102,28 @@ class FractureGeomPool {
             const nyCoord = src[j * 2 + 1];
             const currIn = (cx - ax) * nx + (cy - ay) * ny >= -1e-9;
             const nextIn = (nxCoord - ax) * nx + (nyCoord - ay) * ny >= -1e-9;
-            if (currIn && nextIn) {
-                dst[outCount * 2] = nxCoord;
-                dst[outCount * 2 + 1] = nyCoord;
-                outCount++;
-            } else if (currIn && !nextIn) {
+            if (currIn && nextIn) outCount = clipPushVert(dst, outCount, nxCoord, nyCoord);
+            else if (currIn && !nextIn) {
                 const dx = nxCoord - cx;
                 const dy = nyCoord - cy;
                 const denom = dx * nx + dy * ny;
-                const t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
-                dst[outCount * 2] = cx + dx * t;
-                dst[outCount * 2 + 1] = cy + dy * t;
-                outCount++;
+                let t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
+                t = Math.max(0, Math.min(1, t || 0));
+                outCount = clipPushVert(dst, outCount, cx + dx * t, cy + dy * t);
             } else if (!currIn && nextIn) {
                 const dx = nxCoord - cx;
                 const dy = nyCoord - cy;
                 const denom = dx * nx + dy * ny;
-                const t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
-                dst[outCount * 2] = cx + dx * t;
-                dst[outCount * 2 + 1] = cy + dy * t;
-                outCount++;
-                dst[outCount * 2] = nxCoord;
-                dst[outCount * 2 + 1] = nyCoord;
-                outCount++;
+                let t = denom === 0 ? 0 : -((cx - ax) * nx + (cy - ay) * ny) / denom;
+                t = Math.max(0, Math.min(1, t || 0));
+                outCount = clipPushVert(dst, outCount, cx + dx * t, cy + dy * t);
+                outCount = clipPushVert(dst, outCount, nxCoord, nyCoord);
             }
+        }
+        if (outCount > 1) {
+            const dx = dst[0] - clipLastX;
+            const dy = dst[1] - clipLastY;
+            if (dx * dx + dy * dy < 1e-6) outCount--;
         }
         return outCount;
     }
@@ -134,7 +168,10 @@ class FractureGeomPool {
             const distSq = vx * vx + vy * vy;
             if (distSq > maxRadiusSq) maxRadiusSq = distSq;
         }
-        return { cx, cy, area, boundingRadius: Math.sqrt(maxRadiusSq) };
+        outCentroidX = cx;
+        outCentroidY = cy;
+        outArea = area;
+        outRadius = Math.sqrt(maxRadiusSq);
     }
     footprintSlice(handle, vertCount) {
         return this.buffer(handle).slice(0, vertCount * 2);
@@ -156,14 +193,14 @@ class FractureDebrisStore {
     }
     appendCenteredPolygon(handle, vertCount, worldCentroidX = 0, worldCentroidY = 0) {
         if (this.write >= MAX_FRACTURE_DEBRIS) throw new Error("FractureDebrisStore capacity exceeded");
-        const metrics = this.geomPool.centerVertsInPlace(handle, vertCount);
+        this.geomPool.centerVertsInPlace(handle, vertCount);
         const i = this.write++;
         this.vertHandle[i] = handle;
         this.vertCount[i] = vertCount;
-        this.centroidX[i] = worldCentroidX + metrics.cx;
-        this.centroidY[i] = worldCentroidY + metrics.cy;
-        this.footprintArea[i] = metrics.area;
-        this.boundingRadius[i] = metrics.boundingRadius;
+        this.centroidX[i] = worldCentroidX + outCentroidX;
+        this.centroidY[i] = worldCentroidY + outCentroidY;
+        this.footprintArea[i] = outArea;
+        this.boundingRadius[i] = outRadius;
         return i;
     }
     totalArea(start, count) {
@@ -406,9 +443,14 @@ class KineticDebrisStore {
         const facing = fracture.facing;
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
-        const motion = sourceMotion ?? FractureEngine._currentPropMotion(sourceProp);
+        FractureEngine._currentPropMotion(sourceProp);
+        const sourceVx = outMotionVx;
+        const sourceVy = outMotionVy;
+        const sourceW = outMotionW;
+        const motion = sourceMotion ?? { vx: sourceVx, vy: sourceVy, w: sourceW };
         const glassBurst = !sourceProp.isKineticDebris && sourceProp.strategy?.fracture?.mode === "glass";
-        const burstRandom = glassBurst ? FractureEngine._fractureRandomFromImpact(fracture.originX, fracture.originY, fracture.impactForce, 991) : null;
+        const burstSalt = glassBurst ? 991 : 0;
+        if (glassBurst) seedFractureRand(fracture.originX, fracture.originY, fracture.impactForce, burstSalt);
         const wallChunkProfileId = sourceProp.wallChunkProfileId;
         const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
         const shardHeight = sourceProp.height;
@@ -435,7 +477,7 @@ class KineticDebrisStore {
                 body.wallChunkHeightPx = wallChunkHeightPx;
             }
             if (shardHeight != null) body.height = shardHeight;
-            if (glassBurst) FractureEngine._applyShardBurstImpulse(fracture, body, cx, cy, burstRandom);
+            if (glassBurst) FractureEngine._applyShardBurstImpulse(fracture, body, cx, cy);
             spawned.push(body);
         }
         for (let i = 0; i < spawned.length; i++) {
@@ -720,18 +762,24 @@ export class FractureEngine {
         const stores = engine?.stores ?? moduleStores;
         if (!engine || engine.deferredFracturesCount === 0) stores.debris.reset();
         if (prop.strategy?.fracture?.mode !== "glass") return null;
-        return FractureEngine._fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce, stores);
+        if (!FractureEngine.canFracturePropSplit(prop)) return null;
+        const physId = prop._physId;
+        const originX = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
+        const originY = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
+        const dx = worldHitX - originX;
+        const dy = worldHitY - originY;
+        const facing = entityFacing(prop);
+        const cos = Math.cos(facing);
+        const sin = Math.sin(facing);
+        const impactLocalX = dx * cos + dy * sin;
+        const impactLocalY = -dx * sin + dy * cos;
+        seedFractureRand(worldHitX, worldHitY, impactForce);
+        FractureEngine._shatterPolygonIntoStore(stores, prop.shape.vertices, impactLocalX, impactLocalY, impactForce);
+        if (outDebrisCount < 2) return null;
+        return { debrisStart: outDebrisStart, debrisCount: outDebrisCount, originX, originY, facing, impactLocalX, impactLocalY, impactForce, _stores: stores };
     }
     static impactForceFromContact(relativeSpeed, massA = 1, massB = 1) {
         return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
-    }
-    static worldHitToPropLocal(prop, worldX, worldY) {
-        const origin = FractureEngine._propWorldPosition(prop);
-        const dx = worldX - origin.x;
-        const dy = worldY - origin.y;
-        const cos = Math.cos(entityFacing(prop));
-        const sin = Math.sin(entityFacing(prop));
-        return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
     }
     static applyPropFractureGeometry(prop, geometry) {
         prop.chunks = undefined;
@@ -753,28 +801,29 @@ export class FractureEngine {
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
         return FractureEngine._glassFootprintArea(prop) >= minArea;
     }
-    static shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10, random = Math.random) {
+    static shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10) {
         const flat = boxLocalFootprint(hx, hy);
-        return FractureEngine.shatterGlassPolygon(flat, hitX, hitY, impactForce, random);
+        return FractureEngine.shatterGlassPolygon(flat, hitX, hitY, impactForce);
     }
-    static shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, random = Math.random, stores = moduleStores) {
+    static shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, stores = moduleStores) {
         if (flatVerts.length < 6) return [];
+        seedFractureRand(hitX, hitY, impactForce);
         stores.debris.reset();
-        const result = FractureEngine._shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce, random);
-        if (result.debrisCount < 2) {
+        FractureEngine._shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce);
+        if (outDebrisCount < 2) {
             stores.debris.reset();
             return [];
         }
-        const geometries = FractureEngine.materializeDebrisGeometries(stores, result.debrisStart, result.debrisCount);
-        releaseDebrisGeomHandles(stores, result.debrisStart, result.debrisCount);
+        const geometries = FractureEngine.materializeDebrisGeometries(stores, outDebrisStart, outDebrisCount);
+        releaseDebrisGeomHandles(stores, outDebrisStart, outDebrisCount);
         stores.debris.reset();
         return geometries;
     }
-    static _shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce, random) {
+    static _shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce) {
         const seedCount = FractureEngine._seedCountForPolygon(flatVerts, impactForce);
-        FractureEngine._buildShatterSeeds(flatVerts, hitX, hitY, seedCount, random, SHATTER_SEEDS);
+        FractureEngine._buildShatterSeeds(flatVerts, hitX, hitY, seedCount, SHATTER_SEEDS);
         const vertCount = flatVerts.length / 2;
-        const debrisStart = stores.debris.write;
+        outDebrisStart = stores.debris.write;
         for (let i = 0; i < seedCount; i++) {
             const cell = stores.geom.voronoiCell(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
             if (cell.vertCount < 3) {
@@ -783,24 +832,24 @@ export class FractureEngine {
             }
             stores.debris.appendCenteredPolygon(cell.handle, cell.vertCount);
         }
-        return { debrisStart, debrisCount: stores.debris.write - debrisStart };
+        outDebrisCount = stores.debris.write - outDebrisStart;
     }
-    static _buildShatterSeeds(flatVerts, hitX, hitY, seedCount, random, outSeeds) {
+    static _buildShatterSeeds(flatVerts, hitX, hitY, seedCount, outSeeds) {
         const { cx, cy } = polygonCentroid2D(flatVerts);
         let ox = hitX;
         let oy = hitY;
         if (!pointInPolygon(ox, oy, flatVerts)) {
-            const edge = FractureEngine._closestPointOnPolygonBoundary(ox, oy, flatVerts);
-            ox = edge.x + (cx - edge.x) * 0.15;
-            oy = edge.y + (cy - edge.y) * 0.15;
+            FractureEngine._closestPointOnPolygonBoundary(ox, oy, flatVerts);
+            ox = outClosestX + (cx - outClosestX) * 0.15;
+            oy = outClosestY + (cy - outClosestY) * 0.15;
         }
         const span = FractureEngine._polygonSpan(flatVerts);
         const golden = 2.399963229728653;
         outSeeds.length = 0;
         outSeeds.push(ox, oy);
         for (let i = 1; i < seedCount; i++) {
-            const r = span * 0.62 * Math.sqrt(i / seedCount) * (0.85 + 0.3 * random());
-            const a = i * golden + (random() - 0.5) * 0.5;
+            const r = span * 0.62 * Math.sqrt(i / seedCount) * (0.85 + 0.3 * nextFractureRand());
+            const a = i * golden + (nextFractureRand() - 0.5) * 0.5;
             outSeeds.push(ox + Math.cos(a) * r, oy + Math.sin(a) * r);
         }
     }
@@ -841,7 +890,20 @@ export class FractureEngine {
         return () => deterministicUnitRandom(base ^ Math.imul(++call, 2654435761));
     }
     static _polygonSpan(flatVerts) {
-        return Math.sqrt(Math.abs(polygonSignedArea2D(flatVerts)));
+        let minX = flatVerts[0],
+            maxX = flatVerts[0];
+        let minY = flatVerts[1],
+            maxY = flatVerts[1];
+        const count = flatVerts.length / 2;
+        for (let i = 1; i < count; i++) {
+            const x = flatVerts[i * 2];
+            const y = flatVerts[i * 2 + 1];
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+        return Math.max(maxX - minX, maxY - minY);
     }
     static _closestPointOnPolygonBoundary(x, y, flatVerts) {
         let bestX = flatVerts[0];
@@ -854,15 +916,21 @@ export class FractureEngine {
             const ay = flatVerts[i * 2 + 1];
             const bx = flatVerts[j * 2];
             const by = flatVerts[j * 2 + 1];
-            const closest = closestPointOnLineSegment(x, y, ax, ay, bx, by);
-            const distSq = (x - closest.x) * (x - closest.x) + (y - closest.y) * (y - closest.y);
+            const dx = bx - ax;
+            const dy = by - ay;
+            let t = dx === 0 && dy === 0 ? 0 : ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy);
+            t = Math.max(0, Math.min(1, t));
+            const cx = ax + t * dx;
+            const cy = ay + t * dy;
+            const distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy);
             if (distSq < bestDistSq) {
                 bestDistSq = distSq;
-                bestX = closest.x;
-                bestY = closest.y;
+                bestX = cx;
+                bestY = cy;
             }
         }
-        return { x: bestX, y: bestY, dist: Math.sqrt(bestDistSq) };
+        outClosestX = bestX;
+        outClosestY = bestY;
     }
     static _glassFootprintArea(prop) {
         if (prop.footprintArea != null) return prop.footprintArea;
@@ -877,13 +945,23 @@ export class FractureEngine {
     static _currentPropMotion(prop) {
         if (prop.isKineticDebris && prop._row >= 0) {
             const row = prop._row;
-            return { vx: kineticDebrisSlab.vx[row], vy: kineticDebrisSlab.vy[row], w: kineticDebrisSlab.w[row] };
+            outMotionVx = kineticDebrisSlab.vx[row];
+            outMotionVy = kineticDebrisSlab.vy[row];
+            outMotionW = kineticDebrisSlab.w[row];
+            return;
         }
         const physId = prop._physId;
-        if (physId !== undefined) return { vx: kineticDynamicSlab.vx[physId], vy: kineticDynamicSlab.vy[physId], w: kineticDynamicSlab.w[physId] };
-        return { vx: prop.vx ?? 0, vy: prop.vy ?? 0, w: prop.angularVelocity ?? 0 };
+        if (physId !== undefined) {
+            outMotionVx = kineticDynamicSlab.vx[physId];
+            outMotionVy = kineticDynamicSlab.vy[physId];
+            outMotionW = kineticDynamicSlab.w[physId];
+            return;
+        }
+        outMotionVx = prop.vx ?? 0;
+        outMotionVy = prop.vy ?? 0;
+        outMotionW = prop.angularVelocity ?? 0;
     }
-    static _applyShardBurstImpulse(fracture, frag, cx, cy, random) {
+    static _applyShardBurstImpulse(fracture, frag, cx, cy) {
         const cos = Math.cos(fracture.facing);
         const sin = Math.sin(fracture.facing);
         const impactWorld = transformPoint2DInto(fractureWorldScratchA, fracture.originX, fracture.originY, fracture.impactLocalX, fracture.impactLocalY, cos, sin);
@@ -896,17 +974,10 @@ export class FractureEngine {
             frag.vx += (dx / dist) * burst;
             frag.vy += (dy / dist) * burst;
         }
-        frag.angularVelocity += (random() - 0.5) * FRACTURE_TUNING.burst.spinScale;
+        frag.angularVelocity += (nextFractureRand() - 0.5) * FRACTURE_TUNING.burst.spinScale;
         frag._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
     }
     static _fractureGlassOnImpact(prop, worldHitX, worldHitY, impactForce, stores) {
-        if (!FractureEngine.canFracturePropSplit(prop)) return null;
-        const origin = FractureEngine._propWorldPosition(prop);
-        const impactLocal = FractureEngine.worldHitToPropLocal(prop, worldHitX, worldHitY);
-        const flatVerts = prop.shape.vertices;
-        const random = FractureEngine._fractureRandomFromImpact(worldHitX, worldHitY, impactForce);
-        const result = FractureEngine._shatterPolygonIntoStore(stores, flatVerts, impactLocal.x, impactLocal.y, impactForce, random);
-        if (result.debrisCount < 2) return null;
-        return { debrisStart: result.debrisStart, debrisCount: result.debrisCount, originX: origin.x, originY: origin.y, facing: entityFacing(prop), impactLocalX: impactLocal.x, impactLocalY: impactLocal.y, impactForce, _stores: stores };
+        return FractureEngine.fracturePropOnImpact(prop, worldHitX, worldHitY, impactForce, { stores, deferredFracturesCount: 1 });
     }
 }
