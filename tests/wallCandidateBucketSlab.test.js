@@ -7,9 +7,9 @@ import {
     commitWallCandidateBucket,
     createWallCandidateBucketSlab,
     invalidateWallCandidateBucketFrame,
-    lookupWallCandidateBucket,
+    lookupWallCandidateBucketInto,
     resetWallCandidateBucketSlab,
-    wallBucketKeyParts,
+    wallBucketKeyPartsInto,
  } from "../Libraries/Spatial/spatial.js";
 import { mockKineticCircle } from "./harness/kineticTickHarness.js";
 
@@ -17,55 +17,70 @@ function stampBlockedCell(grid, col, row) {
     grid.grid[worldIdxAtCell(grid, col, row)] = 1;
 }
 
+const sLookup = { hit: false, slot: 0, segments: null };
+const sKey = new Int32Array(2);
+
+function lookup(slab, keyLo, keyHi, frameId, revision) {
+    return lookupWallCandidateBucketInto(sLookup, slab, keyLo, keyHi, frameId, revision);
+}
+
 describe("wall candidate bucket slab", () => {
     it("reuses segment arrays on miss instead of allocating fresh buckets", () => {
         const slab = createWallCandidateBucketSlab();
-        const first = lookupWallCandidateBucket(slab, 1, 2, 10, 0);
-        first.segments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 1, 2, 10, 0, first.segments);
-        const stale = lookupWallCandidateBucket(slab, 1, 2, 11, 0);
+        const first = lookup(slab, 1, 2, 10, 0);
+        const firstSegments = first.segments;
+        const firstSlot = first.slot;
+        firstSegments.push("wall");
+        commitWallCandidateBucket(slab, firstSlot, 1, 2, 10, 0, firstSegments);
+        const stale = lookup(slab, 1, 2, 11, 0);
         assert.equal(stale.hit, false);
-        assert.equal(stale.segments, first.segments);
+        assert.equal(stale.segments, firstSegments);
         assert.equal(stale.segments.length, 0);
     });
     it("hits same bucket within a frame and revision", () => {
         const slab = createWallCandidateBucketSlab();
-        const first = lookupWallCandidateBucket(slab, 100, 3, 7, 2);
-        first.segments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 100, 3, 7, 2, first.segments);
-        const hit = lookupWallCandidateBucket(slab, 100, 3, 7, 2);
+        const first = lookup(slab, 100, 3, 7, 2);
+        const firstSegments = first.segments;
+        firstSegments.push("wall");
+        commitWallCandidateBucket(slab, first.slot, 100, 3, 7, 2, firstSegments);
+        const hit = lookup(slab, 100, 3, 7, 2);
         assert.equal(hit.hit, true);
-        assert.equal(hit.segments, first.segments);
+        assert.equal(hit.segments, firstSegments);
     });
     it("restamps stale frame without clearing the slab", () => {
         const slab = createWallCandidateBucketSlab();
-        const first = lookupWallCandidateBucket(slab, 100, 3, 4, 2);
-        first.segments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 100, 3, 4, 2, first.segments);
-        const stale = lookupWallCandidateBucket(slab, 100, 3, 5, 2);
+        const first = lookup(slab, 100, 3, 4, 2);
+        const firstSegments = first.segments;
+        firstSegments.push("wall");
+        commitWallCandidateBucket(slab, first.slot, 100, 3, 4, 2, firstSegments);
+        const stale = lookup(slab, 100, 3, 5, 2);
         assert.equal(stale.hit, false);
-        assert.equal(stale.segments, first.segments);
+        assert.equal(stale.segments, firstSegments);
         assert.equal(stale.segments.length, 0);
     });
     it("invalidateWallCandidateBucketFrame recycles slots without releasing segment arrays", () => {
         const slab = createWallCandidateBucketSlab();
-        const first = lookupWallCandidateBucket(slab, 100, 3, 4, 2);
-        first.segments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 100, 3, 4, 2, first.segments);
+        const first = lookup(slab, 100, 3, 4, 2);
+        const firstSegments = first.segments;
+        const firstSlot = first.slot;
+        firstSegments.push("wall");
+        commitWallCandidateBucket(slab, firstSlot, 100, 3, 4, 2, firstSegments);
         invalidateWallCandidateBucketFrame(slab);
-        assert.equal(slab.frameStamp[first.slot], -1);
-        assert.equal(slab.segments[first.slot], first.segments);
+        assert.equal(slab.frameStamp[firstSlot], -1);
+        assert.equal(slab.segments[firstSlot], firstSegments);
         assert.equal(slab.segmentPool.length, 0);
     });
     it("reset on revision returns segment arrays to the pool", () => {
         const slab = createWallCandidateBucketSlab();
-        const first = lookupWallCandidateBucket(slab, 100, 3, 4, 2);
-        first.segments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 100, 3, 4, 2, first.segments);
+        const first = lookup(slab, 100, 3, 4, 2);
+        const firstSegments = first.segments;
+        const firstSlot = first.slot;
+        firstSegments.push("wall");
+        commitWallCandidateBucket(slab, firstSlot, 100, 3, 4, 2, firstSegments);
         resetWallCandidateBucketSlab(slab);
         assert.equal(slab.segmentPool.length, 1);
-        assert.equal(slab.segmentPool[0], first.segments);
-        assert.equal(slab.frameStamp[first.slot], -1);
+        assert.equal(slab.segmentPool[0], firstSegments);
+        assert.equal(slab.frameStamp[firstSlot], -1);
     });
     it("SpatialFrameCore caches wall candidates per bucket within a frame", () => {
         const grid = new WorldObstacleGrid(16);
@@ -92,11 +107,11 @@ describe("wall candidate bucket slab", () => {
         assert.equal(frameOne, frameTwo);
         assert.ok(frameTwo.length > 0);
     });
-    it("wallBucketKeyParts matches grid cell and pad", () => {
+    it("wallBucketKeyPartsInto matches grid cell and pad", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
-        const parts = wallBucketKeyParts(grid, grid.gridCenterXByIdx(3), grid.gridCenterYByIdx(5 * grid.cols), 20);
-        assert.equal(parts.keyLo, 3 | (5 << 16));
-        assert.equal(parts.keyHi, 1 + Math.ceil(20 / 16));
+        wallBucketKeyPartsInto(sKey, 0, grid, grid.gridCenterXByIdx(3), grid.gridCenterYByIdx(5 * grid.cols), 20);
+        assert.equal(sKey[0], 3 | (5 << 16));
+        assert.equal(sKey[1], 1 + Math.ceil(20 / 16));
     });
 });

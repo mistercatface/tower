@@ -611,12 +611,13 @@ export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolv
     const wallDamage = state.gridWallDamage;
     const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
     const shouldBreakWallHit = wallDamage && preSpeed > 0 ? (hit) => computeWallBreakStrength(preSpeed, hit.approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
-    const result = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
-    if (!wallDamage) return result.collided;
-    if (!result.hits.length) return result.collided;
+    const collided = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
+    if (!wallDamage) return collided;
+    const hits = wallResolver.hits;
+    if (!hits.length) return collided;
     wallDamage.spatialFrame = spatialFrame;
-    queueWallHits(wallDamage, state.obstacleGrid, result.hits, preSpeed, entity);
-    return result.collided;
+    queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, entity);
+    return collided;
 }
 function targetToSegment(target) {
     if (target.kind === "voxel") return { gridIdx: target.idx, isStaticGridProxy: true, isEdgeRail: false };

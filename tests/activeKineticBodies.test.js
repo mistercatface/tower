@@ -100,7 +100,8 @@ describe("active kinetic bodies", () => {
         frame._nextPhysId = 1;
         const fragment = mockCircleProp(24, 0, 8);
         frame.admitKineticProps([fragment], mockState);
-        const { eids, count } = frame.getNeighborEids(anchor);
+        const count = frame.ensureNeighborEids(anchor);
+        const eids = anchor._neighborEids;
         let found = false;
         for (let i = 0; i < count; i++) if (eids[i] === fragment._physId) found = true;
         assert.ok(found);
@@ -134,7 +135,8 @@ describe("active kinetic bodies", () => {
         const witness = mockCircleProp(200, 0, 8);
         frame.admitKineticProps([witness], mockState);
         {
-            const { eids, count } = frame.getNeighborEids(witness);
+            const count = frame.ensureNeighborEids(witness);
+            const eids = witness._neighborEids;
             let found = false;
             for (let i = 0; i < count; i++) if (eids[i] === mover._physId) found = true;
             assert.equal(found, false);
@@ -142,7 +144,8 @@ describe("active kinetic bodies", () => {
         mover.x = 200;
         frame.admitKineticProps([mover], mockState);
         {
-            const { eids, count } = frame.getNeighborEids(witness);
+            const count = frame.ensureNeighborEids(witness);
+            const eids = witness._neighborEids;
             let found = false;
             for (let i = 0; i < count; i++) if (eids[i] === mover._physId) found = true;
             assert.ok(found);

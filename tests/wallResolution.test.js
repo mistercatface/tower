@@ -34,7 +34,8 @@ describe("polygon wall resolution", () => {
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
-        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction, shouldBreakWallHit: () => false });
+        const hits = [];
+        const collided = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], { restitution: bar.strategy.wallPhysics.restitution, friction: bar.strategy.wallPhysics.friction, shouldBreakWallHit: () => false, outHits: hits });
         assert.ok(collided);
         assert.ok(hits.length > 0);
         assert.ok(hits[0].normalX > 0.9);
@@ -69,7 +70,7 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
-        const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighborEids: () => ({ eids: new Int32Array(0), count: 0 }), flushScheduledKineticActivations() {} };
+        const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => [wall], ensureNeighborEids: () => 0, flushScheduledKineticActivations() {} };
         const session = new KineticSession();
         const world = {
             worldProps: [bar],
@@ -96,10 +97,12 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const wallBreakConfig = { minBreakStrength: 0.1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
-        const { collided, hits } = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], {
+        const hits = [];
+        const collided = resolveBodyAgainstWallSegments(bar, bar.shape, [wall], {
             restitution: bar.strategy.wallPhysics.restitution,
             friction: bar.strategy.wallPhysics.friction,
             shouldBreakWallHit: (hit) => computeWallBreakStrength(560, hit.approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
+            outHits: hits,
         });
         assert.ok(collided);
         assert.ok(hits.length >= 1);

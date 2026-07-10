@@ -1136,84 +1136,92 @@ export function shouldResolveKineticBodyAgainstWalls(body, candidates) {
     if (physId !== undefined && physId !== -1) return kineticOverlapsWallCandidates(kineticDynamicSlab.x[physId], kineticDynamicSlab.y[physId], body, candidates);
     return kineticOverlapsWallCandidates(body.x, body.y, body, candidates);
 }
-function createBodyImpulseMotion(body) {
-    return {
-        get x() {
-            return body.x;
-        },
-        get y() {
-            return body.y;
-        },
-        get vx() {
-            return body.vx;
-        },
-        get vy() {
-            return body.vy;
-        },
-        get w() {
-            return body.angularVelocity;
-        },
-        get invMass() {
-            return body._kineticInvMass;
-        },
-        get invI() {
-            return body._kineticInvI;
-        },
-        get hasMoment() {
-            return body._kineticInvI !== 0;
-        },
-        velocityDefined() {
-            return body.vx !== undefined && body.vy !== undefined;
-        },
-        spinForImpulse(w) {
-            return w || 0;
-        },
-        setVelocities(vx, vy, w) {
-            body.vx = vx;
-            body.vy = vy;
-            if (body.momentOfInertia) body.angularVelocity = w;
-        },
-    };
-}
-function createSlabImpulseMotion(physId) {
-    return {
-        get x() {
-            return kineticDynamicSlab.x[physId];
-        },
-        get y() {
-            return kineticDynamicSlab.y[physId];
-        },
-        get vx() {
-            return kineticDynamicSlab.vx[physId];
-        },
-        get vy() {
-            return kineticDynamicSlab.vy[physId];
-        },
-        get w() {
-            return kineticDynamicSlab.w[physId];
-        },
-        get invMass() {
-            return kineticStaticSlab.invMass[physId];
-        },
-        get invI() {
-            return kineticStaticSlab.invI[physId];
-        },
-        get hasMoment() {
-            return kineticStaticSlab.invI[physId] > 0;
-        },
-        velocityDefined() {
-            return true;
-        },
-        spinForImpulse(w) {
-            return w;
-        },
-        setVelocities(vx, vy, w) {
-            kineticDynamicSlab.vx[physId] = vx;
-            kineticDynamicSlab.vy[physId] = vy;
-            kineticDynamicSlab.w[physId] = w;
-        },
-    };
-}
+const sBodyImpulseMotion = {
+    _body: null,
+    bind(body) {
+        this._body = body;
+        return this;
+    },
+    get x() {
+        return this._body.x;
+    },
+    get y() {
+        return this._body.y;
+    },
+    get vx() {
+        return this._body.vx;
+    },
+    get vy() {
+        return this._body.vy;
+    },
+    get w() {
+        return this._body.angularVelocity;
+    },
+    get invMass() {
+        return this._body._kineticInvMass;
+    },
+    get invI() {
+        return this._body._kineticInvI;
+    },
+    get hasMoment() {
+        return this._body._kineticInvI !== 0;
+    },
+    velocityDefined() {
+        return this._body.vx !== undefined && this._body.vy !== undefined;
+    },
+    spinForImpulse(w) {
+        return w || 0;
+    },
+    setVelocities(vx, vy, w) {
+        const body = this._body;
+        body.vx = vx;
+        body.vy = vy;
+        if (body.momentOfInertia) body.angularVelocity = w;
+    },
+};
+const sSlabImpulseMotion = {
+    _physId: -1,
+    bind(physId) {
+        this._physId = physId;
+        return this;
+    },
+    get x() {
+        return kineticDynamicSlab.x[this._physId];
+    },
+    get y() {
+        return kineticDynamicSlab.y[this._physId];
+    },
+    get vx() {
+        return kineticDynamicSlab.vx[this._physId];
+    },
+    get vy() {
+        return kineticDynamicSlab.vy[this._physId];
+    },
+    get w() {
+        return kineticDynamicSlab.w[this._physId];
+    },
+    get invMass() {
+        return kineticStaticSlab.invMass[this._physId];
+    },
+    get invI() {
+        return kineticStaticSlab.invI[this._physId];
+    },
+    get hasMoment() {
+        return kineticStaticSlab.invI[this._physId] > 0;
+    },
+    velocityDefined() {
+        return true;
+    },
+    spinForImpulse(w) {
+        return w;
+    },
+    setVelocities(vx, vy, w) {
+        const physId = this._physId;
+        kineticDynamicSlab.vx[physId] = vx;
+        kineticDynamicSlab.vy[physId] = vy;
+        kineticDynamicSlab.w[physId] = w;
+    },
+};
 function applyStaticSurfaceImpulseCore(motion, normalX, normalY, cx, cy, { restitution = 0, friction = 0.9 } = {}) {
     const bx = motion.x;
     const by = motion.y;
@@ -1253,10 +1261,10 @@ function applyStaticSurfaceImpulseCore(motion, normalX, normalY, cx, cy, { resti
     return approachDot;
 }
 function applyBodyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, opts = {}) {
-    return applyStaticSurfaceImpulseCore(createBodyImpulseMotion(body), normalX, normalY, cx, cy, opts);
+    return applyStaticSurfaceImpulseCore(sBodyImpulseMotion.bind(body), normalX, normalY, cx, cy, opts);
 }
 function applySlabStaticSurfaceImpulse(physId, normalX, normalY, cx, cy, opts = {}) {
-    return applyStaticSurfaceImpulseCore(createSlabImpulseMotion(physId), normalX, normalY, cx, cy, opts);
+    return applyStaticSurfaceImpulseCore(sSlabImpulseMotion.bind(physId), normalX, normalY, cx, cy, opts);
 }
 export function ensureWallSegmentPolygonShape(segment) {
     if (!segment.shape) {
@@ -1266,75 +1274,80 @@ export function ensureWallSegmentPolygonShape(segment) {
     }
     return segment.shape;
 }
-const EMPTY_WALL_HITS = [];
-function createBodyWallMotion(body) {
-    const impulse = createBodyImpulseMotion(body);
-    return {
-        get bx() {
-            return body.x;
-        },
-        get by() {
-            return body.y;
-        },
-        get approachVx() {
-            return body.vx ?? 0;
-        },
-        get approachVy() {
-            return body.vy ?? 0;
-        },
-        get vx() {
-            return body.vx ?? 0;
-        },
-        get vy() {
-            return body.vy ?? 0;
-        },
-        get w() {
-            return body.angularVelocity ?? 0;
-        },
-        applyPositionCorrection(normalX, normalY, overlap) {
-            applyPositionCorrection(body, normalX, normalY, overlap);
-        },
-        applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
-            return applyStaticSurfaceImpulseCore(impulse, normalX, normalY, cx, cy, opts);
-        },
-    };
-}
-function createSlabWallMotion(physId) {
-    const impulse = createSlabImpulseMotion(physId);
-    return {
-        get bx() {
-            return kineticDynamicSlab.x[physId];
-        },
-        get by() {
-            return kineticDynamicSlab.y[physId];
-        },
-        get approachVx() {
-            return kineticDynamicSlab.vx[physId];
-        },
-        get approachVy() {
-            return kineticDynamicSlab.vy[physId];
-        },
-        get vx() {
-            return kineticDynamicSlab.vx[physId];
-        },
-        get vy() {
-            return kineticDynamicSlab.vy[physId];
-        },
-        get w() {
-            return kineticDynamicSlab.w[physId];
-        },
-        applyPositionCorrection(normalX, normalY, overlap) {
-            applySlabPositionCorrection(physId, normalX, normalY, overlap);
-        },
-        applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
-            return applyStaticSurfaceImpulseCore(impulse, normalX, normalY, cx, cy, opts);
-        },
-    };
-}
-function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitution = 0, friction = 0.9, passes = 2, shouldBreakWallHit = null } = {}) {
+const sBodyWallMotion = {
+    _body: null,
+    bind(body) {
+        this._body = body;
+        sBodyImpulseMotion.bind(body);
+        return this;
+    },
+    get bx() {
+        return this._body.x;
+    },
+    get by() {
+        return this._body.y;
+    },
+    get approachVx() {
+        return this._body.vx ?? 0;
+    },
+    get approachVy() {
+        return this._body.vy ?? 0;
+    },
+    get vx() {
+        return this._body.vx ?? 0;
+    },
+    get vy() {
+        return this._body.vy ?? 0;
+    },
+    get w() {
+        return this._body.angularVelocity ?? 0;
+    },
+    applyPositionCorrection(normalX, normalY, overlap) {
+        applyPositionCorrection(this._body, normalX, normalY, overlap);
+    },
+    applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
+        return applyStaticSurfaceImpulseCore(sBodyImpulseMotion, normalX, normalY, cx, cy, opts);
+    },
+};
+const sSlabWallMotion = {
+    _physId: -1,
+    bind(physId) {
+        this._physId = physId;
+        sSlabImpulseMotion.bind(physId);
+        return this;
+    },
+    get bx() {
+        return kineticDynamicSlab.x[this._physId];
+    },
+    get by() {
+        return kineticDynamicSlab.y[this._physId];
+    },
+    get approachVx() {
+        return kineticDynamicSlab.vx[this._physId];
+    },
+    get approachVy() {
+        return kineticDynamicSlab.vy[this._physId];
+    },
+    get vx() {
+        return kineticDynamicSlab.vx[this._physId];
+    },
+    get vy() {
+        return kineticDynamicSlab.vy[this._physId];
+    },
+    get w() {
+        return kineticDynamicSlab.w[this._physId];
+    },
+    applyPositionCorrection(normalX, normalY, overlap) {
+        applySlabPositionCorrection(this._physId, normalX, normalY, overlap);
+    },
+    applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
+        return applyStaticSurfaceImpulseCore(sSlabImpulseMotion, normalX, normalY, cx, cy, opts);
+    },
+};
+function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitution = 0, friction = 0.9, passes = 2, shouldBreakWallHit = null, outHits = null } = {}) {
     let collided = false;
-    const wantHits = shouldBreakWallHit != null;
-    const hits = wantHits ? [] : EMPTY_WALL_HITS;
+    const wantHits = shouldBreakWallHit != null && outHits != null;
+    if (outHits) outHits.length = 0;
     const radius = shape.getBoundingRadius();
     let bestNormalX = 0;
     let bestNormalY = 0;
@@ -1388,54 +1401,60 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
         const approachDot = dotXY(bvx - bw * (contactY - by), bvy + bw * (contactX - bx), bestNormalX, bestNormalY);
         const hit = wantHits ? { approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX, contactY } : null;
         if (hit && shouldBreakWallHit(hit)) {
-            hits.push(hit);
+            outHits.push(hit);
             motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, { restitution, friction });
             break;
         }
         motion.applyPositionCorrection(bestNormalX, bestNormalY, bestOverlap);
         motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, { restitution, friction });
-        if (hit) hits.push(hit);
+        if (hit) outHits.push(hit);
     }
-    return { collided, hits };
+    return collided;
 }
 export function resolveBodyAgainstWallSegments(body, shape, segments, opts = {}) {
-    return resolveAgainstWallSegmentsCore(body, shape, segments, createBodyWallMotion(body), opts);
+    return resolveAgainstWallSegmentsCore(body, shape, segments, sBodyWallMotion.bind(body), opts);
 }
 function resolveSlabAgainstWallSegments(physId, body, shape, segments, opts = {}) {
-    return resolveAgainstWallSegmentsCore(body, shape, segments, createSlabWallMotion(physId), opts);
+    return resolveAgainstWallSegmentsCore(body, shape, segments, sSlabWallMotion.bind(physId), opts);
 }
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
     for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
 }
 export class WallCollisionResolver {
-    /**
-     * @param {object} entity
-     * @param {{ frameId: number, getWallCandidates: (entity: object) => object[] }} spatialFrame
-     * @returns {boolean}
-     */
+    constructor() {
+        this.hits = [];
+        this._partHits = [];
+    }
     resolve(entity, spatialFrame, shouldBreakWallHit = null) {
-        if (entity._wallResolvedFrame === spatialFrame.frameId) return { collided: entity._wallResolvedCollided, hits: EMPTY_WALL_HITS };
+        if (entity._wallResolvedFrame === spatialFrame.frameId) {
+            this.hits.length = 0;
+            return entity._wallResolvedCollided;
+        }
         entity._wallResolvedFrame = spatialFrame.frameId;
         const candidateWalls = spatialFrame.getWallCandidates(entity);
-        const hits = [];
+        const hits = this.hits;
+        hits.length = 0;
         if (candidateWalls.length === 0) {
             entity._wallResolvedCollided = false;
-            return { collided: false, hits };
+            return false;
         }
         const wp = entity.strategy?.wallPhysics;
         const parts = getEntityCollisionParts(entity);
-        let collided = hits.length > 0;
+        let collided = false;
         const physId = entity._physId;
         const hasSlab = physId !== undefined && physId !== -1;
+        const partHits = this._partHits;
+        const wantHits = shouldBreakWallHit != null;
         for (let i = 0; i < parts.length; i++) {
-            const result = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, shouldBreakWallHit }) : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, shouldBreakWallHit });
-            if (result.collided) collided = true;
-            if (result.hits.length) hits.push(...result.hits);
+            const opts = { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, shouldBreakWallHit, outHits: wantHits ? partHits : null };
+            const partCollided = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, opts) : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, opts);
+            if (partCollided) collided = true;
+            if (wantHits) for (let h = 0; h < partHits.length; h++) hits.push(partHits[h]);
         }
         if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
-        return { collided, hits };
+        return collided;
     }
 }
 const LINK_CAPSULE_WALL_PASSES = 4;
@@ -2860,7 +2879,8 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
         if (seenPrimary[physIdA]) continue;
         seenPrimary[physIdA] = 1;
         seenPrimaryIds[seenCount++] = physIdA;
-        const { eids: neighborEids, count: neighborCount } = spatialFrame.getNeighborEids(primary);
+        const neighborCount = spatialFrame.ensureNeighborEids(primary);
+        const neighborEids = primary._neighborEids;
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[j];
             const neighbor = entityRefs[physIdB];
@@ -2891,7 +2911,8 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
         const primary = entityRefs[physIdA]?._physId === physIdA ? entityRefs[physIdA] : null;
-        const { eids: neighborEids, count: neighborCount } = spatialFrame.getNeighborEids(primary);
+        const neighborCount = spatialFrame.ensureNeighborEids(primary);
+        const neighborEids = primary._neighborEids;
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[j];
             const neighbor = entityRefs[physIdB];

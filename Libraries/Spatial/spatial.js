@@ -54,13 +54,15 @@ export class SpatialFrameCore {
     _wallCandidatesNearWorld(worldX, worldY, queryRadius) {
         const grid = this._obstacleGrid;
         this._ensureWallBucketCacheRevision(grid);
-        const { keyLo, keyHi } = wallBucketKeyParts(grid, worldX, worldY, queryRadius);
+        wallBucketKeyPartsInto(sWallBucketKey, 0, grid, worldX, worldY, queryRadius);
+        const keyLo = sWallBucketKey[0];
+        const keyHi = sWallBucketKey[1];
         const revision = grid.wallGridRevision;
-        const lookup = lookupWallCandidateBucket(this._wallBuckets, keyLo, keyHi, this.frameId, revision);
-        if (lookup.hit) return lookup.segments;
-        grid.appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, lookup.segments);
-        commitWallCandidateBucket(this._wallBuckets, lookup.slot, keyLo, keyHi, this.frameId, revision, lookup.segments);
-        return lookup.segments;
+        lookupWallCandidateBucketInto(sWallBucketLookup, this._wallBuckets, keyLo, keyHi, this.frameId, revision);
+        if (sWallBucketLookup.hit) return sWallBucketLookup.segments;
+        grid.appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, sWallBucketLookup.segments);
+        commitWallCandidateBucket(this._wallBuckets, sWallBucketLookup.slot, keyLo, keyHi, this.frameId, revision, sWallBucketLookup.segments);
+        return sWallBucketLookup.segments;
     }
     /**
      * @param {{ x: number, y: number, _physId?: number, _gridTileIdx?: number }} entity — mutated
@@ -93,8 +95,8 @@ export class SpatialFrameCore {
         if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
         return this._wallCandidatesNearWorld(entity.x, entity.y, entityCollisionSpan(entity));
     }
-    getNeighborEids(entity) {
-        if (entity._neighborsFrameId === this.frameId) return { eids: entity._neighborEids, count: entity._neighborEidCount };
+    ensureNeighborEids(entity) {
+        if (entity._neighborsFrameId === this.frameId) return entity._neighborEidCount;
         if (!entity._neighborEids) entity._neighborEids = new Int32Array(16);
         let count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
         while (count < 0) {
@@ -103,7 +105,7 @@ export class SpatialFrameCore {
         }
         entity._neighborEidCount = count;
         entity._neighborsFrameId = this.frameId;
-        return { eids: entity._neighborEids, count };
+        return count;
     }
     collectEntityEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
         return this.entityGrid.collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid);
@@ -2046,11 +2048,14 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { o
 const MAX_WALL_BUCKETS = 4096;
 const BUCKET_MASK = MAX_WALL_BUCKETS - 1;
 const EMPTY_STAMP = -1;
-export function wallBucketKeyParts(grid, worldX, worldY, queryRadius) {
+const sWallBucketKey = new Int32Array(2);
+const sWallBucketLookup = { hit: false, slot: 0, segments: null };
+export function wallBucketKeyPartsInto(buf, o, grid, worldX, worldY, queryRadius) {
     const col = grid.worldCol(worldX);
     const row = grid.worldRow(worldY);
     const pad = 1 + Math.ceil(queryRadius / grid.cellSize);
-    return { keyLo: (col & 0xffff) | ((row & 0xffff) << 16), keyHi: pad & 0xff };
+    buf[o] = (col & 0xffff) | ((row & 0xffff) << 16);
+    buf[o + 1] = pad & 0xff;
 }
 function bucketSlotForKey(keyLo, keyHi) {
     return (keyLo ^ (keyHi * 0x9e3779b9)) & BUCKET_MASK;
@@ -2087,15 +2092,28 @@ export function resetWallCandidateBucketSlab(slab) {
 export function invalidateWallCandidateBucketFrame(slab) {
     slab.frameStamp.fill(EMPTY_STAMP);
 }
-export function lookupWallCandidateBucket(slab, keyLo, keyHi, frameId, revision) {
+export function lookupWallCandidateBucketInto(out, slab, keyLo, keyHi, frameId, revision) {
     let slot = bucketSlotForKey(keyLo, keyHi);
     for (let probe = 0; probe < MAX_WALL_BUCKETS; probe++) {
         const idx = (slot + probe) & BUCKET_MASK;
         const stamp = slab.frameStamp[idx];
-        if (stamp === EMPTY_STAMP) return { hit: false, slot: idx, segments: acquireBucketSegments(slab, idx) };
+        if (stamp === EMPTY_STAMP) {
+            out.hit = false;
+            out.slot = idx;
+            out.segments = acquireBucketSegments(slab, idx);
+            return out;
+        }
         if (slab.keyLo[idx] === keyLo && slab.keyHi[idx] === keyHi) {
-            if (stamp === frameId && slab.revisionStamp[idx] === revision) return { hit: true, slot: idx, segments: slab.segments[idx] };
-            return { hit: false, slot: idx, segments: acquireBucketSegments(slab, idx) };
+            if (stamp === frameId && slab.revisionStamp[idx] === revision) {
+                out.hit = true;
+                out.slot = idx;
+                out.segments = slab.segments[idx];
+                return out;
+            }
+            out.hit = false;
+            out.slot = idx;
+            out.segments = acquireBucketSegments(slab, idx);
+            return out;
         }
     }
     throw new Error(`wall candidate bucket slab full (frame ${frameId}, revision ${revision})`);
