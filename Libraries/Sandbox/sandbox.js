@@ -8,7 +8,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
-import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, ENGINE_F32, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
+import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
@@ -466,14 +466,16 @@ export function appendMapGenEditor(parent, state, kind, { onGenerated, onPreview
 }
 function assetDefaultFootprintSpan(typeId) {
     const footprint = propCatalog[typeId]?.physics?.localFootprint;
-    if (!footprint?.length) return null;
-    return convexFootprintHalfExtents(footprint);
+    if (!footprint?.length) return false;
+    convexFootprintHalfExtents(ENGINE_F32, M_VEC_A, footprint);
+    return true;
 }
 function footprintDiffersFromAsset(prop) {
-    const defaultSpan = assetDefaultFootprintSpan(prop.type);
-    if (!defaultSpan || prop.shape?.type !== "Polygon") return false;
-    const span = convexFootprintHalfExtents(prop.shape.vertices);
-    return span.x !== defaultSpan.x || span.y !== defaultSpan.y;
+    if (!assetDefaultFootprintSpan(prop.type) || prop.shape?.type !== "Polygon") return false;
+    const defaultHx = ENGINE_F32[M_VEC_A];
+    const defaultHy = ENGINE_F32[M_VEC_A + 1];
+    convexFootprintHalfExtents(ENGINE_F32, M_VEC_A, prop.shape.vertices);
+    return ENGINE_F32[M_VEC_A] !== defaultHx || ENGINE_F32[M_VEC_A + 1] !== defaultHy;
 }
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: prop.faction };
@@ -483,9 +485,8 @@ function serializePlacedProp(prop) {
         if (prop.crossLength !== undefined) entry.crossLength = prop.crossLength;
         if (prop.crossThickness !== undefined) entry.crossThickness = prop.crossThickness;
     } else if (footprintDiffersFromAsset(prop)) {
-        const span = convexFootprintHalfExtents(prop.shape.vertices);
-        entry.width = span.x * 2;
-        entry.height = span.y * 2;
+        entry.width = ENGINE_F32[M_VEC_A] * 2;
+        entry.height = ENGINE_F32[M_VEC_A + 1] * 2;
     }
     const visualOverride = serializeVisualOverride(prop);
     if (visualOverride) entry.visualOverride = visualOverride;
@@ -1765,9 +1766,8 @@ export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettin
 }
 function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
-    if (!flowField) return null;
-    if (!sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, pose.x, pose.y, flowField, flowFieldGrid.frame)) return null;
-    return { desiredX: ENGINE_F32[N_OUT_FLOW], desiredY: ENGINE_F32[N_OUT_FLOW + 1] };
+    if (!flowField) return false;
+    return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, pose.x, pose.y, flowField, flowFieldGrid.frame);
 }
 function createGroundNavBehavior(state, config) {
     const { id, initRun, applyMoveTarget, tickSteering } = config;
@@ -1990,9 +1990,8 @@ const FLOW_GROUND_NAV_CONFIG = {
             FLOW_GROUND_NAV_CONFIG.clearRunTarget(state, run);
             return;
         }
-        const steering = computeFlowFieldSteering(agentPose(prop), steerX, steerY, flowFieldGrid);
-        if (!steering) return;
-        steerRollToward(prop, steering.desiredX, steering.desiredY, config);
+        if (!computeFlowFieldSteering(agentPose(prop), steerX, steerY, flowFieldGrid)) return;
+        steerRollToward(prop, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
     },
     getPathOverlay(state, prop, run) {
         if (!run?.targetWorld) return null;

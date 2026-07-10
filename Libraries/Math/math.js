@@ -33,6 +33,7 @@ export const S_QUAD = ENGINE_SPATIAL_BASE + 8;
 export const ENGINE_NAV_BASE = 320;
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
+export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -224,7 +225,7 @@ export function regularStarFootprint(points, outerRadius, innerRadius, startAngl
     }
     return verts;
 }
-export function convexFootprintHalfExtents(vertices) {
+export function convexFootprintHalfExtents(buf, o, vertices) {
     let hx = 0;
     let hy = 0;
     const count = vertices.length;
@@ -232,7 +233,8 @@ export function convexFootprintHalfExtents(vertices) {
         hx = Math.max(hx, Math.abs(vertices[i]));
         hy = Math.max(hy, Math.abs(vertices[i + 1]));
     }
-    return { x: hx, y: hy };
+    buf[o] = hx;
+    buf[o + 1] = hy;
 }
 export function findExtremeVertexIndex(vertices, posX, posY, cos, sin, axisX, axisY, findMax = true) {
     let bestProj = findMax ? -Infinity : Infinity;

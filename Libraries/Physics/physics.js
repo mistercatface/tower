@@ -1,4 +1,4 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, rotateXYIntoF32, transformPoint2DInto, distanceSqToLineSegment, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -293,10 +293,10 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
-        const span = convexFootprintHalfExtents(shape.vertices);
+        convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         slab.bpKind[physId] = BP_KIND_OBB;
-        slab.hx[physId] = span.x;
-        slab.hy[physId] = span.y;
+        slab.hx[physId] = ENGINE_F32[P_VEC_A];
+        slab.hy[physId] = ENGINE_F32[P_VEC_A + 1];
         slab.cos[physId] = Math.cos(angle);
         slab.sin[physId] = Math.sin(angle);
         return;
@@ -942,24 +942,13 @@ export const COINCIDENT_CIRCLE_EPS = 1e-10;
  * @param {{ x: number, y: number }} a — mutated in place
  * @param {{ x: number, y: number }} b — mutated in place
  */
-/**
- * @param {{ x: number, y: number }} entity
- * @returns {{ cx: number, cy: number }}
- */
-export function computeCircleWallContact(entity, normalX, normalY, radius) {
-    return { cx: entity.x - normalX * radius, cy: entity.y - normalY * radius };
+export function computeCircleWallContact(buf, o, ex, ey, normalX, normalY, radius) {
+    buf[o] = ex - normalX * radius;
+    buf[o + 1] = ey - normalY * radius;
 }
-/**
- * @param {{ x: number, y: number }} entity
- * @param {number} normalX
- * @param {number} normalY
- * @param {number} overlap
- * @param {number} cx
- * @param {number} cy
- * @returns {{ cx: number, cy: number }}
- */
-export function computePolygonWallContact(entity, normalX, normalY, overlap, cx = NaN, cy = NaN) {
-    return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
+export function computePolygonWallContact(buf, o, ex, ey, normalX, normalY, overlap, cx = NaN, cy = NaN) {
+    buf[o] = !isNaN(cx) ? cx : ex - normalX * overlap;
+    buf[o + 1] = !isNaN(cy) ? cy : ey - normalY * overlap;
 }
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
 function obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin) {
@@ -1011,10 +1000,10 @@ function entityWorldAabbFromShapeInto(out, entity) {
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
-        const span = convexFootprintHalfExtents(shape.vertices);
+        convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        obbWorldAabbInto(out, x, y, span.x, span.y, cos, sin);
+        obbWorldAabbInto(out, x, y, ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_A + 1], cos, sin);
         return;
     }
     const r = shape.radius || 0;
@@ -1395,19 +1384,22 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
         collided = true;
         const bx = motion.bx;
         const by = motion.by;
-        const contact = shape.type === "Circle" ? computeCircleWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, shape.radius) : computePolygonWallContact({ x: bx, y: by }, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
+        if (shape.type === "Circle") computeCircleWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, shape.radius);
+        else computePolygonWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
+        const contactX = ENGINE_F32[P_VEC_A];
+        const contactY = ENGINE_F32[P_VEC_A + 1];
         const bvx = motion.vx;
         const bvy = motion.vy;
         const bw = motion.w;
-        const approachDot = dotXY(bvx - bw * (contact.cy - by), bvy + bw * (contact.cx - bx), bestNormalX, bestNormalY);
-        const hit = wantHits ? { approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX: contact.cx, contactY: contact.cy } : null;
+        const approachDot = dotXY(bvx - bw * (contactY - by), bvy + bw * (contactX - bx), bestNormalX, bestNormalY);
+        const hit = wantHits ? { approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX, contactY } : null;
         if (hit && shouldBreakWallHit(hit)) {
             hits.push(hit);
-            motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contact.cx, contact.cy, { restitution, friction });
+            motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, { restitution, friction });
             break;
         }
         motion.applyPositionCorrection(bestNormalX, bestNormalY, bestOverlap);
-        motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contact.cx, contact.cy, { restitution, friction });
+        motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, { restitution, friction });
         if (hit) hits.push(hit);
     }
     return { collided, hits };
@@ -3764,10 +3756,7 @@ function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, a
     ENGINE_F32[P_VEC_C + 2] = Math.min(leftDist, rightDist, topDist, bottomDist);
 }
 function approachToSegmentLocal(segment, worldVx, worldVy) {
-    const cos = Math.cos(-segment.angle);
-    const sin = Math.sin(-segment.angle);
-    ENGINE_F32[P_VEC_D] = worldVx * cos - worldVy * sin;
-    ENGINE_F32[P_VEC_D + 1] = worldVx * sin + worldVy * cos;
+    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_D, worldVx, worldVy, segment.angle);
 }
 /**
  * @param {object} circle
@@ -3853,11 +3842,10 @@ function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approa
  * @property {number} ny
  * @property {object} segment
  */
-/** @param {number} vx @param {number} vy @param {number} angle */
-function worldVectorToSegmentLocal(vx, vy, angle) {
+function worldVectorToSegmentLocal(buf, o, vx, vy, angle) {
     const cos = Math.cos(-angle);
     const sin = Math.sin(-angle);
-    return rotateXY(vx, vy, cos, sin);
+    rotateXYIntoF32(buf, o, vx, vy, cos, sin);
 }
 /**
  * Ray vs AABB expanded by circle radius (segment-local space).
@@ -3920,10 +3908,9 @@ export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDi
     toSegmentLocal(segment, ox, oy);
     const localX = ENGINE_F32[P_VEC_B];
     const localY = ENGINE_F32[P_VEC_B + 1];
-    const cos = Math.cos(-segment.angle);
-    const sin = Math.sin(-segment.angle);
-    const localDirX = dx * cos - dy * sin;
-    const localDirY = dx * sin + dy * cos;
+    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_C, dx, dy, segment.angle);
+    const localDirX = ENGINE_F32[P_VEC_C];
+    const localDirY = ENGINE_F32[P_VEC_C + 1];
     const t = rayExpandedLocalAabbHit(localX, localY, localDirX, localDirY, half, radius);
     if (t == null || t > maxDist) return null;
     const wx = ox + dx * t;

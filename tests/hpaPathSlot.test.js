@@ -42,13 +42,14 @@ describe("hpaPathSlot", () => {
         const startY = grid.gridCenterYByIdx(startIdx);
         const targetX = grid.gridCenterXByIdx(targetIdx);
         const targetY = grid.gridCenterYByIdx(targetIdx);
-        const steering = computeSabPathSteering({ x: startX, y: startY }, worker, 0, path.length, targetX, targetY, grid, navTopology, {
+        const steering = new Float32Array(3);
+        const offPath = computeSabPathSteering(steering, 0, { x: startX, y: startY }, worker, 0, path.length, targetX, targetY, grid, navTopology, {
             pathWaypointArrival: 16,
             arrivalDistance: 8,
             pathOffPathDistance: 48,
         });
-        assert.ok(steering);
-        assert.ok(Math.hypot(steering.desiredX, steering.desiredY) > 0);
+        assert.equal(offPath, false);
+        assert.ok(Math.hypot(steering[0], steering[1]) > 0);
         terminateWorkerNavigation(navigation);
     });
     it("computeSabPathSteering slows down for sharp corners and arrival", async () => {
@@ -74,7 +75,10 @@ describe("hpaPathSlot", () => {
             accel: 200,
         };
 
-        const steeringCorner = computeSabPathSteering(
+        const steeringCorner = new Float32Array(3);
+        computeSabPathSteering(
+            steeringCorner,
+            0,
             { x: startX, y: startY },
             worker,
             0,
@@ -86,10 +90,13 @@ describe("hpaPathSlot", () => {
             settings
         );
         
-        assert.ok(steeringCorner.desiredSpeed < 100, `Expected slowdown near corner, got ${steeringCorner.desiredSpeed}`);
+        assert.ok(steeringCorner[2] < 100, `Expected slowdown near corner, got ${steeringCorner[2]}`);
 
         const nearTarget = { x: targetX, y: targetY - 3.2 };
-        const steeringArrival = computeSabPathSteering(
+        const steeringArrival = new Float32Array(3);
+        computeSabPathSteering(
+            steeringArrival,
+            0,
             nearTarget,
             worker,
             0,
@@ -101,7 +108,7 @@ describe("hpaPathSlot", () => {
             settings
         );
 
-        assert.ok(steeringArrival.desiredSpeed < 50, `Expected arrival slowdown, got ${steeringArrival.desiredSpeed}`);
+        assert.ok(steeringArrival[2] < 50, `Expected arrival slowdown, got ${steeringArrival[2]}`);
         
         terminateWorkerNavigation(navigation);
     });

@@ -4,11 +4,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation"];
+const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math"];
 const allowDirs = ["Libraries/Viewport", "Libraries/Input", "Libraries/Procedural", "Libraries/Workers"];
 
 const bannedExportRe = /^export (?:async )?(?:function|const|class) (\w+)/gm;
 const scratchNameRe = /_SCRATCH$/;
+const pairReturnRe = /return \{ (?:x|col|cx|desiredX|nx|worldX):/;
 
 function walk(dir, pred) {
     const out = [];
@@ -51,7 +52,7 @@ for (const hot of hotDirs) {
             }
         }
         if (/\bconst [A-Z][A-Z0-9_]*_SCRATCH\b/.test(src)) warnings.push({ file: relPath, kind: "module-scratch", symbol: "const *_SCRATCH" });
-        if (/return \{ x:/.test(src) || /return \{ col:/.test(src)) warnings.push({ file: relPath, kind: "pair-return", symbol: "return { x|col" });
+        if (pairReturnRe.test(src)) warnings.push({ file: relPath, kind: "pair-return", symbol: "return { x|col|cx|desiredX|nx|worldX" });
         if (/\.push\(\{/.test(src)) warnings.push({ file: relPath, kind: "push-object", symbol: ".push({" });
     }
 }

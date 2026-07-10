@@ -1,6 +1,6 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
-import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb, ENGINE_F32, N_OUT_XY } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb, ENGINE_F32, N_OUT_XY, N_OUT_STEER } from "../Math/math.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
@@ -462,6 +462,7 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
 }
 // --- NavUtils.js ---
 export const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
+export const SCRATCH_PATH_STEERING = { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
 export function _removeEdgeByTargetId(edges, targetId) {
     for (let i = edges.length - 1; i >= 0; i--) if (edges[i].targetId === targetId) edges.splice(i, 1);
 }
@@ -1327,7 +1328,7 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
     }
     return { pathNodes };
 }
-export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
+export function computeSabPathSteering(buf, o, pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
     const x = pose.x;
     const y = pose.y;
     const bodyIdx = grid.worldToIdx(x, y);
@@ -1369,9 +1370,24 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
     }
     const distToTarget = Math.hypot(targetX - x, targetY - y);
     const nextPathIdx = step < pathLen - 1 ? worker.pathIdx(slot, step + 1) : -1;
-    if (nextPathIdx >= 0 && pathSegmentIsDiscontinuousHop(navTopology, steerIdx, nextPathIdx) && bodyIdx === steerIdx) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
-    if (step >= pathLen - 1 && distToTarget <= arrivalDistance) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
-    if (!(dist >= 0.01)) return { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
+    if (nextPathIdx >= 0 && pathSegmentIsDiscontinuousHop(navTopology, steerIdx, nextPathIdx) && bodyIdx === steerIdx) {
+        buf[o] = 0;
+        buf[o + 1] = 0;
+        buf[o + 2] = 0;
+        return false;
+    }
+    if (step >= pathLen - 1 && distToTarget <= arrivalDistance) {
+        buf[o] = 0;
+        buf[o + 1] = 0;
+        buf[o + 2] = 0;
+        return false;
+    }
+    if (!(dist >= 0.01)) {
+        buf[o] = 0;
+        buf[o + 1] = 0;
+        buf[o + 2] = 0;
+        return false;
+    }
     const maxSpeed = settings.maxSpeed ?? 180;
     const accel = settings.accel ?? 600;
     let desiredSpeed = maxSpeed;
@@ -1382,7 +1398,10 @@ export function computeSabPathSteering(pose, worker, slot, pathLen, targetX, tar
         const arrivalFactor = Math.max(0.15, Math.min(1.0, distToTarget / decelRadius));
         desiredSpeed = Math.min(desiredSpeed, maxSpeed * arrivalFactor);
     }
-    return { desiredX: dx / dist, desiredY: dy / dist, desiredSpeed, offPath: dist > offPathDistance };
+    buf[o] = dx / dist;
+    buf[o + 1] = dy / dist;
+    buf[o + 2] = desiredSpeed;
+    return dist > offPathDistance;
 }
 // --- NavRuntime.js ---
 export function agentPose(source) {
@@ -2234,10 +2253,14 @@ export class HpaNavSession {
             if (sandboxResult) return sandboxResult;
         }
         if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
-        const steering = computeSabPathSteering(agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
-        const offPathDecision = this.replanManager.evaluateOffPath(steering, prop, state);
+        const offPath = computeSabPathSteering(ENGINE_F32, N_OUT_STEER, agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
+        SCRATCH_PATH_STEERING.desiredX = ENGINE_F32[N_OUT_STEER];
+        SCRATCH_PATH_STEERING.desiredY = ENGINE_F32[N_OUT_STEER + 1];
+        SCRATCH_PATH_STEERING.desiredSpeed = ENGINE_F32[N_OUT_STEER + 2];
+        SCRATCH_PATH_STEERING.offPath = offPath;
+        const offPathDecision = this.replanManager.evaluateOffPath(SCRATCH_PATH_STEERING, prop, state);
         if (offPathDecision.shouldReplan) return this.requestReplan(prop, targetX, targetY, state, offPathDecision.priority, offPathDecision.reason);
-        return { steering, replanReason: null };
+        return { steering: SCRATCH_PATH_STEERING, replanReason: null };
     }
     getCommitStatus() {
         return { routeCommitFrames: this.routeCommitFrames };

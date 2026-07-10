@@ -843,8 +843,8 @@ export class FractureEngine {
         if (!prop?.strategy?.fracture) return false;
         const shape = prop.shape;
         if (shape?.type !== "Polygon") return false;
-        const { x, y } = convexFootprintHalfExtents(shape.vertices);
-        if (Math.max(x, y) * 2 < minSize) return false;
+        convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
+        if (Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2 < minSize) return false;
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
         return FractureEngine._glassFootprintArea(prop) >= minArea;
     }
