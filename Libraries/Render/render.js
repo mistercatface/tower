@@ -1,6 +1,6 @@
-import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
+import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, transformPoint2DInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, transformPoint2DInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -214,12 +214,16 @@ function drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, fill, headLen, headWidth) 
     const ty = dirX;
     const baseCenterX = tipX - dirX * headLen;
     const baseCenterY = tipY - dirY * headLen;
+    rChevron[0] = tipX;
+    rChevron[1] = tipY;
+    rChevron[2] = baseCenterX + tx * headWidth;
+    rChevron[3] = baseCenterY + ty * headWidth;
+    rChevron[4] = baseCenterX - tx * headWidth;
+    rChevron[5] = baseCenterY - ty * headWidth;
     ctx.fillStyle = fill;
-    fillClosedPolygon(ctx, [
-        { x: tipX, y: tipY },
-        { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
-        { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
-    ]);
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, rChevron, 3);
+    ctx.fill();
 }
 function drawAabbStyle(ctx, rect, { fill, stroke, lineWidth = 1, dash }) {
     const w = rect.maxX - rect.minX;
@@ -1193,8 +1197,6 @@ export function invalidateStaticGridEdgeRailDrawCache() {
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPoint. Horizontal caps: box top ring + per-corner chunk UV.
  */
-const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
-const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
 function wallFaceKindIndex(atlasFaceId) {
     switch (atlasFaceId) {
@@ -1221,37 +1223,36 @@ function ensureWallDrawMemo(grid) {
 function wallDrawMemoSlot(grid, face) {
     return (face.gridIdx * 4 + face.gridSide) * 5 + wallFaceKindIndex(face.atlasFaceId);
 }
-export function appendProjectedFaceBand(ctx, faceBottom, faceTop) {
-    traceFlatQuad(ctx, faceBottom.proj1X, faceBottom.proj1Y, faceTop.proj1X, faceTop.proj1Y, faceTop.proj2X, faceTop.proj2Y, faceBottom.proj2X, faceBottom.proj2Y);
+export function appendProjectedFaceBand(ctx, botBuf, botO, topBuf, topO) {
+    traceFlatQuad(ctx, botBuf[botO], botBuf[botO + 1], topBuf[topO], topBuf[topO + 1], topBuf[topO + 2], topBuf[topO + 3], botBuf[botO + 2], botBuf[botO + 3]);
 }
-export function traceProjectedFaceBand(ctx, faceBottom, faceTop) {
+export function traceProjectedFaceBand(ctx, botBuf, botO, topBuf, topO) {
     ctx.beginPath();
-    appendProjectedFaceBand(ctx, faceBottom, faceTop);
+    appendProjectedFaceBand(ctx, botBuf, botO, topBuf, topO);
 }
-export function projectWallFaceBandIntoScalars(x1, y1, x2, y2, z, viewport, out) {
+export function projectWallFaceBandInto(buf, o, x1, y1, x2, y2, z, viewport) {
     const alpha = resolveElevationAlpha(z, viewport);
     if (alpha <= 0) {
-        out.proj1X = x1;
-        out.proj1Y = y1;
-        out.proj2X = x2;
-        out.proj2Y = y2;
+        buf[o] = x1;
+        buf[o + 1] = y1;
+        buf[o + 2] = x2;
+        buf[o + 3] = y2;
     } else {
-        out.proj1X = x1 + (x1 - viewport.x) * alpha;
-        out.proj1Y = y1 + (y1 - viewport.y) * alpha;
-        out.proj2X = x2 + (x2 - viewport.x) * alpha;
-        out.proj2Y = y2 + (y2 - viewport.y) * alpha;
+        buf[o] = x1 + (x1 - viewport.x) * alpha;
+        buf[o + 1] = y1 + (y1 - viewport.y) * alpha;
+        buf[o + 2] = x2 + (x2 - viewport.x) * alpha;
+        buf[o + 3] = y2 + (y2 - viewport.y) * alpha;
     }
-    return out;
 }
-function computeFaceCornerElevatedInto(out8, offset, u, v, faceBottom, faceTop) {
-    const bot1X = faceBottom.proj1X;
-    const bot1Y = faceBottom.proj1Y;
-    const bot2X = faceBottom.proj2X;
-    const bot2Y = faceBottom.proj2Y;
-    const top1X = faceTop.proj1X;
-    const top1Y = faceTop.proj1Y;
-    const top2X = faceTop.proj2X;
-    const top2Y = faceTop.proj2Y;
+function computeFaceCornerElevatedInto(out8, offset, u, v, botBuf, botO, topBuf, topO) {
+    const bot1X = botBuf[botO];
+    const bot1Y = botBuf[botO + 1];
+    const bot2X = botBuf[botO + 2];
+    const bot2Y = botBuf[botO + 3];
+    const top1X = topBuf[topO];
+    const top1Y = topBuf[topO + 1];
+    const top2X = topBuf[topO + 2];
+    const top2Y = topBuf[topO + 3];
     const bx = bot1X + (bot2X - bot1X) * u;
     const by = bot1Y + (bot2Y - bot1Y) * u;
     const tx = top1X + (top2X - top1X) * u;
@@ -1310,7 +1311,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     const visibleHeightCells = bandHeight / cellSize;
     return { subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))), subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)), capPx: capHeight * settings.surfaceBakeScale, alphaBase, alphaBandMax };
 }
-function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, boundsBuf, boundsO) {
+function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, atlas, subdiv, viewport, boundsBuf, boundsO) {
     const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
     const baseTransform = ctx.getTransform();
@@ -1330,10 +1331,10 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, b
         for (let col = 0; col < subdivX; col++) {
             const u0 = col / subdivX;
             const u1 = (col + 1) / subdivX;
-            computeFaceCornerElevatedInto(rSubdiv, 0, u0, v0, faceBottom, faceTop);
-            computeFaceCornerElevatedInto(rSubdiv, 2, u1, v0, faceBottom, faceTop);
-            computeFaceCornerElevatedInto(rSubdiv, 4, u1, v1, faceBottom, faceTop);
-            computeFaceCornerElevatedInto(rSubdiv, 6, u0, v1, faceBottom, faceTop);
+            computeFaceCornerElevatedInto(rSubdiv, 0, u0, v0, botBuf, botO, topBuf, topO);
+            computeFaceCornerElevatedInto(rSubdiv, 2, u1, v0, botBuf, botO, topBuf, topO);
+            computeFaceCornerElevatedInto(rSubdiv, 4, u1, v1, botBuf, botO, topBuf, topO);
+            computeFaceCornerElevatedInto(rSubdiv, 6, u0, v1, botBuf, botO, topBuf, topO);
             if (!flatQuadOverlapAabbF32(rSubdiv[0], rSubdiv[1], rSubdiv[2], rSubdiv[3], rSubdiv[4], rSubdiv[5], rSubdiv[6], rSubdiv[7], boundsBuf, boundsO)) continue;
             drawImageQuadWithBaseTransformScalars(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, rSubdiv[0], rSubdiv[1], rSubdiv[2], rSubdiv[3], rSubdiv[4], rSubdiv[5], rSubdiv[6], rSubdiv[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
         }
@@ -1350,7 +1351,7 @@ function resolveWallFaceSubdiv(face, atlas, viewport, grid) {
     grid._wallSubdivMemo.set(memoSlot, { camKey, perspKey, subdiv });
     return subdiv;
 }
-function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewport, state, face) {
+function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO, viewport, state, face) {
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const atlas = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face);
     if (atlas === null) return;
@@ -1365,19 +1366,19 @@ function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewpo
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.boundsBuf, VIEW_TIER.CHUNKS);
+    blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, atlas, subdiv, viewport, viewport.boundsBuf, VIEW_TIER.CHUNKS);
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
     const { wallHeight, wallBaseZ } = face;
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const topZ = wallBaseZ + wallHeight;
-    const faceBottom = projectWallFaceBandIntoScalars(x1, y1, x2, y2, wallBaseZ, viewport, sFaceBottom);
-    const faceTop = projectWallFaceBandIntoScalars(x1, y1, x2, y2, topZ, viewport, sharedScratchFace);
-    traceProjectedFaceBand(ctx, faceBottom, faceTop);
+    projectWallFaceBandInto(ENGINE_F32, R_FACE_BAND_BOT, x1, y1, x2, y2, wallBaseZ, viewport);
+    projectWallFaceBandInto(ENGINE_F32, R_FACE_BAND_TOP, x1, y1, x2, y2, topZ, viewport);
+    traceProjectedFaceBand(ctx, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP);
     if (state.worldSurfaces) {
         ctx.save();
         ctx.clip();
-        drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewport, state, face);
+        drawFaceTextureScalars(ctx, x1, y1, x2, y2, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP, viewport, state, face);
         ctx.restore();
     } else {
         ctx.fillStyle = fillStyle;

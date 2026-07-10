@@ -31,6 +31,7 @@ export const M_OUT_VY = ENGINE_MATH_BASE + 22;
 export const M_OUT_VZ = ENGINE_MATH_BASE + 23;
 export const M_OUT_REFLECT_DX = ENGINE_MATH_BASE + 24;
 export const M_OUT_REFLECT_DY = ENGINE_MATH_BASE + 25;
+export const M_AABB = ENGINE_MATH_BASE + 26;
 export const S_OUT_XY = ENGINE_SPATIAL_BASE;
 export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
 export const S_AABB = ENGINE_SPATIAL_BASE + 4;
@@ -51,6 +52,8 @@ export const R_CAP_UV = ENGINE_RENDER_BASE + 32;
 export const R_CAP_SRC = ENGINE_RENDER_BASE + 40;
 export const R_CHEVRON = ENGINE_RENDER_BASE + 48;
 export const R_FACE_MIDY = ENGINE_RENDER_BASE + 60;
+export const R_FACE_BAND_BOT = ENGINE_RENDER_BASE + 124;
+export const R_FACE_BAND_TOP = ENGINE_RENDER_BASE + 128;
 export const R_FACE_VISIBLE = 0;
 export const R_FACE_ORDER = 0;
 export const MAX_PRISM_FACES = 64;
@@ -424,14 +427,14 @@ export function findClosestPolygonBoundaryGrabPointInto(out, vertices, posX, pos
         const ay = posY + lax * sin + lay * cos;
         const bx = posX + lbx * cos - lby * sin;
         const by = posY + lbx * sin + lby * cos;
-        const closest = closestPointOnLineSegment(targetX, targetY, ax, ay, bx, by);
-        const dx = targetX - closest.x;
-        const dy = targetY - closest.y;
+        closestPointOnLineSegmentInto(ENGINE_F32, M_OUT_CLOSEST_X, targetX, targetY, ax, ay, bx, by);
+        const dx = targetX - ENGINE_F32[M_OUT_CLOSEST_X];
+        const dy = targetY - ENGINE_F32[M_OUT_CLOSEST_Y];
         const distSq = dx * dx + dy * dy;
         if (distSq < bestDistSq) {
             bestDistSq = distSq;
-            bestWorldX = closest.x;
-            bestWorldY = closest.y;
+            bestWorldX = ENGINE_F32[M_OUT_CLOSEST_X];
+            bestWorldY = ENGINE_F32[M_OUT_CLOSEST_Y];
         }
     }
     const wdx = bestWorldX - posX;
@@ -537,6 +540,14 @@ export function polygonSecondMomentAboutCentroid2D(vertices) {
 }
 export const EMPTY_AABB = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 export function computeCompoundLocalBounds(parts, out) {
+    computeCompoundLocalBoundsF32(ENGINE_F32, M_AABB, parts);
+    out.minX = ENGINE_F32[M_AABB];
+    out.minY = ENGINE_F32[M_AABB + 1];
+    out.maxX = ENGINE_F32[M_AABB + 2];
+    out.maxY = ENGINE_F32[M_AABB + 3];
+    return out;
+}
+export function computeCompoundLocalBoundsF32(buf, o, parts) {
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
@@ -563,11 +574,10 @@ export function computeCompoundLocalBounds(parts, out) {
             if (y > maxY) maxY = y;
         }
     }
-    out.minX = minX;
-    out.maxX = maxX;
-    out.minY = minY;
-    out.maxY = maxY;
-    return out;
+    buf[o] = minX;
+    buf[o + 1] = minY;
+    buf[o + 2] = maxX;
+    buf[o + 3] = maxY;
 }
 export function ensureFlatVerts(input) {
     if (input instanceof Float32Array) return input;

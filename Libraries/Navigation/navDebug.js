@@ -1,4 +1,5 @@
-import { createOffscreenCanvas, fillCircle, traceSegment, fillClosedPolygon } from "../Canvas/canvas.js";
+import { createOffscreenCanvas, fillCircle, traceSegment, traceClosedFlatPolygon } from "../Canvas/canvas.js";
+import { ENGINE_F32, R_CHEVRON } from "../Math/math.js";
 import { gridNavCacheKey, floorOccupancyStampDrawCacheKey } from "../Spatial/spatial.js";
 import { BeltPacked } from "../Spatial/belts.js";
 import { findNearestOpenCellIdx, buildNavReachableMaskFromSeed } from "./navigation.js";
@@ -101,19 +102,23 @@ function fillPortalArrowHead(ctx, tipX, tipY, ux, uy, headLen) {
     const ty = ux;
     const baseCenterX = tipX - ux * headLen;
     const baseCenterY = tipY - uy * headLen;
-    const head = [
-        { x: tipX, y: tipY },
-        { x: baseCenterX + tx * headWidth, y: baseCenterY + ty * headWidth },
-        { x: baseCenterX - tx * headWidth, y: baseCenterY - ty * headWidth },
-    ];
+    const arrow = ENGINE_F32.subarray(R_CHEVRON, R_CHEVRON + 6);
+    arrow[0] = tipX;
+    arrow[1] = tipY;
+    arrow[2] = baseCenterX + tx * headWidth;
+    arrow[3] = baseCenterY + ty * headWidth;
+    arrow[4] = baseCenterX - tx * headWidth;
+    arrow[5] = baseCenterY - ty * headWidth;
     ctx.fillStyle = PATH_DEBUG_PORTAL_ENTRY_STROKE;
-    fillClosedPolygon(ctx, head);
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, arrow, 3);
+    ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
     ctx.lineWidth = 1.25;
     ctx.beginPath();
-    traceSegment(ctx, head[0].x, head[0].y, head[1].x, head[1].y);
-    traceSegment(ctx, head[1].x, head[1].y, head[2].x, head[2].y);
-    traceSegment(ctx, head[2].x, head[2].y, head[0].x, head[0].y);
+    traceSegment(ctx, arrow[0], arrow[1], arrow[2], arrow[3]);
+    traceSegment(ctx, arrow[2], arrow[3], arrow[4], arrow[5]);
+    traceSegment(ctx, arrow[4], arrow[5], arrow[0], arrow[1]);
     ctx.closePath();
     ctx.stroke();
 }

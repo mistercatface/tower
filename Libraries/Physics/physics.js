@@ -1,5 +1,4 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/math.js";
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY } from "../Math/math.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
@@ -273,11 +272,9 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
     const angle = entityFacing(entity);
     const parts = getEntityCollisionParts(entity);
     if (parts.length > 1) {
-        const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-        const hx = (bounds.maxX - bounds.minX) * 0.5;
-        const hy = (bounds.maxY - bounds.minY) * 0.5;
-        const localCx = (bounds.minX + bounds.maxX) * 0.5;
-        const localCy = (bounds.minY + bounds.maxY) * 0.5;
+        computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, parts);
+        const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
+        const hy = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         slab.bpKind[physId] = BP_KIND_OBB;
@@ -971,11 +968,11 @@ function entityWorldAabbFromShapeF32(buf, o, entity) {
     const angle = entityFacing(entity);
     const parts = getEntityCollisionParts(entity);
     if (parts.length > 1) {
-        const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-        const hx = (bounds.maxX - bounds.minX) * 0.5;
-        const hy = (bounds.maxY - bounds.minY) * 0.5;
-        const localCx = (bounds.minX + bounds.maxX) * 0.5;
-        const localCy = (bounds.minY + bounds.maxY) * 0.5;
+        computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, parts);
+        const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
+        const hy = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
+        const localCx = (ENGINE_F32[P_AABB_A] + ENGINE_F32[P_AABB_A + 2]) * 0.5;
+        const localCy = (ENGINE_F32[P_AABB_A + 1] + ENGINE_F32[P_AABB_A + 3]) * 0.5;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         const cx = x + localCx * cos - localCy * sin;
@@ -1037,8 +1034,8 @@ export function neighborQueryPadForExtent(extent) {
 export function entityCollisionSpan(entity) {
     const parts = getEntityCollisionParts(entity);
     if (parts.length <= 1) return parts[0].getBoundingRadius();
-    const bounds = computeCompoundLocalBounds(parts, { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-    return lengthXY((bounds.maxX - bounds.minX) * 0.5, (bounds.maxY - bounds.minY) * 0.5);
+    computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, parts);
+    return lengthXY((ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5, (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5);
 }
 export function markBroadphaseDirty(entity) {
     entity._broadphaseDirty = true;

@@ -1,9 +1,9 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { LruMap } from "../DataStructures/LruMap.js";
-import { quantizeAngle, quantizeAngleIndex, clamp } from "../Math/math.js";
+import { quantizeAngle, quantizeAngleIndex, ENGINE_F32, M_VEC_A } from "../Math/math.js";
 import { buildRollOrientKey, quantizeRollQuat, resolveBodyRadius } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
+import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
 import propCatalog from "../../Assets/props/index.js";
 export function getCanvasLineScale(ctx) {
@@ -114,7 +114,7 @@ export function resizeOffscreenCanvas(canvas, width, height) {
  * Low-level Canvas2D path tracing — geometry only, no fill/stroke/style.
  * Call inside ctx.beginPath() (or use helpers that call beginPath for you).
  *
- * Compound clips: call traceClosedPolygon / traceAabbRect multiple times on one path, then clip once.
+ * Compound clips: call traceClosedFlatPolygon / traceAabbRect multiple times on one path, then clip once.
  */
 export const TAU = Math.PI * 2;
 /** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius */
@@ -131,37 +131,6 @@ export function traceOpenPolyline(ctx, points) {
     if (points.length < 2) return;
     ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-}
-/**
- * Closed ring from points. Safe to call multiple times on one path for compound clips.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {{ x: number, y: number }[]} points
- */
-export function traceClosedPolygon(ctx, points) {
-    traceClosedPolygonCount(ctx, points, points.length);
-}
-/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points @param {number} count */
-export function traceClosedPolygonCount(ctx, points, count) {
-    if (count < 3) return;
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < count; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.closePath();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {number} ox @param {number} oy @param {{ x: number, y: number }[]} points */
-export function traceClosedPolygonTranslated(ctx, ox, oy, points) {
-    if (points.length < 3) return;
-    ctx.moveTo(ox + points[0].x, oy + points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(ox + points[i].x, oy + points[i].y);
-    ctx.closePath();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }} p0 @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {{ x: number, y: number }} p3 */
-export function traceQuad(ctx, p0, p1, p2, p3) {
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p3.x, p3.y);
-    ctx.closePath();
 }
 export function traceClosedFlatPolygon(ctx, flatVerts, count) {
     if (count < 3) return;
@@ -182,15 +151,6 @@ export function traceWoundFlatQuad(ctx, flatVerts, vertCount) {
     ctx.moveTo(flatVerts[0], flatVerts[1]);
     if (cross >= 0) for (let p = 1; p < vertCount; p++) ctx.lineTo(flatVerts[p * 2], flatVerts[p * 2 + 1]);
     else for (let p = vertCount - 1; p > 0; p--) ctx.lineTo(flatVerts[p * 2], flatVerts[p * 2 + 1]);
-}
-/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {{ x: number, y: number }[] | null | undefined} points @param {number} endX @param {number} endY */
-export function tracePolylineFrom(ctx, x0, y0, points, endX, endY) {
-    ctx.moveTo(x0, y0);
-    if (points?.length) {
-        for (let i = 0; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-        const last = points[points.length - 1];
-        if (Math.hypot(last.x - endX, last.y - endY) > 0.5) ctx.lineTo(endX, endY);
-    } else ctx.lineTo(endX, endY);
 }
 export function traceAabbRect(ctx, minX, minY, maxX, maxY) {
     ctx.rect(minX, minY, maxX - minX, maxY - minY);
@@ -230,32 +190,6 @@ export function strokeOpenPolyline(ctx, points) {
     traceOpenPolyline(ctx, points);
     ctx.stroke();
 }
-/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {{ x: number, y: number }[] | null | undefined} points @param {number} endX @param {number} endY */
-export function strokePolylineFrom(ctx, x0, y0, points, endX, endY) {
-    ctx.beginPath();
-    tracePolylineFrom(ctx, x0, y0, points, endX, endY);
-    ctx.stroke();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
-export function fillClosedPolygon(ctx, points) {
-    ctx.beginPath();
-    traceClosedPolygon(ctx, points);
-    ctx.fill();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
-export function fillStrokeClosedPolygon(ctx, points) {
-    ctx.beginPath();
-    traceClosedPolygon(ctx, points);
-    ctx.fill();
-    ctx.stroke();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {number} ox @param {number} oy @param {{ x: number, y: number }[]} points */
-export function fillStrokeClosedPolygonTranslated(ctx, ox, oy, points) {
-    ctx.beginPath();
-    traceClosedPolygonTranslated(ctx, ox, oy, points);
-    ctx.fill();
-    ctx.stroke();
-}
 /**
  * One path, one clip. `buildPath` traces subpaths on a fresh path; return false to skip clip.
  *
@@ -267,27 +201,6 @@ export function clipToPath(ctx, buildPath) {
     ctx.beginPath();
     if (buildPath(ctx) === false) return false;
     ctx.clip();
-    return true;
-}
-export function clipToAabb(ctx, box) {
-    clipToPath(ctx, (ctx) => {
-        traceAabbRect(ctx, box.minX, box.minY, box.maxX, box.maxY);
-    });
-}
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {(ctx: CanvasRenderingContext2D) => boolean | void} buildPath
- * @param {(ctx: CanvasRenderingContext2D) => void} draw
- * @returns {boolean}
- */
-export function withClip(ctx, buildPath, draw) {
-    ctx.save();
-    if (!clipToPath(ctx, buildPath)) {
-        ctx.restore();
-        return false;
-    }
-    draw(ctx);
-    ctx.restore();
     return true;
 }
 const WALL_TEXTURE_SEAM_BLEED_PX = WORLD_SURFACE_DEFAULTS.wallTextureBleedPx;
@@ -354,13 +267,6 @@ export function drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1
     ctx.drawImage(img, srcMinX, srcMinY, srcW, srcH, srcMinX, srcMinY, srcW, srcH);
     ctx.setTransform(baseA, baseB, baseC, baseD, baseE, baseF);
 }
-export function drawImageTriangleScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y) {
-    const currentTransform = ctx.getTransform();
-    drawImageTriangleWithBaseTransformScalars(ctx, img, s0x, s0y, s1x, s1y, s2x, s2y, d0x, d0y, d1x, d1y, d2x, d2y, currentTransform.a, currentTransform.b, currentTransform.c, currentTransform.d, currentTransform.e, currentTransform.f);
-}
-export function drawImageTriangleFlat(ctx, img, srcFlat, dstFlat, i0, i1, i2) {
-    drawImageTriangleScalars(ctx, img, srcFlat[i0 * 2], srcFlat[i0 * 2 + 1], srcFlat[i1 * 2], srcFlat[i1 * 2 + 1], srcFlat[i2 * 2], srcFlat[i2 * 2 + 1], dstFlat[i0 * 2], dstFlat[i0 * 2 + 1], dstFlat[i1 * 2], dstFlat[i1 * 2 + 1], dstFlat[i2 * 2], dstFlat[i2 * 2 + 1]);
-}
 export function drawImageTriangleFlatWithBaseTransform(ctx, img, srcFlat, dstFlat, i0, i1, i2, baseA, baseB, baseC, baseD, baseE, baseF) {
     drawImageTriangleWithBaseTransformScalars(ctx, img, srcFlat[i0 * 2], srcFlat[i0 * 2 + 1], srcFlat[i1 * 2], srcFlat[i1 * 2 + 1], srcFlat[i2 * 2], srcFlat[i2 * 2 + 1], dstFlat[i0 * 2], dstFlat[i0 * 2 + 1], dstFlat[i1 * 2], dstFlat[i1 * 2 + 1], dstFlat[i2 * 2], dstFlat[i2 * 2 + 1], baseA, baseB, baseC, baseD, baseE, baseF);
 }
@@ -378,10 +284,6 @@ export function drawImageQuadWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, s
     }
     drawImageTriangleWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy0, sx1, sy1, d0x, d0y, d1x, d1y, d2x, d2y, baseA, baseB, baseC, baseD, baseE, baseF);
     drawImageTriangleWithBaseTransformScalars(ctx, img, sx0, sy0, sx1, sy1, sx0, sy1, d0x, d0y, d2x, d2y, d3x, d3y, baseA, baseB, baseC, baseD, baseE, baseF);
-}
-export function drawImageQuadFromFlatRings(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count) {
-    const currentTransform = ctx.getTransform();
-    drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count, currentTransform.a, currentTransform.b, currentTransform.c, currentTransform.d, currentTransform.e, currentTransform.f);
 }
 export function drawImageQuadFromFlatRingsWithBaseTransform(ctx, img, sx0, sy0, sx1, sy1, baseRing, topRing, edgeIndex, count, baseA, baseB, baseC, baseD, baseE, baseF) {
     const ai = edgeIndex * 2;
@@ -735,8 +637,8 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
         const qDx = quantizedViewAxisOffset(dx, viewStep);
         const qDy = quantizedViewAxisOffset(dy, viewStep);
         const parentFacing = quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing);
-        const footprint = propFootprintHalfExtents(prop);
-        const baseR = Math.max(resolveBodyRadius(prop), footprint.x, footprint.y);
+        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        const baseR = Math.max(resolveBodyRadius(prop), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         const stageR = Math.max(baseR, resolveVisualAttachmentBakeRadius(prop, parentFacing));
         const worldDiameter = stageR * 2;
         const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);
@@ -878,91 +780,6 @@ export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animF
     const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
-}
-export class ProgressBar {
-    constructor(config = {}) {
-        this.width = config.width || 20;
-        this.height = config.height || 4;
-        this.borderRadius = config.borderRadius !== undefined ? config.borderRadius : 2;
-        this.quantizationSteps = config.quantizationSteps || 20;
-        this.bgColor = config.bgColor || "rgba(21, 21, 28, 0.75)";
-        this.borderColor = config.borderColor || "rgba(255, 255, 255, 0.15)";
-        this.colorFn =
-            config.colorFn ||
-            ((ratio) => {
-                if (ratio > 0.5) return "#00E676";
-                if (ratio > 0.2) return "#FFEB3B";
-                return "#FF1744";
-            });
-    }
-    render(ctx, x, y, ratio, cache = null) {
-        const clampedRatio = clamp(ratio, 0, 1);
-        const quantizedRatio = Math.round(clampedRatio * this.quantizationSteps) / this.quantizationSteps;
-        if (!cache) {
-            // Draw un-cached fallback if no sprite cache is provided
-            const fillW = Math.max(0, Math.round(this.width * quantizedRatio));
-            ctx.save();
-            ctx.translate(x - this.width / 2, y - this.height / 2);
-            ctx.fillStyle = this.bgColor;
-            ctx.strokeStyle = this.borderColor;
-            ctx.lineWidth = 1;
-            this._drawRoundRect(ctx, 0, 0, this.width, this.height, this.borderRadius);
-            ctx.fill();
-            ctx.stroke();
-            if (quantizedRatio > 0) {
-                ctx.fillStyle = this.colorFn(quantizedRatio);
-                ctx.beginPath();
-                this._drawRoundRect(ctx, 0, 0, this.width, this.height, this.borderRadius);
-                ctx.clip();
-                ctx.beginPath();
-                ctx.rect(0, 0, fillW, this.height);
-                ctx.fill();
-            }
-            ctx.restore();
-            return;
-        }
-        const cacheKey = `pb_${this.width}_${this.height}_${quantizedRatio.toFixed(2)}`;
-        const cachedSprite = cache.get(cacheKey, () => {
-            const canvasSizeW = this.width + 2;
-            const canvasSizeH = this.height + 2;
-            const offCanvas = createOffscreenCanvas(canvasSizeW, canvasSizeH);
-            const offCtx = offCanvas.getContext("2d");
-            offCtx.fillStyle = this.bgColor;
-            offCtx.strokeStyle = this.borderColor;
-            offCtx.lineWidth = 1;
-            this._drawRoundRect(offCtx, 1, 1, this.width, this.height, this.borderRadius);
-            offCtx.fill();
-            offCtx.stroke();
-            if (quantizedRatio > 0) {
-                const fillW = Math.max(1, Math.round(this.width * quantizedRatio));
-                offCtx.fillStyle = this.colorFn(quantizedRatio);
-                offCtx.save();
-                offCtx.beginPath();
-                this._drawRoundRect(offCtx, 1, 1, this.width, this.height, this.borderRadius);
-                offCtx.clip();
-                offCtx.beginPath();
-                offCtx.rect(1, 1, fillW, this.height);
-                offCtx.fill();
-                offCtx.restore();
-            }
-            return offCanvas;
-        });
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.drawImage(cachedSprite, -cachedSprite.width / 2, -cachedSprite.height / 2);
-        ctx.restore();
-    }
-    _drawRoundRect(ctx, x, y, w, h, r) {
-        if (w < 2 * r) r = w / 2;
-        if (h < 2 * r) r = h / 2;
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.arcTo(x + w, y, x + w, y + h, r);
-        ctx.arcTo(x + w, y + h, x, y + h, r);
-        ctx.arcTo(x, y + h, x, y, r);
-        ctx.arcTo(x, y, x + w, y, r);
-        ctx.closePath();
-    }
 }
 /**
  * Post-bake draw transforms (alpha, clip, scale, position).

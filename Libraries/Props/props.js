@@ -150,14 +150,19 @@ export function initWorldPropShape(prop) {
     prop.radius = prop.strategy.radius ?? 0;
     prop.shape = new CircleShape(prop.radius);
 }
-export function propFootprintHalfExtents(prop) {
+export function propFootprintHalfExtentsInto(buf, o, prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") {
-        convexFootprintHalfExtents(ENGINE_F32, M_VEC_A, shape.vertices);
-        return { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] };
+        convexFootprintHalfExtents(buf, o, shape.vertices);
+        return;
     }
     const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? prop.strategy?.radius ?? 0);
-    return { x: radius, y: radius };
+    buf[o] = radius;
+    buf[o + 1] = radius;
+}
+export function propFootprintHalfExtents(prop) {
+    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+    return { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] };
 }
 function propShapeFootprintKey(prop) {
     const shape = prop.shape;
@@ -180,8 +185,8 @@ function propShapeFootprintKey(prop) {
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
 function deriveFacingStepsFromFootprint(prop, baselineSteps) {
-    const { x: hx, y: hy } = propFootprintHalfExtents(prop);
-    const worldDiameter = Math.max(hx, hy) * 2;
+    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+    const worldDiameter = Math.max(ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]) * 2;
     if (worldDiameter <= FACING_STEPS_BASELINE_DIAMETER) return baselineSteps;
     const scaled = Math.round((baselineSteps * worldDiameter * 6) / FACING_STEPS_BASELINE_DIAMETER);
     return Math.min(FACING_STEPS_MAX, scaled);
@@ -461,8 +466,8 @@ function scaleVirtualPropShape(prop, scale) {
 function resolveVirtualPropScale(parentProp, childProp, cfg) {
     const baseScale = normalizeAttachmentScale(cfg.scale);
     if (!Number.isFinite(cfg.radiusScale) || cfg.radiusScale <= 0) return baseScale;
-    const footprint = propFootprintHalfExtents(childProp);
-    const childRadius = Math.max(resolveBodyRadius(childProp), footprint.x, footprint.y);
+    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, childProp);
+    const childRadius = Math.max(resolveBodyRadius(childProp), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
     if (childRadius <= 0) return baseScale;
     return baseScale * ((resolveBodyRadius(parentProp) * cfg.radiusScale) / childRadius);
 }
@@ -532,8 +537,8 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
         const heading = cfg.heading === "velocity" ? resolveQuantizedAttachmentHeading(prop, cfg) : parentFacing;
         const child = createVirtualAttachmentProp({ ...prop, x: 0, y: 0, facing: parentFacing }, cfg, heading);
         if (!child) continue;
-        const extents = propFootprintHalfExtents(child);
-        const childRadius = Math.max(resolveBodyRadius(child), extents.x, extents.y);
+        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, child);
+        const childRadius = Math.max(resolveBodyRadius(child), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         radius = Math.max(radius, Math.hypot(child.x, child.y) + childRadius);
     }
     return radius;
