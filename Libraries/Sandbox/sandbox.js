@@ -16,7 +16,6 @@ import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
-import { markLabViewDirty } from "../../Apps/Editor/ui/preview.js";
 import propCatalog from "../../Assets/props/index.js";
 import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, buildDragLaunchBehavior, assetSupportsDragLaunch, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
@@ -94,7 +93,11 @@ export class SandboxWorldState {
         this.behaviorById = null;
         this.floorBeltDrawCache = null;
         this.dragInteractionMode = DEFAULT_DRAG_INTERACTION_MODE;
+        this.onVisualDirty = null;
     }
+}
+function notifySandboxVisualDirty(state) {
+    state.sandbox.onVisualDirty?.();
 }
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
@@ -2387,22 +2390,6 @@ export function createSandboxGroundNavContextMenu(state, session, { behaviorById
         },
     };
 }
-export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, selectPropIds }) {
-    return createMarqueeSelectTool({
-        getCanvas,
-        canBegin: (e) => e.shiftKey,
-        buildAabbFromDrag: (startWorld, endWorld) => aabbFromTwoPointsInto(aabbScratch, startWorld.x, startWorld.y, endWorld.x, endWorld.y),
-        onClick(world, e) {
-            if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode()) session.spawnAt(world.x, world.y);
-            else session.clearSelection();
-        },
-        onBoxSelect(bounds) {
-            const filter = session.getSelectionTagFilter();
-            const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
-            selectPropIds(props.map((prop) => prop.id));
-        },
-    });
-}
 export function createSandboxPrimaryPointerTools(state, session, { blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
     const behaviors = state.sandbox.behaviorById ? [...state.sandbox.behaviorById.values()] : [];
     let lastClickTime = 0;
@@ -2557,8 +2544,14 @@ function brightnessToPercent(brightness) {
 function percentToBrightness(percent) {
     return percent / 100;
 }
-export function appendCoatFields(body, { tint, brightness, onTintChange, onBrightnessChange }) {
-    appendColorField(body, "Tint", { value: tint, onChange: onTintChange });
+function appendCoatFields(body, state, { tint, brightness, onTintChange, onBrightnessChange }) {
+    appendColorField(body, "Tint", {
+        value: tint,
+        onChange: (hex) => {
+            onTintChange(hex);
+            notifySandboxVisualDirty(state);
+        },
+    });
     appendNumberField(body, "Brightness %", {
         value: brightnessToPercent(brightness),
         step: 5,
@@ -2566,47 +2559,25 @@ export function appendCoatFields(body, { tint, brightness, onTintChange, onBrigh
         max: 200,
         onChange: (percent) => {
             onBrightnessChange(percentToBrightness(percent));
-            markLabViewDirty();
+            notifySandboxVisualDirty(state);
         },
     });
 }
-function spawnShapeCoatAccessors(session, spawnAsset) {
-    return {
-        tint: session.getSpawnVisualOverrideTint(spawnAsset),
-        brightness: session.getSpawnVisualOverrideBrightness(),
-        onTintChange: (hex) => {
-            session.setSpawnVisualOverrideTint(hex);
-            markLabViewDirty();
-        },
-        onBrightnessChange: (brightness) => {
-            session.setSpawnVisualOverrideBrightness(brightness);
-            markLabViewDirty();
-        },
-    };
+function spawnShapeCoatAccessors(state, session, spawnAsset) {
+    return { tint: session.getSpawnVisualOverrideTint(spawnAsset), brightness: session.getSpawnVisualOverrideBrightness(), onTintChange: (hex) => session.setSpawnVisualOverrideTint(hex), onBrightnessChange: (brightness) => session.setSpawnVisualOverrideBrightness(brightness) };
 }
-function selectedShapeCoatAccessors(selectedProp, asset) {
-    return {
-        tint: resolvePickerHex(selectedProp, asset),
-        brightness: getPropVisualBrightness(selectedProp),
-        onTintChange: (hex) => {
-            setPropVisualTint(selectedProp, hex);
-            markLabViewDirty();
-        },
-        onBrightnessChange: (brightness) => {
-            setPropVisualBrightness(selectedProp, brightness);
-            markLabViewDirty();
-        },
-    };
+function selectedShapeCoatAccessors(state, selectedProp, asset) {
+    return { tint: resolvePickerHex(selectedProp, asset), brightness: getPropVisualBrightness(selectedProp), onTintChange: (hex) => setPropVisualTint(selectedProp, hex), onBrightnessChange: (brightness) => setPropVisualBrightness(selectedProp, brightness) };
 }
-function appendShapeFamilyCoatBlock(body, coatAccessors, resetProp = null) {
-    appendCoatFields(body, coatAccessors);
+function appendShapeFamilyCoatBlock(body, state, coatAccessors, resetProp = null) {
+    appendCoatFields(body, state, coatAccessors);
     if (resetProp)
         appendActionRow(body, [
             {
                 label: "Reset coat",
                 onClick: () => {
                     clearPropVisualOverride(resetProp);
-                    markLabViewDirty();
+                    notifySandboxVisualDirty(state);
                 },
             },
         ]);
@@ -2622,91 +2593,91 @@ function appendCrossPinwheelDimensionFields(body, length, thickness, onLengthCha
     appendNumberField(body, "Cross length", { value: length, step: 2, min: 8, max: 128, onChange: onLengthChange });
     appendNumberField(body, "Cross thickness", { value: thickness, step: 1, min: 2, max: 64, onChange: onThicknessChange });
 }
-export function appendBallSpawnFields(body, controller, spawnAsset) {
-    const session = controller.session;
-    appendShapeFamilyRadiusField(body, session.getSpawnBallRadius(spawnAsset), (radius) => session.setSpawnBallRadius(radius));
-    appendShapeFamilyCoatBlock(body, spawnShapeCoatAccessors(session, spawnAsset));
-}
-export function appendBlockSpawnFields(body, controller, spawnAsset) {
-    const session = controller.session;
-    if (blockPresetUsesResizableFootprint(spawnAsset.id))
-        appendShapeFamilyBoxFields(
-            body,
-            session.getSpawnBoxWidth(),
-            session.getSpawnBoxHeight(),
-            (width) => session.setSpawnBoxWidth(width),
-            (height) => session.setSpawnBoxHeight(height),
-        );
-    appendShapeFamilyCoatBlock(body, spawnShapeCoatAccessors(session, spawnAsset));
-}
-export function appendCrossPinwheelSpawnFields(body, controller) {
-    const session = controller.session;
-    appendCrossPinwheelDimensionFields(
-        body,
-        session.getSpawnCrossLength(),
-        session.getSpawnCrossThickness(),
-        (val) => session.setSpawnCrossLength(val),
-        (val) => session.setSpawnCrossThickness(val),
-    );
-}
-export function appendShapeFamilySpawnFields(body, controller, spawnId) {
-    const spawnAsset = propCatalog[spawnId];
-    if (spawnId === "cross_pinwheel") appendCrossPinwheelSpawnFields(body, controller);
-    else if (isBallFamilyAsset(spawnAsset)) appendBallSpawnFields(body, controller, spawnAsset);
-    else if (isBlockFamilyAsset(spawnAsset)) appendBlockSpawnFields(body, controller, spawnAsset);
-}
-export function appendBallSelectedFields(body, selectedProp, asset) {
-    appendShapeFamilyRadiusField(body, getCirclePropRadius(selectedProp) ?? ballRadiusFromAsset(asset), (radius) => {
-        setCirclePropRadius(selectedProp, radius);
-        markLabViewDirty();
-    });
-    appendShapeFamilyCoatBlock(body, selectedShapeCoatAccessors(selectedProp, asset), selectedProp);
-}
-export function appendBlockSelectedFields(body, selectedProp, asset) {
-    if (blockPresetUsesResizableFootprint(asset.id)) {
-        const span = propFootprintHalfExtents(selectedProp);
-        appendShapeFamilyBoxFields(
-            body,
-            Math.round(span.x * 2),
-            Math.round(span.y * 2),
-            (width) => {
-                const next = propFootprintHalfExtents(selectedProp);
-                applyPropBoxFootprint(selectedProp, width / 2, next.y);
-                markLabViewDirty();
-            },
-            (height) => {
-                const next = propFootprintHalfExtents(selectedProp);
-                applyPropBoxFootprint(selectedProp, next.x, height / 2);
-                markLabViewDirty();
-            },
-        );
+function appendShapeFamilyFields(body, state, spec) {
+    const { mode, controller, spawnId, selectedProp } = spec;
+    if (mode === "spawn") {
+        const session = controller.session;
+        const spawnAsset = propCatalog[spawnId];
+        if (spawnId === "cross_pinwheel") {
+            appendCrossPinwheelDimensionFields(
+                body,
+                session.getSpawnCrossLength(),
+                session.getSpawnCrossThickness(),
+                (val) => session.setSpawnCrossLength(val),
+                (val) => session.setSpawnCrossThickness(val),
+            );
+            return;
+        }
+        if (isBallFamilyAsset(spawnAsset)) {
+            appendShapeFamilyRadiusField(body, session.getSpawnBallRadius(spawnAsset), (radius) => session.setSpawnBallRadius(radius));
+            appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
+            return;
+        }
+        if (isBlockFamilyAsset(spawnAsset)) {
+            if (blockPresetUsesResizableFootprint(spawnAsset.id))
+                appendShapeFamilyBoxFields(
+                    body,
+                    session.getSpawnBoxWidth(),
+                    session.getSpawnBoxHeight(),
+                    (width) => session.setSpawnBoxWidth(width),
+                    (height) => session.setSpawnBoxHeight(height),
+                );
+            appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
+        }
+        return;
     }
-    appendShapeFamilyCoatBlock(body, selectedShapeCoatAccessors(selectedProp, asset), selectedProp);
-}
-export function appendCrossPinwheelSelectedFields(body, selectedProp, asset) {
-    const length = selectedProp.crossLength ?? 32;
-    const thickness = selectedProp.crossThickness ?? 8;
-    appendCrossPinwheelDimensionFields(
-        body,
-        length,
-        thickness,
-        (val) => {
-            applyCrossPinwheelFootprint(selectedProp, val, selectedProp.crossThickness ?? 8);
-            markLabViewDirty();
-        },
-        (val) => {
-            applyCrossPinwheelFootprint(selectedProp, selectedProp.crossLength ?? 32, val);
-            markLabViewDirty();
-        },
-    );
-    appendShapeFamilyCoatBlock(body, selectedShapeCoatAccessors(selectedProp, asset), selectedProp);
-}
-export function appendShapeFamilySelectedFields(body, selectedProp) {
     if (!selectedProp) return;
     const asset = propCatalog[selectedProp.type];
-    if (selectedProp.type === "cross_pinwheel") appendCrossPinwheelSelectedFields(body, selectedProp, asset);
-    else if (isBallFamilyAsset(asset)) appendBallSelectedFields(body, selectedProp, asset);
-    else if (isBlockFamilyAsset(asset)) appendBlockSelectedFields(body, selectedProp, asset);
+    const dirty = () => notifySandboxVisualDirty(state);
+    if (selectedProp.type === "cross_pinwheel") {
+        appendCrossPinwheelDimensionFields(
+            body,
+            selectedProp.crossLength ?? 32,
+            selectedProp.crossThickness ?? 8,
+            (val) => {
+                applyCrossPinwheelFootprint(selectedProp, val, selectedProp.crossThickness ?? 8);
+                dirty();
+            },
+            (val) => {
+                applyCrossPinwheelFootprint(selectedProp, selectedProp.crossLength ?? 32, val);
+                dirty();
+            },
+        );
+        appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
+        return;
+    }
+    if (isBallFamilyAsset(asset)) {
+        appendShapeFamilyRadiusField(body, getCirclePropRadius(selectedProp) ?? ballRadiusFromAsset(asset), (radius) => {
+            setCirclePropRadius(selectedProp, radius);
+            dirty();
+        });
+        appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
+        return;
+    }
+    if (isBlockFamilyAsset(asset)) {
+        if (blockPresetUsesResizableFootprint(asset.id)) {
+            const span = propFootprintHalfExtents(selectedProp);
+            appendShapeFamilyBoxFields(
+                body,
+                Math.round(span.x * 2),
+                Math.round(span.y * 2),
+                (width) => {
+                    const next = propFootprintHalfExtents(selectedProp);
+                    applyPropBoxFootprint(selectedProp, width / 2, next.y);
+                    dirty();
+                },
+                (height) => {
+                    const next = propFootprintHalfExtents(selectedProp);
+                    applyPropBoxFootprint(selectedProp, next.x, height / 2);
+                    dirty();
+                },
+            );
+        }
+        appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
+    }
+}
+export function appendShapeFamilySelectedFields(body, state, selectedProp) {
+    appendShapeFamilyFields(body, state, { mode: "selected", selectedProp });
 }
 function applyWorldPropFacing(prop, degrees) {
     prop.facing = (degrees * Math.PI) / 180;
@@ -2731,37 +2702,34 @@ function appendSandboxWorldPropInspectorFields(body, prop, { state, onChange }) 
 function maxWallHeightLevel(state) {
     return state.worldSurfaces.settings.maxWallHeightLevel;
 }
+function appendWallHeightSlider(body, state, value, onChange) {
+    body.appendChild(new SliderControl("Height", 1, maxWallHeightLevel(state), 1, value, onChange).element);
+}
+function appendRailThicknessSlider(body, value, onChange) {
+    body.appendChild(new SliderControl("Thickness", 1, 8, 1, value, onChange).element);
+}
 export function appendWallPlaceParams(body, state, controller, { wallStampMode, inspector }) {
     const session = controller.session;
     const selectedVoxelInfo = inspector?.kind === "voxel" ? inspector.data : null;
     const selectedRailInfo = inspector?.kind === "rail" ? inspector.data : null;
     appendEditorHint(body, "Click the map to place or select walls. Right-click to delete under the cursor.");
     appendActionRow(body, [{ label: "Add at camera", onClick: () => session.stampWallAtCameraOrigin() }]);
-    const maxHeight = maxWallHeightLevel(state);
-    body.appendChild(
-        new SliderControl("Height", 1, maxHeight, 1, session.getWallHeightLevel(), (val) => {
-            session.setWallHeightLevel(val);
-            if (selectedVoxelInfo) session.setSelectedVoxelWallHeight(val);
-            else if (selectedRailInfo) session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
-        }).element,
-    );
+    appendWallHeightSlider(body, state, session.getWallHeightLevel(), (val) => {
+        session.setWallHeightLevel(val);
+        if (selectedVoxelInfo) session.setSelectedVoxelWallHeight(val);
+        else if (selectedRailInfo) session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
+    });
     if (wallStampMode === "rail")
-        body.appendChild(
-            new SliderControl("Thickness", 1, 8, 1, session.getRailThicknessLevel(), (val) => {
-                session.setRailThicknessLevel(val);
-                if (selectedRailInfo) session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
-            }).element,
-        );
+        appendRailThicknessSlider(body, session.getRailThicknessLevel(), (val) => {
+            session.setRailThicknessLevel(val);
+            if (selectedRailInfo) session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
+        });
 }
 export function appendWallSelectedInspector(body, state, controller, { voxel: selectedVoxelInfo, rail: selectedRailInfo } = {}) {
     const session = controller.session;
     if (selectedVoxelInfo) {
         appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
-        body.appendChild(
-            new SliderControl("Height", 1, maxWallHeightLevel(state), 1, selectedVoxelInfo.heightLevel, (val) => {
-                session.setSelectedVoxelWallHeight(val);
-            }).element,
-        );
+        appendWallHeightSlider(body, state, selectedVoxelInfo.heightLevel, (val) => session.setSelectedVoxelWallHeight(val));
         appendActionRow(body, [{ label: "Delete voxel", onClick: () => session.deleteSelectedWall() }]);
         return true;
     }
@@ -2774,16 +2742,8 @@ export function appendWallSelectedInspector(body, state, controller, { voxel: se
                 session.setSelectedRailWallSide(Number(value));
             },
         });
-        body.appendChild(
-            new SliderControl("Height", 1, maxWallHeightLevel(state), 1, selectedRailInfo.heightLevel, (val) => {
-                session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
-            }).element,
-        );
-        body.appendChild(
-            new SliderControl("Thickness", 1, 8, 1, selectedRailInfo.thicknessLevel, (val) => {
-                session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
-            }).element,
-        );
+        appendWallHeightSlider(body, state, selectedRailInfo.heightLevel, (val) => session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel));
+        appendRailThicknessSlider(body, selectedRailInfo.thicknessLevel, (val) => session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val));
         appendActionRow(body, [{ label: "Delete rail", onClick: () => session.deleteSelectedWall() }]);
         return true;
     }
@@ -2945,7 +2905,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
-    if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isBlockFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
+    if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isBlockFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, state, selectedProp);
     if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
     const selectedAsset = propCatalog[selectedProp.type];
     if (isSpawnerProp(selectedAsset)) {
@@ -3044,7 +3004,7 @@ function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAdd
     }
     body.appendChild(addRow);
 }
-export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
+export function appendPropPlaceParams(body, state, controller, spawnId, refreshPanel) {
     const session = controller.session;
     const spawnAsset = propCatalog[spawnId];
     if (spawnId === "snake") {
@@ -3066,19 +3026,8 @@ export function appendPropPlaceParams(body, controller, spawnId, refreshPanel) {
                 session.setSpawnBallRadius(Math.max(1, Math.min(4, radius)));
             },
         });
-        appendCoatFields(body, {
-            tint: session.getSpawnVisualOverrideTint(spawnAsset),
-            brightness: session.getSpawnVisualOverrideBrightness(),
-            onTintChange: (hex) => {
-                session.setSpawnVisualOverrideTint(hex);
-                markLabViewDirty();
-            },
-            onBrightnessChange: (brightness) => {
-                session.setSpawnVisualOverrideBrightness(brightness);
-                markLabViewDirty();
-            },
-        });
-    } else if (isBallFamilyAsset(spawnAsset) || isBlockFamilyAsset(spawnAsset)) appendShapeFamilySpawnFields(body, controller, spawnId);
+        appendCoatFields(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
+    } else if (isBallFamilyAsset(spawnAsset) || isBlockFamilyAsset(spawnAsset)) appendShapeFamilyFields(body, state, { mode: "spawn", controller, spawnId });
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }
 export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {
@@ -3160,7 +3109,20 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
     const deletePointerTool = createSandboxDeletePointerTool(state, session);
     const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, { blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected });
-    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, selectPropIds });
+    const marqueeTool = createMarqueeSelectTool({
+        getCanvas,
+        canBegin: (e) => e.shiftKey,
+        buildAabbFromDrag: (startWorld, endWorld) => aabbFromTwoPointsInto(MARQUEE_AABB, startWorld.x, startWorld.y, endWorld.x, endWorld.y),
+        onClick(world, e) {
+            if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode()) session.spawnAt(world.x, world.y);
+            else session.clearSelection();
+        },
+        onBoxSelect(bounds) {
+            const filter = session.getSelectionTagFilter();
+            const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
+            selectPropIds(props.map((prop) => prop.id));
+        },
+    });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
     const resetBehaviors = () => {
         for (const behavior of behaviors) behavior.reset?.();

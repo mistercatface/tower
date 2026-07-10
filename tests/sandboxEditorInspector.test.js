@@ -40,7 +40,7 @@ describe("sandbox editor inspector wiring", () => {
         const state = createEditorTestState();
         const prop = spawnBall(state);
         const body = mockPanelBody();
-        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, prop));
+        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
         assert.ok(body.children.length > 0);
     });
 
@@ -48,7 +48,7 @@ describe("sandbox editor inspector wiring", () => {
         const state = createEditorTestState();
         const prop = spawnPlacedSandboxProp(state, 80, 80, "crate", "alpha");
         const body = mockPanelBody();
-        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, prop));
+        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
         assert.ok(body.children.length > 0);
     });
 
@@ -56,7 +56,7 @@ describe("sandbox editor inspector wiring", () => {
         const state = createEditorTestState();
         const prop = spawnPlacedSandboxProp(state, 96, 96, "custom_box", "alpha", 0, { x: 12, y: 16 });
         const body = mockPanelBody();
-        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, prop));
+        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
         assert.ok(body.children.length > 0);
     });
 

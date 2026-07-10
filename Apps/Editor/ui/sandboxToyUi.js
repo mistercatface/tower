@@ -1,19 +1,8 @@
 import { formatSandboxSpawnLabel } from "../../../Libraries/Props/props.js";
-import {
-    isSandboxSpawnable,
-    sandboxTagsMatchFilter,
-    orderSandboxPalettePropIds,
-    appendSelectionInspector,
-    appendWallPlaceParams,
-    appendPropPlaceParams,
-    appendSandboxSelectionPanel,
-    buildPlacePaletteItems,
-    appendSandboxTagFilters,
-    appendSpawnPaletteGrid,
-} from "../../../Libraries/Sandbox/sandbox.js";
+import { isSandboxSpawnable, sandboxTagsMatchFilter, orderSandboxPalettePropIds, appendSelectionInspector, appendWallPlaceParams, appendPropPlaceParams, appendSandboxSelectionPanel, buildPlacePaletteItems, appendSandboxTagFilters, appendSpawnPaletteGrid } from "../../../Libraries/Sandbox/sandbox.js";
 import { appendEditorHint, appendInstanceList } from "../../../Libraries/UI/paramFields.js";
 import { appendMapGenEditor } from "./mapGenEditors.js";
-import { wrapLabUiSync } from "./preview.js";
+import { markLabViewDirty, wrapLabUiSync } from "./preview.js";
 import propCatalog from "../../../Assets/props/index.js";
 function appendPinnedSection(parent, id, title, build, headExtra = null) {
     const block = document.createElement("div");
@@ -36,6 +25,7 @@ function clearElement(el) {
     el.replaceChildren();
 }
 export function mountSandboxToyUi(container, state, controller) {
+    state.sandbox.onVisualDirty = markLabViewDirty;
     const session = controller.session;
     let paletteTagFilter = "all";
     const propIds = orderSandboxPalettePropIds(Object.keys(propCatalog).filter((id) => isSandboxSpawnable(propCatalog[id])));
@@ -145,9 +135,8 @@ export function mountSandboxToyUi(container, state, controller) {
         sections.spawnBody.appendChild(paramsHost);
         if (inspector) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
         else if (!activeItem) appendEditorHint(paramsHost, "Pick from Props above to place on the map.");
-        else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, controller, activeItem.key.slice(5), refreshPanel);
-        else if (activeItem.kind === "wall")
-            appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: inspector?.kind === "voxel" || inspector?.kind === "rail" ? inspector : null });
+        else if (activeItem.kind === "prop") appendPropPlaceParams(paramsHost, state, controller, activeItem.key.slice(5), refreshPanel);
+        else if (activeItem.kind === "wall") appendWallPlaceParams(paramsHost, state, controller, { wallStampMode, inspector: inspector?.kind === "voxel" || inspector?.kind === "rail" ? inspector : null });
         else appendMapGenEditor(paramsHost, state, activeItem.genKind, refreshPanel);
         refreshSelectionHead();
         clearElement(sections.selectionBody);
@@ -158,15 +147,14 @@ export function mountSandboxToyUi(container, state, controller) {
         clearElement(sections.sceneBody);
         appendInstanceList(
             sections.sceneBody,
-            session
-                .listPlacedSceneItems()
-                .map((item) => ({ label: item.label, selected: session.isSceneItemSelected(item), onSelect: () => controller.selectSceneItem(item), onDelete: () => session.deleteSceneItem(item) })),
+            session.listPlacedSceneItems().map((item) => ({ label: item.label, selected: session.isSceneItemSelected(item), onSelect: () => controller.selectSceneItem(item), onDelete: () => session.deleteSceneItem(item) })),
             "Nothing placed yet.",
         );
     }
     controller.setUiSync(wrapLabUiSync(refreshPanel));
     refreshPanel();
     return () => {
+        state.sandbox.onVisualDirty = null;
         controller.setUiSync(null);
         container.replaceChildren();
         sections.paletteBody = null;
