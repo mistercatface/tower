@@ -28,6 +28,8 @@ export const M_OUT_REFLECT_DY = ENGINE_MATH_BASE + 25;
 export const M_OUT_RECT = ENGINE_MATH_BASE + 26;
 export const S_OUT_XY = ENGINE_SPATIAL_BASE;
 export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
+export const S_AABB = ENGINE_SPATIAL_BASE + 4;
+export const S_QUAD = ENGINE_SPATIAL_BASE + 8;
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -604,6 +606,20 @@ export function minCornerAabbInto(out, minX, minY, width, height) {
     out.minY = minY;
     out.maxX = minX + width;
     out.maxY = minY + height;
+    return out;
+}
+/** Writes minX,minY,maxX,maxY at buf[o..o+3]. */
+export function minCornerAabbF32(buf, o, minX, minY, width, height) {
+    buf[o] = minX;
+    buf[o + 1] = minY;
+    buf[o + 2] = minX + width;
+    buf[o + 3] = minY + height;
+}
+export function aabbFromF32(buf, o, out) {
+    out.minX = buf[o];
+    out.minY = buf[o + 1];
+    out.maxX = buf[o + 2];
+    out.maxY = buf[o + 3];
     return out;
 }
 export function minCornerAabb(minX, minY, width, height) {

@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -356,8 +356,8 @@ export function cellBoundsFromStampLayout(layout) {
 export function wrapChunkKey(chunkKey, period) {
     return packChunkKey(((chunkKeyAxis0(chunkKey) % period) + period) % period, ((chunkKeyAxis1(chunkKey) % period) + period) % period);
 }
-export function chunkKeyBoundsInto(out, gridMinX, gridMinY, chunkKey, chunkSizePx) {
-    return minCornerAabbInto(out, gridMinX + chunkKeyAxis0(chunkKey) * chunkSizePx, gridMinY + chunkKeyAxis1(chunkKey) * chunkSizePx, chunkSizePx, chunkSizePx);
+export function chunkKeyBounds(buf, o, gridMinX, gridMinY, chunkKey, chunkSizePx) {
+    minCornerAabbF32(buf, o, gridMinX + chunkKeyAxis0(chunkKey) * chunkSizePx, gridMinY + chunkKeyAxis1(chunkKey) * chunkSizePx, chunkSizePx, chunkSizePx);
 }
 export function worldToChunkKey(worldX, worldY, gridMinX, gridMinY, chunkSizePx) {
     return packChunkKey(Math.floor((worldX - gridMinX) / chunkSizePx), Math.floor((worldY - gridMinY) / chunkSizePx));
@@ -390,12 +390,12 @@ export function gridCenterXInCenteredFrame(frame, col) {
 export function gridCenterYInCenteredFrame(frame, row) {
     return row * frame.cellSize + frame.centerY - frame.offsetY + frame.cellSize * 0.5;
 }
-export function getCellBoundsInCenteredFrameInto(out, frame, idx) {
+export function getCellBoundsInCenteredFrame(buf, o, frame, idx) {
     const col = idxCol(idx, frame.cols);
     const row = idxRow(idx, frame.cols);
     const minX = col * frame.cellSize + frame.centerX - frame.offsetX;
     const minY = row * frame.cellSize + frame.centerY - frame.offsetY;
-    return minCornerAabbInto(out, minX, minY, frame.cellSize, frame.cellSize);
+    minCornerAabbF32(buf, o, minX, minY, frame.cellSize, frame.cellSize);
 }
 /** @param {import("../../Math/Aabb2D.js").Aabb2D} out */
 function cellBoundsAtOriginIdxInto(out, grid, idx) {
@@ -431,7 +431,7 @@ export function resolveElevationAlpha(height, viewport) {
     if (height <= 0 || cameraHeight <= height) return 0;
     return (height / (cameraHeight - height)) * perspectiveStrength;
 }
-export function projectWorldPointInto(buf, offset, worldX, worldY, height, viewport) {
+export function projectWorldPoint(buf, offset, worldX, worldY, height, viewport) {
     const alpha = resolveElevationAlpha(height, viewport);
     if (alpha <= 0) {
         buf[offset] = worldX;
@@ -442,27 +442,25 @@ export function projectWorldPointInto(buf, offset, worldX, worldY, height, viewp
     }
 }
 export function projectWorldPointAtHeight(worldX, worldY, height, viewport) {
-    projectWorldPointInto(ENGINE_F32, S_OUT_XY, worldX, worldY, height, viewport);
+    projectWorldPoint(ENGINE_F32, S_OUT_XY, worldX, worldY, height, viewport);
     return { x: ENGINE_F32[S_OUT_XY], y: ENGINE_F32[S_OUT_XY + 1] };
 }
-export function projectWorldPointToScreenInto(buf, offset, viewport, worldX, worldY, height) {
-    projectWorldPointInto(buf, offset, worldX, worldY, height, viewport);
+export function projectWorldPointToScreen(buf, offset, viewport, worldX, worldY, height) {
+    projectWorldPoint(buf, offset, worldX, worldY, height, viewport);
     const wx = buf[offset];
     const wy = buf[offset + 1];
     buf[offset] = (wx - viewport.x) * viewport.zoom + viewport.cx;
     buf[offset + 1] = (wy - viewport.y) * viewport.zoom + viewport.cy;
 }
-export function projectWorldAabbCornersIntoFlat(out8, bounds, height, viewport) {
-    const { minX, minY, maxX, maxY } = bounds;
-    projectWorldQuadInto(out8, minX, minY, maxX, minY, maxX, maxY, minX, maxY, height, viewport);
-    return out8;
+export function projectWorldAabbCorners(buf, o, minX, minY, maxX, maxY, height, viewport) {
+    projectWorldQuad(buf, o, minX, minY, maxX, minY, maxX, maxY, minX, maxY, height, viewport);
 }
 export function projectVertical(objX, objY, height, viewport) {
     const dx = objX - viewport.x;
     const dy = objY - viewport.y;
     const dist = Math.hypot(dx, dy);
     const alpha = resolveElevationAlpha(height, viewport);
-    projectWorldPointInto(ENGINE_F32, S_OUT_XY, objX, objY, height, viewport);
+    projectWorldPoint(ENGINE_F32, S_OUT_XY, objX, objY, height, viewport);
     const viewAngle = Math.atan2(dy, dx);
     return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: ENGINE_F32[S_OUT_XY], topY: ENGINE_F32[S_OUT_XY + 1], viewAngle, height };
 }
@@ -522,38 +520,37 @@ export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngl
     grad.addColorStop(1.0, colors.shadow);
     return grad;
 }
-export function projectWorldQuadInto(out8, x0, y0, x1, y1, x2, y2, x3, y3, height, viewport) {
+export function projectWorldQuad(buf, o, x0, y0, x1, y1, x2, y2, x3, y3, height, viewport) {
     const alpha = resolveElevationAlpha(height, viewport);
     if (alpha <= 0) {
-        out8[0] = x0;
-        out8[1] = y0;
-        out8[2] = x1;
-        out8[3] = y1;
-        out8[4] = x2;
-        out8[5] = y2;
-        out8[6] = x3;
-        out8[7] = y3;
+        buf[o] = x0;
+        buf[o + 1] = y0;
+        buf[o + 2] = x1;
+        buf[o + 3] = y1;
+        buf[o + 4] = x2;
+        buf[o + 5] = y2;
+        buf[o + 6] = x3;
+        buf[o + 7] = y3;
     } else {
         const vx = viewport.x;
         const vy = viewport.y;
-        out8[0] = x0 + (x0 - vx) * alpha;
-        out8[1] = y0 + (y0 - vy) * alpha;
-        out8[2] = x1 + (x1 - vx) * alpha;
-        out8[3] = y1 + (y1 - vy) * alpha;
-        out8[4] = x2 + (x2 - vx) * alpha;
-        out8[5] = y2 + (y2 - vy) * alpha;
-        out8[6] = x3 + (x3 - vx) * alpha;
-        out8[7] = y3 + (y3 - vy) * alpha;
+        buf[o] = x0 + (x0 - vx) * alpha;
+        buf[o + 1] = y0 + (y0 - vy) * alpha;
+        buf[o + 2] = x1 + (x1 - vx) * alpha;
+        buf[o + 3] = y1 + (y1 - vy) * alpha;
+        buf[o + 4] = x2 + (x2 - vx) * alpha;
+        buf[o + 5] = y2 + (y2 - vy) * alpha;
+        buf[o + 6] = x3 + (x3 - vx) * alpha;
+        buf[o + 7] = y3 + (y3 - vy) * alpha;
     }
-    return out8;
 }
-export function pointOnFrustumInto(out, offset, projection, baseRadius, topRadius, t, angle) {
+export function pointOnFrustum(buf, offset, projection, baseRadius, topRadius, t, angle) {
     const { cx, cy, topX, topY } = projection;
     const radius = radiusAtT(baseRadius, topRadius, t);
     const centerX = cx + (topX - cx) * t;
     const centerY = cy + (topY - cy) * t;
-    out[offset] = centerX + Math.cos(angle) * radius;
-    out[offset + 1] = centerY + Math.sin(angle) * radius;
+    buf[offset] = centerX + Math.cos(angle) * radius;
+    buf[offset + 1] = centerY + Math.sin(angle) * radius;
 }
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
 export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {
@@ -570,21 +567,21 @@ export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDista
     return { x: lx + (wx - lx) * t, y: ly + (wy - ly) * t };
 }
 /** Screen-space shadow quad: near edge at projected wall top, far edge at ground contacts at z = 0. */
-export function projectWallShadowQuadScreenInto(out8, viewport, lx, ly, lightZ, x1, y1, x2, y2, wallTopZ, farDistance = 0) {
+export function projectWallShadowQuadScreen(buf, o, viewport, lx, ly, lightZ, x1, y1, x2, y2, wallTopZ, farDistance = 0) {
     const floor1xy = shadowGroundContactXY(lx, ly, lightZ, x1, y1, wallTopZ, farDistance);
     const floor2xy = shadowGroundContactXY(lx, ly, lightZ, x2, y2, wallTopZ, farDistance);
-    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, x1, y1, wallTopZ);
-    out8[0] = ENGINE_F32[S_OUT_SCREEN];
-    out8[1] = ENGINE_F32[S_OUT_SCREEN + 1];
-    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, x2, y2, wallTopZ);
-    out8[2] = ENGINE_F32[S_OUT_SCREEN];
-    out8[3] = ENGINE_F32[S_OUT_SCREEN + 1];
-    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, floor2xy.x, floor2xy.y, 0);
-    out8[4] = ENGINE_F32[S_OUT_SCREEN];
-    out8[5] = ENGINE_F32[S_OUT_SCREEN + 1];
-    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, floor1xy.x, floor1xy.y, 0);
-    out8[6] = ENGINE_F32[S_OUT_SCREEN];
-    out8[7] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, x1, y1, wallTopZ);
+    buf[o] = ENGINE_F32[S_OUT_SCREEN];
+    buf[o + 1] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, x2, y2, wallTopZ);
+    buf[o + 2] = ENGINE_F32[S_OUT_SCREEN];
+    buf[o + 3] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, floor2xy.x, floor2xy.y, 0);
+    buf[o + 4] = ENGINE_F32[S_OUT_SCREEN];
+    buf[o + 5] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, floor1xy.x, floor1xy.y, 0);
+    buf[o + 6] = ENGINE_F32[S_OUT_SCREEN];
+    buf[o + 7] = ENGINE_F32[S_OUT_SCREEN + 1];
     return 4;
 }
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {

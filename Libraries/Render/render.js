@@ -1,5 +1,5 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
-import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustumInto, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPointInto, projectWorldQuadInto, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreenInto, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
+import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustum, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXY, lengthXY, rotateXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, radiusAtT, scaleAtHeight } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -755,13 +755,13 @@ export function drawRadialBand(ctx, prop, viewport, options) {
     for (let i = 0; i < segments; i++) {
         const a0 = facing + (i / segments) * Math.PI * 2;
         const a1 = facing + ((i + 1) / segments) * Math.PI * 2;
-        pointOnFrustumInto(sBandQuad, 0, projection, baseRadius, resolvedTop, t0, a0);
-        pointOnFrustumInto(sBandQuad, 2, projection, baseRadius, resolvedTop, t0, a1);
+        pointOnFrustum(sBandQuad, 0, projection, baseRadius, resolvedTop, t0, a0);
+        pointOnFrustum(sBandQuad, 2, projection, baseRadius, resolvedTop, t0, a1);
         const edgeMidX = (sBandQuad[0] + sBandQuad[2]) * 0.5;
         const edgeMidY = (sBandQuad[1] + sBandQuad[3]) * 0.5;
         if (!isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) continue;
-        pointOnFrustumInto(sBandQuad, 4, projection, baseRadius, resolvedTop, t1, a1);
-        pointOnFrustumInto(sBandQuad, 6, projection, baseRadius, resolvedTop, t1, a0);
+        pointOnFrustum(sBandQuad, 4, projection, baseRadius, resolvedTop, t1, a1);
+        pointOnFrustum(sBandQuad, 6, projection, baseRadius, resolvedTop, t1, a0);
         ctx.fillStyle = fill;
         ctx.strokeStyle = stroke;
         ctx.lineWidth = lineWidth;
@@ -1291,7 +1291,7 @@ export function invalidateStaticGridEdgeRailDrawCache() {
 }
 /**
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
- * Vertical bands: projectWorldPointInto. Horizontal caps: box top ring + per-corner chunk UV.
+ * Vertical bands: projectWorldPoint. Horizontal caps: box top ring + per-corner chunk UV.
  */
 const sharedScratchFace = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
 const sFaceBottom = { proj1X: 0, proj1Y: 0, proj2X: 0, proj2Y: 0 };
@@ -1486,7 +1486,7 @@ export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, stat
 }
 export function projectRailWallTopCornersIntoFlat(out8, data, base, viewport) {
     const z = data[base + RAIL_BOX.wallCapHeight];
-    projectWorldQuadInto(out8, data[base + RAIL_BOX.outerP1x], data[base + RAIL_BOX.outerP1y], data[base + RAIL_BOX.outerP2x], data[base + RAIL_BOX.outerP2y], data[base + RAIL_BOX.innerP2x], data[base + RAIL_BOX.innerP2y], data[base + RAIL_BOX.innerP1x], data[base + RAIL_BOX.innerP1y], z, viewport);
+    projectWorldQuad(out8, 0, data[base + RAIL_BOX.outerP1x], data[base + RAIL_BOX.outerP1y], data[base + RAIL_BOX.outerP2x], data[base + RAIL_BOX.outerP2y], data[base + RAIL_BOX.innerP2x], data[base + RAIL_BOX.innerP2y], data[base + RAIL_BOX.innerP1x], data[base + RAIL_BOX.innerP1y], z, viewport);
     return out8;
 }
 function fillProjectedCapPolygonFlat(ctx, corners8, fillStyle) {
@@ -2192,7 +2192,7 @@ export function forEachLosShadowQuadInRange(edgeList, lightX, lightY, range, lig
         const dx = lightX - closestX;
         const dy = lightY - closestY;
         if (dx * dx + dy * dy > rSq) continue;
-        projectWallShadowQuadScreenInto(quadScratch, viewport, lightX, lightY, lightZ, x1, y1, x2, y2, wallTopZ, range * 2);
+        projectWallShadowQuadScreen(quadScratch, 0, viewport, lightX, lightY, lightZ, x1, y1, x2, y2, wallTopZ, range * 2);
         emitQuad(quadScratch, 4);
     }
 }

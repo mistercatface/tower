@@ -45,7 +45,10 @@ for (const hot of hotDirs) {
         while ((m = bannedExportRe.exec(src))) {
             const name = m[1];
             if (scratchNameRe.test(name)) failures.push({ file: relPath, kind: "scratch-export", symbol: name });
-            if (name.includes("Into") && src.includes(`${name}(out`)) warnings.push({ file: relPath, kind: "into-export", symbol: name });
+            if (name.includes("Into")) {
+                const sig = new RegExp(`export (?:async )?function ${name}\\((\\w+)`).exec(src);
+                if (sig && sig[1] === "out") warnings.push({ file: relPath, kind: "into-export", symbol: name });
+            }
         }
         if (/\bconst [A-Z][A-Z0-9_]*_SCRATCH\b/.test(src)) warnings.push({ file: relPath, kind: "module-scratch", symbol: "const *_SCRATCH" });
         if (/return \{ x:/.test(src) || /return \{ col:/.test(src)) warnings.push({ file: relPath, kind: "pair-return", symbol: "return { x|col" });

@@ -1,6 +1,6 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbWidth, aabbHeight, intersectAabbOptionalInto } from "../Math/math.js";
-import { projectWorldAabbCornersIntoFlat, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBoundsInto, wrapChunkKey, forEachChunkKeyInRange, cellIdxToChunkKey } from "../Spatial/spatial.js";
+import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalInto, ENGINE_F32, S_AABB } from "../Math/math.js";
+import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
 import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfaceProfileIds, surfaceProfileKnown } from "../../Config/procedural/profiles.js";
@@ -176,7 +176,8 @@ export class SurfaceSpatialMap {
     }
     chunkBoundsInto(out, obstacleGrid, chunkKey, cellsPerChunk = this.settings.cellsPerChunk) {
         const sizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
-        return chunkKeyBoundsInto(out, obstacleGrid.minX, obstacleGrid.minY, chunkKey, sizePx);
+        chunkKeyBounds(ENGINE_F32, S_AABB, obstacleGrid.minX, obstacleGrid.minY, chunkKey, sizePx);
+        return aabbFromF32(ENGINE_F32, S_AABB, out);
     }
     surfaceTileChunks(cellsPerChunk = this.settings.cellsPerChunk) {
         return this.settings.surfaceTilePeriodCells / cellsPerChunk;
@@ -590,7 +591,7 @@ export function isDrawableBakedSurface(canvas) {
     return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
 }
 export function drawProjectedHorizontalChunkAt(ctx, canvas, bounds, zLevel, viewport) {
-    projectWorldAabbCornersIntoFlat(sProjectedChunkCorners, bounds, zLevel, viewport);
+    projectWorldAabbCorners(sProjectedChunkCorners, 0, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, zLevel, viewport);
     drawImageQuadScalars(ctx, canvas, 0, 0, canvas.width, canvas.height, sProjectedChunkCorners[0], sProjectedChunkCorners[1], sProjectedChunkCorners[2], sProjectedChunkCorners[3], sProjectedChunkCorners[4], sProjectedChunkCorners[5], sProjectedChunkCorners[6], sProjectedChunkCorners[7]);
 }
 let tileWorkerBakeConstants = null;

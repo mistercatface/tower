@@ -3,19 +3,26 @@ import { describe, it } from "node:test";
 import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
 import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabb, EdgeList } from "../Libraries/Render/render.js";
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
-import {  projectWorldPointToScreenInto  } from "../Libraries/Spatial/spatial.js";
-import {  projectWallShadowQuadScreenInto, shadowGroundContactXY  } from "../Libraries/Spatial/spatial.js";
-import { ENGINE_F32, S_OUT_SCREEN } from "../Libraries/Math/math.js";
+import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContactXY  } from "../Libraries/Spatial/spatial.js";
+import { ENGINE_F32, S_OUT_SCREEN, S_QUAD } from "../Libraries/Math/math.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./harness/losShadowHarness.js";
-describe("projectWorldPointToScreenInto", () => {
+describe("projectWorldPointToScreen", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
-        projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, 64, 64, 0);
+        projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, 64, 64, 0);
         const flat = viewport.worldToScreen(64, 64);
         assertNear(ENGINE_F32[S_OUT_SCREEN], flat.x);
         assertNear(ENGINE_F32[S_OUT_SCREEN + 1], flat.y);
+    });
+    it("writes into caller-owned Float32Array as well as ENGINE_F32", () => {
+        const viewport = makeTestViewport(128, 128, 200, 200, 1);
+        const local = new Float32Array(2);
+        projectWorldPointToScreen(local, 0, viewport, 64, 64, 0);
+        projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, 64, 64, 0);
+        assertNear(local[0], ENGINE_F32[S_OUT_SCREEN]);
+        assertNear(local[1], ENGINE_F32[S_OUT_SCREEN + 1]);
     });
 });
 describe("shadowGroundContactXY", () => {
@@ -41,18 +48,17 @@ describe("shadowGroundContactXY", () => {
     });
 });
 describe("shadowProjection", () => {
-    it("projectWallShadowQuadScreenInto anchors near edge at projected roof height", () => {
+    it("projectWallShadowQuadScreen anchors near edge at projected roof height", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const out = new Float32Array(8);
-        projectWallShadowQuadScreenInto(out, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
-        const outFlat = new Float32Array(8);
-        projectWallShadowQuadScreenInto(outFlat, viewport, 72, 40, 16, 64, 64, 80, 64, 0);
-        assert.ok(out[1] !== outFlat[1], "roof near edge should differ from flat floor edge when wall has height");
+        projectWallShadowQuadScreen(out, 0, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreen(ENGINE_F32, S_QUAD, viewport, 72, 40, 16, 64, 64, 80, 64, 0);
+        assert.ok(out[1] !== ENGINE_F32[S_QUAD + 1], "roof near edge should differ from flat floor edge when wall has height");
     });
-    it("projectWallShadowQuadScreenInto keeps floor corners under edge when light equals wall top", () => {
+    it("projectWallShadowQuadScreen keeps floor corners under edge when light equals wall top", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const out = new Float32Array(8);
-        projectWallShadowQuadScreenInto(out, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreen(out, 0, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
         const floor1 = viewport.worldToScreen(64, 64);
         const floor2 = viewport.worldToScreen(80, 64);
         assertNear(out[6], floor1.x);
@@ -60,12 +66,12 @@ describe("shadowProjection", () => {
         assertNear(out[4], floor2.x);
         assertNear(out[5], floor2.y);
     });
-    it("projectWallShadowQuadScreenInto extrudes floor corners when light is above wall top", () => {
+    it("projectWallShadowQuadScreen extrudes floor corners when light is above wall top", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const outLow = new Float32Array(8);
         const outHigh = new Float32Array(8);
-        projectWallShadowQuadScreenInto(outLow, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
-        projectWallShadowQuadScreenInto(outHigh, viewport, 72, 40, 32, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreen(outLow, 0, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
+        projectWallShadowQuadScreen(outHigh, 0, viewport, 72, 40, 32, 64, 64, 80, 64, 16);
         const spreadLow = Math.hypot(outLow[6] - outLow[0], outLow[7] - outLow[1]);
         const spreadHigh = Math.hypot(outHigh[6] - outHigh[0], outHigh[7] - outHigh[1]);
         assert.ok(spreadHigh > spreadLow, "higher light should cast a longer screen wedge");
