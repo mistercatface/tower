@@ -1,7 +1,7 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
-import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A } from "../Math/math.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
@@ -40,6 +40,10 @@ export function createPolygonPrimitive(visuals) {
         const baseLineWidth = lineWidth ?? 1.0;
         const resolvedLineWidth = Math.max(0.35, baseLineWidth * scale);
         const drawOpts = { height, facing: prop.facing, faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top }, backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side }, bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null, topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side }, stroke: tinted.stroke, seamStroke: tinted.seamStroke, lineWidth: resolvedLineWidth, plankTs, topCross, flatFill: visuals.flatFill === true };
+        if (prop.drawOutline) {
+            drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: prop.drawOutline, faceOrder: "midY" });
+            return;
+        }
         const parts = getEntityCollisionParts(prop);
         if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });
         else if (parts.length === 1) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[0].vertices });
@@ -114,6 +118,11 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
 }
+export function ensureDrawOutline(prop, floatCount) {
+    if (floatCount > MAX_OUTLINE_VERTS * 2) throw new Error(`ensureDrawOutline: ${floatCount} floats exceeds MAX_OUTLINE_VERTS*2 (${MAX_OUTLINE_VERTS * 2})`);
+    if (!prop.drawOutline || prop.drawOutline.length < floatCount) prop.drawOutline = new Float32Array(floatCount);
+    return prop.drawOutline;
+}
 export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
@@ -132,6 +141,10 @@ export function initWorldPropShape(prop) {
     if (footprint && vertCount(footprint) >= 3) {
         prop.shape = new PolygonShape(footprint);
         prop.radius = prop.shape.getBoundingRadius();
+        if (prop.strategy.drawOutline === true) {
+            const verts = prop.shape.vertices;
+            ensureDrawOutline(prop, verts.length).set(verts);
+        }
         return;
     }
     prop.radius = prop.strategy.radius ?? 0;
@@ -257,6 +270,7 @@ export class WorldProp {
         this.spawnGroupExportType = undefined;
         this.spawnGroupAnchor = undefined;
         this.shape = undefined;
+        this.drawOutline = undefined;
         this.footprintVertices = undefined;
         this.footprintArea = undefined;
         this.alpha = undefined;
@@ -265,6 +279,7 @@ export class WorldProp {
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
         initWorldPropShape(this);
+        if (type === "cross_pinwheel") applyCrossPinwheelFootprint(this, this.crossLength ?? 32, this.crossThickness ?? 8);
         this.mass = kineticMassFromFootprint(this);
         normalizeKineticBody(this);
         this._linkNeighborEidCount = 0;
@@ -384,6 +399,7 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     prop.radius = Math.hypot(halfL, halfT);
     prop.crossLength = length;
     prop.crossThickness = thickness;
+    crossPinwheelOutlineInto(ensureDrawOutline(prop, 24), length, thickness);
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);

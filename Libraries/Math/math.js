@@ -1,11 +1,14 @@
-/** Shared Float32 scratch arena. Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320+. Bounds 400+ */
-export const ENGINE_F32 = new Float32Array(512);
+/** Shared Float32 scratch arena. Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575 */
+export const ENGINE_F32 = new Float32Array(576);
+export const ENGINE_U8 = new Uint8Array(256);
+export const ENGINE_I32 = new Int32Array(256);
 export const ENGINE_MATH_BASE = 0;
 export const ENGINE_PHYS_BASE = 64;
 export const ENGINE_FRAC_BASE = 192;
 export const ENGINE_SPATIAL_BASE = 256;
 export const ENGINE_NAV_BASE = 320;
 export const ENGINE_BOUNDS_BASE = 400;
+export const ENGINE_RENDER_BASE = 420;
 export const M_VEC_A = ENGINE_MATH_BASE;
 export const M_VEC_B = ENGINE_MATH_BASE + 2;
 export const M_VEC_C = ENGINE_MATH_BASE + 4;
@@ -40,6 +43,18 @@ export const B_CELL = 4;
 export const B_FOOTPRINT = 8;
 export const B_PAD = 12;
 export const B_TMP = 16;
+export const R_QUAD_A = ENGINE_RENDER_BASE;
+export const R_BOX_FOOTPRINT = ENGINE_RENDER_BASE + 8;
+export const R_SUBDIV = ENGINE_RENDER_BASE + 16;
+export const R_CAP_CORNERS = ENGINE_RENDER_BASE + 24;
+export const R_CAP_UV = ENGINE_RENDER_BASE + 32;
+export const R_CAP_SRC = ENGINE_RENDER_BASE + 40;
+export const R_CHEVRON = ENGINE_RENDER_BASE + 48;
+export const R_FACE_MIDY = ENGINE_RENDER_BASE + 60;
+export const R_FACE_VISIBLE = 0;
+export const R_FACE_ORDER = 0;
+export const MAX_PRISM_FACES = 64;
+export const MAX_OUTLINE_VERTS = 64;
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -222,6 +237,59 @@ export function regularStarFootprint(points, outerRadius, innerRadius, startAngl
         verts[i * 2 + 1] = Math.round(Math.sin(angle) * radius);
     }
     return verts;
+}
+export function crossPinwheelOutlineInto(out, length, thickness) {
+    const halfL = length / 2;
+    const halfT = thickness / 2;
+    out[0] = -halfT;
+    out[1] = -halfL;
+    out[2] = halfT;
+    out[3] = -halfL;
+    out[4] = halfT;
+    out[5] = -halfT;
+    out[6] = halfL;
+    out[7] = -halfT;
+    out[8] = halfL;
+    out[9] = halfT;
+    out[10] = halfT;
+    out[11] = halfT;
+    out[12] = halfT;
+    out[13] = halfL;
+    out[14] = -halfT;
+    out[15] = halfL;
+    out[16] = -halfT;
+    out[17] = halfT;
+    out[18] = -halfL;
+    out[19] = halfT;
+    out[20] = -halfL;
+    out[21] = -halfT;
+    out[22] = -halfT;
+    out[23] = -halfT;
+    return 24;
+}
+export function regularGearOutlineInto(out, teeth, outerR, rootR, boreR = 0) {
+    if (teeth < 3) throw new Error(`regularGearOutlineInto: teeth must be >= 3, got ${teeth}`);
+    const vertCount = teeth * 4;
+    if (vertCount > MAX_OUTLINE_VERTS) throw new Error(`regularGearOutlineInto: ${vertCount} verts exceeds MAX_OUTLINE_VERTS (${MAX_OUTLINE_VERTS})`);
+    const step = (Math.PI * 2) / teeth;
+    const toothHalf = step * 0.28;
+    let write = 0;
+    for (let i = 0; i < teeth; i++) {
+        const mid = -Math.PI / 2 + i * step;
+        const a0 = mid - toothHalf;
+        const a1 = mid - toothHalf * 0.35;
+        const a2 = mid + toothHalf * 0.35;
+        const a3 = mid + toothHalf;
+        out[write++] = Math.cos(a0) * rootR;
+        out[write++] = Math.sin(a0) * rootR;
+        out[write++] = Math.cos(a1) * outerR;
+        out[write++] = Math.sin(a1) * outerR;
+        out[write++] = Math.cos(a2) * outerR;
+        out[write++] = Math.sin(a2) * outerR;
+        out[write++] = Math.cos(a3) * rootR;
+        out[write++] = Math.sin(a3) * rootR;
+    }
+    return write;
 }
 export function convexFootprintHalfExtents(buf, o, vertices) {
     let hx = 0;

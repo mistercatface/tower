@@ -75,5 +75,21 @@ describe("cross pinwheel prop", () => {
         assert.equal(part0.vertices[5], 5);
         assert.equal(kineticFootprintArea(pinwheel), 960);
         assert.ok(pinwheel._kineticInvMass > 0);
+        assert.equal(pinwheel.drawOutline.length, 24);
+    });
+
+    it("sets drawOutline for pinwheel, star, and gear", () => {
+        const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
+        assert.ok(pinwheel.drawOutline instanceof Float32Array);
+        assert.equal(pinwheel.drawOutline.length, 24);
+
+        const star = new WorldProp(0, 0, "star_block", 0);
+        assert.ok(star.drawOutline instanceof Float32Array);
+        assert.equal(star.drawOutline.length / 2, 10);
+
+        const gear = new WorldProp(0, 0, "gear_block", 0);
+        assert.ok(gear.drawOutline instanceof Float32Array);
+        assert.ok(gear.drawOutline.length / 2 >= 24, `gear outline verts should be high, got ${gear.drawOutline.length / 2}`);
+        assert.equal(gear.drawOutline.length / 2, 48);
     });
 });
