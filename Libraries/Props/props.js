@@ -269,7 +269,7 @@ export class WorldProp {
         normalizeKineticBody(this);
         if (this._kineticLinkNeighbors) this._kineticLinkNeighbors.length = 0;
         this._kineticIslandPeers = null;
-        if (this._neighbors) this._neighbors.length = 0;
+        this._neighborEidCount = 0;
         this._neighborsFrameId = -1;
         delete this._physId;
         delete this._activeSlot;

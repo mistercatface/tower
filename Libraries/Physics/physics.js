@@ -1,5 +1,5 @@
 import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/math.js";
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, ENGINE_BOUNDS_BASE, B_QUERY } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD } from "../Math/math.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
@@ -2867,10 +2867,10 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
         if (seenPrimary[physIdA]) continue;
         seenPrimary[physIdA] = 1;
         seenPrimaryIds[seenCount++] = physIdA;
-        const neighbors = spatialFrame.getNeighbors(primary);
-        for (let j = 0; j < neighbors.length; j++) {
-            const neighbor = neighbors[j];
-            const physIdB = neighbor._physId;
+        const { eids: neighborEids, count: neighborCount } = spatialFrame.getNeighborEids(primary);
+        for (let j = 0; j < neighborCount; j++) {
+            const physIdB = neighborEids[j];
+            const neighbor = entityRefs[physIdB];
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
             const tier = classifyKineticPairTier(primary, neighbor);
@@ -2898,10 +2898,10 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
         const primary = entityRefs[physIdA]?._physId === physIdA ? entityRefs[physIdA] : null;
-        const neighbors = spatialFrame.getNeighbors(primary);
-        for (let j = 0; j < neighbors.length; j++) {
-            const neighbor = neighbors[j];
-            const physIdB = neighbor._physId;
+        const { eids: neighborEids, count: neighborCount } = spatialFrame.getNeighborEids(primary);
+        for (let j = 0; j < neighborCount; j++) {
+            const physIdB = neighborEids[j];
+            const neighbor = entityRefs[physIdB];
             const tier = classifyKineticPairTier(primary, neighbor);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (areKineticLinkNeighbors(primary, neighbor)) continue;
@@ -3064,6 +3064,7 @@ function portalTeleportHandler(body) {
         eg.remove(body);
         eg.insert(body);
         body._neighborsFrameId = -1;
+        body._neighborEidCount = 0;
     }
     wakeKineticBody(body);
 }
@@ -3400,20 +3401,24 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSl
     entity._sleepFrames++;
     if (entity._sleepFrames >= requiredFrames) entity.isSleeping = true;
 }
-export function hasSleepBlockingNeighbor(prop, neighbors) {
-    for (let i = 0; i < neighbors.length; i++) {
-        const other = neighbors[i];
-        if (other === prop || !other.strategy?.isKinetic) continue;
+export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = neighborEids.length) {
+    const propEid = prop._physId;
+    for (let i = 0; i < neighborCount; i++) {
+        const eidB = neighborEids[i];
+        if (eidB === propEid) continue;
+        const other = entityRefs[eidB];
+        if (!other?.strategy?.isKinetic) continue;
         if (shareKineticIsland(prop, other)) continue;
-        if (!pairBroadphaseOverlapSlab(prop._physId, other._physId)) continue;
+        if (!pairBroadphaseOverlapSlab(propEid, eidB)) continue;
         if (other.isSleeping) continue;
         if (isKinematicallyActive(other)) return true;
     }
     return false;
 }
-export function evaluateKineticSleepEligible(prop, neighbors) {
-    return canSleepKinetic(prop) && !hasSleepBlockingNeighbor(prop, neighbors);
+export function evaluateKineticSleepEligible(prop, neighborEids, neighborCount = neighborEids.length) {
+    return canSleepKinetic(prop) && !hasSleepBlockingNeighbor(prop, neighborEids, neighborCount);
 }
+let sleepNeighborEids = new Int32Array(256);
 export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) {
     emptyAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
     for (let i = 0; i < islandMembers.length; i++) {
@@ -3422,8 +3427,14 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
         const extent = entityCollisionSpan(prop);
         growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, prop.x, prop.y, extent, extent);
     }
-    const neighbors = spatialFrame.collectEntitiesInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
-    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
+    const eg = spatialFrame.entityGrid;
+    padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, eg.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
+    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids, sleepNeighborEids.length);
+    while (n < 0) {
+        sleepNeighborEids = new Int32Array(sleepNeighborEids.length * 2);
+        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids, sleepNeighborEids.length);
+    }
+    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids, n)) return false;
     return true;
 }
 /**

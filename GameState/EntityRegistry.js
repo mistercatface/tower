@@ -1,7 +1,7 @@
 import { pruneKineticConstraintsForBody, getEntityCollisionParts, resolveBodyRadius } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
-import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, releaseEntityEid, bindEntitySlot, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
+import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
 const EMPTY_KINDS = ["worldProp"];
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
 const PICK_WORLD_POLY = [];
@@ -115,12 +115,6 @@ export class EntityArena {
     }
     allocateEid() {
         return allocateEntityEid();
-    }
-    releaseEid(eid) {
-        const gameId = entityGameId[eid];
-        if (gameId >= 0) this._gameIdToEid.delete(gameId);
-        this._removeLiveEid(eid);
-        releaseEntityEid(eid);
     }
     _ensureLiveCap(n) {
         if (this._liveEids.length >= n) return;

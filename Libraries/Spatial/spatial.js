@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, B_CELL, centerReachAabbF32, padAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, centerReachAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -30,7 +30,6 @@ const EMPTY_WALL_CANDIDATES = [];
 export class SpatialFrameCore {
     constructor(cellSize = 50) {
         this.entityGrid = new EntityGrid(cellSize);
-        this.wallQuery = new SpatialQuery();
         this.frameId = 0;
         this._wallBuckets = createWallCandidateBucketSlab();
         this._wallBucketRevision = -1;
@@ -85,6 +84,7 @@ export class SpatialFrameCore {
             this.entityGrid.remove(entity);
             this.entityGrid.insert(entity);
             entity._neighborsFrameId = -1;
+            entity._neighborEidCount = 0;
         }
         this.frameId = (this.frameId + 1) | 0;
         invalidateWallCandidateBucketFrame(this._wallBuckets);
@@ -93,57 +93,20 @@ export class SpatialFrameCore {
         if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
         return this._wallCandidatesNearWorld(entity.x, entity.y, entityCollisionSpan(entity));
     }
-    getNeighbors(entity) {
-        if (entity._neighborsFrameId === this.frameId) return entity._neighbors;
-        if (!entity._neighbors) entity._neighbors = [];
-        this.entityGrid.collectNearbyInto(entity, entity._neighbors);
-        entity._neighborsFrameId = this.frameId;
-        return entity._neighbors;
-    }
-    forEachNeighbor(entity, fn) {
-        const neighbors = this.getNeighbors(entity);
-        for (let i = 0; i < neighbors.length; i++) fn(neighbors[i]);
-    }
-    /**
-     * @param {object[]} group
-     * @param {(primary: object, neighbor: object) => boolean} shouldPair
-     */
-    forEachGroupNeighborPair(group, shouldPair, fn) {
-        for (let i = 0; i < group.length; i++) {
-            const primary = group[i];
-            const neighbors = this.getNeighbors(primary);
-            for (let j = 0; j < neighbors.length; j++) {
-                const neighbor = neighbors[j];
-                if (!shouldPair(primary, neighbor)) continue;
-                fn(primary, neighbor);
-            }
+    getNeighborEids(entity) {
+        if (entity._neighborsFrameId === this.frameId) return { eids: entity._neighborEids, count: entity._neighborEidCount };
+        if (!entity._neighborEids) entity._neighborEids = new Int32Array(16);
+        let count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
+        while (count < 0) {
+            entity._neighborEids = new Int32Array(entity._neighborEids.length * 2);
+            count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
         }
-    }
-    /**
-     * Entities in grid cells overlapping a world AABB. Bounds are expanded by the largest
-     * inserted body extent so center-indexed bodies on the edge are not missed.
-     *
-     * @param {Aabb2D} bounds
-     * @param {object | null} [exclude]
-     * @returns {object[]}
-     */
-    collectEntitiesInBoundsF32(buf, o, exclude = null) {
-        return this.entityGrid.collectInBoundsF32(buf, o, this.wallQuery, exclude);
+        entity._neighborEidCount = count;
+        entity._neighborsFrameId = this.frameId;
+        return { eids: entity._neighborEids, count };
     }
     collectEntityEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
         return this.entityGrid.collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid);
-    }
-    /**
-     * Broadphase around a query anchor (e.g. zone centroid + shape). Does not require insertion.
-     *
-     * @param {{ x: number, y: number, shape?: import("../collision/Shapes.js").Shape }} anchor
-     * @param {object | null} [exclude]
-     * @returns {object[]}
-     */
-    collectEntitiesNear(anchor, exclude = null) {
-        const searchRadius = entityCollisionSpan(anchor) + this.entityGrid.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(anchor));
-        centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, anchor.x, anchor.y, searchRadius);
-        return this.entityGrid.collectInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
 }
 function idxCol(idx, cols) {
@@ -1653,12 +1616,7 @@ export class WorldObstacleGrid {
         buf[o + 3] = minY + this.cellSize;
     }
 }
-/** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-let CURRENT_COLLECT_OUT = null;
-const COLLECT_NEARBY_PUSH = (other) => {
-    CURRENT_COLLECT_OUT.push(other);
-};
 let entityGridQueryGen = 1;
 export class EntityGrid {
     constructor(cellSize) {
@@ -1833,23 +1791,11 @@ export class EntityGrid {
             }
         }
     }
-    collectInBoundsF32(buf, o, query, exclude = null, { expandForEntityExtents = true } = {}) {
-        if (expandForEntityExtents) {
-            padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, buf, o, this.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
-            return query.collectInIndexF32(this, ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, exclude);
-        }
-        return query.collectInIndexF32(this, buf, o, exclude);
-    }
-    collectNearbyInto(entity, out) {
-        out.length = 0;
-        const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
-        this.queryGen = stamp;
+    collectNearbyEidsInto(entity, outEids, outCap) {
         const searchRadius = entityCollisionSpan(entity) + this.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(entity));
         centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity.x, entity.y, searchRadius);
-        CURRENT_COLLECT_OUT = out;
-        this.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity, stamp, COLLECT_NEARBY_PUSH);
-        CURRENT_COLLECT_OUT = null;
-        return out;
+        const excludeEid = entity._physId !== undefined ? entity._physId : -1;
+        return this.collectEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, outEids, outCap, excludeEid);
     }
     collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
         const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
@@ -2127,30 +2073,6 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { o
         }
     }
     return { hit: "none", x: cx, y: cy, dist };
-}
-let globalGeneration = 0;
-export class SpatialQuery {
-    constructor() {
-        this.generation = 0;
-        this._scratch = [];
-        this._collectFn = (entity) => {
-            this._scratch.push(entity);
-        };
-    }
-    nextQuery() {
-        globalGeneration = (globalGeneration + 1) | 0;
-        if (globalGeneration === 0) globalGeneration = 1;
-        this.generation = globalGeneration;
-    }
-    forEachInIndexF32(index, buf, o, fn, exclude = null) {
-        this.nextQuery();
-        index.forEachInBoundsF32(buf, o, exclude, this.generation, fn);
-    }
-    collectInIndexF32(index, buf, o, exclude = null) {
-        this._scratch.length = 0;
-        this.forEachInIndexF32(index, buf, o, this._collectFn, exclude);
-        return this._scratch;
-    }
 }
 const MAX_WALL_BUCKETS = 4096;
 const BUCKET_MASK = MAX_WALL_BUCKETS - 1;
@@ -3475,6 +3397,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);
             prop._neighborsFrameId = -1;
+            prop._neighborEidCount = 0;
             if (prop.strategy?.isKinetic) {
                 this.activateKineticBody(prop, false);
                 kineticAdmitted.push(prop);
@@ -3604,7 +3527,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._activationScheduled.delete(prop);
         this.releasePhysId(physId, prop, session);
         prop._neighborsFrameId = -1;
-        if (prop._neighbors) prop._neighbors.length = 0;
+        prop._neighborEidCount = 0;
         this.frameId = (this.frameId + 1) | 0;
     }
 }

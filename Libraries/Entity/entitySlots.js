@@ -13,9 +13,7 @@ export const entityR = new Float32Array(MAX_ENTITIES);
 export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
 export const entityAlive = new Uint8Array(MAX_ENTITIES);
-export const entityGen = new Uint32Array(MAX_ENTITIES);
 export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
-export const entityTypeId = new Int32Array(MAX_ENTITIES).fill(-1);
 export const entityRefs = new Array(MAX_ENTITIES);
 export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
 export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
@@ -41,11 +39,9 @@ export function releaseEntityEid(eid) {
     entityKind[eid] = ENTITY_KIND_NONE;
     entityFlags[eid] = 0;
     entityGameId[eid] = -1;
-    entityTypeId[eid] = -1;
     entityR[eid] = 0;
     entityRefs[eid] = null;
     entityGridTileIdx[eid] = -1;
-    entityGen[eid] = (entityGen[eid] + 1) | 0;
     eidFreeList.push(eid);
 }
 export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {

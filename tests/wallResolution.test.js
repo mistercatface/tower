@@ -69,7 +69,7 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
-        const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighbors: () => [], flushScheduledKineticActivations() {} };
+        const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => [wall], getNeighborEids: () => ({ eids: new Int32Array(0), count: 0 }), flushScheduledKineticActivations() {} };
         const session = new KineticSession();
         const world = {
             worldProps: [bar],

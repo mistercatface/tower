@@ -260,7 +260,7 @@ class KineticDebrisBody {
         this.isSleeping = false;
         this.isDead = false;
         this._fractureCooldown = 0;
-        this._neighbors = undefined;
+        this._neighborEidCount = 0;
         this._neighborsFrameId = -1;
     }
     get x() {
@@ -385,7 +385,7 @@ class KineticDebrisStore {
         body.radius = 0;
         body.mass = 1;
         body._fractureCooldown = 0;
-        body._neighbors = undefined;
+        body._neighborEidCount = 0;
         body._neighborsFrameId = -1;
         kineticDebrisSlab.x[row] = x;
         kineticDebrisSlab.y[row] = y;
