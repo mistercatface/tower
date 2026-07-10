@@ -129,8 +129,8 @@ describe("grabDrag behavior", () => {
         assert.ok(ids.includes(GRAB_DRAG_BEHAVIOR_ID));
     });
 
-    it("ball asset lists grabDrag behavior", () => {
-        assert.ok(propCatalog.ball.sandbox.behaviors.includes("grabDrag"));
+    it("ball asset supports dragInteract capability", () => {
+        assert.equal(propCatalog.ball.sandbox.dragInteract, true);
     });
 
     it("findClosestPolygonBoundaryGrabPointInto snaps to corner or edge", () => {
@@ -167,9 +167,9 @@ describe("grabDrag behavior", () => {
         assert.equal(prop.angularVelocity, 0);
     });
 
-    it("glass pane hex block and tri wedge list grabDrag", () => {
-        assert.ok(propCatalog.glass_pane.sandbox.behaviors.includes("grabDrag"));
-        assert.ok(propCatalog.hex_block.sandbox.behaviors.includes("grabDrag"));
-        assert.ok(propCatalog.tri_wedge.sandbox.behaviors.includes("grabDrag"));
+    it("glass pane hex block and tri wedge support dragInteract", () => {
+        assert.equal(propCatalog.glass_pane.sandbox.dragInteract, true);
+        assert.equal(propCatalog.hex_block.sandbox.dragInteract, true);
+        assert.equal(propCatalog.tri_wedge.sandbox.dragInteract, true);
     });
 });

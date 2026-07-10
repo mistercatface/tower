@@ -1,14 +1,12 @@
 import propCatalog from "../../Assets/props/index.js";
 import { normalizeXY, findClosestPolygonBoundaryGrabPointInto } from "../Math/math.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
-import { isKinematicallyActive, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
-export const DRAG_LAUNCH_WAIT_BEHAVIOR_ID = "dragLaunchWait";
-export const DRAG_LAUNCH_FACING_BEHAVIOR_ID = "dragLaunchFacing";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
 const GRAB_ANCHOR_SCRATCH = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
 function hueFromPullRatio(ratio) {
@@ -150,37 +148,34 @@ export function buildDragLaunchBehavior(state, entry) {
     if (entry.onLaunch) spec.onLaunch = entry.onLaunch(state);
     if (entry.resolveAimLine) spec.resolveAimLine = entry.resolveAimLine;
     const behavior = createDragLaunchInteraction(spec);
-    if (entry.supports) return { ...behavior, supports: entry.supports };
     return behavior;
 }
-export function createDragLaunchBehaviors(state, evaluateInputGates) {
-    const entries = [
-        { id: DRAG_LAUNCH_BEHAVIOR_ID },
-        {
-            id: DRAG_LAUNCH_WAIT_BEHAVIOR_ID,
-            canStart(state) {
-                return (prop) => {
-                    if (prop && !prop.isDead && isKinematicallyActive(prop)) return false;
-                    return evaluateInputGates(DRAG_LAUNCH_WAIT_BEHAVIOR_ID, prop, propCatalog[prop?.type], state).allowed;
-                };
-            },
-        },
-        {
-            id: DRAG_LAUNCH_FACING_BEHAVIOR_ID,
-            onLaunch(_state) {
-                return (prop, shot) => {
-                    prop.facing = Math.atan2(shot.ny, shot.nx);
-                    prop.angularVelocity = 0;
-                    applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
-                };
-            },
-        },
-    ];
-    return entries.map((entry) => buildDragLaunchBehavior(state, entry));
+export const DEFAULT_DRAG_INTERACTION_MODE = DRAG_LAUNCH_BEHAVIOR_ID;
+export function sandboxAssetDragInteract(asset) {
+    return asset?.sandbox?.dragInteract === true;
+}
+export function assetSupportsDragLaunch(asset) {
+    if (!asset?.sandbox) return false;
+    if (sandboxAssetDragInteract(asset)) return true;
+    return asset.sandbox.dragLaunch != null;
+}
+export function resolveDragInteractionBehaviorId(asset, dragInteractionMode = DEFAULT_DRAG_INTERACTION_MODE) {
+    if (!asset?.sandbox) return null;
+    if (!assetSupportsDragLaunch(asset)) return null;
+    return dragInteractionMode === GRAB_DRAG_BEHAVIOR_ID ? GRAB_DRAG_BEHAVIOR_ID : DRAG_LAUNCH_BEHAVIOR_ID;
+}
+export function resolveDragInteractionBehavior(prop, state, behaviorById) {
+    const asset = propCatalog[prop.type];
+    const mode = state.sandbox.dragInteractionMode ?? DEFAULT_DRAG_INTERACTION_MODE;
+    const behaviorId = resolveDragInteractionBehaviorId(asset, mode);
+    return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
+}
+export function createDragLaunchBehaviors(state) {
+    return [{ id: DRAG_LAUNCH_BEHAVIOR_ID }].map((entry) => buildDragLaunchBehavior(state, entry));
 }
 function resolveGrabDragAnchor(prop, world) {
     const asset = propCatalog[prop.type];
-    if (asset?.primitive === "polygon" && prop.shape?.vertices?.length >= 6) {
+    if (asset?.primitive === "polygon" && asset.physics?.isKinetic !== false && prop.shape?.vertices?.length >= 6) {
         const facing = entityFacing(prop);
         findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
         return { anchorLocalX: GRAB_ANCHOR_SCRATCH.localX, anchorLocalY: GRAB_ANCHOR_SCRATCH.localY, offsetX: GRAB_ANCHOR_SCRATCH.worldX - world.x, offsetY: GRAB_ANCHOR_SCRATCH.worldY - world.y };
@@ -227,6 +222,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         onPointerDown(prop, world) {
             if (!prop?.strategy?.isKinetic || prop.isDead) return false;
             for (const id of groundNavBehaviorIds) state.sandbox.behaviorById.get(id)?.clearMoveTarget?.(prop);
+            state.sandbox.entityMeta.clearActiveBehaviorId(prop.id);
             const anchor = resolveGrabDragAnchor(prop, world);
             propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: anchor.offsetX, offsetY: anchor.offsetY, anchorLocalX: anchor.anchorLocalX, anchorLocalY: anchor.anchorLocalY, dragging: true });
             if (activeRunIds.indexOf(prop.id) === -1) activeRunIds.push(prop.id);

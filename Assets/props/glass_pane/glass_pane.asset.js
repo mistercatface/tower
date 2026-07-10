@@ -1,20 +1,2 @@
 import { boxLocalFootprint } from "../../../Libraries/Math/math.js";
-export default {
-    id: "glass_pane",
-    primitive: "polygon",
-    sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Glass pane", behaviors: ["dragLaunch", "grabDrag"], dragLaunch: { minPower: 20, maxPower: 260 } },
-    physics: {
-        isKinetic: true,
-        localFootprint: boxLocalFootprint(12, 8),
-        density: 0.45 / 256,
-        wallPhysics: { restitution: 0.06, friction: 0.25 },
-        pairRestitution: 0.06,
-        fracture: { mode: "glass" },
-    },
-    visuals: {
-        flatFill: true,
-        colors: { side: "#B3E5FC", sideShadow: "#81D4FA", top: "#E1F5FE", stroke: "rgba(1, 87, 155, 0.45)" },
-        world: { height: 2 },
-        lineWidth: 0.4,
-    },
-};
+export default { id: "glass_pane", primitive: "polygon", sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Glass pane", dragInteract: true, dragLaunch: { minPower: 20, maxPower: 260 } }, physics: { isKinetic: true, localFootprint: boxLocalFootprint(12, 8), density: 0.45 / 256, wallPhysics: { restitution: 0.06, friction: 0.25 }, pairRestitution: 0.06, fracture: { mode: "glass" } }, visuals: { flatFill: true, colors: { side: "#B3E5FC", sideShadow: "#81D4FA", top: "#E1F5FE", stroke: "rgba(1, 87, 155, 0.45)" }, world: { height: 2 }, lineWidth: 0.4 } };

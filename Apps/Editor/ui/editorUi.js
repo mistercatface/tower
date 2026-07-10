@@ -7,6 +7,26 @@ import { refreshMapGenPanelInputs } from "./mapGenEditors.js";
 import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEditor.js";
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode, setLabPathDebugMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
+import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID } from "../../../Libraries/Sandbox/dragBehaviors.js";
+function dragInteractionModeLabel(mode) {
+    return mode === GRAB_DRAG_BEHAVIOR_ID ? "Drag: Grab" : "Drag: Launch";
+}
+function syncDragInteractionModeUi(state) {
+    const btn = document.getElementById("dragInteractionModeBtn");
+    if (btn) btn.textContent = dragInteractionModeLabel(state.sandbox.dragInteractionMode);
+}
+function bindDragInteractionModeToolbar(state) {
+    syncDragInteractionModeUi(state);
+    const dragModeBtn = document.getElementById("dragInteractionModeBtn");
+    if (!dragModeBtn) return;
+    dragModeBtn.addEventListener("click", () => {
+        const currentMode = state.sandbox.controller?.getDragInteractionMode?.() ?? state.sandbox.dragInteractionMode;
+        const nextMode = currentMode === GRAB_DRAG_BEHAVIOR_ID ? DRAG_LAUNCH_BEHAVIOR_ID : GRAB_DRAG_BEHAVIOR_ID;
+        if (state.sandbox.controller?.setDragInteractionMode) state.sandbox.controller.setDragInteractionMode(nextMode);
+        else state.sandbox.dragInteractionMode = nextMode;
+        syncDragInteractionModeUi(state);
+    });
+}
 import { initTileLabWorld } from "../../../Libraries/Spatial/spatial.js";
 import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
@@ -199,6 +219,7 @@ export function mountEditorUi(state, { playbackHandlers }) {
         drawLabAndWaitForBakes();
     });
     mountTilelabSandbox(state);
+    bindDragInteractionModeToolbar(state);
     bindToolbarControls(
         {
             onOverlayChange: () => {

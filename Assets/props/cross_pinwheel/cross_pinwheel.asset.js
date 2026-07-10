@@ -1,7 +1,7 @@
 export default {
     id: "cross_pinwheel",
     primitive: "polygon",
-    sandbox: { tags: ["shapes"], behaviors: ["dragLaunch", "grabDrag"], dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Cross pinwheel" },
+    sandbox: { tags: ["shapes"], dragInteract: true, dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Cross pinwheel" },
     physics: {
         isKinetic: true,
         pinned: true,

@@ -1,0 +1,75 @@
+import { EntityRegistry } from "../../GameState/EntityRegistry.js";
+import { FractureEngine } from "../../Libraries/Physics/fracture.js";
+import { KineticSession } from "../../GameState/KineticSession.js";
+import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
+import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
+import { createDefaultSandboxBehaviors, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
+import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID } from "../../Libraries/Sandbox/dragBehaviors.js";
+
+export function createSandboxDragTestState() {
+    globalThis.window = { addEventListener() {}, removeEventListener() {} };
+    const grid = new WorldObstacleGrid(16);
+    grid.rebuildFixed(0, 0, 512, 512);
+    const world = {
+        obstacleGrid: grid,
+        entityRegistry: new EntityRegistry(),
+        worldProps: [],
+        kinetic: new KineticSession(),
+        sandbox: new SandboxWorldState(),
+        viewport: {
+            x: 128,
+            y: 128,
+            snapTo() {},
+            circleInBounds() {
+                return true;
+            },
+        },
+        worldSurfaces: { settings: { maxWallHeightLevel: 8 } },
+        editor: { showSelectionRings: true, navMode: "hpa" },
+        nav: {
+            settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 6, pathOffPathDistance: 4 },
+            topologyKey() {
+                return "mockKey";
+            },
+            syncedTopologyKey() {
+                return "mockKey";
+            },
+            worker: { releaseOwnedPathSlot() {} },
+            session: {
+                isReplanInFlight() {
+                    return false;
+                },
+                requestReplan() {
+                    return true;
+                },
+            },
+        },
+    };
+    world.fractureEngine = new FractureEngine(world);
+    return world;
+}
+
+export function createSandboxDragTestController(state) {
+    const eventListeners = {};
+    const canvas = {
+        addEventListener(type, listener) {
+            eventListeners[type] = listener;
+        },
+        removeEventListener(type, listener) {
+            delete eventListeners[type];
+        },
+        setPointerCapture() {},
+        releasePointerCapture() {},
+    };
+    const behaviors = createDefaultSandboxBehaviors(state);
+    const behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
+    const controller = createSandboxController(state, {
+        getCanvas: () => canvas,
+        clientToWorld: (clientX, clientY) => ({ x: clientX, y: clientY }),
+        behaviors,
+    });
+    controller.register();
+    return { controller, behaviorById, eventListeners, canvas };
+}
+
+export { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID };

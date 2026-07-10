@@ -7,6 +7,7 @@ export const TILELAB_UI_HTML = `
         <span class="sep" style="display: none;"></span>
         <button type="button" id="pathDebugModeBtn" class="toolbar-cycle-btn">Nav: Off</button>
         ${WORLD_RENDER_CONTROLS_HTML}
+        <button type="button" id="dragInteractionModeBtn" class="toolbar-cycle-btn">Drag: Launch</button>
         <button type="button" id="showVignetteBtn" class="toolbar-cycle-btn">Overlay: Off</button>
         <label class="check-inline"><span>Shadows</span><input type="range" id="editorShadowSlider" min="0" max="100" step="1" value="0"><span class="hint-inline" id="editorShadowValue">Off</span></label>
         <label class="check-inline"><input id="showMapOverviewInput" type="checkbox" checked> Map Overview</label>

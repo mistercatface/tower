@@ -2,7 +2,7 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView, queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
-import { isKinematicallyActive, applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
@@ -18,8 +18,8 @@ import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import { markLabViewDirty } from "../../Apps/Editor/ui/preview.js";
 import propCatalog from "../../Assets/props/index.js";
-import { GRAB_DRAG_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, buildDragLaunchBehavior } from "./dragBehaviors.js";
-export { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, DRAG_LAUNCH_WAIT_BEHAVIOR_ID, DRAG_LAUNCH_FACING_BEHAVIOR_ID, getDragLaunchConfig, getGrabDragConfig, createDragLaunchAim, updateDragLaunchAim, getDragLaunchPreview, releaseDragLaunch, resolveDragLaunchPullRatio, computeLaunchPower, buildDragLaunchAimLineContext, getDragLaunchAimLine, applyDragLaunchVelocity, createDragLaunchInteraction, dragLaunchAimLineContextForState, createDragLaunchBehaviors, createGrabDragBehavior, appendDragLaunchOverlayCommands, buildDragLaunchBehavior } from "./dragBehaviors.js";
+import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, buildDragLaunchBehavior, sandboxAssetDragInteract, resolveDragInteractionBehavior, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
+export { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, DEFAULT_DRAG_INTERACTION_MODE, sandboxAssetDragInteract, assetSupportsDragLaunch, resolveDragInteractionBehaviorId, resolveDragInteractionBehavior, getDragLaunchConfig, getGrabDragConfig, createDragLaunchAim, updateDragLaunchAim, getDragLaunchPreview, releaseDragLaunch, resolveDragLaunchPullRatio, computeLaunchPower, buildDragLaunchAimLineContext, getDragLaunchAimLine, applyDragLaunchVelocity, createDragLaunchInteraction, dragLaunchAimLineContextForState, createDragLaunchBehaviors, createGrabDragBehavior, appendDragLaunchOverlayCommands, buildDragLaunchBehavior } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
@@ -45,10 +45,14 @@ export class SandboxEntityMetaStore {
         this.cameraTargetId = null;
     }
     getActiveBehaviorId(entityId) {
-        return this.get(entityId)?.activeBehaviorId;
+        return this.get(entityId)?.activeBehaviorId ?? null;
     }
     setActiveBehaviorId(entityId, behaviorId) {
         this.ensure(entityId).activeBehaviorId = behaviorId;
+    }
+    clearActiveBehaviorId(entityId) {
+        const meta = this.get(entityId);
+        if (meta) delete meta.activeBehaviorId;
     }
     getBehaviorOverrides(entityId) {
         return this.get(entityId)?.behaviorOverrides;
@@ -96,13 +100,14 @@ export class SandboxWorldState {
         this.controller = null;
         this.behaviorById = null;
         this.floorBeltDrawCache = null;
+        this.dragInteractionMode = DEFAULT_DRAG_INTERACTION_MODE;
     }
 }
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
 export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID]);
-export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", dragLaunchWait: "Drag launch (wait for rest)", dragLaunchFacing: "Drag launch (yaw to shot)", spawner: "Spawner", [GRAB_DRAG_BEHAVIOR_ID]: "Grab drag", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
+export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", spawner: "Spawner", [GRAB_DRAG_BEHAVIOR_ID]: "Grab drag", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
@@ -143,80 +148,15 @@ export function resolveSandboxBehaviors(asset, state, prop = null) {
     const behaviorOverrides = prop ? state.sandbox.entityMeta.getBehaviorOverrides(prop.id) : null;
     if (behaviorOverrides) {
         const stamped = [];
-        for (const key of Object.keys(behaviorOverrides)) {
-            if (key === "inputGates") continue;
-            if (byId.has(key)) stamped.push(key);
-        }
+        for (const key of Object.keys(behaviorOverrides)) if (byId.has(key)) stamped.push(key);
         if (stamped.length) return stamped;
     }
-    if (Array.isArray(asset?.sandbox?.behaviors)) return asset.sandbox.behaviors.filter((id) => byId.has(id));
+    if (Array.isArray(asset?.sandbox?.behaviors)) {
+        const listed = asset.sandbox.behaviors.filter((id) => byId.has(id));
+        if (listed.length > 0) return listed;
+    }
+    if (sandboxAssetDragInteract(asset)) return [];
     throw new Error(`resolveSandboxBehaviors: asset ${asset?.id ?? "unknown"} missing sandbox.behaviors`);
-}
-/**
- * @typedef {"self" | "groupWorldProps" | "groupKinetic"} InputGateScope
- * @typedef {"atRest" | "asleep" | "allAtRest" | "allAsleep"} InputGateUntil
- * @typedef {{
- *   scope: InputGateScope,
- *   until: InputGateUntil,
- *   link?: string,
- *   excludeStates?: string[],
- * }} InputGateRule
- * @typedef {{ allowed: boolean, failedRule?: InputGateRule }} InputGateResult
- */
-/** @param {object} entity @param {InputGateUntil} until */
-function entityPassesUntil(entity, until) {
-    if (until === "atRest" || until === "allAtRest") return !entity || entity.isDead || !isKinematicallyActive(entity);
-    return !entity || entity.isDead || Boolean(entity.isSleeping);
-}
-/** @param {object} entity @param {string[] | undefined} excludeStates */
-function isExcludedFromGate(entity, excludeStates) {
-    if (!excludeStates?.length) return false;
-    const state = entity.currentStateName;
-    return state != null && excludeStates.includes(state);
-}
-export function resolveInputGateScope(scope, prop, state, linkField) {
-    if (scope === "self") return [prop];
-    const linkValue = linkField ? prop[linkField] : undefined;
-    if (linkValue == null) return [];
-    const members = [];
-    visitLiveWorldProps(state.worldProps, (entity) => {
-        if (entity[linkField] !== linkValue) return;
-        if (scope === "groupKinetic" && !entity.strategy?.isKinetic) return;
-        members.push(entity);
-    });
-    return members;
-}
-/** @param {object[]} entities @param {InputGateUntil} until @param {string[] | undefined} excludeStates */
-function scopePassesUntil(entities, until, excludeStates) {
-    const aggregate = until === "allAtRest" || until === "allAsleep";
-    const predicate = aggregate ? (until === "allAtRest" ? "atRest" : "asleep") : until;
-    for (let i = 0; i < entities.length; i++) {
-        const entity = entities[i];
-        if (isExcludedFromGate(entity, excludeStates)) continue;
-        if (!entityPassesUntil(entity, predicate)) return false;
-    }
-    return true;
-}
-export function evaluateInputGateRule(rule, prop, state) {
-    const entities = resolveInputGateScope(rule.scope, prop, state, rule.link);
-    if (entities.length === 0) return true;
-    return scopePassesUntil(entities, rule.until, rule.excludeStates);
-}
-/**
- * @param {string} behaviorId
- * @param {object} prop
- * @param {object | null | undefined} asset
- * @param {object} state
- */
-export function evaluateInputGates(behaviorId, prop, asset, state) {
-    const stamped = state.sandbox.entityMeta.getBehaviorOverrides(prop.id)?.inputGates?.[behaviorId];
-    const rules = Array.isArray(stamped) ? stamped : [];
-    if (rules.length === 0) return { allowed: true };
-    for (let i = 0; i < rules.length; i++) {
-        const rule = rules[i];
-        if (!evaluateInputGateRule(rule, prop, state)) return { allowed: false, failedRule: rule };
-    }
-    return { allowed: true };
 }
 const BOUNDS_SHAPE_OPTIONS = [
     { value: "rect", label: "Rectangle" },
@@ -1586,7 +1526,6 @@ export function createSandboxSession(state) {
     };
 }
 export const SPAWNER_BEHAVIOR_ID = "spawner";
-/** @param {object} prop @param {import("../dragLaunch.js").DragLaunchAim | null} aim */
 function aimSpawnerFacing(prop, aim) {
     if (aim?.shotNx == null || aim.shotNy == null) return;
     prop.facing = Math.atan2(aim.shotNy, aim.shotNx);
@@ -1643,9 +1582,6 @@ function buildSpawnerDragBehavior(state) {
         onAim: aimSpawnerFacing,
         onLaunch(_state) {
             return (prop, shot) => fireSpawner(state, prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
-        },
-        supports(_prop, asset) {
-            return isSpawnerProp(asset);
         },
     });
 }
@@ -2220,7 +2156,7 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
     return actions;
 }
 export function createDefaultSandboxBehaviors(state) {
-    return [...createDragLaunchBehaviors(state, evaluateInputGates), buildSpawnerDragBehavior(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
+    return [...createDragLaunchBehaviors(state), buildSpawnerDragBehavior(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
 }
 /** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
 export function findSandboxCameraTargetWorldProp(state, registry) {
@@ -2480,13 +2416,13 @@ export function createSandboxGroundNavContextMenu(state, session, { behaviorById
         },
     };
 }
-export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, stampPropBehavior, selectPropIds }) {
+export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch, selectPropIds }) {
     return createMarqueeSelectTool({
         getCanvas,
         canBegin: (e) => e.shiftKey,
         buildAabbFromDrag: (startWorld, endWorld) => aabbFromTwoPointsInto(aabbScratch, startWorld.x, startWorld.y, endWorld.x, endWorld.y),
         onClick(world, e) {
-            if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode() && session.spawnAt(world.x, world.y)) stampPropBehavior(session.getSelectedProp());
+            if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode()) session.spawnAt(world.x, world.y);
             else session.clearSelection();
         },
         onBoxSelect(bounds) {
@@ -2496,7 +2432,7 @@ export function createSandboxMarqueeTool(state, session, { getCanvas, aabbScratc
         },
     });
 }
-export function createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
+export function createSandboxPrimaryPointerTools(state, session, { blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
     const behaviors = state.sandbox.behaviorById ? [...state.sandbox.behaviorById.values()] : [];
     let lastClickTime = 0;
     let lastClickX = 0;
@@ -2508,7 +2444,6 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
     const tryPlaceSpawnAtWorld = (world, options = {}) => {
         if (session.isWallPlaceMode() || session.isMapGenPlaceMode() || blocksPlacement()) return false;
         if (!session.spawnAt(world.x, world.y, options)) return false;
-        stampPropBehavior(session.getSelectedProp());
         return true;
     };
     const modifierTool = {
@@ -2567,14 +2502,15 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
                 if (hit.type === "boid_triangle") {
                     const entityMeta = state.sandbox.entityMeta;
                     const prevId = entityMeta.getActiveBehaviorId(hit.id);
-                    if (prevId && prevId !== "dragLaunch") {
+                    if (prevId && GROUND_NAV_BEHAVIOR_IDS.has(prevId)) {
                         const prevBehavior = behaviors.find((b) => b.id === prevId);
                         if (prevBehavior?.clearMoveTarget) prevBehavior.clearMoveTarget(hit);
+                        entityMeta.clearActiveBehaviorId(hit.id);
                     }
-                    entityMeta.setActiveBehaviorId(hit.id, "dragLaunch");
                 }
-                const allowed = resolveSandboxBehaviors(propCatalog[hit.type], state, hit);
-                if (allowed.length > 0) {
+                const asset = propCatalog[hit.type];
+                const allowed = resolveSandboxBehaviors(asset, state, hit);
+                if (allowed.length > 0 || sandboxAssetDragInteract(asset) || isSpawnerProp(asset) || asset?.sandbox?.dragLaunch != null) {
                     if (e.ctrlKey || e.metaKey) {
                         session.togglePropInSelection(hit.id);
                         return "consume";
@@ -2617,7 +2553,7 @@ export function createSandboxPrimaryPointerTools(state, session, { stampPropBeha
     };
     return { modifierTool, interactTool, gestureTool };
 }
-export function buildSandboxOverlayCommands({ state, session, spatialFrame, placePreviewWorld, marqueeRect, behaviorById, getPropBehaviorId, resolveBehavior, selectedProp }) {
+export function buildSandboxOverlayCommands({ state, session, spatialFrame, placePreviewWorld, marqueeRect, behaviorById, resolveBehavior, selectedProp }) {
     const commands = [];
     const viewport = state.viewport;
     const sel = session.getSelection();
@@ -2632,7 +2568,7 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
             if (visual === "off") continue;
             const activeId = state.sandbox.entityMeta.getActiveBehaviorId(prop.id);
             const isGroundNav = activeId && GROUND_NAV_BEHAVIOR_IDS.has(activeId);
-            const behavior = (isGroundNav && behaviorById.get(activeId)) || behaviorById.get(getPropBehaviorId(prop));
+            const behavior = isGroundNav ? behaviorById.get(activeId) : null;
             if (!behavior?.getPathOverlay) continue;
             const overlay = behavior.getPathOverlay(prop);
             appendPathOverlayCommands(commands, overlay, state.obstacleGrid, visual);
@@ -3036,12 +2972,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
-function appendBehaviorModeField(parent, behaviorIds, value, onChange) {
-    if (behaviorIds.length === 0) return;
-    appendSelectField(parent, "Mode", { value, options: behaviorIds.map((behaviorId) => ({ value: behaviorId, label: getSandboxBehaviorLabel(behaviorId) })), onChange });
-}
 export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
-    const behaviorIds = controller.listSelectedBehaviors();
     appendFactionSelect(body, {
         value: selectedProp.faction,
         onChange: (faction) => {
@@ -3052,9 +2983,6 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
     if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isBlockFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, selectedProp);
     if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
-    appendBehaviorModeField(body, behaviorIds, controller.getSelectedBehaviorId(), (value) => {
-        controller.setSelectedBehaviorId(value);
-    });
     const selectedAsset = propCatalog[selectedProp.type];
     if (isSpawnerProp(selectedAsset)) {
         const spawnPropIds = listSpawnerSpawnPropIds();
@@ -3142,11 +3070,6 @@ function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAdd
                 refreshPanel();
             },
         });
-    const spawnBehaviorIds = controller.listSpawnBehaviors();
-    if (isSingleWorldPropSpawnAsset(spawnAsset) && spawnBehaviorIds.length > 0)
-        appendBehaviorModeField(addRow, spawnBehaviorIds, controller.getSpawnBehaviorId(), (value) => {
-            controller.setSpawnBehaviorId(value);
-        });
     if (showAddAtCamera) {
         const addBtn = document.createElement("button");
         addBtn.type = "button";
@@ -3201,39 +3124,17 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     cameraCycler.registerCandidateList(() => session.listPlacedProps());
     cameraCycler.addOnTargetChanged(() => session.sync());
     const behaviorById = state.sandbox.behaviorById;
-    let spawnBehaviorId = behaviors[0]?.id ?? "";
     let unbindPointers = null;
     let unbindContextMenu = null;
     let unbindKeyDown = null;
     let placePreviewWorld = null;
     const entityMeta = () => state.sandbox.entityMeta;
-    const spawnAsset = () => propCatalog[session.getSpawnPropId()];
-    const clampBehaviorId = (id, allowed) => {
-        if (allowed.length === 0) return id;
-        return allowed.includes(id) ? id : allowed[0];
-    };
-    const listSpawnBehaviors = () => {
-        const asset = spawnAsset();
-        if (isGridFloorBeltSpawnAsset(asset)) return [];
-        return resolveSandboxBehaviors(asset, state, null);
-    };
-    const clampSpawnBehavior = () => {
-        spawnBehaviorId = clampBehaviorId(spawnBehaviorId, listSpawnBehaviors());
-    };
-    const listSelectedBehaviors = (prop = session.getSelectedProp()) => {
-        if (!prop) return [];
-        return resolveSandboxBehaviors(propCatalog[prop.type], state, prop);
-    };
-    const getPropBehaviorId = (prop) => {
-        const allowed = listSelectedBehaviors(prop);
-        if (allowed.length === 0) return spawnBehaviorId;
-        return clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed);
-    };
-    const stampPropBehavior = (prop) => {
-        if (!prop) return;
-        const allowed = listSelectedBehaviors(prop);
-        if (allowed.length === 0) return;
-        entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(spawnBehaviorId, allowed));
+    const resolvePointerBehavior = () => {
+        const prop = session.getSelectedProp();
+        if (!prop) return null;
+        const asset = propCatalog[prop.type];
+        if (isSpawnerProp(asset)) return behaviorById.get(SPAWNER_BEHAVIOR_ID) ?? null;
+        return resolveDragInteractionBehavior(prop, state, behaviorById);
     };
     const MARQUEE_AABB = createAabb();
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
@@ -3262,44 +3163,24 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const selectProp = (id) => {
         session.select(id == null ? null : { kind: "prop", ids: [id] });
-        const prop = session.getSelectedProp();
-        if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
-            const allowed = listSelectedBehaviors(prop);
-            if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
-        }
     };
     const togglePropInSelection = (id) => {
-        const sel = session.getSelection();
-        const removing = sel?.kind === "prop" && sel.ids.has(id);
         if (!session.togglePropInSelection(id)) return;
-        if (!removing) {
-            const prop = state.entityRegistry.getLive(id);
-            if (prop && entityMeta().getActiveBehaviorId(prop.id) == null) {
-                const allowed = listSelectedBehaviors(prop);
-                if (allowed.length > 0) entityMeta().setActiveBehaviorId(prop.id, allowed[0]);
-            }
-        }
         session.sync();
     };
     const selectPropIds = (ids) => {
         session.select({ kind: "prop", ids });
     };
-    const resolveBehavior = () => {
-        const prop = session.getSelectedProp();
-        if (!prop) return null;
-        const allowed = listSelectedBehaviors(prop);
-        const behavior = behaviorById.get(getPropBehaviorId(prop)) ?? null;
-        if (!behavior || !allowed.includes(behavior.id)) return null;
-        return behavior;
-    };
+    const resolveBehavior = () => resolvePointerBehavior();
     const resolveGroundMove = () => {
         const sel = session.getSelection();
         if (sel?.kind !== "prop") return null;
         const prop = resolveGroundNavSteeringProp(state, entityMeta(), selectionPropIds(sel));
         if (!prop || prop.type === "boid_triangle") return null;
-        const allowed = listSelectedBehaviors(prop);
-        const behavior = behaviorById.get(clampBehaviorId(entityMeta().getActiveBehaviorId(prop.id) ?? spawnBehaviorId, allowed)) ?? null;
-        if (!behavior?.setMoveTarget || !allowed.includes(behavior.id)) return null;
+        const activeId = entityMeta().getActiveBehaviorId(prop.id);
+        if (!activeId || !GROUND_NAV_BEHAVIOR_IDS.has(activeId)) return null;
+        const behavior = behaviorById.get(activeId) ?? null;
+        if (!behavior?.setMoveTarget) return null;
         return { prop, behavior };
     };
     const issueGroundMove = (move, world) => {
@@ -3314,8 +3195,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     };
     const groundNavContextMenu = createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued: () => session.sync() });
     const deletePointerTool = createSandboxDeletePointerTool(state, session);
-    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, { stampPropBehavior, blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected });
-    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, stampPropBehavior, selectPropIds });
+    const { modifierTool, interactTool, gestureTool } = createSandboxPrimaryPointerTools(state, session, { blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected });
+    const marqueeTool = createSandboxMarqueeTool(state, session, { getCanvas, aabbScratch: MARQUEE_AABB, selectPropIds });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, interactTool, gestureTool, marqueeTool], { clientToWorld });
     const resetBehaviors = () => {
         for (const behavior of behaviors) behavior.reset?.();
@@ -3366,7 +3247,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         issueGroundNavToSelection: issueGroundNavToSelected,
         spawnAtCameraOrigin: () => {
             session.spawnAtCameraOrigin();
-            stampPropBehavior(session.getSelectedProp());
         },
         deletePropById: (id) => {
             cameraCycler.retarget(id);
@@ -3377,7 +3257,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             session.setPlacePaletteKey(key);
             if (prevKey === key) return;
             if (key.startsWith("prop:")) {
-                clampSpawnBehavior();
                 const asset = propCatalog[key.slice(5)];
                 if (isBallFamilyAsset(asset)) session.setSpawnBallRadius(ballRadiusFromAsset(asset));
             }
@@ -3396,23 +3275,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         setUiSync: (fn) => session.setUiSync(fn),
         session,
-        getSpawnBehaviorId: () => spawnBehaviorId,
-        setSpawnBehaviorId: (id) => {
-            spawnBehaviorId = clampBehaviorId(id, listSpawnBehaviors());
+        getDragInteractionMode: () => state.sandbox.dragInteractionMode,
+        setDragInteractionMode: (mode) => {
+            state.sandbox.dragInteractionMode = mode === GRAB_DRAG_BEHAVIOR_ID ? GRAB_DRAG_BEHAVIOR_ID : DRAG_LAUNCH_BEHAVIOR_ID;
+            resetBehaviors();
             session.sync();
         },
-        listSpawnBehaviors,
-        getSelectedBehaviorId: () => {
-            const prop = session.getSelectedProp();
-            return prop ? getPropBehaviorId(prop) : spawnBehaviorId;
-        },
-        setSelectedBehaviorId: (id) => {
-            const prop = session.getSelectedProp();
-            if (!prop) return;
-            entityMeta().setActiveBehaviorId(prop.id, clampBehaviorId(id, listSelectedBehaviors(prop)));
-            session.sync();
-        },
-        listSelectedBehaviors: () => listSelectedBehaviors(),
         register() {
             controller.destroy();
             unbindPointers = bindCanvasPointers(getCanvas(), { pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: onPointerUp, pointercancel: onPointerUp, pointerleave: onPointerLeave });
@@ -3464,7 +3332,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         collectOverlayCommands() {
             const showPlacePreview = placePreviewWorld && !canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode();
-            return buildSandboxOverlayCommands({ state, session, spatialFrame: state.spatialFrame, placePreviewWorld: showPlacePreview ? placePreviewWorld : null, marqueeRect: marqueeTool.getMarqueeRect(), behaviorById, getPropBehaviorId, resolveBehavior, selectedProp: session.getSelectedProp() });
+            return buildSandboxOverlayCommands({ state, session, spatialFrame: state.spatialFrame, placePreviewWorld: showPlacePreview ? placePreviewWorld : null, marqueeRect: marqueeTool.getMarqueeRect(), behaviorById, resolveBehavior, selectedProp: session.getSelectedProp() });
         },
         tick(dtMs) {
             session.pruneSelection();
