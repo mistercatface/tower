@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtents, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
 import { resolveBodyRadius } from "../Libraries/Physics/physics.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createPolygonPrimitive } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
+import { quantizeAngleIndex, quantizeAngle, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Physics/physics.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
@@ -47,7 +47,8 @@ describe("draw shape parity", () => {
         const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX: 50, anchorY: 50 });
         assert.equal(stageProp.shape.vertices.length / 2, 6);
         assert.equal(stageProp.shape.vertices[0], prop.shape.vertices[0]);
-        assert.equal(stageProp.halfExtents.x, propFootprintHalfExtents(prop).x);
+        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        assert.equal(stageProp.halfExtents.x, ENGINE_F32[M_VEC_A]);
     });
     it("polygon primitive extrudes live shape without a parallel rect path", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);

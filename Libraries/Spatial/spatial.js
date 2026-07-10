@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";

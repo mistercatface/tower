@@ -1,8 +1,8 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, transformPoint2DInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, transformPoint2DInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -562,14 +562,14 @@ export function buildSphereMesh(radius, latBands, lonBands, rollQuat) {
         const row = [];
         if (Math.sin(phi) < 1e-6) {
             const pole = sphereLocalVertex(radius, phi, 0);
-            const rotated = transformRollVertex(pole.lx, pole.ly, pole.z, radius, rollQuat);
-            row.push({ ...rotated, lon: 0 });
+            transformRollVertexInto(ENGINE_F32, M_OUT_VX, pole.lx, pole.ly, pole.z, radius, rollQuat.w, rollQuat.x, rollQuat.y, rollQuat.z);
+            row.push({ lx: ENGINE_F32[M_OUT_VX], ly: ENGINE_F32[M_OUT_VY], z: ENGINE_F32[M_OUT_VZ], lon: 0 });
         } else
             for (let lon = 0; lon < lonBands; lon++) {
                 const theta = (lon / lonBands) * Math.PI * 2;
                 const local = sphereLocalVertex(radius, phi, theta);
-                const rotated = transformRollVertex(local.lx, local.ly, local.z, radius, rollQuat);
-                row.push({ ...rotated, lon });
+                transformRollVertexInto(ENGINE_F32, M_OUT_VX, local.lx, local.ly, local.z, radius, rollQuat.w, rollQuat.x, rollQuat.y, rollQuat.z);
+                row.push({ lx: ENGINE_F32[M_OUT_VX], ly: ENGINE_F32[M_OUT_VY], z: ENGINE_F32[M_OUT_VZ], lon });
             }
         rows.push(row);
     }
@@ -1556,7 +1556,8 @@ export function sphereLocalVertex(radius, phi, theta) {
  */
 export function sphereRolledVertex(radius, phi, theta, rollQuat) {
     const v = sphereLocalVertex(radius, phi, theta);
-    return transformRollVertex(v.lx, v.ly, v.z, radius, rollQuat);
+    transformRollVertexInto(ENGINE_F32, M_OUT_VX, v.lx, v.ly, v.z, radius, rollQuat.w, rollQuat.x, rollQuat.y, rollQuat.z);
+    return { lx: ENGINE_F32[M_OUT_VX], ly: ENGINE_F32[M_OUT_VY], z: ENGINE_F32[M_OUT_VZ] };
 }
 /**
  * Tessellate a spherical UV patch into model-space quads (before world projection).

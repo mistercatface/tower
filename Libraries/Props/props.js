@@ -1,7 +1,7 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
-import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
+import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
@@ -160,10 +160,6 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
     buf[o] = radius;
     buf[o + 1] = radius;
 }
-export function propFootprintHalfExtents(prop) {
-    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-    return { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] };
-}
 function propShapeFootprintKey(prop) {
     const shape = prop.shape;
     if (shape?.type === "Polygon") {
@@ -210,8 +206,8 @@ export function getBaseSpriteCacheKey(prop, deps) {
 }
 export function getPropStageBakeState(prop, deps) {
     const { quantizeAngle, quantizeRollQuat, anchorX, anchorY } = deps;
-    const footprint = propFootprintHalfExtents(prop);
-    return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: footprint, facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat };
+    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+    return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat };
 }
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) {

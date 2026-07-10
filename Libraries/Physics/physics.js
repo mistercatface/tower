@@ -1,4 +1,4 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ } from "../Math/math.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
@@ -3951,15 +3951,26 @@ export function circleLeadingPoint(cx, cy, radius, dirX, dirY, destOffset = P_VE
 /** Point on circle A that faces circle B at first center–center contact. */
 /** @type {{ w: number, x: number, y: number, z: number }} */
 export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
-export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL_QUAT) {
-    const rotated = rotateVecByQuat(lx, ly, lz - radius, rollQuat);
-    return { lx: rotated.x, ly: rotated.y, z: rotated.z + radius };
+const sQuantizedRollQuat = { w: 1, x: 0, y: 0, z: 0 };
+function ensureBodyRollQuat(body) {
+    let q = body.rollQuat;
+    if (!q) {
+        q = { w: 1, x: 0, y: 0, z: 0 };
+        body.rollQuat = q;
+    }
+    return q;
+}
+/** Writes lx, ly, z at buf[o..o+2]. */
+export function transformRollVertexInto(buf, o, lx, ly, lz, radius, qw, qx, qy, qz) {
+    rotateVecByQuatInto(buf, o, lx, ly, lz - radius, qw, qx, qy, qz);
+    buf[o + 2] += radius;
 }
 export function worldAnchorFromRolledBody(body, localX, localY, dst) {
     const radius = getRollRadius(body);
-    const rolled = transformRollVertex(localX, localY, 0, radius, body.rollQuat ?? IDENTITY_ROLL_QUAT);
-    dst.x = body.x + rolled.lx;
-    dst.y = body.y + rolled.ly;
+    const q = body.rollQuat ?? IDENTITY_ROLL_QUAT;
+    transformRollVertexInto(ENGINE_F32, M_OUT_VX, localX, localY, 0, radius, q.w, q.x, q.y, q.z);
+    dst.x = body.x + ENGINE_F32[M_OUT_VX];
+    dst.y = body.y + ENGINE_F32[M_OUT_VY];
     return dst;
 }
 export function getRollRadius(body) {
@@ -3974,8 +3985,18 @@ function integrateGroundRoll(body, dtMs) {
     const angle = -(speed / r) * (dtMs / 1000);
     const ax = -vy / speed;
     const ay = vx / speed;
-    const rollDelta = axisAngleQuat(ax, ay, 0, angle);
-    body.rollQuat = normalizeQuat(multiplyQuat(rollDelta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
+    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, ax, ay, 0, angle);
+    const dw = ENGINE_F32[M_OUT_QW];
+    const dx = ENGINE_F32[M_OUT_QX];
+    const dy = ENGINE_F32[M_OUT_QY];
+    const dz = ENGINE_F32[M_OUT_QZ];
+    const q = ensureBodyRollQuat(body);
+    multiplyQuatInto(ENGINE_F32, M_OUT_QW, dw, dx, dy, dz, q.w, q.x, q.y, q.z);
+    q.w = ENGINE_F32[M_OUT_QW];
+    q.x = ENGINE_F32[M_OUT_QX];
+    q.y = ENGINE_F32[M_OUT_QY];
+    q.z = ENGINE_F32[M_OUT_QZ];
+    normalizeQuat(q);
 }
 export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
     const w = q.w ?? 1;
@@ -3988,7 +4009,11 @@ export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
     if (len < 1e-6) return q;
     w_t /= len;
     z_t /= len;
-    const q_swing = multiplyQuat(q, { w: w_t, x: 0, y: 0, z: -z_t });
+    multiplyQuatInto(ENGINE_F32, M_OUT_QW, w, x, y, z, w_t, 0, 0, -z_t);
+    const sw = ENGINE_F32[M_OUT_QW];
+    const sx = ENGINE_F32[M_OUT_QX];
+    const sy = ENGINE_F32[M_OUT_QY];
+    const sz = ENGINE_F32[M_OUT_QZ];
     const decay = Math.exp(-dampingRate * (dtMs / 1000));
     let z_t_new = z_t * decay;
     let w_t_new = w_t;
@@ -3997,28 +4022,60 @@ export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
         w_t_new /= len_new;
         z_t_new /= len_new;
     }
-    return normalizeQuat(multiplyQuat(q_swing, { w: w_t_new, x: 0, y: 0, z: z_t_new }));
+    multiplyQuatInto(ENGINE_F32, M_OUT_QW, sw, sx, sy, sz, w_t_new, 0, 0, z_t_new);
+    q.w = ENGINE_F32[M_OUT_QW];
+    q.x = ENGINE_F32[M_OUT_QX];
+    q.y = ENGINE_F32[M_OUT_QY];
+    q.z = ENGINE_F32[M_OUT_QZ];
+    return normalizeQuat(q);
 }
 export function absorbCollisionRollImpulse(body, dtMs) {
     if (body.strategy?.rolls) return;
-    const w = body.angularVelocity ?? 0;
-    if (Math.abs(w) < 0.02) return;
-    const angle = -w * (dtMs / 1000);
-    const delta = axisAngleQuat(0, 0, 1, angle);
-    body.rollQuat = normalizeQuat(multiplyQuat(delta, body.rollQuat ?? IDENTITY_ROLL_QUAT));
+    const angW = body.angularVelocity ?? 0;
+    if (Math.abs(angW) < 0.02) return;
+    const angle = -angW * (dtMs / 1000);
+    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, 0, 0, 1, angle);
+    const dw = ENGINE_F32[M_OUT_QW];
+    const dx = ENGINE_F32[M_OUT_QX];
+    const dy = ENGINE_F32[M_OUT_QY];
+    const dz = ENGINE_F32[M_OUT_QZ];
+    const q = ensureBodyRollQuat(body);
+    multiplyQuatInto(ENGINE_F32, M_OUT_QW, dw, dx, dy, dz, q.w, q.x, q.y, q.z);
+    q.w = ENGINE_F32[M_OUT_QW];
+    q.x = ENGINE_F32[M_OUT_QX];
+    q.y = ENGINE_F32[M_OUT_QY];
+    q.z = ENGINE_F32[M_OUT_QZ];
+    normalizeQuat(q);
 }
 export function quantizeRollQuat(rollQuat, steps = 16) {
     const q = rollQuat ?? IDENTITY_ROLL_QUAT;
     const angle = 2 * Math.acos(clamp(q.w ?? 1, -1, 1));
-    if (angle < 1e-4) return IDENTITY_ROLL_QUAT;
+    if (angle < 1e-4) {
+        sQuantizedRollQuat.w = IDENTITY_ROLL_QUAT.w;
+        sQuantizedRollQuat.x = IDENTITY_ROLL_QUAT.x;
+        sQuantizedRollQuat.y = IDENTITY_ROLL_QUAT.y;
+        sQuantizedRollQuat.z = IDENTITY_ROLL_QUAT.z;
+        return sQuantizedRollQuat;
+    }
     const s = Math.sin(angle * 0.5);
-    if (Math.abs(s) < 1e-4) return IDENTITY_ROLL_QUAT;
+    if (Math.abs(s) < 1e-4) {
+        sQuantizedRollQuat.w = IDENTITY_ROLL_QUAT.w;
+        sQuantizedRollQuat.x = IDENTITY_ROLL_QUAT.x;
+        sQuantizedRollQuat.y = IDENTITY_ROLL_QUAT.y;
+        sQuantizedRollQuat.z = IDENTITY_ROLL_QUAT.z;
+        return sQuantizedRollQuat;
+    }
     const ax = (q.x ?? 0) / s;
     const ay = (q.y ?? 0) / s;
     const heading = Math.atan2(ay, ax);
     const qAngle = quantizeAngle(angle, steps);
     const qHeading = quantizeAngle(heading, steps);
-    return axisAngleQuat(Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
+    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
+    sQuantizedRollQuat.w = ENGINE_F32[M_OUT_QW];
+    sQuantizedRollQuat.x = ENGINE_F32[M_OUT_QX];
+    sQuantizedRollQuat.y = ENGINE_F32[M_OUT_QY];
+    sQuantizedRollQuat.z = ENGINE_F32[M_OUT_QZ];
+    return sQuantizedRollQuat;
 }
 export function buildRollOrientKey(rollQuat, steps = 16) {
     const q = quantizeRollQuat(rollQuat, steps);

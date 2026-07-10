@@ -6,8 +6,8 @@ import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { getCirclePropRadius } from "../Libraries/Props/props.js";
-import { propFootprintHalfExtents } from "../Libraries/Props/props.js";
+import { getCirclePropRadius, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
+import { ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 function createSpawnTestState() {
@@ -51,9 +51,9 @@ describe("spawn shape family defaults", () => {
         assert.equal(session.spawnAt(96, 96), true);
         const prop = state.worldProps[0];
         assert.equal(prop.type, "custom_box");
-        const span = propFootprintHalfExtents(prop);
-        assert.equal(Math.round(span.x * 2), 24);
-        assert.equal(Math.round(span.y * 2), 32);
+        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        assert.equal(Math.round(ENGINE_F32[M_VEC_A] * 2), 24);
+        assert.equal(Math.round(ENGINE_F32[M_VEC_A + 1] * 2), 32);
         assert.equal(getPropVisualTint(prop), "#00aa88");
     });
 

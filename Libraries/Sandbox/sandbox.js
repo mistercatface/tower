@@ -7,7 +7,7 @@ import { appendActionRow, appendEditorHint, appendSelectField, appendColorField,
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
-import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
+import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, ENGINE_BOUNDS_BASE, B_TMP, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
@@ -2643,19 +2643,21 @@ function appendShapeFamilyFields(body, state, spec) {
     }
     if (isBlockFamilyAsset(asset)) {
         if (isResizableBoxSpawnAsset(asset)) {
-            const span = propFootprintHalfExtents(selectedProp);
+            propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
+            const spanX = ENGINE_F32[M_VEC_A];
+            const spanY = ENGINE_F32[M_VEC_A + 1];
             appendShapeFamilyBoxFields(
                 body,
-                Math.round(span.x * 2),
-                Math.round(span.y * 2),
+                Math.round(spanX * 2),
+                Math.round(spanY * 2),
                 (width) => {
-                    const next = propFootprintHalfExtents(selectedProp);
-                    applyPropBoxFootprint(selectedProp, width / 2, next.y);
+                    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
+                    applyPropBoxFootprint(selectedProp, width / 2, ENGINE_F32[M_VEC_A + 1]);
                     dirty();
                 },
                 (height) => {
-                    const next = propFootprintHalfExtents(selectedProp);
-                    applyPropBoxFootprint(selectedProp, next.x, height / 2);
+                    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
+                    applyPropBoxFootprint(selectedProp, ENGINE_F32[M_VEC_A], height / 2);
                     dirty();
                 },
             );

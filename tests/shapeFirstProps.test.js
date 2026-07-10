@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, propFootprintHalfExtents } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
-import { polygonSignedArea2D } from "../Libraries/Math/math.js";
+import { polygonSignedArea2D, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {
@@ -31,9 +31,9 @@ describe("shape-first props", () => {
     it("custom box footprint can be resized after spawn", () => {
         const prop = new WorldProp(10, 20, "custom_box", 0);
         applyPropBoxFootprint(prop, 12, 5);
-        const span = propFootprintHalfExtents(prop);
-        assert.equal(span.x, 12);
-        assert.equal(span.y, 5);
+        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        assert.equal(ENGINE_F32[M_VEC_A], 12);
+        assert.equal(ENGINE_F32[M_VEC_A + 1], 5);
         assert.equal(prop.shape.vertices.length / 2, 4);
         assert.equal(kineticFootprintArea(prop), 240);
     });
