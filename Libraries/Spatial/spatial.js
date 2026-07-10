@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, minCornerAabb, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -1648,11 +1648,11 @@ export class WorldObstacleGrid {
         if (!navTopology) return false;
         return navTopology.canStep(fromIdx, toIdx);
     }
-    getCellBoundsByIdx(idx) {
+    getCellBoundsByIdxInto(out, idx) {
         const cols = this.cols;
         const minX = this.minX + (idx % cols) * this.cellSize;
         const minY = this.minY + ((idx / cols) | 0) * this.cellSize;
-        return minCornerAabb(minX, minY, this.cellSize, this.cellSize);
+        return minCornerAabbInto(out, minX, minY, this.cellSize, this.cellSize);
     }
 }
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
@@ -3035,6 +3035,7 @@ export function registerMapGenBoundsGridExpansionListener(state) {
     };
 }
 const MAP_GEN_CLEAR_CIRCLE_BOUNDS = createAabb();
+const MAP_GEN_CELL_BOUNDS = createAabb();
 function clearStaticWallsAndEdgesAtIdx(grid, idx) {
     let cellChanged = false;
     if (cellIsStaticWallAtIdx(grid, idx)) {
@@ -3062,9 +3063,9 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
     centerReachAabbInto(MAP_GEN_CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
     const bounds = emptyCellBounds();
     forEachObstacleGridCellInAabb(grid, MAP_GEN_CLEAR_CIRCLE_BOUNDS, (idx) => {
-        const cellBounds = grid.getCellBoundsByIdx(idx);
-        const cx = (cellBounds.minX + cellBounds.maxX) * 0.5;
-        const cy = (cellBounds.minY + cellBounds.maxY) * 0.5;
+        grid.getCellBoundsByIdxInto(MAP_GEN_CELL_BOUNDS, idx);
+        const cx = (MAP_GEN_CELL_BOUNDS.minX + MAP_GEN_CELL_BOUNDS.maxX) * 0.5;
+        const cy = (MAP_GEN_CELL_BOUNDS.minY + MAP_GEN_CELL_BOUNDS.maxY) * 0.5;
         if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
         if (!clearStaticWallsAndEdgesAtIdx(grid, idx)) return;
         growCellBoundsIdx(bounds, idx, grid);

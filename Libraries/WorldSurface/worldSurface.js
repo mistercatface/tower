@@ -7,10 +7,12 @@ import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfacePro
 import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { MinHeap } from "../DataStructures/MinHeap.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
-import { railWallFootprintAabb, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { railWallFootprintAabbInto, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();
+const CELL_BOUNDS_SCRATCH = createAabb();
+const RAIL_FOOTPRINT_SCRATCH = createAabb();
 export function getSurfaceProfileRevision(profileId) {
     return revisions.get(profileId) ?? 0;
 }
@@ -265,8 +267,8 @@ export class SurfaceBitmapCache {
         };
         const disposeItem = (item) => {
             if (isReused(item)) return;
-            if (typeof ImageBitmap !== "undefined" && item instanceof ImageBitmap) item.close();
-            else if (typeof OffscreenCanvas !== "undefined" && item instanceof OffscreenCanvas) releaseOffscreenCanvas(item);
+            if (item instanceof ImageBitmap) item.close();
+            else if (item instanceof OffscreenCanvas) releaseOffscreenCanvas(item);
         };
         if (Array.isArray(oldVal)) for (const item of oldVal) disposeItem(item);
         else disposeItem(oldVal);
@@ -855,9 +857,9 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings
         for (let c = startCol; c <= endCol; c++) {
             const idx = rowOffset + c;
             if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
-                const cellBounds = obstacleGrid.getCellBoundsByIdx(idx);
-                const x = Math.round((cellBounds.minX - bounds.minX) * surfaceBakeScale);
-                const y = Math.round((cellBounds.minY - bounds.minY) * surfaceBakeScale);
+                obstacleGrid.getCellBoundsByIdxInto(CELL_BOUNDS_SCRATCH, idx);
+                const x = Math.round((CELL_BOUNDS_SCRATCH.minX - bounds.minX) * surfaceBakeScale);
+                const y = Math.round((CELL_BOUNDS_SCRATCH.minY - bounds.minY) * surfaceBakeScale);
                 ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
                 any = true;
             }
@@ -882,13 +884,14 @@ export function clipChunkToFlatWallFootprints(ctx, obstacleGrid, bounds, zLevel)
                 // 1. Voxel wall footprints
                 const cellZ = resolveCellWallHeightAtIdx(obstacleGrid, idx);
                 if (cellZ === zLevel) {
-                    traceAabbRect(clipCtx, obstacleGrid.getCellBoundsByIdx(idx));
+                    obstacleGrid.getCellBoundsByIdxInto(CELL_BOUNDS_SCRATCH, idx);
+                    traceAabbRect(clipCtx, CELL_BOUNDS_SCRATCH);
                     clippedAny = true;
                 }
                 // 2. Rail wall footprints
                 for (let side = 0; side < 4; side++)
                     if (railWallAtZLevel(obstacleGrid, idx, side, zLevel)) {
-                        traceAabbRect(clipCtx, railWallFootprintAabb(obstacleGrid, idx, side));
+                        traceAabbRect(clipCtx, railWallFootprintAabbInto(RAIL_FOOTPRINT_SCRATCH, obstacleGrid, idx, side));
                         clippedAny = true;
                     }
             }

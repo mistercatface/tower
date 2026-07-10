@@ -3,8 +3,11 @@ import { railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeig
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
+import { createAabb } from "../Math/math.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
+const CELL_BOUNDS = createAabb();
+const RAIL_FOOTPRINT = createAabb();
 export const RAIL_BOX = { chunkKey: 0, gridIdx: 1, gridSide: 2, minX: 3, minY: 4, maxX: 5, maxY: 6, innerP1x: 7, innerP1y: 8, innerP2x: 9, innerP2y: 10, outerP1x: 11, outerP1y: 12, outerP2x: 13, outerP2y: 14, inwardX: 15, inwardY: 16, wallBaseZ: 17, wallHeight: 18, wallCapHeight: 19, edgeThickness: 20, cx: 21, cy: 22 };
 export const RAIL_BOX_STRIDE = 23;
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
@@ -40,19 +43,38 @@ export function resolveRailWallNeighborContext(grid, idx, side) {
     const capHeightPx = railEdge ? railWallHeightPx(railEdge, grid, fillLevel) : 0;
     return { neighborFillLevel: fillLevel, neighborFillHeightPx, neighborCap, capHeightPx };
 }
-export function railWallFootprintAabb(grid, idx, edge) {
+export function railWallFootprintAabbInto(out, grid, idx, edge) {
     const halfT = railWallFootprintHalfThickness(grid, idx, edge);
-    const b = grid.getCellBoundsByIdx(idx);
-    if (edge === 0) return { minX: b.minX, minY: b.minY - halfT, maxX: b.maxX, maxY: b.minY + halfT };
-    if (edge === 1) return { minX: b.maxX - halfT, minY: b.minY, maxX: b.maxX + halfT, maxY: b.maxY };
-    if (edge === 2) return { minX: b.minX, minY: b.maxY - halfT, maxX: b.maxX, maxY: b.maxY + halfT };
-    return { minX: b.minX - halfT, minY: b.minY, maxX: b.minX + halfT, maxY: b.maxY };
+    grid.getCellBoundsByIdxInto(CELL_BOUNDS, idx);
+    const b = CELL_BOUNDS;
+    if (edge === 0) {
+        out.minX = b.minX;
+        out.minY = b.minY - halfT;
+        out.maxX = b.maxX;
+        out.maxY = b.minY + halfT;
+    } else if (edge === 1) {
+        out.minX = b.maxX - halfT;
+        out.minY = b.minY;
+        out.maxX = b.maxX + halfT;
+        out.maxY = b.maxY;
+    } else if (edge === 2) {
+        out.minX = b.minX;
+        out.minY = b.maxY - halfT;
+        out.maxX = b.maxX;
+        out.maxY = b.maxY + halfT;
+    } else {
+        out.minX = b.minX - halfT;
+        out.minY = b.minY;
+        out.maxX = b.minX + halfT;
+        out.maxY = b.maxY;
+    }
+    return out;
 }
 export function flatRailWallCapUvCornersIntoFlat(out8, grid, data, base) {
     const idx = data[base + RAIL_BOX.gridIdx];
     const side = data[base + RAIL_BOX.gridSide];
-    const b = grid.getCellBoundsByIdx(idx);
-    return fillFlatUvFromBounds(out8, b, side);
+    grid.getCellBoundsByIdxInto(CELL_BOUNDS, idx);
+    return fillFlatUvFromBounds(out8, CELL_BOUNDS, side);
 }
 function fillFlatUvFromBounds(out8, b, side) {
     if (side === 0) {
@@ -96,7 +118,8 @@ function fillFlatUvFromBounds(out8, b, side) {
 }
 function railWallSideEndpoints(grid, idx, edge, railSide, p1, p2) {
     const halfT = railWallFootprintHalfThickness(grid, idx, edge);
-    const b = grid.getCellBoundsByIdx(idx);
+    grid.getCellBoundsByIdxInto(CELL_BOUNDS, idx);
+    const b = CELL_BOUNDS;
     if (edge === 0) {
         const y = railSide === 0 ? b.minY + halfT : b.minY - halfT;
         p1.x = b.minX;
@@ -131,7 +154,7 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const { neighborCap, capHeightPx: edgeHeight } = resolveRailWallNeighborContext(grid, idx, edge);
     if (edgeHeight <= 0) return false;
     if (!voxelWallFaceVisible(neighborCap, edgeHeight)) return false;
-    const fp = railWallFootprintAabb(grid, idx, edge);
+    const fp = railWallFootprintAabbInto(RAIL_FOOTPRINT, grid, idx, edge);
     railWallSideEndpoints(grid, idx, edge, 0, sP1, sP2);
     const base = recordIndex * RAIL_BOX_STRIDE;
     data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, grid, gridSettings.minCellsPerChunk);
@@ -295,9 +318,9 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     const col = idx % cols;
     const row = (idx / cols) | 0;
     cellEdgeEndpointsIdx(grid, idx, edge, sP1, sP2, 0);
-    const cellBounds = grid.getCellBoundsByIdx(idx);
-    const cx = (cellBounds.minX + cellBounds.maxX) / 2;
-    const cy = (cellBounds.minY + cellBounds.maxY) / 2;
+    grid.getCellBoundsByIdxInto(CELL_BOUNDS, idx);
+    const cx = (CELL_BOUNDS.minX + CELL_BOUNDS.maxX) / 2;
+    const cy = (CELL_BOUNDS.minY + CELL_BOUNDS.maxY) / 2;
     const ecx = (sP1.x + sP2.x) / 2;
     const ecy = (sP1.y + sP2.y) / 2;
     const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);

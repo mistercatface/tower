@@ -6,6 +6,15 @@ import { terminateAllWorkerNavigations, enableTestNavigationTracking } from "./W
 installNodeWorkerShim();
 enableTestNavigationTracking();
 
+if (typeof globalThis.ImageBitmap === "undefined") {
+    globalThis.ImageBitmap = class ImageBitmap {
+        constructor(width = 0, height = 0) {
+            this.width = width;
+            this.height = height;
+        }
+        close() {}
+    };
+}
 if (typeof globalThis.OffscreenCanvas === "undefined") {
     globalThis.OffscreenCanvas = class OffscreenCanvas {
         constructor(width, height) {
@@ -18,11 +27,8 @@ if (typeof globalThis.OffscreenCanvas === "undefined") {
     };
 }
 if (typeof globalThis.createImageBitmap === "undefined") {
-    globalThis.createImageBitmap = async (source) => ({
-        width: source.width ?? 0,
-        height: source.height ?? 0,
-        close() {},
-    });
+    globalThis.createImageBitmap = async (source) =>
+        new globalThis.ImageBitmap(source.width ?? 0, source.height ?? 0);
 }
 
 after(async () => {

@@ -1,5 +1,5 @@
-export { ENGINE_F32, ENGINE_MATH_BASE, ENGINE_PHYS_BASE, ENGINE_FRAC_BASE, ENGINE_SPATIAL_BASE, ENGINE_NAV_BASE, M_VEC_A, M_VEC_B, M_VEC_C, M_VEC_D, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, M_OUT_REFLECT_DX, M_OUT_REFLECT_DY, M_OUT_RECT, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "./engineF32.js";
-import { ENGINE_F32, M_VEC_A, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, M_OUT_REFLECT_DX, M_OUT_REFLECT_DY, M_OUT_RECT } from "./engineF32.js";
+export { ENGINE_F32, ENGINE_MATH_BASE, ENGINE_PHYS_BASE, ENGINE_FRAC_BASE, ENGINE_SPATIAL_BASE, ENGINE_NAV_BASE, M_VEC_A, M_VEC_B, M_VEC_C, M_VEC_D, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, M_OUT_REFLECT_DX, M_OUT_REFLECT_DY, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "./engineF32.js";
+import { ENGINE_F32, M_VEC_A, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, M_OUT_REFLECT_DX, M_OUT_REFLECT_DY } from "./engineF32.js";
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -585,9 +585,6 @@ export function aabbFromF32(buf, o, out) {
     out.maxX = buf[o + 2];
     out.maxY = buf[o + 3];
     return out;
-}
-export function minCornerAabb(minX, minY, width, height) {
-    return minCornerAabbInto(createAabb(), minX, minY, width, height);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function aabbFromTwoPointsInto(out, x1, y1, x2, y2) {

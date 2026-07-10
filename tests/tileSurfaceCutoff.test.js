@@ -5,7 +5,6 @@ import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey, WorldSurfaceEngine, T
 import { SurfaceSpatialMap } from "../Libraries/WorldSurface/worldSurface.js";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { createSurfaceBakeTestState } from "./harness/stateFactories.js";
-globalThis.ImageBitmap = class ImageBitmap { close() {} };
 
 function createSurfaceSpace(overrides = {}) {
     return new SurfaceSpatialMap(createGameWorldSurfaceSettings(overrides));

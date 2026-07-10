@@ -1,5 +1,5 @@
 import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/engineF32.js";
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, aabbFromF32 } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -25,7 +25,6 @@ export const P_VEC_B = ENGINE_PHYS_BASE + 2;
 export const P_VEC_C = ENGINE_PHYS_BASE + 4;
 export const P_VEC_D = ENGINE_PHYS_BASE + 6;
 export const P_AABB_A = ENGINE_PHYS_BASE + 8;
-export const P_AABB_B = ENGINE_PHYS_BASE + 12;
 export const P_OUT_MASS_AREA = ENGINE_PHYS_BASE + 16;
 export const P_OUT_MASS_CX = ENGINE_PHYS_BASE + 17;
 export const P_OUT_MASS_CY = ENGINE_PHYS_BASE + 18;
@@ -1031,6 +1030,14 @@ function entityWorldAabbInto(out, entity) {
     }
     entityWorldAabbFromShapeInto(out, entity);
 }
+const ENTITY_WORLD_AABB = createAabb();
+function entityWorldAabbF32(buf, o, entity) {
+    entityWorldAabbInto(ENTITY_WORLD_AABB, entity);
+    buf[o] = ENTITY_WORLD_AABB.minX;
+    buf[o + 1] = ENTITY_WORLD_AABB.minY;
+    buf[o + 2] = ENTITY_WORLD_AABB.maxX;
+    buf[o + 3] = ENTITY_WORLD_AABB.maxY;
+}
 function kineticActivity() {
     return collisionSettings.kineticActivity;
 }
@@ -1049,7 +1056,7 @@ export function markBroadphaseDirty(entity) {
     entity._broadphaseDirty = true;
 }
 export function entityContainedInAabb(entity, outer) {
-    entityWorldAabbInto(entity);
+    entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
     return outer.minX <= ENGINE_F32[P_AABB_A] && outer.minY <= ENGINE_F32[P_AABB_A + 1] && outer.maxX >= ENGINE_F32[P_AABB_A + 2] && outer.maxY >= ENGINE_F32[P_AABB_A + 3];
 }
 export function isMovingEntity(entity) {
@@ -3047,6 +3054,7 @@ function applyFloorBeltForces(world, spatialFrame, dtMs) {
     }
 }
 const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, exitCx: 0, exitCy: 0, tx: 0, ty: 0 };
+const PORTAL_QUERY_BOUNDS = createAabb();
 function portalTeleportHandler(body) {
     const t = PORTAL_TICK;
     const grid = t.grid;
@@ -3095,8 +3103,8 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         PORTAL_TICK.exitCy = ey;
         PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
         PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
-        const queryBounds = { minX: ENGINE_F32[P_AABB_A], minY: ENGINE_F32[P_AABB_A + 1], maxX: ENGINE_F32[P_AABB_A + 2], maxY: ENGINE_F32[P_AABB_A + 3] };
-        eg.forEachInBounds(queryBounds, null, ++eg.queryGen, portalTeleportHandler);
+        aabbFromF32(ENGINE_F32, P_AABB_A, PORTAL_QUERY_BOUNDS);
+        eg.forEachInBounds(PORTAL_QUERY_BOUNDS, null, ++eg.queryGen, portalTeleportHandler);
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {

@@ -8,23 +8,15 @@ import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { createSurfaceBakeTestState } from "./harness/stateFactories.js";
 
-// Ensure global ImageBitmap shim exists for environment
-if (typeof globalThis.ImageBitmap === "undefined") {
-    globalThis.ImageBitmap = class ImageBitmap { close() {} };
-}
-
 describe("BakedSpriteCache Leak Auditing", () => {
     let createdBitmaps = [];
     let closedBitmaps = 0;
 
     before(() => {
         globalThis.createImageBitmap = async (source) => {
-            const bmp = {
-                width: source.width ?? 0,
-                height: source.height ?? 0,
-                close() {
-                    closedBitmaps++;
-                },
+            const bmp = new ImageBitmap(source.width ?? 0, source.height ?? 0);
+            bmp.close = () => {
+                closedBitmaps++;
             };
             createdBitmaps.push(bmp);
             return bmp;

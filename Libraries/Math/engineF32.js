@@ -27,7 +27,6 @@ export const M_OUT_VY = ENGINE_MATH_BASE + 22;
 export const M_OUT_VZ = ENGINE_MATH_BASE + 23;
 export const M_OUT_REFLECT_DX = ENGINE_MATH_BASE + 24;
 export const M_OUT_REFLECT_DY = ENGINE_MATH_BASE + 25;
-export const M_OUT_RECT = ENGINE_MATH_BASE + 26;
 export const S_OUT_XY = ENGINE_SPATIAL_BASE;
 export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
 export const S_AABB = ENGINE_SPATIAL_BASE + 4;

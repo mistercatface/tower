@@ -481,8 +481,6 @@ function disposeEntry(entry) {
  * LRU cache of offscreen canvas sprites (bake once, blit many).
  * Entries are asynchronously promoted to GPU-resident ImageBitmap after the
  * first bake, so subsequent blits avoid per-frame texture uploads.
- * Falls back to raw OffscreenCanvas when createImageBitmap is unavailable
- * (Node.js test environment, very old browsers).
  *
  * @param {{ maxItems?: number }} [options]
  */
@@ -511,27 +509,26 @@ export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
             cache.set(key, entry);
             // Asynchronously promote to a GPU-resident ImageBitmap so that
             // subsequent ctx.drawImage calls are zero-copy.
-            if (typeof createImageBitmap !== "undefined")
-                createImageBitmap(sourceCanvas)
-                    .then((bitmap) => {
-                        if (entry.disposed) {
-                            bitmap.close();
-                            return;
-                        }
-                        // Only apply if this entry is still the live one in the cache.
-                        const live = cache.get(key);
-                        if (live === entry) {
-                            entry.canvas = bitmap;
-                            entry._isBitmap = true;
-                            // The OffscreenCanvas is no longer needed — return it to the pool.
-                            releaseOffscreenCanvas(sourceCanvas);
-                        } else
-                            // Entry was already evicted or replaced; discard the bitmap.
-                            bitmap.close();
-                    })
-                    .catch(() => {
-                        // Promotion failed (e.g. canvas was closed). Keep OffscreenCanvas as-is.
-                    });
+            createImageBitmap(sourceCanvas)
+                .then((bitmap) => {
+                    if (entry.disposed) {
+                        bitmap.close();
+                        return;
+                    }
+                    // Only apply if this entry is still the live one in the cache.
+                    const live = cache.get(key);
+                    if (live === entry) {
+                        entry.canvas = bitmap;
+                        entry._isBitmap = true;
+                        // The OffscreenCanvas is no longer needed — return it to the pool.
+                        releaseOffscreenCanvas(sourceCanvas);
+                    } else
+                        // Entry was already evicted or replaced; discard the bitmap.
+                        bitmap.close();
+                })
+                .catch(() => {
+                    // Promotion failed (e.g. canvas was closed). Keep OffscreenCanvas as-is.
+                });
             return entry;
         },
         clear() {
