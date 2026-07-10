@@ -2,7 +2,7 @@ import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
 import { entityRefs } from "../Entity/entitySlots.js";
-import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx } from "../Spatial/spatial.js";
+import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
@@ -20,6 +20,13 @@ const MAX_KINETIC_DEBRIS = 4096 * 4;
 const MAX_PENDING_WALL_BREAKS = 256;
 const WALL_KIND_VOXEL = 0;
 const WALL_KIND_RAIL = 1;
+const WALL_KEY_RAIL_BIT = 1 << 30;
+const WALL_KEY_SIDE_SHIFT = 28;
+const WALL_KEY_IDX_MASK = (1 << 28) - 1;
+let sWallKind = -1;
+let sWallIdx = 0;
+let sWallSide = 0;
+const railFlushBatch = new RailWallBatch(MAX_PENDING_WALL_BREAKS);
 const debrisStrategyByType = new Map();
 function strategyForDebrisType(type) {
     let strategy = debrisStrategyByType.get(type);
@@ -520,11 +527,8 @@ class KineticDebrisStore {
         parent.vy = 0;
         parent.angularVelocity = 0;
         parent.facing = spawn.angle[row];
-        parent.shape = undefined;
         parent.collisionParts = undefined;
         parent.chunks = undefined;
-        parent.footprintVertices = undefined;
-        parent.footprintArea = undefined;
         applyPropBoxFootprint(parent, spawn.width[row] / 2, spawn.height[row] / 2);
         parent.height = spawn.wallHeight[row];
         parent.wallChunkProfileId = spawn.profileId[row];
@@ -694,36 +698,45 @@ export function computeWallBreakStrength(preSpeed, approachDot, config) {
     const angleT = Math.min(1, -approachDot / preSpeed);
     return speedT * angleT;
 }
-export function wallDamageKey(target, grid) {
-    if (target.kind === "voxel") return `v:${target.idx}`;
-    let idx = target.idx;
-    let side = target.side;
-    if (grid && !edgeRailEmitOwner(grid, idx, side)) {
-        const nIdx = edgeNeighborIdx(idx, side, grid);
+export function packWallDamageKey(kind, idx, side, grid) {
+    if (kind === WALL_KIND_VOXEL) return idx & WALL_KEY_IDX_MASK;
+    let i = idx;
+    let s = side;
+    if (grid && !edgeRailEmitOwner(grid, i, s)) {
+        const nIdx = edgeNeighborIdx(i, s, grid);
         if (nIdx !== -1) {
-            idx = nIdx;
-            side = (side + 2) % 4;
+            i = nIdx;
+            s = (s + 2) % 4;
         }
     }
-    return `r:${idx}:${side}`;
+    return WALL_KEY_RAIL_BIT | ((s & 3) << WALL_KEY_SIDE_SHIFT) | (i & WALL_KEY_IDX_MASK);
 }
-export function wallDamageKeyFromPending(pending, row, grid) {
-    if (pending.kind[row] === WALL_KIND_VOXEL) return `v:${pending.idx[row]}`;
-    return wallDamageKey({ kind: "rail", idx: pending.idx[row], side: pending.side[row] }, grid);
+export function packWallDamageKeyFromPending(pending, row, grid) {
+    return packWallDamageKey(pending.kind[row], pending.idx[row], pending.side[row], grid);
 }
-export function resolveWallDamageTarget(grid, segment) {
-    if (!segment) return null;
+export function classifyWallDamageSegment(grid, segment) {
+    sWallKind = -1;
+    sWallIdx = 0;
+    sWallSide = 0;
+    if (!segment) return -1;
     const idx = segment.gridIdx;
-    if (idx < 0 || idx >= grid.grid.length) return null;
-    if (segment.isStaticGridProxy && cellIsStaticWall(grid, idx)) return { kind: "voxel", idx };
+    if (idx < 0 || idx >= grid.grid.length) return -1;
+    if (segment.isStaticGridProxy && cellIsStaticWall(grid, idx)) {
+        sWallKind = WALL_KIND_VOXEL;
+        sWallIdx = idx;
+        return WALL_KIND_VOXEL;
+    }
     if (segment.isEdgeRail) {
         const side = segment.gridSide;
-        if (side == null) return null;
+        if (side == null) return -1;
         const edge = grid.getCellEdge(idx, side);
-        if (!isRailWallEdge(edge)) return null;
-        return { kind: "rail", idx, side };
+        if (!isRailWallEdge(edge)) return -1;
+        sWallKind = WALL_KIND_RAIL;
+        sWallIdx = idx;
+        sWallSide = side;
+        return WALL_KIND_RAIL;
     }
-    return null;
+    return -1;
 }
 function pendingTargetStillValid(grid, pending, row) {
     if (pending.kind[row] === WALL_KIND_VOXEL) return cellIsStaticWall(grid, pending.idx[row]);
@@ -736,11 +749,11 @@ export function createGridWallDamage(state, config) {
 export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
     const wallDamage = state.gridWallDamage;
     const preSpeed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
-    const shouldBreakWallHit = wallDamage && preSpeed > 0 ? (hit) => computeWallBreakStrength(preSpeed, hit.approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
+    const shouldBreakWallHit = wallDamage && preSpeed > 0 ? (approachDot) => computeWallBreakStrength(preSpeed, approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
     const collided = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
     if (!wallDamage) return collided;
     const hits = wallResolver.hits;
-    if (!hits.length) return collided;
+    if (!hits.count) return collided;
     wallDamage.spatialFrame = spatialFrame;
     queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, entity);
     return collided;
@@ -748,25 +761,29 @@ export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolv
 export function queueWallHits(wallDamage, grid, hits, preSpeed, entity = null) {
     const config = wallDamage.config;
     const pending = wallDamage.pending;
-    for (let i = 0; i < hits.length; i++) {
-        const hit = hits[i];
-        const target = resolveWallDamageTarget(grid, hit.segment);
-        if (!target) continue;
-        const strength = computeWallBreakStrength(preSpeed, hit.approachDot, config);
+    for (let i = 0; i < hits.count; i++) {
+        const kind = classifyWallDamageSegment(grid, hits.segment[i]);
+        if (kind < 0) continue;
+        const strength = computeWallBreakStrength(preSpeed, hits.approachDot[i], config);
         if (strength < config.minBreakStrength) continue;
-        const key = wallDamageKey(target, grid);
+        const key = packWallDamageKey(kind, sWallIdx, sWallSide, grid);
         if (pending.keyToRow.has(key)) continue;
         if (pending.count >= MAX_PENDING_WALL_BREAKS) throw new Error("pending wall breaks capacity exceeded");
         const row = pending.count++;
         pending.keyToRow.set(key, row);
-        pending.kind[row] = target.kind === "voxel" ? WALL_KIND_VOXEL : WALL_KIND_RAIL;
-        pending.idx[row] = target.idx;
-        pending.side[row] = target.side ?? 0;
+        pending.kind[row] = kind;
+        pending.idx[row] = sWallIdx;
+        pending.side[row] = sWallSide;
         pending.strength[row] = strength;
-        pending.contactX[row] = hit.contactX ?? (hit.segment ? hit.segment.x : null) ?? grid.gridCenterXByIdx(target.idx);
-        pending.contactY[row] = hit.contactY ?? (hit.segment ? hit.segment.y : null) ?? grid.gridCenterYByIdx(target.idx);
-        pending.normalX[row] = hit.normalX ?? 0;
-        pending.normalY[row] = hit.normalY ?? 0;
+        const segment = hits.segment[i];
+        let contactX = hits.contactX[i];
+        let contactY = hits.contactY[i];
+        if (!Number.isFinite(contactX)) contactX = segment ? segment.x : grid.gridCenterXByIdx(sWallIdx);
+        if (!Number.isFinite(contactY)) contactY = segment ? segment.y : grid.gridCenterYByIdx(sWallIdx);
+        pending.contactX[row] = contactX;
+        pending.contactY[row] = contactY;
+        pending.normalX[row] = hits.normalX[i];
+        pending.normalY[row] = hits.normalY[i];
         pending.sourceSpeed[row] = preSpeed;
         pending.sourceMass[row] = entity ? (entity.mass ?? 1) : 1;
     }
@@ -782,8 +799,7 @@ export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage)
         const idx = pending.idx[row];
         const out = spawn.count;
         if (pending.kind[row] === WALL_KIND_VOXEL) {
-            const info = getVoxelWallInfo(grid, idx);
-            if (info == null) continue;
+            if (!cellIsStaticWall(grid, idx)) continue;
             const cx = grid.gridCenterXByIdx(idx);
             const cy = grid.gridCenterYByIdx(idx);
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
@@ -809,8 +825,8 @@ export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage)
             spawn.count++;
         } else {
             const side = pending.side[row];
-            const info = getRailWallInfo(grid, idx, side);
-            if (!info) continue;
+            const edge = grid.getCellEdge(idx, side);
+            if (!isRailWallEdge(edge)) continue;
             cellEdgeEndpointsIdx(grid, idx, side, edgeEpA, edgeEpB, 0);
             const cx = (ENGINE_F32[F_EDGE_P1X] + ENGINE_F32[F_EDGE_P2X]) * 0.5;
             const cy = (ENGINE_F32[F_EDGE_P1Y] + ENGINE_F32[F_EDGE_P2Y]) * 0.5;
@@ -818,7 +834,7 @@ export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage)
             const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
             const profileId = resolveEdgeSurfaceProfileId(grid, idx, side, state.worldSurfaces.activeSurfaceProfileId, cellsPerChunk);
             const thicknessPx = edgeRailCollisionThicknessPx(grid, idx, side);
-            const wallHeightPx = info.heightLevel * grid.cellSize;
+            const wallHeightPx = railWallCapLevel(edge, neighborFillLevel(grid, idx, side)) * grid.cellSize;
             spawn.kind[out] = WALL_KIND_RAIL;
             spawn.idx[out] = idx;
             spawn.side[out] = side;
@@ -841,13 +857,13 @@ export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage)
     }
     clearPendingWallBreaks(pending);
     voxelScratch.length = 0;
-    const railBatch = new RailWallBatch(Math.max(1, spawn.count));
+    railFlushBatch.count = 0;
     for (let i = 0; i < spawn.count; i++)
         if (spawn.kind[i] === WALL_KIND_VOXEL) voxelScratch.push(spawn.idx[i]);
-        else railBatch.add(spawn.idx[i], spawn.side[i], 1, 1);
+        else railFlushBatch.add(spawn.idx[i], spawn.side[i], 1, 1);
     let commitBounds = null;
-    if (voxelScratch.length || railBatch.count) {
-        wallDamage.commit.clearWalls({ voxels: voxelScratch, rails: railBatch });
+    if (voxelScratch.length || railFlushBatch.count) {
+        wallDamage.commit.clearWalls({ voxels: voxelScratch, rails: railFlushBatch });
         commitBounds = wallDamage.commit.flush();
     }
     const spatialFrame = wallDamage.spatialFrame ?? null;
@@ -1029,7 +1045,7 @@ export class FractureEngine {
         const src = stores.geom.buffer(handle);
         const n = vertCount * 2;
         let fp = prop.footprintVertices;
-        if (!(fp instanceof Float32Array) || fp.length !== n) fp = new Float32Array(n);
+        if (!(fp instanceof Float32Array) || fp.length < n) fp = new Float32Array(n);
         for (let i = 0; i < n; i++) fp[i] = src[i];
         prop.chunks = undefined;
         prop.collisionParts = undefined;
@@ -1037,7 +1053,7 @@ export class FractureEngine {
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];
         if (prop.shape?.type === "Polygon") prop.shape.setFlatVerts(fp, n);
-        else prop.shape = new PolygonShape(fp);
+        else prop.shape = new PolygonShape(n === fp.length ? fp : fp.subarray(0, n));
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);

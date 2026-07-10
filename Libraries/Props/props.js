@@ -112,7 +112,20 @@ export function setCirclePropRadius(prop, radius) {
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
-    prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
+    const n = 8;
+    let fp = prop.footprintVertices;
+    if (!(fp instanceof Float32Array) || fp.length < n) fp = new Float32Array(n);
+    fp[0] = -hx;
+    fp[1] = -hy;
+    fp[2] = hx;
+    fp[3] = -hy;
+    fp[4] = hx;
+    fp[5] = hy;
+    fp[6] = -hx;
+    fp[7] = hy;
+    prop.footprintVertices = fp;
+    if (prop.shape?.type === "Polygon") prop.shape.setFlatVerts(fp, n);
+    else prop.shape = new PolygonShape(n === fp.length ? fp : fp.subarray(0, n));
     prop.radius = prop.shape.getBoundingRadius();
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);

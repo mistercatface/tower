@@ -424,20 +424,22 @@ export class PolygonShape extends Shape {
             if (clean.length !== verts.length) verts = new Float32Array(clean);
         }
         if (polygonSignedArea2D(verts) < 0) verts = reversePolygonWinding(verts);
-        this.vertices = verts;
+        this._vertCap = verts instanceof Float32Array ? verts : new Float32Array(verts);
+        this.vertices = this._vertCap;
         this.normals = this._computeNormals();
         this.boundingRadius = this._computeBoundingRadius();
     }
     setFlatVerts(src, floatCount) {
-        let verts = this.vertices;
-        if (!(verts instanceof Float32Array) || verts.length !== floatCount) {
-            verts = new Float32Array(floatCount);
-            this.vertices = verts;
+        let cap = this._vertCap;
+        if (!(cap instanceof Float32Array) || cap.length < floatCount) {
+            cap = new Float32Array(floatCount);
+            this._vertCap = cap;
         }
-        for (let i = 0; i < floatCount; i++) verts[i] = src[i];
-        if (floatCount >= 6 && polygonSignedArea2D(verts) < 0) {
-            const n = floatCount;
-            for (let i = 0, j = n - 2; i < j; i += 2, j -= 2) {
+        for (let i = 0; i < floatCount; i++) cap[i] = src[i];
+        this.vertices = floatCount === cap.length ? cap : cap.subarray(0, floatCount);
+        if (floatCount >= 6 && polygonSignedArea2D(this.vertices) < 0) {
+            const verts = this.vertices;
+            for (let i = 0, j = floatCount - 2; i < j; i += 2, j -= 2) {
                 const x = verts[i];
                 const y = verts[i + 1];
                 verts[i] = verts[j];
@@ -1255,7 +1257,7 @@ const sSlabImpulseMotion = {
         kineticDynamicSlab.w[physId] = w;
     },
 };
-function applyStaticSurfaceImpulseCore(motion, normalX, normalY, cx, cy, { restitution = 0, friction = 0.9 } = {}) {
+function applyStaticSurfaceImpulseCore(motion, normalX, normalY, cx, cy, restitution, friction) {
     const bx = motion.x;
     const by = motion.y;
     const bvx = motion.vx;
@@ -1293,11 +1295,11 @@ function applyStaticSurfaceImpulseCore(motion, normalX, normalY, cx, cy, { resti
     motion.setVelocities(newVx, newVy, newW);
     return approachDot;
 }
-function applyBodyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, opts = {}) {
-    return applyStaticSurfaceImpulseCore(sBodyImpulseMotion.bind(body), normalX, normalY, cx, cy, opts);
+function applyBodyStaticSurfaceImpulse(body, normalX, normalY, cx, cy, restitution = 0, friction = 0.9) {
+    return applyStaticSurfaceImpulseCore(sBodyImpulseMotion.bind(body), normalX, normalY, cx, cy, restitution, friction);
 }
-function applySlabStaticSurfaceImpulse(physId, normalX, normalY, cx, cy, opts = {}) {
-    return applyStaticSurfaceImpulseCore(sSlabImpulseMotion.bind(physId), normalX, normalY, cx, cy, opts);
+function applySlabStaticSurfaceImpulse(physId, normalX, normalY, cx, cy, restitution = 0, friction = 0.9) {
+    return applyStaticSurfaceImpulseCore(sSlabImpulseMotion.bind(physId), normalX, normalY, cx, cy, restitution, friction);
 }
 export function ensureWallSegmentPolygonShape(segment) {
     if (!segment.shape) {
@@ -1338,8 +1340,8 @@ const sBodyWallMotion = {
     applyPositionCorrection(normalX, normalY, overlap) {
         applyPositionCorrection(this._body, normalX, normalY, overlap);
     },
-    applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
-        return applyStaticSurfaceImpulseCore(sBodyImpulseMotion, normalX, normalY, cx, cy, opts);
+    applyStaticSurfaceImpulse(normalX, normalY, cx, cy, restitution, friction) {
+        return applyStaticSurfaceImpulseCore(sBodyImpulseMotion, normalX, normalY, cx, cy, restitution, friction);
     },
 };
 const sSlabWallMotion = {
@@ -1373,14 +1375,28 @@ const sSlabWallMotion = {
     applyPositionCorrection(normalX, normalY, overlap) {
         applySlabPositionCorrection(this._physId, normalX, normalY, overlap);
     },
-    applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
-        return applyStaticSurfaceImpulseCore(sSlabImpulseMotion, normalX, normalY, cx, cy, opts);
+    applyStaticSurfaceImpulse(normalX, normalY, cx, cy, restitution, friction) {
+        return applyStaticSurfaceImpulseCore(sSlabImpulseMotion, normalX, normalY, cx, cy, restitution, friction);
     },
 };
-function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitution = 0, friction = 0.9, passes = 2, shouldBreakWallHit = null, outHits = null } = {}) {
+const MAX_WALL_HITS = 64;
+export function createWallHitBuffer(capacity = MAX_WALL_HITS) {
+    return { count: 0, approachDot: new Float32Array(capacity), normalX: new Float32Array(capacity), normalY: new Float32Array(capacity), contactX: new Float32Array(capacity), contactY: new Float32Array(capacity), segment: new Array(capacity) };
+}
+function appendWallHit(outHits, approachDot, normalX, normalY, contactX, contactY, segment) {
+    const i = outHits.count;
+    if (i >= outHits.approachDot.length) throw new Error("wall hit buffer capacity exceeded");
+    outHits.approachDot[i] = approachDot;
+    outHits.normalX[i] = normalX;
+    outHits.normalY[i] = normalY;
+    outHits.contactX[i] = contactX;
+    outHits.contactY[i] = contactY;
+    outHits.segment[i] = segment;
+    outHits.count = i + 1;
+}
+function resolveAgainstWallSegmentsCore(body, shape, segments, motion, restitution, friction, passes, shouldBreakWallHit, outHits) {
     let collided = false;
     const wantHits = shouldBreakWallHit != null && outHits != null;
-    if (outHits) outHits.length = 0;
     const radius = shape.getBoundingRadius();
     let bestNormalX = 0;
     let bestNormalY = 0;
@@ -1432,23 +1448,23 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
         const bvy = motion.vy;
         const bw = motion.w;
         const approachDot = dotXY(bvx - bw * (contactY - by), bvy + bw * (contactX - bx), bestNormalX, bestNormalY);
-        const hit = wantHits ? { approachDot, normalX: bestNormalX, normalY: bestNormalY, segment: bestSegment, overlap: bestOverlap, contactX, contactY } : null;
-        if (hit && shouldBreakWallHit(hit)) {
-            outHits.push(hit);
-            motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, { restitution, friction });
+        if (wantHits && shouldBreakWallHit(approachDot)) {
+            appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegment);
+            motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
             break;
         }
         motion.applyPositionCorrection(bestNormalX, bestNormalY, bestOverlap);
-        motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, { restitution, friction });
-        if (hit) outHits.push(hit);
+        motion.applyStaticSurfaceImpulse(bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
+        if (wantHits) appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegment);
     }
     return collided;
 }
-export function resolveBodyAgainstWallSegments(body, shape, segments, opts = {}) {
-    return resolveAgainstWallSegmentsCore(body, shape, segments, sBodyWallMotion.bind(body), opts);
+export function resolveBodyAgainstWallSegments(body, shape, segments, restitution = 0, friction = 0.9, shouldBreakWallHit = null, outHits = null, passes = 2) {
+    if (outHits) outHits.count = 0;
+    return resolveAgainstWallSegmentsCore(body, shape, segments, sBodyWallMotion.bind(body), restitution, friction, passes, shouldBreakWallHit, outHits);
 }
-function resolveSlabAgainstWallSegments(physId, body, shape, segments, opts = {}) {
-    return resolveAgainstWallSegmentsCore(body, shape, segments, sSlabWallMotion.bind(physId), opts);
+function resolveSlabAgainstWallSegments(physId, body, shape, segments, restitution, friction, shouldBreakWallHit, outHits, passes = 2) {
+    return resolveAgainstWallSegmentsCore(body, shape, segments, sSlabWallMotion.bind(physId), restitution, friction, passes, shouldBreakWallHit, outHits);
 }
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
@@ -1456,34 +1472,33 @@ export function invalidateWallResolveCache(...entities) {
 }
 export class WallCollisionResolver {
     constructor() {
-        this.hits = [];
-        this._partHits = [];
+        this.hits = createWallHitBuffer();
     }
     resolve(entity, spatialFrame, shouldBreakWallHit = null) {
         if (entity._wallResolvedFrame === spatialFrame.frameId) {
-            this.hits.length = 0;
+            this.hits.count = 0;
             return entity._wallResolvedCollided;
         }
         entity._wallResolvedFrame = spatialFrame.frameId;
         const candidateWalls = spatialFrame.getWallCandidates(entity);
         const hits = this.hits;
-        hits.length = 0;
+        hits.count = 0;
         if (candidateWalls.length === 0) {
             entity._wallResolvedCollided = false;
             return false;
         }
         const wp = entity.strategy?.wallPhysics;
+        const restitution = wp?.restitution ?? 0.0;
+        const friction = wp?.friction ?? 0.9;
         const parts = getEntityCollisionParts(entity);
         let collided = false;
         const physId = entity._physId;
         const hasSlab = physId !== undefined && physId !== -1;
-        const partHits = this._partHits;
         const wantHits = shouldBreakWallHit != null;
+        const outHits = wantHits ? hits : null;
         for (let i = 0; i < parts.length; i++) {
-            const opts = { restitution: wp?.restitution ?? 0.0, friction: wp?.friction ?? 0.9, shouldBreakWallHit, outHits: wantHits ? partHits : null };
-            const partCollided = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, opts) : resolveBodyAgainstWallSegments(entity, parts[i], candidateWalls, opts);
+            const partCollided = hasSlab ? resolveSlabAgainstWallSegments(physId, entity, parts[i], candidateWalls, restitution, friction, shouldBreakWallHit, outHits) : resolveAgainstWallSegmentsCore(entity, parts[i], candidateWalls, sBodyWallMotion.bind(entity), restitution, friction, 2, shouldBreakWallHit, outHits);
             if (partCollided) collided = true;
-            if (wantHits) for (let h = 0; h < partHits.length; h++) hits.push(partHits[h]);
         }
         if (collided) wakeKineticBody(entity);
         entity._wallResolvedCollided = collided;
