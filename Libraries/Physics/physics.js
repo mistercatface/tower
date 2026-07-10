@@ -3890,6 +3890,13 @@ export function transformRollVertex(lx, ly, lz, radius, rollQuat = IDENTITY_ROLL
     const rotated = rotateVecByQuat(lx, ly, lz - radius, rollQuat);
     return { lx: rotated.x, ly: rotated.y, z: rotated.z + radius };
 }
+export function worldAnchorFromRolledBody(body, localX, localY, dst) {
+    const radius = getRollRadius(body);
+    const rolled = transformRollVertex(localX, localY, 0, radius, body.rollQuat ?? IDENTITY_ROLL_QUAT);
+    dst.x = body.x + rolled.lx;
+    dst.y = body.y + rolled.ly;
+    return dst;
+}
 export function getRollRadius(body) {
     return Math.max(1, resolveBodyRadius(body));
 }

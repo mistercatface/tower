@@ -203,17 +203,34 @@ function resolveGrabDragAnchor(prop, world) {
     }
     return { anchorLocalX: 0, anchorLocalY: 0, offsetX: prop.x - world.x, offsetY: prop.y - world.y };
 }
+function grabDragAnchorWorld(prop, run, out) {
+    if (prop.strategy?.rolls) {
+        const radius = resolveBodyRadius(prop);
+        findCircleRimGrabPointInto(out, prop.x, prop.y, entityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
+        out.x = out.worldX;
+        out.y = out.worldY;
+        return out;
+    }
+    return worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, out);
+}
 export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
     const activeRunIds = [];
     const tickPull = (prop, run, dtMs) => {
         const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
         const rollConfig = getKineticRollConfig(prop);
-        const anchor = worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, GRAB_ANCHOR_SCRATCH);
         const tx = run.targetWorld.x + run.offsetX;
         const ty = run.targetWorld.y + run.offsetY;
-        const dx = tx - anchor.x;
-        const dy = ty - anchor.y;
+        let dx;
+        let dy;
+        if (prop.strategy?.rolls) {
+            dx = tx - prop.x;
+            dy = ty - prop.y;
+        } else {
+            grabDragAnchorWorld(prop, run, GRAB_ANCHOR_SCRATCH);
+            dx = tx - GRAB_ANCHOR_SCRATCH.x;
+            dy = ty - GRAB_ANCHOR_SCRATCH.y;
+        }
         const dist = Math.hypot(dx, dy);
         if (dist < rollConfig.stopRadius) {
             decelerateRoll(prop, rollConfig);
@@ -226,8 +243,10 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         }
         const ratio = power / grabConfig.maxPower;
         steerRollToward(prop, dx / dist, dy / dist, { ...rollConfig, accel: rollConfig.accel * (0.5 + ratio), maxSpeed: rollConfig.maxSpeed * (0.3 + ratio * 0.7) });
-        const rx = anchor.x - prop.x;
-        const ry = anchor.y - prop.y;
+        if (prop.strategy?.rolls) return;
+        grabDragAnchorWorld(prop, run, GRAB_ANCHOR_SCRATCH);
+        const rx = GRAB_ANCHOR_SCRATCH.x - prop.x;
+        const ry = GRAB_ANCHOR_SCRATCH.y - prop.y;
         const leverArmSq = rx * rx + ry * ry;
         if (leverArmSq > 0.25) {
             const fx = (dx / dist) * power;
@@ -282,7 +301,8 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
             const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
-            const anchor = worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, GRAB_ANCHOR_SCRATCH);
+            grabDragAnchorWorld(prop, run, GRAB_ANCHOR_SCRATCH);
+            const anchor = GRAB_ANCHOR_SCRATCH;
             const tx = run.targetWorld.x + run.offsetX;
             const ty = run.targetWorld.y + run.offsetY;
             const dist = Math.hypot(tx - anchor.x, ty - anchor.y);

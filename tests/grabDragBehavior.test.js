@@ -7,7 +7,6 @@ import { createGrabDragBehavior, getGrabDragConfig, GRAB_DRAG_BEHAVIOR_ID } from
 import { createDefaultSandboxBehaviors, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
-import { CircleShape } from "../Libraries/Physics/physics.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("grabDrag behavior", () => {
@@ -125,7 +124,16 @@ describe("grabDrag behavior", () => {
         assert.notEqual(prop.angularVelocity, 0);
     });
 
-    it("sphere rim grab applies torque when pull is off-center", () => {
+    it("rolling sphere rim anchor tracks cursor not rollQuat", () => {
+        const prop = mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" });
+        prop.rollQuat = { w: 0.9239, x: 0, y: 0.3827, z: 0 };
+        const rim = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
+        findCircleRimGrabPointInto(rim, 0, 0, 0, 8, 10, 0);
+        assert.ok(Math.abs(rim.worldX - 8) < 0.01);
+        assert.ok(Math.abs(rim.worldY) < 0.01);
+    });
+
+    it("sphere rim grab steers from rolled contact", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0 }));
@@ -133,20 +141,23 @@ describe("grabDrag behavior", () => {
         behavior.onPointerMove(prop, { x: 10, y: 100 });
         behavior.tickWorld(16);
         assert.ok(prop._groundRollDrive);
-        assert.notEqual(prop.angularVelocity, 0);
+        assert.ok(prop._groundRollDrive.dirY > 0.5);
     });
 
-    it("reference grab inertia matches spin for light and heavy spheres", () => {
+    it("reference grab inertia matches spin for light and heavy polygons", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state);
-        const light = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0, radius: 4, mass: 4, shape: new CircleShape(4) }));
-        const heavy = registerGrabDragTestProp(state, mockRollingProp({ id: 2, x: 100, y: 0, type: "ball", angularVelocity: 0, radius: 4, mass: 400, shape: new CircleShape(4) }));
-        behavior.onPointerDown(light, { x: 5, y: 0 });
-        behavior.onPointerMove(light, { x: 0, y: 80 });
+        const light = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
+        const heavy = registerGrabDragTestProp(state, new WorldProp(100, 0, "tri_wedge", 0));
+        heavy.mass = light.mass * 100;
+        light.angularVelocity = 0;
+        heavy.angularVelocity = 0;
+        behavior.onPointerDown(light, { x: -9, y: -5 });
+        behavior.onPointerMove(light, { x: -9, y: 80 });
         behavior.tickWorld(16);
         const lightSpin = light.angularVelocity;
-        behavior.onPointerDown(heavy, { x: 105, y: 0 });
-        behavior.onPointerMove(heavy, { x: 100, y: 80 });
+        behavior.onPointerDown(heavy, { x: 91, y: -5 });
+        behavior.onPointerMove(heavy, { x: 91, y: 80 });
         behavior.tickWorld(16);
         assert.ok(Math.abs(lightSpin) > 0);
         assert.ok(Math.abs(heavy.angularVelocity - lightSpin) < 1e-6);
