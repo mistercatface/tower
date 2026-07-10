@@ -1,5 +1,5 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { aabbCenterX, aabbCenterY, createAabb, minCornerAabbF32, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalF32, pointInAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, BRIDGE_AABB, B_TMP } from "../Math/math.js";
+import { aabbCenterX, aabbCenterY, createAabb, minCornerAabbF32, aabbWidth, aabbHeight, intersectAabbOptionalF32, pointInAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, B_TMP } from "../Math/math.js";
 import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
@@ -898,17 +898,17 @@ export function clipChunkToFlatWallFootprintsF32(ctx, obstacleGrid, buf, o, zLev
                 // 1. Voxel wall footprints
                 const cellZ = resolveCellWallHeightAtIdx(obstacleGrid, idx);
                 if (cellZ === zLevel) {
-                    obstacleGrid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
-                    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, BRIDGE_AABB);
-                    traceAabbRect(clipCtx, BRIDGE_AABB);
+                    const o = ENGINE_BOUNDS_BASE + B_CELL;
+                    obstacleGrid.getCellBoundsByIdxF32(ENGINE_F32, o, idx);
+                    traceAabbRect(clipCtx, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3]);
                     clippedAny = true;
                 }
                 // 2. Rail wall footprints
                 for (let side = 0; side < 4; side++)
                     if (railWallAtZLevel(obstacleGrid, idx, side, zLevel)) {
-                        railWallFootprintAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_FOOTPRINT, obstacleGrid, idx, side);
-                        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_FOOTPRINT, BRIDGE_AABB);
-                        traceAabbRect(clipCtx, BRIDGE_AABB);
+                        const o = ENGINE_BOUNDS_BASE + B_FOOTPRINT;
+                        railWallFootprintAabbF32(ENGINE_F32, o, obstacleGrid, idx, side);
+                        traceAabbRect(clipCtx, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3]);
                         clippedAny = true;
                     }
             }

@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -409,17 +409,7 @@ export function projectWorldPointToScreen(buf, offset, viewport, worldX, worldY,
 export function projectWorldAabbCorners(buf, o, minX, minY, maxX, maxY, height, viewport) {
     projectWorldQuad(buf, o, minX, minY, maxX, minY, maxX, maxY, minX, maxY, height, viewport);
 }
-export function projectVertical(objX, objY, height, viewport) {
-    const dx = objX - viewport.x;
-    const dy = objY - viewport.y;
-    const dist = Math.hypot(dx, dy);
-    const alpha = resolveElevationAlpha(height, viewport);
-    projectWorldPoint(ENGINE_F32, S_OUT_XY, objX, objY, height, viewport);
-    const viewAngle = Math.atan2(dy, dx);
-    return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: ENGINE_F32[S_OUT_XY], topY: ENGINE_F32[S_OUT_XY + 1], viewAngle, height };
-}
-export function extrudeLocalVertsInto(baseOut, topOut, localVerts, projection, facing = 0) {
-    const { cx, cy, topX, topY, alpha } = projection;
+export function extrudeLocalVertsInto(baseOut, topOut, localVerts, cx, cy, topX, topY, alpha, facing = 0) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const count = localVerts.length / 2;
@@ -434,10 +424,6 @@ export function extrudeLocalVertsInto(baseOut, topOut, localVerts, projection, f
         topOut[i * 2 + 1] = topY + topLx * sin + topLy * cos;
     }
     return count;
-}
-export function getHeightSlice(projection, baseSize, t) {
-    const { cx, cy, topX, topY, alpha } = projection;
-    return { centerX: cx + (topX - cx) * t, centerY: cy + (topY - cy) * t, size: scaleAtHeight(baseSize, alpha, t) };
 }
 export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewerX, viewerY) {
     const viewX = midX - viewerX;
@@ -454,15 +440,6 @@ export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
     const ny = Math.sin(viewAngle + Math.PI / 2);
     const dot = lx * nx + ly * ny;
     return Math.max(0.1, Math.min(0.9, 0.5 + dot * 0.5));
-}
-export function traceVisibleArc(ctx, centerX, centerY, radius, fromAngle, toAngle, viewAngle) {
-    const towardViewer = viewAngle + Math.PI;
-    const delta = angleDelta(fromAngle, toAngle);
-    const midShort = fromAngle + delta / 2;
-    const midLong = midShort + (delta > 0 ? -Math.PI : Math.PI);
-    const useShort = Math.abs(angleDelta(midShort, towardViewer)) < Math.abs(angleDelta(midLong, towardViewer));
-    const counterClockwise = delta > 0 ? !useShort : useShort;
-    ctx.arc(centerX, centerY, radius, fromAngle, toAngle, counterClockwise);
 }
 export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngle, colors) {
     const t = getSideHighlightT(viewAngle);
@@ -497,14 +474,6 @@ export function projectWorldQuad(buf, o, x0, y0, x1, y1, x2, y2, x3, y3, height,
         buf[o + 6] = x3 + (x3 - vx) * alpha;
         buf[o + 7] = y3 + (y3 - vy) * alpha;
     }
-}
-export function pointOnFrustum(buf, offset, projection, baseRadius, topRadius, t, angle) {
-    const { cx, cy, topX, topY } = projection;
-    const radius = lerp(baseRadius, topRadius, t);
-    const centerX = cx + (topX - cx) * t;
-    const centerY = cy + (topY - cy) * t;
-    buf[offset] = centerX + Math.cos(angle) * radius;
-    buf[offset + 1] = centerY + Math.sin(angle) * radius;
 }
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
 export function shadowGroundContact(buf, o, lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {

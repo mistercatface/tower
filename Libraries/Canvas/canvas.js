@@ -192,8 +192,7 @@ export function tracePolylineFrom(ctx, x0, y0, points, endX, endY) {
         if (Math.hypot(last.x - endX, last.y - endY) > 0.5) ctx.lineTo(endX, endY);
     } else ctx.lineTo(endX, endY);
 }
-/** @param {CanvasRenderingContext2D} ctx @param {import("../Math/Aabb2D.js").Aabb2D} box */
-export function traceAabbRect(ctx, { minX, minY, maxX, maxY }) {
+export function traceAabbRect(ctx, minX, minY, maxX, maxY) {
     ctx.rect(minX, minY, maxX - minX, maxY - minY);
 }
 /** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {number} radius @param {number} startAngle @param {number} endAngle @param {boolean} [counterclockwise] */
@@ -270,10 +269,9 @@ export function clipToPath(ctx, buildPath) {
     ctx.clip();
     return true;
 }
-/** @param {CanvasRenderingContext2D} ctx @param {import("../Math/Aabb2D.js").Aabb2D} box */
 export function clipToAabb(ctx, box) {
     clipToPath(ctx, (ctx) => {
-        traceAabbRect(ctx, box);
+        traceAabbRect(ctx, box.minX, box.minY, box.maxX, box.maxY);
     });
 }
 /**

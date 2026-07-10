@@ -1,15 +1,15 @@
 import { releasePointerCapture } from "../Input/canvasPointer.js";
-export function createMarqueeSelectTool({ clickThresholdPx = 4, getCanvas, buildAabbFromDrag, canBegin, onClick, onBoxSelect }) {
+export function createMarqueeSelectTool({ clickThresholdPx = 4, getCanvas, writeAabbFromDrag, canBegin, onClick, onBoxSelect }) {
     let drag = null;
-    const getMarqueeRect = () => {
-        if (!drag) return null;
-        return buildAabbFromDrag(drag.startWorld, drag.currentWorld);
-    };
     return {
         isActive: () => false,
         blocksPlacement: () => false,
         isDragging: () => drag != null,
-        getMarqueeRect,
+        writeMarqueeAabb() {
+            if (!drag) return false;
+            writeAabbFromDrag(drag.startWorld, drag.currentWorld);
+            return true;
+        },
         tryBeginPointerDown(world, e) {
             if (e.button !== 0) return false;
             if (canBegin && !canBegin(e)) return false;
@@ -29,7 +29,10 @@ export function createMarqueeSelectTool({ clickThresholdPx = 4, getCanvas, build
             const endWorld = clientToWorld(e.clientX, e.clientY);
             const dragPx = Math.hypot(e.clientX - currentDrag.startClientX, e.clientY - currentDrag.startClientY);
             if (dragPx < clickThresholdPx) onClick(endWorld, e);
-            else onBoxSelect(buildAabbFromDrag(currentDrag.startWorld, endWorld), e);
+            else {
+                writeAabbFromDrag(currentDrag.startWorld, endWorld);
+                onBoxSelect(e);
+            }
             return true;
         },
         cancel() {

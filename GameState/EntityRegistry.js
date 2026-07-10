@@ -256,6 +256,10 @@ export class EntityArena {
     queryInAabbStrict(bounds, options = {}) {
         return this._queryInAabb(bounds, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", undefined);
     }
+    queryInAabbStrictF32(buf, o, options = {}) {
+        const packed = this._queryIdsInAabbF32(buf, o, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", undefined, undefined);
+        return this._materializeIds(packed.ids, packed.count, undefined);
+    }
     queryViewIds(criteria, spatialFrame) {
         const kinds = criteria.kinds ?? EMPTY_KINDS;
         const hitTest = criteria.hitTest ?? "circle";

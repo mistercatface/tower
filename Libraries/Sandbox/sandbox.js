@@ -2,13 +2,13 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32 } from "../Physics/physics.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
-import { convexFootprintHalfExtents, aabbFromF32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
+import { convexFootprintHalfExtents, ENGINE_BOUNDS_BASE, B_TMP, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
@@ -2244,22 +2244,23 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
     if (selectedFloorIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedFloorIdx);
         const y = grid.gridCenterYByIdx(selectedFloorIdx);
-        centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, x, y, grid.cellSize, grid.cellSize);
-        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, BRIDGE_AABB);
-        out.push(overlayGridCellHighlight(BRIDGE_AABB, grid, "floor", { fill: "rgba(120, 200, 255, 0.1)", stroke: "rgba(120, 200, 255, 0.75)", lineWidth: 1, dash: [4, 3] }));
+        const o = ENGINE_BOUNDS_BASE + B_TMP;
+        centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
+        out.push(overlayGridCellHighlight(ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid, "floor", { fill: "rgba(120, 200, 255, 0.1)", stroke: "rgba(120, 200, 255, 0.75)", lineWidth: 1, dash: [4, 3] }));
     }
     if (selectedVoxelIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedVoxelIdx);
         const y = grid.gridCenterYByIdx(selectedVoxelIdx);
-        centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, x, y, grid.cellSize, grid.cellSize);
-        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, BRIDGE_AABB);
-        out.push(overlayGridCellHighlight(BRIDGE_AABB, grid, "voxel", { fill: "rgba(255, 152, 0, 0.12)", stroke: "rgba(255, 152, 0, 0.85)", lineWidth: 1, dash: [4, 3] }));
+        const o = ENGINE_BOUNDS_BASE + B_TMP;
+        centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
+        out.push(overlayGridCellHighlight(ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid, "voxel", { fill: "rgba(255, 152, 0, 0.12)", stroke: "rgba(255, 152, 0, 0.85)", lineWidth: 1, dash: [4, 3] }));
     }
     if (selectedRailEdge && grid) appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
 }
-export function appendMarqueeOverlayCommands(out, { marqueeRect }) {
-    if (!marqueeRect) return;
-    out.push(overlayAabb(marqueeRect, { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
+export function appendMarqueeOverlayCommands(out, { marqueeActive }) {
+    if (!marqueeActive) return;
+    const o = ENGINE_BOUNDS_BASE + B_TMP;
+    out.push(overlayAabb(ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
 }
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
@@ -2491,7 +2492,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
     };
     return { modifierTool, interactTool, gestureTool };
 }
-export function buildSandboxOverlayCommands({ state, session, spatialFrame, placePreviewWorld, marqueeRect, behaviorById, resolveBehavior, selectedProp }) {
+export function buildSandboxOverlayCommands({ state, session, spatialFrame, placePreviewWorld, marqueeActive, behaviorById, resolveBehavior, selectedProp }) {
     const commands = [];
     const viewport = state.viewport;
     const sel = session.getSelection();
@@ -2518,7 +2519,7 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
         }
     }
     appendSelectionOverlayCommands(commands, { selectedProps: visibleSelectedProps, showRings: state.editor.showSelectionRings, selectedFloorIdx: sel?.kind === "floor" ? sel.idx : null, selectedVoxelIdx: sel?.kind === "voxel" ? sel.idx : null, selectedRailEdge: sel?.kind === "rail" ? { idx: sel.idx, side: sel.side } : null, grid: state.obstacleGrid });
-    appendMarqueeOverlayCommands(commands, { marqueeRect });
+    appendMarqueeOverlayCommands(commands, { marqueeActive });
     state.appLaunch?.session?.appendOverlayCommands?.(commands, state, sel);
     const behavior = resolveBehavior();
     if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
@@ -3097,17 +3098,17 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const marqueeTool = createMarqueeSelectTool({
         getCanvas,
         canBegin: (e) => e.shiftKey,
-        buildAabbFromDrag: (startWorld, endWorld) => {
+        writeAabbFromDrag: (startWorld, endWorld) => {
             aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, startWorld.x, startWorld.y, endWorld.x, endWorld.y);
-            return aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, BRIDGE_AABB);
         },
         onClick(world, e) {
             if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode()) session.spawnAt(world.x, world.y);
             else session.clearSelection();
         },
-        onBoxSelect(bounds) {
+        onBoxSelect() {
+            const o = ENGINE_BOUNDS_BASE + B_TMP;
             const filter = session.getSelectionTagFilter();
-            const props = state.entityRegistry.queryInAabbStrict(bounds, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
+            const props = state.entityRegistry.queryInAabbStrictF32(ENGINE_F32, o, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
             selectPropIds(props.map((prop) => prop.id));
         },
     });
@@ -3246,7 +3247,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         collectOverlayCommands() {
             const showPlacePreview = placePreviewWorld && !canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode();
-            return buildSandboxOverlayCommands({ state, session, spatialFrame: state.spatialFrame, placePreviewWorld: showPlacePreview ? placePreviewWorld : null, marqueeRect: marqueeTool.getMarqueeRect(), behaviorById, resolveBehavior, selectedProp: session.getSelectedProp() });
+            const marqueeActive = marqueeTool.writeMarqueeAabb();
+            return buildSandboxOverlayCommands({ state, session, spatialFrame: state.spatialFrame, placePreviewWorld: showPlacePreview ? placePreviewWorld : null, marqueeActive, behaviorById, resolveBehavior, selectedProp: session.getSelectedProp() });
         },
         tick(dtMs) {
             session.pruneSelection();

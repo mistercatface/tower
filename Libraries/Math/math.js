@@ -40,7 +40,6 @@ export const B_CELL = 4;
 export const B_FOOTPRINT = 8;
 export const B_PAD = 12;
 export const B_TMP = 16;
-export const BRIDGE_AABB = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -598,13 +597,6 @@ export function minCornerAabbF32(buf, o, minX, minY, width, height) {
     buf[o + 2] = minX + width;
     buf[o + 3] = minY + height;
 }
-export function aabbFromF32(buf, o, out) {
-    out.minX = buf[o];
-    out.minY = buf[o + 1];
-    out.maxX = buf[o + 2];
-    out.maxY = buf[o + 3];
-    return out;
-}
 export function aabbFromTwoPointsF32(buf, o, x1, y1, x2, y2) {
     buf[o] = x1 < x2 ? x1 : x2;
     buf[o + 1] = y1 < y2 ? y1 : y2;
@@ -680,9 +672,6 @@ export function intersectAabbOptionalF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     if (!aabbOverlapF32(aBuf, aO, bBuf, bO)) return false;
     intersectAabbF32(outBuf, outO, aBuf, aO, bBuf, bO);
     return true;
-}
-export function closestPointOnAabb(px, py, minX, minY, maxX, maxY) {
-    return { x: Math.max(minX, Math.min(px, maxX)), y: Math.max(minY, Math.min(py, maxY)) };
 }
 export function distanceSqToAabb(px, py, minX, minY, maxX, maxY) {
     const cx = Math.max(minX, Math.min(px, maxX));
@@ -911,10 +900,6 @@ export function clamp(value, min, max) {
 }
 export function scaleAtHeight(baseSize, alpha, t) {
     return baseSize * (1 + alpha * t);
-}
-/** Map normalized vertical band coords (0–1) to model-space Y. */
-export function labelBandYRange(halfExtent, y0, y1) {
-    return { yBot: -halfExtent + halfExtent * 2 * y0, yTop: -halfExtent + halfExtent * 2 * y1 };
 }
 /** @param {number} seed */
 export function createSeededRng(seed) {

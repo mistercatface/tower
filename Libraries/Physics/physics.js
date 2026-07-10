@@ -1047,6 +1047,10 @@ export function entityContainedInAabb(entity, outer) {
     entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
     return outer.minX <= ENGINE_F32[P_AABB_A] && outer.minY <= ENGINE_F32[P_AABB_A + 1] && outer.maxX >= ENGINE_F32[P_AABB_A + 2] && outer.maxY >= ENGINE_F32[P_AABB_A + 3];
 }
+export function entityContainedInAabbF32(entity, buf, o) {
+    entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
+    return buf[o] <= ENGINE_F32[P_AABB_A] && buf[o + 1] <= ENGINE_F32[P_AABB_A + 1] && buf[o + 2] >= ENGINE_F32[P_AABB_A + 2] && buf[o + 3] >= ENGINE_F32[P_AABB_A + 3];
+}
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
     const vy = entity.vy || 0;
