@@ -1,6 +1,7 @@
 import propCatalog from "../../Assets/props/index.js";
 import { normalizeXY, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
+import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
@@ -127,6 +128,10 @@ export function createDragLaunchInteraction(spec) {
         },
         onPointerMove(prop, world, _e) {
             if (!aim?.active) return;
+            if (spec.canStart && !spec.canStart(prop, world)) {
+                aim = null;
+                return;
+            }
             updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
             spec.onAim?.(prop, aim);
         },
@@ -146,15 +151,6 @@ export function createDragLaunchInteraction(spec) {
             aim = null;
         },
     };
-}
-export function buildDragLaunchBehavior(state, entry) {
-    const spec = { id: entry.id, getConfig: entry.getConfig ? entry.getConfig(state) : dragLaunchConfigForProp, buildAimLineContext: entry.buildAimLineContext ? entry.buildAimLineContext(state) : dragLaunchAimLineContextForState(state) };
-    if (entry.canStart) spec.canStart = entry.canStart(state);
-    if (entry.onAim) spec.onAim = entry.onAim;
-    if (entry.onLaunch) spec.onLaunch = entry.onLaunch(state);
-    if (entry.resolveAimLine) spec.resolveAimLine = entry.resolveAimLine;
-    const behavior = createDragLaunchInteraction(spec);
-    return behavior;
 }
 export const DEFAULT_DRAG_INTERACTION_MODE = DRAG_LAUNCH_BEHAVIOR_ID;
 export function normalizeDragInteractionMode(mode) {
@@ -186,7 +182,18 @@ export function resolveDragInteractionBehavior(prop, state, behaviorById) {
     return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
 }
 export function createDragLaunchBehaviors(state) {
-    return [{ id: DRAG_LAUNCH_BEHAVIOR_ID }].map((entry) => buildDragLaunchBehavior(state, entry));
+    return [
+        createDragLaunchInteraction({
+            id: DRAG_LAUNCH_BEHAVIOR_ID,
+            getConfig: dragLaunchConfigForProp,
+            buildAimLineContext: dragLaunchAimLineContextForState(state),
+            resolveAimLine: getDragLaunchAimLine,
+            canStart: (prop) => {
+                const grid = state?.obstacleGrid;
+                return !(grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y));
+            },
+        }),
+    ];
 }
 function resolveGrabDragAnchor(prop, world) {
     const asset = propCatalog[prop.type];
@@ -262,6 +269,8 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         id: GRAB_DRAG_BEHAVIOR_ID,
         onPointerDown(prop, world) {
             if (!prop?.strategy?.isKinetic || prop.isDead) return false;
+            const grid = state?.obstacleGrid;
+            if (grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y)) return false;
             for (const id of groundNavBehaviorIds) state.sandbox.behaviorById.get(id)?.clearMoveTarget?.(prop);
             state.sandbox.entityMeta.clearActiveBehaviorId(prop.id);
             const anchor = resolveGrabDragAnchor(prop, world);
@@ -291,6 +300,14 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
                 const prop = state.entityRegistry.getLive(propId);
                 const run = propRuns.get(propId);
                 if (!prop || !run?.dragging) {
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                const grid = state?.obstacleGrid;
+                if (grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y)) {
+                    run.dragging = false;
+                    clearGroundRollDrive(prop);
+                    propRuns.delete(prop.id);
                     activeRunIds.splice(i, 1);
                     continue;
                 }

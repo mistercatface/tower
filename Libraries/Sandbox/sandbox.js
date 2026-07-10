@@ -17,7 +17,7 @@ import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import propCatalog from "../../Assets/props/index.js";
-import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, buildDragLaunchBehavior, assetSupportsDragLaunch, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
+import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, assetSupportsDragLaunch, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE, createDragLaunchInteraction, dragLaunchAimLineContextForState } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
@@ -1557,14 +1557,15 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     return spawned;
 }
 function buildSpawnerDragBehavior(state) {
-    return buildDragLaunchBehavior(state, {
+    return createDragLaunchInteraction({
         id: SPAWNER_BEHAVIOR_ID,
-        getConfig(_state) {
-            return (prop) => getSpawnerDragConfig(prop, propCatalog[prop.type]);
+        getConfig(prop) {
+            return getSpawnerDragConfig(prop, propCatalog[prop.type]);
         },
+        buildAimLineContext: dragLaunchAimLineContextForState(state),
         onAim: aimSpawnerFacing,
-        onLaunch(_state) {
-            return (prop, shot) => fireSpawner(state, prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
+        onLaunch(prop, shot) {
+            return fireSpawner(state, prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
         },
     });
 }
