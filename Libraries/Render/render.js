@@ -1916,8 +1916,9 @@ export function createConveyorDraw(options = {}) {
             const beltProp = subProp(prop.x, prop.y, angle);
             drawBox(ctx, beltProp, viewport, { halfSize: { x: hx, y: hy }, height: CONVEYOR_BELT_HEIGHT, facing: angle, faceColors: beltColors, topColors: beltTopColors, stroke: beltStroke, lineWidth: 1.0 * lineScale });
             function projectLocalFlat(out8, offset, lx, ly, lz) {
-                const r = rotateXY(lx, ly, cos, sin);
-                projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
+                const rx = lx * cos - ly * sin;
+                const ry = lx * sin + ly * cos;
+                projectPropVertexScalarsInto(out8, offset, prop, viewport, rx, ry, lz);
             }
             ctx.save();
             ctx.beginPath();
@@ -1974,8 +1975,9 @@ export function createConveyorDraw(options = {}) {
         const beltProp = subProp(prop.x, prop.y, angle);
         drawBox(ctx, beltProp, viewport, { halfSize: { x: hx, y: hy }, height: CONVEYOR_BELT_HEIGHT, facing: angle, faceColors: beltColors, topColors: beltTopColors, stroke: beltStroke, lineWidth: 1.0 * lineScale });
         function projectLocalFlat(out8, offset, lx, ly, lz) {
-            const r = rotateXY(lx, ly, cos, sin);
-            projectPropVertexScalarsInto(out8, offset, prop, viewport, r.x, r.y, lz);
+            const rx = lx * cos - ly * sin;
+            const ry = lx * sin + ly * cos;
+            projectPropVertexScalarsInto(out8, offset, prop, viewport, rx, ry, lz);
         }
         ctx.save();
         ctx.beginPath();

@@ -274,6 +274,37 @@ describe("kinetic wall damage", () => {
         
         terminateWorkerNavigation(state.nav);
     });
+    it("rail wall break with extreme impact force produces intact debris if shard area is too small", async () => {
+        const state = await createWallDamageTestState();
+        state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 1, 1, 4));
+        state.obstacleGrid.setEdgeSurfaceProfile(worldIdxAtCell(state.obstacleGrid,4, 4), 1, "edge-profile");
+        
+        const segment = { gridIdx: worldIdxAtCell(state.obstacleGrid,4, 4), gridSide: 1, isStaticGridProxy: false, isEdgeRail: true };
+        const entity = { id: 102, type: "cross_pinwheel", vx: 0, vy: -5000, mass: 100 };
+        const wallResolver = {
+            resolve() {
+                return { collided: true, hits: [{
+                    approachDot: -5000,
+                    normalX: 0,
+                    normalY: -1,
+                    segment,
+                    contactX: 4 * 16 + 8,
+                    contactY: 4 * 16 + 16
+                }] };
+            },
+        };
+        
+        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        applyPendingWallDamage(state);
+        
+        const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
+        assert.ok(shards.length > 0, "Extreme impact force must produce debris");
+        assert.ok(shards.every((s) => s.isKineticDebris && s._row >= 0));
+        assertNoWallChunkWorldProps(state);
+        
+        terminateWorkerNavigation(state.nav);
+    });
     it("real rail proxy integration test", async () => {
         const state = await createWallDamageTestState();
         state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);

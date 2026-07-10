@@ -415,6 +415,8 @@ export function polygonSecondMomentAboutCentroid2D(vertices) {
     }
     return inertia / 12;
 }
+export const ENGINE_F32 = new Float32Array(512);
+export const EMPTY_AABB = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 export function computeCompoundLocalBounds(parts, out) {
     let minX = Infinity;
     let maxX = -Infinity;
