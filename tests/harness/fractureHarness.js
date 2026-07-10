@@ -6,7 +6,7 @@ import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { WorldProp } from "../../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../../Libraries/Props/props.js";
-import { kineticDynamicSlab } from "../../Libraries/Physics/physics.js";
+import { assignPhysIdWithPose } from "./kineticTickHarness.js";
 
 export function createFractureWorld(overrides = {}) {
     const grid = new WorldObstacleGrid(16);
@@ -41,9 +41,7 @@ export function liveGlassCount(world) {
 }
 
 export function setupGlassPaneForFracture(prop, hx, hy, physId = 0) {
-    prop._physId = physId;
-    kineticDynamicSlab.x[physId] = prop.x;
-    kineticDynamicSlab.y[physId] = prop.y;
+    assignPhysIdWithPose(prop, physId);
     applyPropBoxFootprint(prop, hx, hy);
     return prop;
 }
@@ -107,7 +105,7 @@ export function readImpactFracture(stores = moduleStores) {
 }
 
 export function spawnGlassFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
-    if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce)) return null;
+    if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, world.fractureEngine)) return null;
     const stores = world.fractureEngine.stores;
     const fracture = readImpactFracture(stores);
     const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores);

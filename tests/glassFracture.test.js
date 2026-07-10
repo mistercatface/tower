@@ -12,9 +12,8 @@ import { GLASS_MAX_SHARDS_PER_SHATTER, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F
 import { ENGINE_F32, transformPoint2DInto } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { liveGlassCount, createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, shatterGlassFootprint, shatterGlassPolygon, materializeDebrisGeometries, readImpactFracture } from "./harness/fractureHarness.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
@@ -96,10 +95,7 @@ describe("glass fracture", () => {
     });
     it("fracturePropOnImpact returns all shards for glass and no parent geometry", () => {
         const prop = new WorldProp(50, 50, "glass_pane", 0);
-        prop._physId = 0;
-        kineticDynamicSlab.x[0] = 50;
-        kineticDynamicSlab.y[0] = 50;
-        applyPropBoxFootprint(prop, 16, 10);
+        setupGlassPaneForFracture(prop, 16, 10, 0);
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 50, 50, 25));
         const fracture = readImpactFracture();
         assert.equal(ENGINE_F32[F_OUT_DEBRIS_START], fracture.debrisStart);
@@ -126,9 +122,7 @@ describe("glass fracture", () => {
         const shards = shatterGlassFootprint(12, 8, 0, 0, 30);
         const big = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         const prop = new WorldProp(0, 0, "glass_pane", 0);
-        prop._physId = 0;
-        kineticDynamicSlab.x[0] = 0;
-        kineticDynamicSlab.y[0] = 0;
+        assignPhysIdWithPose(prop, 0);
         FractureEngine.applyPropFractureGeometry(prop, big);
         assert.ok(FractureEngine.canFracturePropSplit(prop));
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 25));

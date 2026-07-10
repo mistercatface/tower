@@ -58,31 +58,25 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityRefs[eid] = ref;
 }
 export function syncEntitySlotPoseFromRef(eid, ref) {
-    entityX[eid] = ref._poseX !== undefined ? ref._poseX : ref.x;
-    entityY[eid] = ref._poseY !== undefined ? ref._poseY : ref.y;
-    entityVx[eid] = ref._poseVx !== undefined ? ref._poseVx : (ref.vx ?? 0);
-    entityVy[eid] = ref._poseVy !== undefined ? ref._poseVy : (ref.vy ?? 0);
-    entityW[eid] = ref._poseW !== undefined ? ref._poseW : (ref.angularVelocity ?? 0);
+    entityX[eid] = ref.x;
+    entityY[eid] = ref.y;
+    entityVx[eid] = ref.vx ?? 0;
+    entityVy[eid] = ref.vy ?? 0;
+    entityW[eid] = ref.angularVelocity ?? 0;
 }
 export function writebackEntitySlotPoseToRef(eid, ref) {
-    const x = entityX[eid];
-    const y = entityY[eid];
-    const vx = entityVx[eid];
-    const vy = entityVy[eid];
-    const w = entityW[eid];
-    if (ref._poseX !== undefined) {
-        ref._poseX = x;
-        ref._poseY = y;
-        ref._poseVx = vx;
-        ref._poseVy = vy;
-        ref._poseW = w;
-        return;
-    }
-    ref.x = x;
-    ref.y = y;
-    ref.vx = vx;
-    ref.vy = vy;
-    ref.angularVelocity = w;
+    ref.x = entityX[eid];
+    ref.y = entityY[eid];
+    ref.vx = entityVx[eid];
+    ref.vy = entityVy[eid];
+    ref.angularVelocity = entityW[eid];
+}
+export function clearWorldPropSpawnPose(ref) {
+    delete ref._spawnX;
+    delete ref._spawnY;
+    delete ref._spawnVx;
+    delete ref._spawnVy;
+    delete ref._spawnW;
 }
 export function entitySlotRef(eid) {
     return entityAlive[eid] ? entityRefs[eid] : null;

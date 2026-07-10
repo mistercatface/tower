@@ -11,6 +11,7 @@ import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { mockWallSegment } from "./harness/wallSegmentHarness.js";
+import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 function shapeOverlapsWall(prop, wall) {
     const segShape = ensureWallSegmentPolygonShape(wall);
     return satCheckCollision(prop.x, prop.y, entityFacing(prop), prop.shape, wall.x, wall.y, entityFacing(wall), segShape);
@@ -65,7 +66,7 @@ describe("polygon wall resolution", () => {
         const bar = bar16x8(5, 0);
         bar.vx = 0;
         bar.vy = 0;
-        bar._physId = 0;
+        assignPhysIdWithPose(bar, 0);
         snapshotKineticBodySlab([bar]);
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));

@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, createPolygonShapeCapacity, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
@@ -71,17 +71,15 @@ export function getPolygonPropBoundingRadius(prop) {
     if (shape?.type === "Polygon") return shape.getBoundingRadius();
     return prop.radius ?? null;
 }
+const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
 export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;
     if (shape?.type !== "Polygon") throw new Error(`scalePolygonPropFootprint requires a polygon prop, got ${shape?.type ?? "none"}`);
     const n = shape.vertices.length;
-    ensurePropPolygonFootprintCapacity(prop, n);
-    const fp = prop.footprintVertices;
     const verts = shape.vertices;
-    for (let i = 0; i < n; i++) fp[i] = verts[i] * scale;
-    prop.shape.setFlatVerts(fp, n);
-    prop.radius = prop.shape.getBoundingRadius();
+    for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
+    writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
     invalidatePropFootprintKey(prop);
@@ -118,18 +116,12 @@ export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
 }
 export function ensurePropPolygonFootprintCapacity(prop, floatCount) {
-    let fp = prop.footprintVertices;
-    if (!(fp instanceof Float32Array) || fp.length < floatCount) {
-        fp = new Float32Array(floatCount);
-        prop.footprintVertices = fp;
-    }
-    if (prop.shape?.type === "Polygon") prop.shape.ensureVertCapacity(floatCount);
-    else prop.shape = createPolygonShapeCapacity(Math.max(floatCount, 8));
+    ensureLivePolygonCapacity(prop, floatCount);
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;
-    ensurePropPolygonFootprintCapacity(prop, n);
-    const fp = prop.footprintVertices;
+    ensureLivePolygonCapacity(prop, n);
+    const fp = prop._liveGeom.verts;
     fp[0] = -hx;
     fp[1] = -hy;
     fp[2] = hx;
@@ -138,8 +130,7 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     fp[5] = hy;
     fp[6] = -hx;
     fp[7] = hy;
-    prop.shape.setFlatVerts(fp, n);
-    prop.radius = prop.shape.getBoundingRadius();
+    writeLivePolygon(prop, fp, n);
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     prop.mass = kineticMassFromFootprint(prop);
@@ -152,6 +143,7 @@ export function ensureDrawOutline(prop, floatCount) {
 }
 export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
+        releaseLivePolygon(prop);
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
             if (typeof part.getBoundingRadius === "function") return part;
             if (part.type === "Polygon") return new PolygonShape(part.vertices);
@@ -168,11 +160,7 @@ export function initWorldPropShape(prop) {
     const template = prop.strategy.localFootprint;
     if (template && vertCount(template) >= 3) {
         const n = template.length;
-        ensurePropPolygonFootprintCapacity(prop, n);
-        const fp = prop.footprintVertices;
-        for (let i = 0; i < n; i++) fp[i] = template[i];
-        prop.shape.setFlatVerts(fp, n);
-        prop.radius = prop.shape.getBoundingRadius();
+        writeLivePolygon(prop, template, n);
         if (prop.strategy.drawOutline === true) {
             const verts = prop.shape.vertices;
             ensureDrawOutline(prop, verts.length).set(verts);
@@ -180,6 +168,7 @@ export function initWorldPropShape(prop) {
         invalidatePropFootprintKey(prop);
         return;
     }
+    releaseLivePolygon(prop);
     prop.radius = prop.strategy.radius ?? 0;
     prop.shape = new CircleShape(prop.radius);
     invalidatePropFootprintKey(prop);
@@ -296,13 +285,13 @@ export class WorldProp {
         const asset = propCatalog[type];
         this.type = type;
         this.strategy = sharedWorldPropStrategy(type);
-        this._poseX = x;
-        this._poseY = y;
+        this._spawnX = x;
+        this._spawnY = y;
         this.z = 0;
         this.isDead = false;
-        this._poseVx = 0;
-        this._poseVy = 0;
-        this._poseW = 0;
+        this._spawnVx = 0;
+        this._spawnVy = 0;
+        this._spawnW = 0;
         this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
@@ -319,9 +308,9 @@ export class WorldProp {
         this.spawnGroupId = undefined;
         this.spawnGroupExportType = undefined;
         this.spawnGroupAnchor = undefined;
+        releaseLivePolygon(this);
         this.shape = undefined;
         this.drawOutline = undefined;
-        this.footprintVertices = undefined;
         this.footprintArea = undefined;
         this.alpha = undefined;
         this.wallChunkProfileId = undefined;
@@ -342,48 +331,48 @@ export class WorldProp {
     }
     get x() {
         const eid = this._physId;
-        return eid !== undefined ? entityX[eid] : this._poseX;
+        return eid !== undefined ? entityX[eid] : this._spawnX;
     }
     set x(v) {
-        this._poseX = v;
         const eid = this._physId;
         if (eid !== undefined) entityX[eid] = v;
+        else this._spawnX = v;
     }
     get y() {
         const eid = this._physId;
-        return eid !== undefined ? entityY[eid] : this._poseY;
+        return eid !== undefined ? entityY[eid] : this._spawnY;
     }
     set y(v) {
-        this._poseY = v;
         const eid = this._physId;
         if (eid !== undefined) entityY[eid] = v;
+        else this._spawnY = v;
     }
     get vx() {
         const eid = this._physId;
-        return eid !== undefined ? entityVx[eid] : this._poseVx;
+        return eid !== undefined ? entityVx[eid] : this._spawnVx;
     }
     set vx(v) {
-        this._poseVx = v;
         const eid = this._physId;
         if (eid !== undefined) entityVx[eid] = v;
+        else this._spawnVx = v;
     }
     get vy() {
         const eid = this._physId;
-        return eid !== undefined ? entityVy[eid] : this._poseVy;
+        return eid !== undefined ? entityVy[eid] : this._spawnVy;
     }
     set vy(v) {
-        this._poseVy = v;
         const eid = this._physId;
         if (eid !== undefined) entityVy[eid] = v;
+        else this._spawnVy = v;
     }
     get angularVelocity() {
         const eid = this._physId;
-        return eid !== undefined ? entityW[eid] : this._poseW;
+        return eid !== undefined ? entityW[eid] : this._spawnW;
     }
     set angularVelocity(v) {
-        this._poseW = v;
         const eid = this._physId;
         if (eid !== undefined) entityW[eid] = v;
+        else this._spawnW = v;
     }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);
@@ -445,6 +434,7 @@ export class WorldProp {
 export function applyCrossPinwheelFootprint(prop, length, thickness) {
     const halfL = length / 2;
     const halfT = thickness / 2;
+    releaseLivePolygon(prop);
     prop.collisionParts = [new PolygonShape(boxLocalFootprint(halfL, halfT)), new PolygonShape(boxLocalFootprint(halfT, halfL))];
     prop.shape = prop.collisionParts[0];
     prop.radius = Math.hypot(halfL, halfT);
@@ -504,12 +494,9 @@ function scaleVirtualPropShape(prop, scale) {
     }
     if (shape?.type === "Polygon") {
         const n = shape.vertices.length;
-        ensurePropPolygonFootprintCapacity(prop, n);
-        const fp = prop.footprintVertices;
         const verts = shape.vertices;
-        for (let i = 0; i < n; i++) fp[i] = verts[i] * scale;
-        prop.shape.setFlatVerts(fp, n);
-        prop.radius = prop.shape.getBoundingRadius();
+        for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
+        writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
         if (prop.height != null) prop.height *= scale;
         invalidatePropFootprintKey(prop);
     }

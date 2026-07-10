@@ -1,7 +1,7 @@
 import { pruneKineticConstraintsForBody, getEntityCollisionParts, resolveBodyRadius } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
-import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
+import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
 const EMPTY_KINDS = ["worldProp"];
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
 const PICK_WORLD_POLY = [];
@@ -168,8 +168,9 @@ export class EntityArena {
             let flags = 0;
             if (ref.isDead) flags |= ENTITY_FLAG_DEAD;
             if (ref.strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
-            bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref._poseX !== undefined ? ref._poseX : ref.x, ref._poseY !== undefined ? ref._poseY : ref.y, resolveBodyRadius(ref), flags);
+            bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, resolveBodyRadius(ref), flags);
             ref._physId = eid;
+            clearWorldPropSpawnPose(ref);
             this._bumpMembership();
             return;
         }
@@ -178,8 +179,9 @@ export class EntityArena {
         let flags = 0;
         if (ref.isDead) flags |= ENTITY_FLAG_DEAD;
         if (ref.strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
-        bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref._poseX !== undefined ? ref._poseX : ref.x, ref._poseY !== undefined ? ref._poseY : ref.y, resolveBodyRadius(ref), flags);
+        bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, resolveBodyRadius(ref), flags);
         ref._physId = eid;
+        clearWorldPropSpawnPose(ref);
         this._gameIdToEid.set(ref.id, eid);
         this._addLiveEid(eid);
         this._bumpMembership();

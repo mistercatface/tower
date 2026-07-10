@@ -2,9 +2,24 @@ import { createKineticSession } from "../../GameState/KineticSession.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
+import { entityX, entityY, entityVx, entityVy, entityW, clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
+}
+export function assignPhysIdWithPose(body, physId) {
+    const x = body.x;
+    const y = body.y;
+    const vx = body.vx ?? 0;
+    const vy = body.vy ?? 0;
+    const w = body.angularVelocity ?? 0;
+    body._physId = physId;
+    entityX[physId] = x;
+    entityY[physId] = y;
+    entityVx[physId] = vx;
+    entityVy[physId] = vy;
+    entityW[physId] = w;
+    clearWorldPropSpawnPose(body);
 }
 export function mockKineticBody(isSleeping = false) {
     const radius = 10;
@@ -146,8 +161,8 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
     const frame = new KineticSpatialFrame(cellSize);
     frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
     for (let i = 0; i < bodies.length; i++) {
+        assignPhysIdWithPose(bodies[i], i);
         frame.insertEntity(bodies[i], i);
-        bodies[i]._physId = i;
     }
     frame._kineticBodies = bodies.slice();
     frame._nextPhysId = bodies.length;
@@ -164,8 +179,8 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     const frame = new KineticSpatialFrame(cellSize);
     frame.resetFrame(state.obstacleGrid);
     for (let i = 0; i < props.length; i++) {
+        assignPhysIdWithPose(props[i], i);
         frame.insertEntity(props[i], i);
-        props[i]._physId = i;
     }
     frame._kineticBodies = props.slice();
     frame._nextPhysId = props.length;

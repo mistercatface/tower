@@ -1,11 +1,11 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, createPolygonShapeCapacity, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
-import { entityRefs } from "../Entity/entitySlots.js";
+import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
+import { entityRefs, entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
-import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey, ensurePropPolygonFootprintCapacity } from "../Props/props.js";
+import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
@@ -34,11 +34,7 @@ function strategyForDebrisType(type) {
 function copyDebrisPolygonGeometry(dst, src) {
     const verts = src.shape.vertices;
     const n = verts.length;
-    const fp = dst.footprintVertices;
-    if (!(fp instanceof Float32Array) || fp.length < n) throw new Error(`debris footprint capacity ${fp?.length ?? 0} < ${n}`);
-    if (dst.shape?.type !== "Polygon") throw new Error("debris body missing PolygonShape");
-    for (let i = 0; i < n; i++) fp[i] = verts[i];
-    dst.shape.setFlatVerts(fp, n);
+    writeLivePolygon(dst, verts, n);
     dst.footprintArea = src.footprintArea;
     dst.radius = src.radius;
     invalidatePropFootprintKey(dst);
@@ -354,8 +350,8 @@ class KineticDebrisBody {
         this.id = 0;
         this.type = "";
         this.strategy = null;
-        this.footprintVertices = new Float32Array(MAX_SHARD_FOOTPRINT_FLOATS);
-        this.shape = createPolygonShapeCapacity(MAX_SHARD_FOOTPRINT_FLOATS);
+        this._liveGeom = null;
+        this.shape = null;
         this.collisionParts = undefined;
         this.chunks = undefined;
         this.footprintArea = undefined;
@@ -378,30 +374,40 @@ class KineticDebrisBody {
     }
     set x(v) {
         kineticDebrisSlab.x[this._row] = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityX[eid] = v;
     }
     get y() {
         return kineticDebrisSlab.y[this._row];
     }
     set y(v) {
         kineticDebrisSlab.y[this._row] = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityY[eid] = v;
     }
     get vx() {
         return kineticDebrisSlab.vx[this._row];
     }
     set vx(v) {
         kineticDebrisSlab.vx[this._row] = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityVx[eid] = v;
     }
     get vy() {
         return kineticDebrisSlab.vy[this._row];
     }
     set vy(v) {
         kineticDebrisSlab.vy[this._row] = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityVy[eid] = v;
     }
     get angularVelocity() {
         return kineticDebrisSlab.w[this._row];
     }
     set angularVelocity(v) {
         kineticDebrisSlab.w[this._row] = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityW[eid] = v;
     }
     get facing() {
         return kineticDebrisSlab.facing[this._row];
@@ -457,7 +463,7 @@ class KineticDebrisStore {
         this.world = world;
         this._bodies = [];
         this._integratedScratch = [];
-        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, footprintVertices: new Float32Array(MAX_SHARD_FOOTPRINT_FLOATS), shape: createPolygonShapeCapacity(MAX_SHARD_FOOTPRINT_FLOATS), chunks: undefined, footprintArea: undefined, radius: 0, mass: 1, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
+        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, _liveGeom: null, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, mass: 1, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
     }
     list() {
         return this._bodies;
@@ -522,6 +528,7 @@ class KineticDebrisStore {
         }
         body._listIndex = -1;
         body.isDead = true;
+        releaseLivePolygon(body);
         kineticDebrisFreePool.push(body);
     }
     spawnFromBreakRow(spawn, row, spatialFrame) {
@@ -1034,13 +1041,9 @@ export class FractureEngine {
         prop.collisionParts = undefined;
         const src = geometry.footprintVertices;
         const n = src.length;
-        ensurePropPolygonFootprintCapacity(prop, n);
-        const fp = prop.footprintVertices;
-        for (let i = 0; i < n; i++) fp[i] = src[i];
-        prop.footprintVertices = fp;
+        writeLivePolygon(prop, src, n);
         prop.footprintArea = geometry.footprintArea;
         prop.radius = geometry.boundingRadius;
-        prop.shape.setFlatVerts(fp, n);
         invalidatePropFootprintKey(prop);
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);
@@ -1052,15 +1055,11 @@ export class FractureEngine {
         const vertCount = debris.vertCount[debrisIndex];
         const src = stores.geom.buffer(handle);
         const n = vertCount * 2;
-        const fp = prop.footprintVertices;
-        if (!(fp instanceof Float32Array) || fp.length < n) throw new Error(`debris footprint capacity ${fp?.length ?? 0} < ${n}`);
-        if (prop.shape?.type !== "Polygon") throw new Error("debris body missing PolygonShape");
-        for (let i = 0; i < n; i++) fp[i] = src[i];
+        writeLivePolygon(prop, src, n);
         prop.chunks = undefined;
         prop.collisionParts = undefined;
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];
-        prop.shape.setFlatVerts(fp, n);
         invalidatePropFootprintKey(prop);
         markBroadphaseDirty(prop);
         prop.mass = kineticMassFromFootprint(prop);

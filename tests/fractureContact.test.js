@@ -1,27 +1,16 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 describe("fracture contact queue", () => {
     it("fractures only the first qualifying glass body when both could fracture", () => {
         const a = new WorldProp(100, 100, "glass_pane", 0);
-        a._physId = 1;
-        kineticDynamicSlab.x[1] = 100;
-        kineticDynamicSlab.y[1] = 100;
         applyPropBoxFootprint(a, 32, 32);
         const b = new WorldProp(108, 100, "glass_pane", 0);
-        b._physId = 2;
-        kineticDynamicSlab.x[2] = 108;
-        kineticDynamicSlab.y[2] = 100;
         applyPropBoxFootprint(b, 32, 32);
         const impactor = new WorldProp(92, 100, "ball", 0);
-        impactor._physId = 3;
-        kineticDynamicSlab.x[3] = 92;
-        kineticDynamicSlab.y[3] = 100;
         const tick = createKineticTestTick([a, b, impactor]);
         tick.world.fractureEngine.queueFractureKineticContact(a, impactor, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
@@ -31,15 +20,9 @@ describe("fracture contact queue", () => {
 
     it("skips fracture when _pendingEviction is already set", () => {
         const prop = new WorldProp(100, 100, "glass_pane", 0);
-        prop._physId = 1;
-        kineticDynamicSlab.x[1] = 100;
-        kineticDynamicSlab.y[1] = 100;
         applyPropBoxFootprint(prop, 32, 32);
         prop._pendingEviction = true;
         const impactor = new WorldProp(92, 100, "ball", 0);
-        impactor._physId = 2;
-        kineticDynamicSlab.x[2] = 92;
-        kineticDynamicSlab.y[2] = 100;
         const tick = createKineticTestTick([prop, impactor]);
         tick.world.fractureEngine.queueFractureKineticContact(prop, impactor, 100, 100, 50);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
@@ -48,14 +31,8 @@ describe("fracture contact queue", () => {
 
     it("skips glass-on-glass mutual fracture", () => {
         const a = new WorldProp(100, 100, "glass_pane", 0);
-        a._physId = 1;
-        kineticDynamicSlab.x[1] = 100;
-        kineticDynamicSlab.y[1] = 100;
         applyPropBoxFootprint(a, 32, 32);
         const b = new WorldProp(108, 100, "glass_pane", 0);
-        b._physId = 2;
-        kineticDynamicSlab.x[2] = 108;
-        kineticDynamicSlab.y[2] = 100;
         applyPropBoxFootprint(b, 32, 32);
         const tick = createKineticTestTick([a, b]);
         tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);

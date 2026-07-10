@@ -515,18 +515,143 @@ export class PolygonShape extends Shape {
         }
     }
 }
-export function createPolygonShapeCapacity(floatCapacity) {
-    if (floatCapacity < 8) throw new Error(`createPolygonShapeCapacity requires >= 8 floats, got ${floatCapacity}`);
-    const shape = new PolygonShape([-1, -1, 1, -1, 1, 1, -1, 1]);
-    const cap = new Float32Array(floatCapacity);
-    for (let i = 0; i < 8; i++) cap[i] = shape.vertices[i];
-    shape._vertCap = cap;
-    shape.vertices = cap.subarray(0, 8);
-    shape._normCap = new Float32Array(floatCapacity);
-    shape._fillNormals(shape._normCap, 4);
-    shape.normals = shape._normCap.subarray(0, 8);
-    shape.boundingRadius = shape._computeBoundingRadius();
+const LIVE_GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
+export const MAX_LIVE_POLYGON_FLOATS = LIVE_GEOM_VERT_BUCKETS[LIVE_GEOM_VERT_BUCKETS.length - 1] * 2;
+const liveGeomFreeByBucket = LIVE_GEOM_VERT_BUCKETS.map(() => []);
+function liveGeomBucketIndex(vertCount) {
+    for (let i = 0; i < LIVE_GEOM_VERT_BUCKETS.length; i++) if (LIVE_GEOM_VERT_BUCKETS[i] >= vertCount) return i;
+    return LIVE_GEOM_VERT_BUCKETS.length - 1;
+}
+function allocLiveGeomSpan(floatCount) {
+    if (floatCount < 6) throw new Error(`allocLiveGeomSpan requires >= 6 floats, got ${floatCount}`);
+    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`allocLiveGeomSpan ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS`);
+    const bucket = liveGeomBucketIndex((floatCount + 1) >> 1);
+    const free = liveGeomFreeByBucket[bucket];
+    if (free.length) return free.pop();
+    const cap = LIVE_GEOM_VERT_BUCKETS[bucket] * 2;
+    return { verts: new Float32Array(cap), normals: new Float32Array(cap), cap, bucket };
+}
+function releaseLiveGeomSpan(span) {
+    liveGeomFreeByBucket[span.bucket].push(span);
+}
+export class LivePolygonShape extends Shape {
+    constructor() {
+        super();
+        this.type = "Polygon";
+        this.shapeTypeId = SHAPE_TYPE_ID.Polygon;
+        this.vertices = null;
+        this.normals = null;
+        this.boundingRadius = 0;
+    }
+    getBoundingRadius() {
+        return this.boundingRadius;
+    }
+}
+function rebuildLivePolygonNormals(verts, normals, floatCount) {
+    const count = floatCount / 2;
+    for (let i = 0; i < count; i++) {
+        const p1x = verts[i * 2];
+        const p1y = verts[i * 2 + 1];
+        const nextIdx = ((i + 1) % count) * 2;
+        const p2x = verts[nextIdx];
+        const p2y = verts[nextIdx + 1];
+        const dx = p2x - p1x;
+        const dy = p2y - p1y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0) {
+            normals[i * 2] = -dy / len;
+            normals[i * 2 + 1] = dx / len;
+        } else {
+            normals[i * 2] = 0;
+            normals[i * 2 + 1] = 0;
+        }
+    }
+}
+function livePolygonBoundingRadius(verts, floatCount) {
+    let maxSq = 0;
+    for (let i = 0; i < floatCount; i += 2) {
+        const x = verts[i];
+        const y = verts[i + 1];
+        const sq = x * x + y * y;
+        if (sq > maxSq) maxSq = sq;
+    }
+    return Math.sqrt(maxSq);
+}
+export function releaseLivePolygon(body) {
+    const span = body._liveGeom;
+    if (!span) return;
+    releaseLiveGeomSpan(span);
+    body._liveGeom = null;
+    if (body.shape?.type === "Polygon" && body.shape instanceof LivePolygonShape) {
+        body.shape.vertices = null;
+        body.shape.normals = null;
+        body.shape.boundingRadius = 0;
+    }
+}
+export function writeLivePolygon(body, src, floatCount) {
+    if (floatCount < 6 || (floatCount & 1) !== 0) throw new Error(`writeLivePolygon requires even floatCount >= 6, got ${floatCount}`);
+    let span = body._liveGeom;
+    if (!span || span.cap < floatCount) {
+        if (span) releaseLiveGeomSpan(span);
+        span = allocLiveGeomSpan(floatCount);
+        body._liveGeom = span;
+    }
+    const verts = span.verts;
+    for (let i = 0; i < floatCount; i++) verts[i] = src[i];
+    const view = floatCount === span.cap ? verts : verts.subarray(0, floatCount);
+    if (polygonSignedArea2D(view) < 0)
+        for (let i = 0, j = floatCount - 2; i < j; i += 2, j -= 2) {
+            const x = verts[i];
+            const y = verts[i + 1];
+            verts[i] = verts[j];
+            verts[i + 1] = verts[j + 1];
+            verts[j] = x;
+            verts[j + 1] = y;
+        }
+    rebuildLivePolygonNormals(verts, span.normals, floatCount);
+    let shape = body.shape;
+    if (!(shape instanceof LivePolygonShape)) {
+        shape = new LivePolygonShape();
+        body.shape = shape;
+        body._cachedCollisionPartsShape = undefined;
+        body._cachedCollisionPartsArray = undefined;
+    }
+    shape.vertices = floatCount === span.cap ? span.verts : span.verts.subarray(0, floatCount);
+    shape.normals = floatCount === span.cap ? span.normals : span.normals.subarray(0, floatCount);
+    shape.boundingRadius = livePolygonBoundingRadius(verts, floatCount);
+    body.radius = shape.boundingRadius;
     return shape;
+}
+export function ensureLivePolygonCapacity(body, floatCount) {
+    const span = body._liveGeom;
+    if (span && span.cap >= floatCount && body.shape instanceof LivePolygonShape) return;
+    const scratch = span && body.shape?.vertices ? body.shape.vertices : null;
+    const prevN = scratch?.length ?? 0;
+    const tmp = prevN > 0 ? new Float32Array(Math.max(prevN, floatCount)) : null;
+    if (tmp && scratch) for (let i = 0; i < prevN; i++) tmp[i] = scratch[i];
+    if (span) releaseLiveGeomSpan(span);
+    const next = allocLiveGeomSpan(Math.max(floatCount, 8));
+    body._liveGeom = next;
+    if (tmp) for (let i = 0; i < prevN; i++) next.verts[i] = tmp[i];
+    let shape = body.shape;
+    if (!(shape instanceof LivePolygonShape)) {
+        shape = new LivePolygonShape();
+        body.shape = shape;
+        body._cachedCollisionPartsShape = undefined;
+        body._cachedCollisionPartsArray = undefined;
+    }
+    const n = prevN >= 6 ? prevN : 0;
+    if (n >= 6) {
+        rebuildLivePolygonNormals(next.verts, next.normals, n);
+        shape.vertices = next.verts.subarray(0, n);
+        shape.normals = next.normals.subarray(0, n);
+        shape.boundingRadius = livePolygonBoundingRadius(next.verts, n);
+        body.radius = shape.boundingRadius;
+    } else {
+        shape.vertices = next.verts.subarray(0, Math.min(8, next.cap));
+        shape.normals = next.normals.subarray(0, Math.min(8, next.cap));
+        shape.boundingRadius = 0;
+    }
 }
 const MANIFOLD_MAX_POINTS = 2;
 export const SAT_RESULT = ENGINE_F32.subarray(P_SAT, P_SAT + 25);
@@ -1146,7 +1271,6 @@ export function refreshActiveKineticBodySlabPose(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
         const physId = entity._physId;
-        syncEntitySlotPoseFromRef(entity._physId, entity);
         if (slab.bpKind[physId] !== BP_KIND_CIRCLE) {
             const angle = entityFacing(entity);
             slab.cos[physId] = Math.cos(angle);

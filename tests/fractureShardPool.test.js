@@ -34,7 +34,7 @@ describe("fracture debris slab ownership", () => {
         for (let i = result.shards.length - 1; i >= 0; i--) {
             world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
         }
-        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30));
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30, world.fractureEngine));
         const stores = world.fractureEngine.stores;
         const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, readImpactFracture(stores), stores);
         for (const body of spawnedAgain) {

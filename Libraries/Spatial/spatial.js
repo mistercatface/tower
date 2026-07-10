@@ -8,7 +8,7 @@ import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
-import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
+import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, clearWorldPropSpawnPose, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
 }
@@ -1657,8 +1657,8 @@ export class EntityGrid {
             newNext.set(this.entityNext);
             this.entityNext = newNext;
         }
-        const x = entity._poseX !== undefined ? entity._poseX : entity.x;
-        const y = entity._poseY !== undefined ? entity._poseY : entity.y;
+        const x = entity.x;
+        const y = entity.y;
         entityRefs[eid] = entity;
         entityAlive[eid] = 1;
         entitySpatialGen[eid] = 0;
@@ -3368,13 +3368,15 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const worldProps = state.worldProps;
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
+            const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
+            const x = prop.x;
+            const y = prop.y;
             const physId = prop._physId ?? allocateEntityEid();
             prop._physId = physId;
-            if (!entityAlive[physId] || entityRefs[physId] !== prop) {
+            if (needBind) {
                 const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
-                const x = prop._poseX !== undefined ? prop._poseX : prop.x;
-                const y = prop._poseY !== undefined ? prop._poseY : prop.y;
                 bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
+                clearWorldPropSpawnPose(prop);
             }
             this.insertEntity(prop, physId);
             if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
@@ -3410,9 +3412,12 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (!prop) continue;
             const isNew = prop._physId === undefined;
             if (isNew) {
+                const x = prop.x;
+                const y = prop.y;
                 prop._physId = allocateEntityEid();
                 const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
-                bindEntitySlot(prop._physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, prop._poseX !== undefined ? prop._poseX : prop.x, prop._poseY !== undefined ? prop._poseY : prop.y, entityCollisionSpan(prop), flags);
+                bindEntitySlot(prop._physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
+                clearWorldPropSpawnPose(prop);
                 this._kineticBodies.push(prop);
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);
@@ -3536,11 +3541,24 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     evictKineticProp(prop, session) {
         if (!prop || prop._physId === undefined) return;
         const physId = prop._physId;
-        prop.x = kineticDynamicSlab.x[physId];
-        prop.y = kineticDynamicSlab.y[physId];
-        prop.vx = kineticDynamicSlab.vx[physId];
-        prop.vy = kineticDynamicSlab.vy[physId];
-        prop.angularVelocity = kineticDynamicSlab.w[physId];
+        const x = kineticDynamicSlab.x[physId];
+        const y = kineticDynamicSlab.y[physId];
+        const vx = kineticDynamicSlab.vx[physId];
+        const vy = kineticDynamicSlab.vy[physId];
+        const w = kineticDynamicSlab.w[physId];
+        if (entityKind[physId] === ENTITY_KIND_DEBRIS) {
+            prop.x = x;
+            prop.y = y;
+            prop.vx = vx;
+            prop.vy = vy;
+            prop.angularVelocity = w;
+        } else {
+            prop._spawnX = x;
+            prop._spawnY = y;
+            prop._spawnVx = vx;
+            prop._spawnVy = vy;
+            prop._spawnW = w;
+        }
         this.entityGrid.remove(prop);
         const all = this._kineticBodies;
         for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);
