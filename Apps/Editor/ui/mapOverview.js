@@ -1,3 +1,4 @@
+import { aabbFromF32, BRIDGE_AABB } from "../../../Libraries/Math/math.js";
 import { applySquareCanvasResize } from "./squareCanvasResize.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Spatial/spatial.js";
@@ -46,7 +47,9 @@ export function paintMapOverviewFrame(state) {
     const displayW = canvas.width;
     const displayH = canvas.height;
     refreshAllMapGenBoundsPreviews(state.obstacleGrid, state.editor);
-    drawWorldBoundsBox(ctx, state.viewport.bounds("clip"), cache, displayW, displayH, "#00e5ff");
+    const clipF32 = state.viewport.boundsF32("clip");
+    aabbFromF32(clipF32.buf, clipF32.o, BRIDGE_AABB);
+    drawWorldBoundsBox(ctx, BRIDGE_AABB, cache, displayW, displayH, "#00e5ff");
     const genKind = activeMapGenKind(state);
     if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);
 }
@@ -55,14 +58,7 @@ export function mountMapOverview(state, onBoundsChange = null, getSlotMax = null
     const { initialSize, minSize, maxSize, backingScale } = EDITOR_CANVAS_DEFAULTS.overview;
     const canvas = document.getElementById("mapOverviewCanvas");
     overviewCtx = canvas.getContext("2d");
-    overviewCanvasResize = applySquareCanvasResize(canvas, {
-        host: document.getElementById("mapOverviewHost"),
-        initialSize,
-        minSize,
-        maxSize: getSlotMax ?? maxSize,
-        backingScale,
-        onResize: () => paintMapOverviewFrame(state),
-    });
+    overviewCanvasResize = applySquareCanvasResize(canvas, { host: document.getElementById("mapOverviewHost"), initialSize, minSize, maxSize: getSlotMax ?? maxSize, backingScale, onResize: () => paintMapOverviewFrame(state) });
     if (onBoundsChange) {
         const getFrame = () => ({ cache: state.mapOverviewCache, displayW: canvas.width, displayH: canvas.height });
         mountOverviewBoundsEditors(canvas, [createMapGenBoundsOverviewEditor(state), createViewportOverviewEditor(state)], getFrame, onBoundsChange);

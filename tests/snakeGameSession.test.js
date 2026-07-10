@@ -20,7 +20,7 @@ function createCorridorFleeTestState() {
         obstacleGrid: grid,
         nav,
         editor: { cavernConfig: { boundsIdx: -1 } },
-        viewport: { circleInBounds: () => true },
+        viewport: { circleInBoundsF32: () => true },
     };
 }
 

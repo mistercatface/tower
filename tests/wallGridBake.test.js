@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { collectRailWallBoxesInAabb, RAIL_BOX_STRIDE } from "../Libraries/World/wallGridBake.js";
+import { collectRailWallBoxesInAabbF32, RAIL_BOX_STRIDE } from "../Libraries/World/wallGridBake.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
 import { makeTestObstacleGrid, stampRailWallEdge } from "./harness/losShadowHarness.js";
 
-const TEST_BOUNDS = { minX: -1024, minY: -1024, maxX: 1024, maxY: 1024 };
+const TEST_BOUNDS_BUF = new Float32Array([-1024, -1024, 1024, 1024]);
 
 describe("wall grid bake", () => {
     it("does not merge collinear rail boxes across chunk boundaries", () => {
@@ -13,7 +13,7 @@ describe("wall grid bake", () => {
         stampRailWallEdge(grid, 8, 2, 0, 1);
         const boxes = new StrideFloatList(RAIL_BOX_STRIDE);
 
-        collectRailWallBoxesInAabb(grid, TEST_BOUNDS, boxes);
+        collectRailWallBoxesInAabbF32(grid, TEST_BOUNDS_BUF, 0, boxes);
 
         assert.equal(boxes.length, 2);
     });
@@ -24,7 +24,7 @@ describe("wall grid bake", () => {
         stampRailWallEdge(grid, 7, 2, 0, 1);
         const boxes = new StrideFloatList(RAIL_BOX_STRIDE);
 
-        collectRailWallBoxesInAabb(grid, TEST_BOUNDS, boxes);
+        collectRailWallBoxesInAabbF32(grid, TEST_BOUNDS_BUF, 0, boxes);
 
         assert.equal(boxes.length, 1);
     });

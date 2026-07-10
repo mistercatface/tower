@@ -1,3 +1,4 @@
+import { aabbFromF32, BRIDGE_AABB } from "../../../Libraries/Math/math.js";
 import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Spatial/spatial.js";
 import { activeMapGenKind } from "./mapOverview.js";
 import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
@@ -138,7 +139,11 @@ export function createMapGenBoundsOverviewEditor(state) {
 export function createViewportOverviewEditor(state) {
     return {
         isEnabled: () => state.editor.showMapOverview,
-        hitTest: (sx, sy, frame) => hitTestRectAabb(sx, sy, state.viewport.bounds("clip"), frame.cache, frame.displayW, frame.displayH, { moveOnly: true }),
+        hitTest: (sx, sy, frame) => {
+            const clipF32 = state.viewport.boundsF32("clip");
+            aabbFromF32(clipF32.buf, clipF32.o, BRIDGE_AABB);
+            return hitTestRectAabb(sx, sy, BRIDGE_AABB, frame.cache, frame.displayW, frame.displayH, { moveOnly: true });
+        },
         applyDrag: (mode, dxWorld, dyWorld) => {
             if (mode === "move") state.viewport.snapTo(state.viewport.x + dxWorld, state.viewport.y + dyWorld);
         },

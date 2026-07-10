@@ -82,7 +82,7 @@ export class Renderer {
         if (!collection) return;
         for (let i = 0; i < collection.length; i++) {
             const entity = collection[i];
-            if (!viewport.circleInBounds(entity.x, entity.y, entity.radius, "props")) continue;
+            if (!viewport.circleInBoundsF32(entity.x, entity.y, entity.radius, "props")) continue;
             entity.render(this.ctx, this, state);
         }
     }

@@ -157,7 +157,7 @@ function portalDrawForStripKey(role) {
 function drawPortalStamp(ctx, grid, viewport, idx, role, frameIndex, halfExtents) {
     const x = grid.gridCenterXByIdx(idx);
     const y = grid.gridCenterYByIdx(idx);
-    if (!viewport.circleInBounds(x, y, grid.cellHalfSize, "props")) return;
+    if (!viewport.circleInBoundsF32(x, y, grid.cellHalfSize, "props")) return;
     drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.Portal, role, 0, portalDrawForStripKey(role), frameIndex, BELT_FILMSTRIP_FRAMES);
 }
 export class FloorPortalDrawCache {

@@ -529,25 +529,6 @@ function clipSegmentToHalfPlane(x0, y0, x1, y1, nx, ny, offset, outX, outY, outS
     }
     return count;
 }
-function satMinOverlapOnAxes(axes, cos, sin, projectPair, overlapState, onNewMin) {
-    const axisCount = axes.length;
-    for (let i = 0; i < axisCount; i += 2) {
-        const nx = axes[i];
-        const ny = axes[i + 1];
-        const rNx = nx * cos - ny * sin;
-        const rNy = nx * sin + ny * cos;
-        projectPair(rNx, rNy);
-        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
-        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-        if (overlap < overlapState.minOverlap) {
-            overlapState.minOverlap = overlap;
-            overlapState.minNormalX = rNx;
-            overlapState.minNormalY = rNy;
-            if (onNewMin) onNewMin(i / 2);
-        }
-    }
-    return true;
-}
 function clipContactSegmentToHalfPlane(x0, y0, x1, y1, nx, ny, offset) {
     let clipCount = clipSegmentToHalfPlane(x0, y0, x1, y1, nx, ny, offset, clipX, clipY, 0);
     if (clipCount === 0) return 0;
@@ -760,30 +741,49 @@ export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB
     return satCheckShapesAtPose(xA, yA, Math.cos(angleA), Math.sin(angleA), shapeA, xB, yB, Math.cos(angleB), Math.sin(angleB), shapeB);
 }
 function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
-    const overlapState = { minOverlap: Infinity, minNormalX: 0, minNormalY: 0 };
+    let minOverlap = Infinity;
+    let minNormalX = 0;
+    let minNormalY = 0;
     let refPolyIsA = true;
     let refEdgeIndex = 0;
-    const projectPolyPair = (rNx, rNy) => {
+    let axes = shapeA.normals;
+    let axisCount = axes.length;
+    for (let i = 0; i < axisCount; i += 2) {
+        const nx = axes[i];
+        const ny = axes[i + 1];
+        const rNx = nx * cosA - ny * sinA;
+        const rNy = nx * sinA + ny * cosA;
         satProjectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, cosA, sinA);
         satProjectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, cosB, sinB);
-    };
-    if (
-        !satMinOverlapOnAxes(shapeA.normals, cosA, sinA, projectPolyPair, overlapState, (edgeIndex) => {
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = rNx;
+            minNormalY = rNy;
             refPolyIsA = true;
-            refEdgeIndex = edgeIndex;
-        })
-    )
-        return false;
-    if (
-        !satMinOverlapOnAxes(shapeB.normals, cosB, sinB, projectPolyPair, overlapState, (edgeIndex) => {
+            refEdgeIndex = i / 2;
+        }
+    }
+    axes = shapeB.normals;
+    axisCount = axes.length;
+    for (let i = 0; i < axisCount; i += 2) {
+        const nx = axes[i];
+        const ny = axes[i + 1];
+        const rNx = nx * cosB - ny * sinB;
+        const rNy = nx * sinB + ny * cosB;
+        satProjectPolygon(PROJ_A, rNx, rNy, shapeA, xA, yA, cosA, sinA);
+        satProjectPolygon(PROJ_B, rNx, rNy, shapeB, xB, yB, cosB, sinB);
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = rNx;
+            minNormalY = rNy;
             refPolyIsA = false;
-            refEdgeIndex = edgeIndex;
-        })
-    )
-        return false;
-    const minOverlap = overlapState.minOverlap;
-    let minNormalX = overlapState.minNormalX;
-    let minNormalY = overlapState.minNormalY;
+            refEdgeIndex = i / 2;
+        }
+    }
     const dx = xB - xA;
     const dy = yB - yA;
     if (dx * minNormalX + dy * minNormalY < 0) {
@@ -834,12 +834,26 @@ function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shape
 }
 function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP, sinP, polyShape) {
     if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
-    const overlapState = { minOverlap: Infinity, minNormalX: 0, minNormalY: 0 };
-    const projectCirclePolyPair = (rNx, rNy) => {
+    let minOverlap = Infinity;
+    let minNormalX = 0;
+    let minNormalY = 0;
+    const axes = polyShape.normals;
+    const axisCount = axes.length;
+    for (let i = 0; i < axisCount; i += 2) {
+        const nx = axes[i];
+        const ny = axes[i + 1];
+        const rNx = nx * cosP - ny * sinP;
+        const rNy = nx * sinP + ny * cosP;
         satProjectCircle(PROJ_A, rNx, rNy, cxCircle, cyCircle, circleShape);
         satProjectPolygon(PROJ_B, rNx, rNy, polyShape, pxPoly, pyPoly, cosP, sinP);
-    };
-    if (!satMinOverlapOnAxes(polyShape.normals, cosP, sinP, projectCirclePolyPair, overlapState)) return false;
+        if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
+        const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = rNx;
+            minNormalY = rNy;
+        }
+    }
     const featureB = findClosestWorldVertexIndex(polyShape.vertices, pxPoly, pyPoly, cosP, sinP, cxCircle, cyCircle);
     const vi = featureB * 2;
     const closestVx = pxPoly + polyShape.vertices[vi] * cosP - polyShape.vertices[vi + 1] * sinP;
@@ -854,21 +868,18 @@ function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP,
         satProjectPolygon(PROJ_B, nX, nY, polyShape, pxPoly, pyPoly, cosP, sinP);
         if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
         const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
-        if (overlap < overlapState.minOverlap) {
-            overlapState.minOverlap = overlap;
-            overlapState.minNormalX = nX;
-            overlapState.minNormalY = nY;
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            minNormalX = nX;
+            minNormalY = nY;
         }
     }
-    let minNormalX = overlapState.minNormalX;
-    let minNormalY = overlapState.minNormalY;
     const cx = pxPoly - cxCircle;
     const cy = pyPoly - cyCircle;
     if (cx * minNormalX + cy * minNormalY < 0) {
         minNormalX = -minNormalX;
         minNormalY = -minNormalY;
     }
-    const minOverlap = overlapState.minOverlap;
     const contactX = cxCircle + minNormalX * (circleShape.radius - minOverlap / 2);
     const contactY = cyCircle + minNormalY * (circleShape.radius - minOverlap / 2);
     SAT_RESULT[0] = minOverlap;
@@ -3083,10 +3094,11 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         const entryIdx = pairs[i * 2 + 1];
         const ex = grid.gridCenterXByIdx(exitIdx);
         const ey = grid.gridCenterYByIdx(exitIdx);
-        ENGINE_F32[P_AABB_A] = ex - half;
-        ENGINE_F32[P_AABB_A + 2] = ex + half;
-        ENGINE_F32[P_AABB_A + 1] = ey - half;
-        ENGINE_F32[P_AABB_A + 3] = ey + half;
+        const o = ENGINE_BOUNDS_BASE + B_QUERY;
+        ENGINE_F32[o] = ex - half;
+        ENGINE_F32[o + 2] = ex + half;
+        ENGINE_F32[o + 1] = ey - half;
+        ENGINE_F32[o + 3] = ey + half;
         PORTAL_TICK.grid = grid;
         PORTAL_TICK.spatialFrame = spatialFrame;
         PORTAL_TICK.exitIdx = exitIdx;

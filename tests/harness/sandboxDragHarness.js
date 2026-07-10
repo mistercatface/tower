@@ -19,7 +19,7 @@ export function createSandboxDragTestState() {
             x: 128,
             y: 128,
             snapTo() {},
-            circleInBounds() {
+            circleInBoundsF32() {
                 return true;
             },
         },

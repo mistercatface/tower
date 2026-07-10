@@ -400,7 +400,7 @@ export class FlowFieldWindow {
         this.topologyKey = "";
         this.ready = false;
         this.syncPending = false;
-        this.cellBounds = createAabb();
+        this.cellBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
     }
     setCenter(centerX, centerY) {
         setCenteredGridFrameCenter(this.frame, centerX, centerY);

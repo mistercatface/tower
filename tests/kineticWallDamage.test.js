@@ -23,7 +23,7 @@ import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { kineticIntegrateHooks } from "./harness/kineticTickHarness.js";
 import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wallSurfaceInvalidateHarness.js";
-import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridBake.js";
+import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridBake.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState(opts = {}) {
@@ -239,10 +239,11 @@ describe("kinetic wall damage", () => {
         assert.ok(state.obstacleGrid.wallGridRevision > revisionBefore);
         assert.equal(state.worldSurfaces.surfaceCache.get(seeded.maskKey), null);
         assert.equal(state.worldSurfaces.surfaceCache.get(seeded.drawKey), null);
-        const faces = new StrideFloatList(VOXEL_FACE_STRIDE);
-        collectVoxelWallFacesInAabbFlat(state.obstacleGrid, { minX: 0, minY: 0, maxX: 128, maxY: 128 }, faces);
-        for (let i = 0; i < faces.length; i++) {
-            assert.notEqual(faces.data[i * VOXEL_FACE_STRIDE + VOXEL_FACE.gridIdx], clearedIdx);
+        const list = new StrideFloatList(VOXEL_FACE_STRIDE);
+        const buf = new Float32Array([-100, -100, 100, 100]);
+        collectVoxelWallFacesInAabbFlatF32(state.obstacleGrid, buf, 0, list);
+        for (let i = 0; i < list.length; i++) {
+            assert.notEqual(list.data[i * VOXEL_FACE_STRIDE + VOXEL_FACE.gridIdx], clearedIdx);
         }
         terminateWorkerNavigation(state.nav);
     });

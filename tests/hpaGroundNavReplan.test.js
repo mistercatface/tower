@@ -13,7 +13,7 @@ describe("hpa ground nav replan policy", () => {
         nav.pathLen = 10; // give it a path so it doesn't trigger noPath
         nav.pathSlot = 1;
         const manager = new PathReplanManager(nav);
-        const state = { nav: { settings: navSettings, topologyKey: () => "key-b" }, viewport: { circleInBounds: () => true } };
+        const state = { nav: { settings: navSettings, topologyKey: () => "key-b" }, viewport: { circleInBoundsF32: () => true } };
         nav.topologyKey = "key-a";
         assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "epoch");
         
@@ -24,7 +24,7 @@ describe("hpa ground nav replan policy", () => {
     it("evaluates idlePathReplanReason correctly", () => {
         const nav = createNavState();
         const manager = new PathReplanManager(nav);
-        const state = { nav: { settings: navSettings, topologyKey: () => nav.topologyKey }, viewport: { circleInBounds: () => true } };
+        const state = { nav: { settings: navSettings, topologyKey: () => nav.topologyKey }, viewport: { circleInBoundsF32: () => true } };
         
         assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "noPath");
         assert.equal(manager.evaluate({x:0,y:0}, state, true).shouldReplan, false);
@@ -45,7 +45,7 @@ describe("hpa ground nav replan policy", () => {
         nav.pathSlot = 0;
         nav.lastOffPathReplan = 0;
         const manager = new PathReplanManager(nav);
-        const state = { nav: { settings: navSettings }, viewport: { circleInBounds: () => true } };
+        const state = { nav: { settings: navSettings }, viewport: { circleInBoundsF32: () => true } };
         
         manager.updateClock(250);
         manager.trackStuck({x:10,y:10}, false, false, 0); // stuck frames = 1. softReplan requires > 10
@@ -88,7 +88,7 @@ describe("hpa ground nav replan policy", () => {
         };
         const state = {
             obstacleGrid: grid,
-            viewport: { circleInBounds: () => true },
+            viewport: { circleInBoundsF32: () => true },
             nav: {
                 settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 6, pathOffPathDistance: 4 },
                 topologyKey: () => "",

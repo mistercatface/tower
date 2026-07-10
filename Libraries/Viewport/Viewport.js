@@ -47,17 +47,17 @@ export class Viewport {
         const referenceSpan = Math.max(MIN_WORLD_SPAN, this.getVisualRadius() * 2);
         this.perspectiveStrength = (this._perspectiveStrengthBase * referenceSpan) / worldSpan;
     }
-    bounds(tier) {
-        return this.viewBounds.bounds(tier);
+    boundsF32(tier) {
+        return this.viewBounds.boundsF32(tier);
     }
-    circleInBounds(worldX, worldY, radius = 0, tier = "props") {
-        return this.viewBounds.circleInBounds(worldX, worldY, radius, tier);
+    circleInBoundsF32(worldX, worldY, radius = 0, tier = "props") {
+        return this.viewBounds.circleInBoundsF32(worldX, worldY, radius, tier);
     }
-    entityInBounds(entity, tier = "props", radiusScale = 1) {
-        return this.circleInBounds(entity.x, entity.y, entity.radius * radiusScale, tier);
+    entityInBoundsF32(entity, tier = "props", radiusScale = 1) {
+        return this.circleInBoundsF32(entity.x, entity.y, entity.radius * radiusScale, tier);
     }
-    aabbInBounds(aabb, tier = "clip") {
-        return this.viewBounds.aabbInBounds(aabb, tier);
+    aabbInBoundsF32(buf, o, tier = "clip") {
+        return this.viewBounds.aabbInBoundsF32(buf, o, tier);
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);

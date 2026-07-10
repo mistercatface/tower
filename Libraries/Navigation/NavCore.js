@@ -1550,7 +1550,7 @@ export class PathReplanManager {
         const settings = nav.settings;
         const stuckFrames = this.navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
-        const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props");
+        const isVisible = state.viewport.circleInBoundsF32(prop.x, prop.y, prop.radius, "props");
         const canReplan = isVisible || stuckFrames > stuckReplanFrames;
         if (!inFlight && this.navState.topologyKey !== nav.topologyKey()) if (canReplan) return { shouldReplan: true, reason: "epoch", priority: PathReplanManager.getPriority("epoch", isVisible) };
         if (!inFlight) {
@@ -1565,7 +1565,7 @@ export class PathReplanManager {
         if (steering && steering.offPath && this.replanClockMs - (this.navState.lastOffPathReplan || 0) >= REPLAN_OFF_PATH_COOLDOWN_MS) {
             const stuckFrames = this.navState.stuckFrames;
             const stuckReplanFrames = state.nav.settings.stuckReplanFrames;
-            const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props");
+            const isVisible = state.viewport.circleInBoundsF32(prop.x, prop.y, prop.radius, "props");
             const canReplan = isVisible || stuckFrames > stuckReplanFrames;
             const softReplanAllowed = stuckFrames > Math.max(1, Math.floor(stuckReplanFrames * 0.5));
             if (softReplanAllowed && canReplan) {
@@ -2246,7 +2246,7 @@ export class HpaNavSession {
         const replanDecision = this.replanManager.evaluate(prop, state, inFlight);
         if (replanDecision.shouldReplan) return this.requestReplan(prop, targetX, targetY, state, replanDecision.priority, replanDecision.reason);
         if (sandboxReplan) {
-            const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible: state.viewport.circleInBounds(prop.x, prop.y, prop.radius, "props"), stuckFrames: this.navState.stuckFrames, stuckReplanFrames: nav.settings.stuckReplanFrames });
+            const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible: state.viewport.circleInBoundsF32(prop.x, prop.y, prop.radius, "props"), stuckFrames: this.navState.stuckFrames, stuckReplanFrames: nav.settings.stuckReplanFrames });
             if (sandboxResult) return sandboxResult;
         }
         if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };

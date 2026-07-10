@@ -1,9 +1,9 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustum, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, lerp, scaleAtHeight, ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbInto, centerReachAabbF32, aabbFromF32, lerp, scaleAtHeight, ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
-import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
@@ -759,6 +759,7 @@ export function drawRadialBand(ctx, prop, viewport, options) {
         pointOnFrustum(sBandQuad, 2, projection, baseRadius, resolvedTop, t0, a1);
         const edgeMidX = (sBandQuad[0] + sBandQuad[2]) * 0.5;
         const edgeMidY = (sBandQuad[1] + sBandQuad[3]) * 0.5;
+        if (!viewport.circleInBoundsF32(prop.x, prop.y, baseRadius, "props")) continue;
         if (!isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) continue;
         pointOnFrustum(sBandQuad, 4, projection, baseRadius, resolvedTop, t1, a1);
         pointOnFrustum(sBandQuad, 6, projection, baseRadius, resolvedTop, t1, a0);
@@ -1132,27 +1133,27 @@ export class VisibleDrawQueue {
  * Viewport-scoped draw + query for static obstacle-grid walls (no Segment entities).
  */
 const sGeomCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, faces: new StrideFloatList(VOXEL_FACE_STRIDE) };
-export function wallGridDrawCacheHit(cache, grid, wallGridRevision, bounds) {
-    return cache.grid === grid && cache.wallGridRevision === wallGridRevision && cache.gridCols === grid.cols && cache.gridRows === grid.rows && cache.boundsMinX === bounds.minX && cache.boundsMaxX === bounds.maxX && cache.boundsMinY === bounds.minY && cache.boundsMaxY === bounds.maxY;
+export function wallGridDrawCacheHitF32(cache, grid, wallGridRevision, buf, o) {
+    return cache.grid === grid && cache.wallGridRevision === wallGridRevision && cache.gridCols === grid.cols && cache.gridRows === grid.rows && cache.boundsMinX === buf[o] && cache.boundsMinY === buf[o + 1] && cache.boundsMaxX === buf[o + 2] && cache.boundsMaxY === buf[o + 3];
 }
-export function storeWallGridDrawCache(cache, grid, wallGridRevision, bounds) {
+export function storeWallGridDrawCacheF32(cache, grid, wallGridRevision, buf, o) {
     cache.grid = grid;
     cache.wallGridRevision = wallGridRevision;
     cache.gridCols = grid.cols;
     cache.gridRows = grid.rows;
-    cache.boundsMinX = bounds.minX;
-    cache.boundsMaxX = bounds.maxX;
-    cache.boundsMinY = bounds.minY;
-    cache.boundsMaxY = bounds.maxY;
+    cache.boundsMinX = buf[o];
+    cache.boundsMinY = buf[o + 1];
+    cache.boundsMaxX = buf[o + 2];
+    cache.boundsMaxY = buf[o + 3];
 }
 export function collectStaticGridWallDrawables(obstacleGrid, viewport, outQueue) {
-    const bounds = viewport.bounds("structure");
+    const bounds = viewport.boundsF32("structure");
     const viewerX = viewport.x;
     const viewerY = viewport.y;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!wallGridDrawCacheHit(sGeomCache, obstacleGrid, wallGridRevision, bounds)) {
-        collectVoxelWallFacesInAabbFlat(obstacleGrid, bounds, sGeomCache.faces);
-        storeWallGridDrawCache(sGeomCache, obstacleGrid, wallGridRevision, bounds);
+    if (!wallGridDrawCacheHitF32(sGeomCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o)) {
+        collectVoxelWallFacesInAabbFlatF32(obstacleGrid, bounds.buf, bounds.o, sGeomCache.faces);
+        storeWallGridDrawCacheF32(sGeomCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o);
     }
     const faces = sGeomCache.faces;
     const data = faces.data;
@@ -1219,13 +1220,13 @@ function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     return false;
 }
 export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, outQueue) {
-    const bounds = viewport.bounds("structure");
+    const bounds = viewport.boundsF32("structure");
     const viewerX = viewport.x;
     const viewerY = viewport.y;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!wallGridDrawCacheHit(sBoxCache, obstacleGrid, wallGridRevision, bounds)) {
-        collectRailWallBoxesInAabb(obstacleGrid, bounds, sBoxCache.boxes);
-        storeWallGridDrawCache(sBoxCache, obstacleGrid, wallGridRevision, bounds);
+    if (!wallGridDrawCacheHitF32(sBoxCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o)) {
+        collectRailWallBoxesInAabbF32(obstacleGrid, bounds.buf, bounds.o, sBoxCache.boxes);
+        storeWallGridDrawCacheF32(sBoxCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o);
     }
     const boxes = sBoxCache.boxes;
     const data = boxes.data;
@@ -1465,7 +1466,7 @@ function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewpo
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.bounds("chunks"));
+    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.boundsF32("chunks"));
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
     const { wallHeight, wallBaseZ } = face;
@@ -2067,7 +2068,9 @@ function prepareWallChunkPropTextures(state, prop) {
 }
 // Removed parallel sort (now in VisibleDrawQueue.js)
 export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
-    return entityRegistry.queryView({ bounds: viewport.bounds(tier), kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
+    const f32 = viewport.boundsF32(tier);
+    aabbFromF32(f32.buf, f32.o, BRIDGE_AABB);
+    return entityRegistry.queryView({ bounds: BRIDGE_AABB, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }
 export class WorldSceneRenderer {
     constructor() {
@@ -2161,19 +2164,18 @@ export class EdgeList {
     }
 }
 export { EDGE_STRIDE };
-const sEdgeSegmentAabb = createAabb();
+export function edgeSegmentOutsideCircle(edge, centerX, centerY, rangeSq) {
+    aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, edge.x1, edge.y1, edge.x2, edge.y2);
+    return distanceSqToAabbF32(centerX, centerY, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP) > rangeSq;
+}
 function clampSegmentCoord(a, b, v) {
     const lo = a < b ? a : b;
     const hi = a < b ? b : a;
     return v < lo ? lo : v > hi ? hi : v;
 }
-export function edgeSegmentOutsideCircle(edge, centerX, centerY, rangeSq) {
-    const segment = aabbFromTwoPointsInto(sEdgeSegmentAabb, edge.x1, edge.y1, edge.x2, edge.y2);
-    return distanceSqToAabb(centerX, centerY, segment.minX, segment.minY, segment.maxX, segment.maxY) > rangeSq;
-}
 function edgeSegmentOutsideCircleFlat(data, base, centerX, centerY, rangeSq) {
-    const segment = aabbFromTwoPointsInto(sEdgeSegmentAabb, data[base], data[base + 1], data[base + 2], data[base + 3]);
-    return distanceSqToAabb(centerX, centerY, segment.minX, segment.minY, segment.maxX, segment.maxY) > rangeSq;
+    aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, data[base], data[base + 1], data[base + 2], data[base + 3]);
+    return distanceSqToAabbF32(centerX, centerY, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP) > rangeSq;
 }
 export function forEachLosShadowQuadInRange(edgeList, lightX, lightY, range, lightZ, viewport, quadScratch, emitQuad) {
     const rSq = range * range;
@@ -2198,7 +2200,7 @@ export function forEachLosShadowQuadInRange(edgeList, lightX, lightY, range, lig
 }
 const sEdgeScratch = new EdgeList();
 const sQuadScratch = new Float32Array(8);
-const sLightQueryBounds = createAabb();
+const sLightQueryBounds = new Float32Array(4);
 const sScreenLight = { x: 0, y: 0 };
 let sOverlayCanvas = null;
 let sOverlayCtx = null;
@@ -2224,9 +2226,9 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     const range = visionTiles * obstacleGrid.cellSize;
     const screenRange = range * (viewport.zoom ?? 1);
     viewport.worldToScreenInto(sScreenLight, lightX, lightY);
-    centerReachAabbInto(sLightQueryBounds, lightX, lightY, range);
-    collectExposedWallEdgesInAabb(obstacleGrid, sLightQueryBounds, sEdgeScratch);
-    collectRailWallShadowEdgesInAabb(obstacleGrid, sLightQueryBounds, sEdgeScratch);
+    centerReachAabbF32(sLightQueryBounds, 0, lightX, lightY, range);
+    collectExposedWallEdgesInAabb(obstacleGrid, sLightQueryBounds, 0, sEdgeScratch);
+    collectRailWallShadowEdgesInAabbF32(obstacleGrid, sLightQueryBounds, 0, sEdgeScratch);
     fillMaskBase(overlayCtx, canvasW, canvasH, `rgba(0,0,0,${overlayAlpha})`);
     cutOutRadialSoftDisc(overlayCtx, sScreenLight.x, sScreenLight.y, screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {
@@ -2271,7 +2273,7 @@ function pushRailWallBoxCapShadowEdges(data, index, out) {
         out.add(innerP2x, innerP2y, outerP2x, outerP2y, tx, ty, wallTopZ);
     }
 }
-export function collectRailWallShadowEdgesInAabb(grid, bounds, out) {
-    collectRailWallBoxesInAabb(grid, bounds, sRailShadowBoxes);
+export function collectRailWallShadowEdgesInAabbF32(grid, buf, o, out) {
+    collectRailWallBoxesInAabbF32(grid, buf, o, sRailShadowBoxes);
     for (let i = 0; i < sRailShadowBoxes.length; i++) pushRailWallBoxCapShadowEdges(sRailShadowBoxes.data, i, out);
 }

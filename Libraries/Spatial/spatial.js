@@ -249,9 +249,8 @@ export function collectExposedWallEdges(grid, out) {
     for (let idx = 0; idx < cellCount; idx++) pushExposedWallEdgesForCell(grid, idx, out);
 }
 /** Same as collectExposedWallEdges but only visits wall cells overlapping the world AABB. */
-export function collectExposedWallEdgesInAabb(grid, bounds, out) {
-    out.clear();
-    forEachObstacleGridCellInAabb(grid, bounds, (idx) => {
+export function collectExposedWallEdgesInAabb(grid, buf, o, out) {
+    forEachObstacleGridCellInAabbF32(grid, buf, o, (idx) => {
         pushExposedWallEdgesForCell(grid, idx, out);
     });
 }
@@ -411,8 +410,8 @@ function cellBoundsAtOriginIdxInto(out, grid, idx) {
  * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb
  * @param {(idx: number) => void} fn
  */
-export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
-    const rect = boundsToCellRect(aabb.minX - grid.minX, aabb.minY - grid.minY, aabb.maxX - grid.minX - 1e-6, aabb.maxY - grid.minY - 1e-6, grid.cellSize);
+export function forEachObstacleGridCellInAabbF32(grid, buf, o, fn) {
+    const rect = boundsToCellRect(buf[o] - grid.minX, buf[o + 1] - grid.minY, buf[o + 2] - grid.minX - 1e-6, buf[o + 3] - grid.minY - 1e-6, grid.cellSize);
     const cols = grid.cols;
     const rows = grid.rows;
     const startCol = Math.max(0, rect.minCol);
@@ -3048,7 +3047,7 @@ export function registerMapGenBoundsGridExpansionListener(state) {
         }
     };
 }
-const MAP_GEN_CLEAR_CIRCLE_BOUNDS = createAabb();
+const MAP_GEN_CLEAR_CIRCLE_BOUNDS = new Float32Array(4);
 function clearStaticWallsAndEdgesAtIdx(grid, idx) {
     let cellChanged = false;
     if (cellIsStaticWallAtIdx(grid, idx)) {
@@ -3073,9 +3072,9 @@ function stampCellBoundsForConfig(grid, config) {
 }
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
-    centerReachAabbInto(MAP_GEN_CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
+    centerReachAabbF32(MAP_GEN_CLEAR_CIRCLE_BOUNDS, 0, centerWorldX, centerWorldY, radiusWorld);
     const bounds = emptyCellBounds();
-    forEachObstacleGridCellInAabb(grid, MAP_GEN_CLEAR_CIRCLE_BOUNDS, (idx) => {
+    forEachObstacleGridCellInAabbF32(grid, MAP_GEN_CLEAR_CIRCLE_BOUNDS, 0, (idx) => {
         grid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
         aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, BRIDGE_AABB);
         const cx = (BRIDGE_AABB.minX + BRIDGE_AABB.maxX) * 0.5;

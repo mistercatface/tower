@@ -8,7 +8,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
-import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
+import { convexFootprintHalfExtents, emptyAabb, isEmptyAabb, aabbFromF32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
@@ -922,7 +922,13 @@ function expandGridForSnapshot(state, doc) {
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
     const cellHalfSize = state.obstacleGrid.cellHalfSize;
     const bounds = emptyAabb();
-    const includeWorldPoint = (x, y) => growAabbFromCenterInto(bounds, x, y, cellHalfSize, cellHalfSize);
+    const includeWorldPoint = (x, y) => {
+        if (x - cellHalfSize < bounds.minX) bounds.minX = x - cellHalfSize;
+        if (x + cellHalfSize > bounds.maxX) bounds.maxX = x + cellHalfSize;
+        if (y - cellHalfSize < bounds.minY) bounds.minY = y - cellHalfSize;
+        if (y + cellHalfSize > bounds.maxY) bounds.maxY = y + cellHalfSize;
+        return bounds;
+    };
     const includeDocIdx = (idx) => {
         includeWorldPoint(doc.origin.minX + (idx % doc.cols) * cellSize + cellHalfSize, doc.origin.minY + Math.floor(idx / doc.cols) * cellSize + cellHalfSize);
     };
@@ -2224,8 +2230,6 @@ export class FollowCamera {
         this._pickResolverFn = null;
     }
 }
-const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
-const WALL_CELL_SELECTION_BOUNDS = createAabb();
 const PROP_SELECTION_STROKE = "rgba(255, 252, 245, 0.32)";
 const PROP_SELECTION_DASH = [4, 4];
 const SELECTION_RING_PAD = 4;
@@ -2242,12 +2246,16 @@ export function appendSelectionOverlayCommands(out, { selectedProps, showRings, 
     if (selectedFloorIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedFloorIdx);
         const y = grid.gridCenterYByIdx(selectedFloorIdx);
-        out.push(overlayGridCellHighlight(centeredAabbInto(FLOOR_BELT_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "floor", { fill: "rgba(120, 200, 255, 0.1)", stroke: "rgba(120, 200, 255, 0.75)", lineWidth: 1, dash: [4, 3] }));
+        centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, x, y, grid.cellSize, grid.cellSize);
+        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, BRIDGE_AABB);
+        out.push(overlayGridCellHighlight(BRIDGE_AABB, grid, "floor", { fill: "rgba(120, 200, 255, 0.1)", stroke: "rgba(120, 200, 255, 0.75)", lineWidth: 1, dash: [4, 3] }));
     }
     if (selectedVoxelIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedVoxelIdx);
         const y = grid.gridCenterYByIdx(selectedVoxelIdx);
-        out.push(overlayGridCellHighlight(centeredAabbInto(WALL_CELL_SELECTION_BOUNDS, x, y, grid.cellSize, grid.cellSize), grid, "voxel", { fill: "rgba(255, 152, 0, 0.12)", stroke: "rgba(255, 152, 0, 0.85)", lineWidth: 1, dash: [4, 3] }));
+        centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, x, y, grid.cellSize, grid.cellSize);
+        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, BRIDGE_AABB);
+        out.push(overlayGridCellHighlight(BRIDGE_AABB, grid, "voxel", { fill: "rgba(255, 152, 0, 0.12)", stroke: "rgba(255, 152, 0, 0.85)", lineWidth: 1, dash: [4, 3] }));
     }
     if (selectedRailEdge && grid) appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
 }
@@ -3024,7 +3032,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (isSpawnerProp(asset)) return behaviorById.get(SPAWNER_BEHAVIOR_ID) ?? null;
         return resolveDragInteractionBehavior(prop, state, behaviorById);
     };
-    const MARQUEE_AABB = createAabb();
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
     const wallPlaceTool = {
         isActive: () => session.isWallPlaceMode(),
@@ -3087,7 +3094,10 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const marqueeTool = createMarqueeSelectTool({
         getCanvas,
         canBegin: (e) => e.shiftKey,
-        buildAabbFromDrag: (startWorld, endWorld) => aabbFromTwoPointsInto(MARQUEE_AABB, startWorld.x, startWorld.y, endWorld.x, endWorld.y),
+        buildAabbFromDrag: (startWorld, endWorld) => {
+            aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, startWorld.x, startWorld.y, endWorld.x, endWorld.y);
+            return aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, BRIDGE_AABB);
+        },
         onClick(world, e) {
             if (!e.shiftKey && !session.isWallPlaceMode() && !session.isMapGenPlaceMode()) session.spawnAt(world.x, world.y);
             else session.clearSelection();

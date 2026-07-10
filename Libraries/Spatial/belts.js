@@ -745,7 +745,7 @@ export class FloorBeltDrawCache {
             const cellIdx = this.idx[i];
             const x = grid.gridCenterXByIdx(cellIdx);
             const y = grid.gridCenterYByIdx(cellIdx);
-            if (!viewport.circleInBounds(x, y, cellHalf, "props")) continue;
+            if (!viewport.circleInBoundsF32(x, y, cellHalf, "props")) continue;
             const packed = grid.floorPacked[cellIdx];
             const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
             drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);

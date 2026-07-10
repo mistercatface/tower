@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
-import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabb, EdgeList } from "../Libraries/Render/render.js";
+import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabbF32, EdgeList } from "../Libraries/Render/render.js";
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
 import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContact  } from "../Libraries/Spatial/spatial.js";
 import { ENGINE_F32, S_OUT_SCREEN, S_OUT_XY, S_QUAD } from "../Libraries/Math/math.js";
@@ -118,22 +118,26 @@ describe("collectExposedWallEdges", () => {
         stampWallRect(grid, 2, 2, 1, 1);
         stampWallRect(grid, 28, 28, 1, 1);
         const near = new EdgeList();
-        collectExposedWallEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 128, maxY: 128 }, near);
+        const bufNear = new Float32Array([0, 0, 128, 128]);
+        collectExposedWallEdgesInAabb(grid, bufNear, 0, near);
         const far = new EdgeList();
-        collectExposedWallEdgesInAabb(grid, { minX: 400, minY: 400, maxX: 512, maxY: 512 }, far);
+        const bufFar = new Float32Array([400, 400, 512, 512]);
+        collectExposedWallEdgesInAabb(grid, bufFar, 0, far);
         const empty = new EdgeList();
-        collectExposedWallEdgesInAabb(grid, { minX: 200, minY: 200, maxX: 280, maxY: 280 }, empty);
+        const bufEmpty = new Float32Array([200, 200, 280, 280]);
+        collectExposedWallEdgesInAabb(grid, bufEmpty, 0, empty);
         assert.equal(near.length, 4);
         assert.equal(far.length, 4);
         assert.equal(empty.length, 0);
     });
 });
-describe("collectRailWallShadowEdgesInAabb", () => {
+describe("collectRailWallShadowEdgesInAabbF32", () => {
     it("emits four cap edges for a single rail wall segment", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampRailWallEdge(grid, 4, 4, 0, 1);
         const edges = new EdgeList();
-        collectRailWallShadowEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, edges);
+        const buf = new Float32Array([0, 0, 512, 512]);
+        collectRailWallShadowEdgesInAabbF32(grid, buf, 0, edges);
         assert.equal(edges.length, 4);
         assert.equal(edges.data[6], grid.cellSize);
     });
@@ -145,8 +149,9 @@ describe("collectRailWallShadowEdgesInAabb", () => {
         collectExposedWallEdges(grid, voxelEdges);
         assert.equal(voxelEdges.length, 3);
         const all = new EdgeList();
-        collectExposedWallEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, all);
-        collectRailWallShadowEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 512, maxY: 512 }, all);
+        const buf = new Float32Array([0, 0, 512, 512]);
+        collectExposedWallEdgesInAabb(grid, buf, 0, all);
+        collectRailWallShadowEdgesInAabbF32(grid, buf, 0, all);
         assert.equal(all.length, 3 + 4);
     });
 });

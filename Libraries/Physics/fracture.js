@@ -531,11 +531,11 @@ class KineticDebrisStore {
         for (let i = this._bodies.length - 1; i >= 0; i--) this._bodies[i].tickPropFrame(dt, this.world, spatialFrame);
     }
     appendVisibleProps(drawQueue, viewport, drawKindProp) {
-        const bounds = viewport.bounds("props");
-        const minX = bounds.minX;
-        const maxX = bounds.maxX;
-        const minY = bounds.minY;
-        const maxY = bounds.maxY;
+        const f32 = viewport.boundsF32("props");
+        const minX = f32.buf[f32.o];
+        const minY = f32.buf[f32.o + 1];
+        const maxX = f32.buf[f32.o + 2];
+        const maxY = f32.buf[f32.o + 3];
         const vx = viewport.x;
         const vy = viewport.y;
         for (let i = 0; i < this._bodies.length; i++) {

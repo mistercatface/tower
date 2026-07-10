@@ -1,4 +1,4 @@
-import { cellIdxToChunkKey, boundsToCellRect, forEachObstacleGridCellInAabb, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
+import { cellIdxToChunkKey, boundsToCellRect, forEachObstacleGridCellInAabbF32, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
 import { railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx, edgeRailEmitOwner, railWallEdgeShouldEmit } from "../Spatial/spatial.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
@@ -350,9 +350,9 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     data[base + VOXEL_FACE.outY] = ecy - cy;
     return true;
 }
-export function collectVoxelWallFacesInAabbFlat(grid, bounds, list) {
+export function collectVoxelWallFacesInAabbFlatF32(grid, buf, o, list) {
     list.clear();
-    forEachObstacleGridCellInAabb(grid, bounds, (idx) => {
+    forEachObstacleGridCellInAabbF32(grid, buf, o, (idx) => {
         if (resolveCellWallHeightAtIdx(grid, idx) === 0) return;
         for (let edge = 0; edge < 4; edge++) {
             list.ensureCapacity(list.length + 1);
@@ -360,9 +360,9 @@ export function collectVoxelWallFacesInAabbFlat(grid, bounds, list) {
         }
     });
 }
-export function collectRailWallBoxesInAabb(grid, bounds, out) {
+export function collectRailWallBoxesInAabbF32(grid, buf, o, out) {
     out.clear();
-    forEachObstacleGridCellInAabb(grid, bounds, (idx) => {
+    forEachObstacleGridCellInAabbF32(grid, buf, o, (idx) => {
         if (!grid.hasAnyCellEdgeAtIdx(idx)) return;
         for (let edge = 0; edge < 4; edge++) {
             out.ensureCapacity(out.length + 1);
@@ -377,8 +377,8 @@ export function defaultWallCapPx(settings) {
 export function resolveWallCapHeightPx(capHeight, settings) {
     return capHeight ?? defaultWallCapPx(settings);
 }
-export function chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) {
-    const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+export function chunkHasStaticRoofAtLevel(obstacleGrid, buf, o, zLevel) {
+    const rect = boundsToCellRect(buf[o] - obstacleGrid.minX, buf[o + 1] - obstacleGrid.minY, buf[o + 2] - obstacleGrid.minX - 1e-6, buf[o + 3] - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
     const cols = obstacleGrid.cols;
     const rows = obstacleGrid.rows;
     const startCol = Math.max(0, rect.minCol);
@@ -391,11 +391,11 @@ export function chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) {
     }
     return false;
 }
-export function chunkHasStaticStructureAtLevel(obstacleGrid, bounds, zLevel) {
-    return chunkHasStaticRoofAtLevel(obstacleGrid, bounds, zLevel) || chunkHasStaticEdgeRailsAtLevel(obstacleGrid, bounds, zLevel);
+export function chunkHasStaticStructureAtLevel(obstacleGrid, buf, o, zLevel) {
+    return chunkHasStaticRoofAtLevel(obstacleGrid, buf, o, zLevel) || chunkHasStaticEdgeRailsAtLevel(obstacleGrid, buf, o, zLevel);
 }
-export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, bounds, zLevel) {
-    const rect = boundsToCellRect(bounds.minX - obstacleGrid.minX, bounds.minY - obstacleGrid.minY, bounds.maxX - obstacleGrid.minX - 1e-6, bounds.maxY - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, buf, o, zLevel) {
+    const rect = boundsToCellRect(buf[o] - obstacleGrid.minX, buf[o + 1] - obstacleGrid.minY, buf[o + 2] - obstacleGrid.minX - 1e-6, buf[o + 3] - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
     const cols = obstacleGrid.cols;
     const rows = obstacleGrid.rows;
     const startCol = Math.max(0, rect.minCol);
