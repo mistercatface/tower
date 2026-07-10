@@ -1,5 +1,46 @@
-export { ENGINE_F32, ENGINE_MATH_BASE, ENGINE_PHYS_BASE, ENGINE_FRAC_BASE, ENGINE_SPATIAL_BASE, ENGINE_NAV_BASE, M_VEC_A, M_VEC_B, M_VEC_C, M_VEC_D, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, M_OUT_REFLECT_DX, M_OUT_REFLECT_DY, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "./engineF32.js";
-import { ENGINE_F32, M_VEC_A, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, M_OUT_REFLECT_DX, M_OUT_REFLECT_DY } from "./engineF32.js";
+/** Shared Float32 scratch arena. Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320+. Bounds 400+ */
+export const ENGINE_F32 = new Float32Array(512);
+export const ENGINE_MATH_BASE = 0;
+export const ENGINE_PHYS_BASE = 64;
+export const ENGINE_FRAC_BASE = 192;
+export const ENGINE_SPATIAL_BASE = 256;
+export const ENGINE_NAV_BASE = 320;
+export const ENGINE_BOUNDS_BASE = 400;
+export const M_VEC_A = ENGINE_MATH_BASE;
+export const M_VEC_B = ENGINE_MATH_BASE + 2;
+export const M_VEC_C = ENGINE_MATH_BASE + 4;
+export const M_VEC_D = ENGINE_MATH_BASE + 6;
+export const M_OUT_NX = ENGINE_MATH_BASE + 8;
+export const M_OUT_NY = ENGINE_MATH_BASE + 9;
+export const M_OUT_LEN = ENGINE_MATH_BASE + 10;
+export const M_OUT_CLOSEST_X = ENGINE_MATH_BASE + 11;
+export const M_OUT_CLOSEST_Y = ENGINE_MATH_BASE + 12;
+export const M_OUT_CLOSEST_T = ENGINE_MATH_BASE + 13;
+export const M_OUT_CX = ENGINE_MATH_BASE + 14;
+export const M_OUT_CY = ENGINE_MATH_BASE + 15;
+export const M_OUT_AREA = ENGINE_MATH_BASE + 16;
+export const M_OUT_QW = ENGINE_MATH_BASE + 17;
+export const M_OUT_QX = ENGINE_MATH_BASE + 18;
+export const M_OUT_QY = ENGINE_MATH_BASE + 19;
+export const M_OUT_QZ = ENGINE_MATH_BASE + 20;
+export const M_OUT_VX = ENGINE_MATH_BASE + 21;
+export const M_OUT_VY = ENGINE_MATH_BASE + 22;
+export const M_OUT_VZ = ENGINE_MATH_BASE + 23;
+export const M_OUT_REFLECT_DX = ENGINE_MATH_BASE + 24;
+export const M_OUT_REFLECT_DY = ENGINE_MATH_BASE + 25;
+export const S_OUT_XY = ENGINE_SPATIAL_BASE;
+export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
+export const S_AABB = ENGINE_SPATIAL_BASE + 4;
+export const S_QUAD = ENGINE_SPATIAL_BASE + 8;
+export const N_OUT_XY = ENGINE_NAV_BASE;
+export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
+export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
+export const B_QUERY = 0;
+export const B_CELL = 4;
+export const B_FOOTPRINT = 8;
+export const B_PAD = 12;
+export const B_TMP = 16;
+export const BRIDGE_AABB = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -518,6 +559,12 @@ export function emptyAabbInto(out) {
     out.maxY = -Infinity;
     return out;
 }
+export function emptyAabbF32(buf, o) {
+    buf[o] = Infinity;
+    buf[o + 1] = Infinity;
+    buf[o + 2] = -Infinity;
+    buf[o + 3] = -Infinity;
+}
 export function emptyAabb() {
     return emptyAabbInto(createAabb());
 }
@@ -543,6 +590,12 @@ export function growAabbFromCenterInto(out, cx, cy, halfW, halfH) {
     out.maxX = Math.max(out.maxX, cx + halfW);
     out.maxY = Math.max(out.maxY, cy + halfH);
     return out;
+}
+export function growAabbFromCenterF32(buf, o, cx, cy, halfW, halfH) {
+    buf[o] = Math.min(buf[o], cx - halfW);
+    buf[o + 1] = Math.min(buf[o + 1], cy - halfH);
+    buf[o + 2] = Math.max(buf[o + 2], cx + halfW);
+    buf[o + 3] = Math.max(buf[o + 3], cy + halfH);
 }
 /** @param {Aabb2D} out @param {Aabb2D} src @returns {Aabb2D} */
 export function copyAabbInto(out, src) {
@@ -613,6 +666,12 @@ export function padAabbInto(out, { minX, minY, maxX, maxY }, pad) {
     out.maxY = maxY + pad;
     return out;
 }
+export function padAabbF32(bufOut, oOut, bufIn, oIn, pad) {
+    bufOut[oOut] = bufIn[oIn] - pad;
+    bufOut[oOut + 1] = bufIn[oIn + 1] - pad;
+    bufOut[oOut + 2] = bufIn[oIn + 2] + pad;
+    bufOut[oOut + 3] = bufIn[oIn + 3] + pad;
+}
 export function padAabb(a, pad) {
     return padAabbInto(createAabb(), a, pad);
 }
@@ -639,6 +698,14 @@ export function centeredAabbInto(out, cx, cy, width, height) {
     out.maxY = cy + halfH;
     return out;
 }
+export function centeredAabbF32(buf, o, cx, cy, width, height) {
+    const halfW = width / 2;
+    const halfH = height / 2;
+    buf[o] = cx - halfW;
+    buf[o + 1] = cy - halfH;
+    buf[o + 2] = cx + halfW;
+    buf[o + 3] = cy + halfH;
+}
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function centerHalfExtentsAabbInto(out, cx, cy, halfW, halfH, padding = 0) {
     out.minX = cx - halfW - padding;
@@ -654,6 +721,12 @@ export function centerReachAabbInto(out, cx, cy, reach) {
     out.maxX = cx + reach;
     out.maxY = cy + reach;
     return out;
+}
+export function centerReachAabbF32(buf, o, cx, cy, reach) {
+    buf[o] = cx - reach;
+    buf[o + 1] = cy - reach;
+    buf[o + 2] = cx + reach;
+    buf[o + 3] = cy + reach;
 }
 /** @param {{ x: number, y: number }} p0 @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {{ x: number, y: number }} p3 @param {Aabb2D | null | undefined} box */
 export function pointsAabbOverlapAabb(p0, p1, p2, p3, box) {

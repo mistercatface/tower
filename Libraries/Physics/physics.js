@@ -1,5 +1,5 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/engineF32.js";
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, aabbFromF32 } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, aabbFromF32, emptyAabbF32, growAabbFromCenterF32, ENGINE_BOUNDS_BASE, B_QUERY, BRIDGE_AABB } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -948,7 +948,7 @@ export function computePolygonWallContact(buf, o, ex, ey, normalX, normalY, over
     buf[o + 1] = !isNaN(cy) ? cy : ey - normalY * overlap;
 }
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
-function obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin) {
+function obbWorldAabbF32(buf, o, cx, cy, hx, hy, cos, sin) {
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -964,12 +964,12 @@ function obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin) {
             if (wy < minY) minY = wy;
             if (wy > maxY) maxY = wy;
         }
-    out.minX = minX;
-    out.minY = minY;
-    out.maxX = maxX;
-    out.maxY = maxY;
+    buf[o] = minX;
+    buf[o + 1] = minY;
+    buf[o + 2] = maxX;
+    buf[o + 3] = maxY;
 }
-function entityWorldAabbFromShapeInto(out, entity) {
+function entityWorldAabbFromShapeF32(buf, o, entity) {
     const x = entity.x;
     const y = entity.y;
     const angle = entityFacing(entity);
@@ -984,32 +984,32 @@ function entityWorldAabbFromShapeInto(out, entity) {
         const sin = Math.sin(angle);
         const cx = x + localCx * cos - localCy * sin;
         const cy = y + localCx * sin + localCy * cos;
-        obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin);
+        obbWorldAabbF32(buf, o, cx, cy, hx, hy, cos, sin);
         return;
     }
     const shape = entity.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
         const r = shape.radius;
-        out.minX = x - r;
-        out.minY = y - r;
-        out.maxX = x + r;
-        out.maxY = y + r;
+        buf[o] = x - r;
+        buf[o + 1] = y - r;
+        buf[o + 2] = x + r;
+        buf[o + 3] = y + r;
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        obbWorldAabbInto(out, x, y, ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_A + 1], cos, sin);
+        obbWorldAabbF32(buf, o, x, y, ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_A + 1], cos, sin);
         return;
     }
     const r = shape.radius || 0;
-    out.minX = x - r;
-    out.minY = y - r;
-    out.maxX = x + r;
-    out.maxY = y + r;
+    buf[o] = x - r;
+    buf[o + 1] = y - r;
+    buf[o + 2] = x + r;
+    buf[o + 3] = y + r;
 }
-function entityWorldAabbInto(out, entity) {
+export function entityWorldAabbF32(buf, o, entity) {
     const physId = entity._physId;
     const slab = kineticDynamicSlab;
     if (physId !== undefined && physId >= 0) {
@@ -1017,26 +1017,18 @@ function entityWorldAabbInto(out, entity) {
             const cx = slab.x[physId];
             const cy = slab.y[physId];
             const r = slab.r[physId];
-            out.minX = cx - r;
-            out.minY = cy - r;
-            out.maxX = cx + r;
-            out.maxY = cy + r;
+            buf[o] = cx - r;
+            buf[o + 1] = cy - r;
+            buf[o + 2] = cx + r;
+            buf[o + 3] = cy + r;
             return;
         }
         if (slab.bpKind[physId] === BP_KIND_OBB) {
-            obbWorldAabbInto(out, slab.x[physId], slab.y[physId], slab.hx[physId], slab.hy[physId], slab.cos[physId], slab.sin[physId]);
+            obbWorldAabbF32(buf, o, slab.x[physId], slab.y[physId], slab.hx[physId], slab.hy[physId], slab.cos[physId], slab.sin[physId]);
             return;
         }
     }
-    entityWorldAabbFromShapeInto(out, entity);
-}
-const ENTITY_WORLD_AABB = createAabb();
-function entityWorldAabbF32(buf, o, entity) {
-    entityWorldAabbInto(ENTITY_WORLD_AABB, entity);
-    buf[o] = ENTITY_WORLD_AABB.minX;
-    buf[o + 1] = ENTITY_WORLD_AABB.minY;
-    buf[o + 2] = ENTITY_WORLD_AABB.maxX;
-    buf[o + 3] = ENTITY_WORLD_AABB.maxY;
+    entityWorldAabbFromShapeF32(buf, o, entity);
 }
 function kineticActivity() {
     return collisionSettings.kineticActivity;
@@ -3054,7 +3046,6 @@ function applyFloorBeltForces(world, spatialFrame, dtMs) {
     }
 }
 const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, exitCx: 0, exitCy: 0, tx: 0, ty: 0 };
-const PORTAL_QUERY_BOUNDS = createAabb();
 function portalTeleportHandler(body) {
     const t = PORTAL_TICK;
     const grid = t.grid;
@@ -3103,8 +3094,8 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         PORTAL_TICK.exitCy = ey;
         PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
         PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
-        aabbFromF32(ENGINE_F32, P_AABB_A, PORTAL_QUERY_BOUNDS);
-        eg.forEachInBounds(PORTAL_QUERY_BOUNDS, null, ++eg.queryGen, portalTeleportHandler);
+        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
+        eg.forEachInBounds(BRIDGE_AABB, null, ++eg.queryGen, portalTeleportHandler);
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {
@@ -3366,7 +3357,6 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
         if (physId !== undefined && physId !== -1) bodyByPhysId[physId] = undefined;
     }
 }
-const ISLAND_SLEEP_QUERY_BOUNDS = createAabb();
 export function kineticSleepFramesRequired() {
     return collisionSettings.kineticSleep.frames;
 }
@@ -3429,14 +3419,15 @@ export function evaluateKineticSleepEligible(prop, neighbors) {
     return canSleepKinetic(prop) && !hasSleepBlockingNeighbor(prop, neighbors);
 }
 export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) {
-    emptyAabbInto(ISLAND_SLEEP_QUERY_BOUNDS);
+    emptyAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
     for (let i = 0; i < islandMembers.length; i++) {
         const prop = islandMembers[i];
         if (!canSleepKinetic(prop)) return false;
         const extent = entityCollisionSpan(prop);
-        growAabbFromCenterInto(ISLAND_SLEEP_QUERY_BOUNDS, prop.x, prop.y, extent, extent);
+        growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, prop.x, prop.y, extent, extent);
     }
-    const neighbors = spatialFrame.collectEntitiesInBounds(ISLAND_SLEEP_QUERY_BOUNDS);
+    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
+    const neighbors = spatialFrame.collectEntitiesInBounds(BRIDGE_AABB);
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
 }

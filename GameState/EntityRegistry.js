@@ -1,10 +1,6 @@
-import { pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, entityContainedInAabb, getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHash, centerReachAabbInto, createAabb, entityIntersectsAabb } from "../Libraries/Math/math.js";
-import { pointInPolygon, transformPoint2DInto } from "../Libraries/Math/math.js";
-import { distanceSqToLineSegment } from "../Libraries/Math/math.js";
-import { hashString, mixHash4 } from "../Libraries/Math/math.js";
-import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
+import { aabbHash, entityIntersectsAabb, distanceToAabb, distanceToLineSegment, createAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, BRIDGE_AABB, centerReachAabbF32, aabbFromF32, pointInPolygon, transformPoint2DInto, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
@@ -23,7 +19,6 @@ import { getEntityCollisionParts } from "../Libraries/Physics/physics.js";
  * @property {AabbEntityHitTest} [hitTest]
  */
 const EMPTY_KINDS = ["worldProp"];
-const PICK_SEARCH_BOUNDS = createAabb();
 const PICK_WORLD_POLY = [];
 function worldPropFootprintInto(out, prop, shape) {
     const facing = prop.facing ?? prop.angle ?? 0;
@@ -438,7 +433,8 @@ function nearestWorldPropInList(worldProps, worldX, worldY, padding) {
  * @param {number} [padding]
  */
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
-    centerReachAabbInto(PICK_SEARCH_BOUNDS, worldX, worldY, padding + 48);
-    const candidates = registry.queryView({ bounds: PICK_SEARCH_BOUNDS, kinds: ["worldProp"] }, spatialFrame);
+    centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);
+    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
+    const candidates = registry.queryView({ bounds: BRIDGE_AABB, kinds: ["worldProp"] }, spatialFrame);
     return nearestWorldPropInList(candidates, worldX, worldY, padding);
 }

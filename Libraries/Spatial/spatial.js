@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, BRIDGE_AABB, aabbFromF32, centerReachAabbF32, padAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -21,7 +21,6 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-const NEAR_QUERY_BOUNDS = createAabb();
 const EMPTY_WALL_CANDIDATES = [];
 /**
  * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
@@ -138,8 +137,9 @@ export class SpatialFrameCore {
      */
     collectEntitiesNear(anchor, exclude = null) {
         const searchRadius = entityCollisionSpan(anchor) + this.entityGrid.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(anchor));
-        centerReachAabbInto(NEAR_QUERY_BOUNDS, anchor.x, anchor.y, searchRadius);
-        return this.entityGrid.collectInBounds(NEAR_QUERY_BOUNDS, this.wallQuery, exclude, { expandForEntityExtents: false });
+        centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, anchor.x, anchor.y, searchRadius);
+        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
+        return this.entityGrid.collectInBounds(BRIDGE_AABB, this.wallQuery, exclude, { expandForEntityExtents: false });
     }
 }
 function idxCol(idx, cols) {
@@ -423,7 +423,7 @@ export function forEachObstacleGridCellInAabb(grid, aabb, fn) {
 }
 // Viewer-relative radial elevation projection (worldRenderMode: "radial").
 // Elevated points lean away from live viewport.x/y — not fixed 2:1 isometric.
-// Fixed isometric is a separate future mode; do not confuse with this module.
+// Fixed isometric is a separate future mode; do not confuse with this mode.
 // World props: geometry is built in world space (prop.facing at spawn).
 // Symmetric cylinders use a viewer-facing silhouette (viewAngle for rim tangents only).
 export function resolveElevationAlpha(height, viewport) {
@@ -1654,6 +1654,15 @@ export class WorldObstacleGrid {
         const minY = this.minY + ((idx / cols) | 0) * this.cellSize;
         return minCornerAabbInto(out, minX, minY, this.cellSize, this.cellSize);
     }
+    getCellBoundsByIdxF32(buf, o, idx) {
+        const cols = this.cols;
+        const minX = this.minX + (idx % cols) * this.cellSize;
+        const minY = this.minY + ((idx / cols) | 0) * this.cellSize;
+        buf[o] = minX;
+        buf[o + 1] = minY;
+        buf[o + 2] = minX + this.cellSize;
+        buf[o + 3] = minY + this.cellSize;
+    }
 }
 /** @typedef {import("../query/SpatialQuery.js").SpatialQuery} SpatialQueryType */
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
@@ -1674,7 +1683,6 @@ export class EntityGrid {
         this.activeEntities = [];
         this.queryGen = 0;
         this.maxInsertedExtent = 0;
-        this.queryBoundsScratch = createAabb();
     }
     syncBounds(obstacleGrid) {
         if (!obstacleGrid) return;
@@ -1799,8 +1807,13 @@ export class EntityGrid {
      */
     collectInBounds(bounds, query, exclude = null, { expandForEntityExtents = true } = {}) {
         if (expandForEntityExtents) {
-            padAabbInto(this.queryBoundsScratch, bounds, this.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
-            return query.collectInIndex(this, this.queryBoundsScratch, exclude);
+            ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY] = bounds.minX;
+            ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 1] = bounds.minY;
+            ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 2] = bounds.maxX;
+            ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 3] = bounds.maxY;
+            padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, this.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
+            aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, BRIDGE_AABB);
+            return query.collectInIndex(this, BRIDGE_AABB, exclude);
         }
         return query.collectInIndex(this, bounds, exclude);
     }
@@ -1808,9 +1821,10 @@ export class EntityGrid {
         out.length = 0;
         this.queryGen++;
         const searchRadius = entityCollisionSpan(entity) + this.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(entity));
-        centerReachAabbInto(this.queryBoundsScratch, entity.x, entity.y, searchRadius);
+        centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity.x, entity.y, searchRadius);
+        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, BRIDGE_AABB);
         CURRENT_COLLECT_OUT = out;
-        this.forEachInBounds(this.queryBoundsScratch, entity, this.queryGen, COLLECT_NEARBY_PUSH);
+        this.forEachInBounds(BRIDGE_AABB, entity, this.queryGen, COLLECT_NEARBY_PUSH);
         CURRENT_COLLECT_OUT = null;
         return out;
     }
@@ -3035,7 +3049,6 @@ export function registerMapGenBoundsGridExpansionListener(state) {
     };
 }
 const MAP_GEN_CLEAR_CIRCLE_BOUNDS = createAabb();
-const MAP_GEN_CELL_BOUNDS = createAabb();
 function clearStaticWallsAndEdgesAtIdx(grid, idx) {
     let cellChanged = false;
     if (cellIsStaticWallAtIdx(grid, idx)) {
@@ -3063,9 +3076,10 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
     centerReachAabbInto(MAP_GEN_CLEAR_CIRCLE_BOUNDS, centerWorldX, centerWorldY, radiusWorld);
     const bounds = emptyCellBounds();
     forEachObstacleGridCellInAabb(grid, MAP_GEN_CLEAR_CIRCLE_BOUNDS, (idx) => {
-        grid.getCellBoundsByIdxInto(MAP_GEN_CELL_BOUNDS, idx);
-        const cx = (MAP_GEN_CELL_BOUNDS.minX + MAP_GEN_CELL_BOUNDS.maxX) * 0.5;
-        const cy = (MAP_GEN_CELL_BOUNDS.minY + MAP_GEN_CELL_BOUNDS.maxY) * 0.5;
+        grid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
+        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, BRIDGE_AABB);
+        const cx = (BRIDGE_AABB.minX + BRIDGE_AABB.maxX) * 0.5;
+        const cy = (BRIDGE_AABB.minY + BRIDGE_AABB.maxY) * 0.5;
         if (Math.hypot(cx - centerWorldX, cy - centerWorldY) >= radiusWorld) return;
         if (!clearStaticWallsAndEdgesAtIdx(grid, idx)) return;
         growCellBoundsIdx(bounds, idx, grid);

@@ -1,5 +1,5 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalInto, ENGINE_F32, S_AABB } from "../Math/math.js";
+import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalInto, emptyAabbInto, pointInAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, BRIDGE_AABB, B_TMP } from "../Math/math.js";
 import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
@@ -7,12 +7,10 @@ import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfacePro
 import { PromiseWorkerPoolHost } from "../Workers/PromiseWorkerPoolHost.js";
 import { MinHeap } from "../DataStructures/MinHeap.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
-import { railWallFootprintAabbInto, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { railWallFootprintAabbF32, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();
-const CELL_BOUNDS_SCRATCH = createAabb();
-const RAIL_FOOTPRINT_SCRATCH = createAabb();
 export function getSurfaceProfileRevision(profileId) {
     return revisions.get(profileId) ?? 0;
 }
@@ -178,8 +176,8 @@ export class SurfaceSpatialMap {
     }
     chunkBoundsInto(out, obstacleGrid, chunkKey, cellsPerChunk = this.settings.cellsPerChunk) {
         const sizePx = this.chunkSizePx(obstacleGrid, cellsPerChunk);
-        chunkKeyBounds(ENGINE_F32, S_AABB, obstacleGrid.minX, obstacleGrid.minY, chunkKey, sizePx);
-        return aabbFromF32(ENGINE_F32, S_AABB, out);
+        chunkKeyBounds(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, obstacleGrid.minX, obstacleGrid.minY, chunkKey, sizePx);
+        return aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, out);
     }
     surfaceTileChunks(cellsPerChunk = this.settings.cellsPerChunk) {
         return this.settings.surfaceTilePeriodCells / cellsPerChunk;
@@ -857,9 +855,9 @@ export function buildStaticRoofMaskCanvas(obstacleGrid, bounds, zLevel, settings
         for (let c = startCol; c <= endCol; c++) {
             const idx = rowOffset + c;
             if (resolveCellWallHeightAtIdx(obstacleGrid, idx) === zLevel) {
-                obstacleGrid.getCellBoundsByIdxInto(CELL_BOUNDS_SCRATCH, idx);
-                const x = Math.round((CELL_BOUNDS_SCRATCH.minX - bounds.minX) * surfaceBakeScale);
-                const y = Math.round((CELL_BOUNDS_SCRATCH.minY - bounds.minY) * surfaceBakeScale);
+                obstacleGrid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
+                const x = Math.round((ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL] - bounds.minX) * surfaceBakeScale);
+                const y = Math.round((ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL + 1] - bounds.minY) * surfaceBakeScale);
                 ctx.fillRect(x, y, cellBakeSize, cellBakeSize);
                 any = true;
             }
@@ -884,14 +882,17 @@ export function clipChunkToFlatWallFootprints(ctx, obstacleGrid, bounds, zLevel)
                 // 1. Voxel wall footprints
                 const cellZ = resolveCellWallHeightAtIdx(obstacleGrid, idx);
                 if (cellZ === zLevel) {
-                    obstacleGrid.getCellBoundsByIdxInto(CELL_BOUNDS_SCRATCH, idx);
-                    traceAabbRect(clipCtx, CELL_BOUNDS_SCRATCH);
+                    obstacleGrid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
+                    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, BRIDGE_AABB);
+                    traceAabbRect(clipCtx, BRIDGE_AABB);
                     clippedAny = true;
                 }
                 // 2. Rail wall footprints
                 for (let side = 0; side < 4; side++)
                     if (railWallAtZLevel(obstacleGrid, idx, side, zLevel)) {
-                        traceAabbRect(clipCtx, railWallFootprintAabbInto(RAIL_FOOTPRINT_SCRATCH, obstacleGrid, idx, side));
+                        railWallFootprintAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_FOOTPRINT, obstacleGrid, idx, side);
+                        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_FOOTPRINT, BRIDGE_AABB);
+                        traceAabbRect(clipCtx, BRIDGE_AABB);
                         clippedAny = true;
                     }
             }
