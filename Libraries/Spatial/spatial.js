@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb } from "../Math/math.js";
-import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Physics/physics.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, convexFootprintHalfExtents, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -431,23 +431,26 @@ export function resolveElevationAlpha(height, viewport) {
     if (height <= 0 || cameraHeight <= height) return 0;
     return (height / (cameraHeight - height)) * perspectiveStrength;
 }
-export function projectWorldPointInto(out, worldX, worldY, height, viewport) {
+export function projectWorldPointInto(buf, offset, worldX, worldY, height, viewport) {
     const alpha = resolveElevationAlpha(height, viewport);
     if (alpha <= 0) {
-        out.x = worldX;
-        out.y = worldY;
+        buf[offset] = worldX;
+        buf[offset + 1] = worldY;
     } else {
-        out.x = worldX + (worldX - viewport.x) * alpha;
-        out.y = worldY + (worldY - viewport.y) * alpha;
+        buf[offset] = worldX + (worldX - viewport.x) * alpha;
+        buf[offset + 1] = worldY + (worldY - viewport.y) * alpha;
     }
-    return out;
 }
 export function projectWorldPointAtHeight(worldX, worldY, height, viewport) {
-    return projectWorldPointInto({ x: 0, y: 0 }, worldX, worldY, height, viewport);
+    projectWorldPointInto(ENGINE_F32, S_OUT_XY, worldX, worldY, height, viewport);
+    return { x: ENGINE_F32[S_OUT_XY], y: ENGINE_F32[S_OUT_XY + 1] };
 }
-export function projectWorldPointToScreenInto(out, viewport, worldX, worldY, height) {
-    projectWorldPointInto(out, worldX, worldY, height, viewport);
-    return viewport.worldToScreenInto(out, out.x, out.y);
+export function projectWorldPointToScreenInto(buf, offset, viewport, worldX, worldY, height) {
+    projectWorldPointInto(buf, offset, worldX, worldY, height, viewport);
+    const wx = buf[offset];
+    const wy = buf[offset + 1];
+    buf[offset] = (wx - viewport.x) * viewport.zoom + viewport.cx;
+    buf[offset + 1] = (wy - viewport.y) * viewport.zoom + viewport.cy;
 }
 export function projectWorldAabbCornersIntoFlat(out8, bounds, height, viewport) {
     const { minX, minY, maxX, maxY } = bounds;
@@ -459,9 +462,9 @@ export function projectVertical(objX, objY, height, viewport) {
     const dy = objY - viewport.y;
     const dist = Math.hypot(dx, dy);
     const alpha = resolveElevationAlpha(height, viewport);
-    const top = projectWorldPointAtHeight(objX, objY, height, viewport);
+    projectWorldPointInto(ENGINE_F32, S_OUT_XY, objX, objY, height, viewport);
     const viewAngle = Math.atan2(dy, dx);
-    return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: top.x, topY: top.y, viewAngle, height };
+    return { cx: objX, cy: objY, dx, dy, dist, alpha, topX: ENGINE_F32[S_OUT_XY], topY: ENGINE_F32[S_OUT_XY + 1], viewAngle, height };
 }
 export function extrudeLocalVertsInto(baseOut, topOut, localVerts, projection, facing = 0) {
     const { cx, cy, topX, topY, alpha } = projection;
@@ -552,7 +555,6 @@ export function pointOnFrustumInto(out, offset, projection, baseRadius, topRadiu
     out[offset] = centerX + Math.cos(angle) * radius;
     out[offset + 1] = centerY + Math.sin(angle) * radius;
 }
-const sScreen = { x: 0, y: 0 };
 /** Ground XY for the far edge of a roof-anchored shadow wedge. */
 export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDistance = 0) {
     if (lightZ <= wallTopZ) {
@@ -571,18 +573,18 @@ export function shadowGroundContactXY(lx, ly, lightZ, wx, wy, wallTopZ, farDista
 export function projectWallShadowQuadScreenInto(out8, viewport, lx, ly, lightZ, x1, y1, x2, y2, wallTopZ, farDistance = 0) {
     const floor1xy = shadowGroundContactXY(lx, ly, lightZ, x1, y1, wallTopZ, farDistance);
     const floor2xy = shadowGroundContactXY(lx, ly, lightZ, x2, y2, wallTopZ, farDistance);
-    projectWorldPointToScreenInto(sScreen, viewport, x1, y1, wallTopZ);
-    out8[0] = sScreen.x;
-    out8[1] = sScreen.y;
-    projectWorldPointToScreenInto(sScreen, viewport, x2, y2, wallTopZ);
-    out8[2] = sScreen.x;
-    out8[3] = sScreen.y;
-    projectWorldPointToScreenInto(sScreen, viewport, floor2xy.x, floor2xy.y, 0);
-    out8[4] = sScreen.x;
-    out8[5] = sScreen.y;
-    projectWorldPointToScreenInto(sScreen, viewport, floor1xy.x, floor1xy.y, 0);
-    out8[6] = sScreen.x;
-    out8[7] = sScreen.y;
+    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, x1, y1, wallTopZ);
+    out8[0] = ENGINE_F32[S_OUT_SCREEN];
+    out8[1] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, x2, y2, wallTopZ);
+    out8[2] = ENGINE_F32[S_OUT_SCREEN];
+    out8[3] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, floor2xy.x, floor2xy.y, 0);
+    out8[4] = ENGINE_F32[S_OUT_SCREEN];
+    out8[5] = ENGINE_F32[S_OUT_SCREEN + 1];
+    projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, floor1xy.x, floor1xy.y, 0);
+    out8[6] = ENGINE_F32[S_OUT_SCREEN];
+    out8[7] = ENGINE_F32[S_OUT_SCREEN + 1];
     return 4;
 }
 export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
@@ -1885,8 +1887,8 @@ export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, 
     }
     const wallHit = castSteppedCircleRay(originX, originY, angle, maxRayDist, radius, { obstacleGrid });
     if (wallHit.dist < stopDist) stopDist = wallHit.dist;
-    const lead = circleLeadingPoint(originX, originY, radius, dx, dy);
-    return { x1: lead.x, y1: lead.y, x2: originX + dx * (stopDist + radius), y2: originY + dy * (stopDist + radius) };
+    circleLeadingPoint(originX, originY, radius, dx, dy, P_VEC_A);
+    return { x1: ENGINE_F32[P_VEC_A], y1: ENGINE_F32[P_VEC_A + 1], x2: originX + dx * (stopDist + radius), y2: originY + dy * (stopDist + radius) };
 }
 // ==========================================
 // 1. Ray Circle Hit Distance (from circleCast.js)

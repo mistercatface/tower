@@ -1,3 +1,33 @@
+export const ENGINE_F32 = new Float32Array(512);
+export const ENGINE_MATH_BASE = 0;
+export const ENGINE_PHYS_BASE = 64;
+export const ENGINE_FRAC_BASE = 192;
+export const ENGINE_SPATIAL_BASE = 256;
+export const M_VEC_A = ENGINE_MATH_BASE;
+export const M_VEC_B = ENGINE_MATH_BASE + 2;
+export const M_VEC_C = ENGINE_MATH_BASE + 4;
+export const M_VEC_D = ENGINE_MATH_BASE + 6;
+export const M_OUT_NX = ENGINE_MATH_BASE + 8;
+export const M_OUT_NY = ENGINE_MATH_BASE + 9;
+export const M_OUT_LEN = ENGINE_MATH_BASE + 10;
+export const M_OUT_CLOSEST_X = ENGINE_MATH_BASE + 11;
+export const M_OUT_CLOSEST_Y = ENGINE_MATH_BASE + 12;
+export const M_OUT_CLOSEST_T = ENGINE_MATH_BASE + 13;
+export const M_OUT_CX = ENGINE_MATH_BASE + 14;
+export const M_OUT_CY = ENGINE_MATH_BASE + 15;
+export const M_OUT_AREA = ENGINE_MATH_BASE + 16;
+export const M_OUT_QW = ENGINE_MATH_BASE + 17;
+export const M_OUT_QX = ENGINE_MATH_BASE + 18;
+export const M_OUT_QY = ENGINE_MATH_BASE + 19;
+export const M_OUT_QZ = ENGINE_MATH_BASE + 20;
+export const M_OUT_VX = ENGINE_MATH_BASE + 21;
+export const M_OUT_VY = ENGINE_MATH_BASE + 22;
+export const M_OUT_VZ = ENGINE_MATH_BASE + 23;
+export const M_OUT_REFLECT_DX = ENGINE_MATH_BASE + 24;
+export const M_OUT_REFLECT_DY = ENGINE_MATH_BASE + 25;
+export const M_OUT_RECT = ENGINE_MATH_BASE + 26;
+export const S_OUT_XY = ENGINE_SPATIAL_BASE;
+export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -93,20 +123,32 @@ export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
     const qy = cy + tc * vy;
     return Math.hypot(px - qx, py - qy);
 }
-/** Closest point on segment (vx, vy)–(wx, wy) to point (px, py). */
-export function closestPointOnLineSegment(px, py, vx, vy, wx, wy) {
+/** Closest point on segment (vx, vy)–(wx, wy) to point (px, py). Writes x,y,t at buf[o..o+2]. */
+export function closestPointOnLineSegmentInto(buf, o, px, py, vx, vy, wx, wy) {
     const dx = wx - vx;
     const dy = wy - vy;
     const l2 = dx * dx + dy * dy;
-    if (l2 === 0) return { x: vx, y: vy, t: 0 };
+    if (l2 === 0) {
+        buf[o] = vx;
+        buf[o + 1] = vy;
+        buf[o + 2] = 0;
+        return;
+    }
     let t = ((px - vx) * dx + (py - vy) * dy) / l2;
     t = Math.max(0, Math.min(1, t));
-    return { x: vx + t * dx, y: vy + t * dy, t };
+    buf[o] = vx + t * dx;
+    buf[o + 1] = vy + t * dy;
+    buf[o + 2] = t;
+}
+/** Closest point on segment (vx, vy)–(wx, wy) to point (px, py). */
+export function closestPointOnLineSegment(px, py, vx, vy, wx, wy) {
+    closestPointOnLineSegmentInto(ENGINE_F32, M_OUT_CLOSEST_X, px, py, vx, vy, wx, wy);
+    return { x: ENGINE_F32[M_OUT_CLOSEST_X], y: ENGINE_F32[M_OUT_CLOSEST_Y], t: ENGINE_F32[M_OUT_CLOSEST_T] };
 }
 export function distanceSqToLineSegment(px, py, vx, vy, wx, wy) {
-    const closest = closestPointOnLineSegment(px, py, vx, vy, wx, wy);
-    const dx = px - closest.x;
-    const dy = py - closest.y;
+    closestPointOnLineSegmentInto(ENGINE_F32, M_OUT_CLOSEST_X, px, py, vx, vy, wx, wy);
+    const dx = px - ENGINE_F32[M_OUT_CLOSEST_X];
+    const dy = py - ENGINE_F32[M_OUT_CLOSEST_Y];
     return dx * dx + dy * dy;
 }
 export function distanceToLineSegment(px, py, vx, vy, wx, wy) {
@@ -117,6 +159,10 @@ export function rotateXYInto(out, lx, ly, cos, sin) {
     out.x = lx * cos - ly * sin;
     out.y = lx * sin + ly * cos;
     return out;
+}
+export function rotateXYIntoF32(buf, o, lx, ly, cos, sin) {
+    buf[o] = lx * cos - ly * sin;
+    buf[o + 1] = lx * sin + ly * cos;
 }
 export function rotateXY(lx, ly, cos, sin) {
     return { x: lx * cos - ly * sin, y: lx * sin + ly * cos };
@@ -131,24 +177,23 @@ export function rotatePoint(centerX, centerY, lx, ly, angle) {
     const sin = Math.sin(angle);
     return transformPoint2DInto({ x: 0, y: 0 }, centerX, centerY, lx, ly, cos, sin);
 }
-export function rectCorners(centerX, centerY, halfSize, angle = 0) {
+export function rectCornersInto(buf, o, centerX, centerY, halfSize, angle = 0) {
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
     const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
+    buf[o] = centerX - hx * cos + hy * sin;
+    buf[o + 1] = centerY - hx * sin - hy * cos;
+    buf[o + 2] = centerX + hx * cos + hy * sin;
+    buf[o + 3] = centerY + hx * sin - hy * cos;
+    buf[o + 4] = centerX + hx * cos - hy * sin;
+    buf[o + 5] = centerY + hx * sin + hy * cos;
+    buf[o + 6] = centerX - hx * cos - hy * sin;
+    buf[o + 7] = centerY - hx * sin + hy * cos;
+}
+export function rectCorners(centerX, centerY, halfSize, angle = 0) {
     const out = new Float32Array(8);
-    // (-hx, -hy)
-    out[0] = centerX - hx * cos + hy * sin;
-    out[1] = centerY - hx * sin - hy * cos;
-    // (hx, -hy)
-    out[2] = centerX + hx * cos + hy * sin;
-    out[3] = centerY + hx * sin - hy * cos;
-    // (hx, hy)
-    out[4] = centerX + hx * cos - hy * sin;
-    out[5] = centerY + hx * sin + hy * cos;
-    // (-hx, hy)
-    out[6] = centerX - hx * cos - hy * sin;
-    out[7] = centerY - hx * sin + hy * cos;
+    rectCornersInto(out, 0, centerX, centerY, halfSize, angle);
     return out;
 }
 export function boxLocalFootprint(hx, hy) {
@@ -365,7 +410,8 @@ export function polygonSignedArea2D(vertices) {
     return area * 0.5;
 }
 const CENTROID_SCRATCH = { cx: 0, cy: 0, signedArea: 0 };
-export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
+/** Writes cx, cy, signedArea at buf[o..o+2]. */
+export function polygonCentroid2DInto(buf, o, vertices) {
     let cx = 0;
     let cy = 0;
     let signedArea = 0;
@@ -390,15 +436,24 @@ export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
         cx = 0;
         cy = 0;
     }
-    out.cx = cx;
-    out.cy = cy;
-    out.signedArea = signedArea;
+    buf[o] = cx;
+    buf[o + 1] = cy;
+    buf[o + 2] = signedArea;
+}
+export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
+    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, vertices);
+    out.cx = ENGINE_F32[M_OUT_CX];
+    out.cy = ENGINE_F32[M_OUT_CY];
+    out.signedArea = ENGINE_F32[M_OUT_AREA];
     return out;
 }
 export function polygonSecondMomentAboutCentroid2D(vertices) {
     const count = vertices.length / 2;
     if (count < 3) return 0;
-    const { cx, cy, signedArea } = polygonCentroid2D(vertices, CENTROID_SCRATCH);
+    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, vertices);
+    const cx = ENGINE_F32[M_OUT_CX];
+    const cy = ENGINE_F32[M_OUT_CY];
+    const signedArea = ENGINE_F32[M_OUT_AREA];
     if (Math.abs(signedArea) < 1e-10) return 0;
     let inertia = 0;
     for (let i = 0; i < count; i++) {
@@ -415,7 +470,6 @@ export function polygonSecondMomentAboutCentroid2D(vertices) {
     }
     return inertia / 12;
 }
-export const ENGINE_F32 = new Float32Array(512);
 export const EMPTY_AABB = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 export function computeCompoundLocalBounds(parts, out) {
     let minX = Infinity;
@@ -942,20 +996,36 @@ export function withinRadiusSq(px, py, cx, cy, radius) {
     return distSqXY(px, py, cx, cy) <= radius * radius;
 }
 /** @returns {{ nx: number, ny: number, len: number }} */
-export function normalizeXY(dx, dy) {
+export function normalizeXYInto(buf, o, dx, dy) {
     const len = Math.hypot(dx, dy);
-    if (len <= 0) return { nx: 0, ny: 0, len: 0 };
-    return { nx: dx / len, ny: dy / len, len };
+    if (len <= 0) {
+        buf[o] = 0;
+        buf[o + 1] = 0;
+        buf[o + 2] = 0;
+        return;
+    }
+    buf[o] = dx / len;
+    buf[o + 1] = dy / len;
+    buf[o + 2] = len;
+}
+export function normalizeXY(dx, dy) {
+    normalizeXYInto(ENGINE_F32, M_OUT_NX, dx, dy);
+    return { nx: ENGINE_F32[M_OUT_NX], ny: ENGINE_F32[M_OUT_NY], len: ENGINE_F32[M_OUT_LEN] };
 }
 /** @param {{ x: number, y: number }} body */
 export function addXY(body, dx, dy) {
     body.x += dx;
     body.y += dy;
 }
-/** Reflect direction `(dx, dy)` off a surface normal `(nx, ny)`. */
-export function reflect2(dx, dy, nx, ny) {
+/** Reflect direction `(dx, dy)` off a surface normal `(nx, ny)`. Writes dx,dy at buf[o..o+1]. */
+export function reflect2Into(buf, o, dx, dy, nx, ny) {
     const dot = dotXY(dx, dy, nx, ny);
-    return { dx: dx - 2 * dot * nx, dy: dy - 2 * dot * ny };
+    buf[o] = dx - 2 * dot * nx;
+    buf[o + 1] = dy - 2 * dot * ny;
+}
+export function reflect2(dx, dy, nx, ny) {
+    reflect2Into(ENGINE_F32, M_OUT_REFLECT_DX, dx, dy, nx, ny);
+    return { dx: ENGINE_F32[M_OUT_REFLECT_DX], dy: ENGINE_F32[M_OUT_REFLECT_DY] };
 }
 // --- Object helpers (may alloc — convenience for non-hot paths) ---
 export function vec2(x, y) {
@@ -1041,13 +1111,29 @@ export function mixHash4(a, b, c, d) {
     return h >>> 0;
 }
 // --- QUATERNION MATH ---
-export function multiplyQuat(a, b) {
-    return { w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z, x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x, z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w };
+/** Writes w,x,y,z at buf[o..o+3]. */
+export function multiplyQuatInto(buf, o, aw, ax, ay, az, bw, bx, by, bz) {
+    buf[o] = aw * bw - ax * bx - ay * by - az * bz;
+    buf[o + 1] = aw * bx + ax * bw + ay * bz - az * by;
+    buf[o + 2] = aw * by - ax * bz + ay * bw + az * bx;
+    buf[o + 3] = aw * bz + ax * by - ay * bx + az * bw;
 }
-export function axisAngleQuat(ax, ay, az, angle) {
+export function multiplyQuat(a, b) {
+    multiplyQuatInto(ENGINE_F32, M_OUT_QW, a.w, a.x, a.y, a.z, b.w, b.x, b.y, b.z);
+    return { w: ENGINE_F32[M_OUT_QW], x: ENGINE_F32[M_OUT_QX], y: ENGINE_F32[M_OUT_QY], z: ENGINE_F32[M_OUT_QZ] };
+}
+/** Writes w,x,y,z at buf[o..o+3]. */
+export function axisAngleQuatInto(buf, o, ax, ay, az, angle) {
     const half = angle * 0.5;
     const s = Math.sin(half);
-    return { w: Math.cos(half), x: ax * s, y: ay * s, z: az * s };
+    buf[o] = Math.cos(half);
+    buf[o + 1] = ax * s;
+    buf[o + 2] = ay * s;
+    buf[o + 3] = az * s;
+}
+export function axisAngleQuat(ax, ay, az, angle) {
+    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, ax, ay, az, angle);
+    return { w: ENGINE_F32[M_OUT_QW], x: ENGINE_F32[M_OUT_QX], y: ENGINE_F32[M_OUT_QY], z: ENGINE_F32[M_OUT_QZ] };
 }
 export function normalizeQuat(q) {
     const len = Math.hypot(q.w, q.x, q.y, q.z);
@@ -1064,12 +1150,19 @@ export function normalizeQuat(q) {
     q.z /= len;
     return q;
 }
+/** Writes x,y,z at buf[o..o+2]. */
+export function rotateVecByQuatInto(buf, o, x, y, z, qw, qx, qy, qz) {
+    const ix = qw * x + qy * z - qz * y;
+    const iy = qw * y + qz * x - qx * z;
+    const iz = qw * z + qx * y - qy * x;
+    const iw = -qx * x - qy * y - qz * z;
+    buf[o] = ix * qw + iw * -qx + iy * -qz - iz * -qy;
+    buf[o + 1] = iy * qw + iw * -qy + iz * -qx - ix * -qz;
+    buf[o + 2] = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+}
 export function rotateVecByQuat(x, y, z, q) {
-    const ix = q.w * x + q.y * z - q.z * y;
-    const iy = q.w * y + q.z * x - q.x * z;
-    const iz = q.w * z + q.x * y - q.y * x;
-    const iw = -q.x * x - q.y * y - q.z * z;
-    return { x: ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y, y: iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z, z: iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x };
+    rotateVecByQuatInto(ENGINE_F32, M_OUT_VX, x, y, z, q.w, q.x, q.y, q.z);
+    return { x: ENGINE_F32[M_OUT_VX], y: ENGINE_F32[M_OUT_VY], z: ENGINE_F32[M_OUT_VZ] };
 }
 export const CARDINAL_DCOL = Int8Array.from([0, 1, 0, -1]);
 export const CARDINAL_DR = Int8Array.from([-1, 0, 1, 0]);

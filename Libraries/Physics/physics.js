@@ -1,4 +1,4 @@
-import { ENGINE_F32, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, transformPoint2DInto, distanceSqToLineSegment, rotateXY, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -19,38 +19,44 @@ export function resolveBodyRadius(body, fallback = LIBRARY_DEFAULT_BODY_RADIUS) 
     if (shape?.type === "Circle") return shape.radius;
     return body._baseRadius ?? body.radius ?? fallback;
 }
-export const P_VEC_A = 0;
-export const P_VEC_B = 2;
-export const P_VEC_C = 4;
-export const P_VEC_D = 6;
-export const P_AABB_A = 8;
-export const P_AABB_B = 12;
-export const P_OUT_MASS_AREA = 16;
-export const P_OUT_MASS_CX = 17;
-export const P_OUT_MASS_CY = 18;
-export const P_OUT_MASS_INERTIA = 19;
-export const P_OUT_RAY_ENTER = 20;
-export const P_OUT_RAY_EXIT = 21;
-export const P_OUT_RAY_NX = 22;
-export const P_OUT_RAY_NY = 23;
-export const P_OUT_PEN_NX = 24;
-export const P_OUT_PEN_NY = 25;
-export const P_OUT_PEN_OVERLAP = 26;
-export const P_OUT_PEN_DIST_SQ = 27;
-export const P_OUT_DIST_X = 28;
-export const P_OUT_DIST_Y = 29;
-export const P_OUT_DIST_T = 30;
-export const P_OUT_DIST_DIST = 31;
-export const P_OUT_SOLVE_ITERS = 32;
-export const P_OUT_SOLVE_IMPULSE = 33;
-export const P_OUT_SWEEP_T = 39;
-export const P_OUT_SWEEP_X = 40;
-export const P_OUT_SWEEP_Y = 41;
-export const P_OUT_SOLVE_REST = 34;
-export const P_OUT_WALL_X = 35;
-export const P_OUT_WALL_Y = 36;
-export const P_OUT_WALL_Z = 37;
-export const P_OUT_WALL_IDX = 38;
+export const P_VEC_A = ENGINE_PHYS_BASE;
+export const P_VEC_B = ENGINE_PHYS_BASE + 2;
+export const P_VEC_C = ENGINE_PHYS_BASE + 4;
+export const P_VEC_D = ENGINE_PHYS_BASE + 6;
+export const P_AABB_A = ENGINE_PHYS_BASE + 8;
+export const P_AABB_B = ENGINE_PHYS_BASE + 12;
+export const P_OUT_MASS_AREA = ENGINE_PHYS_BASE + 16;
+export const P_OUT_MASS_CX = ENGINE_PHYS_BASE + 17;
+export const P_OUT_MASS_CY = ENGINE_PHYS_BASE + 18;
+export const P_OUT_MASS_INERTIA = ENGINE_PHYS_BASE + 19;
+export const P_OUT_RAY_ENTER = ENGINE_PHYS_BASE + 20;
+export const P_OUT_RAY_EXIT = ENGINE_PHYS_BASE + 21;
+export const P_OUT_RAY_NX = ENGINE_PHYS_BASE + 22;
+export const P_OUT_RAY_NY = ENGINE_PHYS_BASE + 23;
+export const P_OUT_PEN_NX = ENGINE_PHYS_BASE + 24;
+export const P_OUT_PEN_NY = ENGINE_PHYS_BASE + 25;
+export const P_OUT_PEN_OVERLAP = ENGINE_PHYS_BASE + 26;
+export const P_OUT_PEN_DIST_SQ = ENGINE_PHYS_BASE + 27;
+export const P_OUT_DIST_X = ENGINE_PHYS_BASE + 28;
+export const P_OUT_DIST_Y = ENGINE_PHYS_BASE + 29;
+export const P_OUT_DIST_T = ENGINE_PHYS_BASE + 30;
+export const P_OUT_DIST_DIST = ENGINE_PHYS_BASE + 31;
+export const P_OUT_SOLVE_ITERS = ENGINE_PHYS_BASE + 32;
+export const P_OUT_SOLVE_IMPULSE = ENGINE_PHYS_BASE + 33;
+export const P_OUT_SOLVE_REST = ENGINE_PHYS_BASE + 34;
+export const P_OUT_WALL_X = ENGINE_PHYS_BASE + 35;
+export const P_OUT_WALL_Y = ENGINE_PHYS_BASE + 36;
+export const P_OUT_WALL_Z = ENGINE_PHYS_BASE + 37;
+export const P_OUT_WALL_IDX = ENGINE_PHYS_BASE + 38;
+export const P_OUT_SWEEP_T = ENGINE_PHYS_BASE + 39;
+export const P_OUT_SWEEP_X = ENGINE_PHYS_BASE + 40;
+export const P_OUT_SWEEP_Y = ENGINE_PHYS_BASE + 41;
+export const P_SAT = ENGINE_PHYS_BASE + 42;
+export const P_SAT_BEST = ENGINE_PHYS_BASE + 67;
+export const P_CLIP_X = ENGINE_PHYS_BASE + 92;
+export const P_CLIP_Y = ENGINE_PHYS_BASE + 96;
+export const P_PROJ_A = ENGINE_PHYS_BASE + 100;
+export const P_PROJ_B = ENGINE_PHYS_BASE + 102;
 /**
  * Library baseline — games override via `gameDefinition.collisionSettings`, project via Config.
  */
@@ -481,12 +487,12 @@ export class PolygonShape extends Shape {
     }
 }
 const MANIFOLD_MAX_POINTS = 2;
-const clipX = new Float32Array(4);
-const clipY = new Float32Array(4);
-export const SAT_RESULT = new Float32Array(25);
-const SAT_BEST_RESULT = new Float32Array(25);
-const PROJ_A = new Float32Array(2);
-const PROJ_B = new Float32Array(2);
+export const SAT_RESULT = ENGINE_F32.subarray(P_SAT, P_SAT + 25);
+const SAT_BEST_RESULT = ENGINE_F32.subarray(P_SAT_BEST, P_SAT_BEST + 25);
+const clipX = ENGINE_F32.subarray(P_CLIP_X, P_CLIP_X + 4);
+const clipY = ENGINE_F32.subarray(P_CLIP_Y, P_CLIP_Y + 4);
+const PROJ_A = ENGINE_F32.subarray(P_PROJ_A, P_PROJ_A + 2);
+const PROJ_B = ENGINE_F32.subarray(P_PROJ_B, P_PROJ_B + 2);
 function findEdgeMostAligned(normals, cos, sin, axisX, axisY, wantMax) {
     let bestDot = wantMax ? -Infinity : Infinity;
     let bestIndex = 0;
@@ -3934,18 +3940,10 @@ export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDi
     // nx, ny are already in P_OUT_PEN_NX, P_OUT_PEN_NY from circleSegmentPenetration
     return true;
 }
-/**
- * Closest wall touch along a ray across many segments.
- *
- * @param {object[]} segments
- * @returns {CircleSegmentSweepHit | null}
- */
-/**
- * Circle contact geometry — surface points for casts, previews, and impulse hooks.
- */
-/** @param {number} cx @param {number} cy @param {number} radius @param {number} dirX @param {number} dirY — unit */
-export function circleLeadingPoint(cx, cy, radius, dirX, dirY) {
-    return { x: cx + dirX * radius, y: cy + dirY * radius };
+/** Circle contact geometry — surface points for casts, previews, and impulse hooks. Writes into ENGINE_F32[destOffset..+1]. */
+export function circleLeadingPoint(cx, cy, radius, dirX, dirY, destOffset = P_VEC_A) {
+    ENGINE_F32[destOffset] = cx + dirX * radius;
+    ENGINE_F32[destOffset + 1] = cy + dirY * radius;
 }
 /** Push-out wall normal (away from solid into free space). */
 /** Point on circle A that faces circle B at first center–center contact. */

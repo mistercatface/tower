@@ -5,17 +5,17 @@ import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadow
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
 import {  projectWorldPointToScreenInto  } from "../Libraries/Spatial/spatial.js";
 import {  projectWallShadowQuadScreenInto, shadowGroundContactXY  } from "../Libraries/Spatial/spatial.js";
+import { ENGINE_F32, S_OUT_SCREEN } from "../Libraries/Math/math.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./harness/losShadowHarness.js";
 describe("projectWorldPointToScreenInto", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
-        const out = { x: 0, y: 0 };
-        projectWorldPointToScreenInto(out, viewport, 64, 64, 0);
+        projectWorldPointToScreenInto(ENGINE_F32, S_OUT_SCREEN, viewport, 64, 64, 0);
         const flat = viewport.worldToScreen(64, 64);
-        assertNear(out.x, flat.x);
-        assertNear(out.y, flat.y);
+        assertNear(ENGINE_F32[S_OUT_SCREEN], flat.x);
+        assertNear(ENGINE_F32[S_OUT_SCREEN + 1], flat.y);
     });
 });
 describe("shadowGroundContactXY", () => {

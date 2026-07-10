@@ -8,8 +8,8 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
     tick.world.fractureEngine.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force);
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
-import { GLASS_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
-import { transformPoint2DInto } from "../Libraries/Math/math.js";
+import { GLASS_MAX_SHARDS_PER_SHATTER, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA } from "../Libraries/Physics/fracture.js";
+import { ENGINE_F32, transformPoint2DInto } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
@@ -102,10 +102,25 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(prop, 16, 10);
         const fracture = FractureEngine.fracturePropOnImpact(prop, 50, 50, 25);
         assert.ok(fracture);
+        assert.equal(ENGINE_F32[F_OUT_DEBRIS_START], fracture.debrisStart);
+        assert.equal(ENGINE_F32[F_OUT_DEBRIS_COUNT], fracture.debrisCount);
+        assert.ok(fracture.debrisCount >= 2);
         assert.ok(FractureEngine.materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount).length >= 4);
         assert.ok(Number.isFinite(fracture.impactLocalX));
         assert.ok(Number.isFinite(fracture.impactLocalY));
         assert.equal(prop.poxels, undefined);
+    });
+    it("shatterGlassPolygon outside-hit path builds seeds via ENGINE_F32 centroid Into", () => {
+        const flat = new Float32Array([-12, -8, 12, -8, 12, 8, -12, 8]);
+        const shards = FractureEngine.shatterGlassPolygon(flat, 80, 80, 25);
+        assert.ok(shards.length >= 2);
+        assert.ok(ENGINE_F32[F_OUT_DEBRIS_COUNT] >= 2);
+        assert.ok(ENGINE_F32[F_OUT_AREA] > 0);
+        for (const shard of shards) {
+            assert.ok(shard.footprintArea > 0);
+            assert.ok(Number.isFinite(shard.centroid.cx));
+            assert.ok(Number.isFinite(shard.centroid.cy));
+        }
     });
     it("glass shard fractures again on its actual polygon footprint", () => {
         const shards = FractureEngine.shatterGlassFootprint(12, 8, 0, 0, 30);
