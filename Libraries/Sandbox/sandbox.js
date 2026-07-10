@@ -616,9 +616,6 @@ export function isBallFamilyAsset(asset) {
 export function isBlockFamilyAsset(asset) {
     return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset);
 }
-export function blockPresetUsesResizableFootprint(propId) {
-    return isResizableBoxSpawnAsset(propCatalog[propId]);
-}
 export function createSandboxSelection({ isLiveProp }) {
     /** @type {SandboxSelection | null} */
     let selection = null;
@@ -755,7 +752,7 @@ const PLACEABLE = {
                 return chain != null;
             }
             const placedAsset = propCatalog[propTypeId];
-            const halfExtents = blockPresetUsesResizableFootprint(propTypeId) ? ctx.spawnBoxHalfExtents : undefined;
+            const halfExtents = isResizableBoxSpawnAsset(placedAsset) ? ctx.spawnBoxHalfExtents : undefined;
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned && propTypeId === "cross_pinwheel") applyCrossPinwheelFootprint(spawned, ctx.spawnCrossLength, ctx.spawnCrossThickness);
@@ -1518,22 +1515,6 @@ function aimSpawnerFacing(prop, aim) {
 export function isSpawnerProp(asset) {
     return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
 }
-/** @param {object | null | undefined} prop @param {object | null | undefined} asset */
-export function resolveSpawnerPropId(prop, asset) {
-    return prop?.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
-}
-/** @param {object | null | undefined} prop @param {object | null | undefined} asset */
-export function getSpawnerDragConfig(_prop, asset) {
-    return asset.sandbox.spawner.dragLaunch;
-}
-/** @param {object} prop @param {object | null | undefined} asset */
-export function getSpawnerOutletWorld(prop, asset) {
-    const facing = prop.facing ?? 0;
-    const reach = resolveBodyRadius(prop);
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
-    return { x: prop.x + cos * reach, y: prop.y + sin * reach, nx: cos, ny: sin };
-}
 /**
  * @param {object} state
  * @param {object} spawnerWorldProp
@@ -1542,12 +1523,16 @@ export function getSpawnerOutletWorld(prop, asset) {
 export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const asset = propCatalog[spawnerWorldProp.type];
     if (!isSpawnerProp(asset)) return null;
-    const config = getSpawnerDragConfig(spawnerWorldProp, asset);
-    const outlet = getSpawnerOutletWorld(spawnerWorldProp, asset);
+    const config = asset.sandbox.spawner.dragLaunch;
+    const facing = spawnerWorldProp.facing ?? 0;
+    const reach = resolveBodyRadius(spawnerWorldProp);
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
+    const outlet = { x: spawnerWorldProp.x + cos * reach, y: spawnerWorldProp.y + sin * reach, nx: cos, ny: sin };
     const launchNx = nx ?? outlet.nx;
     const launchNy = ny ?? outlet.ny;
     const launchPower = power ?? config.maxPower;
-    const spawnId = resolveSpawnerPropId(spawnerWorldProp, asset);
+    const spawnId = spawnerWorldProp.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
     const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = spawnerWorldProp.faction;
     const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
@@ -1560,7 +1545,7 @@ function buildSpawnerDragBehavior(state) {
     return createDragLaunchInteraction({
         id: SPAWNER_BEHAVIOR_ID,
         getConfig(prop) {
-            return getSpawnerDragConfig(prop, propCatalog[prop.type]);
+            return propCatalog[prop.type].sandbox.spawner.dragLaunch;
         },
         buildAimLineContext: dragLaunchAimLineContextForState(state),
         onAim: aimSpawnerFacing,
@@ -1628,9 +1613,6 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }
-function segmentOffset(index, spacing, growDirX, growDirY) {
-    return { x: index * spacing * growDirX, y: index * spacing * growDirY };
-}
 export function spawnLinkedBallChain(state, anchorIdx, options) {
     return spawnAgentChain(state, anchorIdx, { leaderIndex: 0, headPropId: options.headBallType ?? options.ballType, bodyPropId: options.ballType, segmentCount: options.segmentCount, faction: options.faction, exportType: options.exportType, linkSlack: options.linkSlack, segmentRadius: options.segmentRadius, growDirX: options.growDirX ?? -1, growDirY: options.growDirY ?? 0, spacing: options.spacing, spawnGroupId: options.spawnGroupId });
 }
@@ -1644,7 +1626,7 @@ export function growChainSegment(state, tailProp, options) {
     const spawnGroupId = options.spawnGroupId ?? tailProp.spawnGroupId;
     const linkSlack = options.linkSlack ?? 1;
     const segmentRadius = options.segmentRadius ?? null;
-    const offset = segmentOffset(1, spacing, growDirX, growDirY);
+    const offset = { x: spacing * growDirX, y: spacing * growDirY };
     const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
     if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
     if (spawnGroupId) {
@@ -1693,15 +1675,6 @@ export function setChainHead(state, entityMeta, propId) {
     for (let i = 0; i < members.length; i++) entityMeta.setChainHead(members[i], false);
     entityMeta.setChainHead(propId, true);
 }
-export function hasChainLinkBetween(state, bodyAId, bodyBId) {
-    const list = listKineticConstraints(state.kinetic);
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== "distance") continue;
-        if ((entry.bodyAId === bodyAId && entry.bodyBId === bodyBId) || (entry.bodyAId === bodyBId && entry.bodyBId === bodyAId)) return true;
-    }
-    return false;
-}
 export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     const list = listKineticConstraints(state.kinetic);
     for (let i = 0; i < list.length; i++) {
@@ -1722,7 +1695,7 @@ export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLen
     const bodyA = state.entityRegistry.getLive(fromPropId);
     const bodyB = state.entityRegistry.getLive(toPropId);
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
-    if (hasChainLinkBetween(state, fromPropId, toPropId)) return true;
+    if (findDistanceConstraintBetween(state, fromPropId, toPropId)) return true;
     const restLength = restLengthOverride != null ? restLengthOverride : resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
     return true;
@@ -2100,15 +2073,12 @@ const HPA_GROUND_NAV_CONFIG = {
     },
 };
 export const GROUND_NAV_SELECTION_MOVE_IDS = [HPA_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID];
-export function isSandboxNavPropAsset(asset) {
-    return sandboxAssetMatchesTagFilter(asset, "nav");
-}
 export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     let count = 0;
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
-        if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
+        if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav")) continue;
         if (entityMeta && !isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         count++;
     }
@@ -2121,7 +2091,7 @@ export function issueGroundNavToSelection(state, { propIds, behaviorId, world, b
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
-        if (!isSandboxNavPropAsset(propCatalog[prop.type])) continue;
+        if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav")) continue;
         if (!isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         entityMeta.setActiveBehaviorId(prop.id, behaviorId);
         behavior.setMoveTarget(prop, world);
@@ -2141,12 +2111,6 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
 export function createDefaultSandboxBehaviors(state) {
     return [...createDragLaunchBehaviors(state), buildSpawnerDragBehavior(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
 }
-/** @param {object} state @param {import("../../GameState/EntityRegistry.js").EntityRegistry} registry */
-export function findSandboxCameraTargetWorldProp(state, registry) {
-    const targetId = state.sandbox.entityMeta.findCameraTargetEntityId();
-    if (targetId == null) return null;
-    return registry.getLive(targetId);
-}
 /**
  * @param {import("../Viewport/Viewport.js").Viewport} viewport
  * @param {object} state
@@ -2154,7 +2118,8 @@ export function findSandboxCameraTargetWorldProp(state, registry) {
  * @param {number} dtMs
  */
 export function tickSandboxCameraFollow(viewport, state, registry, dtMs) {
-    const target = findSandboxCameraTargetWorldProp(state, registry);
+    const targetId = state.sandbox.entityMeta.findCameraTargetEntityId();
+    const target = targetId == null ? null : registry.getLive(targetId);
     if (!target) return;
     const factor = 1 - Math.exp(-8 * (dtMs / 1000));
     viewport.follow(target.x, target.y, factor);
@@ -2623,7 +2588,7 @@ function appendShapeFamilyFields(body, state, spec) {
             return;
         }
         if (isBlockFamilyAsset(spawnAsset)) {
-            if (blockPresetUsesResizableFootprint(spawnAsset.id))
+            if (isResizableBoxSpawnAsset(spawnAsset))
                 appendShapeFamilyBoxFields(
                     body,
                     session.getSpawnBoxWidth(),
@@ -2664,7 +2629,7 @@ function appendShapeFamilyFields(body, state, spec) {
         return;
     }
     if (isBlockFamilyAsset(asset)) {
-        if (blockPresetUsesResizableFootprint(asset.id)) {
+        if (isResizableBoxSpawnAsset(asset)) {
             const span = propFootprintHalfExtents(selectedProp);
             appendShapeFamilyBoxFields(
                 body,
@@ -2921,7 +2886,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         const spawnPropIds = listSpawnerSpawnPropIds();
         if (spawnPropIds.length)
             appendSelectField(body, "Spawn prop", {
-                value: resolveSpawnerPropId(selectedProp, selectedAsset),
+                value: selectedProp.sandboxSpawnerPropId ?? selectedAsset.sandbox.spawner.defaultPropId,
                 options: spawnPropIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) })),
                 onChange: (value) => {
                     selectedProp.sandboxSpawnerPropId = value;

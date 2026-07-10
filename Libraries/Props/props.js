@@ -191,12 +191,9 @@ export function getPropStageBakeState(prop, deps) {
     const footprint = propFootprintHalfExtents(prop);
     return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: footprint, facing: quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : prop.rollQuat };
 }
-export function withPropStrategyDefaults(strategy) {
-    return { ...PROP_STRATEGY_DEFAULTS, ...strategy };
-}
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) {
-        const strategy = withPropStrategyDefaults({});
+        const strategy = { ...PROP_STRATEGY_DEFAULTS };
         if (asset?.sandbox?.gridFloorBelt) strategy.isKinetic = false;
         return strategy;
     }
@@ -207,7 +204,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
             if (part.type === "Polygon" && part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
             return part;
         });
-    const built = withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });
+    const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
     return built;
 }
@@ -279,9 +276,6 @@ export class WorldProp {
     changeState(stateName, stateDataInit = null) {
         if (this.strategy?.isKinetic) wakeKineticBody(this);
         transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
-    }
-    getCollisionParts() {
-        return getEntityCollisionParts(this);
     }
     get angle() {
         return this.facing;
@@ -381,11 +375,6 @@ function resolveQuantizedAttachmentHeading(prop, cfg) {
 function resolveAttachmentOffsetScale(parentProp, cfg) {
     return cfg.offsetSpace === "parentRadius" ? resolveBodyRadius(parentProp) : 1;
 }
-function buildVirtualPropStrategy(type) {
-    const asset = propCatalog[type];
-    if (!asset) return null;
-    return buildWorldPropStrategyFromAsset(asset);
-}
 function scaleVirtualPropShape(prop, scale) {
     if (scale === 1) return;
     const shape = prop.shape;
@@ -417,10 +406,6 @@ export function getPropVisualAttachmentConfigs(prop) {
     const attachments = propCatalog[prop?.type]?.visuals?.attachments;
     return Array.isArray(attachments) ? attachments : [];
 }
-/** @param {object} prop */
-export function hasPropVisualAttachments(prop) {
-    return getPropVisualAttachmentConfigs(prop).length > 0;
-}
 /**
  * @param {object} prop
  * @param {{ quantizeAngleIndex: (angle: number, steps: number) => number }} deps
@@ -441,8 +426,8 @@ export function getVisualAttachmentSpriteCacheKey(prop, deps) {
 }
 function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const childAsset = propCatalog[cfg.propId];
-    const strategy = buildVirtualPropStrategy(cfg.propId);
-    if (!childAsset || !strategy) return null;
+    if (!childAsset) return null;
+    const strategy = buildWorldPropStrategyFromAsset(childAsset);
     const offset = cfg.offset ?? {};
     const offsetScale = resolveAttachmentOffsetScale(parentProp, cfg);
     const localX = (offset.x ?? 0) * offsetScale;
@@ -505,13 +490,12 @@ export function registerPropDrawRecipe(asset) {
     }
     throw new Error(`Asset "${asset.id}" must define draw or primitive`);
 }
-export function registerAllPropDrawRecipes() {
+queueMicrotask(() => {
     for (const asset of Object.values(propCatalog)) {
         if (!asset.physics) throw new Error(`Asset "${asset.id}" must include physics`);
         registerPropDrawRecipe(asset);
     }
-}
-queueMicrotask(registerAllPropDrawRecipes);
+});
 /** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const floorEffectPass = {
     zIndex: 10.5,
