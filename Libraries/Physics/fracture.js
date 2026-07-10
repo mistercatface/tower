@@ -1,6 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, PolygonShape, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
+import { entityRefs } from "../Entity/entitySlots.js";
 import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx } from "../Spatial/spatial.js";
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -704,8 +705,8 @@ export class FractureEngine {
         for (let i = 0; i < contacts.count; i++) {
             const physIdA = contacts.physIdA[i];
             const physIdB = contacts.physIdB[i];
-            const bodyA = tick.frame.entityGrid.entities[physIdA]?._physId === physIdA ? tick.frame.entityGrid.entities[physIdA] : null;
-            const bodyB = tick.frame.entityGrid.entities[physIdB]?._physId === physIdB ? tick.frame.entityGrid.entities[physIdB] : null;
+            const bodyA = entityRefs[physIdA]?._physId === physIdA ? entityRefs[physIdA] : null;
+            const bodyB = entityRefs[physIdB]?._physId === physIdB ? entityRefs[physIdB] : null;
             if (!bodyA || !bodyB) continue;
             const nx = contacts.dynamic.nx[i];
             const ny = contacts.dynamic.ny[i];

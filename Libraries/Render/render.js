@@ -2073,15 +2073,21 @@ function prepareWallChunkPropTextures(state, prop) {
 export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tierO = VIEW_TIER.PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
     return entityRegistry.queryViewF32({ boundsBuf: viewport.boundsBuf, boundsO: tierO, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }
+export function queryPropIdsInView(entityRegistry, viewport, spatialFrame, { tierO = VIEW_TIER.PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
+    return entityRegistry.queryViewIds({ boundsBuf: viewport.boundsBuf, boundsO: tierO, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
+}
 export class WorldSceneRenderer {
     constructor() {
         this.visibleDrawQueue = new VisibleDrawQueue();
         this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     _appendVisible3dProps(state, viewport) {
-        const props = queryPropsInView(state.entityRegistry, viewport, state.spatialFrame, THREE_D_QUERY_OPTIONS);
-        for (let i = 0; i < props.length; i++) {
-            const p = props[i];
+        const packed = queryPropIdsInView(state.entityRegistry, viewport, state.spatialFrame, THREE_D_QUERY_OPTIONS);
+        const ids = packed.ids;
+        for (let i = 0; i < packed.count; i++) {
+            const eid = ids[i];
+            const p = state.entityRegistry.getRef(eid);
+            if (!p) continue;
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
             this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, p, distSq);
         }

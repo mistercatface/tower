@@ -7,6 +7,7 @@ import { allowsKineticCollisionPair, pairBroadphaseOverlapSlab, snapshotKineticB
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { createKineticPairBuffer } from "./harness/kineticBufferHarness.js";
 import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
+import { entityRefs } from "../Libraries/Entity/entitySlots.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 
@@ -26,8 +27,8 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
 function pairKeys(pairs, spatialFrame) {
     const keys = [];
     for (let i = 0; i < pairs.count; i++) {
-        const bodyA = (spatialFrame.entityGrid.entities[pairs.physIdA[i]]?._physId === pairs.physIdA[i] ? spatialFrame.entityGrid.entities[pairs.physIdA[i]] : null);
-        const bodyB = (spatialFrame.entityGrid.entities[pairs.physIdB[i]]?._physId === pairs.physIdB[i] ? spatialFrame.entityGrid.entities[pairs.physIdB[i]] : null);
+        const bodyA = (entityRefs[pairs.physIdA[i]]?._physId === pairs.physIdA[i] ? entityRefs[pairs.physIdA[i]] : null);
+        const bodyB = (entityRefs[pairs.physIdB[i]]?._physId === pairs.physIdB[i] ? entityRefs[pairs.physIdB[i]] : null);
         const lo = Math.min(bodyA.id, bodyB.id);
         const hi = Math.max(bodyA.id, bodyB.id);
         keys.push(lo * 1_000_000 + hi);
@@ -71,8 +72,8 @@ describe("kinetic pair stream", () => {
         snapshotKineticBodySlab(frame._activeKineticBodies);
         gatherKineticCandidatePairs(frame, pairBuffer);
         assert.equal(pairBuffer.count, 1);
-        assert.equal((frame.entityGrid.entities[pairBuffer.physIdA[0]]?._physId === pairBuffer.physIdA[0] ? frame.entityGrid.entities[pairBuffer.physIdA[0]] : null).id, a.id);
-        assert.equal((frame.entityGrid.entities[pairBuffer.physIdB[0]]?._physId === pairBuffer.physIdB[0] ? frame.entityGrid.entities[pairBuffer.physIdB[0]] : null).id, b.id);
+        assert.equal((entityRefs[pairBuffer.physIdA[0]]?._physId === pairBuffer.physIdA[0] ? entityRefs[pairBuffer.physIdA[0]] : null).id, a.id);
+        assert.equal((entityRefs[pairBuffer.physIdB[0]]?._physId === pairBuffer.physIdB[0] ? entityRefs[pairBuffer.physIdB[0]] : null).id, b.id);
     });
     it("three-body contact emits each pair once", () => {
         const left = mockKineticCircle(0, 0, 10, 0, 0);

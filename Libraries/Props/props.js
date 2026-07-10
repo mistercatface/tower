@@ -1,5 +1,6 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
+import { entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, scaleFlatVerts, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, polygonCentroid2D, pointInPolygon, polygonSignedArea2D, closestPointOnLineSegment, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
@@ -232,13 +233,13 @@ export class WorldProp {
         const asset = propCatalog[type];
         this.type = type;
         this.strategy = buildWorldPropStrategyFromAsset(asset);
-        this.x = x;
-        this.y = y;
+        this._poseX = x;
+        this._poseY = y;
         this.z = 0;
         this.isDead = false;
-        this.vx = 0;
-        this.vy = 0;
-        this.angularVelocity = 0;
+        this._poseVx = 0;
+        this._poseVy = 0;
+        this._poseW = 0;
         this.ageMs = 0;
         this._sleepFrames = 0;
         this.isSleeping = false;
@@ -272,6 +273,51 @@ export class WorldProp {
         this._neighborsFrameId = -1;
         delete this._physId;
         delete this._activeSlot;
+    }
+    get x() {
+        const eid = this._physId;
+        return eid !== undefined ? entityX[eid] : this._poseX;
+    }
+    set x(v) {
+        this._poseX = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityX[eid] = v;
+    }
+    get y() {
+        const eid = this._physId;
+        return eid !== undefined ? entityY[eid] : this._poseY;
+    }
+    set y(v) {
+        this._poseY = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityY[eid] = v;
+    }
+    get vx() {
+        const eid = this._physId;
+        return eid !== undefined ? entityVx[eid] : this._poseVx;
+    }
+    set vx(v) {
+        this._poseVx = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityVx[eid] = v;
+    }
+    get vy() {
+        const eid = this._physId;
+        return eid !== undefined ? entityVy[eid] : this._poseVy;
+    }
+    set vy(v) {
+        this._poseVy = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityVy[eid] = v;
+    }
+    get angularVelocity() {
+        const eid = this._physId;
+        return eid !== undefined ? entityW[eid] : this._poseW;
+    }
+    set angularVelocity(v) {
+        this._poseW = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityW[eid] = v;
     }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);

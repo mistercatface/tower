@@ -8,6 +8,7 @@ import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
+import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
 }
@@ -68,6 +69,7 @@ export class SpatialFrameCore {
      */
     insertEntity(entity, physId) {
         entity._physId = physId;
+        noteEntityEidHighWater(physId);
         this.entityGrid.insert(entity);
     }
     /**
@@ -130,6 +132,9 @@ export class SpatialFrameCore {
     }
     collectEntitiesInBoundsF32(buf, o, exclude = null) {
         return this.entityGrid.collectInBoundsF32(buf, o, this.wallQuery, exclude);
+    }
+    collectEntityEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
+        return this.entityGrid.collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid);
     }
     /**
      * Broadphase around a query anchor (e.g. zone centroid + shape). Does not require insertion.
@@ -1657,6 +1662,7 @@ let CURRENT_COLLECT_OUT = null;
 const COLLECT_NEARBY_PUSH = (other) => {
     CURRENT_COLLECT_OUT.push(other);
 };
+let entityGridQueryGen = 1;
 export class EntityGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
@@ -1666,10 +1672,11 @@ export class EntityGrid {
         this.rows = 0;
         this.cellHead = new Int32Array(0);
         this.entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
-        this.entities = new Array(MAX_ENTITIES);
-        this.activeEntities = [];
+        this.activeEids = new Int32Array(256);
+        this.activeEidCount = 0;
         this.queryGen = 0;
         this.maxInsertedExtent = 0;
+        this._eidCollectScratch = new Int32Array(256);
     }
     syncBounds(obstacleGrid) {
         if (!obstacleGrid) return;
@@ -1687,16 +1694,16 @@ export class EntityGrid {
         this.cellHead.fill(-1);
     }
     clear() {
-        for (let i = 0; i < this.activeEntities.length; i++) {
-            const ent = this.activeEntities[i];
-            if (ent._gridTileIdx !== undefined && ent._gridTileIdx !== -1) {
-                this.cellHead[ent._gridTileIdx] = -1;
-                this.entityNext[ent._physId] = -1;
-                ent._gridTileIdx = -1;
+        for (let i = 0; i < this.activeEidCount; i++) {
+            const eid = this.activeEids[i];
+            const tile = entityGridTileIdx[eid];
+            if (tile !== -1) {
+                this.cellHead[tile] = -1;
+                this.entityNext[eid] = -1;
+                entityGridTileIdx[eid] = -1;
             }
-            this.entities[ent._physId] = null;
         }
-        this.activeEntities.length = 0;
+        this.activeEidCount = 0;
         this.maxInsertedExtent = 0;
     }
     _getCellIndex(x, y) {
@@ -1707,36 +1714,54 @@ export class EntityGrid {
         if (!cellInRect(idx, this)) return -1;
         return idx;
     }
+    _ensureActiveEidCap(n) {
+        if (this.activeEids.length >= n) return;
+        const next = new Int32Array(Math.max(n, this.activeEids.length * 2));
+        next.set(this.activeEids);
+        this.activeEids = next;
+    }
     insert(entity) {
         if (entity._physId === undefined) {
             console.error("Entity missing _physId", entity);
             return;
         }
-        if (entity._physId >= this.entityNext.length) {
+        const eid = entity._physId;
+        if (eid >= this.entityNext.length) {
             const newNext = new Int32Array(this.entityNext.length * 2).fill(-1);
             newNext.set(this.entityNext);
             this.entityNext = newNext;
-            this.entities.length = this.entityNext.length;
         }
-        const idx = this._getCellIndex(entity.x, entity.y);
+        const x = entity._poseX !== undefined ? entity._poseX : entity.x;
+        const y = entity._poseY !== undefined ? entity._poseY : entity.y;
+        entityRefs[eid] = entity;
+        entityAlive[eid] = 1;
+        entitySpatialGen[eid] = 0;
+        entityX[eid] = x;
+        entityY[eid] = y;
+        const idx = this._getCellIndex(x, y);
+        entityGridTileIdx[eid] = idx;
         entity._gridTileIdx = idx;
-        this.entities[entity._physId] = entity;
-        this.activeEntities.push(entity);
+        this._ensureActiveEidCap(this.activeEidCount + 1);
+        this.activeEids[this.activeEidCount++] = eid;
         const extent = entityCollisionSpan(entity);
         if (extent > this.maxInsertedExtent) this.maxInsertedExtent = extent;
         if (idx !== -1) {
-            this.entityNext[entity._physId] = this.cellHead[idx];
-            this.cellHead[idx] = entity._physId;
-        } else this.entityNext[entity._physId] = -1;
+            this.entityNext[eid] = this.cellHead[idx];
+            this.cellHead[idx] = eid;
+        } else this.entityNext[eid] = -1;
     }
     remove(entity) {
-        const idx = entity._gridTileIdx;
-        if (idx === -1 || idx === undefined || idx < 0 || idx >= this.cellHead.length) return;
-        const targetId = entity._physId;
+        const eid = entity._physId;
+        if (eid === undefined) return;
+        const idx = entityGridTileIdx[eid];
+        if (idx === -1 || idx < 0 || idx >= this.cellHead.length) {
+            entity._gridTileIdx = -1;
+            return;
+        }
         let curr = this.cellHead[idx];
         let prev = -1;
         while (curr !== -1 && curr !== undefined) {
-            if (curr === targetId) {
+            if (curr === eid) {
                 if (prev !== -1) this.entityNext[prev] = this.entityNext[curr];
                 else this.cellHead[idx] = this.entityNext[curr];
                 this.entityNext[curr] = -1;
@@ -1745,43 +1770,24 @@ export class EntityGrid {
             prev = curr;
             curr = this.entityNext[curr];
         }
+        entityGridTileIdx[eid] = -1;
         entity._gridTileIdx = -1;
-        this.entities[targetId] = null;
-    }
-    /**
-     * @param {Aabb2D} bounds
-     * @param {object | null} exclude
-     * @param {number} queryGen
-     * @param {(entity: object) => void} fn
-     */
-    forEachInBounds(bounds, exclude, queryGen, fn) {
-        const minCol = Math.max(0, Math.floor((bounds.minX - this.minX) / this.cellSize));
-        const maxCol = Math.min(this.cols - 1, Math.floor((bounds.maxX - this.minX) / this.cellSize));
-        const minRow = Math.max(0, Math.floor((bounds.minY - this.minY) / this.cellSize));
-        const maxRow = Math.min(this.rows - 1, Math.floor((bounds.maxY - this.minY) / this.cellSize));
-        if (minCol > maxCol || minRow > maxRow) return;
-        const cellHead = this.cellHead;
-        const entityNext = this.entityNext;
-        const entities = this.entities;
-        const cols = this.cols;
-        for (let row = minRow; row <= maxRow; row++) {
-            const rowOffset = row * cols;
-            for (let col = minCol; col <= maxCol; col++) {
-                const cellIdx = rowOffset + col;
-                let curr = cellHead[cellIdx];
-                if (curr === -1) continue;
-                while (curr !== -1) {
-                    const other = entities[curr];
-                    if (other && other !== exclude && other._spatialGen !== queryGen) {
-                        other._spatialGen = queryGen;
-                        fn(other);
-                    }
-                    curr = entityNext[curr];
-                }
-            }
+        const active = this.activeEids;
+        for (let i = 0; i < this.activeEidCount; i++) {
+            if (active[i] !== eid) continue;
+            active[i] = active[--this.activeEidCount];
+            break;
         }
     }
+    forEachInBounds(bounds, exclude, queryGen, fn) {
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY] = bounds.minX;
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 1] = bounds.minY;
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 2] = bounds.maxX;
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 3] = bounds.maxY;
+        this.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, exclude, queryGen, fn);
+    }
     forEachInBoundsF32(buf, o, exclude, queryGen, fn) {
+        const stamp = queryGen || (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
         const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
         const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
         const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
@@ -1789,7 +1795,37 @@ export class EntityGrid {
         if (minCol > maxCol || minRow > maxRow) return;
         const cellHead = this.cellHead;
         const entityNext = this.entityNext;
-        const entities = this.entities;
+        const cols = this.cols;
+        const excludeEid = exclude && exclude._physId !== undefined ? exclude._physId : -1;
+        for (let row = minRow; row <= maxRow; row++) {
+            const rowOffset = row * cols;
+            for (let col = minCol; col <= maxCol; col++) {
+                const cellIdx = rowOffset + col;
+                let curr = cellHead[cellIdx];
+                if (curr === -1) continue;
+                while (curr !== -1) {
+                    if (curr !== excludeEid && entitySpatialGen[curr] !== stamp) {
+                        entitySpatialGen[curr] = stamp;
+                        const other = entityRefs[curr];
+                        if (other) {
+                            other._spatialGen = stamp;
+                            fn(other);
+                        }
+                    }
+                    curr = entityNext[curr];
+                }
+            }
+        }
+    }
+    forEachEidInBoundsF32(buf, o, excludeEid, queryGen, fn) {
+        const stamp = queryGen || (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
+        const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] - this.minY) / this.cellSize));
+        if (minCol > maxCol || minRow > maxRow) return;
+        const cellHead = this.cellHead;
+        const entityNext = this.entityNext;
         const cols = this.cols;
         for (let row = minRow; row <= maxRow; row++) {
             const rowOffset = row * cols;
@@ -1798,27 +1834,15 @@ export class EntityGrid {
                 let curr = cellHead[cellIdx];
                 if (curr === -1) continue;
                 while (curr !== -1) {
-                    const other = entities[curr];
-                    if (other && other !== exclude && other._spatialGen !== queryGen) {
-                        other._spatialGen = queryGen;
-                        fn(other);
+                    if (curr !== excludeEid && entitySpatialGen[curr] !== stamp) {
+                        entitySpatialGen[curr] = stamp;
+                        fn(curr);
                     }
                     curr = entityNext[curr];
                 }
             }
         }
     }
-    /**
-     * Entities whose grid cell falls inside a world AABB. Because bodies are indexed at
-     * their center point, bounds are expanded by maxInsertedExtent + neighborQueryPad
-     * unless expandForEntityExtents is false.
-     *
-     * @param {Aabb2D} bounds
-     * @param {SpatialQueryType} query
-     * @param {object | null} [exclude]
-     * @param {{ expandForEntityExtents?: boolean }} [options]
-     * @returns {object[]}
-     */
     collectInBounds(bounds, query, exclude = null, { expandForEntityExtents = true } = {}) {
         ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY] = bounds.minX;
         ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 1] = bounds.minY;
@@ -1835,13 +1859,42 @@ export class EntityGrid {
     }
     collectNearbyInto(entity, out) {
         out.length = 0;
-        this.queryGen++;
+        const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
+        this.queryGen = stamp;
         const searchRadius = entityCollisionSpan(entity) + this.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(entity));
         centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity.x, entity.y, searchRadius);
         CURRENT_COLLECT_OUT = out;
-        this.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity, this.queryGen, COLLECT_NEARBY_PUSH);
+        this.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity, stamp, COLLECT_NEARBY_PUSH);
         CURRENT_COLLECT_OUT = null;
         return out;
+    }
+    collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
+        const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
+        this.queryGen = stamp;
+        let write = 0;
+        const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] - this.minY) / this.cellSize));
+        if (minCol > maxCol || minRow > maxRow) return 0;
+        const cellHead = this.cellHead;
+        const entityNext = this.entityNext;
+        const cols = this.cols;
+        for (let row = minRow; row <= maxRow; row++) {
+            const rowOffset = row * cols;
+            for (let col = minCol; col <= maxCol; col++) {
+                let curr = cellHead[rowOffset + col];
+                while (curr !== -1) {
+                    if (curr !== excludeEid && entitySpatialGen[curr] !== stamp) {
+                        entitySpatialGen[curr] = stamp;
+                        if (write >= outCap) return -1;
+                        outEids[write++] = curr;
+                    }
+                    curr = entityNext[curr];
+                }
+            }
+        }
+        return write;
     }
 }
 /**
@@ -3375,25 +3428,28 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._activeKineticBodies = [];
         /** Registry membershipGen when this frame was last populated. */
         this.populatedMembershipGen = 0;
-        this._nextPhysId = 0;
-        this._physIdFreeList = [];
         this._activationScheduled = new Set();
         this._patchPrimarySeen = new Uint8Array(MAX_ENTITIES);
         this._patchPrimarySeenIds = new Int32Array(MAX_ENTITIES);
     }
     allocatePhysId() {
-        const free = this._physIdFreeList;
-        if (free.length) return free.pop();
-        const physId = this._nextPhysId++;
-        if (physId >= MAX_ENTITIES) throw new Error(`PhysId limit exceeded: ${physId} >= ${MAX_ENTITIES}`);
-        return physId;
+        return allocateEntityEid();
+    }
+    get _nextPhysId() {
+        return entityEidHighWater();
+    }
+    set _nextPhysId(v) {
+        noteEntityEidHighWater(v - 1);
+    }
+    get _physIdFreeList() {
+        return { length: entityEidFreeCount() };
     }
     releasePhysId(physId, prop, session) {
         invalidateKineticSlabSlot(physId);
-        this.entityGrid.entities[physId] = null;
         this.entityGrid.entityNext[physId] = -1;
-        delete prop._physId;
-        this._physIdFreeList.push(physId);
+        entityGridTileIdx[physId] = -1;
+        if (prop) delete prop._physId;
+        releaseEntityEid(physId);
         if (session) bumpKineticTopologyGeneration(session);
     }
     repopulateFrameMembership(state) {
@@ -3402,6 +3458,13 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
             const physId = prop._physId ?? this.allocatePhysId();
+            prop._physId = physId;
+            if (!entityAlive[physId] || entityRefs[physId] !== prop) {
+                const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
+                const x = prop._poseX !== undefined ? prop._poseX : prop.x;
+                const y = prop._poseY !== undefined ? prop._poseY : prop.y;
+                bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
+            }
             this.insertEntity(prop, physId);
             if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
         }
@@ -3410,6 +3473,9 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const body = debrisBodies[i];
             if (body.isDead) continue;
             const physId = body._physId ?? this.allocatePhysId();
+            body._physId = physId;
+            const flags = body.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
+            bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, body.x, body.y, entityCollisionSpan(body), flags);
             this.insertEntity(body, physId);
             if (body.strategy?.isKinetic) this._kineticBodies.push(body);
         }
@@ -3434,6 +3500,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const isNew = prop._physId === undefined;
             if (isNew) {
                 prop._physId = this.allocatePhysId();
+                const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
+                bindEntitySlot(prop._physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, prop.x, prop.y, entityCollisionSpan(prop), flags);
                 this._kineticBodies.push(prop);
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);
