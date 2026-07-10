@@ -1,5 +1,4 @@
 import { ViewBounds } from "./ViewBounds.js";
-export { VIEW_BOUNDS_PROPS_PAD_PX } from "./ViewBounds.js";
 const MIN_WORLD_SPAN = 10;
 /** 2D world camera: pan, zoom, screen/world mapping, elevation projection knobs. */
 export class Viewport {

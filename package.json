@@ -7,6 +7,8 @@
         "test:corridor": "node scripts/run-tests.mjs tests/corridorWidthOne.test.js",
         "test:corridor:multilane": "node scripts/run-tests.mjs tests/corridorMultiLane.test.js",
         "test:math": "node scripts/run-tests.mjs tests/segment2D.test.js tests/poly2D.test.js tests/worldPropPick.test.js tests/lineOfSight.test.js tests/maskCompositor.test.js",
-        "test:losShadow": "node scripts/run-tests.mjs tests/losShadow.test.js"
+        "test:losShadow": "node scripts/run-tests.mjs tests/losShadow.test.js",
+        "audit:codebase": "node scripts/audit-codebase.mjs",
+        "audit:all": "node scripts/audit-test-leaks.mjs && node scripts/audit-scalar-dialect.mjs && node scripts/audit-codebase.mjs"
     }
 }
