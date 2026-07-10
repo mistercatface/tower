@@ -3,7 +3,6 @@ export default {
     primitive: "polygon",
     sandbox: { tags: ["shapes"], dragInteract: true, dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Cross pinwheel" },
     physics: {
-        isKinetic: true,
         density: 0.0005,
         wallPhysics: { restitution: 0.5, friction: 0.1 },
         collisionParts: [

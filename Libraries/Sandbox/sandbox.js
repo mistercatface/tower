@@ -611,10 +611,10 @@ export function orderSandboxPalettePropIds(propIds) {
     return ordered.concat(rest);
 }
 export function isBallFamilyAsset(asset) {
-    return asset?.primitive === "sphere" && isSingleWorldPropSpawnAsset(asset) && asset.physics?.isKinetic !== false;
+    return asset?.primitive === "sphere" && isSingleWorldPropSpawnAsset(asset);
 }
 export function isBlockFamilyAsset(asset) {
-    return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset) && asset.physics?.isKinetic !== false;
+    return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset);
 }
 export function blockPresetUsesResizableFootprint(propId) {
     return isResizableBoxSpawnAsset(propCatalog[propId]);
@@ -2695,7 +2695,7 @@ function applyWorldPropFacing(prop, degrees) {
 function applyWorldPropPosition(prop, { x, y }) {
     if (x != null) prop.x = x;
     if (y != null) prop.y = y;
-    if (prop.strategy?.isKinetic) wakeKineticBody(prop);
+    wakeKineticBody(prop);
 }
 function appendChainLinkInspector(body, chain) {
     appendCheckboxField(body, "Chain head", { name: "chainHead", checked: chain.isChainHead(), onChange: (checked) => chain.setChainHead(checked) });

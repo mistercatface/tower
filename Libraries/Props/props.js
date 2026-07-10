@@ -78,11 +78,9 @@ export function scalePolygonPropFootprint(prop, scale) {
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
     markBroadphaseDirty(prop);
-    if (prop.strategy?.isKinetic) {
-        prop.mass = kineticMassFromFootprint(prop);
-        normalizeKineticBody(prop);
-        wakeKineticBody(prop);
-    }
+    prop.mass = kineticMassFromFootprint(prop);
+    normalizeKineticBody(prop);
+    wakeKineticBody(prop);
 }
 export function setPolygonPropBoundingRadius(prop, boundingRadius) {
     const currentRadius = getPolygonPropBoundingRadius(prop);
@@ -102,22 +100,18 @@ export function setCirclePropRadius(prop, radius) {
     prop.radius = radius;
     if (prop.strategy) prop.strategy.radius = radius;
     markBroadphaseDirty(prop);
-    if (prop.strategy?.isKinetic) {
-        prop.mass = kineticMassFromFootprint(prop);
-        normalizeKineticBody(prop);
-        wakeKineticBody(prop);
-    }
+    prop.mass = kineticMassFromFootprint(prop);
+    normalizeKineticBody(prop);
+    wakeKineticBody(prop);
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
-export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
+export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
     markBroadphaseDirty(prop);
-    if (prop.strategy?.isKinetic) {
-        prop.mass = kineticMassFromFootprint(prop);
-        normalizeKineticBody(prop);
-    }
+    prop.mass = kineticMassFromFootprint(prop);
+    normalizeKineticBody(prop);
 }
 export function initWorldPropShape(prop) {
     if (prop.strategy.collisionParts) {
@@ -201,7 +195,11 @@ export function withPropStrategyDefaults(strategy) {
     return { ...PROP_STRATEGY_DEFAULTS, ...strategy };
 }
 export function buildWorldPropStrategyFromAsset(asset) {
-    if (!asset?.physics) return withPropStrategyDefaults({});
+    if (!asset?.physics) {
+        const strategy = withPropStrategyDefaults({});
+        if (asset?.sandbox?.gridFloorBelt) strategy.isKinetic = false;
+        return strategy;
+    }
     const { spawn, renderMode, ...strategy } = asset.physics;
     if (strategy.localFootprint) strategy.localFootprint = new Float32Array(ensureFlatVerts(strategy.localFootprint));
     if (strategy.collisionParts)
@@ -209,7 +207,9 @@ export function buildWorldPropStrategyFromAsset(asset) {
             if (part.type === "Polygon" && part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
             return part;
         });
-    return withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });
+    const built = withPropStrategyDefaults({ render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy });
+    if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
+    return built;
 }
 let nextWorldPropId = 1;
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
@@ -264,10 +264,8 @@ export class WorldProp {
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
         initWorldPropShape(this);
-        if (this.strategy.isKinetic) {
-            this.mass = kineticMassFromFootprint(this);
-            normalizeKineticBody(this);
-        }
+        this.mass = kineticMassFromFootprint(this);
+        normalizeKineticBody(this);
         if (this._kineticLinkNeighbors) this._kineticLinkNeighbors.length = 0;
         this._kineticIslandPeers = null;
         if (this._neighbors) this._neighbors.length = 0;
