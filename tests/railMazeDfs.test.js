@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bakeRailMazeDfs, WorldObstacleGrid, centerMapGenBoundsOnViewport, createDefaultMapGenBoundsConfig, getMapGenBoundsCenterWorld } from "../Libraries/Spatial/spatial.js";
+import { bakeRailMazeDfs, WorldObstacleGrid, centerMapGenBoundsOnViewport, createDefaultMapGenBoundsConfig, getMapGenBoundsCenterWorldF32 } from "../Libraries/Spatial/spatial.js";
+import { ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 function railAt(batch, i) {
     const o = i << 2;
     return { idx: batch.data[o], side: batch.data[o + 1] };
@@ -78,9 +79,9 @@ describe("centerMapGenBoundsOnViewport", () => {
         const config = { ...createDefaultMapGenBoundsConfig(), boundsMode: "rect", boundsCols: 64, boundsRows: 64 };
         centerMapGenBoundsOnViewport(grid, { x: 0, y: 0 }, config);
         assert.ok(config.boundsIdx >= 0, "boundsIdx must be valid after centering");
-        const center = getMapGenBoundsCenterWorld(grid, config);
-        assert.ok(Math.abs(center.x) < grid.cellHalfSize + 0.01, `expected x≈0, got ${center.x}`);
-        assert.ok(Math.abs(center.y) < grid.cellHalfSize + 0.01, `expected y≈0, got ${center.y}`);
+        getMapGenBoundsCenterWorldF32(ENGINE_F32, M_VEC_A, grid, config);
+        assert.ok(Math.abs(ENGINE_F32[M_VEC_A]) < grid.cellHalfSize + 0.01, `expected x≈0, got ${ENGINE_F32[M_VEC_A]}`);
+        assert.ok(Math.abs(ENGINE_F32[M_VEC_A + 1]) < grid.cellHalfSize + 0.01, `expected y≈0, got ${ENGINE_F32[M_VEC_A + 1]}`);
         assert.ok(grid.minX <= -config.boundsCols * grid.cellSize * 0.5);
         assert.ok(grid.minY <= -config.boundsRows * grid.cellSize * 0.5);
     });

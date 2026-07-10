@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, centerReachAabbF32, centeredAabbF32, aabbFromF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -1350,17 +1350,17 @@ export class WorldObstacleGrid {
         bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
         if (this.onBoundsResync) this.onBoundsResync(this);
     }
-    expandToCoverAabb(aabb) {
+    expandToCoverAabbF32(buf, o) {
         if (this.cols <= 0) {
-            const width = aabb.maxX - aabb.minX;
-            const height = aabb.maxY - aabb.minY;
-            this.rebuildFixed((aabb.minX + aabb.maxX) / 2, (aabb.minY + aabb.maxY) / 2, width, height);
+            const width = buf[o + 2] - buf[o];
+            const height = buf[o + 3] - buf[o + 1];
+            this.rebuildFixed((buf[o] + buf[o + 2]) / 2, (buf[o + 1] + buf[o + 3]) / 2, width, height);
             return true;
         }
-        const newMinX = Math.min(this.minX, aabb.minX);
-        const newMinY = Math.min(this.minY, aabb.minY);
-        const newMaxX = Math.max(this.maxX, aabb.maxX);
-        const newMaxY = Math.max(this.maxY, aabb.maxY);
+        const newMinX = Math.min(this.minX, buf[o]);
+        const newMinY = Math.min(this.minY, buf[o + 1]);
+        const newMaxX = Math.max(this.maxX, buf[o + 2]);
+        const newMaxY = Math.max(this.maxY, buf[o + 3]);
         if (newMinX === this.minX && newMinY === this.minY && newMaxX === this.maxX && newMaxY === this.maxY) return false;
         const oldMinX = this.minX;
         const oldMinY = this.minY;
@@ -2155,9 +2155,6 @@ export function packCellKey(col, row) {
 export function packEdgeCellKey(col, row, side) {
     return packCellKey(col, row) + (side + 1) * EDGE_KEY_STRIDE;
 }
-export function unpackCellKey(key) {
-    return { col: key % KEY_STRIDE, row: (key / KEY_STRIDE) | 0 };
-}
 /** @param {number} key from `packEdgeCellKey` */
 /** @param {number} key */
 export function boundsToCellRect(minX, minY, maxX, maxY, cellSize) {
@@ -2230,7 +2227,6 @@ export function forEachDenseCellInRect(grid, startCol, endCol, startRow, endRow,
 export function forEachDenseCellInBounds(grid, bounds, fn) {
     forEachDenseCellInRect(grid, bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, fn);
 }
-const ENSURE_AABB = createAabb();
 const EDGE_SIDE_LABELS = ["North (+Y)", "East (+X)", "South (-Y)", "West (-X)"];
 export function formatGridWallEdgeSideLabel(side) {
     return EDGE_SIDE_LABELS[side] ?? `Side ${side}`;
@@ -2263,8 +2259,7 @@ export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidt
 }
 export function ensureObstacleGridAtWorld(grid, worldX, worldY) {
     centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, worldX, worldY, grid.cellSize, grid.cellSize);
-    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, ENSURE_AABB);
-    grid.expandToCoverAabb(ENSURE_AABB);
+    grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL);
     return grid.worldToIdx(worldX, worldY);
 }
 const RAIL_WALL_STRIDE = 4;
@@ -2889,13 +2884,34 @@ export function getMapGenBoundsAabbInto(grid, out, config) {
     out.maxY = cy + r;
     return out;
 }
-export function getMapGenBoundsAabb(grid, config) {
-    return getMapGenBoundsAabbInto(grid, createAabb(), config);
-}
-export function getMapGenBoundsCenterWorld(grid, config) {
+export function getMapGenBoundsAabbF32(grid, buf, o, config) {
     const cellSize = grid.cellSize;
-    if (config.boundsMode === "rect") return { x: grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5, y: grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5 };
-    return { x: grid.gridCenterXByIdx(config.centerIdx), y: grid.gridCenterYByIdx(config.centerIdx) };
+    if (config.boundsMode === "rect") {
+        const minX = grid.gridCenterXByIdx(config.boundsIdx) - cellSize * 0.5;
+        const minY = grid.gridCenterYByIdx(config.boundsIdx) - cellSize * 0.5;
+        buf[o] = minX;
+        buf[o + 1] = minY;
+        buf[o + 2] = minX + config.boundsCols * cellSize;
+        buf[o + 3] = minY + config.boundsRows * cellSize;
+        return;
+    }
+    const r = Math.max(1, config.outerRadiusCells) * cellSize;
+    const cx = grid.gridCenterXByIdx(config.centerIdx);
+    const cy = grid.gridCenterYByIdx(config.centerIdx);
+    buf[o] = cx - r;
+    buf[o + 1] = cy - r;
+    buf[o + 2] = cx + r;
+    buf[o + 3] = cy + r;
+}
+export function getMapGenBoundsCenterWorldF32(buf, o, grid, config) {
+    const cellSize = grid.cellSize;
+    if (config.boundsMode === "rect") {
+        buf[o] = grid.gridCenterXByIdx(config.boundsIdx) + (config.boundsCols - 1) * cellSize * 0.5;
+        buf[o + 1] = grid.gridCenterYByIdx(config.boundsIdx) + (config.boundsRows - 1) * cellSize * 0.5;
+        return;
+    }
+    buf[o] = grid.gridCenterXByIdx(config.centerIdx);
+    buf[o + 1] = grid.gridCenterYByIdx(config.centerIdx);
 }
 export function getMapGenBoundsCenterIdx(grid, config) {
     if (config.boundsMode === "rect") return config.boundsIdx + ((config.boundsRows / 2) | 0) * grid.cols + ((config.boundsCols / 2) | 0);
@@ -2930,9 +2946,11 @@ export function centerMapGenBoundsOnViewport(grid, viewport, config) {
     if (config.boundsMode === "rect") {
         const minX = viewport.x - (config.boundsCols * cellSize) / 2;
         const minY = viewport.y - (config.boundsRows * cellSize) / 2;
-        const maxX = minX + config.boundsCols * cellSize;
-        const maxY = minY + config.boundsRows * cellSize;
-        grid.expandToCoverAabb({ minX, minY, maxX, maxY });
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_TMP] = minX;
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_TMP + 1] = minY;
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_TMP + 2] = minX + config.boundsCols * cellSize;
+        ENGINE_F32[ENGINE_BOUNDS_BASE + B_TMP + 3] = minY + config.boundsRows * cellSize;
+        grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP);
         config.boundsIdx = grid.worldToIdx(minX + cellSize * 0.5, minY + cellSize * 0.5);
         return;
     }
@@ -3084,8 +3102,8 @@ function mergeDonutInnerClear(state, config, damageBounds) {
     if (config.boundsMode !== "donut") return damageBounds;
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
-    const center = getMapGenBoundsCenterWorld(grid, config);
-    const cleared = clearStaticWallsInWorldCircle(state, center.x, center.y, getInnerRadiusCells(config) * cellSize);
+    getMapGenBoundsCenterWorldF32(ENGINE_F32, S_OUT_XY, grid, config);
+    const cleared = clearStaticWallsInWorldCircle(state, ENGINE_F32[S_OUT_XY], ENGINE_F32[S_OUT_XY + 1], getInnerRadiusCells(config) * cellSize);
     return cleared ? unionCellBounds(damageBounds, cleared) : damageBounds;
 }
 export function applyMapGenSurfaceProfile(state, config, profileId) {
@@ -3207,8 +3225,8 @@ function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, 
 function createMapGenRun(state) {
     const grid = state.obstacleGrid;
     return {
-        ensureCoverage(extraAabb) {
-            return ensureLabObstacleGridCoverage(state, extraAabb);
+        ensureCoverage() {
+            return ensureLabObstacleGridCoverage(state);
         },
         stampCellBounds(config) {
             return stampCellBoundsForConfig(grid, config);
@@ -3243,16 +3261,22 @@ export async function applyPlayAreaConfig(state) {
     refreshAllStampedRegionSurfaces(state);
     await commitGridNavEdit(state, null, { fullNavSync: true });
 }
-export function ensureLabObstacleGridCoverage(state, extraAabb = null) {
+export function ensureLabObstacleGridCoverage(state) {
     const grid = state.obstacleGrid;
     const cellSize = grid.cellSize;
     const { editor } = state;
-    let required = getMapGenBoundsAabb(grid, editor.cavernConfig);
-    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.railConfig));
-    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.railMazeConfig));
-    required = unionAabb(required, getMapGenBoundsAabb(grid, editor.eraseConfig));
-    if (extraAabb) required = unionAabb(required, extraAabb);
-    return grid.expandToCoverAabb(padAabb(required, cellSize));
+    const acc = ENGINE_BOUNDS_BASE + B_TMP;
+    const scratch = ENGINE_BOUNDS_BASE + B_FOOTPRINT;
+    const padded = ENGINE_BOUNDS_BASE + B_PAD;
+    getMapGenBoundsAabbF32(grid, ENGINE_F32, acc, editor.cavernConfig);
+    getMapGenBoundsAabbF32(grid, ENGINE_F32, scratch, editor.railConfig);
+    unionAabbF32(ENGINE_F32, acc, ENGINE_F32, acc, ENGINE_F32, scratch);
+    getMapGenBoundsAabbF32(grid, ENGINE_F32, scratch, editor.railMazeConfig);
+    unionAabbF32(ENGINE_F32, acc, ENGINE_F32, acc, ENGINE_F32, scratch);
+    getMapGenBoundsAabbF32(grid, ENGINE_F32, scratch, editor.eraseConfig);
+    unionAabbF32(ENGINE_F32, acc, ENGINE_F32, acc, ENGINE_F32, scratch);
+    padAabbF32(ENGINE_F32, padded, ENGINE_F32, acc, cellSize);
+    return grid.expandToCoverAabbF32(ENGINE_F32, padded);
 }
 export async function eraseLabWallsInBounds(state) {
     ensureLabObstacleGridCoverage(state);

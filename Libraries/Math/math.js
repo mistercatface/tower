@@ -544,12 +544,6 @@ export function emptyAabbF32(buf, o) {
     buf[o + 2] = -Infinity;
     buf[o + 3] = -Infinity;
 }
-export function emptyAabb() {
-    return { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-}
-export function isEmptyAabb({ minX }) {
-    return minX === Infinity;
-}
 export function aabbWidth(aabb) {
     return aabb.maxX - aabb.minX;
 }
@@ -617,9 +611,6 @@ export function aabbFromTwoPointsF32(buf, o, x1, y1, x2, y2) {
     buf[o + 2] = x1 > x2 ? x1 : x2;
     buf[o + 3] = y1 > y2 ? y1 : y2;
 }
-export function unionAabb(a, b) {
-    return { minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY), maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY) };
-}
 export function unionAabbF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     outBuf[outO] = Math.min(aBuf[aO], bBuf[bO]);
     outBuf[outO + 1] = Math.min(aBuf[aO + 1], bBuf[bO + 1]);
@@ -631,9 +622,6 @@ export function padAabbF32(bufOut, oOut, bufIn, oIn, pad) {
     bufOut[oOut + 1] = bufIn[oIn + 1] - pad;
     bufOut[oOut + 2] = bufIn[oIn + 2] + pad;
     bufOut[oOut + 3] = bufIn[oIn + 3] + pad;
-}
-export function padAabb(a, pad) {
-    return { minX: a.minX - pad, minY: a.minY - pad, maxX: a.maxX + pad, maxY: a.maxY + pad };
 }
 export function centeredAabbF32(buf, o, cx, cy, width, height) {
     const halfW = width / 2;

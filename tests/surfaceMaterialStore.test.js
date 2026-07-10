@@ -5,6 +5,7 @@ import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
 import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileIdAtKey, resolveEdgeSurfaceProfileId, packChunkKey  } from "../Libraries/Spatial/spatial.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP, minCornerAabbF32 } from "../Libraries/Math/math.js";
 
 function createPathOnlyContext() {
     return {
@@ -54,7 +55,8 @@ describe("surface material stores", () => {
         grid.rebuildFixed(0, 0, 32, 32);
         grid.setCellSurfaceProfileAtIdx(worldIdxAtCell(grid,0, 0), "cell-profile");
         grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 2, "edge-profile");
-        grid.expandToCoverAabb({ minX: -32, minY: -16, maxX: 16, maxY: 16 });
+        minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, -32, -16, 48, 32);
+        grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP);
         assert.equal(resolveCellSurfaceProfileId(grid, worldIdxAtCell(grid,1, 0), "base"), "cell-profile");
         assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,2, 1), 2, "base"), "edge-profile");
     });
@@ -174,7 +176,8 @@ describe("surface material stores", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 128, 128);
         grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", 8);
-        grid.expandToCoverAabb({ minX: -192, minY: -192, maxX: 64, maxY: 64 });
+        minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, -192, -192, 256, 256);
+        grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP);
         assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
         assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 1), "base"), "chunk-profile");
     });

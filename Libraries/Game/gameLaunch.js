@@ -1,4 +1,4 @@
-import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces, isIdxInMapGenBounds, getMapGenBoundsCenterIdx, getMapGenBoundsCenterWorld, generateLabRailCaverns } from "../Spatial/spatial.js";
+import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedRegionSurfaces, isIdxInMapGenBounds, getMapGenBoundsCenterIdx, getMapGenBoundsCenterWorldF32, generateLabRailCaverns } from "../Spatial/spatial.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { spawnPlacedSandboxProp, spawnLinkedBallChain, resolveChainLinkRestLength } from "../Sandbox/sandbox.js";
@@ -10,6 +10,7 @@ import { createGlassGameSession } from "./glassGameSession.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { setPropVisualTint } from "../Color/visualOverride.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
+import { ENGINE_F32, M_VEC_A } from "../Math/math.js";
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",
@@ -149,8 +150,8 @@ async function runSnakeLaunch(state, ctx) {
     for (let i = 0; i < 5; i++) placeRandomPortalPair(state, railMazeConfig);
     await state.nav.commitEdit(null, { fullNavSync: true });
     const grid = state.obstacleGrid;
-    const mazeCenter = getMapGenBoundsCenterWorld(grid, railMazeConfig);
-    const playerAnchorIdx = pickWalkableCellIdxByDistance(state, railMazeConfig, mazeCenter.x, mazeCenter.y, false);
+    getMapGenBoundsCenterWorldF32(ENGINE_F32, M_VEC_A, grid, railMazeConfig);
+    const playerAnchorIdx = pickWalkableCellIdxByDistance(state, railMazeConfig, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1], false);
     if (playerAnchorIdx < 0) throw new Error("snake launch: no walkable maze cell for player spawn");
     const playerX = grid.gridCenterXByIdx(playerAnchorIdx);
     const playerY = grid.gridCenterYByIdx(playerAnchorIdx);

@@ -8,7 +8,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
-import { convexFootprintHalfExtents, emptyAabb, isEmptyAabb, aabbFromF32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
+import { convexFootprintHalfExtents, aabbFromF32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
@@ -922,13 +922,10 @@ export function parseSandboxSceneSnapshot(raw) {
 function expandGridForSnapshot(state, doc) {
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
     const cellHalfSize = state.obstacleGrid.cellHalfSize;
-    const bounds = emptyAabb();
+    const o = ENGINE_BOUNDS_BASE + B_TMP;
+    emptyAabbF32(ENGINE_F32, o);
     const includeWorldPoint = (x, y) => {
-        if (x - cellHalfSize < bounds.minX) bounds.minX = x - cellHalfSize;
-        if (x + cellHalfSize > bounds.maxX) bounds.maxX = x + cellHalfSize;
-        if (y - cellHalfSize < bounds.minY) bounds.minY = y - cellHalfSize;
-        if (y + cellHalfSize > bounds.maxY) bounds.maxY = y + cellHalfSize;
-        return bounds;
+        growAabbFromCenterF32(ENGINE_F32, o, x, y, cellHalfSize, cellHalfSize);
     };
     const includeDocIdx = (idx) => {
         includeWorldPoint(doc.origin.minX + (idx % doc.cols) * cellSize + cellHalfSize, doc.origin.minY + Math.floor(idx / doc.cols) * cellSize + cellHalfSize);
@@ -937,8 +934,8 @@ function expandGridForSnapshot(state, doc) {
     for (let i = 0; i < doc.railWalls.length; i++) includeDocIdx(doc.railWalls[i].idx);
     for (let i = 0; i < doc.floorBelts.length; i++) includeDocIdx(doc.floorBelts[i].idx);
     for (let i = 0; i < doc.props.length; i++) includeWorldPoint(doc.props[i].x, doc.props[i].y);
-    if (isEmptyAabb(bounds)) return;
-    state.obstacleGrid.expandToCoverAabb(bounds);
+    if (ENGINE_F32[o] === Infinity) return;
+    state.obstacleGrid.expandToCoverAabbF32(ENGINE_F32, o);
 }
 /** @param {object} state */
 function clearSandboxSceneContent(state) {

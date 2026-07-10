@@ -7,8 +7,9 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
-import { getMapGenBoundsCenterWorld, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
+import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
+import { ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 
 const CELLS_PER_CHUNK = 16;
 
@@ -84,9 +85,9 @@ describe("snake game launch actions", () => {
         assert.equal(state.editor.railMazeConfig.boundsCols, 64);
         assert.equal(state.editor.railMazeConfig.boundsRows, 64);
         assert.ok(state.editor.railMazeConfig.boundsIdx >= 0);
-        const mazeCenter = getMapGenBoundsCenterWorld(state.obstacleGrid, state.editor.railMazeConfig);
-        assert.ok(Math.abs(mazeCenter.x) < state.obstacleGrid.cellHalfSize + 0.01);
-        assert.ok(Math.abs(mazeCenter.y) < state.obstacleGrid.cellHalfSize + 0.01);
+        getMapGenBoundsCenterWorldF32(ENGINE_F32, M_VEC_A, state.obstacleGrid, state.editor.railMazeConfig);
+        assert.ok(Math.abs(ENGINE_F32[M_VEC_A]) < state.obstacleGrid.cellHalfSize + 0.01);
+        assert.ok(Math.abs(ENGINE_F32[M_VEC_A + 1]) < state.obstacleGrid.cellHalfSize + 0.01);
         assert.equal(state.editor.railMazeConfig.edgeThickness, 4);
         assert.equal(state.editor.railMazeConfig.wallHeightLevel, 1);
         assert.equal(state.editor.railMazeConfig.surfaceProfileId, "poolTableFelt");
