@@ -1,7 +1,7 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
-import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb, aabbFromF32, ENGINE_F32, S_AABB } from "../Math/math.js";
-import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
+import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT } from "../Math/math.js";
+import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
@@ -60,7 +60,6 @@ export class FlowFieldGrid {
         this.navRows = this.window.navRows;
         this._topologyKey = this.window.topologyKey;
         this._windowReady = this.window.ready;
-        this.cellBounds = this.window.cellBounds;
         this.cache?.resize(this.cols, this.rows);
     }
     _handleWorkerMessage(data) {
@@ -224,12 +223,6 @@ export class FlowFieldGrid {
     }
     gridCenterYByIdx(idx) {
         return this.window.gridCenterYByIdx(idx);
-    }
-    getCellBoundsByIdx(idx) {
-        return this.window.getCellBoundsByIdx(idx);
-    }
-    entityIntersectsCellIdx(x, y, radius, idx) {
-        return this.window.entityIntersectsCellIdx(x, y, radius, idx);
     }
     flowReachCacheToken() {
         return this.window.topologyKey;
@@ -400,7 +393,6 @@ export class FlowFieldWindow {
         this.topologyKey = "";
         this.ready = false;
         this.syncPending = false;
-        this.cellBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
     }
     setCenter(centerX, centerY) {
         setCenteredGridFrameCenter(this.frame, centerX, centerY);
@@ -461,13 +453,6 @@ export class FlowFieldWindow {
     }
     containsWorldPoint(x, y) {
         return this.worldToIdx(x, y) >= 0;
-    }
-    getCellBoundsByIdx(idx) {
-        getCellBoundsInCenteredFrame(ENGINE_F32, S_AABB, this.frame, idx);
-        return aabbFromF32(ENGINE_F32, S_AABB, this.cellBounds);
-    }
-    entityIntersectsCellIdx(x, y, radius, idx) {
-        return circleIntersectsAabb(x, y, radius, this.getCellBoundsByIdx(idx));
     }
     flowRequest(targetX, targetY, range = 999999) {
         return FlowFieldRequest.fromWorld(this, targetX, targetY, range);

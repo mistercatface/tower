@@ -1,5 +1,5 @@
 import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/math.js";
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, aabbFromF32, emptyAabbF32, growAabbFromCenterF32, ENGINE_BOUNDS_BASE, B_QUERY, BRIDGE_AABB } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, ENGINE_BOUNDS_BASE, B_QUERY } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -3106,8 +3106,7 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         PORTAL_TICK.exitCy = ey;
         PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
         PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
-        aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
-        eg.forEachInBounds(BRIDGE_AABB, null, ++eg.queryGen, portalTeleportHandler);
+        eg.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, null, ++eg.queryGen, portalTeleportHandler);
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {
@@ -3438,8 +3437,7 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
         const extent = entityCollisionSpan(prop);
         growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, prop.x, prop.y, extent, extent);
     }
-    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
-    const neighbors = spatialFrame.collectEntitiesInBounds(BRIDGE_AABB);
+    const neighbors = spatialFrame.collectEntitiesInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], neighbors)) return false;
     return true;
 }

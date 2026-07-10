@@ -1,6 +1,6 @@
 import { pruneKineticConstraintsForBody, entityContainedInAabb, getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHash, aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, distanceToAabb, distanceToLineSegment, createAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, BRIDGE_AABB, centerReachAabbF32, aabbFromF32, pointInPolygon, transformPoint2DInto, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
+import { aabbHash, aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, distanceToAabb, distanceToLineSegment, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, centerReachAabbF32, pointInPolygon, transformPoint2DInto, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
@@ -510,7 +510,6 @@ function nearestWorldPropInList(worldProps, worldX, worldY, padding) {
  */
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);
-    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, BRIDGE_AABB);
-    const candidates = registry.queryView({ bounds: BRIDGE_AABB, kinds: ["worldProp"] }, spatialFrame);
+    const candidates = registry.queryViewF32({ boundsBuf: ENGINE_F32, boundsO: ENGINE_BOUNDS_BASE + B_QUERY, kinds: ["worldProp"] }, spatialFrame);
     return nearestWorldPropInList(candidates, worldX, worldY, padding);
 }

@@ -50,9 +50,6 @@ export class Viewport {
     circleInBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER.PROPS) {
         return this.viewBounds.circleInBounds(worldX, worldY, radius, tierO);
     }
-    aabbInBounds(buf, o, tierO = VIEW_TIER.CLIP) {
-        return this.viewBounds.aabbInBounds(buf, o, tierO);
-    }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);
         ctx.scale(this.zoom, this.zoom);

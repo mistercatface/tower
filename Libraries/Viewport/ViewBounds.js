@@ -1,4 +1,4 @@
-import { aabbOverlapF32, centerHalfExtentsAabbF32, circleIntersectsAabbF32 } from "../Math/math.js";
+import { centerHalfExtentsAabbF32, circleIntersectsAabbF32 } from "../Math/math.js";
 export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
 export const VIEW_TIER = Object.freeze({ CLIP: 0, PROPS: 4, STRUCTURE: 8, CHUNKS: 12 });
 export const VIEW_TIER_COUNT = 4;
@@ -19,8 +19,5 @@ export class ViewBounds {
     }
     circleInBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER.PROPS) {
         return circleIntersectsAabbF32(worldX, worldY, radius, this.buf, tierO);
-    }
-    aabbInBounds(buf, o, tierO = VIEW_TIER.CLIP) {
-        return aabbOverlapF32(buf, o, this.buf, tierO);
     }
 }
