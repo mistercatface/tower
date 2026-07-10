@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, centerReachAabbF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, centerReachAabbF32, centeredAabbF32, aabbFromF32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -2262,7 +2262,8 @@ export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidt
     out.push(overlaySegment(seg.x, seg.y, seg2.x, seg2.y, { stroke, lineWidth, dash: dash ?? undefined }));
 }
 export function ensureObstacleGridAtWorld(grid, worldX, worldY) {
-    centeredAabbInto(ENSURE_AABB, worldX, worldY, grid.cellSize, grid.cellSize);
+    centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, worldX, worldY, grid.cellSize, grid.cellSize);
+    aabbFromF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, ENSURE_AABB);
     grid.expandToCoverAabb(ENSURE_AABB);
     return grid.worldToIdx(worldX, worldY);
 }
@@ -2873,12 +2874,20 @@ export function getMapGenBoundsAabbInto(grid, out, config) {
     if (config.boundsMode === "rect") {
         const minX = grid.gridCenterXByIdx(config.boundsIdx) - cellSize * 0.5;
         const minY = grid.gridCenterYByIdx(config.boundsIdx) - cellSize * 0.5;
-        return minCornerAabbInto(out, minX, minY, config.boundsCols * cellSize, config.boundsRows * cellSize);
+        out.minX = minX;
+        out.minY = minY;
+        out.maxX = minX + config.boundsCols * cellSize;
+        out.maxY = minY + config.boundsRows * cellSize;
+        return out;
     }
     const r = Math.max(1, config.outerRadiusCells) * cellSize;
     const cx = grid.gridCenterXByIdx(config.centerIdx);
     const cy = grid.gridCenterYByIdx(config.centerIdx);
-    return minCornerAabbInto(out, cx - r, cy - r, r * 2, r * 2);
+    out.minX = cx - r;
+    out.minY = cy - r;
+    out.maxX = cx + r;
+    out.maxY = cy + r;
+    return out;
 }
 export function getMapGenBoundsAabb(grid, config) {
     return getMapGenBoundsAabbInto(grid, createAabb(), config);

@@ -1,5 +1,5 @@
 import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/math.js";
-import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD } from "../Math/math.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY } from "../Math/math.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
@@ -115,10 +115,10 @@ function collisionPartMassProperties(shape) {
         ENGINE_F32[P_OUT_MASS_INERTIA] = 0;
         return;
     }
-    const { cx, cy } = polygonCentroid2D(verts);
+    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, verts);
     ENGINE_F32[P_OUT_MASS_AREA] = area;
-    ENGINE_F32[P_OUT_MASS_CX] = cx;
-    ENGINE_F32[P_OUT_MASS_CY] = cy;
+    ENGINE_F32[P_OUT_MASS_CX] = ENGINE_F32[M_OUT_CX];
+    ENGINE_F32[P_OUT_MASS_CY] = ENGINE_F32[M_OUT_CY];
     ENGINE_F32[P_OUT_MASS_INERTIA] = polygonSecondMomentAboutCentroid2D(verts) / area;
 }
 function compoundInertiaFactor(parts) {

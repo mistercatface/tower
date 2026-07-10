@@ -1,5 +1,5 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, minCornerAabbF32, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalInto, intersectAabbOptionalF32, emptyAabbInto, pointInAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, BRIDGE_AABB, B_TMP } from "../Math/math.js";
+import { aabbCenterX, aabbCenterY, createAabb, minCornerAabbF32, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalF32, pointInAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, BRIDGE_AABB, B_TMP } from "../Math/math.js";
 import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";

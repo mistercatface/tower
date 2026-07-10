@@ -168,11 +168,6 @@ export function distanceToLineSegment(px, py, vx, vy, wx, wy) {
     return Math.sqrt(distanceSqToLineSegment(px, py, vx, vy, wx, wy));
 }
 const POLYGON_EDGE_EPS_SQ = 1e-10;
-export function rotateXYInto(out, lx, ly, cos, sin) {
-    out.x = lx * cos - ly * sin;
-    out.y = lx * sin + ly * cos;
-    return out;
-}
 export function rotateXYIntoF32(buf, o, lx, ly, cos, sin) {
     buf[o] = lx * cos - ly * sin;
     buf[o + 1] = lx * sin + ly * cos;
@@ -420,7 +415,6 @@ export function polygonSignedArea2D(vertices) {
     }
     return area * 0.5;
 }
-const CENTROID_SCRATCH = { cx: 0, cy: 0, signedArea: 0 };
 /** Writes cx, cy, signedArea at buf[o..o+2]. */
 export function polygonCentroid2DInto(buf, o, vertices) {
     let cx = 0;
@@ -450,13 +444,6 @@ export function polygonCentroid2DInto(buf, o, vertices) {
     buf[o] = cx;
     buf[o + 1] = cy;
     buf[o + 2] = signedArea;
-}
-export function polygonCentroid2D(vertices, out = CENTROID_SCRATCH) {
-    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, vertices);
-    out.cx = ENGINE_F32[M_OUT_CX];
-    out.cy = ENGINE_F32[M_OUT_CY];
-    out.signedArea = ENGINE_F32[M_OUT_AREA];
-    return out;
 }
 export function polygonSecondMomentAboutCentroid2D(vertices) {
     const count = vertices.length / 2;
@@ -551,14 +538,6 @@ export function reversePolygonWinding(vertices) {
 export function createAabb() {
     return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 }
-/** @param {Aabb2D} out */
-export function emptyAabbInto(out) {
-    out.minX = Infinity;
-    out.minY = Infinity;
-    out.maxX = -Infinity;
-    out.maxY = -Infinity;
-    return out;
-}
 export function emptyAabbF32(buf, o) {
     buf[o] = Infinity;
     buf[o + 1] = Infinity;
@@ -566,7 +545,7 @@ export function emptyAabbF32(buf, o) {
     buf[o + 3] = -Infinity;
 }
 export function emptyAabb() {
-    return emptyAabbInto(createAabb());
+    return { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 }
 export function isEmptyAabb({ minX }) {
     return minX === Infinity;
@@ -583,27 +562,11 @@ export function aabbCenterX(aabb) {
 export function aabbCenterY(aabb) {
     return (aabb.minY + aabb.maxY) / 2;
 }
-/** @param {Aabb2D} out */
-export function growAabbFromCenterInto(out, cx, cy, halfW, halfH) {
-    out.minX = Math.min(out.minX, cx - halfW);
-    out.minY = Math.min(out.minY, cy - halfH);
-    out.maxX = Math.max(out.maxX, cx + halfW);
-    out.maxY = Math.max(out.maxY, cy + halfH);
-    return out;
-}
 export function growAabbFromCenterF32(buf, o, cx, cy, halfW, halfH) {
     buf[o] = Math.min(buf[o], cx - halfW);
     buf[o + 1] = Math.min(buf[o + 1], cy - halfH);
     buf[o + 2] = Math.max(buf[o + 2], cx + halfW);
     buf[o + 3] = Math.max(buf[o + 3], cy + halfH);
-}
-/** @param {Aabb2D} out @param {Aabb2D} src @returns {Aabb2D} */
-export function copyAabbInto(out, src) {
-    out.minX = src.minX;
-    out.minY = src.minY;
-    out.maxX = src.maxX;
-    out.maxY = src.maxY;
-    return out;
 }
 export function pointInAabb(px, py, { minX, minY, maxX, maxY }) {
     return px >= minX && px <= maxX && py >= minY && py <= maxY;
@@ -634,14 +597,6 @@ export function aabbContains(outer, inner) {
 export function aabbContainsF32(outBuf, outO, inBuf, inO) {
     return outBuf[outO] <= inBuf[inO] && outBuf[outO + 1] <= inBuf[inO + 1] && outBuf[outO + 2] >= inBuf[inO + 2] && outBuf[outO + 3] >= inBuf[inO + 3];
 }
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function minCornerAabbInto(out, minX, minY, width, height) {
-    out.minX = minX;
-    out.minY = minY;
-    out.maxX = minX + width;
-    out.maxY = minY + height;
-    return out;
-}
 /** Writes minX,minY,maxX,maxY at buf[o..o+3]. */
 export function minCornerAabbF32(buf, o, minX, minY, width, height) {
     buf[o] = minX;
@@ -656,44 +611,20 @@ export function aabbFromF32(buf, o, out) {
     out.maxY = buf[o + 3];
     return out;
 }
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function aabbFromTwoPointsInto(out, x1, y1, x2, y2) {
-    out.minX = Math.min(x1, x2);
-    out.minY = Math.min(y1, y2);
-    out.maxX = Math.max(x1, x2);
-    out.maxY = y1 > y2 ? y1 : y2;
-    return out;
-}
 export function aabbFromTwoPointsF32(buf, o, x1, y1, x2, y2) {
     buf[o] = x1 < x2 ? x1 : x2;
     buf[o + 1] = y1 < y2 ? y1 : y2;
     buf[o + 2] = x1 > x2 ? x1 : x2;
     buf[o + 3] = y1 > y2 ? y1 : y2;
 }
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function unionAabbInto(out, a, b) {
-    out.minX = Math.min(a.minX, b.minX);
-    out.minY = Math.min(a.minY, b.minY);
-    out.maxX = Math.max(a.maxX, b.maxX);
-    out.maxY = Math.max(a.maxY, b.maxY);
-    return out;
-}
 export function unionAabb(a, b) {
-    return unionAabbInto(createAabb(), a, b);
+    return { minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY), maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY) };
 }
 export function unionAabbF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     outBuf[outO] = Math.min(aBuf[aO], bBuf[bO]);
     outBuf[outO + 1] = Math.min(aBuf[aO + 1], bBuf[bO + 1]);
     outBuf[outO + 2] = Math.max(aBuf[aO + 2], bBuf[bO + 2]);
     outBuf[outO + 3] = Math.max(aBuf[aO + 3], bBuf[bO + 3]);
-}
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function padAabbInto(out, { minX, minY, maxX, maxY }, pad) {
-    out.minX = minX - pad;
-    out.minY = minY - pad;
-    out.maxX = maxX + pad;
-    out.maxY = maxY + pad;
-    return out;
 }
 export function padAabbF32(bufOut, oOut, bufIn, oIn, pad) {
     bufOut[oOut] = bufIn[oIn] - pad;
@@ -702,30 +633,7 @@ export function padAabbF32(bufOut, oOut, bufIn, oIn, pad) {
     bufOut[oOut + 3] = bufIn[oIn + 3] + pad;
 }
 export function padAabb(a, pad) {
-    return padAabbInto(createAabb(), a, pad);
-}
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function corridorAabbInto(out, x1, y1, x2, y2, pad) {
-    aabbFromTwoPointsInto(out, x1, y1, x2, y2);
-    return padAabbInto(out, out, pad);
-}
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function insetAabbInto(out, { minX, minY, maxX, maxY }, inset) {
-    out.minX = minX + inset;
-    out.minY = minY + inset;
-    out.maxX = maxX - inset;
-    out.maxY = maxY - inset;
-    return out;
-}
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function centeredAabbInto(out, cx, cy, width, height) {
-    const halfW = width / 2;
-    const halfH = height / 2;
-    out.minX = cx - halfW;
-    out.minY = cy - halfH;
-    out.maxX = cx + halfW;
-    out.maxY = cy + halfH;
-    return out;
+    return { minX: a.minX - pad, minY: a.minY - pad, maxX: a.maxX + pad, maxY: a.maxY + pad };
 }
 export function centeredAabbF32(buf, o, cx, cy, width, height) {
     const halfW = width / 2;
@@ -735,27 +643,11 @@ export function centeredAabbF32(buf, o, cx, cy, width, height) {
     buf[o + 2] = cx + halfW;
     buf[o + 3] = cy + halfH;
 }
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function centerHalfExtentsAabbInto(out, cx, cy, halfW, halfH, pad = 0) {
-    out.minX = cx - halfW - pad;
-    out.minY = cy - halfH - pad;
-    out.maxX = cx + halfW + pad;
-    out.maxY = cy + halfH + pad;
-    return out;
-}
 export function centerHalfExtentsAabbF32(buf, o, cx, cy, halfW, halfH, pad = 0) {
     buf[o] = cx - halfW - pad;
     buf[o + 1] = cy - halfH - pad;
     buf[o + 2] = cx + halfW + pad;
     buf[o + 3] = cy + halfH + pad;
-}
-/** @param {Aabb2D} out @returns {Aabb2D} */
-export function centerReachAabbInto(out, cx, cy, reach) {
-    out.minX = cx - reach;
-    out.minY = cy - reach;
-    out.maxX = cx + reach;
-    out.maxY = cy + reach;
-    return out;
 }
 export function centerReachAabbF32(buf, o, cx, cy, reach) {
     buf[o] = cx - reach;
@@ -790,53 +682,11 @@ export function pointsAabbOverlapAabb(p0, p1, p2, p3, box) {
     const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
     return aabbIntersectsScalars(minX, minY, maxX, maxY, box);
 }
-/** @param {Aabb2D} out @param {{ x: number, y: number }[]} points @param {number} [padding] @returns {Aabb2D} */
-export function expandPointsAabbInto(out, points, padding = 0) {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-    }
-    out.minX = minX - padding;
-    out.minY = minY - padding;
-    out.maxX = maxX + padding;
-    out.maxY = maxY + padding;
-    return out;
-}
-/** @returns {Aabb2D | null} */
-export function intersectAabb(a, b) {
-    const out = createAabb();
-    return intersectAabbInto(out, a, b) ? out : null;
-}
-/** @param {Aabb2D} out @returns {boolean} */
-export function intersectAabbInto(out, a, b) {
-    const minX = Math.max(a.minX, b.minX);
-    const minY = Math.max(a.minY, b.minY);
-    const maxX = Math.min(a.maxX, b.maxX);
-    const maxY = Math.min(a.maxY, b.maxY);
-    if (minX >= maxX || minY >= maxY) return false;
-    out.minX = minX;
-    out.minY = minY;
-    out.maxX = maxX;
-    out.maxY = maxY;
-    return true;
-}
 export function intersectAabbF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     outBuf[outO] = Math.max(aBuf[aO], bBuf[bO]);
     outBuf[outO + 1] = Math.max(aBuf[aO + 1], bBuf[bO + 1]);
     outBuf[outO + 2] = Math.min(aBuf[aO + 2], bBuf[bO + 2]);
     outBuf[outO + 3] = Math.min(aBuf[aO + 3], bBuf[bO + 3]);
-}
-/** @param {Aabb2D} out @param {Aabb2D | null | undefined} a @param {Aabb2D | null | undefined} b @returns {boolean} */
-export function intersectAabbOptionalInto(out, a, b) {
-    if (!aabbOverlap(a, b)) return false;
-    return intersectAabbInto(out, a, b);
 }
 export function intersectAabbOptionalF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     if (!aabbOverlapF32(aBuf, aO, bBuf, bO)) return false;
