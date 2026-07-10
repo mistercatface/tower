@@ -8,6 +8,7 @@ import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overla
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
+const GRAB_DRAG_ANGULAR_DAMP = 4;
 const REFERENCE_GRAB_INERTIA = (() => {
     const body = { shape: { type: "Circle", radius: 4 }, radius: 4, strategy: { isKinetic: true, density: 0.007958 } };
     body.mass = kineticMassFromFootprint(body);
@@ -205,7 +206,7 @@ function resolveGrabDragAnchor(prop, world) {
 export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
     const activeRunIds = [];
-    const tickPull = (prop, run) => {
+    const tickPull = (prop, run, dtMs) => {
         const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
         const rollConfig = getKineticRollConfig(prop);
         const anchor = worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, GRAB_ANCHOR_SCRATCH);
@@ -232,7 +233,9 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const fx = (dx / dist) * power;
             const fy = (dy / dist) * power;
             const torque = rx * fy - ry * fx;
-            prop.angularVelocity = (prop.angularVelocity ?? 0) + torque * (1 / REFERENCE_GRAB_INERTIA) * GRAB_DRAG_TORQUE_GAIN;
+            const dtScale = dtMs / 16;
+            prop.angularVelocity = (prop.angularVelocity ?? 0) + torque * (1 / REFERENCE_GRAB_INERTIA) * GRAB_DRAG_TORQUE_GAIN * dtScale;
+            prop.angularVelocity *= Math.exp(-GRAB_DRAG_ANGULAR_DAMP * (dtMs / 1000));
             wakeKineticBody(prop);
         }
     };
@@ -263,7 +266,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const idx = activeRunIds.indexOf(prop.id);
             if (idx >= 0) activeRunIds.splice(idx, 1);
         },
-        tickWorld() {
+        tickWorld(dtMs = 16) {
             for (let i = activeRunIds.length - 1; i >= 0; i--) {
                 const propId = activeRunIds[i];
                 const prop = state.entityRegistry.getLive(propId);
@@ -272,7 +275,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
                     activeRunIds.splice(i, 1);
                     continue;
                 }
-                tickPull(prop, run);
+                tickPull(prop, run, dtMs);
             }
         },
         appendOverlayCommands(commands, prop) {

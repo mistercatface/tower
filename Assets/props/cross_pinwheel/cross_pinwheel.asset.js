@@ -5,7 +5,6 @@ export default {
     physics: {
         isKinetic: true,
         pinned: true,
-        friction: 0.02,
         density: 0.0005,
         wallPhysics: { restitution: 0.5, friction: 0.1 },
         collisionParts: [

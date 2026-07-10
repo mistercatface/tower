@@ -71,6 +71,15 @@ describe("cross pinwheel prop", () => {
         assert.notEqual(pinwheel.facing, originalFacing);
     });
 
+    it("angular velocity decays after spin", () => {
+        const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
+        pinwheel.angularVelocity = 5;
+        for (let i = 0; i < 120; i++) pinwheel.tickPropSubstep(16);
+        assert.ok(Math.abs(pinwheel.angularVelocity) < 0.1, `spin should decay, got ${pinwheel.angularVelocity}`);
+        assert.equal(pinwheel.vx, 0);
+        assert.equal(pinwheel.vy, 0);
+    });
+
     it("can customize dimensions and resizes shape parts", () => {
         const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
         
