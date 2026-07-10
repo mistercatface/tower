@@ -4,7 +4,7 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, writebackActiveKineticBodySlab, PHYSICS_F32, P_OUT_PEN_OVERLAP } from "../Libraries/Physics/physics.js";
 import { mockWallSegment } from "./harness/wallSegmentHarness.js";
 
 const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });
@@ -23,9 +23,9 @@ describe("link capsule wall projection", () => {
         const by = 14;
         const radius = 4;
         assert.ok(minDistanceSegmentToWall(ax, ay, bx, by, wall) < radius);
-        const pen = getLinkCapsuleSegmentPenetration(ax, ay, bx, by, radius, wall);
-        assert.ok(pen);
-        assert.ok(pen.overlap > 0);
+        const isPenetrating = getLinkCapsuleSegmentPenetration(ax, ay, bx, by, radius, wall);
+        assert.ok(isPenetrating);
+        assert.ok(PHYSICS_F32[P_OUT_PEN_OVERLAP] > 0);
     });
     it("projects a wedged distance link out of a wall segment", () => {
         const wall = mockWallSegment(58, 4, 16);

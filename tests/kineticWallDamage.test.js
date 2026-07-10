@@ -227,7 +227,7 @@ describe("kinetic wall damage", () => {
         const frame = kineticSpatial.begin(state);
         assert.ok(frame._kineticBodies.includes(shard));
         runKineticPhysics(
-            { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
+            { frame, world: { obstacleGrid: state.obstacleGrid, worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
             100,
             kineticIntegrateHooks((prop, subDt) => prop.tickPropSubstep(subDt))
         );

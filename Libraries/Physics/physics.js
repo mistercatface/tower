@@ -19,6 +19,36 @@ export function resolveBodyRadius(body, fallback = LIBRARY_DEFAULT_BODY_RADIUS) 
     if (shape?.type === "Circle") return shape.radius;
     return body._baseRadius ?? body.radius ?? fallback;
 }
+export const PHYSICS_F32 = new Float32Array(64);
+export const P_VEC_A = 0;
+export const P_VEC_B = 2;
+export const P_VEC_C = 4;
+export const P_VEC_D = 6;
+export const P_AABB_A = 8;
+export const P_AABB_B = 12;
+export const P_OUT_MASS_AREA = 16;
+export const P_OUT_MASS_CX = 17;
+export const P_OUT_MASS_CY = 18;
+export const P_OUT_MASS_INERTIA = 19;
+export const P_OUT_RAY_ENTER = 20;
+export const P_OUT_RAY_EXIT = 21;
+export const P_OUT_RAY_NX = 22;
+export const P_OUT_RAY_NY = 23;
+export const P_OUT_PEN_NX = 24;
+export const P_OUT_PEN_NY = 25;
+export const P_OUT_PEN_OVERLAP = 26;
+export const P_OUT_PEN_DIST_SQ = 27;
+export const P_OUT_DIST_X = 28;
+export const P_OUT_DIST_Y = 29;
+export const P_OUT_DIST_T = 30;
+export const P_OUT_DIST_DIST = 31;
+export const P_OUT_SOLVE_ITERS = 32;
+export const P_OUT_SOLVE_IMPULSE = 33;
+export const P_OUT_SOLVE_REST = 34;
+export const P_OUT_WALL_X = 35;
+export const P_OUT_WALL_Y = 36;
+export const P_OUT_WALL_Z = 37;
+export const P_OUT_WALL_IDX = 38;
 /**
  * Library baseline — games override via `gameDefinition.collisionSettings`, project via Config.
  */
@@ -61,16 +91,32 @@ function collisionPartMassProperties(shape) {
     if (shape.type === "Circle") {
         const r = shape.radius;
         const area = Math.PI * r * r;
-        return { area, cx: 0, cy: 0, inertiaPerArea: (r * r) / 2 };
+        PHYSICS_F32[P_OUT_MASS_AREA] = area;
+        PHYSICS_F32[P_OUT_MASS_CX] = 0;
+        PHYSICS_F32[P_OUT_MASS_CY] = 0;
+        PHYSICS_F32[P_OUT_MASS_INERTIA] = (r * r) / 2;
+        return;
     }
     const verts = shape.vertices;
     const area = Math.abs(polygonSignedArea2D(verts));
-    if (area < 1e-10) return { area: 0, cx: 0, cy: 0, inertiaPerArea: 0 };
+    if (area < 1e-10) {
+        PHYSICS_F32[P_OUT_MASS_AREA] = 0;
+        PHYSICS_F32[P_OUT_MASS_CX] = 0;
+        PHYSICS_F32[P_OUT_MASS_CY] = 0;
+        PHYSICS_F32[P_OUT_MASS_INERTIA] = 0;
+        return;
+    }
     const { cx, cy } = polygonCentroid2D(verts);
-    return { area, cx, cy, inertiaPerArea: polygonSecondMomentAboutCentroid2D(verts) / area };
+    PHYSICS_F32[P_OUT_MASS_AREA] = area;
+    PHYSICS_F32[P_OUT_MASS_CX] = cx;
+    PHYSICS_F32[P_OUT_MASS_CY] = cy;
+    PHYSICS_F32[P_OUT_MASS_INERTIA] = polygonSecondMomentAboutCentroid2D(verts) / area;
 }
 function compoundInertiaFactor(parts) {
-    if (parts.length === 1) return collisionPartMassProperties(parts[0]).inertiaPerArea;
+    if (parts.length === 1) {
+        collisionPartMassProperties(parts[0]);
+        return PHYSICS_F32[P_OUT_MASS_INERTIA];
+    }
     let totalArea = 0;
     let cx = 0;
     let cy = 0;
@@ -78,7 +124,11 @@ function compoundInertiaFactor(parts) {
     const partCentroids = [];
     const partInertiaPerArea = [];
     for (let i = 0; i < parts.length; i++) {
-        const { area, cx: px, cy: py, inertiaPerArea } = collisionPartMassProperties(parts[i]);
+        collisionPartMassProperties(parts[i]);
+        const area = PHYSICS_F32[P_OUT_MASS_AREA];
+        const px = PHYSICS_F32[P_OUT_MASS_CX];
+        const py = PHYSICS_F32[P_OUT_MASS_CY];
+        const inertiaPerArea = PHYSICS_F32[P_OUT_MASS_INERTIA];
         partAreas.push(area);
         partCentroids.push({ px, py });
         partInertiaPerArea.push(inertiaPerArea);
@@ -904,7 +954,6 @@ export function computePolygonWallContact(entity, normalX, normalY, overlap, cx 
     return { cx: !isNaN(cx) ? cx : entity.x - normalX * overlap, cy: !isNaN(cy) ? cy : entity.y - normalY * overlap };
 }
 export const BROADPHASE_KIND = { Circle: 1, Obb: 2 };
-const entityWorldAabbOut = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 function obbWorldAabbInto(out, cx, cy, hx, hy, cos, sin) {
     let minX = Infinity;
     let minY = Infinity;
@@ -1005,8 +1054,8 @@ export function markBroadphaseDirty(entity) {
     entity._broadphaseDirty = true;
 }
 export function entityContainedInAabb(entity, outer) {
-    entityWorldAabbInto(entityWorldAabbOut, entity);
-    return outer.minX <= entityWorldAabbOut.minX && outer.minY <= entityWorldAabbOut.minY && outer.maxX >= entityWorldAabbOut.maxX && outer.maxY >= entityWorldAabbOut.maxY;
+    entityWorldAabbInto(entity);
+    return outer.minX <= PHYSICS_F32[P_AABB_A] && outer.minY <= PHYSICS_F32[P_AABB_A + 1] && outer.maxX >= PHYSICS_F32[P_AABB_A + 2] && outer.maxY >= PHYSICS_F32[P_AABB_A + 3];
 }
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
@@ -1313,9 +1362,9 @@ function resolveAgainstWallSegmentsCore(body, shape, segments, motion, { restitu
             let satCollisionFound = false;
             if (shape.type === "Circle") {
                 if (!circleSegmentPenetration(bx, by, shape.radius, seg, motion.approachVx, motion.approachVy)) continue;
-                normalX = SEGMENT_PEN[0];
-                normalY = SEGMENT_PEN[1];
-                overlap = SEGMENT_PEN[2];
+                normalX = PHYSICS_F32[P_OUT_PEN_NX];
+                normalY = PHYSICS_F32[P_OUT_PEN_NY];
+                overlap = PHYSICS_F32[P_OUT_PEN_OVERLAP];
             } else if (shape.type === "Polygon") {
                 const segShape = ensureWallSegmentPolygonShape(seg);
                 if (!satCheckCollision(bx, by, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
@@ -1449,8 +1498,6 @@ function getPoolItem() {
     if (itemPoolUseCount >= itemPool.length) itemPool.push({ entry: null, bodyA: null, bodyB: null });
     return itemPool[itemPoolUseCount++];
 }
-const anchorAWorld = { x: 0, y: 0 };
-const anchorBWorld = { x: 0, y: 0 };
 function orderIslandConstraintItems(items) {
     if (items.length <= 1) return items;
     orderUniquePhysIds.length = 0;
@@ -1745,9 +1792,13 @@ function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWall
         return false;
     }
     const dynSlab = kineticDynamicSlab;
-    const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
-    const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
-    collectLinkOverlappingWalls(wa.x, wa.y, wb.x, wb.y, capsuleRadius, islandWalls, linkWallsOut);
+    worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+    const waX = PHYSICS_F32[P_VEC_A];
+    const waY = PHYSICS_F32[P_VEC_A + 1];
+    const wbX = PHYSICS_F32[P_VEC_B];
+    const wbY = PHYSICS_F32[P_VEC_B + 1];
+    collectLinkOverlappingWalls(waX, waY, wbX, wbY, capsuleRadius, islandWalls, linkWallsOut);
     return linkWallsOut.length > 0;
 }
 function translateLinkAwayFromSlabWall(physIdA, physIdB, normalX, normalY, overlap) {
@@ -1765,15 +1816,22 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
     const dynSlab = kineticDynamicSlab;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
-        const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
-        const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
+        worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+        worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+        const waX = PHYSICS_F32[P_VEC_A];
+        const waY = PHYSICS_F32[P_VEC_A + 1];
+        const wbX = PHYSICS_F32[P_VEC_B];
+        const wbY = PHYSICS_F32[P_VEC_B + 1];
         let best = null;
         for (let j = 0; j < linkWalls.length; j++) {
             const seg = linkWalls[j];
-            if (!linkSegmentOverlapsWall(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg)) continue;
-            const penetration = getLinkCapsuleSegmentPenetration(wa.x, wa.y, wb.x, wb.y, capsuleRadius, seg, { approachX, approachY });
-            if (!penetration || penetration.overlap <= 0) continue;
-            if (!best || penetration.overlap > best.overlap) best = { ...penetration, segment: seg };
+            if (!linkSegmentOverlapsWall(waX, waY, wbX, wbY, capsuleRadius, seg)) continue;
+            if (getLinkCapsuleSegmentPenetration(waX, waY, wbX, wbY, capsuleRadius, seg, { approachX, approachY })) {
+                const nx = PHYSICS_F32[P_OUT_PEN_NX];
+                const ny = PHYSICS_F32[P_OUT_PEN_NY];
+                const overlap = PHYSICS_F32[P_OUT_PEN_OVERLAP];
+                if (overlap > 0 && (!best || overlap > best.overlap)) best = { normalX: nx, normalY: ny, overlap, segment: seg };
+            }
         }
         if (!best) break;
         translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap);
@@ -1808,10 +1866,14 @@ function projectDistanceConstraint(slab, index) {
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     const dynSlab = kineticDynamicSlab;
-    const wa = worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, anchorAWorld);
-    const wb = worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, anchorBWorld);
-    const dx = wb.x - wa.x;
-    const dy = wb.y - wa.y;
+    worldAnchorFromSlab(slab.bodyA[index], physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(slab.bodyB[index], physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, P_VEC_B);
+    const waX = PHYSICS_F32[P_VEC_A];
+    const waY = PHYSICS_F32[P_VEC_A + 1];
+    const wbX = PHYSICS_F32[P_VEC_B];
+    const wbY = PHYSICS_F32[P_VEC_B + 1];
+    const dx = wbX - waX;
+    const dy = wbY - waY;
     const dist = Math.hypot(dx, dy);
     if (dist < 1e-8) return;
     const nx = dx / dist;
@@ -1916,10 +1978,14 @@ function warmStartDistanceConstraint(slab, i, dynSlab) {
     const bodyB = slab.bodyB[i];
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const wa = worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
-    const wb = worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
-    const dx = wb.x - wa.x;
-    const dy = wb.y - wa.y;
+    worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+    const waX = PHYSICS_F32[P_VEC_A];
+    const waY = PHYSICS_F32[P_VEC_A + 1];
+    const wbX = PHYSICS_F32[P_VEC_B];
+    const wbY = PHYSICS_F32[P_VEC_B + 1];
+    const dx = wbX - waX;
+    const dy = wbY - waY;
     const dist = Math.hypot(dx, dy);
     let nx = 0,
         ny = 0,
@@ -1935,10 +2001,10 @@ function warmStartDistanceConstraint(slab, i, dynSlab) {
         const invMassB = slab.static.invMassB[i];
         const invIA = slab.static.invIA[i];
         const invIB = slab.static.invIB[i];
-        const rax = wa.x - dynSlab.x[physIdA];
-        const ray = wa.y - dynSlab.y[physIdA];
-        const rbx = wb.x - dynSlab.x[physIdB];
-        const rby = wb.y - dynSlab.y[physIdB];
+        const rax = waX - dynSlab.x[physIdA];
+        const ray = waY - dynSlab.y[physIdA];
+        const rbx = wbX - dynSlab.x[physIdB];
+        const rby = wbY - dynSlab.y[physIdB];
         rAn = rax * ny - ray * nx;
         rBn = rbx * ny - rby * nx;
         k = invMassA + invMassB + rAn * rAn * invIA + rBn * rBn * invIB;
@@ -2047,9 +2113,13 @@ export function measureConstraintSlabMaxError() {
         if (slab.type[i] === "angle") continue;
         const bodyA = slab.bodyA[i];
         const bodyB = slab.bodyB[i];
-        const wa = worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, anchorAWorld);
-        const wb = worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, anchorBWorld);
-        const error = Math.abs(Math.hypot(wb.x - wa.x, wb.y - wa.y) - slab.static.restLength[i]);
+        worldAnchorFromSlab(bodyA, slab.physIdA[i], slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+        worldAnchorFromSlab(bodyB, slab.physIdB[i], slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+        const waX = PHYSICS_F32[P_VEC_A];
+        const waY = PHYSICS_F32[P_VEC_A + 1];
+        const wbX = PHYSICS_F32[P_VEC_B];
+        const wbY = PHYSICS_F32[P_VEC_B + 1];
+        const error = Math.abs(Math.hypot(wbX - waX, wbY - waY) - slab.static.restLength[i]);
         if (error > max) max = error;
     }
     return max;
@@ -2257,24 +2327,32 @@ export function kineticPairTopologyStale(spatialFrame) {
     if (!session) return false;
     return gatherGen !== getKineticTopologyGeneration(session);
 }
-const distAnchorA = { x: 0, y: 0 };
-const distAnchorB = { x: 0, y: 0 };
-export function worldAnchorFromBody(body, localX, localY, dst) {
+export function worldAnchorFromBody(body, localX, localY, out = {}) {
     const angle = body.facing ?? body.angle ?? 0;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    return transformPoint2DInto(dst, body.x, body.y, localX, localY, cos, sin);
+    out.x = body.x + localX * cos - localY * sin;
+    out.y = body.y + localX * sin + localY * cos;
+    return out;
 }
-export function worldAnchorFromSlab(body, physId, localX, localY, slab, dst) {
+export function worldAnchorFromBodyIntoF32(body, localX, localY, destOffset) {
     const angle = body.facing ?? body.angle ?? 0;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    return transformPoint2DInto(dst, slab.x[physId], slab.y[physId], localX, localY, cos, sin);
+    PHYSICS_F32[destOffset] = body.x + localX * cos - localY * sin;
+    PHYSICS_F32[destOffset + 1] = body.y + localX * sin + localY * cos;
+}
+export function worldAnchorFromSlab(body, physId, localX, localY, slab, destOffset) {
+    const angle = body.facing ?? body.angle ?? 0;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    PHYSICS_F32[destOffset] = slab.x[physId] + localX * cos - localY * sin;
+    PHYSICS_F32[destOffset + 1] = slab.y[physId] + localX * sin + localY * cos;
 }
 export function distanceBetweenAnchors(bodyA, anchorA, bodyB, anchorB) {
-    worldAnchorFromBody(bodyA, anchorA.x, anchorA.y, distAnchorA);
-    worldAnchorFromBody(bodyB, anchorB.x, anchorB.y, distAnchorB);
-    return Math.hypot(distAnchorB.x - distAnchorA.x, distAnchorB.y - distAnchorA.y);
+    worldAnchorFromBodyIntoF32(bodyA, anchorA.x, anchorA.y, P_VEC_A);
+    worldAnchorFromBodyIntoF32(bodyB, anchorB.x, anchorB.y, P_VEC_B);
+    return Math.hypot(PHYSICS_F32[P_VEC_B] - PHYSICS_F32[P_VEC_A], PHYSICS_F32[P_VEC_B + 1] - PHYSICS_F32[P_VEC_A + 1]);
 }
 export const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_FEATURE_STRIDE = 1024;
@@ -2608,7 +2686,9 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
         if (maxImpulse <= contactImpulseEpsilon) break;
         if (restingCount === count && count > 0) break;
     }
-    return { innerIterations: iterationsRun, maxImpulse: solveMaxImpulse, restingCount };
+    PHYSICS_F32[P_OUT_SOLVE_ITERS] = iterationsRun;
+    PHYSICS_F32[P_OUT_SOLVE_IMPULSE] = solveMaxImpulse;
+    PHYSICS_F32[P_OUT_SOLVE_REST] = restingCount;
 }
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
@@ -2689,9 +2769,8 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     if (contacts.count === 0) return contacts;
     precomputeKineticContacts(spatialFrame, contacts);
     const restingCount = warmStartKineticContacts(contacts);
-    const solveStats = solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
-    solveStats.contactCount = contacts.count;
-    tick.world.kinetic.kineticContactStats = solveStats;
+    solveKineticContactVelocities(contacts, INNER_SOLVE_ITERATIONS, restingCount);
+    tick.world.kinetic.kineticContactStats = { innerIterations: PHYSICS_F32[P_OUT_SOLVE_ITERS], maxImpulse: PHYSICS_F32[P_OUT_SOLVE_IMPULSE], restingCount: PHYSICS_F32[P_OUT_SOLVE_REST], contactCount: contacts.count };
     storeKineticWarmStartCache(contacts);
     applyKineticContactWake(contacts, spatialFrame);
     for (let i = 0; i < contacts.count; i++) sleepContactBuffer.add(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
@@ -2969,7 +3048,6 @@ function applyFloorBeltForces(world, spatialFrame, dtMs) {
         applyKineticAcceleration(entity, ax, ay, dtSec);
     }
 }
-const PORTAL_QUERY_BOUNDS = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, exitCx: 0, exitCy: 0, tx: 0, ty: 0 };
 function portalTeleportHandler(body) {
     const t = PORTAL_TICK;
@@ -3003,23 +3081,24 @@ function applyFloorPortalTeleports(world, spatialFrame) {
     const pairs = grid.activePortalPairs;
     const eg = spatialFrame.entityGrid;
     const half = grid.cellHalfSize;
-    PORTAL_TICK.grid = grid;
-    PORTAL_TICK.spatialFrame = spatialFrame;
     for (let i = 0; i < count; i++) {
         const exitIdx = pairs[i * 2];
         const entryIdx = pairs[i * 2 + 1];
         const ex = grid.gridCenterXByIdx(exitIdx);
         const ey = grid.gridCenterYByIdx(exitIdx);
-        PORTAL_QUERY_BOUNDS.minX = ex - half;
-        PORTAL_QUERY_BOUNDS.maxX = ex + half;
-        PORTAL_QUERY_BOUNDS.minY = ey - half;
-        PORTAL_QUERY_BOUNDS.maxY = ey + half;
+        PHYSICS_F32[P_AABB_A] = ex - half;
+        PHYSICS_F32[P_AABB_A + 2] = ex + half;
+        PHYSICS_F32[P_AABB_A + 1] = ey - half;
+        PHYSICS_F32[P_AABB_A + 3] = ey + half;
+        PORTAL_TICK.grid = grid;
+        PORTAL_TICK.spatialFrame = spatialFrame;
         PORTAL_TICK.exitIdx = exitIdx;
         PORTAL_TICK.exitCx = ex;
         PORTAL_TICK.exitCy = ey;
         PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
         PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
-        eg.forEachInBounds(PORTAL_QUERY_BOUNDS, null, ++eg.queryGen, portalTeleportHandler);
+        const queryBounds = { minX: PHYSICS_F32[P_AABB_A], minY: PHYSICS_F32[P_AABB_A + 1], maxX: PHYSICS_F32[P_AABB_A + 2], maxY: PHYSICS_F32[P_AABB_A + 3] };
+        eg.forEachInBounds(queryBounds, null, ++eg.queryGen, portalTeleportHandler);
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {
@@ -3405,42 +3484,31 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
  * @param {number} [restitution]
  */
 /** Ground-plane corners of a wall segment prism (rotated square). */
-const LOCAL_SCRATCH = { localX: 0, localY: 0, halfX: 0, halfY: 0 };
-const ROTATE_SCRATCH_A = { x: 0, y: 0 };
-const ROTATE_SCRATCH_B = { x: 0, y: 0 };
-const CLOSEST_POINT_SCRATCH = { x: 0, y: 0 };
-const CIRCLE_SCRATCH = { x: 0, y: 0, radius: 0 };
-const LOCAL_APPROACH_SCRATCH = { x: 0, y: 0 };
-const LOCAL_BOX_SURFACE_SCRATCH = { x: 0, y: 0 };
-const PUSH_NORMAL_SCRATCH = { x: 0, y: 0 };
-const INSIDE_APPROACH_SCRATCH = { nx: 0, ny: 0, dist: 0 };
-const WORLD_NORMAL_SCRATCH = { x: 0, y: 0 };
-const SEGMENT_PEN = new Float32Array(4);
-export function toSegmentLocal(segment, x, y, out = LOCAL_SCRATCH) {
+export function toSegmentLocal(segment, x, y) {
     const dx = x - segment.x;
     const dy = y - segment.y;
     const cos = Math.cos(-segment.angle);
     const sin = Math.sin(-segment.angle);
     const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
     const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
-    out.halfX = halfX;
-    out.halfY = halfY;
-    out.localX = dx * cos - dy * sin;
-    out.localY = dx * sin + dy * cos;
-    return out;
+    PHYSICS_F32[P_VEC_A] = halfX;
+    PHYSICS_F32[P_VEC_A + 1] = halfY;
+    PHYSICS_F32[P_VEC_B] = dx * cos - dy * sin;
+    PHYSICS_F32[P_VEC_B + 1] = dx * sin + dy * cos;
 }
-export function closestPointOnSegment(wall, x, y, out = CLOSEST_POINT_SCRATCH) {
-    const dx = x - wall.x;
-    const dy = y - wall.y;
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
+export function closestPointOnSegment(wall, x, y) {
     const halfX = (wall.width !== undefined ? wall.width : wall.size) * 0.5;
     const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
-    let localX = dx * cos - dy * sin;
-    let localY = dx * sin + dy * cos;
-    localX = Math.max(-halfX, Math.min(halfX, localX));
-    localY = Math.max(-halfY, Math.min(halfY, localY));
-    return transformPoint2DInto(out, wall.x, wall.y, localX, localY, cos, -sin);
+    const cos = Math.cos(-wall.angle);
+    const sin = Math.sin(-wall.angle);
+    const localX = (x - wall.x) * cos - (y - wall.y) * sin;
+    const localY = (x - wall.x) * sin + (y - wall.y) * cos;
+    const closestLocalX = Math.max(-halfX, Math.min(localX, halfX));
+    const closestLocalY = Math.max(-halfY, Math.min(localY, halfY));
+    const invCos = Math.cos(wall.angle);
+    const invSin = Math.sin(wall.angle);
+    PHYSICS_F32[P_OUT_DIST_X] = wall.x + closestLocalX * invCos - closestLocalY * invSin;
+    PHYSICS_F32[P_OUT_DIST_Y] = wall.y + closestLocalX * invSin + closestLocalY * invCos;
 }
 export function distanceSqToSegment(segment, x, y) {
     const dx = x - segment.x;
@@ -3515,14 +3583,22 @@ export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
     const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
     const cos = Math.cos(-wall.angle);
     const sin = Math.sin(-wall.angle);
-    const a = rotateXYInto(ROTATE_SCRATCH_A, ax - wall.x, ay - wall.y, cos, sin);
-    const b = rotateXYInto(ROTATE_SCRATCH_B, bx - wall.x, by - wall.y, cos, sin);
-    return minDistanceSegmentToAabb(a.x, a.y, b.x, b.y, -halfX, -halfY, halfX, halfY);
+    PHYSICS_F32[P_VEC_A] = (ax - wall.x) * cos - (ay - wall.y) * sin;
+    PHYSICS_F32[P_VEC_A + 1] = (ax - wall.x) * sin + (ay - wall.y) * cos;
+    PHYSICS_F32[P_VEC_B] = (bx - wall.x) * cos - (by - wall.y) * sin;
+    PHYSICS_F32[P_VEC_B + 1] = (bx - wall.x) * sin + (by - wall.y) * cos;
+    return minDistanceSegmentToAabb(PHYSICS_F32[P_VEC_A], PHYSICS_F32[P_VEC_A + 1], PHYSICS_F32[P_VEC_B], PHYSICS_F32[P_VEC_B + 1], -halfX, -halfY, halfX, halfY);
 }
 /** Closest point on path segment AB to wall box — used for push direction. */
 export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
     const segLen = Math.hypot(bx - ax, by - ay);
-    if (segLen < 0.01) return { x: ax, y: ay, t: 0, dist: distanceToSegment(wall, ax, ay) };
+    if (segLen < 0.01) {
+        PHYSICS_F32[P_OUT_DIST_X] = ax;
+        PHYSICS_F32[P_OUT_DIST_Y] = ay;
+        PHYSICS_F32[P_OUT_DIST_T] = 0;
+        PHYSICS_F32[P_OUT_DIST_DIST] = distanceToSegment(wall, ax, ay);
+        return;
+    }
     const samples = Math.min(256, Math.max(16, Math.ceil(segLen)));
     let bestT = 0;
     let bestDist = Infinity;
@@ -3549,7 +3625,10 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
     const t = (lo + hi) / 2;
     const x = ax + (bx - ax) * t;
     const y = ay + (by - ay) * t;
-    return { x, y, t, dist: distanceToSegment(wall, x, y) };
+    PHYSICS_F32[P_OUT_DIST_X] = x;
+    PHYSICS_F32[P_OUT_DIST_Y] = y;
+    PHYSICS_F32[P_OUT_DIST_T] = t;
+    PHYSICS_F32[P_OUT_DIST_DIST] = distanceToSegment(wall, x, y);
 }
 export function circleIntersectsSegment(circle, segment) {
     const radiusSq = circle.radius * circle.radius;
@@ -3563,13 +3642,15 @@ export function circleIntersectsSegment(circle, segment) {
  * @param {number} halfX
  * @param {number} halfY
  */
-function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY, out = LOCAL_BOX_SURFACE_SCRATCH) {
+function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY) {
     const insideX = localX > -halfX && localX < halfX;
     const insideY = localY > -halfY && localY < halfY;
     if (!insideX || !insideY) {
-        out.x = Math.max(-halfX, Math.min(localX, halfX));
-        out.y = Math.max(-halfY, Math.min(localY, halfY));
-        return out;
+        const outX = Math.max(-halfX, Math.min(localX, halfX));
+        const outY = Math.max(-halfY, Math.min(localY, halfY));
+        PHYSICS_F32[P_VEC_A] = outX;
+        PHYSICS_F32[P_VEC_A + 1] = outY;
+        return;
     }
     const distToLeft = localX + halfX;
     const distToRight = halfX - localX;
@@ -3577,13 +3658,14 @@ function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY, out = LOCAL
     const distToBottom = halfY - localY;
     const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
     const eps = 1e-6;
-    out.x = localX;
-    out.y = localY;
-    if (Math.abs(minDist - distToLeft) <= eps) out.x = -halfX;
-    if (Math.abs(minDist - distToRight) <= eps) out.x = halfX;
-    if (Math.abs(minDist - distToTop) <= eps) out.y = -halfY;
-    if (Math.abs(minDist - distToBottom) <= eps) out.y = halfY;
-    return out;
+    let outX = localX;
+    let outY = localY;
+    if (Math.abs(minDist - distToLeft) <= eps) outX = -halfX;
+    if (Math.abs(minDist - distToRight) <= eps) outX = halfX;
+    if (Math.abs(minDist - distToTop) <= eps) outY = -halfY;
+    if (Math.abs(minDist - distToBottom) <= eps) outY = halfY;
+    PHYSICS_F32[P_VEC_A] = outX;
+    PHYSICS_F32[P_VEC_A + 1] = outY;
 }
 /**
  * Outward push normal for a point on an axis-aligned box surface (segment-local space).
@@ -3593,7 +3675,7 @@ function closestPointOnLocalBoxSurface(localX, localY, halfX, halfY, out = LOCAL
  * @param {number} halfX
  * @param {number} halfY
  */
-function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY, out = PUSH_NORMAL_SCRATCH) {
+function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY) {
     const eps = 1e-4;
     let nx = 0;
     let ny = 0;
@@ -3603,13 +3685,12 @@ function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY, out = PUSH_NORMAL_SCR
     if (Math.abs(sy - halfY) < eps) ny += 1;
     const len = Math.hypot(nx, ny);
     if (len < 1e-8) {
-        out.x = 0;
-        out.y = 1;
-        return out;
+        PHYSICS_F32[P_VEC_B] = sx > 0 ? 1 : -1;
+        PHYSICS_F32[P_VEC_B + 1] = 0;
+        return;
     }
-    out.x = nx / len;
-    out.y = ny / len;
-    return out;
+    PHYSICS_F32[P_VEC_B] = nx / len;
+    PHYSICS_F32[P_VEC_B + 1] = ny / len;
 }
 /**
  * When the circle center sits inside the tile, pick the face it is moving toward.
@@ -3621,7 +3702,7 @@ function pushNormalAtLocalBoxSurface(sx, sy, halfX, halfY, out = PUSH_NORMAL_SCR
  * @param {number} approachX — segment-local
  * @param {number} approachY
  */
-function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, approachY, out = INSIDE_APPROACH_SCRATCH) {
+function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, approachY) {
     let bestNx = 0;
     let bestNy = 0;
     let bestDist = 0;
@@ -3663,24 +3744,22 @@ function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, a
         bestDist = bottomDist;
     }
     if (found) {
-        out.nx = bestNx;
-        out.ny = bestNy;
-        out.dist = bestDist;
-        return out;
+        PHYSICS_F32[P_VEC_C] = bestNx;
+        PHYSICS_F32[P_VEC_C + 1] = bestNy;
+        PHYSICS_F32[P_VEC_C + 2] = bestDist;
+        return;
     }
-    const surface = closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
-    const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, halfX, halfY);
-    out.nx = fn.x;
-    out.ny = fn.y;
-    out.dist = Math.min(leftDist, rightDist, topDist, bottomDist);
-    return out;
+    closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
+    pushNormalAtLocalBoxSurface(PHYSICS_F32[P_VEC_A], PHYSICS_F32[P_VEC_A + 1], halfX, halfY);
+    PHYSICS_F32[P_VEC_C] = PHYSICS_F32[P_VEC_B];
+    PHYSICS_F32[P_VEC_C + 1] = PHYSICS_F32[P_VEC_B + 1];
+    PHYSICS_F32[P_VEC_C + 2] = Math.min(leftDist, rightDist, topDist, bottomDist);
 }
-/** @param {object} segment @param {number} worldX @param {number} worldY */
-/** @param {object} segment @param {number} worldVx @param {number} worldVy */
-function approachToSegmentLocal(segment, worldVx, worldVy, out = LOCAL_APPROACH_SCRATCH) {
+function approachToSegmentLocal(segment, worldVx, worldVy) {
     const cos = Math.cos(-segment.angle);
     const sin = Math.sin(-segment.angle);
-    return rotateXYInto(out, worldVx, worldVy, cos, sin);
+    PHYSICS_F32[P_VEC_D] = worldVx * cos - worldVy * sin;
+    PHYSICS_F32[P_VEC_D + 1] = worldVx * sin + worldVy * cos;
 }
 /**
  * @param {object} circle
@@ -3688,27 +3767,45 @@ function approachToSegmentLocal(segment, worldVx, worldVy, out = LOCAL_APPROACH_
  * @param {{ approachX?: number, approachY?: number }} [options] — world-space motion hint for face selection
  */
 export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segment, { approachX = 0, approachY = 0 } = {}) {
-    if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return null;
-    const closest = findClosestPointOnPathToWall(ax, ay, bx, by, segment);
-    if (circleSegmentPenetration(closest.x, closest.y, capsuleRadius, segment, approachX, approachY)) return { normalX: SEGMENT_PEN[0], normalY: SEGMENT_PEN[1], overlap: SEGMENT_PEN[2], distanceSq: SEGMENT_PEN[3] };
-    if (closest.dist >= capsuleRadius) return null;
-    const wallPoint = closestPointOnSegment(segment, closest.x, closest.y);
-    let normalX = closest.x - wallPoint.x;
-    let normalY = closest.y - wallPoint.y;
+    if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return false;
+    findClosestPointOnPathToWall(ax, ay, bx, by, segment);
+    const closestX = PHYSICS_F32[P_OUT_DIST_X];
+    const closestY = PHYSICS_F32[P_OUT_DIST_Y];
+    const closestDist = PHYSICS_F32[P_OUT_DIST_DIST];
+    if (circleSegmentPenetration(closestX, closestY, capsuleRadius, segment, approachX, approachY)) return true;
+    if (closestDist >= capsuleRadius) return false;
+    closestPointOnSegment(segment, closestX, closestY);
+    const wallPointX = PHYSICS_F32[P_OUT_DIST_X];
+    const wallPointY = PHYSICS_F32[P_OUT_DIST_Y];
+    let normalX = closestX - wallPointX;
+    let normalY = closestY - wallPointY;
     const len = Math.hypot(normalX, normalY);
-    if (len < 1e-8) return null;
+    if (len < 1e-8) return false;
     normalX /= len;
     normalY /= len;
-    return { normalX, normalY, overlap: capsuleRadius - closest.dist, distanceSq: closest.dist * closest.dist };
+    PHYSICS_F32[P_OUT_PEN_NX] = normalX;
+    PHYSICS_F32[P_OUT_PEN_NY] = normalY;
+    PHYSICS_F32[P_OUT_PEN_OVERLAP] = capsuleRadius - closestDist;
+    PHYSICS_F32[P_OUT_PEN_DIST_SQ] = closestDist * closestDist;
+    return true;
 }
 function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approachY = 0) {
-    const { localX, localY, halfX, halfY } = toSegmentLocal(segment, cx, cy);
-    const localApproach = approachToSegmentLocal(segment, approachX, approachY);
-    const hasApproach = Math.hypot(localApproach.x, localApproach.y) > 1e-6;
+    const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
+    const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
+    const cos = Math.cos(-segment.angle);
+    const sin = Math.sin(-segment.angle);
+    const localX = (cx - segment.x) * cos - (cy - segment.y) * sin;
+    const localY = (cx - segment.x) * sin + (cy - segment.y) * cos;
+    approachToSegmentLocal(segment, approachX, approachY);
+    const localApproachX = PHYSICS_F32[P_VEC_D];
+    const localApproachY = PHYSICS_F32[P_VEC_D + 1];
+    const hasApproach = Math.hypot(localApproachX, localApproachY) > 1e-6;
     const strictlyInside = localX > -halfX && localX < halfX && localY > -halfY && localY < halfY;
-    const surface = closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
-    const toCenterX = localX - surface.x;
-    const toCenterY = localY - surface.y;
+    closestPointOnLocalBoxSurface(localX, localY, halfX, halfY);
+    const surfaceX = PHYSICS_F32[P_VEC_A];
+    const surfaceY = PHYSICS_F32[P_VEC_A + 1];
+    const toCenterX = localX - surfaceX;
+    const toCenterY = localY - surfaceY;
     const distanceSq = toCenterX * toCenterX + toCenterY * toCenterY;
     const radiusSq = radius * radius;
     if (distanceSq > radiusSq + 1e-4) return false;
@@ -3716,14 +3813,14 @@ function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approa
     let localNormY;
     let overlap;
     if (strictlyInside && hasApproach) {
-        const face = pushNormalFromInsideApproach(localX, localY, halfX, halfY, localApproach.x, localApproach.y);
-        localNormX = face.nx;
-        localNormY = face.ny;
-        overlap = radius - face.dist;
+        pushNormalFromInsideApproach(localX, localY, halfX, halfY, localApproachX, localApproachY);
+        localNormX = PHYSICS_F32[P_VEC_C];
+        localNormY = PHYSICS_F32[P_VEC_C + 1];
+        overlap = radius - PHYSICS_F32[P_VEC_C + 2];
     } else if (distanceSq <= 1e-10) {
-        const fn = pushNormalAtLocalBoxSurface(surface.x, surface.y, halfX, halfY);
-        localNormX = fn.x;
-        localNormY = fn.y;
+        pushNormalAtLocalBoxSurface(surfaceX, surfaceY, halfX, halfY);
+        localNormX = PHYSICS_F32[P_VEC_B];
+        localNormY = PHYSICS_F32[P_VEC_B + 1];
         overlap = radius;
     } else {
         const distance = Math.sqrt(distanceSq);
@@ -3733,11 +3830,10 @@ function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approa
     }
     const invCos = Math.cos(segment.angle);
     const invSin = Math.sin(segment.angle);
-    const worldNormal = rotateXYInto(WORLD_NORMAL_SCRATCH, localNormX, localNormY, invCos, invSin);
-    SEGMENT_PEN[0] = worldNormal.x;
-    SEGMENT_PEN[1] = worldNormal.y;
-    SEGMENT_PEN[2] = overlap;
-    SEGMENT_PEN[3] = distanceSq;
+    PHYSICS_F32[P_OUT_PEN_NX] = localNormX * invCos - localNormY * invSin;
+    PHYSICS_F32[P_OUT_PEN_NY] = localNormX * invSin + localNormY * invCos;
+    PHYSICS_F32[P_OUT_PEN_OVERLAP] = overlap;
+    PHYSICS_F32[P_OUT_PEN_DIST_SQ] = distanceSq;
     return true;
 }
 /**
@@ -3804,9 +3900,14 @@ export function rayExpandedLocalAabbHit(ox, oy, dx, dy, half, radius) {
  */
 export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDist = Infinity) {
     const half = segment.size / 2;
-    const { localX, localY } = toSegmentLocal(segment, ox, oy);
-    const localDir = worldVectorToSegmentLocal(dx, dy, segment.angle);
-    const t = rayExpandedLocalAabbHit(localX, localY, localDir.x, localDir.y, half, radius);
+    toSegmentLocal(segment, ox, oy);
+    const localX = PHYSICS_F32[P_VEC_B];
+    const localY = PHYSICS_F32[P_VEC_B + 1];
+    const cos = Math.cos(-segment.angle);
+    const sin = Math.sin(-segment.angle);
+    const localDirX = dx * cos - dy * sin;
+    const localDirY = dx * sin + dy * cos;
+    const t = rayExpandedLocalAabbHit(localX, localY, localDirX, localDirY, half, radius);
     if (t == null || t > maxDist) return null;
     const wx = ox + dx * t;
     const wy = oy + dy * t;
@@ -3816,7 +3917,7 @@ export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDi
         hit = circleSegmentPenetration(wx + dx * nudge, wy + dy * nudge, radius, segment, dx, dy);
     }
     if (!hit) return null;
-    return { t, x: wx, y: wy, nx: SEGMENT_PEN[0], ny: SEGMENT_PEN[1], segment };
+    return { t, x: wx, y: wy, nx: PHYSICS_F32[P_OUT_PEN_NX], ny: PHYSICS_F32[P_OUT_PEN_NY], segment };
 }
 /**
  * Closest wall touch along a ray across many segments.

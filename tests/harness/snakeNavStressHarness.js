@@ -1,4 +1,5 @@
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
+import { createKineticSession } from "../../GameState/KineticSession.js";
 import {
     buildReplanParams,
     buildNavReachableMaskFromSeed,
@@ -48,6 +49,7 @@ function createSnakeEditorState(seed) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
+        kinetic: createKineticSession(),
         sandbox: {
             ...new SandboxWorldState(),
             controller: { session },
