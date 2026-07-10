@@ -4,7 +4,6 @@ import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { createDefaultSandboxBehaviors, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
-import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID } from "../../Libraries/Sandbox/dragBehaviors.js";
 
 export function createSandboxDragTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
@@ -49,6 +48,19 @@ export function createSandboxDragTestState() {
     return world;
 }
 
+export function createGrabDragTestState() {
+    const state = createSandboxDragTestState();
+    const behaviors = createDefaultSandboxBehaviors(state);
+    state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
+    return state;
+}
+
+export function registerGrabDragTestProp(state, prop) {
+    state.worldProps.push(prop);
+    state.entityRegistry.register("worldProp", prop);
+    return prop;
+}
+
 export function createSandboxDragTestController(state) {
     const eventListeners = {};
     const canvas = {
@@ -71,5 +83,3 @@ export function createSandboxDragTestController(state) {
     controller.register();
     return { controller, behaviorById, eventListeners, canvas };
 }
-
-export { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID };

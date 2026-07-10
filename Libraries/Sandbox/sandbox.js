@@ -10,7 +10,7 @@ import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
 import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
-import { appendOverlayWireLink, overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, overlayCachedCircleFillStroke, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
+import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
@@ -18,8 +18,7 @@ import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import { markLabViewDirty } from "../../Apps/Editor/ui/preview.js";
 import propCatalog from "../../Assets/props/index.js";
-import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, buildDragLaunchBehavior, sandboxAssetDragInteract, resolveDragInteractionBehavior, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
-export { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, DEFAULT_DRAG_INTERACTION_MODE, sandboxAssetDragInteract, assetSupportsDragLaunch, resolveDragInteractionBehaviorId, resolveDragInteractionBehavior, getDragLaunchConfig, getGrabDragConfig, createDragLaunchAim, updateDragLaunchAim, getDragLaunchPreview, releaseDragLaunch, resolveDragLaunchPullRatio, computeLaunchPower, buildDragLaunchAimLineContext, getDragLaunchAimLine, applyDragLaunchVelocity, createDragLaunchInteraction, dragLaunchAimLineContextForState, createDragLaunchBehaviors, createGrabDragBehavior, appendDragLaunchOverlayCommands, buildDragLaunchBehavior } from "./dragBehaviors.js";
+import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, buildDragLaunchBehavior, assetSupportsDragLaunch, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
@@ -53,12 +52,6 @@ export class SandboxEntityMetaStore {
     clearActiveBehaviorId(entityId) {
         const meta = this.get(entityId);
         if (meta) delete meta.activeBehaviorId;
-    }
-    getBehaviorOverrides(entityId) {
-        return this.get(entityId)?.behaviorOverrides;
-    }
-    setBehaviorOverrides(entityId, overrides) {
-        this.ensure(entityId).behaviorOverrides = overrides;
     }
     isCameraTarget(entityId) {
         return this.cameraTargetId === entityId;
@@ -142,21 +135,8 @@ export function isSingleWorldPropSpawnAsset(asset) {
 function syncSandboxBehaviorById(state, behaviors) {
     state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
 }
-export function resolveSandboxBehaviors(asset, state, prop = null) {
-    const byId = state.sandbox.behaviorById;
-    if (!byId) throw new Error("resolveSandboxBehaviors requires state.sandbox.behaviorById — mount sandbox controller or call syncSandboxBehaviorById");
-    const behaviorOverrides = prop ? state.sandbox.entityMeta.getBehaviorOverrides(prop.id) : null;
-    if (behaviorOverrides) {
-        const stamped = [];
-        for (const key of Object.keys(behaviorOverrides)) if (byId.has(key)) stamped.push(key);
-        if (stamped.length) return stamped;
-    }
-    if (Array.isArray(asset?.sandbox?.behaviors)) {
-        const listed = asset.sandbox.behaviors.filter((id) => byId.has(id));
-        if (listed.length > 0) return listed;
-    }
-    if (sandboxAssetDragInteract(asset)) return [];
-    throw new Error(`resolveSandboxBehaviors: asset ${asset?.id ?? "unknown"} missing sandbox.behaviors`);
+export function isSandboxPointerSelectableProp(asset) {
+    return assetSupportsDragLaunch(asset) || isSpawnerProp(asset);
 }
 const BOUNDS_SHAPE_OPTIONS = [
     { value: "rect", label: "Rectangle" },
@@ -1491,7 +1471,7 @@ export function createSandboxSession(state) {
             return FROM_SELECTION[s.kind](state, s, { getLiveProp: (id) => registry().getLive(id) });
         },
         isWallPlaceMode: () => placePaletteKey.startsWith("wall:"),
-        isMapGenPlaceMode: () => placePaletteKey.startsWith("mapGen:"),
+        isMapGenPlaceMode: () => placePaletteKey.startsWith("gen:"),
         listPlacedSceneItems() {
             const ctx = { placement, listPlacedProps, listPlacedFloorBelts };
             const items = [];
@@ -1805,7 +1785,6 @@ export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettin
     const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
     return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason };
 }
-const FLOW_OVERLAY_DIR_SCRATCH = { x: 0, y: 0 };
 const FLOW_DIR_SCRATCH = { x: 0, y: 0 };
 function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
@@ -2275,16 +2254,8 @@ export class FollowCamera {
         this._pickResolverFn = null;
     }
 }
-function constraintWireColor(strain) {
-    if (strain < 0.05) return "rgba(100, 255, 140, 0.85)";
-    if (strain < 0.2) return "rgba(255, 220, 80, 0.9)";
-    return "rgba(255, 80, 80, 0.95)";
-}
-const overlayAnchorA = { x: 0, y: 0 };
-const overlayAnchorB = { x: 0, y: 0 };
 const FLOOR_BELT_SELECTION_BOUNDS = createAabb();
 const WALL_CELL_SELECTION_BOUNDS = createAabb();
-const PROP_TILE_CELL_BOUNDS = createAabb();
 const PROP_SELECTION_STROKE = "rgba(255, 252, 245, 0.32)";
 const PROP_SELECTION_DASH = [4, 4];
 const SELECTION_RING_PAD = 4;
@@ -2509,8 +2480,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
                     }
                 }
                 const asset = propCatalog[hit.type];
-                const allowed = resolveSandboxBehaviors(asset, state, hit);
-                if (allowed.length > 0 || sandboxAssetDragInteract(asset) || isSpawnerProp(asset) || asset?.sandbox?.dragLaunch != null) {
+                if (isSandboxPointerSelectableProp(asset)) {
                     if (e.ctrlKey || e.metaKey) {
                         session.togglePropInSelection(hit.id);
                         return "consume";
@@ -2758,12 +2728,6 @@ function appendSandboxWorldPropInspectorFields(body, prop, { state, onChange }) 
     appendTranslateFields(body, { x: prop.x, y: prop.y, onPatch: (pos) => patch(() => applyWorldPropPosition(prop, pos)) });
     appendNumberField(body, "Facing (°)", { value: Math.round(((prop.facing ?? 0) * 180) / Math.PI), step: 5, onChange: (degrees) => patch(() => applyWorldPropFacing(prop, degrees)) });
 }
-const EDGE_SIDE_OPTIONS = [
-    { value: "0", label: formatGridWallEdgeSideLabel(0) },
-    { value: "1", label: formatGridWallEdgeSideLabel(1) },
-    { value: "2", label: formatGridWallEdgeSideLabel(2) },
-    { value: "3", label: formatGridWallEdgeSideLabel(3) },
-];
 function maxWallHeightLevel(state) {
     return state.worldSurfaces.settings.maxWallHeightLevel;
 }
@@ -3277,7 +3241,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         session,
         getDragInteractionMode: () => state.sandbox.dragInteractionMode,
         setDragInteractionMode: (mode) => {
-            state.sandbox.dragInteractionMode = mode === GRAB_DRAG_BEHAVIOR_ID ? GRAB_DRAG_BEHAVIOR_ID : DRAG_LAUNCH_BEHAVIOR_ID;
+            state.sandbox.dragInteractionMode = normalizeDragInteractionMode(mode);
             resetBehaviors();
             session.sync();
         },

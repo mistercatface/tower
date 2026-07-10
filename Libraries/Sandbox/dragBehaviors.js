@@ -16,7 +16,7 @@ export function getDragLaunchConfig(asset) {
     return asset.sandbox.dragLaunch;
 }
 export function getGrabDragConfig(asset) {
-    return asset.sandbox.grabDrag ?? asset.sandbox.dragLaunch;
+    return asset.sandbox.dragLaunch;
 }
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
     return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
@@ -151,6 +151,15 @@ export function buildDragLaunchBehavior(state, entry) {
     return behavior;
 }
 export const DEFAULT_DRAG_INTERACTION_MODE = DRAG_LAUNCH_BEHAVIOR_ID;
+export function normalizeDragInteractionMode(mode) {
+    return mode === GRAB_DRAG_BEHAVIOR_ID ? GRAB_DRAG_BEHAVIOR_ID : DRAG_LAUNCH_BEHAVIOR_ID;
+}
+export function toggleDragInteractionMode(mode) {
+    return normalizeDragInteractionMode(mode) === GRAB_DRAG_BEHAVIOR_ID ? DRAG_LAUNCH_BEHAVIOR_ID : GRAB_DRAG_BEHAVIOR_ID;
+}
+export function dragInteractionModeLabel(mode) {
+    return normalizeDragInteractionMode(mode) === GRAB_DRAG_BEHAVIOR_ID ? "Drag: Grab" : "Drag: Launch";
+}
 export function sandboxAssetDragInteract(asset) {
     return asset?.sandbox?.dragInteract === true;
 }
