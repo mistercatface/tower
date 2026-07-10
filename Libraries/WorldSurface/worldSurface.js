@@ -1,6 +1,6 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { aabbCenterX, aabbCenterY, createAabb, expandPointsAabbInto, minCornerAabbInto, aabbFromF32, aabbWidth, aabbHeight, intersectAabbOptionalInto, ENGINE_F32, S_AABB } from "../Math/math.js";
-import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, cellIdxToChunkKey } from "../Spatial/spatial.js";
+import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
 import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfaceProfileIds, surfaceProfileKnown } from "../../Config/procedural/profiles.js";
@@ -265,8 +265,8 @@ export class SurfaceBitmapCache {
         };
         const disposeItem = (item) => {
             if (isReused(item)) return;
-            if (item instanceof ImageBitmap) item.close();
-            else if (item instanceof OffscreenCanvas) releaseOffscreenCanvas(item);
+            if (typeof ImageBitmap !== "undefined" && item instanceof ImageBitmap) item.close();
+            else if (typeof OffscreenCanvas !== "undefined" && item instanceof OffscreenCanvas) releaseOffscreenCanvas(item);
         };
         if (Array.isArray(oldVal)) for (const item of oldVal) disposeItem(item);
         else disposeItem(oldVal);
@@ -920,18 +920,31 @@ export class WorldSurfaceEngine {
     clearBakeCache() {
         this.surfaceCache.clear();
     }
-    invalidateGridBounds(idx, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
-        const cols = obstacleGrid.cols;
-        const startKey = idx === null || idx === undefined ? packChunkKey(0, 0) : cellIdxToChunkKey(idx, obstacleGrid, cellsPerChunk);
-        const endKey = idx === null || idx === undefined ? packChunkKey(((cols - 1) / cellsPerChunk) | 0, ((obstacleGrid.rows - 1) / cellsPerChunk) | 0) : startKey;
+    invalidateGridBounds(region, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
-        forEachChunkKeyInRange(startKey, endKey, (chunkKey) => {
+        const clearChunk = (chunkKey) => {
             const profileId = resolveChunkSurfaceProfileIdAtKey(obstacleGrid, chunkKey, this.activeSurfaceProfileId);
             for (const zLevel of zLevels) {
                 this.surfaceCache.delete(this.cacheKeys.staticRoofMaskKey(chunkKey, zLevel));
                 this.surfaceCache.delete(this.cacheKeys.staticRoofDrawKey(chunkKey, profileId, zLevel));
             }
-        });
+        };
+        if (region === null || region === undefined) {
+            const cols = obstacleGrid.cols;
+            const startKey = packChunkKey(0, 0);
+            const endKey = packChunkKey(((cols - 1) / cellsPerChunk) | 0, ((obstacleGrid.rows - 1) / cellsPerChunk) | 0);
+            forEachChunkKeyInRange(startKey, endKey, clearChunk);
+            return;
+        }
+        if (typeof region === "number") {
+            clearChunk(cellIdxToChunkKey(region, obstacleGrid, cellsPerChunk));
+            return;
+        }
+        if (region.startCol != null) {
+            forEachChunkKeyInCellBounds(region, cellsPerChunk, clearChunk);
+            return;
+        }
+        throw new Error("invalidateGridBounds region must be null, cell index, or CellBounds");
     }
     buildGroundChunkPayload(state, chunkKey, profileId, zLevel = 0, boundsSample = null) {
         let minX, minY, centerX, centerY, tileChunkKey;

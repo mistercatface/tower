@@ -22,15 +22,21 @@ import { createKineticSession } from "../GameState/KineticSession.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { kineticIntegrateHooks } from "./harness/kineticTickHarness.js";
+import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wallSurfaceInvalidateHarness.js";
+import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridBake.js";
+import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
-async function createWallDamageTestState() {
+async function createWallDamageTestState(opts = {}) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
     const navigation = await createWorkerNavigation(grid);
+    const worldSurfaces = opts.realSurfaces
+        ? createRealWorldSurfaces("base")
+        : { settings: gameWorldSurfaceSettings, activeSurfaceProfileId: "base", invalidateGridBounds: () => {} };
     const state = {
         ...createSandboxSessionState(),
         obstacleGrid: grid,
-        worldSurfaces: { settings: gameWorldSurfaceSettings, activeSurfaceProfileId: "base", invalidateGridBounds: () => {} },
+        worldSurfaces,
         nav: navigation,
         worldProps: [],
         entityRegistry: new EntityRegistry(),
@@ -202,6 +208,42 @@ describe("kinetic wall damage", () => {
         assert.ok(shards.every((s) => Math.hypot(s.vx ?? 0, s.vy ?? 0) > 5));
         assertNoWallChunkWorldProps(state);
         
+        terminateWorkerNavigation(state.nav);
+    });
+    it("voxel shatter invalidates roof cache for the cleared cell bounds (no ghost roof)", async () => {
+        const state = await createWallDamageTestState({ realSurfaces: true });
+        state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        stampVoxel(state.obstacleGrid, 3, 3, 2);
+        stampVoxel(state.obstacleGrid, 5, 5, 2);
+        const clearedIdx = worldIdxAtCell(state.obstacleGrid, 3, 3);
+        const neighborIdx = worldIdxAtCell(state.obstacleGrid, 5, 5);
+        const zLevels = state.obstacleGrid.collectStaticStructureZLevels();
+        assert.ok(zLevels.length > 0);
+        const zLevel = zLevels[0];
+        const seeded = seedStaticRoofCacheKeys(state.worldSurfaces, state.obstacleGrid, clearedIdx, zLevel);
+        assert.ok(state.worldSurfaces.surfaceCache.get(seeded.maskKey));
+        assert.ok(state.worldSurfaces.surfaceCache.get(seeded.drawKey));
+        const revisionBefore = state.obstacleGrid.wallGridRevision;
+        const segment = { gridIdx: clearedIdx, isStaticGridProxy: true, isEdgeRail: false };
+        resolveKineticWallDamage(state, { id: 101, type: "crate", vx: 560, vy: 0 }, wallDebrisTestFrame(), {
+            resolve() {
+                return {
+                    collided: true,
+                    hits: [{ approachDot: -560, normalX: 1, normalY: 0, segment, contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 }],
+                };
+            },
+        });
+        applyPendingWallDamage(state);
+        assert.ok(!cellIsStaticWall(state.obstacleGrid, clearedIdx));
+        assert.ok(cellIsStaticWall(state.obstacleGrid, neighborIdx));
+        assert.ok(state.obstacleGrid.wallGridRevision > revisionBefore);
+        assert.equal(state.worldSurfaces.surfaceCache.get(seeded.maskKey), null);
+        assert.equal(state.worldSurfaces.surfaceCache.get(seeded.drawKey), null);
+        const faces = new StrideFloatList(VOXEL_FACE_STRIDE);
+        collectVoxelWallFacesInAabbFlat(state.obstacleGrid, { minX: 0, minY: 0, maxX: 128, maxY: 128 }, faces);
+        for (let i = 0; i < faces.length; i++) {
+            assert.notEqual(faces.data[i * VOXEL_FACE_STRIDE + VOXEL_FACE.gridIdx], clearedIdx);
+        }
         terminateWorkerNavigation(state.nav);
     });
     it("wall debris re-registers in begin and moves under kinetic physics", async () => {

@@ -2577,20 +2577,17 @@ export function createDeferredGridWallCommit(state) {
 /**
  * Schedule one worker nav resync after grid edits (walls, belts, boundaries).
  * Grid writes must bump the relevant epoch channels before calling this.
- *
- * @param {object} state
- * @param {number} idx
- * @param {{ invalidateSurfaces?: boolean, fullNavSync?: boolean }} [options]
+ * `region` is null (full grid when fullNavSync), a cell index, or CellBounds.
  */
-export function commitGridNavEdit(state, idx, { invalidateSurfaces = true, fullNavSync = false } = {}) {
+export function commitGridNavEdit(state, region, { invalidateSurfaces = true, fullNavSync = false } = {}) {
     const grid = state.obstacleGrid;
-    if (!fullNavSync && idx === null) return Promise.resolve();
+    if (!fullNavSync && region === null) return Promise.resolve();
     if (invalidateSurfaces && state.worldSurfaces)
-        if (fullNavSync || idx === null) state.worldSurfaces.invalidateGridBounds({ startCol: 0, endCol: grid.cols - 1, startRow: 0, endRow: grid.rows - 1 }, grid);
-        else state.worldSurfaces.invalidateGridBounds(idx, grid);
+        if (fullNavSync || region === null) state.worldSurfaces.invalidateGridBounds(null, grid);
+        else state.worldSurfaces.invalidateGridBounds(region, grid);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     const nav = state.nav;
-    return nav.commitEdit(idx, { fullNavSync });
+    return nav.commitEdit(region, { fullNavSync });
 }
 export function commitGridNavEditUnion(state, ...indices) {
     const parts = indices.filter((x) => typeof x === "number");

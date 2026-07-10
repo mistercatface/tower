@@ -153,8 +153,10 @@ export function pickRandomReachableTargetWorld(state, startIdx, rng, prop) {
     const first = (rng() * pickOrder) | 0;
     for (let attempt = 0; attempt < pickOrder; attempt++) {
         const clickIdx = reachable[(first + attempt) % pickOrder];
-        const snapped = snapMoveTargetToCellCenter(grid, { x: grid.gridCenterXByIdx(clickIdx), y: grid.gridCenterYByIdx(clickIdx) });
-        const replan = replanCellIndicesFromWorldCoords(grid, prop.x, prop.y, snapped.worldX, snapped.worldY);
+        snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, grid, grid.gridCenterXByIdx(clickIdx), grid.gridCenterYByIdx(clickIdx));
+        const moveX = ENGINE_F32[N_OUT_XY];
+        const moveY = ENGINE_F32[N_OUT_XY + 1];
+        const replan = replanCellIndicesFromWorldCoords(grid, prop.x, prop.y, moveX, moveY);
         if (!mask[replan.targetIdx]) continue;
         return {
             idx: replan.targetIdx,
@@ -162,8 +164,8 @@ export function pickRandomReachableTargetWorld(state, startIdx, rng, prop) {
             onBelt: FloorBelt.isBeltAtIdx(grid, clickIdx),
             worldX: replan.steerX,
             worldY: replan.steerY,
-            moveX: snapped.worldX,
-            moveY: snapped.worldY,
+            moveX,
+            moveY,
         };
     }
     return null;

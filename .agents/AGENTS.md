@@ -35,3 +35,13 @@ Warnings (`--warn`) are baseline debt — do not introduce new failures.
 - No new file splits for organization only — extend existing modules unless a real subsystem boundary.
 - No fallbacks without explicit user approval — see `.cursor/rules/no-fallbacks.mdc`.
 - Import from owning modules directly — minimal barrels only at package entry (`minimal-barrels.mdc`).
+
+## 5. Grid edit → surface invalidate contract
+
+`commitGridNavEdit(state, region, …)` and `WorldSurfaceEngine.invalidateGridBounds(region, grid)` share one `region` shape:
+
+- `null` — full grid (with `fullNavSync` / full surface clear)
+- `number` — single cell index
+- CellBounds (`startCol`/`endCol`/`startRow`/`endRow`) — inclusive rectangle (wall batches, shatter flush)
+
+Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch(bounds)` → this path; do not stub `invalidateGridBounds` as a no-op when asserting roof/draw teardown after shatter.

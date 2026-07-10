@@ -1,4 +1,5 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/engineF32.js";
+import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -4073,10 +4074,16 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
     }
     wakeKineticBody(prop);
 }
-export function snapMoveTargetToCellCenter(grid, world) {
-    const idx = grid.worldToIdx(world.x, world.y);
-    if (idx === -1) return { worldX: world.x, worldY: world.y, idx: null };
-    return { worldX: grid.gridCenterXByIdx(idx), worldY: grid.gridCenterYByIdx(idx), idx };
+export function snapMoveTargetToCellCenter(buf, o, grid, worldX, worldY) {
+    const idx = grid.worldToIdx(worldX, worldY);
+    if (idx === -1) {
+        buf[o] = worldX;
+        buf[o + 1] = worldY;
+        return -1;
+    }
+    buf[o] = grid.gridCenterXByIdx(idx);
+    buf[o + 1] = grid.gridCenterYByIdx(idx);
+    return idx;
 }
 export function getKineticRollConfig(prop, overrides = null) {
     let base = prop._cachedRollBaseConfig;

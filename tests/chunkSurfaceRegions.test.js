@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  resolveChunkSurfaceProfileIdAtKey, packChunkKey  } from "../Libraries/Spatial/spatial.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { resolveChunkSurfaceProfileIdAtKey, packChunkKey, cellIdxToChunkKey } from "../Libraries/Spatial/spatial.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { setChunkSurfaceProfileEdit } from "../Libraries/Spatial/spatial.js";
 
@@ -79,5 +79,47 @@ describe("chunk surface regions", () => {
         assert.equal(invalidated.idx, null);
         assert.equal(invalidated.stateArg, grid);
         assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 1), "base"), "east");
+    });
+
+    it("invalidateGridBounds accepts null, cell index, and CellBounds; rejects bad shapes", () => {
+        const settings = createGameWorldSurfaceSettings();
+        const engine = new WorldSurfaceEngine(settings);
+        engine.activeSurfaceProfileId = "base";
+        const grid = new WorldObstacleGrid(16);
+        grid.rebuildFixed(0, 0, 256, 256);
+        grid.grid[4 + 4 * grid.cols] = 1;
+        grid.grid[12 + 12 * grid.cols] = 1;
+        const zLevels = grid.collectStaticStructureZLevels();
+        assert.ok(zLevels.length > 0);
+        const zLevel = zLevels[0];
+        const idxA = 4 + 4 * grid.cols;
+        const idxB = 12 + 12 * grid.cols;
+        const chunkA = cellIdxToChunkKey(idxA, grid, settings.cellsPerChunk);
+        const chunkB = cellIdxToChunkKey(idxB, grid, settings.cellsPerChunk);
+        assert.notEqual(chunkA, chunkB);
+        const maskA = engine.cacheKeys.staticRoofMaskKey(chunkA, zLevel);
+        const maskB = engine.cacheKeys.staticRoofMaskKey(chunkB, zLevel);
+        const drawA = engine.cacheKeys.staticRoofDrawKey(chunkA, "base", zLevel);
+        engine.surfaceCache.set(maskA, { seeded: true });
+        engine.surfaceCache.set(maskB, { seeded: true });
+        engine.surfaceCache.set(drawA, { seeded: true });
+
+        engine.invalidateGridBounds(idxA, grid);
+        assert.equal(engine.surfaceCache.get(maskA), null);
+        assert.equal(engine.surfaceCache.get(drawA), null);
+        assert.ok(engine.surfaceCache.get(maskB));
+
+        engine.surfaceCache.set(maskA, { seeded: true });
+        engine.invalidateGridBounds({ startCol: 0, endCol: 7, startRow: 0, endRow: 7 }, grid);
+        assert.equal(engine.surfaceCache.get(maskA), null);
+        assert.ok(engine.surfaceCache.get(maskB));
+
+        engine.surfaceCache.set(maskA, { seeded: true });
+        engine.surfaceCache.set(maskB, { seeded: true });
+        engine.invalidateGridBounds(null, grid);
+        assert.equal(engine.surfaceCache.get(maskA), null);
+        assert.equal(engine.surfaceCache.get(maskB), null);
+
+        assert.throws(() => engine.invalidateGridBounds({ foo: 1 }, grid), /region must be null/);
     });
 });

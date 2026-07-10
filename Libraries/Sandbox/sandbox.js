@@ -1961,8 +1961,8 @@ const FLOW_GROUND_NAV_CONFIG = {
         return { targetWorld: null, dragging: false, lastTopologyKey: "" };
     },
     applyMoveTarget(state, run, world, prop) {
-        const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
-        run.targetWorld = { x: snapped.worldX, y: snapped.worldY };
+        snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, world.x, world.y);
+        run.targetWorld = { x: ENGINE_F32[N_OUT_XY], y: ENGINE_F32[N_OUT_XY + 1] };
         snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
         state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
     },
@@ -2012,11 +2012,10 @@ const HPA_GROUND_NAV_CONFIG = {
     },
     applyMoveTarget(state, run, world, prop, forceReset) {
         const grid = state.obstacleGrid;
-        const snapped = snapMoveTargetToCellCenter(grid, world);
-        const nextIdx = snapped.idx;
+        const nextIdx = snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, grid, world.x, world.y);
         const cellChanged = nextIdx !== run.targetCellIdx;
-        run.targetWorld = { x: snapped.worldX, y: snapped.worldY };
-        run.targetCellIdx = nextIdx;
+        run.targetWorld = { x: ENGINE_F32[N_OUT_XY], y: ENGINE_F32[N_OUT_XY + 1] };
+        run.targetCellIdx = nextIdx === -1 ? null : nextIdx;
         if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
     },
     clearRunTarget(state, run) {
