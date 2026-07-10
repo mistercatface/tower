@@ -1,7 +1,7 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
-import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView, queryEntitiesInAabbStrict } from "../../GameState/EntityRegistry.js";
+import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, distanceBetweenAnchors, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, massFromBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabb } from "../Physics/physics.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
@@ -10,7 +10,7 @@ import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, emptyAabb, isEmptyAabb, aabbFromF32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
-import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
+import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
@@ -1430,12 +1430,12 @@ export function createSandboxSession(state) {
         },
         getSpawnBoxWidth: () => spawnBoxWidth,
         setSpawnBoxWidth: (width) => {
-            spawnBoxWidth = Math.max(6, Math.min(128, Math.round(width)));
+            spawnBoxWidth = Math.max(6, Math.min(512, Math.round(width)));
             notifyUi();
         },
         getSpawnBoxHeight: () => spawnBoxHeight,
         setSpawnBoxHeight: (height) => {
-            spawnBoxHeight = Math.max(6, Math.min(128, Math.round(height)));
+            spawnBoxHeight = Math.max(6, Math.min(512, Math.round(height)));
             notifyUi();
         },
         getSpawnBallRadius: (asset) => spawnBallRadius ?? ballRadiusFromAsset(asset),
@@ -2501,7 +2501,12 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
-        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, { tierO: VIEW_TIER.CHUNKS, filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
+        const packed = queryPropIdsInView(state.entityRegistry, viewport, spatialFrame, { tierO: VIEW_TIER.CHUNKS, filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
+        visibleSelectedProps = [];
+        for (let i = 0; i < packed.count; i++) {
+            const prop = state.entityRegistry.getRef(packed.ids[i]);
+            if (prop) visibleSelectedProps.push(prop);
+        }
         for (let i = 0; i < visibleSelectedProps.length; i++) {
             const prop = visibleSelectedProps[i];
             if (!isChainSteeringTarget(state, state.sandbox.entityMeta, prop.id)) continue;
@@ -3105,7 +3110,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         },
         onBoxSelect(bounds) {
             const filter = session.getSelectionTagFilter();
-            const props = queryEntitiesInAabbStrict(state.entityRegistry, bounds, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
+            const props = state.entityRegistry.queryInAabbStrict(bounds, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabb(prop, bounds) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
             selectPropIds(props.map((prop) => prop.id));
         },
     });

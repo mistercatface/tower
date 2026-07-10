@@ -127,9 +127,6 @@ export class SpatialFrameCore {
      * @param {object | null} [exclude]
      * @returns {object[]}
      */
-    collectEntitiesInBounds(bounds, exclude = null) {
-        return this.entityGrid.collectInBounds(bounds, this.wallQuery, exclude);
-    }
     collectEntitiesInBoundsF32(buf, o, exclude = null) {
         return this.entityGrid.collectInBoundsF32(buf, o, this.wallQuery, exclude);
     }
@@ -1779,13 +1776,6 @@ export class EntityGrid {
             break;
         }
     }
-    forEachInBounds(bounds, exclude, queryGen, fn) {
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY] = bounds.minX;
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 1] = bounds.minY;
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 2] = bounds.maxX;
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 3] = bounds.maxY;
-        this.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, exclude, queryGen, fn);
-    }
     forEachInBoundsF32(buf, o, exclude, queryGen, fn) {
         const stamp = queryGen || (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
         const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
@@ -1842,13 +1832,6 @@ export class EntityGrid {
                 }
             }
         }
-    }
-    collectInBounds(bounds, query, exclude = null, { expandForEntityExtents = true } = {}) {
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY] = bounds.minX;
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 1] = bounds.minY;
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 2] = bounds.maxX;
-        ENGINE_F32[ENGINE_BOUNDS_BASE + B_QUERY + 3] = bounds.maxY;
-        return this.collectInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, query, exclude, { expandForEntityExtents });
     }
     collectInBoundsF32(buf, o, query, exclude = null, { expandForEntityExtents = true } = {}) {
         if (expandForEntityExtents) {
@@ -2159,20 +2142,9 @@ export class SpatialQuery {
         if (globalGeneration === 0) globalGeneration = 1;
         this.generation = globalGeneration;
     }
-    /** @param {{ forEachInBounds: Function }} index @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {(entity: object) => void} fn @param {object | null} [exclude] */
-    forEachInIndex(index, bounds, fn, exclude = null) {
-        this.nextQuery();
-        index.forEachInBounds(bounds, exclude, this.generation, fn);
-    }
     forEachInIndexF32(index, buf, o, fn, exclude = null) {
         this.nextQuery();
         index.forEachInBoundsF32(buf, o, exclude, this.generation, fn);
-    }
-    /** @param {{ forEachInBounds: Function }} index @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {object | null} [exclude] @returns {object[]} */
-    collectInIndex(index, bounds, exclude = null) {
-        this._scratch.length = 0;
-        this.forEachInIndex(index, bounds, this._collectFn, exclude);
-        return this._scratch;
     }
     collectInIndexF32(index, buf, o, exclude = null) {
         this._scratch.length = 0;
@@ -3432,9 +3404,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._patchPrimarySeen = new Uint8Array(MAX_ENTITIES);
         this._patchPrimarySeenIds = new Int32Array(MAX_ENTITIES);
     }
-    allocatePhysId() {
-        return allocateEntityEid();
-    }
     get _nextPhysId() {
         return entityEidHighWater();
     }
@@ -3457,7 +3426,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const worldProps = state.worldProps;
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
-            const physId = prop._physId ?? this.allocatePhysId();
+            const physId = prop._physId ?? allocateEntityEid();
             prop._physId = physId;
             if (!entityAlive[physId] || entityRefs[physId] !== prop) {
                 const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
@@ -3472,7 +3441,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         for (let i = 0; i < debrisBodies.length; i++) {
             const body = debrisBodies[i];
             if (body.isDead) continue;
-            const physId = body._physId ?? this.allocatePhysId();
+            const physId = body._physId ?? allocateEntityEid();
             body._physId = physId;
             const flags = body.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
             bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, body.x, body.y, entityCollisionSpan(body), flags);
@@ -3499,9 +3468,9 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (!prop) continue;
             const isNew = prop._physId === undefined;
             if (isNew) {
-                prop._physId = this.allocatePhysId();
+                prop._physId = allocateEntityEid();
                 const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
-                bindEntitySlot(prop._physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, prop.x, prop.y, entityCollisionSpan(prop), flags);
+                bindEntitySlot(prop._physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, prop._poseX !== undefined ? prop._poseX : prop.x, prop._poseY !== undefined ? prop._poseY : prop.y, entityCollisionSpan(prop), flags);
                 this._kineticBodies.push(prop);
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);

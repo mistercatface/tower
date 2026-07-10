@@ -2070,9 +2070,6 @@ function prepareWallChunkPropTextures(state, prop) {
     prop._wallChunkTextureReady = !!textures.ready;
 }
 // Removed parallel sort (now in VisibleDrawQueue.js)
-export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tierO = VIEW_TIER.PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
-    return entityRegistry.queryViewF32({ boundsBuf: viewport.boundsBuf, boundsO: tierO, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
-}
 export function queryPropIdsInView(entityRegistry, viewport, spatialFrame, { tierO = VIEW_TIER.PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
     return entityRegistry.queryViewIds({ boundsBuf: viewport.boundsBuf, boundsO: tierO, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }

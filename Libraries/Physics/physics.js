@@ -1,6 +1,6 @@
 import { ENGINE_F32, ENGINE_PHYS_BASE } from "../Math/math.js";
 import { multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, ENGINE_BOUNDS_BASE, B_QUERY } from "../Math/math.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityRefs } from "../Entity/entitySlots.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -305,32 +305,8 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
     slab.bpKind[physId] = BP_KIND_CIRCLE;
     slab.r[physId] = shape.radius || 0;
 }
-function copyBodyPoseToSlab(body, physId) {
-    entityX[physId] = body._poseX !== undefined ? body._poseX : body.x;
-    entityY[physId] = body._poseY !== undefined ? body._poseY : body.y;
-    entityVx[physId] = body._poseVx !== undefined ? body._poseVx : body.vx;
-    entityVy[physId] = body._poseVy !== undefined ? body._poseVy : body.vy;
-    entityW[physId] = body._poseW !== undefined ? body._poseW : body.angularVelocity;
-}
-function copySlabPoseToBody(physId, body) {
-    const x = entityX[physId];
-    const y = entityY[physId];
-    const vx = entityVx[physId];
-    const vy = entityVy[physId];
-    const w = entityW[physId];
-    if (body._poseX !== undefined) {
-        body._poseX = x;
-        body._poseY = y;
-        body._poseVx = vx;
-        body._poseVy = vy;
-        body._poseW = w;
-    } else {
-        body.x = x;
-        body.y = y;
-        body.vx = vx;
-        body.vy = vy;
-        body.angularVelocity = w;
-    }
+export function writebackActiveKineticBodySlab(bodies) {
+    for (let i = 0; i < bodies.length; i++) writebackEntitySlotPoseToRef(bodies[i]._physId, bodies[i]);
 }
 export function writeStaticKineticSlabSlot(body) {
     const physId = body._physId;
@@ -374,9 +350,6 @@ export function appendActiveKineticBodySlabPhysId(physId) {
     const slab = kineticDynamicSlab;
     slab.activeSlot[physId] = slab.activePhysCount;
     slab.activePhysIds[slab.activePhysCount++] = physId;
-}
-export function writebackActiveKineticBodySlab(bodies) {
-    for (let i = 0; i < bodies.length; i++) copySlabPoseToBody(bodies[i]._physId, bodies[i]);
 }
 export function clampActiveKineticBodySlabSpeed(maxSpeed) {
     const slab = kineticDynamicSlab;
@@ -1100,7 +1073,7 @@ export function snapshotKineticBodySlab(bodies) {
         const entity = bodies[i];
         normalizeKineticBody(entity);
         writeStaticKineticSlabSlot(entity);
-        copyBodyPoseToSlab(entity, entity._physId);
+        syncEntitySlotPoseFromRef(entity._physId, entity);
         stampBroadphaseSlabFromEntity(entity._physId, entity);
     }
 }
@@ -1109,7 +1082,7 @@ export function refreshActiveKineticBodySlabPose(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
         const physId = entity._physId;
-        copyBodyPoseToSlab(entity, entity._physId);
+        syncEntitySlotPoseFromRef(entity._physId, entity);
         if (slab.bpKind[physId] !== BP_KIND_CIRCLE) {
             const angle = entityFacing(entity);
             slab.cos[physId] = Math.cos(angle);
@@ -1675,11 +1648,11 @@ function syncConstraintSlabBodies(slab) {
         const physIdB = slab.physIdB[i];
         if (!constraintPhysSyncSeen.has(physIdA)) {
             constraintPhysSyncSeen.add(physIdA);
-            copyBodyPoseToSlab(slab.bodyA[i], slab.bodyA[i]._physId);
+            syncEntitySlotPoseFromRef(slab.bodyA[i]._physId, slab.bodyA[i]);
         }
         if (!constraintPhysSyncSeen.has(physIdB)) {
             constraintPhysSyncSeen.add(physIdB);
-            copyBodyPoseToSlab(slab.bodyB[i], slab.bodyB[i]._physId);
+            syncEntitySlotPoseFromRef(slab.bodyB[i]._physId, slab.bodyB[i]);
         }
     }
 }
