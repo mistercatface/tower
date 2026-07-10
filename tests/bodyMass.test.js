@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { massFromBody, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
+import { kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
@@ -81,10 +81,6 @@ describe("bodyMass", () => {
         prop.mass = kineticMassFromFootprint(prop);
         assert.ok(Math.abs(prop.mass - kineticMassFromFootprint(prop)) < 1e-6);
         assert.ok(Math.abs(kineticInertiaFromBody(prop) - prop.mass * (polygonSecondMomentAboutCentroid2D(prop.shape.vertices) / triangleArea)) < 1e-6);
-    });
-    it("pinned bodies have zero inverse mass", () => {
-        const body = { mass: 5, strategy: { pinned: true } };
-        assert.equal(body.strategy?.pinned ? 0 : 1 / massFromBody(body), 0);
     });
     it("ball default density matches canonical asset", () => {
         const prop = new WorldProp(0, 0, "ball", 0);

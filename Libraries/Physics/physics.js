@@ -145,9 +145,7 @@ export function normalizeKineticBody(body) {
     if (body.vy === undefined) body.vy = 0;
     if (body.angularVelocity === undefined) body.angularVelocity = 0;
     if (body.mass == null) body.mass = kineticMassFromFootprint(body);
-    const pinned = strategy.pinned === true;
-    body._kineticPinned = pinned ? 1 : 0;
-    body._kineticInvMass = pinned ? 0 : 1 / body.mass;
+    body._kineticInvMass = 1 / body.mass;
     const moment = body.momentOfInertia;
     body._kineticInvI = moment ? 1 / moment : 0;
     body._kineticRestitution = strategy.pairRestitution ?? -1;
@@ -157,7 +155,7 @@ export function normalizeKineticBody(body) {
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
 export const kineticDynamicSlab = { x: new Float32Array(MAX_PHYS_BODIES), y: new Float32Array(MAX_PHYS_BODIES), vx: new Float32Array(MAX_PHYS_BODIES), vy: new Float32Array(MAX_PHYS_BODIES), w: new Float32Array(MAX_PHYS_BODIES), activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
-export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), pinned: new Uint8Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
+export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
@@ -273,7 +271,6 @@ export function writeStaticKineticSlabSlot(body) {
     slab.mass[physId] = body.mass;
     slab.invMass[physId] = body._kineticInvMass;
     slab.invI[physId] = body._kineticInvI;
-    slab.pinned[physId] = body._kineticPinned;
     slab.entityId[physId] = body.id;
     slab.restitution[physId] = body._kineticRestitution;
     slab.friction[physId] = body._kineticFriction;
@@ -302,7 +299,6 @@ export function invalidateKineticSlabSlot(physId) {
     stat.mass[physId] = 0;
     stat.invMass[physId] = 0;
     stat.invI[physId] = 0;
-    stat.pinned[physId] = 0;
     stat.entityId[physId] = -1;
     stat.restitution[physId] = 0;
     stat.friction[physId] = 0;
@@ -865,7 +861,6 @@ function satProjectCircle(out, axisX, axisY, cx, cy, shape) {
  * @param {{ x: number, y: number, _physId?: number }} body — mutated in place
  */
 export function applyPositionCorrection(body, normalX, normalY, overlap) {
-    if (body.strategy?.pinned) return;
     addXY(body, normalX * overlap, normalY * overlap);
 }
 export function applySlabPositionCorrection(physId, normalX, normalY, overlap) {
@@ -877,16 +872,7 @@ export function applySlabPositionCorrection(physId, normalX, normalY, overlap) {
  * @param {{ x: number, y: number }} a — mutated in place
  * @param {{ x: number, y: number }} b — mutated in place
  */
-export function separateAlongNormal(a, b, normalX, normalY, overlap, massA, massB, pinnedA = false, pinnedB = false) {
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        addXY(b, normalX * overlap, normalY * overlap);
-        return;
-    }
-    if (pinnedB) {
-        addXY(a, -normalX * overlap, -normalY * overlap);
-        return;
-    }
+export function separateAlongNormal(a, b, normalX, normalY, overlap, massA, massB) {
     const totalMass = massA + massB;
     addXY(a, -normalX * overlap * (massB / totalMass), -normalY * overlap * (massB / totalMass));
     addXY(b, normalX * overlap * (massA / totalMass), normalY * overlap * (massA / totalMass));
@@ -1298,7 +1284,7 @@ function createSlabWallMotion(physId) {
             return kineticDynamicSlab.w[physId];
         },
         applyPositionCorrection(normalX, normalY, overlap) {
-            if (!kineticStaticSlab.pinned[physId]) applySlabPositionCorrection(physId, normalX, normalY, overlap);
+            applySlabPositionCorrection(physId, normalX, normalY, overlap);
         },
         applyStaticSurfaceImpulse(normalX, normalY, cx, cy, opts) {
             return applyStaticSurfaceImpulseCore(impulse, normalX, normalY, cx, cy, opts);
@@ -1430,7 +1416,7 @@ export const kineticConstraintSlab = {
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     dynamic: { accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS), nx: new Float32Array(MAX_KINETIC_CONSTRAINTS), ny: new Float32Array(MAX_KINETIC_CONSTRAINTS), rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS), rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS), k: new Float32Array(MAX_KINETIC_CONSTRAINTS), error: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
-    static: { anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), massA: new Float32Array(MAX_KINETIC_CONSTRAINTS), massB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS), pinnedA: new Uint8Array(MAX_KINETIC_CONSTRAINTS), pinnedB: new Uint8Array(MAX_KINETIC_CONSTRAINTS), capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
+    static: { anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), massA: new Float32Array(MAX_KINETIC_CONSTRAINTS), massB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS), capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
     entry: new Array(MAX_KINETIC_CONSTRAINTS),
     reset() {
         this.count = 0;
@@ -1594,8 +1580,6 @@ function appendConstraintEntry(slab, item) {
     slab.static.invMassB[idx] = bodyB._kineticInvMass;
     slab.static.invIA[idx] = bodyA._kineticInvI;
     slab.static.invIB[idx] = bodyB._kineticInvI;
-    slab.static.pinnedA[idx] = bodyA._kineticPinned;
-    slab.static.pinnedB[idx] = bodyB._kineticPinned;
     slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
     slab.entry[idx] = item.entry;
 }
@@ -1766,16 +1750,7 @@ function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWall
     collectLinkOverlappingWalls(wa.x, wa.y, wb.x, wb.y, capsuleRadius, islandWalls, linkWallsOut);
     return linkWallsOut.length > 0;
 }
-function translateLinkAwayFromSlabWall(physIdA, physIdB, normalX, normalY, overlap, pinnedA, pinnedB) {
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        applySlabPositionCorrection(physIdB, normalX, normalY, overlap);
-        return;
-    }
-    if (pinnedB) {
-        applySlabPositionCorrection(physIdA, normalX, normalY, overlap);
-        return;
-    }
+function translateLinkAwayFromSlabWall(physIdA, physIdB, normalX, normalY, overlap) {
     applySlabPositionCorrection(physIdA, normalX, normalY, overlap);
     applySlabPositionCorrection(physIdB, normalX, normalY, overlap);
 }
@@ -1785,8 +1760,6 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
     const bodyB = slab.bodyB[i];
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const pinnedA = slab.static.pinnedA[i];
-    const pinnedB = slab.static.pinnedB[i];
     const capsuleRadius = slab.static.capsuleRadius[i];
     const approachX = ((bodyA.vx ?? 0) + (bodyB.vx ?? 0)) * 0.5;
     const approachY = ((bodyA.vy ?? 0) + (bodyB.vy ?? 0)) * 0.5;
@@ -1803,7 +1776,7 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
             if (!best || penetration.overlap > best.overlap) best = { ...penetration, segment: seg };
         }
         if (!best) break;
-        translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap, pinnedA, pinnedB);
+        translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
         spatialFrame.scheduleKineticActivation(bodyA);
@@ -2872,19 +2845,6 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
 export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
     const dynSlab = kineticDynamicSlab;
     const statSlab = kineticStaticSlab;
-    const pinnedA = statSlab.pinned[physIdA];
-    const pinnedB = statSlab.pinned[physIdB];
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        dynSlab.x[physIdB] += nx * overlap;
-        dynSlab.y[physIdB] += ny * overlap;
-        return;
-    }
-    if (pinnedB) {
-        dynSlab.x[physIdA] -= nx * overlap;
-        dynSlab.y[physIdA] -= ny * overlap;
-        return;
-    }
     const massA = statSlab.mass[physIdA];
     const massB = statSlab.mass[physIdB];
     const totalMass = massA + massB;
@@ -2896,17 +2856,6 @@ export function separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap) {
 export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
     const dynSlab = kineticDynamicSlab;
     const statSlab = kineticStaticSlab;
-    const pinnedA = statSlab.pinned[physIdA];
-    const pinnedB = statSlab.pinned[physIdB];
-    if (pinnedA && pinnedB) return;
-    if (pinnedA) {
-        dynSlab.x[physIdB] += overlap;
-        return;
-    }
-    if (pinnedB) {
-        dynSlab.x[physIdA] -= overlap;
-        return;
-    }
     const massA = statSlab.mass[physIdA];
     const massB = statSlab.mass[physIdB];
     const totalMass = massA + massB;

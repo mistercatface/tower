@@ -109,7 +109,7 @@ export function setCirclePropRadius(prop, radius) {
     }
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
-export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, pinned: false, orientToMotion: false };
+export const PROP_STRATEGY_DEFAULTS = { isKinetic: false, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
 export function applyPropBoxFootprint(prop, hx, hy) {
     prop.shape = new PolygonShape(boxLocalFootprint(hx, hy));
     prop.radius = prop.shape.getBoundingRadius();
@@ -344,7 +344,10 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     prop.crossLength = length;
     prop.crossThickness = thickness;
     markBroadphaseDirty(prop);
-    if (prop.strategy?.isKinetic) prop.mass = kineticMassFromFootprint(prop);
+    if (prop.strategy?.isKinetic) {
+        prop.mass = kineticMassFromFootprint(prop);
+        normalizeKineticBody(prop);
+    }
 }
 /**
  * Asset-level fixed child visuals. These are render-only and never become
