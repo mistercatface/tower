@@ -28,7 +28,7 @@ describe("glass debris slab spawn", () => {
         wall.wallChunkProfileId = "stale_profile";
         wall.wallChunkHeightPx = 64;
         wall.height = 48;
-        store._bodies.push(wall);
+        store._pushBody(wall);
         store.remove(wall, { evictKineticProp() {} });
         const glass = store.acquireBody("glass_pane", 10, 10, 0);
         assert.equal(glass.wallChunkProfileId, undefined);

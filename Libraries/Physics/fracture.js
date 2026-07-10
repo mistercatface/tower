@@ -12,11 +12,20 @@ const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
 const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
 export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
 const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
-const SHATTER_SEEDS = [];
+const SHATTER_SEEDS = new Float32Array(GLASS_MAX_SHARDS_PER_SHATTER * 2);
+const sVoronoiCell = { handle: 0, vertCount: 0 };
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
-const MAX_FRACTURE_DEBRIS = FRACTURE_TUNING.burst.maxBurst;
+const MAX_FRACTURE_DEBRIS = 64;
 const MAX_CLIP_VERTS = 512;
 const MAX_KINETIC_DEBRIS = 4096 * 4;
+const debrisStrategyByType = new Map();
+function strategyForDebrisType(type) {
+    let strategy = debrisStrategyByType.get(type);
+    if (strategy) return strategy;
+    strategy = buildWorldPropStrategyFromAsset(propCatalog[type]);
+    debrisStrategyByType.set(type, strategy);
+    return strategy;
+}
 const kineticDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_KINETIC_DEBRIS), y: new Float32Array(MAX_KINETIC_DEBRIS), vx: new Float32Array(MAX_KINETIC_DEBRIS), vy: new Float32Array(MAX_KINETIC_DEBRIS), w: new Float32Array(MAX_KINETIC_DEBRIS), facing: new Float32Array(MAX_KINETIC_DEBRIS), ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 const kineticDebrisFreePool = [];
 let kineticDebrisNextId = 0x50000000;
@@ -137,7 +146,7 @@ class FractureGeomPool {
         }
         return outCount;
     }
-    voronoiCell(flatVerts, vertCount, seeds, seedIndex, seedCount) {
+    voronoiCellInto(out, flatVerts, vertCount, seeds, seedIndex, seedCount) {
         let count = vertCount;
         for (let k = 0; k < count; k++) {
             this.clipA[k * 2] = flatVerts[k * 2];
@@ -154,14 +163,20 @@ class FractureGeomPool {
             const mx = (six + sjx) * 0.5;
             const my = (siy + sjy) * 0.5;
             count = this.clipHalfPlaneInPlace(src, count, mx, my, six - sjx, siy - sjy, dst);
-            if (count < 3) return { handle: 0, vertCount: 0 };
+            if (count < 3) {
+                out.handle = 0;
+                out.vertCount = 0;
+                return out;
+            }
             const tmp = src;
             src = dst;
             dst = tmp;
         }
         const handle = this.borrow(count);
         this.copyVerts(handle, src, count);
-        return { handle, vertCount: count };
+        out.handle = handle;
+        out.vertCount = count;
+        return out;
     }
     centerVertsInPlace(handle, vertCount) {
         const buf = this.buffer(handle);
@@ -182,9 +197,6 @@ class FractureGeomPool {
             if (distSq > maxRadiusSq) maxRadiusSq = distSq;
         }
         ENGINE_F32[F_OUT_RADIUS] = Math.sqrt(maxRadiusSq);
-    }
-    footprintSlice(handle, vertCount) {
-        return this.buffer(handle).slice(0, vertCount * 2);
     }
 }
 class FractureDebrisStore {
@@ -226,16 +238,31 @@ function admitKineticPropsBatch(spatialFrame, props, world) {
     if (!spatialFrame?.admitKineticProps) throw new Error("Kinetic shard admission requires spatial frame admitKineticProps");
     spatialFrame.admitKineticProps(props, world);
 }
-function materializePolygonDebris(stores, debrisIndex) {
+function copyDebrisFootprint(stores, debrisIndex) {
     const debris = stores.debris;
     const handle = debris.vertHandle[debrisIndex];
     const vertCount = debris.vertCount[debrisIndex];
-    const footprintVertices = stores.geom.footprintSlice(handle, vertCount);
-    return { footprintVertices, footprintArea: debris.footprintArea[debrisIndex], boundingRadius: debris.boundingRadius[debrisIndex], centroid: { cx: debris.centroidX[debrisIndex], cy: debris.centroidY[debrisIndex] } };
+    const src = stores.geom.buffer(handle);
+    const n = vertCount * 2;
+    const footprintVertices = new Float32Array(n);
+    for (let i = 0; i < n; i++) footprintVertices[i] = src[i];
+    return footprintVertices;
+}
+function materializePolygonDebris(stores, debrisIndex) {
+    const debris = stores.debris;
+    return { footprintVertices: copyDebrisFootprint(stores, debrisIndex), footprintArea: debris.footprintArea[debrisIndex], boundingRadius: debris.boundingRadius[debrisIndex], centroid: { cx: debris.centroidX[debrisIndex], cy: debris.centroidY[debrisIndex] } };
 }
 function releaseDebrisGeomHandles(stores, start, count) {
     const debris = stores.debris;
     for (let i = start; i < start + count; i++) if (debris.vertHandle[i]) stores.geom.release(debris.vertHandle[i]);
+}
+function dropShatterSeed(seeds, seedIndex, seedCount) {
+    const last = seedCount - 1;
+    if (seedIndex < last) {
+        seeds[seedIndex * 2] = seeds[last * 2];
+        seeds[seedIndex * 2 + 1] = seeds[last * 2 + 1];
+    }
+    return last;
 }
 class KineticDebrisBody {
     constructor(store) {
@@ -262,6 +289,7 @@ class KineticDebrisBody {
         this._fractureCooldown = 0;
         this._neighborEidCount = 0;
         this._neighborsFrameId = -1;
+        this._listIndex = -1;
     }
     get x() {
         return kineticDebrisSlab.x[this._row];
@@ -352,6 +380,10 @@ class KineticDebrisStore {
     list() {
         return this._bodies;
     }
+    _pushBody(body) {
+        body._listIndex = this._bodies.length;
+        this._bodies.push(body);
+    }
     acquireBody(type, x, y, facing = 0) {
         let body = kineticDebrisFreePool.pop();
         if (!body) {
@@ -367,7 +399,7 @@ class KineticDebrisStore {
         body._store = this;
         body.id = kineticDebrisNextId++;
         body.type = type;
-        body.strategy = buildWorldPropStrategyFromAsset(propCatalog[type]);
+        body.strategy = strategyForDebrisType(type);
         const asset = propCatalog[type];
         body.height = asset?.visuals?.world?.height ?? 12;
         body.visualOverride = undefined;
@@ -387,6 +419,7 @@ class KineticDebrisStore {
         body._fractureCooldown = 0;
         body._neighborEidCount = 0;
         body._neighborsFrameId = -1;
+        body._listIndex = -1;
         kineticDebrisSlab.x[row] = x;
         kineticDebrisSlab.y[row] = y;
         kineticDebrisSlab.vx[row] = 0;
@@ -400,9 +433,14 @@ class KineticDebrisStore {
         if (!spatialFrame) throw new Error("Kinetic debris removal requires spatial frame");
         if (!body?.isKineticDebris) throw new Error("Invalid kinetic debris removal");
         if (body._physId !== undefined) spatialFrame.evictKineticProp(body, this.world.kinetic);
-        const index = this._bodies.indexOf(body);
-        if (index < 0) throw new Error("Kinetic debris body missing from store");
-        this._bodies.splice(index, 1);
+        const index = body._listIndex;
+        if (index < 0 || index >= this._bodies.length || this._bodies[index] !== body) throw new Error("Kinetic debris body missing from store");
+        const last = this._bodies.pop();
+        if (last !== body) {
+            this._bodies[index] = last;
+            last._listIndex = index;
+        }
+        body._listIndex = -1;
         body.isDead = true;
         kineticDebrisFreePool.push(body);
     }
@@ -411,7 +449,7 @@ class KineticDebrisStore {
         const propType = desc.kind === "voxel" ? "wall_voxel_chunk" : "wall_rail_chunk";
         const parent = this._breakSource;
         parent.type = propType;
-        parent.strategy = buildWorldPropStrategyFromAsset(propCatalog[propType]);
+        parent.strategy = strategyForDebrisType(propType);
         parent.x = desc.x;
         parent.y = desc.y;
         parent.vx = 0;
@@ -449,7 +487,7 @@ class KineticDebrisStore {
             body.footprintArea = parent.footprintArea;
             body.radius = parent.radius;
             body.shape = parent.shape;
-            this._bodies.push(body);
+            this._pushBody(body);
             wakeKineticBody(body);
             admitKineticPropsBatch(spatialFrame, [body], this.world);
             return [body];
@@ -471,7 +509,7 @@ class KineticDebrisStore {
             body.footprintArea = parent.footprintArea;
             body.radius = parent.radius;
             body.shape = parent.shape;
-            this._bodies.push(body);
+            this._pushBody(body);
             wakeKineticBody(body);
             admitKineticPropsBatch(spatialFrame, [body], this.world);
             return [body];
@@ -505,8 +543,7 @@ class KineticDebrisStore {
             const worldX = fracture.originX + cx * cos - cy * sin;
             const worldY = fracture.originY + cx * sin + cy * cos;
             const body = this.acquireBody(shardType, worldX, worldY, facing);
-            const geom = materializePolygonDebris(stores, i);
-            FractureEngine.applyPropFractureGeometry(body, geom);
+            FractureEngine.applyPropFractureGeometryFromDebris(body, stores, i);
             stores.geom.release(debris.vertHandle[i]);
             debris.vertHandle[i] = 0;
             body.vx = motion.vx ?? 0;
@@ -524,7 +561,7 @@ class KineticDebrisStore {
             spawned.push(body);
         }
         for (let i = 0; i < spawned.length; i++) {
-            this._bodies.push(spawned[i]);
+            this._pushBody(spawned[i]);
             wakeKineticBody(spawned[i]);
         }
         return spawned;
@@ -844,6 +881,25 @@ export class FractureEngine {
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
     }
+    static applyPropFractureGeometryFromDebris(prop, stores, debrisIndex) {
+        const debris = stores.debris;
+        const handle = debris.vertHandle[debrisIndex];
+        const vertCount = debris.vertCount[debrisIndex];
+        const src = stores.geom.buffer(handle);
+        const n = vertCount * 2;
+        let fp = prop.footprintVertices;
+        if (!(fp instanceof Float32Array) || fp.length !== n) fp = new Float32Array(n);
+        for (let i = 0; i < n; i++) fp[i] = src[i];
+        prop.chunks = undefined;
+        prop.collisionParts = undefined;
+        prop.footprintVertices = fp;
+        prop.footprintArea = debris.footprintArea[debrisIndex];
+        prop.radius = debris.boundingRadius[debrisIndex];
+        prop.shape = new PolygonShape(fp);
+        markBroadphaseDirty(prop);
+        prop.mass = kineticMassFromFootprint(prop);
+        normalizeKineticBody(prop);
+    }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!prop?.strategy?.fracture) return false;
         const shape = prop.shape;
@@ -875,42 +931,51 @@ export class FractureEngine {
         let seedCount = FractureEngine._seedCountForPolygon(flatVerts, impactForce);
         FractureEngine._buildShatterSeeds(flatVerts, hitX, hitY, seedCount, SHATTER_SEEDS);
         const vertCount = flatVerts.length / 2;
-        let needsRecompute = true;
+        const debrisStart = stores.debris.write;
         let attempts = 0;
-        while (needsRecompute && attempts < 10 && seedCount > 1) {
-            needsRecompute = false;
+        while (attempts < 10 && seedCount > 1) {
+            let dropIndex = -1;
             for (let i = 0; i < seedCount; i++) {
-                const cell = stores.geom.voronoiCell(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
-                let drop = false;
-                if (cell.vertCount < 3) drop = true;
-                else {
-                    stores.geom.centerVertsInPlace(cell.handle, cell.vertCount);
-                    if (ENGINE_F32[F_OUT_AREA] < GLASS_MIN_SHARD_AREA) drop = true;
+                stores.geom.voronoiCellInto(sVoronoiCell, flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
+                if (sVoronoiCell.vertCount < 3) {
+                    if (sVoronoiCell.handle) stores.geom.release(sVoronoiCell.handle);
+                    dropIndex = i;
+                    break;
                 }
-                if (cell.handle) stores.geom.release(cell.handle);
-                if (drop) {
-                    SHATTER_SEEDS.splice(i * 2, 2);
-                    seedCount--;
-                    needsRecompute = true;
+                stores.debris.appendCenteredPolygon(sVoronoiCell.handle, sVoronoiCell.vertCount);
+                if (ENGINE_F32[F_OUT_AREA] < GLASS_MIN_SHARD_AREA) {
+                    stores.debris.write--;
+                    stores.geom.release(sVoronoiCell.handle);
+                    stores.debris.vertHandle[stores.debris.write] = 0;
+                    dropIndex = i;
                     break;
                 }
             }
+            if (dropIndex < 0) {
+                ENGINE_F32[F_OUT_DEBRIS_START] = debrisStart;
+                ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - debrisStart;
+                return;
+            }
+            releaseDebrisGeomHandles(stores, debrisStart, stores.debris.write - debrisStart);
+            stores.debris.write = debrisStart;
+            seedCount = dropShatterSeed(SHATTER_SEEDS, dropIndex, seedCount);
             attempts++;
         }
-        ENGINE_F32[F_OUT_DEBRIS_START] = stores.debris.write;
+        ENGINE_F32[F_OUT_DEBRIS_START] = debrisStart;
         for (let i = 0; i < seedCount; i++) {
-            const cell = stores.geom.voronoiCell(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
-            if (cell.vertCount < 3) {
-                if (cell.handle) stores.geom.release(cell.handle);
+            stores.geom.voronoiCellInto(sVoronoiCell, flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
+            if (sVoronoiCell.vertCount < 3) {
+                if (sVoronoiCell.handle) stores.geom.release(sVoronoiCell.handle);
                 continue;
             }
-            stores.debris.appendCenteredPolygon(cell.handle, cell.vertCount);
+            stores.debris.appendCenteredPolygon(sVoronoiCell.handle, sVoronoiCell.vertCount);
             if (ENGINE_F32[F_OUT_AREA] < GLASS_MIN_SHARD_AREA) {
                 stores.debris.write--;
-                stores.geom.release(cell.handle);
+                stores.geom.release(sVoronoiCell.handle);
+                stores.debris.vertHandle[stores.debris.write] = 0;
             }
         }
-        ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - ENGINE_F32[F_OUT_DEBRIS_START];
+        ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - debrisStart;
     }
     static _buildShatterSeeds(flatVerts, hitX, hitY, seedCount, outSeeds) {
         polygonCentroid2DInto(ENGINE_F32, F_VEC_A, flatVerts);
@@ -925,12 +990,13 @@ export class FractureEngine {
         }
         const span = FractureEngine._polygonSpan(flatVerts);
         const golden = 2.399963229728653;
-        outSeeds.length = 0;
-        outSeeds.push(ox, oy);
+        outSeeds[0] = ox;
+        outSeeds[1] = oy;
         for (let i = 1; i < seedCount; i++) {
             const r = span * 0.62 * Math.sqrt(i / seedCount) * (0.85 + 0.3 * nextFractureRand());
             const a = i * golden + (nextFractureRand() - 0.5) * 0.5;
-            outSeeds.push(ox + Math.cos(a) * r, oy + Math.sin(a) * r);
+            outSeeds[i * 2] = ox + Math.cos(a) * r;
+            outSeeds[i * 2 + 1] = oy + Math.sin(a) * r;
         }
     }
     static _seedCountForPolygon(flatVerts, impactForce) {
