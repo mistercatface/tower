@@ -344,10 +344,8 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     prop.crossLength = length;
     prop.crossThickness = thickness;
     markBroadphaseDirty(prop);
-    if (prop.strategy?.isKinetic) {
-        prop.mass = kineticMassFromFootprint(prop);
-        normalizeKineticBody(prop);
-    }
+    prop.mass = kineticMassFromFootprint(prop);
+    normalizeKineticBody(prop);
 }
 /**
  * Asset-level fixed child visuals. These are render-only and never become
