@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePoint, rotateXY, rotateXYInto, transformPoint2DInto, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/math.js";
+import { pointInPolygon, rectCorners, rotatePoint, rotateXYInto, rotateXYIntoF32, transformPoint2DInto, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
-        const hit = rotateXY(1, 0, 0, 1);
-        assertPointNear(hit, 0, 1);
+        rotateXYIntoF32(ENGINE_F32, M_VEC_A, 1, 0, 0, 1);
+        assertPointNear({ x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, 0, 1);
     });
     it("rotateXYInto writes out", () => {
         const out = { x: 9, y: 9 };

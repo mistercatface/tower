@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, minCornerAabb, angleDelta, radiusAtT, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, centerReachAabbInto, createAabb, minCornerAabbInto, minCornerAabbF32, minCornerAabb, angleDelta, lerp, scaleAtHeight, closestPointOnLineSegment, CARDINAL_FACING_STEPS, centeredAabbInto, padAabbInto, lengthXY, centerHalfExtentsAabbInto, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, padAabb, unionAabb, ENGINE_F32, S_OUT_XY, S_OUT_SCREEN } from "../Math/math.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, kineticDynamicSlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -542,7 +542,7 @@ export function projectWorldQuad(buf, o, x0, y0, x1, y1, x2, y2, x3, y3, height,
 }
 export function pointOnFrustum(buf, offset, projection, baseRadius, topRadius, t, angle) {
     const { cx, cy, topX, topY } = projection;
-    const radius = radiusAtT(baseRadius, topRadius, t);
+    const radius = lerp(baseRadius, topRadius, t);
     const centerX = cx + (topX - cx) * t;
     const centerY = cy + (topY - cy) * t;
     buf[offset] = centerX + Math.cos(angle) * radius;
@@ -915,10 +915,6 @@ export function forEachStampGlobalIdx(originIdx, layoutCols, strideCols, cellCou
         if (idx >= 0 && idx < grid.grid.length && isIdxInMapGenBounds(config, grid, idx)) fn(idx, localIdx);
     });
 }
-export function layoutIndexToGlobalIndex(localIdx, originIdx, layoutCols, strideCols) {
-    return stampGlobalIdx(originIdx, localIdx, layoutCols, strideCols);
-}
-/** @param {number} aIdx @param {number} bIdx @param {number} cellCount */
 export function undirectedPairIndex(aIdx, bIdx, cellCount) {
     return aIdx < bIdx ? aIdx * cellCount + bIdx : bIdx * cellCount + aIdx;
 }

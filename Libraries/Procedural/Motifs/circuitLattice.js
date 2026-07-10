@@ -1,4 +1,4 @@
-import { rotateXY } from "../../Math/math.js";
+import { rotateXYIntoF32, ENGINE_F32, M_VEC_A } from "../../Math/math.js";
 import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.
@@ -6,21 +6,7 @@ import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.
 export const circuitLatticeMotif = {
     metadata: {
         label: "Circuit lattice",
-        defaults: {
-            type: "circuitLattice",
-            coordinateSpace: "warped",
-            frequency: 0.016,
-            octaves: 2,
-            angle: 0.15,
-            offset: [0, 0],
-            ridgeThreshold: 0.11,
-            peak: 10,
-            tint: [0.4, 0.5, 0.9],
-            intersectionThreshold: 0.12,
-            intersectionPeak: 12,
-            intersectionTint: [0.5, 1.2, 1.8],
-            blendMode: "add",
-        },
+        defaults: { type: "circuitLattice", coordinateSpace: "warped", frequency: 0.016, octaves: 2, angle: 0.15, offset: [0, 0], ridgeThreshold: 0.11, peak: 10, tint: [0.4, 0.5, 0.9], intersectionThreshold: 0.12, intersectionPeak: 12, intersectionTint: [0.5, 1.2, 1.8], blendMode: "add" },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.04, step: 0.001 },
             { path: "angle", label: "Angle", min: 0, max: 1.57, step: 0.05 },
@@ -37,9 +23,9 @@ export const circuitLatticeMotif = {
         const angle = config.angle ?? 0;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        const rotated = rotateXY(x, y, cos, sin);
-        const ax = rotated.x;
-        const ay = rotated.y;
+        rotateXYIntoF32(ENGINE_F32, M_VEC_A, x, y, cos, sin);
+        const ax = ENGINE_F32[M_VEC_A];
+        const ay = ENGINE_F32[M_VEC_A + 1];
         const r1 = sampleRidged2D(sample.noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
         const r2 = sampleRidged2D(sample.noise, (ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
         const lattice = Math.min(r1, r2);

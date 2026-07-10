@@ -1767,7 +1767,7 @@ export class NavTopology {
         packNavTopologyFromGrid(this.grid, arena, idx);
         const frame = gridFrameFromGrid(this.grid);
         const simView = createNavSimView(frame, arena.gridFill, arena.floorPacked, arena.edgeSlots, this.grid.cellEdgePool, arena.vertexPassability, arena.activePortalPairs, arena.activePortalCount);
-        const topology = navTopologyFromArena(arena);
+        const topology = arena.topologyHandle;
         topology.octilePredecessors = arena.octilePredecessors;
         bakeNavTopologyIntoArena(simView, topology, arena.cardinalOpen, arena.vertexPassability, idx);
         this._frame = frame;
@@ -1825,9 +1825,6 @@ export function octileNeighborBase(cellIdx) {
 }
 export function octileNeighborOffset(cellIdx, dirIdx) {
     return cellIdx * OCTILE_DIRS_PER_CELL + dirIdx;
-}
-export function navTopologyFromArena(arena) {
-    return arena.topologyHandle;
 }
 export function navTopologyFromSab(sabBlocked, sabOctileNeighbors, sabOctilePredecessors) {
     return { blocked: new Uint8Array(sabBlocked), octileNeighbors: new Int32Array(sabOctileNeighbors), octilePredecessors: new Int32Array(sabOctilePredecessors) };

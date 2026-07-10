@@ -1,4 +1,4 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rectCorners, rotateXYInto, rotateXYIntoF32, transformPoint2DInto, distanceSqToLineSegment, normalizeXY, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, cardinalUnitVectorFromAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuat, axisAngleQuat, normalizeQuat, rotateVecByQuat, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, createAabb, emptyAabbInto, growAabbFromCenterInto, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2D, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBounds, convexFootprintHalfExtents, boxLocalFootprint, angleDelta } from "../Math/math.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -303,9 +303,6 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
     }
     slab.bpKind[physId] = BP_KIND_CIRCLE;
     slab.r[physId] = shape.radius || 0;
-}
-function writeActiveKineticBodySlabPose(body) {
-    copyBodyPoseToSlab(body, body._physId);
 }
 function copyBodyPoseToSlab(body, physId) {
     const slab = kineticDynamicSlab;
@@ -1080,7 +1077,7 @@ export function snapshotKineticBodySlab(bodies) {
         const entity = bodies[i];
         normalizeKineticBody(entity);
         writeStaticKineticSlabSlot(entity);
-        writeActiveKineticBodySlabPose(entity);
+        copyBodyPoseToSlab(entity, entity._physId);
         stampBroadphaseSlabFromEntity(entity._physId, entity);
     }
 }
@@ -1089,7 +1086,7 @@ export function refreshActiveKineticBodySlabPose(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
         const physId = entity._physId;
-        writeActiveKineticBodySlabPose(entity);
+        copyBodyPoseToSlab(entity, entity._physId);
         if (slab.bpKind[physId] !== BP_KIND_CIRCLE) {
             const angle = entityFacing(entity);
             slab.cos[physId] = Math.cos(angle);
@@ -1655,11 +1652,11 @@ function syncConstraintSlabBodies(slab) {
         const physIdB = slab.physIdB[i];
         if (!constraintPhysSyncSeen.has(physIdA)) {
             constraintPhysSyncSeen.add(physIdA);
-            writeActiveKineticBodySlabPose(slab.bodyA[i]);
+            copyBodyPoseToSlab(slab.bodyA[i], slab.bodyA[i]._physId);
         }
         if (!constraintPhysSyncSeen.has(physIdB)) {
             constraintPhysSyncSeen.add(physIdB);
-            writeActiveKineticBodySlabPose(slab.bodyB[i]);
+            copyBodyPoseToSlab(slab.bodyB[i], slab.bodyB[i]._physId);
         }
     }
 }
@@ -3755,9 +3752,6 @@ function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, a
     ENGINE_F32[P_VEC_C + 1] = ENGINE_F32[P_VEC_B + 1];
     ENGINE_F32[P_VEC_C + 2] = Math.min(leftDist, rightDist, topDist, bottomDist);
 }
-function approachToSegmentLocal(segment, worldVx, worldVy) {
-    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_D, worldVx, worldVy, segment.angle);
-}
 /**
  * @param {object} circle
  * @param {object} segment
@@ -3793,7 +3787,7 @@ function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approa
     const sin = Math.sin(-segment.angle);
     const localX = (cx - segment.x) * cos - (cy - segment.y) * sin;
     const localY = (cx - segment.x) * sin + (cy - segment.y) * cos;
-    approachToSegmentLocal(segment, approachX, approachY);
+    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_D, approachX, approachY, segment.angle);
     const localApproachX = ENGINE_F32[P_VEC_D];
     const localApproachY = ENGINE_F32[P_VEC_D + 1];
     const hasApproach = Math.hypot(localApproachX, localApproachY) > 1e-6;

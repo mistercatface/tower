@@ -1,4 +1,4 @@
-import { rotateXY } from "../../Math/math.js";
+import { rotateXYIntoF32, ENGINE_F32, M_VEC_A } from "../../Math/math.js";
 import { distanceToLineSegment } from "../../Math/math.js";
 import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
@@ -7,18 +7,7 @@ import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 export const circuitTracesMotif = {
     metadata: {
         label: "Circuit traces",
-        defaults: {
-            type: "circuitTraces",
-            coordinateSpace: "warped",
-            gridSize: 24,
-            lineWidth: 2,
-            density: 0.5,
-            diagDensity: 0.15,
-            peak: 10,
-            tint: [0.9, 0.4, 1.1],
-            padEnabled: true,
-            blendMode: "add",
-        },
+        defaults: { type: "circuitTraces", coordinateSpace: "warped", gridSize: 24, lineWidth: 2, density: 0.5, diagDensity: 0.15, peak: 10, tint: [0.9, 0.4, 1.1], padEnabled: true, blendMode: "add" },
         fields: [
             { path: "gridSize", label: "Grid size", min: 8, max: 80, step: 2 },
             { path: "lineWidth", label: "Line width", min: 0.5, max: 10, step: 0.5 },
@@ -40,9 +29,9 @@ export const circuitTracesMotif = {
             const rad = (angle * Math.PI) / 180;
             const cosA = Math.cos(rad);
             const sinA = Math.sin(rad);
-            const rotated = rotateXY(coords.x, coords.y, cosA, sinA);
-            x = rotated.x;
-            y = rotated.y;
+            rotateXYIntoF32(ENGINE_F32, M_VEC_A, coords.x, coords.y, cosA, sinA);
+            x = ENGINE_F32[M_VEC_A];
+            y = ENGINE_F32[M_VEC_A + 1];
         }
         const gridSize = config.gridSize ?? 24;
         const col = Math.floor(x / gridSize);

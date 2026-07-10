@@ -170,9 +170,6 @@ export function rotateXYIntoF32(buf, o, lx, ly, cos, sin) {
     buf[o] = lx * cos - ly * sin;
     buf[o + 1] = lx * sin + ly * cos;
 }
-export function rotateXY(lx, ly, cos, sin) {
-    return { x: lx * cos - ly * sin, y: lx * sin + ly * cos };
-}
 export function transformPoint2DInto(out, centerX, centerY, lx, ly, cos, sin) {
     out.x = centerX + lx * cos - ly * sin;
     out.y = centerY + lx * sin + ly * cos;
@@ -581,10 +578,6 @@ export function growAabbFromCenterInto(out, cx, cy, halfW, halfH) {
     out.maxY = Math.max(out.maxY, cy + halfH);
     return out;
 }
-/** @param {Aabb2D} out */
-export function growAabbFromCenterSizeInto(out, cx, cy, width, height) {
-    return growAabbFromCenterInto(out, cx, cy, width / 2, height / 2);
-}
 /** @param {Aabb2D} out @param {Aabb2D} src @returns {Aabb2D} */
 export function copyAabbInto(out, src) {
     out.minX = src.minX;
@@ -638,10 +631,6 @@ export function aabbFromTwoPointsInto(out, x1, y1, x2, y2) {
     out.maxY = Math.max(y1, y2);
     return out;
 }
-/** @returns {Aabb2D} */
-export function aabbFromTwoPoints(x1, y1, x2, y2) {
-    return aabbFromTwoPointsInto(createAabb(), x1, y1, x2, y2);
-}
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function unionAabbInto(out, a, b) {
     out.minX = Math.min(a.minX, b.minX);
@@ -652,10 +641,6 @@ export function unionAabbInto(out, a, b) {
 }
 export function unionAabb(a, b) {
     return unionAabbInto(createAabb(), a, b);
-}
-/** @param {Aabb2D} out @param {Aabb2D} other */
-export function growAabbInto(out, other) {
-    return unionAabbInto(out, out, other);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function padAabbInto(out, { minX, minY, maxX, maxY }, pad) {
@@ -681,9 +666,6 @@ export function insetAabbInto(out, { minX, minY, maxX, maxY }, inset) {
     out.maxY = maxY - inset;
     return out;
 }
-export function insetAabb(a, inset) {
-    return insetAabbInto(createAabb(), a, inset);
-}
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function centeredAabbInto(out, cx, cy, width, height) {
     const halfW = width / 2;
@@ -693,9 +675,6 @@ export function centeredAabbInto(out, cx, cy, width, height) {
     out.maxX = cx + halfW;
     out.maxY = cy + halfH;
     return out;
-}
-export function centeredAabb(cx, cy, width, height) {
-    return centeredAabbInto(createAabb(), cx, cy, width, height);
 }
 /** @param {Aabb2D} out @returns {Aabb2D} */
 export function centerHalfExtentsAabbInto(out, cx, cy, halfW, halfH, padding = 0) {
@@ -712,9 +691,6 @@ export function centerReachAabbInto(out, cx, cy, reach) {
     out.maxX = cx + reach;
     out.maxY = cy + reach;
     return out;
-}
-export function centerReachAabb(cx, cy, reach) {
-    return centerReachAabbInto(createAabb(), cx, cy, reach);
 }
 /** @param {{ x: number, y: number }} p0 @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {{ x: number, y: number }} p3 @param {Aabb2D | null | undefined} box */
 export function pointsAabbOverlapAabb(p0, p1, p2, p3, box) {
@@ -872,14 +848,6 @@ export function quantizeCardinalAngle(angle) {
 export function stepCardinalFacing(angle, steps = 1) {
     return quantizeCardinalAngle(angle + steps * ((Math.PI * 2) / CARDINAL_FACING_STEPS));
 }
-/** Unit direction from angle (radians). */
-export function unitVectorFromAngle(angle) {
-    return { x: Math.cos(angle), y: Math.sin(angle) };
-}
-/** Cardinal unit direction — snaps angle to 4-way facing first. */
-export function cardinalUnitVectorFromAngle(angle) {
-    return unitVectorFromAngle(quantizeCardinalAngle(angle));
-}
 export function rotateAngleTowards(from, to, maxStep) {
     const diff = angleDelta(from, to);
     if (Math.abs(diff) <= maxStep) return normalizeAngle(to);
@@ -974,9 +942,6 @@ export function lerp(a, b, t) {
 export function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
-export function radiusAtT(baseRadius, topRadius, t) {
-    return lerp(baseRadius, topRadius, t);
-}
 export function scaleAtHeight(baseSize, alpha, t) {
     return baseSize * (1 + alpha * t);
 }
@@ -1012,11 +977,6 @@ export function distSqXY(ax, ay, bx, by) {
     const dy = ay - by;
     return dx * dx + dy * dy;
 }
-/** True when `(px, py)` is within `radius` of `(cx, cy)`. */
-export function withinRadiusSq(px, py, cx, cy, radius) {
-    return distSqXY(px, py, cx, cy) <= radius * radius;
-}
-/** @returns {{ nx: number, ny: number, len: number }} */
 export function normalizeXYInto(buf, o, dx, dy) {
     const len = Math.hypot(dx, dy);
     if (len <= 0) {
@@ -1029,10 +989,6 @@ export function normalizeXYInto(buf, o, dx, dy) {
     buf[o + 1] = dy / len;
     buf[o + 2] = len;
 }
-export function normalizeXY(dx, dy) {
-    normalizeXYInto(ENGINE_F32, M_OUT_NX, dx, dy);
-    return { nx: ENGINE_F32[M_OUT_NX], ny: ENGINE_F32[M_OUT_NY], len: ENGINE_F32[M_OUT_LEN] };
-}
 /** @param {{ x: number, y: number }} body */
 export function addXY(body, dx, dy) {
     body.x += dx;
@@ -1043,38 +999,6 @@ export function reflect2Into(buf, o, dx, dy, nx, ny) {
     const dot = dotXY(dx, dy, nx, ny);
     buf[o] = dx - 2 * dot * nx;
     buf[o + 1] = dy - 2 * dot * ny;
-}
-export function reflect2(dx, dy, nx, ny) {
-    reflect2Into(ENGINE_F32, M_OUT_REFLECT_DX, dx, dy, nx, ny);
-    return { dx: ENGINE_F32[M_OUT_REFLECT_DX], dy: ENGINE_F32[M_OUT_REFLECT_DY] };
-}
-// --- Object helpers (may alloc — convenience for non-hot paths) ---
-export function vec2(x, y) {
-    return { x, y };
-}
-export function dot2(a, b) {
-    return dotXY(a.x, a.y, b.x, b.y);
-}
-export function length2(v) {
-    return lengthXY(v.x, v.y);
-}
-export function normalize2(v) {
-    const { nx, ny, len } = normalizeXY(v.x, v.y);
-    return { x: nx, y: ny, len };
-}
-/** Unit direction as `{ x, y, len }` — alias for callers that use x/y keys. */
-export function normalizeVector(dx, dy) {
-    const { nx, ny, len } = normalizeXY(dx, dy);
-    return { x: nx, y: ny, len };
-}
-export function add2(a, b) {
-    return vec2(a.x + b.x, a.y + b.y);
-}
-export function sub2(a, b) {
-    return vec2(a.x - b.x, a.y - b.y);
-}
-export function scale2(v, s) {
-    return vec2(v.x * s, v.y * s);
 }
 /** @typedef {{ x: number; y: number; z: number }} Vec3 */
 export function vec3(x, y, z) {

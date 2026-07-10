@@ -1,6 +1,6 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustum, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXY, lengthXY, rotateXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, radiusAtT, scaleAtHeight } from "../Math/math.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, distanceSqToAabb, centerReachAabbInto, lerp, scaleAtHeight, ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlat, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabb, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
@@ -305,17 +305,17 @@ const HPA_STROKE_WIDTH = 2.5;
 function appendPathEndArrow(out, pathNodes, targetX, targetY, color) {
     if (targetX != null && targetY != null && pathNodes.length >= 1) {
         const from = pathNodes[pathNodes.length - 1];
-        const { nx, ny, len } = normalizeXY(targetX - from.x, targetY - from.y);
-        if (len > 0) {
-            out.push(overlayCachedArrowHead(targetX, targetY, nx, ny, { fill: color }));
+        normalizeXYInto(ENGINE_F32, M_OUT_NX, targetX - from.x, targetY - from.y);
+        if (ENGINE_F32[M_OUT_LEN] > 0) {
+            out.push(overlayCachedArrowHead(targetX, targetY, ENGINE_F32[M_OUT_NX], ENGINE_F32[M_OUT_NY], { fill: color }));
             return;
         }
     }
     if (pathNodes.length >= 2) {
         const n = pathNodes.length;
         const tip = pathNodes[n - 1];
-        const { nx, ny, len } = normalizeXY(tip.x - pathNodes[n - 2].x, tip.y - pathNodes[n - 2].y);
-        if (len > 0) out.push(overlayCachedArrowHead(tip.x, tip.y, nx, ny, { fill: color }));
+        normalizeXYInto(ENGINE_F32, M_OUT_NX, tip.x - pathNodes[n - 2].x, tip.y - pathNodes[n - 2].y);
+        if (ENGINE_F32[M_OUT_LEN] > 0) out.push(overlayCachedArrowHead(tip.x, tip.y, ENGINE_F32[M_OUT_NX], ENGINE_F32[M_OUT_NY], { fill: color }));
     }
 }
 function appendFlowAgentArrow(out, overlay) {
@@ -383,8 +383,8 @@ function drawAimSegmentCommand(ctx, cmd) {
     ctx.lineCap = "round";
     strokeSegment(ctx, x1, y1, x2, y2);
     if (arrowhead) {
-        const { nx, ny } = normalizeXY(dx, dy);
-        drawArrowHeadAt(ctx, x2, y2, nx, ny, color, 8, 5);
+        normalizeXYInto(ENGINE_F32, M_OUT_NX, dx, dy);
+        drawArrowHeadAt(ctx, x2, y2, ENGINE_F32[M_OUT_NX], ENGINE_F32[M_OUT_NY], color, 8, 5);
     }
     ctx.restore();
 }
@@ -770,8 +770,8 @@ export function drawRadialBand(ctx, prop, viewport, options) {
         ctx.fill();
         ctx.stroke();
     }
-    const slice1 = getHeightSlice(projection, radiusAtT(baseRadius, resolvedTop, t0), t0);
-    const slice2 = getHeightSlice(projection, radiusAtT(baseRadius, resolvedTop, t1), t1);
+    const slice1 = getHeightSlice(projection, lerp(baseRadius, resolvedTop, t0), t0);
+    const slice2 = getHeightSlice(projection, lerp(baseRadius, resolvedTop, t1), t1);
     return { projection, orientAngle: facing, slice1, slice2 };
 }
 function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks, flatFill }) {

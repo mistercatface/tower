@@ -1,5 +1,5 @@
 import propCatalog from "../../Assets/props/index.js";
-import { normalizeXY, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
+import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius } from "../Physics/physics.js";
@@ -33,7 +33,10 @@ function resolveDragAimPhysics(aim, config) {
     const startY = aim.startY ?? aim.anchorY;
     const dx = aim.pullX - startX;
     const dy = aim.pullY - startY;
-    const { nx, ny, len: drag } = normalizeXY(dx, dy);
+    normalizeXYInto(ENGINE_F32, M_OUT_NX, dx, dy);
+    const nx = ENGINE_F32[M_OUT_NX];
+    const ny = ENGINE_F32[M_OUT_NY];
+    const drag = ENGINE_F32[M_OUT_LEN];
     if (drag < 0.5) {
         if (aim.shotNx == null || aim.shotNy == null) return null;
         return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag: 0, pullBack: 0 };
