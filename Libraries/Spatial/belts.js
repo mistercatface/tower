@@ -2,6 +2,7 @@ import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, GRID_NAV_EPOCH, bump
 import { CorridorPathfinder, createNavGraphViewFromTopology } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
+import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);
 const BELT_DIR_Y = Int8Array.from([-1, 0, 1, 0]);
@@ -745,7 +746,7 @@ export class FloorBeltDrawCache {
             const cellIdx = this.idx[i];
             const x = grid.gridCenterXByIdx(cellIdx);
             const y = grid.gridCenterYByIdx(cellIdx);
-            if (!viewport.circleInBoundsF32(x, y, cellHalf, "props")) continue;
+            if (!viewport.circleInBounds(x, y, cellHalf, VIEW_TIER.PROPS)) continue;
             const packed = grid.floorPacked[cellIdx];
             const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
             drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);

@@ -1,7 +1,7 @@
-import { aabbFromF32, BRIDGE_AABB } from "../../../Libraries/Math/math.js";
 import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorld, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Spatial/spatial.js";
+import { VIEW_TIER } from "../../../Libraries/Viewport/ViewBounds.js";
 import { activeMapGenKind } from "./mapOverview.js";
-import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
+import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, hitTestRectAabbF32, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 const EDGE_HIT_PX = 8;
 /** @typedef {"move" | "resize-outer" | "resize-inner" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw"} MapGenBoundsDragMode */
 /** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Spatial/spatial.js").WorldObstacleGrid} grid @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
@@ -140,9 +140,7 @@ export function createViewportOverviewEditor(state) {
     return {
         isEnabled: () => state.editor.showMapOverview,
         hitTest: (sx, sy, frame) => {
-            const clipF32 = state.viewport.boundsF32("clip");
-            aabbFromF32(clipF32.buf, clipF32.o, BRIDGE_AABB);
-            return hitTestRectAabb(sx, sy, BRIDGE_AABB, frame.cache, frame.displayW, frame.displayH, { moveOnly: true });
+            return hitTestRectAabbF32(sx, sy, state.viewport.boundsBuf, VIEW_TIER.CLIP, frame.cache, frame.displayW, frame.displayH, { moveOnly: true });
         },
         applyDrag: (mode, dxWorld, dyWorld) => {
             if (mode === "move") state.viewport.snapTo(state.viewport.x + dxWorld, state.viewport.y + dyWorld);

@@ -5,6 +5,7 @@ import { createDeferredGridWallCommit, getVoxelWallInfo, getRailWallInfo, resolv
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
 import { transformPoint2DInto, boxLocalFootprint, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, buildWorldPropStrategyFromAsset } from "../Props/props.js";
+import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
 const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
@@ -531,11 +532,12 @@ class KineticDebrisStore {
         for (let i = this._bodies.length - 1; i >= 0; i--) this._bodies[i].tickPropFrame(dt, this.world, spatialFrame);
     }
     appendVisibleProps(drawQueue, viewport, drawKindProp) {
-        const f32 = viewport.boundsF32("props");
-        const minX = f32.buf[f32.o];
-        const minY = f32.buf[f32.o + 1];
-        const maxX = f32.buf[f32.o + 2];
-        const maxY = f32.buf[f32.o + 3];
+        const buf = viewport.boundsBuf;
+        const o = VIEW_TIER.PROPS;
+        const minX = buf[o];
+        const minY = buf[o + 1];
+        const maxX = buf[o + 2];
+        const maxY = buf[o + 3];
         const vx = viewport.x;
         const vy = viewport.y;
         for (let i = 0; i < this._bodies.length; i++) {

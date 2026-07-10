@@ -1,5 +1,6 @@
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
 import { forEachCardinalNeighborIdx } from "./spatial.js";
+import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const PORTAL_NONE = -1;
 const PORTAL_STRIP_KEYS = ["exit", "entry"];
 function bumpFloorNavEpoch(grid) {
@@ -157,7 +158,7 @@ function portalDrawForStripKey(role) {
 function drawPortalStamp(ctx, grid, viewport, idx, role, frameIndex, halfExtents) {
     const x = grid.gridCenterXByIdx(idx);
     const y = grid.gridCenterYByIdx(idx);
-    if (!viewport.circleInBoundsF32(x, y, grid.cellHalfSize, "props")) return;
+    if (!viewport.circleInBounds(x, y, grid.cellHalfSize, VIEW_TIER.PROPS)) return;
     drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.Portal, role, 0, portalDrawForStripKey(role), frameIndex, BELT_FILMSTRIP_FRAMES);
 }
 export class FloorPortalDrawCache {

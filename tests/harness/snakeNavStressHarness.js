@@ -62,7 +62,7 @@ function createSnakeEditorState(seed) {
                 this.x = x;
                 this.y = y;
             },
-            circleInBoundsF32() {
+            circleInBounds() {
                 return true;
             },
         },

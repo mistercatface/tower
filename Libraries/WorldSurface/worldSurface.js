@@ -9,6 +9,7 @@ import { MinHeap } from "../DataStructures/MinHeap.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { railWallFootprintAabbF32, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
+import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();
 export function getSurfaceProfileRevision(profileId) {
@@ -1109,12 +1110,12 @@ export class WorldSurfaceEngine {
         const d = this._chunkDraw;
         const { ctx, obstacleGrid, viewport, zLevel, beforeDraw } = d;
         const chunkSizePx = this.surfaceSpace.chunkSizePx(obstacleGrid);
-        const viewportBounds = viewport.boundsF32("chunks");
-        let buf = viewportBounds.buf;
-        let o = viewportBounds.o;
+        const viewportBounds = viewport.boundsBuf;
+        let buf = viewportBounds;
+        let o = VIEW_TIER.CHUNKS;
         if (obstacleGrid?.cols) {
             minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cols * obstacleGrid.cellSize, obstacleGrid.rows * obstacleGrid.cellSize);
-            if (!intersectAabbOptionalF32(this._engineBounds, this.chunkDrawBoundsO, viewportBounds.buf, viewportBounds.o, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP)) return null;
+            if (!intersectAabbOptionalF32(this._engineBounds, this.chunkDrawBoundsO, viewportBounds, VIEW_TIER.CHUNKS, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP)) return null;
             buf = this._engineBounds;
             o = this.chunkDrawBoundsO;
         }

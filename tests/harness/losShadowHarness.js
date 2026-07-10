@@ -19,7 +19,6 @@ export function stampRailWallEdge(grid, col, row, side, capHeightLevel = 1, thic
 }
 
 export function makeTestViewport(x, y, halfW = 200, halfH = 200, zoom = 1, cameraHeight = 160, perspectiveStrength = 1) {
-    const bounds = { minX: x - halfW, minY: y - halfH, maxX: x + halfW, maxY: y + halfH };
     const cx = halfW * zoom;
     const cy = halfH * zoom;
     return {
@@ -30,16 +29,9 @@ export function makeTestViewport(x, y, halfW = 200, halfH = 200, zoom = 1, camer
         cy,
         cameraHeight,
         perspectiveStrength,
-        bounds(tier) {
-            return bounds;
-        },
-        worldToScreenInto(out, worldX, worldY) {
-            out.x = (worldX - x) * zoom + cx;
-            out.y = (worldY - y) * zoom + cy;
-            return out;
-        },
-        worldToScreen(worldX, worldY) {
-            return { x: (worldX - x) * zoom + cx, y: (worldY - y) * zoom + cy };
+        worldToScreenF32(buf, o, worldX, worldY) {
+            buf[o] = (worldX - x) * zoom + cx;
+            buf[o + 1] = (worldY - y) * zoom + cy;
         },
     };
 }

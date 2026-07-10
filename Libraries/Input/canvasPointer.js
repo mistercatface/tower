@@ -10,23 +10,33 @@ export function canvasClientToScreen(canvas, clientX, clientY) {
     const scaleY = canvas.height / rect.height;
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
+const POINTER_WORLD_XY = new Float32Array(2);
+const POINTER_WORLD = { x: 0, y: 0 };
 /** @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function canvasClientToWorld(canvas, viewport, clientX, clientY) {
     const screen = canvasClientToScreen(canvas, clientX, clientY);
-    return viewport.screenToWorld(screen.x, screen.y);
+    viewport.screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
+    POINTER_WORLD.x = POINTER_WORLD_XY[0];
+    POINTER_WORLD.y = POINTER_WORLD_XY[1];
+    return POINTER_WORLD;
+}
+export function canvasClientToWorldF32(buf, o, canvas, viewport, clientX, clientY) {
+    const screen = canvasClientToScreen(canvas, clientX, clientY);
+    viewport.screenToWorldF32(buf, o, screen.x, screen.y);
 }
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {{
- *   screenToWorld: (screenX: number, screenY: number) => { x: number, y: number },
- *   onPointerDown: (world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void,
+ *   screenToWorldF32: (buf: Float32Array, o: number, screenX: number, screenY: number) => void,
+ *   onPointerDown: (worldX: number, worldY: number, screen: { x: number, y: number }, event: PointerEvent) => void,
  * }} handlers
  * @returns {() => void}
  */
-export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) {
+export function bindCanvasPointerDown(canvas, { screenToWorldF32, onPointerDown }) {
     const handler = (e) => {
         const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
-        onPointerDown(screenToWorld(screen.x, screen.y), screen, e);
+        screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
+        onPointerDown(POINTER_WORLD_XY[0], POINTER_WORLD_XY[1], screen, e);
     };
     canvas.addEventListener("pointerdown", handler);
     return () => canvas.removeEventListener("pointerdown", handler);
@@ -34,15 +44,16 @@ export function bindCanvasPointerDown(canvas, { screenToWorld, onPointerDown }) 
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {{
- *   screenToWorld: (screenX: number, screenY: number) => { x: number, y: number },
- *   onPointerMove: (world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void,
+ *   screenToWorldF32: (buf: Float32Array, o: number, screenX: number, screenY: number) => void,
+ *   onPointerMove: (worldX: number, worldY: number, screen: { x: number, y: number }, event: PointerEvent) => void,
  * }} handlers
  * @returns {() => void}
  */
-export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) {
+export function bindCanvasPointerMove(canvas, { screenToWorldF32, onPointerMove }) {
     const handler = (e) => {
         const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
-        onPointerMove(screenToWorld(screen.x, screen.y), screen, e);
+        screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
+        onPointerMove(POINTER_WORLD_XY[0], POINTER_WORLD_XY[1], screen, e);
     };
     canvas.addEventListener("pointermove", handler);
     return () => canvas.removeEventListener("pointermove", handler);
@@ -50,15 +61,16 @@ export function bindCanvasPointerMove(canvas, { screenToWorld, onPointerMove }) 
 /**
  * @param {HTMLCanvasElement} canvas
  * @param {{
- *   screenToWorld: (screenX: number, screenY: number) => { x: number, y: number },
- *   onPointerUp: (world: { x: number, y: number }, screen: { x: number, y: number }, event: PointerEvent) => void,
+ *   screenToWorldF32: (buf: Float32Array, o: number, screenX: number, screenY: number) => void,
+ *   onPointerUp: (worldX: number, worldY: number, screen: { x: number, y: number }, event: PointerEvent) => void,
  * }} handlers
  * @returns {() => void}
  */
-export function bindCanvasPointerUp(canvas, { screenToWorld, onPointerUp }) {
+export function bindCanvasPointerUp(canvas, { screenToWorldF32, onPointerUp }) {
     const handler = (e) => {
         const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
-        onPointerUp(screenToWorld(screen.x, screen.y), screen, e);
+        screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
+        onPointerUp(POINTER_WORLD_XY[0], POINTER_WORLD_XY[1], screen, e);
     };
     canvas.addEventListener("pointerup", handler);
     canvas.addEventListener("pointercancel", handler);

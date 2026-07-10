@@ -29,7 +29,7 @@ export function mountLabViewport(state, onViewChange, playbackHandlers) {
         ...directZoomMapping({ min: TILELAB_ZOOM_MIN, max: TILELAB_ZOOM_MAX, step: 0.05 }),
         getZoom: () => state.viewport.zoom,
         setZoom: (zoom) => {
-            state.viewport.zoom = clampLabZoom(zoom);
+            state.viewport.setZoom(clampLabZoom(zoom));
             onViewChange();
         },
     });
@@ -41,7 +41,7 @@ export function mountLabViewport(state, onViewChange, playbackHandlers) {
             state.viewport.snapTo(x, y);
             const nextZoom = clampLabZoom(zoom);
             const zoomChanged = state.viewport.zoom !== nextZoom;
-            state.viewport.zoom = nextZoom;
+            state.viewport.setZoom(nextZoom);
             if (zoomChanged) zoomControl.setZoom(state.viewport.zoom);
             onViewChange();
         },

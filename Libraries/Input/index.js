@@ -1,1 +1,1 @@
-export { canvasClientToScreen, canvasClientToWorld, bindCanvasPointerDown, bindCanvasPointerMove, bindCanvasPointerUp, bindCanvasPointers, releasePointerCapture } from "./canvasPointer.js";
+export { canvasClientToScreen, canvasClientToWorld, canvasClientToWorldF32, bindCanvasPointerDown, bindCanvasPointerMove, bindCanvasPointerUp, bindCanvasPointers, releasePointerCapture } from "./canvasPointer.js";

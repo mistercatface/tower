@@ -45,3 +45,12 @@ Warnings (`--warn`) are baseline debt — do not introduce new failures.
 - CellBounds (`startCol`/`endCol`/`startRow`/`endRow`) — inclusive rectangle (wall batches, shatter flush)
 
 Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch(bounds)` → this path; do not stub `invalidateGridBounds` as a no-op when asserting roof/draw teardown after shatter.
+
+## 6. Viewport / view bounds dialect
+
+- ViewBounds storage is an instance `Float32Array` SoA (4 tiers × stride 4). Never put camera tiers in `ENGINE_F32` scratch.
+- Callers use `viewport.boundsBuf` + `VIEW_TIER.*` offsets — **no** `{ buf, o }` handles, **no** `boundsF32`.
+- Viewport screen/world mapping is `(buf, o, …)` only (`screenToWorldF32` / `worldToScreenF32`) — **no** `return { x, y }`.
+- View → registry queries use `queryViewF32` / F32 spatial collect; do not reintroduce `BRIDGE_AABB` on that path.
+- Zoom/position changes go through `setZoom` / `setPosition` / `snapTo` / `follow` so bounds recompute.
+- Tests/harnesses mock `circleInBounds` / F32 mapping — no production branches for Node.

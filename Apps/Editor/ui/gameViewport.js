@@ -18,7 +18,7 @@ export function mountGameViewport(state, onStageResize) {
         getCamera: () => state.viewport,
         setCamera: (x, y, zoom) => {
             state.viewport.snapTo(x, y);
-            state.viewport.zoom = zoom;
+            state.viewport.setZoom(zoom);
         },
         onRightDragStart: () => {
             state.followCamera?.clear();

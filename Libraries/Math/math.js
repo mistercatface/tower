@@ -882,6 +882,16 @@ export function entityIntersectsAabb(ref, bounds, hitTest) {
     const radius = ref.radius ?? 0;
     return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
 }
+export function entityIntersectsAabbF32(ref, buf, o, hitTest) {
+    if (hitTest === "center") return pointInAabbF32(ref.x, ref.y, buf, o);
+    if (hitTest === "aabb") {
+        const aabb = ref.aabb;
+        if (!aabb) return false;
+        return aabb.minX <= buf[o + 2] && aabb.maxX >= buf[o] && aabb.minY <= buf[o + 3] && aabb.maxY >= buf[o + 1];
+    }
+    const radius = ref.radius ?? 0;
+    return circleIntersectsAabbF32(ref.x, ref.y, radius, buf, o);
+}
 const AABB_HASH_F64 = new Float64Array(4);
 const AABB_HASH_U32 = new Uint32Array(AABB_HASH_F64.buffer);
 /** @param {Aabb2D} bounds @returns {number} uint32 hash of exact float bit patterns */
@@ -909,13 +919,13 @@ export function aabbHashF32(buf, o) {
     }
     return h >>> 0;
 }
-export function flatQuadOverlapAabb(x0, y0, x1, y1, x2, y2, x3, y3, box) {
-    if (!box) return true;
+export function flatQuadOverlapAabbF32(x0, y0, x1, y1, x2, y2, x3, y3, buf, o) {
+    if (!buf) return true;
     const minX = Math.min(x0, x1, x2, x3);
     const maxX = Math.max(x0, x1, x2, x3);
     const minY = Math.min(y0, y1, y2, y3);
     const maxY = Math.max(y0, y1, y2, y3);
-    return aabbIntersectsScalars(minX, minY, maxX, maxY, box);
+    return minX <= buf[o + 2] && maxX >= buf[o] && minY <= buf[o + 3] && maxY >= buf[o + 1];
 }
 export function normalizeAngle(angle) {
     let a = angle % (Math.PI * 2);

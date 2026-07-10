@@ -4,8 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math"];
-const allowDirs = ["Libraries/Viewport", "Libraries/Input", "Libraries/Procedural", "Libraries/Workers"];
+const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport"];
+const allowDirs = ["Libraries/Input", "Libraries/Procedural", "Libraries/Workers"];
 
 const bannedExportRe = /^export (?:async )?(?:function|const|class) (\w+)/gm;
 const scratchNameRe = /_SCRATCH$/;
@@ -79,6 +79,12 @@ const legacy = [
     { pattern: /broadphaseBounds/, label: "broadphaseBounds" },
     { pattern: /getCircleSegmentPenetration/, label: "getCircleSegmentPenetration" },
     { pattern: /manifoldPoints/, label: "manifoldPoints" },
+    { pattern: /\bboundsF32\b/, label: "boundsF32" },
+    { pattern: /\bcircleInBoundsF32\b/, label: "circleInBoundsF32" },
+    { pattern: /return \{ buf:/, label: "return { buf:" },
+    { pattern: /\bscreenToWorld\(/, label: "screenToWorld(" },
+    { pattern: /\bworldToScreen\(/, label: "worldToScreen(" },
+    { pattern: /\bworldToScreenInto\b/, label: "worldToScreenInto" },
 ];
 
 for (const { pattern, label } of legacy) {
@@ -86,8 +92,11 @@ for (const { pattern, label } of legacy) {
         const dir = path.join(root, hot);
         if (!fs.existsSync(dir)) continue;
         for (const file of walk(dir, (p) => p.endsWith(".js"))) {
+            const relPath = rel(file);
+            if (label === "return { buf:" && !relPath.startsWith("Libraries/Viewport/")) continue;
+            if ((label === "screenToWorld(" || label === "worldToScreen(" || label === "worldToScreenInto") && relPath !== "Libraries/Viewport/Viewport.js") continue;
             const src = fs.readFileSync(file, "utf8");
-            if (pattern.test(src)) failures.push({ file: rel(file), kind: "legacy", symbol: label });
+            if (pattern.test(src)) failures.push({ file: relPath, kind: "legacy", symbol: label });
         }
     }
 }

@@ -1,6 +1,7 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillClosedPolygon, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, drawImageQuadScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, pointOnFrustum, getHeightSlice, traceVisibleArc, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectVertical, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabb, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbInto, centerReachAabbF32, aabbFromF32, lerp, scaleAtHeight, ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP, BRIDGE_AABB, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, transformPoint2DInto, centeredAabbInto, createAabb, aabbFromTwoPointsInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbInto, centerReachAabbF32, lerp, scaleAtHeight, ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
+import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { transformRollVertex, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
@@ -759,7 +760,7 @@ export function drawRadialBand(ctx, prop, viewport, options) {
         pointOnFrustum(sBandQuad, 2, projection, baseRadius, resolvedTop, t0, a1);
         const edgeMidX = (sBandQuad[0] + sBandQuad[2]) * 0.5;
         const edgeMidY = (sBandQuad[1] + sBandQuad[3]) * 0.5;
-        if (!viewport.circleInBoundsF32(prop.x, prop.y, baseRadius, "props")) continue;
+        if (!viewport.circleInBounds(prop.x, prop.y, baseRadius, VIEW_TIER.PROPS)) continue;
         if (!isFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY)) continue;
         pointOnFrustum(sBandQuad, 4, projection, baseRadius, resolvedTop, t1, a1);
         pointOnFrustum(sBandQuad, 6, projection, baseRadius, resolvedTop, t1, a0);
@@ -1147,13 +1148,14 @@ export function storeWallGridDrawCacheF32(cache, grid, wallGridRevision, buf, o)
     cache.boundsMaxY = buf[o + 3];
 }
 export function collectStaticGridWallDrawables(obstacleGrid, viewport, outQueue) {
-    const bounds = viewport.boundsF32("structure");
+    const buf = viewport.boundsBuf;
+    const o = VIEW_TIER.STRUCTURE;
     const viewerX = viewport.x;
     const viewerY = viewport.y;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!wallGridDrawCacheHitF32(sGeomCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o)) {
-        collectVoxelWallFacesInAabbFlatF32(obstacleGrid, bounds.buf, bounds.o, sGeomCache.faces);
-        storeWallGridDrawCacheF32(sGeomCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o);
+    if (!wallGridDrawCacheHitF32(sGeomCache, obstacleGrid, wallGridRevision, buf, o)) {
+        collectVoxelWallFacesInAabbFlatF32(obstacleGrid, buf, o, sGeomCache.faces);
+        storeWallGridDrawCacheF32(sGeomCache, obstacleGrid, wallGridRevision, buf, o);
     }
     const faces = sGeomCache.faces;
     const data = faces.data;
@@ -1220,13 +1222,14 @@ function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
     return false;
 }
 export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, outQueue) {
-    const bounds = viewport.boundsF32("structure");
+    const buf = viewport.boundsBuf;
+    const o = VIEW_TIER.STRUCTURE;
     const viewerX = viewport.x;
     const viewerY = viewport.y;
     const wallGridRevision = obstacleGrid.wallGridRevision;
-    if (!wallGridDrawCacheHitF32(sBoxCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o)) {
-        collectRailWallBoxesInAabbF32(obstacleGrid, bounds.buf, bounds.o, sBoxCache.boxes);
-        storeWallGridDrawCacheF32(sBoxCache, obstacleGrid, wallGridRevision, bounds.buf, bounds.o);
+    if (!wallGridDrawCacheHitF32(sBoxCache, obstacleGrid, wallGridRevision, buf, o)) {
+        collectRailWallBoxesInAabbF32(obstacleGrid, buf, o, sBoxCache.boxes);
+        storeWallGridDrawCacheF32(sBoxCache, obstacleGrid, wallGridRevision, buf, o);
     }
     const boxes = sBoxCache.boxes;
     const data = boxes.data;
@@ -1411,7 +1414,7 @@ function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeL
     const visibleHeightCells = bandHeight / cellSize;
     return { subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))), subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)), capPx: capHeight * settings.surfaceBakeScale, alphaBase, alphaBandMax };
 }
-function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, worldBounds) {
+function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, boundsBuf, boundsO) {
     const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
     const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
     const baseTransform = ctx.getTransform();
@@ -1435,7 +1438,7 @@ function blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, w
             computeFaceCornerElevatedInto(sSubdivQuad, 2, u1, v0, faceBottom, faceTop);
             computeFaceCornerElevatedInto(sSubdivQuad, 4, u1, v1, faceBottom, faceTop);
             computeFaceCornerElevatedInto(sSubdivQuad, 6, u0, v1, faceBottom, faceTop);
-            if (!flatQuadOverlapAabb(sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], worldBounds)) continue;
+            if (!flatQuadOverlapAabbF32(sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], boundsBuf, boundsO)) continue;
             drawImageQuadWithBaseTransformScalars(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, sSubdivQuad[0], sSubdivQuad[1], sSubdivQuad[2], sSubdivQuad[3], sSubdivQuad[4], sSubdivQuad[5], sSubdivQuad[6], sSubdivQuad[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
         }
     }
@@ -1466,7 +1469,7 @@ function drawFaceTextureScalars(ctx, x1, y1, x2, y2, faceBottom, faceTop, viewpo
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.boundsF32("chunks"));
+    blitWallFaceSubdiv(ctx, faceBottom, faceTop, atlas, subdiv, viewport, viewport.boundsBuf, VIEW_TIER.CHUNKS);
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
     const { wallHeight, wallBaseZ } = face;
@@ -2067,10 +2070,8 @@ function prepareWallChunkPropTextures(state, prop) {
     prop._wallChunkTextureReady = !!textures.ready;
 }
 // Removed parallel sort (now in VisibleDrawQueue.js)
-export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tier = "props", hitTest = "circle", match = null, filterId = "overlay" } = {}) {
-    const f32 = viewport.boundsF32(tier);
-    aabbFromF32(f32.buf, f32.o, BRIDGE_AABB);
-    return entityRegistry.queryView({ bounds: BRIDGE_AABB, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
+export function queryPropsInView(entityRegistry, viewport, spatialFrame, { tierO = VIEW_TIER.PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
+    return entityRegistry.queryViewF32({ boundsBuf: viewport.boundsBuf, boundsO: tierO, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
 }
 export class WorldSceneRenderer {
     constructor() {
@@ -2201,7 +2202,7 @@ export function forEachLosShadowQuadInRange(edgeList, lightX, lightY, range, lig
 const sEdgeScratch = new EdgeList();
 const sQuadScratch = new Float32Array(8);
 const sLightQueryBounds = new Float32Array(4);
-const sScreenLight = { x: 0, y: 0 };
+const sScreenLight = new Float32Array(2);
 let sOverlayCanvas = null;
 let sOverlayCtx = null;
 function ensureOverlayBuffer(width, height) {
@@ -2225,12 +2226,12 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     const lightY = viewport.y;
     const range = visionTiles * obstacleGrid.cellSize;
     const screenRange = range * (viewport.zoom ?? 1);
-    viewport.worldToScreenInto(sScreenLight, lightX, lightY);
+    viewport.worldToScreenF32(sScreenLight, 0, lightX, lightY);
     centerReachAabbF32(sLightQueryBounds, 0, lightX, lightY, range);
     collectExposedWallEdgesInAabb(obstacleGrid, sLightQueryBounds, 0, sEdgeScratch);
     collectRailWallShadowEdgesInAabbF32(obstacleGrid, sLightQueryBounds, 0, sEdgeScratch);
     fillMaskBase(overlayCtx, canvasW, canvasH, `rgba(0,0,0,${overlayAlpha})`);
-    cutOutRadialSoftDisc(overlayCtx, sScreenLight.x, sScreenLight.y, screenRange);
+    cutOutRadialSoftDisc(overlayCtx, sScreenLight[0], sScreenLight[1], screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {
         let hasShadows = false;
         forEachLosShadowQuadInRange(sEdgeScratch, lightX, lightY, range, lightZ, viewport, sQuadScratch, (flatVerts, vertCount) => {

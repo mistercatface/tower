@@ -169,7 +169,7 @@ async function runSnakeLaunch(state, ctx) {
     }
     state.sandbox.entityMeta.setCameraTarget(boid.id, true);
     state.viewport.snapTo(playerX, playerY);
-    state.viewport.zoom = 2.0;
+    state.viewport.setZoom(2.0);
     syncLabViewportZoomUi(state);
     state.editor.lockSelection = true;
 }
@@ -284,7 +284,7 @@ async function runGlassLaunch(state, ctx) {
     }
     state.sandbox.entityMeta.setCameraTarget(playerProp.id, true);
     state.viewport.snapTo(playerX, playerY);
-    state.viewport.zoom = 2.0;
+    state.viewport.setZoom(2.0);
     syncLabViewportZoomUi(state);
     state.editor.lockSelection = false;
     state.editor.navMode = "off";

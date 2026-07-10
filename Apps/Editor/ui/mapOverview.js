@@ -1,9 +1,9 @@
-import { aabbFromF32, BRIDGE_AABB } from "../../../Libraries/Math/math.js";
+import { VIEW_TIER } from "../../../Libraries/Viewport/ViewBounds.js";
 import { applySquareCanvasResize } from "./squareCanvasResize.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Spatial/spatial.js";
 import { createMapGenBoundsOverviewEditor, createViewportOverviewEditor, drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
-import { drawWorldBoundsBox } from "./mapOverviewDraw.js";
+import { drawWorldBoundsBox, drawWorldBoundsBoxF32 } from "./mapOverviewDraw.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
 let overviewCtx = null;
@@ -47,9 +47,7 @@ export function paintMapOverviewFrame(state) {
     const displayW = canvas.width;
     const displayH = canvas.height;
     refreshAllMapGenBoundsPreviews(state.obstacleGrid, state.editor);
-    const clipF32 = state.viewport.boundsF32("clip");
-    aabbFromF32(clipF32.buf, clipF32.o, BRIDGE_AABB);
-    drawWorldBoundsBox(ctx, BRIDGE_AABB, cache, displayW, displayH, "#00e5ff");
+    drawWorldBoundsBoxF32(ctx, state.viewport.boundsBuf, VIEW_TIER.CLIP, cache, displayW, displayH, "#00e5ff");
     const genKind = activeMapGenKind(state);
     if (genKind) paintMapGenBoundsOverlay(ctx, state, genKind, cache, displayW, displayH);
 }

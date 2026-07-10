@@ -13,6 +13,7 @@ import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, sn
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
+import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
@@ -2500,7 +2501,7 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
-        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, { tier: "chunks", filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
+        visibleSelectedProps = queryPropsInView(state.entityRegistry, viewport, spatialFrame, { tierO: VIEW_TIER.CHUNKS, filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
         for (let i = 0; i < visibleSelectedProps.length; i++) {
             const prop = visibleSelectedProps[i];
             if (!isChainSteeringTarget(state, state.sandbox.entityMeta, prop.id)) continue;

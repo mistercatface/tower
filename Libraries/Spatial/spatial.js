@@ -128,6 +128,9 @@ export class SpatialFrameCore {
     collectEntitiesInBounds(bounds, exclude = null) {
         return this.entityGrid.collectInBounds(bounds, this.wallQuery, exclude);
     }
+    collectEntitiesInBoundsF32(buf, o, exclude = null) {
+        return this.entityGrid.collectInBoundsF32(buf, o, this.wallQuery, exclude);
+    }
     /**
      * Broadphase around a query anchor (e.g. zone centroid + shape). Does not require insertion.
      *
@@ -1793,6 +1796,33 @@ export class EntityGrid {
             }
         }
     }
+    forEachInBoundsF32(buf, o, exclude, queryGen, fn) {
+        const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] - this.minY) / this.cellSize));
+        if (minCol > maxCol || minRow > maxRow) return;
+        const cellHead = this.cellHead;
+        const entityNext = this.entityNext;
+        const entities = this.entities;
+        const cols = this.cols;
+        for (let row = minRow; row <= maxRow; row++) {
+            const rowOffset = row * cols;
+            for (let col = minCol; col <= maxCol; col++) {
+                const cellIdx = rowOffset + col;
+                let curr = cellHead[cellIdx];
+                if (curr === -1) continue;
+                while (curr !== -1) {
+                    const other = entities[curr];
+                    if (other && other !== exclude && other._spatialGen !== queryGen) {
+                        other._spatialGen = queryGen;
+                        fn(other);
+                    }
+                    curr = entityNext[curr];
+                }
+            }
+        }
+    }
     /**
      * Entities whose grid cell falls inside a world AABB. Because bodies are indexed at
      * their center point, bounds are expanded by maxInsertedExtent + neighborQueryPad
@@ -1815,6 +1845,13 @@ export class EntityGrid {
             return query.collectInIndex(this, BRIDGE_AABB, exclude);
         }
         return query.collectInIndex(this, bounds, exclude);
+    }
+    collectInBoundsF32(buf, o, query, exclude = null, { expandForEntityExtents = true } = {}) {
+        if (expandForEntityExtents) {
+            padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, buf, o, this.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
+            return query.collectInIndexF32(this, ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, exclude);
+        }
+        return query.collectInIndexF32(this, buf, o, exclude);
     }
     collectNearbyInto(entity, out) {
         out.length = 0;
@@ -2095,10 +2132,19 @@ export class SpatialQuery {
         this.nextQuery();
         index.forEachInBounds(bounds, exclude, this.generation, fn);
     }
+    forEachInIndexF32(index, buf, o, fn, exclude = null) {
+        this.nextQuery();
+        index.forEachInBoundsF32(buf, o, exclude, this.generation, fn);
+    }
     /** @param {{ forEachInBounds: Function }} index @param {import("../../Math/Aabb2D.js").Aabb2D} bounds @param {object | null} [exclude] @returns {object[]} */
     collectInIndex(index, bounds, exclude = null) {
         this._scratch.length = 0;
         this.forEachInIndex(index, bounds, this._collectFn, exclude);
+        return this._scratch;
+    }
+    collectInIndexF32(index, buf, o, exclude = null) {
+        this._scratch.length = 0;
+        this.forEachInIndexF32(index, buf, o, this._collectFn, exclude);
         return this._scratch;
     }
 }

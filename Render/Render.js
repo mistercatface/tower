@@ -2,6 +2,7 @@ import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/render.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
 import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
+import { VIEW_TIER } from "../Libraries/Viewport/ViewBounds.js";
 /**
  * @typedef {object} SimulationSceneHooks
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
@@ -82,7 +83,7 @@ export class Renderer {
         if (!collection) return;
         for (let i = 0; i < collection.length; i++) {
             const entity = collection[i];
-            if (!viewport.circleInBoundsF32(entity.x, entity.y, entity.radius, "props")) continue;
+            if (!viewport.circleInBounds(entity.x, entity.y, entity.radius, VIEW_TIER.PROPS)) continue;
             entity.render(this.ctx, this, state);
         }
     }

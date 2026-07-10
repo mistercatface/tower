@@ -46,7 +46,7 @@ function createEditorTestState() {
                 this.x = x;
                 this.y = y;
             },
-            circleInBoundsF32() { return true; } 
+            circleInBounds() { return true; } 
         },
         worldSurfaces: { 
             settings: { maxWallHeightLevel: 8, cellsPerChunk: CELLS_PER_CHUNK },

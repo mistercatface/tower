@@ -1,11 +1,11 @@
-import { ViewBounds } from "./ViewBounds.js";
+import { ViewBounds, VIEW_TIER } from "./ViewBounds.js";
 const MIN_WORLD_SPAN = 10;
 /** 2D world camera: pan, zoom, screen/world mapping, elevation projection knobs. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
-        this._x = x;
-        this._y = y;
-        this._zoom = zoom;
+        this.x = x;
+        this.y = y;
+        this.zoom = zoom;
         this.cx = 0;
         this.cy = 0;
         this.width = 0;
@@ -14,10 +14,10 @@ export class Viewport {
         this.halfH = 0;
         this.invZoom = 1;
         this.viewBounds = new ViewBounds();
-        Object.defineProperty(this, "x", { get: () => this._x, set: (v) => this._setPosition(v, this._y) });
-        Object.defineProperty(this, "y", { get: () => this._y, set: (v) => this._setPosition(this._x, v) });
-        Object.defineProperty(this, "zoom", { get: () => this._zoom, set: (v) => this._setZoom(v) });
         this._recompute();
+    }
+    get boundsBuf() {
+        return this.viewBounds.buf;
     }
     applyPerspectiveConfig(config) {
         this.cameraHeight = config.cameraHeight;
@@ -27,59 +27,50 @@ export class Viewport {
     configureDrawBounds(viewQueryPadPx, viewPaddingPx) {
         if (this.viewBounds.configurePads(viewQueryPadPx, viewPaddingPx)) this._recompute();
     }
-    _setZoom(zoom) {
-        this._zoom = zoom;
+    setZoom(zoom) {
+        this.zoom = zoom;
         this._recompute();
     }
-    _setPosition(x, y) {
-        this._x = x;
-        this._y = y;
+    setPosition(x, y) {
+        this.x = x;
+        this.y = y;
         this._recompute();
     }
     _recompute() {
         const w = this.width > 0 ? this.width : this.cx * 2;
         const h = this.height > 0 ? this.height : this.cy * 2;
-        this.halfW = w / (2 * this._zoom);
-        this.halfH = h / (2 * this._zoom);
-        this.invZoom = 1 / this._zoom;
-        this.viewBounds.recompute(this._x, this._y, this.halfW, this.halfH);
+        this.halfW = w / (2 * this.zoom);
+        this.halfH = h / (2 * this.zoom);
+        this.invZoom = 1 / this.zoom;
+        this.viewBounds.recompute(this.x, this.y, this.halfW, this.halfH);
         const worldSpan = Math.max(MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
         const referenceSpan = Math.max(MIN_WORLD_SPAN, this.getVisualRadius() * 2);
         this.perspectiveStrength = (this._perspectiveStrengthBase * referenceSpan) / worldSpan;
     }
-    boundsF32(tier) {
-        return this.viewBounds.boundsF32(tier);
+    circleInBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER.PROPS) {
+        return this.viewBounds.circleInBounds(worldX, worldY, radius, tierO);
     }
-    circleInBoundsF32(worldX, worldY, radius = 0, tier = "props") {
-        return this.viewBounds.circleInBoundsF32(worldX, worldY, radius, tier);
-    }
-    entityInBoundsF32(entity, tier = "props", radiusScale = 1) {
-        return this.circleInBoundsF32(entity.x, entity.y, entity.radius * radiusScale, tier);
-    }
-    aabbInBoundsF32(buf, o, tier = "clip") {
-        return this.viewBounds.aabbInBoundsF32(buf, o, tier);
+    aabbInBounds(buf, o, tierO = VIEW_TIER.CLIP) {
+        return this.viewBounds.aabbInBounds(buf, o, tierO);
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);
         ctx.scale(this.zoom, this.zoom);
         ctx.translate(-this.x, -this.y);
     }
-    screenToWorld(screenX, screenY) {
-        return { x: (screenX - this.cx) * this.invZoom + this.x, y: (screenY - this.cy) * this.invZoom + this.y };
+    screenToWorldF32(buf, o, screenX, screenY) {
+        buf[o] = (screenX - this.cx) * this.invZoom + this.x;
+        buf[o + 1] = (screenY - this.cy) * this.invZoom + this.y;
     }
-    worldToScreenInto(out, worldX, worldY) {
-        out.x = (worldX - this.x) * this.zoom + this.cx;
-        out.y = (worldY - this.y) * this.zoom + this.cy;
-        return out;
-    }
-    worldToScreen(worldX, worldY) {
-        return { x: (worldX - this.x) * this.zoom + this.cx, y: (worldY - this.y) * this.zoom + this.cy };
+    worldToScreenF32(buf, o, worldX, worldY) {
+        buf[o] = (worldX - this.x) * this.zoom + this.cx;
+        buf[o + 1] = (worldY - this.y) * this.zoom + this.cy;
     }
     follow(targetX, targetY, factor = 0.1) {
-        this._setPosition(this._x + (targetX - this._x) * factor, this._y + (targetY - this._y) * factor);
+        this.setPosition(this.x + (targetX - this.x) * factor, this.y + (targetY - this.y) * factor);
     }
     snapTo(x, y) {
-        this._setPosition(x, y);
+        this.setPosition(x, y);
     }
     setCanvasSize(width, height) {
         this.width = width;
@@ -92,3 +83,4 @@ export class Viewport {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
 }
+export { VIEW_TIER };

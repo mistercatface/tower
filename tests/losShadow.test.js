@@ -12,9 +12,10 @@ describe("projectWorldPointToScreen", () => {
     it("chains elevation projection with viewport worldToScreen", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         projectWorldPointToScreen(ENGINE_F32, S_OUT_SCREEN, viewport, 64, 64, 0);
-        const flat = viewport.worldToScreen(64, 64);
-        assertNear(ENGINE_F32[S_OUT_SCREEN], flat.x);
-        assertNear(ENGINE_F32[S_OUT_SCREEN + 1], flat.y);
+        const flat = new Float32Array(2);
+        viewport.worldToScreenF32(flat, 0, 64, 64);
+        assertNear(ENGINE_F32[S_OUT_SCREEN], flat[0]);
+        assertNear(ENGINE_F32[S_OUT_SCREEN + 1], flat[1]);
     });
     it("writes into caller-owned Float32Array as well as ENGINE_F32", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
@@ -62,12 +63,14 @@ describe("shadowProjection", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const out = new Float32Array(8);
         projectWallShadowQuadScreen(out, 0, viewport, 72, 40, 16, 64, 64, 80, 64, 16);
-        const floor1 = viewport.worldToScreen(64, 64);
-        const floor2 = viewport.worldToScreen(80, 64);
-        assertNear(out[6], floor1.x);
-        assertNear(out[7], floor1.y);
-        assertNear(out[4], floor2.x);
-        assertNear(out[5], floor2.y);
+        const floor1 = new Float32Array(2);
+        const floor2 = new Float32Array(2);
+        viewport.worldToScreenF32(floor1, 0, 64, 64);
+        viewport.worldToScreenF32(floor2, 0, 80, 64);
+        assertNear(out[6], floor1[0]);
+        assertNear(out[7], floor1[1]);
+        assertNear(out[4], floor2[0]);
+        assertNear(out[5], floor2[1]);
     });
     it("projectWallShadowQuadScreen extrudes floor corners when light is above wall top", () => {
         const viewport = makeTestViewport(128, 128, 200, 200, 1);

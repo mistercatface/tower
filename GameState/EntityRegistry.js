@@ -1,6 +1,6 @@
 import { pruneKineticConstraintsForBody, entityContainedInAabb, getEntityCollisionParts } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHash, entityIntersectsAabb, distanceToAabb, distanceToLineSegment, createAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, BRIDGE_AABB, centerReachAabbF32, aabbFromF32, pointInPolygon, transformPoint2DInto, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
+import { aabbHash, aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, distanceToAabb, distanceToLineSegment, createAabb, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, BRIDGE_AABB, centerReachAabbF32, aabbFromF32, pointInPolygon, transformPoint2DInto, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 /** @typedef {import("../Libraries/Math/Aabb2D.js").Aabb2D} Aabb2D */
 /** @typedef {import("../Libraries/Math/Aabb2D.js").AabbEntityHitTest} AabbEntityHitTest */
 /** @typedef {{ kind: string, ref: object }} EntityRegistryEntry */
@@ -109,9 +109,18 @@ function queryViewCacheMatches(entry, spatialGen, membershipGen, bounds, boundsH
     if (entry.boundsHash !== boundsHash) return false;
     return entry.minX === bounds.minX && entry.minY === bounds.minY && entry.maxX === bounds.maxX && entry.maxY === bounds.maxY;
 }
-/** @param {object[]} result @param {number} spatialGen @param {number} membershipGen @param {Aabb2D} bounds @param {number} boundsHash @param {number} filterHash @returns {QueryViewCacheEntry} */
+function queryViewCacheMatchesF32(entry, spatialGen, membershipGen, buf, o, boundsHash, filterHash) {
+    if (!entry) return false;
+    if (entry.spatialGen !== spatialGen || entry.membershipGen !== membershipGen) return false;
+    if (entry.filterHash !== filterHash) return false;
+    if (entry.boundsHash !== boundsHash) return false;
+    return entry.minX === buf[o] && entry.minY === buf[o + 1] && entry.maxX === buf[o + 2] && entry.maxY === buf[o + 3];
+}
 function makeQueryViewCacheEntry(result, spatialGen, membershipGen, bounds, boundsHash, filterHash) {
     return { result, spatialGen, membershipGen, boundsHash, filterHash, minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+}
+function makeQueryViewCacheEntryF32(result, spatialGen, membershipGen, buf, o, boundsHash, filterHash) {
+    return { result, spatialGen, membershipGen, boundsHash, filterHash, minX: buf[o], minY: buf[o + 1], maxX: buf[o + 2], maxY: buf[o + 3] };
 }
 /** @param {number} spatialGen @param {number} membershipGen @param {number} boundsHash @param {number} filterHash */
 function queryViewCacheKey(spatialGen, membershipGen, boundsHash, filterHash) {
@@ -260,6 +269,36 @@ export class EntityRegistry {
         this._queryCache.set(cacheKey, makeQueryViewCacheEntry(result, spatialGen, this.membershipGen, bounds, boundsHash, filterHash));
         return result;
     }
+    queryViewF32(criteria, spatialFrame) {
+        const kinds = criteria.kinds ?? EMPTY_KINDS;
+        const hitTest = criteria.hitTest ?? "circle";
+        const spatialGen = spatialFrame?.frameId ?? -1;
+        const buf = criteria.boundsBuf;
+        const o = criteria.boundsO;
+        const boundsHash = aabbHashF32(buf, o);
+        const filterHash = filterQueryHash(criteria);
+        const cacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, filterHash);
+        const cached = this._queryCache.get(cacheKey);
+        if (queryViewCacheMatchesF32(cached, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash)) return cached.result;
+        let result;
+        if (criteria.match && criteria.filterId) {
+            const baseFilterHash = filterQueryHash({ kinds, hitTest });
+            const baseCacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, baseFilterHash);
+            const baseCached = this._queryCache.get(baseCacheKey);
+            if (queryViewCacheMatchesF32(baseCached, spatialGen, this.membershipGen, buf, o, boundsHash, baseFilterHash)) {
+                result = this._borrowQueryResultBuffer(criteria.filterId);
+                for (let i = 0; i < baseCached.result.length; i++) {
+                    const ref = baseCached.result[i];
+                    if (criteria.match(ref)) result.push(ref);
+                }
+                this._queryCache.set(cacheKey, makeQueryViewCacheEntryF32(result, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
+                return result;
+            }
+        }
+        result = this._queryInAabbF32(buf, o, kinds, criteria.match, hitTest, spatialFrame, criteria.filterId);
+        this._queryCache.set(cacheKey, makeQueryViewCacheEntryF32(result, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
+        return result;
+    }
     /**
      * @param {Aabb2D} bounds
      * @param {string[]} kinds
@@ -281,6 +320,26 @@ export class EntityRegistry {
                 const ref = candidates[i];
                 if (ref.isDead) continue;
                 if (!entityIntersectsAabb(ref, bounds, hitTest)) continue;
+                if (match && !match(ref)) continue;
+                result.push(ref);
+            }
+            return result;
+        } finally {
+            this._viewQueryDepth--;
+        }
+    }
+    _queryInAabbF32(buf, o, kinds, match, hitTest, spatialFrame, filterId) {
+        this._viewQueryDepth++;
+        const kindSet = this._kindSetForQuery(kinds);
+        const candidates = this._viewQueryDepth === 1 ? this._candidateScratch : [];
+        candidates.length = 0;
+        try {
+            this._fillViewCandidatesF32(candidates, buf, o, kindSet, spatialFrame);
+            const result = this._borrowQueryResultBuffer(filterId);
+            for (let i = 0; i < candidates.length; i++) {
+                const ref = candidates[i];
+                if (ref.isDead) continue;
+                if (!entityIntersectsAabbF32(ref, buf, o, hitTest)) continue;
                 if (match && !match(ref)) continue;
                 result.push(ref);
             }
@@ -326,6 +385,13 @@ export class EntityRegistry {
         }
         this._fillAllEntriesOfKinds(out, kindSet);
     }
+    _fillViewCandidatesF32(out, buf, o, kindSet, spatialFrame) {
+        if (spatialFrame && spatialFrame.populatedMembershipGen === this.membershipGen) {
+            this._fillSpatialViewCandidatesF32(out, buf, o, kindSet, spatialFrame);
+            return;
+        }
+        this._fillAllEntriesOfKinds(out, kindSet);
+    }
     /** @param {object[]} out @param {Set<string>} kindSet */
     _fillAllEntriesOfKinds(out, kindSet) {
         for (const entry of this._entries.values()) if (kindSet.has(entry.kind)) out.push(entry.ref);
@@ -339,6 +405,16 @@ export class EntityRegistry {
     _fillSpatialViewCandidates(out, bounds, kindSet, spatialFrame) {
         const queryGen = ++this._candidateQueryGen;
         const entities = spatialFrame.collectEntitiesInBounds(bounds);
+        for (let i = 0; i < entities.length; i++) {
+            const entry = this._entries.get(entities[i].id);
+            if (!entry || !kindSet.has(entry.kind)) continue;
+            out.push(entry.ref);
+            this._stampCandidateSeen(entry.ref.id, queryGen);
+        }
+    }
+    _fillSpatialViewCandidatesF32(out, buf, o, kindSet, spatialFrame) {
+        const queryGen = ++this._candidateQueryGen;
+        const entities = spatialFrame.collectEntitiesInBoundsF32(buf, o);
         for (let i = 0; i < entities.length; i++) {
             const entry = this._entries.get(entities[i].id);
             if (!entry || !kindSet.has(entry.kind)) continue;
