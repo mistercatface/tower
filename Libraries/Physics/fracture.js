@@ -820,9 +820,31 @@ export class FractureEngine {
         return geometries;
     }
     static _shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce) {
-        const seedCount = FractureEngine._seedCountForPolygon(flatVerts, impactForce);
+        let seedCount = FractureEngine._seedCountForPolygon(flatVerts, impactForce);
         FractureEngine._buildShatterSeeds(flatVerts, hitX, hitY, seedCount, SHATTER_SEEDS);
         const vertCount = flatVerts.length / 2;
+        let needsRecompute = true;
+        let attempts = 0;
+        while (needsRecompute && attempts < 10 && seedCount > 1) {
+            needsRecompute = false;
+            for (let i = 0; i < seedCount; i++) {
+                const cell = stores.geom.voronoiCell(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
+                let drop = false;
+                if (cell.vertCount < 3) drop = true;
+                else {
+                    stores.geom.centerVertsInPlace(cell.handle, cell.vertCount);
+                    if (outArea < GLASS_MIN_SHARD_AREA) drop = true;
+                }
+                if (cell.handle) stores.geom.release(cell.handle);
+                if (drop) {
+                    SHATTER_SEEDS.splice(i * 2, 2);
+                    seedCount--;
+                    needsRecompute = true;
+                    break;
+                }
+            }
+            attempts++;
+        }
         outDebrisStart = stores.debris.write;
         for (let i = 0; i < seedCount; i++) {
             const cell = stores.geom.voronoiCell(flatVerts, vertCount, SHATTER_SEEDS, i, seedCount);
