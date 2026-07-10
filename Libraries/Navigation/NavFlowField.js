@@ -532,8 +532,8 @@ export function flowCellBlocked(flowToNavIdx, navBlocked, flowIdx) {
     const navIdx = flowToNavIdx[flowIdx];
     return navIdx < 0 || navBlocked[navIdx] !== 0;
 }
-export function sampleFlowDirectionInto(out, x, y, flowField, frame) {
-    if (!flowField) return null;
+export function sampleFlowDirection(buf, o, x, y, flowField, frame) {
+    if (!flowField) return false;
     const { cellSize, cols, rows, centerX, centerY, offsetX, offsetY } = frame;
     const halfCell = cellSize / 2;
     const gx = (x - (centerX - offsetX + halfCell)) / cellSize;
@@ -591,13 +591,10 @@ export function sampleFlowDirectionInto(out, x, y, flowField, frame) {
             totalWeight += w;
         }
     }
-    if (totalWeight <= 0) return null;
+    if (totalWeight <= 0) return false;
     const len = Math.sqrt(flowX * flowX + flowY * flowY);
-    if (len <= 0) return null;
-    out.x = flowX / len;
-    out.y = flowY / len;
-    return out;
-}
-export function sampleFlowDirection(x, y, flowField, frame) {
-    return sampleFlowDirectionInto({ x: 0, y: 0 }, x, y, flowField, frame);
+    if (len <= 0) return false;
+    buf[o] = flowX / len;
+    buf[o + 1] = flowY / len;
+    return true;
 }

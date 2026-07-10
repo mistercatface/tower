@@ -8,8 +8,8 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtents, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
-import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto } from "../Math/math.js";
-import { sampleFlowDirectionInto, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorldInto, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
+import { convexFootprintHalfExtents, emptyAabb, growAabbFromCenterInto, isEmptyAabb, createAabb, centeredAabbInto, quantizeAngleIndex, aabbFromTwoPointsInto, ENGINE_F32, N_OUT_XY, N_OUT_FLOW } from "../Math/math.js";
+import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
@@ -1741,7 +1741,6 @@ function applyGroundNavSandboxReplan(nav, prop, targetX, targetY, state, ctx) {
     if (sandboxReason && sandboxReplanAllowed(sandboxReason, ctx.isVisible, ctx.stuckFrames, ctx.stuckReplanFrames)) return nav.requestReplan(prop, targetX, targetY, state, PathReplanManager.getPriority(sandboxReason, ctx.isVisible), sandboxReason);
     return null;
 }
-const SCRATCH_STEER_TARGET = { x: 0, y: 0 };
 export function groundNavArrivedAtTarget(prop, targetWorld, targetCellIdx, grid, stopRadius) {
     const onBelt = FloorBelt.isEntityOnBelt(grid, prop.x, prop.y);
     const targetOnBelt = targetCellIdx != null && FloorBelt.isBeltAtIdx(grid, targetCellIdx);
@@ -1758,17 +1757,17 @@ export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
 }
 export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
-    const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
-    const { steering, replanReason } = nav.update(prop, steerTarget.x, steerTarget.y, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
+    snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
+    const steerX = ENGINE_F32[N_OUT_XY];
+    const steerY = ENGINE_F32[N_OUT_XY + 1];
+    const { steering, replanReason } = nav.update(prop, steerX, steerY, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
     return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason };
 }
-const FLOW_DIR_SCRATCH = { x: 0, y: 0 };
 function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     if (!flowField) return null;
-    const dir = sampleFlowDirectionInto(FLOW_DIR_SCRATCH, pose.x, pose.y, flowField, flowFieldGrid.frame);
-    if (!dir) return null;
-    return { desiredX: dir.x, desiredY: dir.y };
+    if (!sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, pose.x, pose.y, flowField, flowFieldGrid.frame)) return null;
+    return { desiredX: ENGINE_F32[N_OUT_FLOW], desiredY: ENGINE_F32[N_OUT_FLOW + 1] };
 }
 function createGroundNavBehavior(state, config) {
     const { id, initRun, applyMoveTarget, tickSteering } = config;
@@ -1964,8 +1963,8 @@ const FLOW_GROUND_NAV_CONFIG = {
     applyMoveTarget(state, run, world, prop) {
         const snapped = snapMoveTargetToCellCenter(state.obstacleGrid, world);
         run.targetWorld = { x: snapped.worldX, y: snapped.worldY };
-        const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
-        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.nav.settings.recenterThreshold);
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
     },
     clearRunTarget(state, run) {
         run.targetWorld = null;
@@ -1975,29 +1974,33 @@ const FLOW_GROUND_NAV_CONFIG = {
     tickSteering(state, prop, run) {
         if (!run.targetWorld) return;
         const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
-        const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+        const steerX = ENGINE_F32[N_OUT_XY];
+        const steerY = ENGINE_F32[N_OUT_XY + 1];
         const flowFieldGrid = state.flowFieldGrid;
         const topologyKey = state.nav.topologyKey();
         if (topologyKey !== run.lastTopologyKey) {
             run.lastTopologyKey = topologyKey;
             flowFieldGrid.refresh();
         }
-        flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerTarget.x, steerTarget.y, state.nav.settings.recenterThreshold);
-        const distToTarget = Math.hypot(steerTarget.x - prop.x, steerTarget.y - prop.y);
+        flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerX, steerY, state.nav.settings.recenterThreshold);
+        const distToTarget = Math.hypot(steerX - prop.x, steerY - prop.y);
         if (distToTarget <= config.stopRadius) {
             clearGroundRollDrive(prop);
             FLOW_GROUND_NAV_CONFIG.clearRunTarget(state, run);
             return;
         }
-        const steering = computeFlowFieldSteering(agentPose(prop), steerTarget.x, steerTarget.y, flowFieldGrid);
+        const steering = computeFlowFieldSteering(agentPose(prop), steerX, steerY, flowFieldGrid);
         if (!steering) return;
         steerRollToward(prop, steering.desiredX, steering.desiredY, config);
     },
     getPathOverlay(state, prop, run) {
         if (!run?.targetWorld) return null;
-        const steerTarget = snapNavGoalWorldInto(SCRATCH_STEER_TARGET, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
-        const pathNodes = traceFlowFieldPath(prop.x, prop.y, steerTarget.x, steerTarget.y, state.flowFieldGrid, state.obstacleGrid);
-        return { mode: "flow", pathNodes, targetX: steerTarget.x, targetY: steerTarget.y };
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+        const steerX = ENGINE_F32[N_OUT_XY];
+        const steerY = ENGINE_F32[N_OUT_XY + 1];
+        const pathNodes = traceFlowFieldPath(prop.x, prop.y, steerX, steerY, state.flowFieldGrid, state.obstacleGrid);
+        return { mode: "flow", pathNodes, targetX: steerX, targetY: steerY };
     },
     onReset(state, propRuns) {
         propRuns.clear();

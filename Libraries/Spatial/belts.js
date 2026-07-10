@@ -162,21 +162,20 @@ function beltIdxInBounds(grid, idx) {
     return idx >= 0 && idx < grid.cols * grid.rows;
 }
 export class FloorBelt {
-    static getEntryEdgeWorldPointInto(out, grid, idx, entrySide) {
+    static getEntryEdgeWorldPoint(buf, o, grid, idx, entrySide) {
         const inset = grid.cellSize * 0.35;
-        out.x = grid.gridCenterXByIdx(idx) + BELT_DIR_X[entrySide] * inset;
-        out.y = grid.gridCenterYByIdx(idx) + BELT_DIR_Y[entrySide] * inset;
-        return out;
+        buf[o] = grid.gridCenterXByIdx(idx) + BELT_DIR_X[entrySide] * inset;
+        buf[o + 1] = grid.gridCenterYByIdx(idx) + BELT_DIR_Y[entrySide] * inset;
     }
     static entryNeighborIdx(grid, idx) {
         const packed = grid.floorPacked[idx];
         if (!BeltPacked.isValid(packed)) return -1;
         return edgeNeighborIdx(idx, BeltPacked.entry(packed), grid);
     }
-    static entryEdgeWorldPointInto(out, grid, idx) {
+    static entryEdgeWorldPoint(buf, o, grid, idx) {
         const packed = grid.floorPacked[idx];
         if (!BeltPacked.isValid(packed)) return false;
-        FloorBelt.getEntryEdgeWorldPointInto(out, grid, idx, BeltPacked.entry(packed));
+        FloorBelt.getEntryEdgeWorldPoint(buf, o, grid, idx, BeltPacked.entry(packed));
         return true;
     }
     static isBeltAtIdx(grid, idx) {

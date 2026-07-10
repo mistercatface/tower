@@ -1,8 +1,9 @@
 import { snapNavGoalCellIndex, snapNavGoalWorld } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  BeltPacked  } from "../Libraries/Spatial/belts.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked } from "../Libraries/Spatial/belts.js";
+import { ENGINE_F32, N_OUT_XY } from "../Libraries/Math/math.js";
 
 describe("snapNavGoal", () => {
     it("snapNavGoalCellIndex moves belt target to entry neighbor", () => {
@@ -24,12 +25,12 @@ describe("snapNavGoal", () => {
         const targetIdx = 2 + 2 * cols;
         const targetX = grid.gridCenterXByIdx(targetIdx);
         const targetY = grid.gridCenterYByIdx(targetIdx);
-        const snappedWorld = snapNavGoalWorld(grid, fromX, fromY, targetX, targetY);
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, fromX, fromY, targetX, targetY);
         const entryIdx = snapNavGoalCellIndex(grid, 0, targetIdx);
         const entryX = grid.gridCenterXByIdx(entryIdx);
         const entryY = grid.gridCenterYByIdx(entryIdx);
-        assert.equal(snappedWorld.x, entryX);
-        assert.equal(snappedWorld.y, entryY);
+        assert.equal(ENGINE_F32[N_OUT_XY], entryX);
+        assert.equal(ENGINE_F32[N_OUT_XY + 1], entryY);
     });
     it("canStep requires worker topology", () => {
         const grid = new WorldObstacleGrid(16);

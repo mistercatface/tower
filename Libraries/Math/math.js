@@ -30,6 +30,9 @@ export const S_OUT_XY = ENGINE_SPATIAL_BASE;
 export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
 export const S_AABB = ENGINE_SPATIAL_BASE + 4;
 export const S_QUAD = ENGINE_SPATIAL_BASE + 8;
+export const ENGINE_NAV_BASE = 320;
+export const N_OUT_XY = ENGINE_NAV_BASE;
+export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);

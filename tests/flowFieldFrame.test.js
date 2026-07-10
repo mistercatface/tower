@@ -2,13 +2,9 @@ import { rebuildFlowNeighborGrid, rebuildFlowToNavIdx, FlowFieldWindow, FlowCach
 import { FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  createCenteredGridFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, worldColInCenteredFrame, worldRowInCenteredFrame  } from "../Libraries/Spatial/spatial.js";
-
-
-
-
+import { createCenteredGridFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, worldColInCenteredFrame, worldRowInCenteredFrame } from "../Libraries/Spatial/spatial.js";
+import { ENGINE_F32, N_OUT_FLOW } from "../Libraries/Math/math.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Navigation/navigation.js";
-
 import { bfsTypedIndices } from "../Libraries/Navigation/navigation.js";
 
 function gridReachabilityBfs(grid, startIdx, targetIdx, blockedFn) {
@@ -48,10 +44,9 @@ describe("flow field centered grid frame", () => {
     it("samples flow direction from a centered frame", () => {
         const frame = createCenteredGridFrame(16, 32, 32, 0, 0);
         const flowField = new Uint8Array([5, 5, 5, 5]);
-        const dir = sampleFlowDirection(0, 0, flowField, frame);
-        assert.ok(dir);
-        assert.ok(dir.x > 0.99);
-        assert.ok(Math.abs(dir.y) < 0.01);
+        assert.equal(sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, 0, 0, flowField, frame), true);
+        assert.ok(ENGINE_F32[N_OUT_FLOW] > 0.99);
+        assert.ok(Math.abs(ENGINE_F32[N_OUT_FLOW + 1]) < 0.01);
     });
 
     it("rebuilds flow predecessor neighbors through the octile layout", () => {

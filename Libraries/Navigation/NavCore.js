@@ -1,6 +1,6 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
-import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb, ENGINE_F32, N_OUT_XY } from "../Math/math.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
@@ -31,37 +31,33 @@ export function snapNavGoalCellIndex(grid, fromIdx, targetIdx) {
     if (fromIdx === neighborIdx) return targetIdx;
     return neighborIdx;
 }
-export function snapNavGoalWorldInto(out, grid, fromX, fromY, targetX, targetY) {
+export function snapNavGoalWorld(buf, o, grid, fromX, fromY, targetX, targetY) {
     const fromIdx = grid.worldToIdx(fromX, fromY);
     const targetIdx = grid.worldToIdx(targetX, targetY);
     if (targetIdx < 0) {
-        out.x = targetX;
-        out.y = targetY;
-        return out;
+        buf[o] = targetX;
+        buf[o + 1] = targetY;
+        return;
     }
     if (!cellInRect(targetIdx, grid)) {
-        out.x = targetX;
-        out.y = targetY;
-        return out;
+        buf[o] = targetX;
+        buf[o + 1] = targetY;
+        return;
     }
     const snappedIdx = snapNavGoalCellIndex(grid, fromIdx, targetIdx);
     if (snappedIdx !== targetIdx) {
-        out.x = grid.gridCenterXByIdx(snappedIdx);
-        out.y = grid.gridCenterYByIdx(snappedIdx);
-        return out;
+        buf[o] = grid.gridCenterXByIdx(snappedIdx);
+        buf[o + 1] = grid.gridCenterYByIdx(snappedIdx);
+        return;
     }
     if (!FloorBelt.isBeltAtIdx(grid, targetIdx) || fromIdx === targetIdx) {
-        out.x = targetX;
-        out.y = targetY;
-        return out;
+        buf[o] = targetX;
+        buf[o + 1] = targetY;
+        return;
     }
-    if (FloorBelt.entryEdgeWorldPointInto(out, grid, targetIdx)) return out;
-    out.x = targetX;
-    out.y = targetY;
-    return out;
-}
-export function snapNavGoalWorld(grid, fromX, fromY, targetX, targetY) {
-    return snapNavGoalWorldInto({ x: 0, y: 0 }, grid, fromX, fromY, targetX, targetY);
+    if (FloorBelt.entryEdgeWorldPoint(buf, o, grid, targetIdx)) return;
+    buf[o] = targetX;
+    buf[o + 1] = targetY;
 }
 export function gridNavFrameKey(grid) {
     return `${grid.cols}:${grid.rows}:${grid.minX}:${grid.minY}:${grid.cellSize}`;
@@ -1404,15 +1400,16 @@ export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY
     return new HpaReplanRequest({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, state });
 }
 export function replanCellIndicesFromWorldCoords(grid, startX, startY, targetX, targetY) {
-    const steerScratch = { x: 0, y: 0 };
-    const steer = snapNavGoalWorldInto(steerScratch, grid, startX, startY, targetX, targetY);
+    snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, startX, startY, targetX, targetY);
+    const steerX = ENGINE_F32[N_OUT_XY];
+    const steerY = ENGINE_F32[N_OUT_XY + 1];
     let startIdx = grid.worldToIdx(startX, startY);
     if (startIdx < 0) startIdx = 0;
     startIdx = findNearestOpenCellIdx(grid.grid, grid, startIdx);
-    let targetIdx = grid.worldToIdx(steer.x, steer.y);
+    let targetIdx = grid.worldToIdx(steerX, steerY);
     if (targetIdx < 0) targetIdx = 0;
     targetIdx = findNearestOpenCellIdx(grid.grid, grid, targetIdx);
-    return { startIdx, targetIdx: snapNavGoalCellIndex(grid, startIdx, targetIdx), steerX: steer.x, steerY: steer.y };
+    return { startIdx, targetIdx: snapNavGoalCellIndex(grid, startIdx, targetIdx), steerX, steerY };
 }
 export function createNavState() {
     return { lastX: null, lastY: null, stuckFrames: 0, pathProgressIdx: 0, topologyKey: "", lastTargetX: null, lastTargetY: null, lastOffPathReplan: 0, hpaReplanRequestId: 0, pathSlot: -1, pathLen: 0, routeId: 0, pendingReplanReason: null, lastAcceptedRouteReason: null, lastAcceptedPathLen: 0, lastAcceptedProgressIdx: 0, lastAcceptedTargetX: null, lastAcceptedTargetY: null };

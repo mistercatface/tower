@@ -7,10 +7,11 @@ import {
     createNavState,
     findNearestOpenCellIdx,
     patchNavWalkableCellIndex,
-    snapNavGoalWorldInto,
+    snapNavGoalWorld,
     replanCellIndicesFromWorldCoords,
     REPLAN_PRIORITY_TARGET,
 } from "../../Libraries/Navigation/navigation.js";
+import { ENGINE_F32, N_OUT_XY } from "../../Libraries/Math/math.js";
 import { snapMoveTargetToCellCenter } from "../../Libraries/Physics/physics.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
@@ -252,13 +253,14 @@ export function formatReplanFailureDiagnostics(state, ctx) {
     const cellToRegion = state.nav.worker.graphCellToRegion;
     const startRegion = cellToRegion && startIdx >= 0 ? cellToRegion[startIdx] : -1;
     const targetRegion = cellToRegion && targetIdx >= 0 ? cellToRegion[targetIdx] : -1;
-    const steerScratch = { x: 0, y: 0 };
     const prop = ctx.prop;
-    const steerTarget = prop && targetWorld ? snapNavGoalWorldInto(steerScratch, grid, prop.x, prop.y, targetWorld.worldX, targetWorld.worldY) : steerScratch;
+    if (prop && targetWorld) snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, targetWorld.worldX, targetWorld.worldY);
+    const steerX = prop && targetWorld ? ENGINE_F32[N_OUT_XY] : 0;
+    const steerY = prop && targetWorld ? ENGINE_F32[N_OUT_XY + 1] : 0;
     return [
         `HPA replan failed for oracle-reachable target (seed=${seed} step=${step})`,
         `startIdx=${startIdx} targetIdx=${targetIdx} clickIdx=${clickIdx ?? targetWorld?.clickIdx} targetOnBelt=${FloorBelt.isBeltAtIdx(grid, clickIdx ?? targetIdx)}`,
-        `prop=(${prop?.x}, ${prop?.y}) steerTarget=(${steerTarget.x}, ${steerTarget.y})`,
+        `prop=(${prop?.x}, ${prop?.y}) steerTarget=(${steerX}, ${steerY})`,
         `clickTarget=(${targetWorld?.worldX}, ${targetWorld?.worldY})`,
         `maskReachable=${maskReachable} startComp=${startComp} targetComp=${targetComp}`,
         `startRegion=${startRegion} targetRegion=${targetRegion}`,
