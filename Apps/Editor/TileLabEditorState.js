@@ -1,4 +1,5 @@
 import { createDefaultMapGenBoundsConfig, createMapGenBoundsAabbCache } from "../../Libraries/Spatial/spatial.js";
+import { EDITOR_NAV_MODE_HPA } from "../../Core/engineEnums.js";
 export function createLabMapBoundsPreview() {
     return { cavern: createMapGenBoundsAabbCache(), rail: createMapGenBoundsAabbCache(), railMaze: createMapGenBoundsAabbCache(), erase: createMapGenBoundsAabbCache() };
 }
@@ -18,6 +19,6 @@ export class TileLabEditorState {
         this.showSelectionRings = false;
         this.lockSelection = false;
         this.navWalkableCellsCache = null;
-        this.navMode = "hpa";
+        this.navMode = EDITOR_NAV_MODE_HPA;
     }
 }

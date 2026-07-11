@@ -5,9 +5,9 @@ import {
     WORLD_RENDER_MODE_FLAT2D,
     WORLD_RENDER_MODE_RADIAL,
     WORLD_RENDER_MODE_RADIAL_SPHERES,
+    SHAPE_TYPE_CIRCLE,
 } from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { SHAPE_TYPE_CIRCLE } from "../Libraries/Physics/physics.js";
 import { Renderer } from "../Render/Render.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 

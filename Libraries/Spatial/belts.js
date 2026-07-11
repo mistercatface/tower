@@ -1,8 +1,9 @@
-import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, GRID_NAV_EPOCH_FLOOR, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
+import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
 import { CorridorPathfinder, createNavGraphViewFromTopology } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 import { readEntityFacing } from "../Physics/physics.js";
+import { GRID_NAV_EPOCH_FLOOR } from "../../Core/engineEnums.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);

@@ -7,7 +7,7 @@ import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.
 import { floorEffectPass } from "../../../Libraries/Props/props.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
-import { WORLD_RENDER_MODE_FLAT2D } from "../../../Core/engineEnums.js";
+import { WORLD_RENDER_MODE_FLAT2D, NAV_PATH_DEBUG_OFF, NAV_PATH_DEBUG_COUNT } from "../../../Core/engineEnums.js";
 import { getNavPathDebugCache } from "../../../Libraries/Navigation/navDebug.js";
 import { drawOverlayCommands } from "../../../Libraries/Render/render.js";
 import { drawLosShadowOverlay } from "../../../Libraries/Render/render.js";
@@ -48,10 +48,12 @@ let labRendererSettings = null;
 let lastProfileBakeKey = "";
 let labViewDirty = true;
 let showLabVignette = false;
-/** @type {'off' | 'hpa' | 'reachable'} */
-let labPathDebugMode = "off";
-const PATH_DEBUG_MODE_LABELS = { off: "Nav: Off", hpa: "Nav: All", reachable: "Nav: Reachable" };
-const PATH_DEBUG_MODE_CYCLE = ["off", "hpa", "reachable"];
+let labPathDebugMode = NAV_PATH_DEBUG_OFF;
+const PATH_DEBUG_MODE_LABELS = ["Nav: Off", "Nav: All", "Nav: Reachable"];
+function clampLabPathDebugMode(mode) {
+    const m = mode | 0;
+    return m === mode && m >= 0 && m < NAV_PATH_DEBUG_COUNT ? m : NAV_PATH_DEBUG_OFF;
+}
 export function setLabVignetteEnabled(enabled) {
     showLabVignette = enabled;
     const vignetteBtn = document.getElementById("showVignetteBtn");
@@ -65,8 +67,7 @@ function syncPathDebugModeButtonLabel() {
     if (btn) btn.textContent = PATH_DEBUG_MODE_LABELS[labPathDebugMode];
 }
 function cycleLabPathDebugMode() {
-    const i = PATH_DEBUG_MODE_CYCLE.indexOf(labPathDebugMode);
-    labPathDebugMode = PATH_DEBUG_MODE_CYCLE[(i + 1) % PATH_DEBUG_MODE_CYCLE.length];
+    labPathDebugMode = (labPathDebugMode + 1) % NAV_PATH_DEBUG_COUNT;
     syncPathDebugModeButtonLabel();
     markLabViewDirty();
 }
@@ -74,12 +75,12 @@ export function getLabPathDebugMode() {
     return labPathDebugMode;
 }
 export function setLabPathDebugMode(mode) {
-    labPathDebugMode = mode;
+    labPathDebugMode = clampLabPathDebugMode(mode);
     syncPathDebugModeButtonLabel();
     markLabViewDirty();
 }
 export function isLabPathDebugActive() {
-    return labPathDebugMode !== "off";
+    return labPathDebugMode !== NAV_PATH_DEBUG_OFF;
 }
 export function markLabViewDirty() {
     labViewDirty = true;

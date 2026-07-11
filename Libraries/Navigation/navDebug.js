@@ -3,7 +3,7 @@ import { ENGINE_F32, R_CHEVRON } from "../../Core/engineMemory.js";
 import { gridNavCacheKey, floorOccupancyStampDrawCacheKey } from "../Spatial/spatial.js";
 import { BeltPacked } from "../Spatial/belts.js";
 import { findNearestOpenCellIdx, buildNavReachableMaskFromSeed } from "./navigation.js";
-export const NAV_PATH_DEBUG_MODE = { OFF: "off", ALL: "hpa", REACHABLE: "reachable" };
+import { NAV_PATH_DEBUG_REACHABLE } from "../../Core/engineEnums.js";
 const PATH_DEBUG_BLOCKED_FILL = "rgba(244, 67, 54, 0.16)";
 const PATH_DEBUG_DIM_FILL = "rgba(120, 128, 140, 0.14)";
 const PATH_DEBUG_UNASSIGNED_FILL = "rgba(180, 190, 200, 0.16)";
@@ -165,7 +165,7 @@ function bakeLayerCanvas(debugView, minX, minY, maxX, maxY, reachableMask, grid,
 }
 export class NavPathDebugBaker {
     static bakeTopologyLayer(debugView, grid, mode) {
-        if (mode === NAV_PATH_DEBUG_MODE.REACHABLE) return null;
+        if (mode === NAV_PATH_DEBUG_REACHABLE) return null;
         return bakeLayerCanvas(debugView, grid.minX, grid.minY, grid.maxX, grid.maxY, null, grid, true);
     }
     static bakeReachableLayer(debugView, grid, reachableMask) {
@@ -200,7 +200,7 @@ export class NavPathDebugCache {
     }
     async ensureTopology(state, mode) {
         const topoKey = NavPathDebugCache.topologyKey(state, mode);
-        if (this.topologyKey === topoKey && (this.topologyBake || mode === NAV_PATH_DEBUG_MODE.REACHABLE)) return this.topologyBake;
+        if (this.topologyKey === topoKey && (this.topologyBake || mode === NAV_PATH_DEBUG_REACHABLE)) return this.topologyBake;
         if (this.topologyBakePromise && this.topologyBakeTargetKey === topoKey) return this.topologyBakePromise;
         this.topologyBakeTargetKey = topoKey;
         this.topologyBakePromise = (async () => {
@@ -221,7 +221,7 @@ export class NavPathDebugCache {
         return this.topologyBakePromise;
     }
     updateReachable(state, seedCellIdx) {
-        const mode = NAV_PATH_DEBUG_MODE.REACHABLE;
+        const mode = NAV_PATH_DEBUG_REACHABLE;
         const topoKey = NavPathDebugCache.topologyKey(state, mode);
         if (!this.debugView || this.topologyKey !== topoKey) return;
         const grid = state.obstacleGrid;
@@ -234,21 +234,21 @@ export class NavPathDebugCache {
     }
     draw(ctx, state, mode, onCacheReady) {
         const topoKey = NavPathDebugCache.topologyKey(state, mode);
-        const seedCellIdx = mode === NAV_PATH_DEBUG_MODE.REACHABLE ? NavPathDebugCache.seedCellIdx(state) : -1;
+        const seedCellIdx = mode === NAV_PATH_DEBUG_REACHABLE ? NavPathDebugCache.seedCellIdx(state) : -1;
         if (this.topologyKey !== topoKey) {
             if (!this.topologyRedrawScheduled) {
                 this.topologyRedrawScheduled = true;
                 void this.ensureTopology(state, mode).then(() => {
                     this.topologyRedrawScheduled = false;
-                    if (mode === NAV_PATH_DEBUG_MODE.REACHABLE) this.updateReachable(state, seedCellIdx);
+                    if (mode === NAV_PATH_DEBUG_REACHABLE) this.updateReachable(state, seedCellIdx);
                     onCacheReady?.();
                 });
             }
-        } else if (mode === NAV_PATH_DEBUG_MODE.REACHABLE) {
+        } else if (mode === NAV_PATH_DEBUG_REACHABLE) {
             const rKey = NavPathDebugCache.reachableKey(topoKey, seedCellIdx);
             if (this.reachableKey !== rKey) this.updateReachable(state, seedCellIdx);
         }
-        const layer = mode === NAV_PATH_DEBUG_MODE.REACHABLE ? this.reachableBake : this.topologyBake;
+        const layer = mode === NAV_PATH_DEBUG_REACHABLE ? this.reachableBake : this.topologyBake;
         if (!layer) return;
         ctx.drawImage(layer.canvas, layer.minX, layer.minY);
     }

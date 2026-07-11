@@ -8,11 +8,12 @@ import { rebuildLabMapCaches } from "../Render/render.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
+import { EDITOR_NAV_MODE_OFF, NAV_PATH_DEBUG_OFF, NAV_PATH_DEBUG_REACHABLE } from "../../Core/engineEnums.js";
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",
         hideEditor: false,
-        defaultPathDebugMode: "reachable",
+        defaultPathDebugMode: NAV_PATH_DEBUG_REACHABLE,
         async setup(state) {
             return { bind() {}, tick() {} };
         },
@@ -23,7 +24,7 @@ export const GAME_LAUNCHERS = {
     glass: {
         title: "Glass",
         hideEditor: false,
-        defaultPathDebugMode: "off",
+        defaultPathDebugMode: NAV_PATH_DEBUG_OFF,
         async setup(state) {
             return { bind() {}, tick() {} };
         },
@@ -194,6 +195,6 @@ async function runFractureLaunch(state, ctx) {
     state.viewport.setZoom(2.0);
     syncLabViewportZoomUi(state);
     state.editor.lockSelection = false;
-    state.editor.navMode = "off";
+    state.editor.navMode = EDITOR_NAV_MODE_OFF;
     state.sandbox.dragInteractionMode = GRAB_DRAG_BEHAVIOR_ID;
 }

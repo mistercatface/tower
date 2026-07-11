@@ -1,8 +1,8 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { readEntityFacing, wakeKineticBody, KINETIC_PAIR_CIRCLE_CIRCLE, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, SHAPE_TYPE_POLYGON } from "./physics.js";
+import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
 import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
-import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../../Core/engineEnums.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";

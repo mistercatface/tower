@@ -4,6 +4,7 @@ import { createKineticSession } from "../../Libraries/Physics/physics.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { createDefaultSandboxBehaviors, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
+import { EDITOR_NAV_MODE_HPA } from "../../Core/engineEnums.js";
 
 export function createSandboxDragTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
@@ -24,7 +25,7 @@ export function createSandboxDragTestState() {
             },
         },
         worldSurfaces: { settings: { maxWallHeightLevel: 8 } },
-        editor: { showSelectionRings: true, navMode: "hpa" },
+        editor: { showSelectionRings: true, navMode: EDITOR_NAV_MODE_HPA },
         nav: {
             settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 6, pathOffPathDistance: 4 },
             topologyKey() {

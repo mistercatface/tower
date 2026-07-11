@@ -8,7 +8,8 @@ import { HpaPathWorker } from "../Libraries/Navigation/HpaPathWorker.js";
 
 
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { GRID_NAV_EPOCH_WALL, bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
+import { bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
+import { GRID_NAV_EPOCH_WALL } from "../Core/engineEnums.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("node worker shim", () => {

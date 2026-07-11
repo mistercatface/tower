@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
+import { ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
 import { createGrabDragBehavior, getDragLaunchConfig, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
@@ -31,7 +32,7 @@ describe("grabDrag behavior", () => {
         behavior.onPointerMove(prop, { x: 120, y: 0 });
         behavior.tickWorld(16);
         assert.ok(prop._groundRollDrive);
-        assert.equal(prop._groundRollDrive.kind, "thrust");
+        assert.equal(prop._groundRollDrive.kind, ROLL_DRIVE_THRUST);
         assert.ok(prop._groundRollDrive.dirX > 0.9);
         assert.ok(Math.abs(prop.x) < 20);
     });

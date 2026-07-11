@@ -1,15 +1,15 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
-import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH_WALL, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
+import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
 import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -591,12 +591,8 @@ export function createSandboxPlacementOrder(state) {
         },
     };
 }
-/** @typedef {"off" | "normal" | "debug"} SandboxPathVisual */
-export const SANDBOX_PATH_VISUAL_OFF = "off";
-export const SANDBOX_PATH_VISUAL_NORMAL = "normal";
-export const SANDBOX_PATH_VISUAL_DEBUG = "debug";
-export const SANDBOX_PATH_VISUAL_OPTIONS = [SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG];
-export const SANDBOX_PATH_VISUAL_LABELS = { off: "Off", normal: "Normal", debug: "Debug" };
+const SANDBOX_PATH_VISUAL_LABELS = ["Off", "Normal", "Debug"];
+export const SANDBOX_PATH_VISUAL_OPTIONS = Array.from({ length: SANDBOX_PATH_VISUAL_COUNT }, (_, i) => i);
 export const SANDBOX_PRIMARY_PROP_IDS = ["ball"];
 function ballRadiusFromAsset(asset) {
     if (asset.physics?.radius == null) throw new Error(`asset ${asset.id} missing physics.radius`);
@@ -998,7 +994,7 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
 /** @param {object} state */
 export function createSandboxSession(state) {
     let placePaletteKey = "";
-    let wallStampMode = "voxel";
+    let wallStampMode = WALL_STAMP_VOXEL;
     let wallHeightLevel = 1;
     let railThicknessLevel = 4;
     let selectionTagFilter = "all";
@@ -1033,7 +1029,7 @@ export function createSandboxSession(state) {
         const hadSelection = selection.getSelection() != null;
         const changed = placePaletteKey !== key;
         placePaletteKey = key;
-        if (key.startsWith("wall:")) wallStampMode = /** @type {'voxel' | 'rail'} */ (key.slice(5));
+        if (key.startsWith("wall:")) wallStampMode = key.slice(5) === "rail" ? WALL_STAMP_RAIL : WALL_STAMP_VOXEL;
         selection.clearSelection();
         if (changed || hadSelection) notifyUi();
     };
@@ -1219,7 +1215,7 @@ export function createSandboxSession(state) {
         listPlacedRailWalls: () => listPlacedRailWalls(state.obstacleGrid),
         stampWallAtWorld(worldX, worldY) {
             const targetIdx = ensureObstacleGridAtWorld(state.obstacleGrid, worldX, worldY);
-            if (wallStampMode === "rail") {
+            if (wallStampMode === WALL_STAMP_RAIL) {
                 const hit = hitTestRailWallEdgeAtWorld(state.obstacleGrid, worldX, worldY);
                 if (!hit) return false;
                 if (railWallEdgeAt(state.obstacleGrid, hit.idx, hit.side)) {
@@ -1294,7 +1290,7 @@ export function createSandboxSession(state) {
         },
         deleteWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
-            if (wallStampMode === "rail") {
+            if (wallStampMode === WALL_STAMP_RAIL) {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit) return false;
                 const idx = hit.idx;
@@ -1320,7 +1316,7 @@ export function createSandboxSession(state) {
                 const { idx, side } = edgeHit;
                 if (railWallEdgeAt(grid, idx, side)) {
                     placePaletteKey = "wall:rail";
-                    wallStampMode = "rail";
+                    wallStampMode = WALL_STAMP_RAIL;
                     pickSelection({ kind: "rail", idx, side });
                     return true;
                 }
@@ -1329,13 +1325,13 @@ export function createSandboxSession(state) {
             if (idx === -1) return false;
             if (!cellIsStaticWall(grid, idx)) return false;
             placePaletteKey = "wall:voxel";
-            wallStampMode = "voxel";
+            wallStampMode = WALL_STAMP_VOXEL;
             pickSelection({ kind: "voxel", idx });
             return true;
         },
         pickWallAtWorld(worldX, worldY) {
             const grid = state.obstacleGrid;
-            if (wallStampMode === "rail") {
+            if (wallStampMode === WALL_STAMP_RAIL) {
                 const hit = hitTestRailWallEdgeAtWorld(grid, worldX, worldY);
                 if (!hit || !railWallEdgeAt(grid, hit.idx, hit.side)) return false;
                 pickSelection({ kind: "rail", idx: hit.idx, side: hit.side });
@@ -1899,7 +1895,7 @@ const DIRECT_GROUND_NAV_CONFIG = {
     getPathOverlay(state, prop, run) {
         if (!run?.targetWorld || (!run.dragging && !run.moveTargetActive)) return null;
         return {
-            mode: "direct",
+            mode: PATH_OVERLAY_MODE_DIRECT,
             pathNodes: [
                 { x: prop.x, y: prop.y },
                 { x: run.targetWorld.x, y: run.targetWorld.y },
@@ -1990,7 +1986,7 @@ const FLOW_GROUND_NAV_CONFIG = {
         const steerX = ENGINE_F32[N_OUT_XY];
         const steerY = ENGINE_F32[N_OUT_XY + 1];
         const pathNodes = traceFlowFieldPath(prop.x, prop.y, steerX, steerY, state.flowFieldGrid, state.obstacleGrid);
-        return { mode: "flow", pathNodes, targetX: steerX, targetY: steerY };
+        return { mode: PATH_OVERLAY_MODE_FLOW, pathNodes, targetX: steerX, targetY: steerY };
     },
     onReset(state, propRuns) {
         propRuns.clear();
@@ -2057,7 +2053,7 @@ const HPA_GROUND_NAV_CONFIG = {
         const nav = run.hpaNav.navState;
         const progressIdx = nav.pathProgressIdx;
         const trace = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid) : { pathNodes: [] };
-        return { mode: "hpa", pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y };
+        return { mode: PATH_OVERLAY_MODE_HPA, pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y };
     },
     onReset(state, propRuns) {
         propRuns.forEach((run) => run.hpaNav.reset(state));
@@ -2396,7 +2392,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
             const canNav = targetNavId && isTargetNavCapable() && (state.editor.lockSelection || targetNavId === cameraTargetId || now - lastSelectedBoidTime < 500);
             if (isDoubleTap && canNav) {
                 session.select({ kind: "prop", ids: [targetNavId] });
-                const behaviorId = state.editor.navMode === "flow" ? "rollToCursorFlow" : "rollToCursorHpa";
+                const behaviorId = state.editor.navMode === EDITOR_NAV_MODE_FLOW ? "rollToCursorFlow" : "rollToCursorHpa";
                 if (issueGroundNavToSelected(behaviorId, world)) {
                     lastClickTime = now;
                     lastClickX = world.x;
@@ -2496,7 +2492,7 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
             const prop = visibleSelectedProps[i];
             if (!isChainSteeringTarget(state, state.sandbox.entityMeta, prop.id)) continue;
             const visual = state.sandbox.entityMeta.getPathVisual(prop.id) ?? SANDBOX_PATH_VISUAL_NORMAL;
-            if (visual === "off") continue;
+            if (visual === SANDBOX_PATH_VISUAL_OFF) continue;
             const activeId = state.sandbox.entityMeta.getActiveBehaviorId(prop.id);
             const isGroundNav = activeId && GROUND_NAV_BEHAVIOR_IDS.has(activeId);
             const behavior = isGroundNav ? behaviorById.get(activeId) : null;
@@ -2669,7 +2665,7 @@ export function appendWallPlaceParams(body, state, controller, { wallStampMode, 
         if (selectedVoxelInfo) session.setSelectedVoxelWallHeight(val);
         else if (selectedRailInfo) session.setSelectedRailWallProps(val, selectedRailInfo.thicknessLevel);
     });
-    if (wallStampMode === "rail")
+    if (wallStampMode === WALL_STAMP_RAIL)
         appendRailThicknessSlider(body, session.getRailThicknessLevel(), (val) => {
             session.setRailThicknessLevel(val);
             if (selectedRailInfo) session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
@@ -2878,10 +2874,10 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSelectField(body, "Path visual", {
-        value: controller.getPathVisual(selectedProp),
-        options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: optionId, label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
+        value: String(controller.getPathVisual(selectedProp)),
+        options: SANDBOX_PATH_VISUAL_OPTIONS.map((optionId) => ({ value: String(optionId), label: SANDBOX_PATH_VISUAL_LABELS[optionId] })),
         onChange: (value) => {
-            controller.setPathVisual(value, selectedProp);
+            controller.setPathVisual(+value, selectedProp);
         },
     });
 }

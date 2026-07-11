@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import propCatalog from "../Assets/props/index.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
+import { EDITOR_NAV_MODE_HPA } from "../Core/engineEnums.js";
 import {
     resolveDragInteractionBehaviorId,
     sandboxAssetDragInteract,
@@ -103,7 +104,7 @@ describe("drag interaction mode", () => {
     it("boid double-tap pathing still works in grab mode", () => {
         const state = createSandboxDragTestState();
         state.editor.lockSelection = true;
-        state.editor.navMode = "hpa";
+        state.editor.navMode = EDITOR_NAV_MODE_HPA;
         const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "alpha");
         const cellIdx = state.obstacleGrid.worldToIdx(100, 100);
         state.obstacleGrid.writeFloorCell(cellIdx, state.obstacleGrid.grid[cellIdx]);

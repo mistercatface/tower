@@ -32,11 +32,18 @@ if (typeof globalThis.createImageBitmap === "undefined") {
 }
 
 after(async () => {
-    await Promise.race([
-        (async () => {
-            await terminateAllWorkerNavigations();
-            await terminateAllTrackedWorkers();
-        })(),
-        new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    let settleTimer;
+    try {
+        await Promise.race([
+            (async () => {
+                await terminateAllWorkerNavigations();
+                await terminateAllTrackedWorkers();
+            })(),
+            new Promise((resolve) => {
+                settleTimer = setTimeout(resolve, 2000);
+            }),
+        ]);
+    } finally {
+        clearTimeout(settleTimer);
+    }
 });

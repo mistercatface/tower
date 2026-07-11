@@ -7,7 +7,8 @@ import { getNavWalkableCellIndex, isNavWalkableCellAt, patchNavWalkableCellIndex
 import { terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { GRID_NAV_EPOCH_WALL, bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
+import { bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
+import { GRID_NAV_EPOCH_WALL } from "../Core/engineEnums.js";
 async function createWalkableCellsTestState(config) {
     return createNavWalkableTestState(config);
 }

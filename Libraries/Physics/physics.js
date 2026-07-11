@@ -68,8 +68,7 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT } from "../../Core/engineEnums.js";
-export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT };
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -2839,9 +2838,7 @@ export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
 export function applyKineticConstraintsFromSnapshot(session, entries, propRefsByIndex) {
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
-        let type = entry.type;
-        if (type === "angle") type = CONSTRAINT_TYPE_ANGLE;
-        else if (type === "distance" || type == null) type = CONSTRAINT_TYPE_DISTANCE;
+        const type = entry.type;
         let row;
         if (type === CONSTRAINT_TYPE_ANGLE) row = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
         else {
@@ -4677,7 +4674,7 @@ export function integratePropMotion(body, dtMs) {
 export function applyGroundRollDrive(prop, dtSec) {
     const drive = prop._groundRollDrive;
     if (!drive) return false;
-    if (drive.kind === "brake") return applyRollBrake(prop, dtSec, drive.accel);
+    if (drive.kind === ROLL_DRIVE_BRAKE) return applyRollBrake(prop, dtSec, drive.accel);
     applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
     return true;
 }
@@ -4745,10 +4742,10 @@ export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null, ac
     const limitSpeed = targetSpeed !== null ? Math.min(maxSpeed, targetSpeed) : maxSpeed;
     let drive = prop._groundRollDrive;
     if (!drive) {
-        drive = { kind: "thrust", dirX, dirY, accel, maxSpeed: limitSpeed };
+        drive = { kind: ROLL_DRIVE_THRUST, dirX, dirY, accel, maxSpeed: limitSpeed };
         prop._groundRollDrive = drive;
     } else {
-        drive.kind = "thrust";
+        drive.kind = ROLL_DRIVE_THRUST;
         drive.dirX = dirX;
         drive.dirY = dirY;
         drive.accel = accel;
@@ -4759,10 +4756,10 @@ export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null, ac
 export function decelerateRoll(prop, config) {
     let drive = prop._groundRollDrive;
     if (!drive) {
-        drive = { kind: "brake", accel: config.accel };
+        drive = { kind: ROLL_DRIVE_BRAKE, accel: config.accel };
         prop._groundRollDrive = drive;
     } else {
-        drive.kind = "brake";
+        drive.kind = ROLL_DRIVE_BRAKE;
         drive.accel = config.accel;
     }
     wakeKineticBody(prop);

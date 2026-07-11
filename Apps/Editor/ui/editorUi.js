@@ -8,6 +8,7 @@ import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEdit
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode, setLabPathDebugMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { dragInteractionModeLabel, toggleDragInteractionMode } from "../../../Libraries/Sandbox/dragBehaviors.js";
+import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA } from "../../../Core/engineEnums.js";
 function syncDragInteractionModeUi(state) {
     const btn = document.getElementById("dragInteractionModeBtn");
     if (btn) btn.textContent = dragInteractionModeLabel(state.sandbox.dragInteractionMode);
@@ -157,12 +158,12 @@ export function mountEditorUi(state, { playbackHandlers }) {
             toggleBtn.type = "button";
             toggleBtn.id = "navModeToggleBtn";
             toggleBtn.className = "toolbar-cycle-btn";
-            toggleBtn.textContent = state.editor.navMode === "flow" ? "Paths: Flow" : "Paths: A*";
+            toggleBtn.textContent = state.editor.navMode === EDITOR_NAV_MODE_FLOW ? "Paths: Flow" : "Paths: A*";
             pathDebugBtn.insertAdjacentElement("afterend", toggleBtn);
             toggleBtn.addEventListener("click", () => {
-                const nextMode = state.editor.navMode === "flow" ? "hpa" : "flow";
+                const nextMode = state.editor.navMode === EDITOR_NAV_MODE_FLOW ? EDITOR_NAV_MODE_HPA : EDITOR_NAV_MODE_FLOW;
                 setEditorNavMode(state, nextMode);
-                toggleBtn.textContent = nextMode === "flow" ? "Paths: Flow" : "Paths: A*";
+                toggleBtn.textContent = nextMode === EDITOR_NAV_MODE_FLOW ? "Paths: Flow" : "Paths: A*";
             });
         }
         const sidebarHead = document.querySelector(".editor-sidebar-head");
@@ -211,7 +212,9 @@ export function mountEditorUi(state, { playbackHandlers }) {
         resizeCanvases(state);
         if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) {
             await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
-            if (state.appLaunch.launcher.defaultPathDebugMode) setLabPathDebugMode(state.appLaunch.launcher.defaultPathDebugMode);
+            if (state.appLaunch.launcher.defaultPathDebugMode != null) {
+                setLabPathDebugMode(state.appLaunch.launcher.defaultPathDebugMode);
+            }
         }
         drawLabAndWaitForBakes();
     });
@@ -257,7 +260,7 @@ export function setEditorNavMode(state, mode) {
     const entityMeta = state.sandbox.entityMeta;
     const currentBehaviorId = entityMeta.getActiveBehaviorId(boid.id);
     if (currentBehaviorId === "rollToCursorHpa" || currentBehaviorId === "rollToCursorFlow") {
-        const nextBehaviorId = mode === "flow" ? "rollToCursorFlow" : "rollToCursorHpa";
+        const nextBehaviorId = mode === EDITOR_NAV_MODE_FLOW ? "rollToCursorFlow" : "rollToCursorHpa";
         if (currentBehaviorId !== nextBehaviorId) {
             const behaviorById = state.sandbox.behaviorById;
             const oldBehavior = behaviorById?.get(currentBehaviorId);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { SHAPE_TYPE_POLYGON } from "../Libraries/Physics/physics.js";
+import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 describe("tri wedge prop", () => {
     it("builds PolygonShape from asset localFootprint", () => {
         const prop = new WorldProp(0, 0, "tri_wedge", 0);

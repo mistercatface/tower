@@ -10,6 +10,7 @@ import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
+import { EDITOR_NAV_MODE_HPA, EDITOR_NAV_MODE_FLOW } from "../Core/engineEnums.js";
 
 const CELLS_PER_CHUNK = 16;
 
@@ -173,7 +174,7 @@ describe("snake game launch actions", () => {
         });
 
         // Set default navMode
-        state.editor.navMode = "hpa";
+        state.editor.navMode = EDITOR_NAV_MODE_HPA;
         
         // Simulate setting active behavior on the boid
         state.sandbox.entityMeta.setActiveBehaviorId(boid.id, "rollToCursorHpa");
@@ -187,10 +188,10 @@ describe("snake game launch actions", () => {
         
         // Toggle mode to flow using setEditorNavMode
         const { setEditorNavMode } = await import("../Apps/Editor/ui/editorUi.js");
-        setEditorNavMode(state, "flow");
+        setEditorNavMode(state, EDITOR_NAV_MODE_FLOW);
         
         // Verify state is updated to rollToCursorFlow and target is preserved
-        assert.equal(state.editor.navMode, "flow");
+        assert.equal(state.editor.navMode, EDITOR_NAV_MODE_FLOW);
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorFlow");
         
         const flowBehavior = state.sandbox.behaviorById.get("rollToCursorFlow");

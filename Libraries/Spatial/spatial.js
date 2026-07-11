@@ -775,7 +775,6 @@ export function bumpGridNavEpoch(grid, channel) {
     if (!fn) throw new Error(`unknown grid nav epoch channel: ${channel}`);
     fn(grid);
 }
-export { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT };
 /** Canonical live topology key — every staleness check derives from this. */
 export function gridNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}`;
@@ -3131,10 +3130,10 @@ function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, 
         const lc = edgeIdx - lr * h.edgeStride;
         const cellLocalBelow = lr * cols + lc;
         const idxBelow = stampGlobalIdx(originIdx, cellLocalBelow, layoutCols, cols);
-        if (lr < rows && idxBelow >= 0 && idxBelow < grid.grid.length) setBoundary(grid, idxBelow, 0, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        if (lr < rows && idxBelow >= 0 && idxBelow < grid.grid.length) setBoundary(grid, idxBelow, 0, { capHeightLevel: heightLevel, thicknessLevel });
         else if (lr > 0) {
             const idxAbove = stampGlobalIdx(originIdx, (lr - 1) * cols + lc, layoutCols, cols);
-            if (idxAbove >= 0 && idxAbove < grid.grid.length) setBoundary(grid, idxAbove, 2, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+            if (idxAbove >= 0 && idxAbove < grid.grid.length) setBoundary(grid, idxAbove, 2, { capHeightLevel: heightLevel, thicknessLevel });
         }
     }
     for (let edgeIdx = 0; edgeIdx < v.edgeCount; edgeIdx++) {
@@ -3142,10 +3141,10 @@ function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, 
         const lr = (edgeIdx / v.edgeStride) | 0;
         const lc = edgeIdx % v.edgeStride;
         const idxRight = stampGlobalIdx(originIdx, lr * cols + lc, layoutCols, cols);
-        if (lc < cols && idxRight >= 0 && idxRight < grid.grid.length) setBoundary(grid, idxRight, 3, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+        if (lc < cols && idxRight >= 0 && idxRight < grid.grid.length) setBoundary(grid, idxRight, 3, { capHeightLevel: heightLevel, thicknessLevel });
         else if (lc > 0) {
             const idxLeft = stampGlobalIdx(originIdx, lr * cols + lc - 1, layoutCols, cols);
-            if (idxLeft >= 0 && idxLeft < grid.grid.length) setBoundary(grid, idxLeft, 1, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
+            if (idxLeft >= 0 && idxLeft < grid.grid.length) setBoundary(grid, idxLeft, 1, { capHeightLevel: heightLevel, thicknessLevel });
         }
     }
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);

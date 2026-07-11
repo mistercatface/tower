@@ -3,11 +3,11 @@ import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertexInto, resolveBodyRadius, readEntityFacing, SHAPE_TYPE_CIRCLE } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
 import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
-import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL } from "../../Core/engineEnums.js";
+import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
@@ -156,7 +156,7 @@ function overlayGlyphSpan(r, lineWidth = 1, extra = 0) {
     return r * 2 + lineWidth + extra;
 }
 export function overlayAabb(minX, minY, maxX, maxY, { fill, stroke, lineWidth = 1, dash } = {}) {
-    return { kind: "aabb", minX, minY, maxX, maxY, fill, stroke, lineWidth, dash };
+    return { kind: OVERLAY_CMD_AABB, minX, minY, maxX, maxY, fill, stroke, lineWidth, dash };
 }
 export function overlayGridCellHighlight(minX, minY, maxX, maxY, grid, tint, style) {
     const w = maxX - minX;
@@ -168,7 +168,7 @@ export function overlayGridCellHighlight(minX, minY, maxX, maxY, grid, tint, sty
     return cmd;
 }
 export function overlayCircleStroke(cx, cy, r, { stroke, lineWidth = 1, dash }) {
-    return { kind: "circleStroke", cx, cy, r, stroke, lineWidth, dash };
+    return { kind: OVERLAY_CMD_CIRCLE_STROKE, cx, cy, r, stroke, lineWidth, dash };
 }
 export function overlayCachedSelectionRing(cx, cy, r, style) {
     const cmd = overlayCircleStroke(cx, cy, r, style);
@@ -176,7 +176,7 @@ export function overlayCachedSelectionRing(cx, cy, r, style) {
     return cmd;
 }
 export function overlayCircleFillStroke(cx, cy, r, { fill, stroke = "#fff", lineWidth = 1 }) {
-    return { kind: "circleFillStroke", cx, cy, r, fill, stroke, lineWidth };
+    return { kind: OVERLAY_CMD_CIRCLE_FILL_STROKE, cx, cy, r, fill, stroke, lineWidth };
 }
 export function overlayCachedCircleFillStroke(cx, cy, r, style, renderKey, customKey, lineWidthForSpan = style.lineWidth ?? 1) {
     const cmd = overlayCircleFillStroke(cx, cy, r, style);
@@ -184,13 +184,13 @@ export function overlayCachedCircleFillStroke(cx, cy, r, style, renderKey, custo
     return cmd;
 }
 export function overlaySegment(x0, y0, x1, y1, { stroke, lineWidth = 1, dash, lineCap }) {
-    return { kind: "segment", x0, y0, x1, y1, stroke, lineWidth, dash, lineCap };
+    return { kind: OVERLAY_CMD_SEGMENT, x0, y0, x1, y1, stroke, lineWidth, dash, lineCap };
 }
 export function overlayPolyline(points, { stroke, lineWidth = 1, dash }) {
-    return { kind: "polyline", points, stroke, lineWidth, dash };
+    return { kind: OVERLAY_CMD_POLYLINE, points, stroke, lineWidth, dash };
 }
 export function overlayArrowHead(x, y, dirX, dirY, { fill, headLen = 9, headWidth = 6 }) {
-    return { kind: "arrowHead", x, y, dirX, dirY, fill, headLen, headWidth };
+    return { kind: OVERLAY_CMD_ARROW_HEAD, x, y, dirX, dirY, fill, headLen, headWidth };
 }
 export function overlayCachedArrowHead(x, y, dirX, dirY, { fill, headLen = 9, headWidth = 6 }) {
     const cmd = overlayArrowHead(x, y, dirX, dirY, { fill, headLen, headWidth });
@@ -198,7 +198,7 @@ export function overlayCachedArrowHead(x, y, dirX, dirY, { fill, headLen = 9, he
     return cmd;
 }
 export function overlayCachedFlowDirectionArrow(cx, cy, dirX, dirY, { pad = 0, len = 20, stroke, lineWidth = 2, headLen = 9, headWidth = 6 }) {
-    const cmd = { kind: "directionArrow", cx, cy, dirX, dirY, pad, len, stroke, lineWidth, headLen, headWidth };
+    const cmd = { kind: OVERLAY_CMD_DIRECTION_ARROW, cx, cy, dirX, dirY, pad, len, stroke, lineWidth, headLen, headWidth };
     cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.FlowDirectionArrow, flowDirectionArrowCacheKey(dirX, dirY, pad, len, stroke, headLen, headWidth), pad + len + headLen + lineWidth + 4, cx, cy);
     return cmd;
 }
@@ -208,7 +208,7 @@ export function appendOverlayWireLink(out, x0, y0, x1, y1, color, { lineWidth = 
     else out.push(overlayCachedCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }, OVERLAY_RENDER_KEY.WireEndpoint, wireEndpointCacheKey(endpointRadius, color), 1));
 }
 export function overlayAimSegment(x1, y1, x2, y2, { color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
-    return { kind: "aimSegment", x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };
+    return { kind: OVERLAY_CMD_AIM_SEGMENT, x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };
 }
 function drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, fill, headLen, headWidth) {
     const tx = -dirY;
@@ -243,7 +243,7 @@ function drawAabbStyle(ctx, rect, { fill, stroke, lineWidth = 1, dash }) {
     if (dash?.length) ctx.setLineDash([]);
 }
 export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
-    if (cmd.kind === "circleStroke") {
+    if (cmd.kind === OVERLAY_CMD_CIRCLE_STROKE) {
         ctx.strokeStyle = cmd.stroke;
         ctx.lineWidth = cmd.lineWidth ?? 1;
         if (cmd.dash?.length) ctx.setLineDash(cmd.dash);
@@ -251,18 +251,18 @@ export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
         if (cmd.dash?.length) ctx.setLineDash([]);
         return;
     }
-    if (cmd.kind === "circleFillStroke") {
+    if (cmd.kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
         ctx.fillStyle = cmd.fill;
         ctx.strokeStyle = cmd.stroke ?? "#fff";
         ctx.lineWidth = cmd.lineWidth ?? 1;
         fillStrokeCircle(ctx, anchorX, anchorY, cmd.r);
         return;
     }
-    if (cmd.kind === "arrowHead") {
+    if (cmd.kind === OVERLAY_CMD_ARROW_HEAD) {
         drawArrowHeadAt(ctx, anchorX, anchorY, cmd.dirX, cmd.dirY, cmd.fill, cmd.headLen ?? 9, cmd.headWidth ?? 6);
         return;
     }
-    if (cmd.kind === "directionArrow") {
+    if (cmd.kind === OVERLAY_CMD_DIRECTION_ARROW) {
         const { dirX, dirY, pad, len, stroke, lineWidth = 2, headLen = 9, headWidth = 6 } = cmd;
         const startX = anchorX + dirX * pad;
         const startY = anchorY + dirY * pad;
@@ -274,7 +274,7 @@ export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
         drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, stroke, headLen, headWidth);
         return;
     }
-    if (cmd.kind === "aabb") {
+    if (cmd.kind === OVERLAY_CMD_AABB) {
         const w = cmd.maxX - cmd.minX;
         const h = cmd.maxY - cmd.minY;
         const minX = anchorX - w * 0.5;
@@ -282,9 +282,8 @@ export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
         drawAabbStyle(ctx, { minX, minY, maxX: minX + w, maxY: minY + h }, cmd);
     }
 }
-/** @typedef {"normal" | "debug"} PathOverlayVisual */
 /** @typedef {Object} PathOverlayData
- * @property {"direct" | "hpa" | "flow"} mode
+ * @property {number} mode
  * @property {number} [propX]
  * @property {number} [propY]
  * @property {number} [propRadius]
@@ -327,7 +326,7 @@ function appendFlowAgentArrow(out, overlay) {
 }
 function appendNormalPathOverlayCommands(out, overlay) {
     const { mode, targetX, targetY, pathNodes } = overlay;
-    if (mode === "direct") {
+    if (mode === PATH_OVERLAY_MODE_DIRECT) {
         if (pathNodes.length < 2) return;
         out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.55)", lineWidth: 1.5, dash: [4, 4] }));
         out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.85)", lineWidth: PATH_STROKE_WIDTH }));
@@ -335,25 +334,25 @@ function appendNormalPathOverlayCommands(out, overlay) {
         out.push(overlayCircleStroke(end.x, end.y, 4, { stroke: "rgba(0, 188, 212, 0.85)", lineWidth: PATH_STROKE_WIDTH }));
         return;
     }
-    if (mode === "flow") {
+    if (mode === PATH_OVERLAY_MODE_FLOW) {
         if (pathNodes && pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(76, 175, 80, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
         return;
     }
     if (pathNodes.length) out.push(overlayPolyline(pathNodes, { stroke: "rgba(156, 39, 176, 0.65)", lineWidth: HPA_STROKE_WIDTH }));
 }
-export function appendPathOverlayCommands(out, overlay, grid, visual = "debug") {
+export function appendPathOverlayCommands(out, overlay, grid, visual = SANDBOX_PATH_VISUAL_DEBUG) {
     if (!overlay) return;
-    if (visual === "normal") {
+    if (visual === SANDBOX_PATH_VISUAL_NORMAL) {
         appendNormalPathOverlayCommands(out, overlay);
         return;
     }
     const { mode, pathNodes } = overlay;
-    if (mode === "hpa") {
+    if (mode === PATH_OVERLAY_MODE_HPA) {
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
         for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
         return;
     }
-    if (mode === "flow") {
+    if (mode === PATH_OVERLAY_MODE_FLOW) {
         if (pathNodes && pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#4caf50", lineWidth: 4 }));
         if (pathNodes) for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#4caf50" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#4caf50")));
         return;
@@ -398,27 +397,27 @@ export function drawOverlayCommands(ctx, commands, viewport) {
             if (cmd.cache.anchorX != null && cmd.cache.anchorY != null) {
                 worldX = cmd.cache.anchorX;
                 worldY = cmd.cache.anchorY;
-            } else if (cmd.kind === "circleStroke" || cmd.kind === "circleFillStroke") {
+            } else if (cmd.kind === OVERLAY_CMD_CIRCLE_STROKE || cmd.kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
                 worldX = cmd.cx;
                 worldY = cmd.cy;
-            } else if (cmd.kind === "arrowHead") {
+            } else if (cmd.kind === OVERLAY_CMD_ARROW_HEAD) {
                 worldX = cmd.x;
                 worldY = cmd.y;
-            } else if (cmd.kind === "directionArrow") {
+            } else if (cmd.kind === OVERLAY_CMD_DIRECTION_ARROW) {
                 worldX = cmd.cx;
                 worldY = cmd.cy;
-            } else if (cmd.kind === "aabb") {
+            } else if (cmd.kind === OVERLAY_CMD_AABB) {
                 worldX = (cmd.minX + cmd.maxX) * 0.5;
                 worldY = (cmd.minY + cmd.maxY) * 0.5;
             }
             drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommand(bakeCtx, bakeAnchorX, bakeAnchorY, cmd));
             continue;
         }
-        if (cmd.kind === "aabb") {
+        if (cmd.kind === OVERLAY_CMD_AABB) {
             drawAabbCommand(ctx, cmd);
             continue;
         }
-        if (cmd.kind === "circleStroke") {
+        if (cmd.kind === OVERLAY_CMD_CIRCLE_STROKE) {
             ctx.strokeStyle = cmd.stroke;
             ctx.lineWidth = cmd.lineWidth ?? 1;
             if (cmd.dash?.length) ctx.setLineDash(cmd.dash);
@@ -426,14 +425,14 @@ export function drawOverlayCommands(ctx, commands, viewport) {
             if (cmd.dash?.length) ctx.setLineDash([]);
             continue;
         }
-        if (cmd.kind === "circleFillStroke") {
+        if (cmd.kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
             ctx.fillStyle = cmd.fill;
             ctx.strokeStyle = cmd.stroke ?? "#fff";
             ctx.lineWidth = cmd.lineWidth ?? 1;
             fillStrokeCircle(ctx, cmd.cx, cmd.cy, cmd.r);
             continue;
         }
-        if (cmd.kind === "segment") {
+        if (cmd.kind === OVERLAY_CMD_SEGMENT) {
             ctx.strokeStyle = cmd.stroke;
             ctx.lineWidth = cmd.lineWidth ?? 1;
             if (cmd.lineCap) ctx.lineCap = cmd.lineCap;
@@ -443,7 +442,7 @@ export function drawOverlayCommands(ctx, commands, viewport) {
             if (cmd.lineCap) ctx.lineCap = "butt";
             continue;
         }
-        if (cmd.kind === "polyline") {
+        if (cmd.kind === OVERLAY_CMD_POLYLINE) {
             ctx.strokeStyle = cmd.stroke;
             ctx.lineWidth = cmd.lineWidth ?? 1;
             if (cmd.dash?.length) ctx.setLineDash(cmd.dash);
@@ -451,15 +450,15 @@ export function drawOverlayCommands(ctx, commands, viewport) {
             if (cmd.dash?.length) ctx.setLineDash([]);
             continue;
         }
-        if (cmd.kind === "arrowHead") {
+        if (cmd.kind === OVERLAY_CMD_ARROW_HEAD) {
             drawArrowHeadAt(ctx, cmd.x, cmd.y, cmd.dirX, cmd.dirY, cmd.fill, cmd.headLen ?? 9, cmd.headWidth ?? 6);
             continue;
         }
-        if (cmd.kind === "directionArrow") {
+        if (cmd.kind === OVERLAY_CMD_DIRECTION_ARROW) {
             bakeOverlayCommand(ctx, cmd.cx, cmd.cy, cmd);
             continue;
         }
-        if (cmd.kind === "aimSegment") drawAimSegmentCommand(ctx, cmd);
+        if (cmd.kind === OVERLAY_CMD_AIM_SEGMENT) drawAimSegmentCommand(ctx, cmd);
     }
     ctx.restore();
 }
