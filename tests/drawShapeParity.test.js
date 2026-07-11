@@ -9,7 +9,6 @@ import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
-import { quantizeRollQuat } from "../Libraries/Physics/physics.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
 import propCatalog from "../Assets/props/index.js";

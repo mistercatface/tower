@@ -3,11 +3,58 @@ import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
-import { seedEntityRollQuat } from "../../Libraries/Physics/physics.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
+}
+function attachRollAccessors(body) {
+    Object.defineProperties(body, {
+        rollQw: {
+            get() {
+                return this._physId !== undefined ? entityRollQw[this._physId] : (this._spawnRollQw ?? 1);
+            },
+            set(v) {
+                if (this._physId !== undefined) entityRollQw[this._physId] = v;
+                else this._spawnRollQw = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        rollQx: {
+            get() {
+                return this._physId !== undefined ? entityRollQx[this._physId] : (this._spawnRollQx ?? 0);
+            },
+            set(v) {
+                if (this._physId !== undefined) entityRollQx[this._physId] = v;
+                else this._spawnRollQx = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        rollQy: {
+            get() {
+                return this._physId !== undefined ? entityRollQy[this._physId] : (this._spawnRollQy ?? 0);
+            },
+            set(v) {
+                if (this._physId !== undefined) entityRollQy[this._physId] = v;
+                else this._spawnRollQy = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        rollQz: {
+            get() {
+                return this._physId !== undefined ? entityRollQz[this._physId] : (this._spawnRollQz ?? 0);
+            },
+            set(v) {
+                if (this._physId !== undefined) entityRollQz[this._physId] = v;
+                else this._spawnRollQz = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+    });
 }
 export function assignPhysIdWithPose(body, physId) {
     const x = body.x;
@@ -16,6 +63,10 @@ export function assignPhysIdWithPose(body, physId) {
     const vy = body.vy;
     const w = body.angularVelocity;
     const facing = body.facing;
+    const rqw = body._spawnRollQw ?? 1;
+    const rqx = body._spawnRollQx ?? 0;
+    const rqy = body._spawnRollQy ?? 0;
+    const rqz = body._spawnRollQz ?? 0;
     body._physId = physId;
     entityX[physId] = x;
     entityY[physId] = y;
@@ -23,8 +74,11 @@ export function assignPhysIdWithPose(body, physId) {
     entityVy[physId] = vy;
     entityW[physId] = w;
     entityFacing[physId] = facing;
+    entityRollQw[physId] = rqw;
+    entityRollQx[physId] = rqx;
+    entityRollQy[physId] = rqy;
+    entityRollQz[physId] = rqz;
     clearWorldPropSpawnPose(body);
-    if (body.strategy?.rolls) seedEntityRollQuat(body);
 }
 export function mockKineticBody(isSleeping = false) {
     const radius = 10;
@@ -95,10 +149,19 @@ export function mockBall(x, y, overrides = {}) {
 export function mockRollingProp(overrides = {}) {
     const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
     body.strategy = { rolls: true, friction: 0, isKinetic: true, ...(overrides.strategy || {}) };
-    if (!body.rollQuat) body.rollQuat = { w: 1, x: 0, y: 0, z: 0 };
+    body._spawnRollQw = body._spawnRollQw ?? 1;
+    body._spawnRollQx = body._spawnRollQx ?? 0;
+    body._spawnRollQy = body._spawnRollQy ?? 0;
+    body._spawnRollQz = body._spawnRollQz ?? 0;
+    attachRollAccessors(body);
     normalizeKineticBody(body);
     if (body._physId === undefined) assignPhysIdWithPose(body, nextMockPhysId++);
-    else if (body.strategy?.rolls) seedEntityRollQuat(body);
+    else {
+        entityRollQw[body._physId] = body._spawnRollQw ?? 1;
+        entityRollQx[body._physId] = body._spawnRollQx ?? 0;
+        entityRollQy[body._physId] = body._spawnRollQy ?? 0;
+        entityRollQz[body._physId] = body._spawnRollQz ?? 0;
+    }
     return body;
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {

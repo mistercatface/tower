@@ -1,5 +1,5 @@
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 export const ENTITY_KIND_NONE = 0;
 export const ENTITY_KIND_WORLD_PROP = 1;
 export const ENTITY_KIND_DEBRIS = 2;
@@ -43,6 +43,10 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityVy[eid] = ref._spawnVy ?? ref.vy ?? 0;
     entityW[eid] = ref._spawnW ?? ref.angularVelocity ?? 0;
     entityFacing[eid] = ref._spawnFacing ?? ref.facing ?? 0;
+    entityRollQw[eid] = ref._spawnRollQw ?? 1;
+    entityRollQx[eid] = ref._spawnRollQx ?? 0;
+    entityRollQy[eid] = ref._spawnRollQy ?? 0;
+    entityRollQz[eid] = ref._spawnRollQz ?? 0;
     entityR[eid] = r;
     entityRefs[eid] = ref;
 }
@@ -69,6 +73,10 @@ export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnVy;
     delete ref._spawnW;
     delete ref._spawnFacing;
+    delete ref._spawnRollQw;
+    delete ref._spawnRollQx;
+    delete ref._spawnRollQy;
+    delete ref._spawnRollQz;
 }
 export function entitySlotRef(eid) {
     return entityAlive[eid] ? entityRefs[eid] : null;

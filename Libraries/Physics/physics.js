@@ -1,4 +1,4 @@
-import { multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32 } from "../Math/math.js";
+import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32 } from "../Math/math.js";
 import {
     ENGINE_F32,
     ENGINE_PHYS_BASE,
@@ -1363,30 +1363,6 @@ export function bakeSpatialNeighborCsr(spatialFrame) {
         slab.spatialNeighborEidsUsed = offset + count;
     }
 }
-export function seedEntityRollQuat(body) {
-    const physId = body._physId;
-    const q = body.rollQuat;
-    if (q) {
-        entityRollQw[physId] = q.w;
-        entityRollQx[physId] = q.x;
-        entityRollQy[physId] = q.y;
-        entityRollQz[physId] = q.z;
-        return;
-    }
-    entityRollQw[physId] = 1;
-    entityRollQx[physId] = 0;
-    entityRollQy[physId] = 0;
-    entityRollQz[physId] = 0;
-}
-export function writebackEntityRollQuat(body) {
-    const q = body.rollQuat;
-    if (!q) return;
-    const physId = body._physId;
-    q.w = entityRollQw[physId];
-    q.x = entityRollQx[physId];
-    q.y = entityRollQy[physId];
-    q.z = entityRollQz[physId];
-}
 function normalizeEntityRollQuat(physId) {
     const len = Math.hypot(entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
     if (len < 1e-8) {
@@ -1408,7 +1384,6 @@ export function snapshotKineticBodySlab(bodies) {
         writeStaticKineticSlabSlot(entity);
         syncEntitySlotPoseFromRef(entity._physId, entity);
         stampBroadphaseSlabFromEntity(entity._physId, entity);
-        if (entity.strategy?.rolls) seedEntityRollQuat(entity);
     }
 }
 export function refreshActiveKineticBodySlabPose(bodies) {
@@ -4211,8 +4186,6 @@ export function circleLeadingPoint(cx, cy, radius, dirX, dirY, destOffset = P_VE
 }
 /** Push-out wall normal (away from solid into free space). */
 /** Point on circle A that faces circle B at first center–center contact. */
-export const IDENTITY_ROLL_QUAT = { w: 1, x: 0, y: 0, z: 0 };
-const sStageRollQuat = { w: 1, x: 0, y: 0, z: 0 };
 /** Writes lx, ly, z at buf[o..o+2]. */
 export function transformRollVertexInto(buf, o, lx, ly, lz, radius, qw, qx, qy, qz) {
     rotateVecByQuatInto(buf, o, lx, ly, lz - radius, qw, qx, qy, qz);
@@ -4230,11 +4203,10 @@ function readBodyRollComponents(body) {
         ENGINE_F32[M_OUT_QZ] = entityRollQz[physId];
         return;
     }
-    const q = body.rollQuat;
-    ENGINE_F32[M_OUT_QW] = q ? q.w : 1;
-    ENGINE_F32[M_OUT_QX] = q ? q.x : 0;
-    ENGINE_F32[M_OUT_QY] = q ? q.y : 0;
-    ENGINE_F32[M_OUT_QZ] = q ? q.z : 0;
+    ENGINE_F32[M_OUT_QW] = body._spawnRollQw ?? 1;
+    ENGINE_F32[M_OUT_QX] = body._spawnRollQx ?? 0;
+    ENGINE_F32[M_OUT_QY] = body._spawnRollQy ?? 0;
+    ENGINE_F32[M_OUT_QZ] = body._spawnRollQz ?? 0;
 }
 function integrateGroundRoll(body, dtMs) {
     const vx = body.vx ?? 0;
@@ -4258,37 +4230,6 @@ function integrateGroundRoll(body, dtMs) {
     entityRollQz[physId] = ENGINE_F32[M_OUT_QZ];
     normalizeEntityRollQuat(physId);
 }
-export function dampQuatTwist(q, dtMs, dampingRate = 1.8) {
-    const w = q.w ?? 1;
-    const x = q.x ?? 0;
-    const y = q.y ?? 0;
-    const z = q.z ?? 0;
-    let w_t = w;
-    let z_t = z;
-    const len = Math.hypot(w_t, z_t);
-    if (len < 1e-6) return q;
-    w_t /= len;
-    z_t /= len;
-    multiplyQuatInto(ENGINE_F32, M_OUT_QW, w, x, y, z, w_t, 0, 0, -z_t);
-    const sw = ENGINE_F32[M_OUT_QW];
-    const sx = ENGINE_F32[M_OUT_QX];
-    const sy = ENGINE_F32[M_OUT_QY];
-    const sz = ENGINE_F32[M_OUT_QZ];
-    const decay = Math.exp(-dampingRate * (dtMs / 1000));
-    let z_t_new = z_t * decay;
-    let w_t_new = w_t;
-    const len_new = Math.hypot(w_t_new, z_t_new);
-    if (len_new > 1e-6) {
-        w_t_new /= len_new;
-        z_t_new /= len_new;
-    }
-    multiplyQuatInto(ENGINE_F32, M_OUT_QW, sw, sx, sy, sz, w_t_new, 0, 0, z_t_new);
-    q.w = ENGINE_F32[M_OUT_QW];
-    q.x = ENGINE_F32[M_OUT_QX];
-    q.y = ENGINE_F32[M_OUT_QY];
-    q.z = ENGINE_F32[M_OUT_QZ];
-    return normalizeQuat(q);
-}
 export function absorbCollisionRollImpulse(body, dtMs) {
     if (body.strategy?.rolls) return;
     const angW = body.angularVelocity ?? 0;
@@ -4307,22 +4248,22 @@ export function absorbCollisionRollImpulse(body, dtMs) {
     entityRollQz[physId] = ENGINE_F32[M_OUT_QZ];
     normalizeEntityRollQuat(physId);
 }
-function quantizeRollQuatInto(out, qw, qx, qy, qz, steps = 16) {
+function quantizeRollQuatF32(qw, qx, qy, qz, steps = 16) {
     const angle = 2 * Math.acos(clamp(qw, -1, 1));
     if (angle < 1e-4) {
-        out.w = 1;
-        out.x = 0;
-        out.y = 0;
-        out.z = 0;
-        return out;
+        ENGINE_F32[M_OUT_QW] = 1;
+        ENGINE_F32[M_OUT_QX] = 0;
+        ENGINE_F32[M_OUT_QY] = 0;
+        ENGINE_F32[M_OUT_QZ] = 0;
+        return;
     }
     const s = Math.sin(angle * 0.5);
     if (Math.abs(s) < 1e-4) {
-        out.w = 1;
-        out.x = 0;
-        out.y = 0;
-        out.z = 0;
-        return out;
+        ENGINE_F32[M_OUT_QW] = 1;
+        ENGINE_F32[M_OUT_QX] = 0;
+        ENGINE_F32[M_OUT_QY] = 0;
+        ENGINE_F32[M_OUT_QZ] = 0;
+        return;
     }
     const ax = qx / s;
     const ay = qy / s;
@@ -4330,38 +4271,13 @@ function quantizeRollQuatInto(out, qw, qx, qy, qz, steps = 16) {
     const qAngle = quantizeAngle(angle, steps);
     const qHeading = quantizeAngle(heading, steps);
     axisAngleQuatInto(ENGINE_F32, M_OUT_QW, Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
-    out.w = ENGINE_F32[M_OUT_QW];
-    out.x = ENGINE_F32[M_OUT_QX];
-    out.y = ENGINE_F32[M_OUT_QY];
-    out.z = ENGINE_F32[M_OUT_QZ];
-    return out;
 }
-export function quantizeBodyRollQuat(body, steps = 16) {
+export function quantizeBodyRollQuatF32(body, steps = 16) {
     readBodyRollComponents(body);
-    return quantizeRollQuatInto(sStageRollQuat, ENGINE_F32[M_OUT_QW], ENGINE_F32[M_OUT_QX], ENGINE_F32[M_OUT_QY], ENGINE_F32[M_OUT_QZ], steps);
-}
-export function quantizeRollQuat(rollQuat, steps = 16) {
-    const q = rollQuat ?? IDENTITY_ROLL_QUAT;
-    return quantizeRollQuatInto(sStageRollQuat, q.w ?? 1, q.x ?? 0, q.y ?? 0, q.z ?? 0, steps);
-}
-export function buildRollOrientKey(body, steps = 16) {
-    const packed = packRollOrientId(body, steps);
-    return `r${packed & 0xff}_${(packed >>> 8) & 0xff}`;
+    quantizeRollQuatF32(ENGINE_F32[M_OUT_QW], ENGINE_F32[M_OUT_QX], ENGINE_F32[M_OUT_QY], ENGINE_F32[M_OUT_QZ], steps);
 }
 export function packRollOrientId(body, steps = 16) {
-    readBodyRollComponents(body);
-    const qw0 = ENGINE_F32[M_OUT_QW];
-    const qx0 = ENGINE_F32[M_OUT_QX];
-    const qy0 = ENGINE_F32[M_OUT_QY];
-    const qz0 = ENGINE_F32[M_OUT_QZ];
-    const angle0 = 2 * Math.acos(clamp(qw0, -1, 1));
-    if (angle0 < 1e-4) return 0x10000;
-    const s0 = Math.sin(angle0 * 0.5);
-    if (Math.abs(s0) < 1e-4) return 0x10000;
-    const heading0 = Math.atan2(qy0 / s0, qx0 / s0);
-    const qAngle = quantizeAngle(angle0, steps);
-    const qHeading = quantizeAngle(heading0, steps);
-    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
+    quantizeBodyRollQuatF32(body, steps);
     const qw = ENGINE_F32[M_OUT_QW];
     const qx = ENGINE_F32[M_OUT_QX];
     const qy = ENGINE_F32[M_OUT_QY];
@@ -4388,10 +4304,8 @@ export function integratePropMotion(body, dtMs) {
     const strategy = body.strategy ?? {};
     const friction = resolveRollingFriction(strategy, body);
     const snapSpeed = strategy.snapSpeed ?? 1;
-    seedEntityRollQuat(body);
     absorbCollisionRollImpulse(body, dtMs);
     integrateGroundRoll(body, dtMs);
-    writebackEntityRollQuat(body);
     body.angularVelocity = 0;
     applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
 }

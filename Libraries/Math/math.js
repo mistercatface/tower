@@ -985,21 +985,6 @@ export function axisAngleQuatInto(buf, o, ax, ay, az, angle) {
     buf[o + 2] = ay * s;
     buf[o + 3] = az * s;
 }
-export function normalizeQuat(q) {
-    const len = Math.hypot(q.w, q.x, q.y, q.z);
-    if (len < 1e-8) {
-        q.w = 1;
-        q.x = 0;
-        q.y = 0;
-        q.z = 0;
-        return q;
-    }
-    q.w /= len;
-    q.x /= len;
-    q.y /= len;
-    q.z /= len;
-    return q;
-}
 /** Writes x,y,z at buf[o..o+2]. */
 export function rotateVecByQuatInto(buf, o, x, y, z, qw, qx, qy, qz) {
     const ix = qw * x + qy * z - qz * y;

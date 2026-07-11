@@ -2,7 +2,7 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
@@ -1429,12 +1429,12 @@ export function createSandboxSession(state) {
         },
         getSpawnBoxWidth: () => spawnBoxWidth,
         setSpawnBoxWidth: (width) => {
-            spawnBoxWidth = Math.max(6, Math.min(512, Math.round(width)));
+            spawnBoxWidth = Math.max(6, Math.min(1024, Math.round(width)));
             notifyUi();
         },
         getSpawnBoxHeight: () => spawnBoxHeight,
         setSpawnBoxHeight: (height) => {
-            spawnBoxHeight = Math.max(6, Math.min(512, Math.round(height)));
+            spawnBoxHeight = Math.max(6, Math.min(1024, Math.round(height)));
             notifyUi();
         },
         getSpawnBallRadius: (asset) => spawnBallRadius ?? ballRadiusFromAsset(asset),

@@ -3,7 +3,7 @@ import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, entityFacing } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -592,7 +592,7 @@ function sortSphereFaceOrder(order, count) {
  * Build lat/long sphere mesh resting on the ground, then apply roll orientation.
  * Writes into module grow-only typed columns; face count is sSphereFaceCount.
  */
-export function buildSphereMesh(radius, latBands, lonBands, rollQuat) {
+export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
     const rowCount = latBands + 1;
     const maxVerts = 2 + latBands * lonBands;
     const maxFaces = latBands * lonBands * 2;
@@ -601,10 +601,6 @@ export function buildSphereMesh(radius, latBands, lonBands, rollQuat) {
     ensureSphereFaceCapacity(maxFaces);
     sSphereVertCount = 0;
     sSphereFaceCount = 0;
-    const qw = rollQuat.w;
-    const qx = rollQuat.x;
-    const qy = rollQuat.y;
-    const qz = rollQuat.z;
     for (let lat = 0; lat <= latBands; lat++) {
         const phi = (lat / latBands) * Math.PI;
         const rowStart = sSphereVertCount;
@@ -675,8 +671,11 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const getFaceColor = options.getFaceColor;
     const stroke = "stroke" in options ? options.stroke : "#2a2a2a";
     const lineWidth = options.lineWidth ?? 1.2;
-    const rollQuat = prop.rollQuat ?? IDENTITY_ROLL_QUAT;
-    buildSphereMesh(radius, latBands, lonBands, rollQuat);
+    const qw = prop.rollQw ?? 1;
+    const qx = prop.rollQx ?? 0;
+    const qy = prop.rollQy ?? 0;
+    const qz = prop.rollQz ?? 0;
+    buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz);
     let backN = 0;
     let frontN = 0;
     for (let f = 0; f < sSphereFaceCount; f++)

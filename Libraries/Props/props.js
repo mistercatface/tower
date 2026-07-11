@@ -1,9 +1,9 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuat, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
-import { ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
@@ -238,7 +238,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQuat: null, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null, crossLength: undefined, crossThickness: undefined };
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null, crossLength: undefined, crossThickness: undefined };
 const sFaceColors = { shadow: null, mid: null, highlight: null };
 const sBackFaceColors = { shadow: null, mid: null, highlight: null };
 const sBottomColors = { light: null, mid: null, dark: null };
@@ -317,7 +317,18 @@ export function getPropStageBakeState(prop) {
     sHalfExtents.x = ENGINE_F32[M_VEC_A];
     sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
     sStageProp.facing = quantizeAngle(entityFacing(prop), steps.facing);
-    sStageProp.rollQuat = prop.strategy?.rolls ? quantizeBodyRollQuat(prop, steps.facing) : prop.rollQuat;
+    if (prop.strategy?.rolls) {
+        quantizeBodyRollQuatF32(prop, steps.facing);
+        sStageProp.rollQw = ENGINE_F32[M_OUT_QW];
+        sStageProp.rollQx = ENGINE_F32[M_OUT_QX];
+        sStageProp.rollQy = ENGINE_F32[M_OUT_QY];
+        sStageProp.rollQz = ENGINE_F32[M_OUT_QZ];
+    } else {
+        sStageProp.rollQw = 1;
+        sStageProp.rollQx = 0;
+        sStageProp.rollQy = 0;
+        sStageProp.rollQz = 0;
+    }
     sStageProp.strategy = prop.strategy;
     sStageProp.type = prop.type;
     sStageProp.shape = prop.shape;
@@ -394,7 +405,12 @@ export class WorldProp {
         this.stateData = {};
         this.height = asset?.visuals?.world?.height ?? 12;
         this._spawnFacing = resolvePropSpawnFacing(this, facing);
-        if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
+        if (this.strategy.rolls) {
+            this._spawnRollQw = 1;
+            this._spawnRollQx = 0;
+            this._spawnRollQy = 0;
+            this._spawnRollQz = 0;
+        }
         this.chunks = undefined;
         this.collisionParts = undefined;
         this.snakeFoodValue = undefined;
@@ -476,6 +492,42 @@ export class WorldProp {
         const eid = this._physId;
         if (eid !== undefined) entityFacingCol[eid] = v;
         else this._spawnFacing = v;
+    }
+    get rollQw() {
+        const eid = this._physId;
+        return eid !== undefined ? entityRollQw[eid] : (this._spawnRollQw ?? 1);
+    }
+    set rollQw(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityRollQw[eid] = v;
+        else this._spawnRollQw = v;
+    }
+    get rollQx() {
+        const eid = this._physId;
+        return eid !== undefined ? entityRollQx[eid] : (this._spawnRollQx ?? 0);
+    }
+    set rollQx(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityRollQx[eid] = v;
+        else this._spawnRollQx = v;
+    }
+    get rollQy() {
+        const eid = this._physId;
+        return eid !== undefined ? entityRollQy[eid] : (this._spawnRollQy ?? 0);
+    }
+    set rollQy(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityRollQy[eid] = v;
+        else this._spawnRollQy = v;
+    }
+    get rollQz() {
+        const eid = this._physId;
+        return eid !== undefined ? entityRollQz[eid] : (this._spawnRollQz ?? 0);
+    }
+    set rollQz(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityRollQz[eid] = v;
+        else this._spawnRollQz = v;
     }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);

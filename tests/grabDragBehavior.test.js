@@ -126,7 +126,10 @@ describe("grabDrag behavior", () => {
 
     it("rolling sphere rim anchor tracks cursor not rollQuat", () => {
         const prop = mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" });
-        prop.rollQuat = { w: 0.9239, x: 0, y: 0.3827, z: 0 };
+        prop.rollQw = 0.9239;
+        prop.rollQx = 0;
+        prop.rollQy = 0.3827;
+        prop.rollQz = 0;
         const rim = new Float32Array(4);
         findCircleRimGrabPointInto(rim, 0, 0, 0, 0, 8, 10, 0);
         assert.ok(Math.abs(rim[0] - 8) < 0.01);
