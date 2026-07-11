@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
-import { ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
+import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import { clearGroundRollDrive, decelerateRoll, getKineticRollConfig, steerRollToward } from "../Libraries/Physics/physics.js";
 import { integratePropMotion } from "../Libraries/Physics/physics.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
@@ -12,8 +12,8 @@ describe("kineticRollActuator", () => {
         steerRollToward(prop, 0, 1, { accel: 600, maxSpeed: 180 });
         assert.equal(prop.vx, 10);
         assert.equal(prop.vy, 0);
-        assert.equal(prop._groundRollDrive.kind, ROLL_DRIVE_THRUST);
-        assert.equal(prop._groundRollDrive.dirY, 1);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.equal(prop._rollDriveDirY, 1);
     });
 
     it("applyGroundRollDrive accelerates along thrust direction", () => {
@@ -78,7 +78,7 @@ describe("kineticRollActuator", () => {
         const prop = mockRollingProp();
         steerRollToward(prop, 1, 0, { accel: 600, maxSpeed: 180 });
         clearGroundRollDrive(prop);
-        assert.equal(prop._groundRollDrive, undefined);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_NONE);
         applyGroundRollDrive(prop, 0.1);
         assert.equal(prop.vx, 0);
     });

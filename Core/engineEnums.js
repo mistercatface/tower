@@ -51,6 +51,7 @@ export const KINETIC_PAIR_POLY_POLY = 2;
 export const KINETIC_PAIR_COMPOUND = 3;
 export const KINETIC_PAIR_COUNT = 4;
 //
+export const ROLL_DRIVE_NONE = -1;
 export const ROLL_DRIVE_THRUST = 0;
 export const ROLL_DRIVE_BRAKE = 1;
 export const ROLL_DRIVE_COUNT = 2;

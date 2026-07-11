@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
-import { ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
+import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
 import { createGrabDragBehavior, getDragLaunchConfig, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
@@ -31,9 +31,8 @@ describe("grabDrag behavior", () => {
         assert.ok(behavior.onPointerDown(prop, { x: 0, y: 0 }));
         behavior.onPointerMove(prop, { x: 120, y: 0 });
         behavior.tickWorld(16);
-        assert.ok(prop._groundRollDrive);
-        assert.equal(prop._groundRollDrive.kind, ROLL_DRIVE_THRUST);
-        assert.ok(prop._groundRollDrive.dirX > 0.9);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.ok(prop._rollDriveDirX > 0.9);
         assert.ok(Math.abs(prop.x) < 20);
     });
 
@@ -44,7 +43,7 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: 0, y: 0 });
         behavior.onPointerMove(prop, { x: 200, y: 0 });
         for (let i = 0; i < 5; i++) behavior.tickWorld(16);
-        assert.ok(prop._groundRollDrive);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
         assert.ok(prop.x < 100);
     });
 
@@ -55,9 +54,9 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: 0, y: 0 });
         behavior.onPointerMove(prop, { x: 80, y: 0 });
         behavior.tickWorld(16);
-        assert.ok(prop._groundRollDrive);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
         behavior.onPointerUp(prop);
-        assert.equal(prop._groundRollDrive, undefined);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_NONE);
         applyGroundRollDrive(prop, 0.016, state);
         assert.ok(Math.hypot(prop.vx, prop.vy) > 0);
     });
@@ -79,8 +78,8 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(middle, { x: middle.x, y: middle.y });
         behavior.onPointerMove(middle, { x: middle.x + 80, y: middle.y });
         behavior.tickWorld(16);
-        assert.ok(middle._groundRollDrive);
-        assert.equal(chain.head._groundRollDrive, undefined);
+        assert.equal(middle._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.ok(chain.head._rollDriveKind == null || chain.head._rollDriveKind === ROLL_DRIVE_NONE);
         assert.notEqual(chain.head.x, middle.x);
         assert.ok(Math.abs(chain.head.x - headX) < 40);
     });
@@ -120,8 +119,8 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: -9, y: -5 });
         behavior.onPointerMove(prop, { x: -9, y: 80 });
         behavior.tickWorld(16);
-        assert.ok(prop._groundRollDrive);
-        assert.ok(prop._groundRollDrive.dirY > 0.5);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.ok(prop._rollDriveDirY > 0.5);
         assert.notEqual(prop.angularVelocity, 0);
     });
 
@@ -144,8 +143,8 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: 10, y: 0 });
         behavior.onPointerMove(prop, { x: 10, y: 100 });
         behavior.tickWorld(16);
-        assert.ok(prop._groundRollDrive);
-        assert.ok(prop._groundRollDrive.dirY > 0.5);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.ok(prop._rollDriveDirY > 0.5);
     });
 
     it("reference grab inertia matches spin for light and heavy polygons", () => {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import propCatalog from "../Assets/props/index.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
-import { EDITOR_NAV_MODE_HPA } from "../Core/engineEnums.js";
+import { EDITOR_NAV_MODE_HPA, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import {
     resolveDragInteractionBehaviorId,
     sandboxAssetDragInteract,
@@ -95,7 +95,7 @@ describe("drag interaction mode", () => {
         pointerEvent("pointerdown", 64, 64);
         pointerEvent("pointermove", 200, 64);
         for (let i = 0; i < 5; i++) controller.tick(16);
-        assert.ok(prop._groundRollDrive);
+        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), null);
 
         controller.destroy();

@@ -1127,6 +1127,7 @@ export function createSandboxSession(state) {
         getSelection: () => sel(),
         pickSelection,
         clearSelection,
+        clearPlaceMode,
         getPlacePaletteKey: () => placePaletteKey,
         setPlacePaletteKey,
         getWallStampMode: () => wallStampMode,

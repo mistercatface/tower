@@ -68,7 +68,7 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -3569,7 +3569,7 @@ function portalTeleportHandler(body) {
     body.vx = 0;
     body.vy = 0;
     body.angularVelocity = 0;
-    delete body._groundRollDrive;
+    clearGroundRollDrive(body);
     if (body._physId !== undefined) snapshotKineticBodySlab([body]);
     const eg = t.spatialFrame.entityGrid;
     if (eg) {
@@ -3621,7 +3621,10 @@ export function runKineticPhysics(tick, dt, hooks) {
     session.substepPairPatchBodies.length = 0;
     session.kineticPairGatherStats = { full: 0, refresh: 0, patch: 0 };
     const kineticBodies = spatialFrame._kineticBodies;
-    for (let i = 0; i < kineticBodies.length; i++) if (kineticBodies[i]._groundRollDrive) wakeKineticBody(kineticBodies[i]);
+    for (let i = 0; i < kineticBodies.length; i++) {
+        const kind = kineticBodies[i]._rollDriveKind;
+        if (kind != null && kind !== ROLL_DRIVE_NONE) wakeKineticBody(kineticBodies[i]);
+    }
     spatialFrame.syncActiveKineticBodies();
     const activeBodies = spatialFrame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = collisionSettings.motionSubsteps;
@@ -4672,10 +4675,10 @@ export function integratePropMotion(body, dtMs) {
 }
 // --- MOVED FROM kineticRollActuator.js ---
 export function applyGroundRollDrive(prop, dtSec) {
-    const drive = prop._groundRollDrive;
-    if (!drive) return false;
-    if (drive.kind === ROLL_DRIVE_BRAKE) return applyRollBrake(prop, dtSec, drive.accel);
-    applyRollThrust(prop, dtSec, drive.dirX, drive.dirY, drive.accel, drive.maxSpeed);
+    const kind = prop._rollDriveKind;
+    if (kind == null || kind === ROLL_DRIVE_NONE) return false;
+    if (kind === ROLL_DRIVE_BRAKE) return applyRollBrake(prop, dtSec, prop._rollDriveAccel);
+    applyRollThrust(prop, dtSec, prop._rollDriveDirX, prop._rollDriveDirY, prop._rollDriveAccel, prop._rollDriveMaxSpeed);
     return true;
 }
 function applyRollBrake(prop, dtSec, accel) {
@@ -4737,33 +4740,18 @@ export function getKineticRollConfig(prop, overrides = null) {
 }
 export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null, accelOverride = null, maxSpeedOverride = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
-    const accel = accelOverride ?? config.accel;
-    const maxSpeed = maxSpeedOverride ?? config.maxSpeed;
-    const limitSpeed = targetSpeed !== null ? Math.min(maxSpeed, targetSpeed) : maxSpeed;
-    let drive = prop._groundRollDrive;
-    if (!drive) {
-        drive = { kind: ROLL_DRIVE_THRUST, dirX, dirY, accel, maxSpeed: limitSpeed };
-        prop._groundRollDrive = drive;
-    } else {
-        drive.kind = ROLL_DRIVE_THRUST;
-        drive.dirX = dirX;
-        drive.dirY = dirY;
-        drive.accel = accel;
-        drive.maxSpeed = limitSpeed;
-    }
+    prop._rollDriveKind = ROLL_DRIVE_THRUST;
+    prop._rollDriveDirX = dirX;
+    prop._rollDriveDirY = dirY;
+    prop._rollDriveAccel = accelOverride ?? config.accel;
+    prop._rollDriveMaxSpeed = targetSpeed !== null ? Math.min(maxSpeedOverride ?? config.maxSpeed, targetSpeed) : (maxSpeedOverride ?? config.maxSpeed);
     wakeKineticBody(prop);
 }
 export function decelerateRoll(prop, config) {
-    let drive = prop._groundRollDrive;
-    if (!drive) {
-        drive = { kind: ROLL_DRIVE_BRAKE, accel: config.accel };
-        prop._groundRollDrive = drive;
-    } else {
-        drive.kind = ROLL_DRIVE_BRAKE;
-        drive.accel = config.accel;
-    }
+    prop._rollDriveKind = ROLL_DRIVE_BRAKE;
+    prop._rollDriveAccel = config.accel;
     wakeKineticBody(prop);
 }
 export function clearGroundRollDrive(prop) {
-    delete prop._groundRollDrive;
+    prop._rollDriveKind = ROLL_DRIVE_NONE;
 }
