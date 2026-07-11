@@ -300,7 +300,6 @@ class KineticDebrisBody {
         this.id = 0;
         this.type = "";
         this.strategy = null;
-        this._liveGeom = null;
         this.shape = null;
         this.collisionParts = undefined;
         this.chunks = undefined;
@@ -421,7 +420,7 @@ class KineticDebrisStore {
         this.world = world;
         this._bodies = [];
         this._integratedScratch = [];
-        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, _liveGeom: null, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, mass: 1, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
+        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, mass: 1, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
     }
     list() {
         return this._bodies;

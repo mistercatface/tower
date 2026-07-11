@@ -66,6 +66,7 @@ import {
     PAIR_HASH_CAPACITY,
     staticWallSegmentSlab,
     GrowI32,
+    GrowF32,
     CONSTRAINT_TYPE_DISTANCE,
     CONSTRAINT_TYPE_ANGLE,
     SHAPE_TYPE_CIRCLE,
@@ -362,6 +363,7 @@ export function stampKineticBodyFromEntity(physId, entity) {
         slab.cos[physId] = Math.cos(angle);
         slab.sin[physId] = Math.sin(angle);
         stampShapeGeomParts(physId, compound);
+        releasePreInsertGeom(entity);
         entity._broadphaseDirty = false;
         return;
     }
@@ -372,6 +374,7 @@ export function stampKineticBodyFromEntity(physId, entity) {
         slab.shapeKind[physId] = SHAPE_TYPE_CIRCLE;
         slab.r[physId] = shape.radius;
         stampShapeGeomCircle(physId, shape.radius);
+        releasePreInsertGeom(entity);
         entity._broadphaseDirty = false;
         return;
     }
@@ -382,16 +385,47 @@ export function stampKineticBodyFromEntity(physId, entity) {
             return;
         }
         slab.shapeKind[physId] = SHAPE_TYPE_POLYGON;
+        slab.cos[physId] = Math.cos(angle);
+        slab.sin[physId] = Math.sin(angle);
+        if (shape._liveBound === 1 && slab.partGeomOffset[physId] >= 0 && (entity._preInsertOff ?? -1) < 0) {
+            const row = slab.partGeomOffset[physId];
+            const vo = slab.partVertOffset[row];
+            const n = slab.partVertFloatCount[row];
+            const verts = slab.shapeVertPool;
+            let hx = 0;
+            let hy = 0;
+            for (let i = 0; i < n; i += 2) {
+                const ax = Math.abs(verts[vo + i]);
+                const ay = Math.abs(verts[vo + i + 1]);
+                if (ax > hx) hx = ax;
+                if (ay > hy) hy = ay;
+            }
+            slab.hx[physId] = hx;
+            slab.hy[physId] = hy;
+            slab.r[physId] = shape.boundingRadius;
+            entity._broadphaseDirty = false;
+            return;
+        }
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         slab.hx[physId] = ENGINE_F32[P_VEC_A];
         slab.hy[physId] = ENGINE_F32[P_VEC_A + 1];
-        slab.cos[physId] = Math.cos(angle);
-        slab.sin[physId] = Math.sin(angle);
         stampShapeGeomPolygon(physId, shape.vertices, shape.normals);
+        if (shape._liveBound === 1) {
+            const row = slab.partGeomOffset[physId];
+            bindLivePolyView(shape, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[row], slab.partVertFloatCount[row]);
+        }
+        releasePreInsertGeom(entity);
         entity._broadphaseDirty = false;
         return;
     }
     throw new Error(`stampKineticBodyFromEntity: unknown shapeTypeId ${shape?.shapeTypeId}`);
+}
+const SHAPE_FLOAT_BUCKETS = [16, 32, 64, 128, 256, 512, 1024];
+export const MAX_LIVE_POLYGON_FLOATS = SHAPE_FLOAT_BUCKETS[SHAPE_FLOAT_BUCKETS.length - 1];
+const shapeAllocResult = new Int32Array(2);
+function shapeFloatBucket(floatCount) {
+    for (let i = 0; i < SHAPE_FLOAT_BUCKETS.length; i++) if (SHAPE_FLOAT_BUCKETS[i] >= floatCount) return SHAPE_FLOAT_BUCKETS[i];
+    return MAX_LIVE_POLYGON_FLOATS;
 }
 function ensurePartTableCapacity(needed) {
     const slab = kineticDynamicSlab;
@@ -399,31 +433,82 @@ function ensurePartTableCapacity(needed) {
     ensureGrowF32(slab, "partRadius", needed, slab.partTableUsed);
     ensureGrowI32(slab, "partVertOffset", needed, slab.partTableUsed);
     ensureGrowU16(slab, "partVertFloatCount", needed, slab.partTableUsed);
+    ensureGrowU16(slab, "partVertCap", needed, slab.partTableUsed);
 }
 function ensureShapePoolCapacity(needed) {
     const slab = kineticDynamicSlab;
     ensureGrowF32(slab, "shapeVertPool", needed, slab.shapePoolUsed);
     ensureGrowF32(slab, "shapeNormPool", needed, slab.shapePoolUsed);
 }
+function pushShapeFloatFree(offset, cap) {
+    if (cap <= 0) return;
+    const slab = kineticDynamicSlab;
+    const i = slab.shapePoolFreeCount;
+    ensureGrowI32(slab, "shapePoolFreeOff", i + 1, i);
+    ensureGrowI32(slab, "shapePoolFreeCap", i + 1, i);
+    slab.shapePoolFreeOff[i] = offset;
+    slab.shapePoolFreeCap[i] = cap;
+    slab.shapePoolFreeCount = i + 1;
+}
+function pushPartRowFree(row) {
+    const slab = kineticDynamicSlab;
+    const i = slab.partRowFreeCount;
+    ensureGrowI32(slab, "partRowFree", i + 1, i);
+    slab.partRowFree[i] = row;
+    slab.partRowFreeCount = i + 1;
+}
+function releaseShapeGeom(physId) {
+    const slab = kineticDynamicSlab;
+    const row0 = slab.partGeomOffset[physId];
+    if (row0 < 0) return;
+    const nParts = Math.max(1, slab.partCount[physId] | 0);
+    for (let i = 0; i < nParts; i++) {
+        const row = row0 + i;
+        if (slab.partShapeKind[row] === SHAPE_TYPE_POLYGON) pushShapeFloatFree(slab.partVertOffset[row], slab.partVertCap[row]);
+        pushPartRowFree(row);
+        slab.partShapeKind[row] = 0;
+        slab.partRadius[row] = 0;
+        slab.partVertOffset[row] = 0;
+        slab.partVertFloatCount[row] = 0;
+        slab.partVertCap[row] = 0;
+    }
+    slab.partGeomOffset[physId] = -1;
+}
 function allocPartRows(count) {
     const slab = kineticDynamicSlab;
+    if (count === 1 && slab.partRowFreeCount > 0) return slab.partRowFree[--slab.partRowFreeCount];
     const start = slab.partTableUsed;
     ensurePartTableCapacity(start + count);
     slab.partTableUsed = start + count;
     return start;
 }
 function allocShapeFloats(floatCount) {
-    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`stampKineticBodyFromEntity: polygon floatCount ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS ${MAX_LIVE_POLYGON_FLOATS}`);
+    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`allocShapeFloats: polygon floatCount ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS ${MAX_LIVE_POLYGON_FLOATS}`);
+    const need = shapeFloatBucket(floatCount);
     const slab = kineticDynamicSlab;
+    for (let i = 0; i < slab.shapePoolFreeCount; i++) {
+        if (slab.shapePoolFreeCap[i] < need) continue;
+        const offset = slab.shapePoolFreeOff[i];
+        const cap = slab.shapePoolFreeCap[i];
+        const last = slab.shapePoolFreeCount - 1;
+        slab.shapePoolFreeOff[i] = slab.shapePoolFreeOff[last];
+        slab.shapePoolFreeCap[i] = slab.shapePoolFreeCap[last];
+        slab.shapePoolFreeCount = last;
+        shapeAllocResult[0] = offset;
+        shapeAllocResult[1] = cap;
+        return;
+    }
     const start = slab.shapePoolUsed;
-    ensureShapePoolCapacity(start + floatCount);
-    slab.shapePoolUsed = start + floatCount;
-    return start;
+    ensureShapePoolCapacity(start + need);
+    slab.shapePoolUsed = start + need;
+    shapeAllocResult[0] = start;
+    shapeAllocResult[1] = need;
 }
 function copyShapeFloats(dstPool, dstOffset, src, floatCount) {
     for (let i = 0; i < floatCount; i++) dstPool[dstOffset + i] = src[i];
 }
 function stampShapeGeomCircle(physId, radius) {
+    releaseShapeGeom(physId);
     const slab = kineticDynamicSlab;
     const row = allocPartRows(1);
     slab.partGeomOffset[physId] = row;
@@ -431,13 +516,17 @@ function stampShapeGeomCircle(physId, radius) {
     slab.partRadius[row] = radius;
     slab.partVertOffset[row] = 0;
     slab.partVertFloatCount[row] = 0;
+    slab.partVertCap[row] = 0;
 }
 function stampShapeGeomPolygon(physId, vertices, normals) {
+    releaseShapeGeom(physId);
     const slab = kineticDynamicSlab;
     const floatCount = vertices.length;
     if ((floatCount & 1) !== 0) throw new Error(`stampShapeGeomPolygon: odd floatCount ${floatCount}`);
     const row = allocPartRows(1);
-    const vo = allocShapeFloats(floatCount);
+    allocShapeFloats(floatCount);
+    const vo = shapeAllocResult[0];
+    const cap = shapeAllocResult[1];
     copyShapeFloats(slab.shapeVertPool, vo, vertices, floatCount);
     copyShapeFloats(slab.shapeNormPool, vo, normals, floatCount);
     slab.partGeomOffset[physId] = row;
@@ -445,8 +534,10 @@ function stampShapeGeomPolygon(physId, vertices, normals) {
     slab.partRadius[row] = 0;
     slab.partVertOffset[row] = vo;
     slab.partVertFloatCount[row] = floatCount;
+    slab.partVertCap[row] = cap;
 }
 function stampShapeGeomParts(physId, parts) {
+    releaseShapeGeom(physId);
     const slab = kineticDynamicSlab;
     const row0 = allocPartRows(parts.length);
     slab.partGeomOffset[physId] = row0;
@@ -458,18 +549,22 @@ function stampShapeGeomParts(physId, parts) {
             slab.partRadius[row] = shape.radius;
             slab.partVertOffset[row] = 0;
             slab.partVertFloatCount[row] = 0;
+            slab.partVertCap[row] = 0;
             continue;
         }
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) throw new Error(`stampShapeGeomParts: unknown shapeTypeId ${shape?.shapeTypeId}`);
         const floatCount = shape.vertices.length;
         if ((floatCount & 1) !== 0) throw new Error(`stampShapeGeomParts: odd floatCount ${floatCount}`);
-        const vo = allocShapeFloats(floatCount);
+        allocShapeFloats(floatCount);
+        const vo = shapeAllocResult[0];
+        const cap = shapeAllocResult[1];
         copyShapeFloats(slab.shapeVertPool, vo, shape.vertices, floatCount);
         copyShapeFloats(slab.shapeNormPool, vo, shape.normals, floatCount);
         slab.partShapeKind[row] = SHAPE_TYPE_POLYGON;
         slab.partRadius[row] = 0;
         slab.partVertOffset[row] = vo;
         slab.partVertFloatCount[row] = floatCount;
+        slab.partVertCap[row] = cap;
     }
 }
 export function clearActiveKineticBodySlab() {
@@ -478,6 +573,7 @@ export function clearActiveKineticBodySlab() {
     slab.activePhysCount = 0;
 }
 export function invalidateKineticSlabSlot(physId) {
+    releaseShapeGeom(physId);
     const dyn = kineticDynamicSlab;
     dyn.x[physId] = 0;
     dyn.y[physId] = 0;
@@ -678,142 +774,217 @@ export class PolygonShape extends Shape {
         }
     }
 }
-const LIVE_GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
-export const MAX_LIVE_POLYGON_FLOATS = LIVE_GEOM_VERT_BUCKETS[LIVE_GEOM_VERT_BUCKETS.length - 1] * 2;
-const liveGeomFreeByBucket = LIVE_GEOM_VERT_BUCKETS.map(() => []);
-function liveGeomBucketIndex(vertCount) {
-    for (let i = 0; i < LIVE_GEOM_VERT_BUCKETS.length; i++) if (LIVE_GEOM_VERT_BUCKETS[i] >= vertCount) return i;
-    return LIVE_GEOM_VERT_BUCKETS.length - 1;
-}
-function allocLiveGeomSpan(floatCount) {
-    if (floatCount < 6) throw new Error(`allocLiveGeomSpan requires >= 6 floats, got ${floatCount}`);
-    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`allocLiveGeomSpan ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS`);
-    const bucket = liveGeomBucketIndex((floatCount + 1) >> 1);
-    const free = liveGeomFreeByBucket[bucket];
-    if (free.length) return free.pop();
-    const cap = LIVE_GEOM_VERT_BUCKETS[bucket] * 2;
-    return { verts: new Float32Array(cap), normals: new Float32Array(cap), cap, bucket };
-}
-function releaseLiveGeomSpan(span) {
-    liveGeomFreeByBucket[span.bucket].push(span);
-}
-export class LivePolygonShape extends Shape {
-    constructor() {
-        super();
-        this.shapeTypeId = SHAPE_TYPE_POLYGON;
-        this.vertices = null;
-        this.normals = null;
-        this.boundingRadius = 0;
-    }
+const livePolyShapeProto = {
+    shapeTypeId: SHAPE_TYPE_POLYGON,
     getBoundingRadius() {
         return this.boundingRadius;
+    },
+};
+function ensureLivePolyShape(body) {
+    let shape = body.shape;
+    if (!shape || shape._liveBound !== 1) {
+        shape = Object.create(livePolyShapeProto);
+        shape.vertices = null;
+        shape.normals = null;
+        shape.boundingRadius = 0;
+        shape._liveBound = 1;
+        shape._viewVo = -1;
+        shape._viewN = -1;
+        shape._viewBase = null;
+        body.shape = shape;
     }
+    return shape;
 }
-function rebuildLivePolygonNormals(verts, normals, floatCount) {
+function bindLivePolyView(shape, vertBase, normBase, vo, floatCount) {
+    if (shape._viewVo === vo && shape._viewN === floatCount && shape._viewBase === vertBase && shape.vertices) return;
+    shape.vertices = vertBase.subarray(vo, vo + floatCount);
+    shape.normals = normBase.subarray(vo, vo + floatCount);
+    shape._viewVo = vo;
+    shape._viewN = floatCount;
+    shape._viewBase = vertBase;
+}
+function rebuildLivePolygonNormals(verts, normals, floatCount, vertOffset = 0, normOffset = 0) {
     const count = floatCount / 2;
     for (let i = 0; i < count; i++) {
-        const p1x = verts[i * 2];
-        const p1y = verts[i * 2 + 1];
+        const p1x = verts[vertOffset + i * 2];
+        const p1y = verts[vertOffset + i * 2 + 1];
         const nextIdx = ((i + 1) % count) * 2;
-        const p2x = verts[nextIdx];
-        const p2y = verts[nextIdx + 1];
+        const p2x = verts[vertOffset + nextIdx];
+        const p2y = verts[vertOffset + nextIdx + 1];
         const dx = p2x - p1x;
         const dy = p2y - p1y;
         const len = Math.sqrt(dx * dx + dy * dy);
         if (len > 0) {
-            normals[i * 2] = -dy / len;
-            normals[i * 2 + 1] = dx / len;
+            normals[normOffset + i * 2] = -dy / len;
+            normals[normOffset + i * 2 + 1] = dx / len;
         } else {
-            normals[i * 2] = 0;
-            normals[i * 2 + 1] = 0;
+            normals[normOffset + i * 2] = 0;
+            normals[normOffset + i * 2 + 1] = 0;
         }
     }
 }
-function livePolygonBoundingRadius(verts, floatCount) {
+function livePolygonBoundingRadius(verts, floatCount, offset = 0) {
     let maxSq = 0;
     for (let i = 0; i < floatCount; i += 2) {
-        const x = verts[i];
-        const y = verts[i + 1];
+        const x = verts[offset + i];
+        const y = verts[offset + i + 1];
         const sq = x * x + y * y;
         if (sq > maxSq) maxSq = sq;
     }
     return Math.sqrt(maxSq);
 }
+function reverseWindingInPlace(verts, floatCount, offset = 0) {
+    for (let i = 0, j = floatCount - 2; i < j; i += 2, j -= 2) {
+        const x = verts[offset + i];
+        const y = verts[offset + i + 1];
+        verts[offset + i] = verts[offset + j];
+        verts[offset + i + 1] = verts[offset + j + 1];
+        verts[offset + j] = x;
+        verts[offset + j + 1] = y;
+    }
+}
+const preInsertVerts = new GrowF32(512);
+const preInsertNorms = new GrowF32(512);
+let preInsertUsed = 0;
+const preInsertFreeOff = new GrowI32(32);
+const preInsertFreeCap = new GrowI32(32);
+function pushPreInsertFree(offset, cap) {
+    if (cap <= 0) return;
+    preInsertFreeOff.push(offset);
+    preInsertFreeCap.push(cap);
+}
+function allocPreInsertRun(floatCount) {
+    const need = shapeFloatBucket(floatCount);
+    for (let i = 0; i < preInsertFreeOff.used; i++) {
+        if (preInsertFreeCap.buf[i] < need) continue;
+        const offset = preInsertFreeOff.buf[i];
+        const cap = preInsertFreeCap.buf[i];
+        const last = preInsertFreeOff.used - 1;
+        preInsertFreeOff.buf[i] = preInsertFreeOff.buf[last];
+        preInsertFreeCap.buf[i] = preInsertFreeCap.buf[last];
+        preInsertFreeOff.used = last;
+        preInsertFreeCap.used = last;
+        shapeAllocResult[0] = offset;
+        shapeAllocResult[1] = cap;
+        return;
+    }
+    const start = preInsertUsed;
+    preInsertVerts.ensure(start + need);
+    preInsertNorms.ensure(start + need);
+    preInsertUsed = start + need;
+    shapeAllocResult[0] = start;
+    shapeAllocResult[1] = need;
+}
+function releasePreInsertGeom(body) {
+    const off = body._preInsertOff;
+    if (off == null || off < 0) {
+        body._preInsertOff = -1;
+        body._preInsertCap = 0;
+        body._preInsertN = 0;
+        return;
+    }
+    pushPreInsertFree(off, body._preInsertCap | 0);
+    body._preInsertOff = -1;
+    body._preInsertCap = 0;
+    body._preInsertN = 0;
+}
+function signedAreaAt(verts, floatCount, offset) {
+    let a = 0;
+    for (let i = 0; i < floatCount; i += 2) {
+        const j = (i + 2) % floatCount;
+        a += verts[offset + i] * verts[offset + j + 1] - verts[offset + j] * verts[offset + i + 1];
+    }
+    return a * 0.5;
+}
+function writeVertsWithWinding(dst, dstOff, src, floatCount) {
+    for (let i = 0; i < floatCount; i++) dst[dstOff + i] = src[i];
+    if (signedAreaAt(dst, floatCount, dstOff) < 0) reverseWindingInPlace(dst, floatCount, dstOff);
+}
+function writePolygonIntoSlab(physId, src, floatCount) {
+    const slab = kineticDynamicSlab;
+    let row = slab.partGeomOffset[physId];
+    let vo;
+    let cap;
+    if (row >= 0 && slab.partCount[physId] === 1 && slab.partShapeKind[row] === SHAPE_TYPE_POLYGON && slab.partVertCap[row] >= floatCount) {
+        vo = slab.partVertOffset[row];
+        cap = slab.partVertCap[row];
+    } else {
+        releaseShapeGeom(physId);
+        row = allocPartRows(1);
+        allocShapeFloats(floatCount);
+        vo = shapeAllocResult[0];
+        cap = shapeAllocResult[1];
+        slab.partGeomOffset[physId] = row;
+        slab.partShapeKind[row] = SHAPE_TYPE_POLYGON;
+        slab.partRadius[row] = 0;
+        slab.partVertOffset[row] = vo;
+        slab.partVertCap[row] = cap;
+    }
+    writeVertsWithWinding(slab.shapeVertPool, vo, src, floatCount);
+    rebuildLivePolygonNormals(slab.shapeVertPool, slab.shapeNormPool, floatCount, vo, vo);
+    slab.partVertFloatCount[row] = floatCount;
+    slab.partCount[physId] = 1;
+    slab.shapeKind[physId] = SHAPE_TYPE_POLYGON;
+    return row;
+}
+function writePolygonIntoPreInsert(body, src, floatCount) {
+    let off = body._preInsertOff ?? -1;
+    let cap = body._preInsertCap | 0;
+    if (off < 0 || cap < floatCount) {
+        if (off >= 0) pushPreInsertFree(off, cap);
+        allocPreInsertRun(floatCount);
+        off = shapeAllocResult[0];
+        cap = shapeAllocResult[1];
+        body._preInsertOff = off;
+        body._preInsertCap = cap;
+    }
+    writeVertsWithWinding(preInsertVerts.buf, off, src, floatCount);
+    rebuildLivePolygonNormals(preInsertVerts.buf, preInsertNorms.buf, floatCount, off, off);
+    body._preInsertN = floatCount;
+    return off;
+}
 export function releaseLivePolygon(body) {
-    const span = body._liveGeom;
-    if (!span) return;
-    releaseLiveGeomSpan(span);
-    body._liveGeom = null;
-    if (body.shape instanceof LivePolygonShape) {
-        body.shape.vertices = null;
-        body.shape.normals = null;
-        body.shape.boundingRadius = 0;
+    if (body._physId !== undefined) releaseShapeGeom(body._physId);
+    releasePreInsertGeom(body);
+    const shape = body.shape;
+    if (shape && shape._liveBound === 1) {
+        shape.vertices = null;
+        shape.normals = null;
+        shape.boundingRadius = 0;
+        shape._viewVo = -1;
+        shape._viewN = -1;
+        shape._viewBase = null;
     }
 }
 export function writeLivePolygon(body, src, floatCount) {
     if (floatCount < 6 || (floatCount & 1) !== 0) throw new Error(`writeLivePolygon requires even floatCount >= 6, got ${floatCount}`);
-    let span = body._liveGeom;
-    if (!span || span.cap < floatCount) {
-        if (span) releaseLiveGeomSpan(span);
-        span = allocLiveGeomSpan(floatCount);
-        body._liveGeom = span;
-    }
-    const verts = span.verts;
-    for (let i = 0; i < floatCount; i++) verts[i] = src[i];
-    const view = floatCount === span.cap ? verts : verts.subarray(0, floatCount);
-    if (polygonSignedArea2D(view) < 0)
-        for (let i = 0, j = floatCount - 2; i < j; i += 2, j -= 2) {
-            const x = verts[i];
-            const y = verts[i + 1];
-            verts[i] = verts[j];
-            verts[i + 1] = verts[j + 1];
-            verts[j] = x;
-            verts[j + 1] = y;
-        }
-    rebuildLivePolygonNormals(verts, span.normals, floatCount);
-    let shape = body.shape;
-    if (!(shape instanceof LivePolygonShape)) {
-        shape = new LivePolygonShape();
-        body.shape = shape;
-    }
-    shape.vertices = floatCount === span.cap ? span.verts : span.verts.subarray(0, floatCount);
-    shape.normals = floatCount === span.cap ? span.normals : span.normals.subarray(0, floatCount);
-    shape.boundingRadius = livePolygonBoundingRadius(verts, floatCount);
-    body.radius = shape.boundingRadius;
-    if (body._physId !== undefined) {
+    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`writeLivePolygon ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS`);
+    const shape = ensureLivePolyShape(body);
+    const physId = body._physId;
+    if (physId !== undefined) {
+        const row = writePolygonIntoSlab(physId, src, floatCount);
+        releasePreInsertGeom(body);
+        const slab = kineticDynamicSlab;
+        const vo = slab.partVertOffset[row];
+        const br = livePolygonBoundingRadius(slab.shapeVertPool, floatCount, vo);
+        shape.boundingRadius = br;
+        body.radius = br;
+        bindLivePolyView(shape, slab.shapeVertPool, slab.shapeNormPool, vo, floatCount);
         body._broadphaseDirty = true;
-        stampKineticBodyFromEntity(body._physId, body);
+        stampKineticBodyFromEntity(physId, body);
+        return shape;
     }
+    const off = writePolygonIntoPreInsert(body, src, floatCount);
+    const br = livePolygonBoundingRadius(preInsertVerts.buf, floatCount, off);
+    shape.boundingRadius = br;
+    body.radius = br;
+    bindLivePolyView(shape, preInsertVerts.buf, preInsertNorms.buf, off, floatCount);
+    body._broadphaseDirty = true;
     return shape;
 }
 export function ensureLivePolygonCapacity(body, floatCount) {
-    const span = body._liveGeom;
-    if (span && span.cap >= floatCount && body.shape instanceof LivePolygonShape) return;
-    const scratch = span && body.shape?.vertices ? body.shape.vertices : null;
-    const prevN = scratch?.length ?? 0;
-    const tmp = prevN > 0 ? new Float32Array(Math.max(prevN, floatCount)) : null;
-    if (tmp && scratch) for (let i = 0; i < prevN; i++) tmp[i] = scratch[i];
-    if (span) releaseLiveGeomSpan(span);
-    const next = allocLiveGeomSpan(Math.max(floatCount, 8));
-    body._liveGeom = next;
-    if (tmp) for (let i = 0; i < prevN; i++) next.verts[i] = tmp[i];
-    let shape = body.shape;
-    if (!(shape instanceof LivePolygonShape)) {
-        shape = new LivePolygonShape();
-        body.shape = shape;
-    }
-    const n = prevN >= 6 ? prevN : 0;
-    if (n >= 6) {
-        rebuildLivePolygonNormals(next.verts, next.normals, n);
-        shape.vertices = next.verts.subarray(0, n);
-        shape.normals = next.normals.subarray(0, n);
-        shape.boundingRadius = livePolygonBoundingRadius(next.verts, n);
-        body.radius = shape.boundingRadius;
-    } else {
-        shape.vertices = next.verts.subarray(0, Math.min(8, next.cap));
-        shape.normals = next.normals.subarray(0, Math.min(8, next.cap));
-        shape.boundingRadius = 0;
-    }
+    if (floatCount < 6 || (floatCount & 1) !== 0) throw new Error(`ensureLivePolygonCapacity requires even floatCount >= 6, got ${floatCount}`);
+    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`ensureLivePolygonCapacity ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS`);
 }
 const MANIFOLD_MAX_POINTS = 2;
 export const SAT_RESULT = ENGINE_F32.subarray(P_SAT, P_SAT + 25);

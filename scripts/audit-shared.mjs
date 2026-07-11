@@ -46,6 +46,9 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "buildAdjacency",
     "addAdjacencyEdge",
     "getKineticConstraintGraph",
+    "LivePolygonShape",
+    "allocLiveGeomSpan",
+    "releaseLiveGeomSpan",
 ];
 
 export const LEGACY_SCALAR_SYMBOLS = [

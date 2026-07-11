@@ -59,6 +59,9 @@ const deletedPassthroughExports = [
     "buildAdjacency",
     "addAdjacencyEdge",
     "getKineticConstraintGraph",
+    "LivePolygonShape",
+    "allocLiveGeomSpan",
+    "releaseLiveGeomSpan",
 ];
 
 function walkGameStateJs(dir, out = []) {

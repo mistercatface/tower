@@ -217,10 +217,16 @@ export const kineticDynamicSlab = {
     partRadius: new Float32Array(PART_TABLE_INIT),
     partVertOffset: new Int32Array(PART_TABLE_INIT),
     partVertFloatCount: new Uint16Array(PART_TABLE_INIT),
+    partVertCap: new Uint16Array(PART_TABLE_INIT),
     partTableUsed: 0,
+    partRowFree: new Int32Array(64),
+    partRowFreeCount: 0,
     shapeVertPool: new Float32Array(SHAPE_POOL_FLOATS_INIT),
     shapeNormPool: new Float32Array(SHAPE_POOL_FLOATS_INIT),
     shapePoolUsed: 0,
+    shapePoolFreeOff: new Int32Array(64),
+    shapePoolFreeCap: new Int32Array(64),
+    shapePoolFreeCount: 0,
 };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
