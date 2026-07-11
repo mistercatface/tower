@@ -1,5 +1,5 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
-import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
+import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
@@ -710,13 +710,18 @@ function fillBoxFootprintInto(out, hx, hy) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, highlight, plankTs, drawPlanks) {
+function drawSideFaceFlat(ctx, edgeIndex, count, shadow, mid, highlight, plankTs, drawPlanks) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
-    const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
-    const edgeMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
-    const shadeAngle = Math.atan2(edgeMidY - originY, edgeMidX - originX);
-    ctx.fillStyle = createSideGradientAt(ctx, sBaseRing[ai], sBaseRing[ai + 1], sBaseRing[bi], sBaseRing[bi + 1], shadeAngle, shadow, mid, highlight);
+    const topMidX = (sTopRing[ai] + sTopRing[bi]) * 0.5;
+    const topMidY = (sTopRing[ai + 1] + sTopRing[bi + 1]) * 0.5;
+    const baseMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
+    const baseMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
+    const bevel = ctx.createLinearGradient(topMidX, topMidY, baseMidX, baseMidY);
+    bevel.addColorStop(0.0, highlight ?? mid);
+    bevel.addColorStop(0.45, mid);
+    bevel.addColorStop(1.0, shadow);
+    ctx.fillStyle = bevel;
     ctx.beginPath();
     traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
     ctx.fill();
@@ -859,7 +864,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                 const shadow = front ? faceColors.shadow : backShadow;
                 const mid = front ? faceColors.mid : backMid;
                 const highlight = front ? faceColors.highlight : backHighlight;
-                drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, plankTs, front);
+                drawSideFaceFlat(ctx, i, count, shadow, mid, highlight, plankTs, front);
             }
         else
             for (let pass = 0; pass < 2; pass++) {
@@ -869,7 +874,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                     const shadow = wantFront ? faceColors.shadow : backShadow;
                     const mid = wantFront ? faceColors.mid : backMid;
                     const highlight = wantFront ? faceColors.highlight : backHighlight;
-                    drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, plankTs, wantFront);
+                    drawSideFaceFlat(ctx, i, count, shadow, mid, highlight, plankTs, wantFront);
                 }
             }
     if (drawTop) {
@@ -937,9 +942,16 @@ function fillPrismOptsFromDraw(opts, prop, textures) {
     sPrismOpts.baseGradCornerB = opts.baseGradCornerB ?? 1;
     return sPrismOpts;
 }
+function scalePrismTopExtents(viewport) {
+    if (sPrismOpts.topHx == null || sPrismOpts.topHy == null) return;
+    const alpha = resolveElevationAlpha(sPrismOpts.height, viewport);
+    sPrismOpts.topHx = scaleAtHeight(sPrismOpts.topHx, alpha, 1);
+    sPrismOpts.topHy = scaleAtHeight(sPrismOpts.topHy, alpha, 1);
+}
 export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {
     const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
     fillPrismOptsFromDraw(opts, prop, textures);
+    scalePrismTopExtents(viewport);
     drawExtrudedPrism(ctx, prop, viewport, opts.localVerts, sPrismOpts);
 }
 export function getWallChunkSpriteCacheKey(prop) {
@@ -989,6 +1001,7 @@ export function drawFlatWallChunkProp(ctx, prop) {
 }
 export function drawExtrudedCompoundPolygon(ctx, prop, viewport, opts) {
     fillPrismOptsFromDraw(opts, prop, null);
+    scalePrismTopExtents(viewport);
     sPrismOpts.faceOrder = "convexCull";
     const partsVerts = opts.partsVerts;
     sPrismOpts.prismPass = "base";

@@ -430,24 +430,6 @@ export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewer
 export function isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewerX, viewerY) {
     return isOutwardFaceTowardViewer(edgeMidX, edgeMidY, edgeMidX - originX, edgeMidY - originY, viewerX, viewerY);
 }
-export function getSideHighlightT(viewAngle, lightAngle = (-3 * Math.PI) / 4) {
-    const lx = Math.cos(lightAngle);
-    const ly = Math.sin(lightAngle);
-    const nx = Math.cos(viewAngle + Math.PI / 2);
-    const ny = Math.sin(viewAngle + Math.PI / 2);
-    const dot = lx * nx + ly * ny;
-    return Math.max(0.1, Math.min(0.9, 0.5 + dot * 0.5));
-}
-export function createSideGradientAt(ctx, leftX, leftY, rightX, rightY, viewAngle, shadow, mid, highlight) {
-    const t = getSideHighlightT(viewAngle);
-    const grad = ctx.createLinearGradient(leftX, leftY, rightX, rightY);
-    grad.addColorStop(0.0, shadow);
-    grad.addColorStop(Math.max(0.0, t - 0.25), mid);
-    grad.addColorStop(t, highlight);
-    grad.addColorStop(Math.min(1.0, t + 0.25), mid);
-    grad.addColorStop(1.0, shadow);
-    return grad;
-}
 export function projectWorldQuad(buf, o, x0, y0, x1, y1, x2, y2, x3, y3, height, viewport) {
     const alpha = resolveElevationAlpha(height, viewport);
     if (alpha <= 0) {
