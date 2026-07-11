@@ -1,7 +1,7 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -12,12 +12,11 @@ import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js"
 import propCatalog from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
-const rBoxFootprint = ENGINE_F32.subarray(R_BOX_FOOTPRINT, R_BOX_FOOTPRINT + 8);
+const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rSubdiv = ENGINE_F32.subarray(R_SUBDIV, R_SUBDIV + 8);
 const rCapCorners = ENGINE_F32.subarray(R_CAP_CORNERS, R_CAP_CORNERS + 8);
 const rCapUv = ENGINE_F32.subarray(R_CAP_UV, R_CAP_UV + 8);
 const rCapSrc = ENGINE_F32.subarray(R_CAP_SRC, R_CAP_SRC + 8);
-const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rChevron = ENGINE_F32.subarray(R_CHEVRON, R_CHEVRON + 12);
 const rFaceVisible = ENGINE_U8.subarray(R_FACE_VISIBLE, R_FACE_VISIBLE + MAX_PRISM_FACES);
 /**
@@ -696,16 +695,6 @@ function ensurePrismScratch(vertexCount) {
         sCapSrcRing = new Float32Array(ringLen);
     }
 }
-function fillBoxFootprintInto(out, hx, hy) {
-    out[0] = -hx;
-    out[1] = -hy;
-    out[2] = hx;
-    out[3] = -hy;
-    out[4] = hx;
-    out[5] = hy;
-    out[6] = -hx;
-    out[7] = hy;
-}
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
@@ -822,25 +811,6 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     ctx.fill();
 }
 const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, topColors: null, topHx: null, topHy: null };
-const sBeltProp = { x: 0, y: 0, facing: 0 };
-const sBeltHalf = { x: 0, y: 0 };
-const sBeltDrawOpts = { halfSize: sBeltHalf, height: 0, facing: 0, faceColors: null, topColors: null };
-export function drawBox(ctx, prop, viewport, opts) {
-    const halfSize = opts.halfSize;
-    const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
-    const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
-    const height = opts.height ?? DEFAULT_PROP_HEIGHT;
-    fillBoxFootprintInto(rBoxFootprint, hx, hy);
-    const alpha = resolveElevationAlpha(height, viewport);
-    sPrismOpts.height = height;
-    sPrismOpts.facing = opts.facing ?? readEntityFacing(prop);
-    sPrismOpts.faceColors = opts.faceColors;
-    sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
-    sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.topHx = scaleAtHeight(hx, alpha, 1);
-    sPrismOpts.topHy = scaleAtHeight(hy, alpha, 1);
-    drawExtrudedPrism(ctx, prop, viewport, rBoxFootprint, sPrismOpts);
-}
 function fillPrismOptsFromDraw(opts, prop) {
     sPrismOpts.height = opts.height ?? DEFAULT_PROP_HEIGHT;
     sPrismOpts.facing = opts.facing ?? readEntityFacing(prop);
@@ -1534,50 +1504,34 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, f
     }
     blitHorizontalCapSampleFlat(ctx, rCapCorners, rCapSrc, capCanvas);
 }
-const CONVEYOR_BELT_HEIGHT = 0;
 export function createConveyorDraw(options = {}) {
     const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
     const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
-    // Dark rubber colors for the moving belt bed
-    const beltColors = {
-        shadow: "#141414", // dark shadow
-        mid: "#212121", // charcoal side
-        highlight: "#373737", // slightly lighter highlights
-    };
-    const beltTopColors = {
-        light: "#2b2b2b", // dark rubber bed
-        mid: "#1e1e1e",
-        dark: "#141414",
-    };
+    const beltFill = "#1e1e1e";
     return (ctx, prop, viewport) => {
         const hx = prop.halfExtents?.x ?? 8;
         const hy = prop.halfExtents?.y ?? 8;
         const lineScale = getCanvasLineScale(ctx);
+        const angle = readEntityFacing(prop);
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const px = prop.x;
+        const py = prop.y;
+        function writeLocalXY(out, offset, lx, ly) {
+            out[offset] = px + lx * cos - ly * sin;
+            out[offset + 1] = py + lx * sin + ly * cos;
+        }
+        writeLocalXY(rQuadA, 0, -hx, -hy);
+        writeLocalXY(rQuadA, 2, hx, -hy);
+        writeLocalXY(rQuadA, 4, hx, hy);
+        writeLocalXY(rQuadA, 6, -hx, hy);
+        ctx.beginPath();
+        traceClosedFlatPolygon(ctx, rQuadA, 4);
+        ctx.fillStyle = beltFill;
+        ctx.fill();
         if (!turnDirection) {
-            const angle = readEntityFacing(prop);
-            const cos = Math.cos(angle);
-            const sin = Math.sin(angle);
-            sBeltProp.x = prop.x;
-            sBeltProp.y = prop.y;
-            sBeltProp.facing = angle;
-            sBeltHalf.x = hx;
-            sBeltHalf.y = hy;
-            sBeltDrawOpts.height = CONVEYOR_BELT_HEIGHT;
-            sBeltDrawOpts.facing = angle;
-            sBeltDrawOpts.faceColors = beltColors;
-            sBeltDrawOpts.topColors = beltTopColors;
-            drawBox(ctx, sBeltProp, viewport, sBeltDrawOpts);
-            function projectLocalFlat(out8, offset, lx, ly, lz) {
-                const rx = lx * cos - ly * sin;
-                const ry = lx * sin + ly * cos;
-                projectPropVertexScalarsInto(out8, offset, prop, viewport, rx, ry, lz);
-            }
             ctx.save();
             ctx.beginPath();
-            projectLocalFlat(rQuadA, 0, -hx, -hy, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rQuadA, 2, hx, -hy, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rQuadA, 4, hx, hy, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rQuadA, 6, -hx, hy, CONVEYOR_BELT_HEIGHT);
             traceClosedFlatPolygon(ctx, rQuadA, 4);
             ctx.clip();
             const speed = 20;
@@ -1589,8 +1543,8 @@ export function createConveyorDraw(options = {}) {
             const numSlats = Math.ceil((hx * 2) / 4) + 2;
             for (let i = -2; i < numSlats; i++) {
                 const cx = -hx + ((timeSec * speed) % 4) + i * 4;
-                projectLocalFlat(rQuadA, 0, cx, -hy, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(rQuadA, 2, cx, hy, CONVEYOR_BELT_HEIGHT);
+                writeLocalXY(rQuadA, 0, cx, -hy);
+                writeLocalXY(rQuadA, 2, cx, hy);
                 ctx.beginPath();
                 ctx.moveTo(rQuadA[0], rQuadA[1]);
                 ctx.lineTo(rQuadA[2], rQuadA[3]);
@@ -1602,12 +1556,12 @@ export function createConveyorDraw(options = {}) {
             const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
             for (let i = -2; i < numChevrons; i++) {
                 const cx = -hx + offset + i * spacing;
-                projectLocalFlat(rChevron, 0, cx + 1.5, 0, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(rChevron, 2, cx - 1.2, 3.2, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(rChevron, 4, cx - 0.4, 3.2, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(rChevron, 6, cx + 0.8, 0, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(rChevron, 8, cx - 0.4, -3.2, CONVEYOR_BELT_HEIGHT);
-                projectLocalFlat(rChevron, 10, cx - 1.2, -3.2, CONVEYOR_BELT_HEIGHT);
+                writeLocalXY(rChevron, 0, cx + 1.5, 0);
+                writeLocalXY(rChevron, 2, cx - 1.2, 3.2);
+                writeLocalXY(rChevron, 4, cx - 0.4, 3.2);
+                writeLocalXY(rChevron, 6, cx + 0.8, 0);
+                writeLocalXY(rChevron, 8, cx - 0.4, -3.2);
+                writeLocalXY(rChevron, 10, cx - 1.2, -3.2);
                 ctx.beginPath();
                 traceClosedFlatPolygon(ctx, rChevron, 6);
                 ctx.fill();
@@ -1616,35 +1570,17 @@ export function createConveyorDraw(options = {}) {
             ctx.restore();
             return;
         }
-        const angle = readEntityFacing(prop);
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
         const isLeft = turnDirection === "left";
         const pivotX = 8;
         const pivotY = isLeft ? 8 : -8;
         const startAngle = Math.PI;
         const dir = isLeft ? 1 : -1;
-        sBeltProp.x = prop.x;
-        sBeltProp.y = prop.y;
-        sBeltProp.facing = angle;
-        sBeltHalf.x = hx;
-        sBeltHalf.y = hy;
-        sBeltDrawOpts.height = CONVEYOR_BELT_HEIGHT;
-        sBeltDrawOpts.facing = angle;
-        sBeltDrawOpts.faceColors = beltColors;
-        sBeltDrawOpts.topColors = beltTopColors;
-        drawBox(ctx, sBeltProp, viewport, sBeltDrawOpts);
-        function projectLocalFlat(out8, offset, lx, ly, lz) {
-            const rx = lx * cos - ly * sin;
-            const ry = lx * sin + ly * cos;
-            projectPropVertexScalarsInto(out8, offset, prop, viewport, rx, ry, lz);
-        }
         ctx.save();
         ctx.beginPath();
-        projectLocalFlat(rQuadA, 0, -hx, -hy, CONVEYOR_BELT_HEIGHT);
-        projectLocalFlat(rQuadA, 2, hx, -hy, CONVEYOR_BELT_HEIGHT);
-        projectLocalFlat(rQuadA, 4, hx, hy, CONVEYOR_BELT_HEIGHT);
-        projectLocalFlat(rQuadA, 6, -hx, hy, CONVEYOR_BELT_HEIGHT);
+        writeLocalXY(rQuadA, 0, -hx, -hy);
+        writeLocalXY(rQuadA, 2, hx, -hy);
+        writeLocalXY(rQuadA, 4, hx, hy);
+        writeLocalXY(rQuadA, 6, -hx, hy);
         traceClosedFlatPolygon(ctx, rQuadA, 4);
         ctx.clip();
         const speed = 20;
@@ -1659,8 +1595,8 @@ export function createConveyorDraw(options = {}) {
             const s = ((timeSec * speed) % 4) + i * 4;
             if (s < 0 || s > totalArcLength) continue;
             const A = startAngle + dir * (s / 8);
-            projectLocalFlat(rQuadA, 0, pivotX, pivotY, CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rQuadA, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A), CONVEYOR_BELT_HEIGHT);
+            writeLocalXY(rQuadA, 0, pivotX, pivotY);
+            writeLocalXY(rQuadA, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A));
             ctx.beginPath();
             ctx.moveTo(rQuadA[0], rQuadA[1]);
             ctx.lineTo(rQuadA[2], rQuadA[3]);
@@ -1678,12 +1614,12 @@ export function createConveyorDraw(options = {}) {
             const wingAngle = A - dir * (1.2 / 8);
             const innerAngle = A - dir * (0.4 / 8);
             const innerTipAngle = A + dir * (0.8 / 8);
-            projectLocalFlat(rChevron, 0, pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle), CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rChevron, 2, pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle), CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rChevron, 4, pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle), CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rChevron, 6, pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle), CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rChevron, 8, pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle), CONVEYOR_BELT_HEIGHT);
-            projectLocalFlat(rChevron, 10, pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle), CONVEYOR_BELT_HEIGHT);
+            writeLocalXY(rChevron, 0, pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle));
+            writeLocalXY(rChevron, 2, pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle));
+            writeLocalXY(rChevron, 4, pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle));
+            writeLocalXY(rChevron, 6, pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle));
+            writeLocalXY(rChevron, 8, pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle));
+            writeLocalXY(rChevron, 10, pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle));
             ctx.beginPath();
             traceClosedFlatPolygon(ctx, rChevron, 6);
             ctx.fill();
