@@ -1,25 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { isChainSteeringTarget, createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import propCatalog from "../Assets/props/index.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
-
-function createSnakeSpawnTestState(cols = 32, rows = 32) {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, cols * 16, rows * 16);
-    const world = { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
-    world.fractureEngine = new FractureEngine(world);
-    return world;
-}
+import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
 describe("snake prop kinetic chain spawning", () => {
     it("spawns a snake chain prop using the configured length parameter, custom radius, and visual overrides", () => {
-        const state = createSnakeSpawnTestState();
+        const state = createSandboxKineticWorld();
         const meta = state.sandbox.entityMeta;
 
         const session = createSandboxSession(state);

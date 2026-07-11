@@ -1,8 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createKineticSession } from "../GameState/KineticSession.js";
-import { addDistanceConstraint, removeKineticConstraint } from "../Libraries/Physics/physics.js";
-import { areBodiesConnected, getConnectedBodyIds, getConnectedComponentPath, getConstraintIslands, getKineticConstraintGraph } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint, removeKineticConstraint, areBodiesConnected, getConnectedBodyIds, getConnectedComponentPath, getConstraintIslands, getKineticConstraintGraph, createKineticSession } from "../Libraries/Physics/physics.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 function createState() {
     return { kinetic: createKineticSession() };

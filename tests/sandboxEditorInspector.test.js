@@ -1,28 +1,16 @@
 import { installTestDocument, mockPanelBody } from "./harness/sandboxInspectorHarness.js";
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { createSandboxKineticWorld } from "./harness/stateFactories.js";
+
 function createEditorTestState() {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, 512, 512);
-    const world = {
-        obstacleGrid: grid,
-        entityRegistry: new EntityRegistry(),
-        worldProps: [],
-        kinetic: new KineticSession(),
-        sandbox: new SandboxWorldState(),
+    return createSandboxKineticWorld(32, 32, {
         viewport: { x: 128, y: 128, snapTo() {} },
         worldSurfaces: { settings: { maxWallHeightLevel: 8 } },
-    };
-    world.fractureEngine = new FractureEngine(world);
-    return world;
+    });
 }
 
 function spawnBall(state, x = 64, y = 64) {

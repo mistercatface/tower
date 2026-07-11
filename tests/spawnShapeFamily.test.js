@@ -1,28 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getCirclePropRadius, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
+import { createSandboxKineticWorld } from "./harness/stateFactories.js";
+
 function createSpawnTestState() {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, 512, 512);
-    const world = {
-        obstacleGrid: grid,
-        entityRegistry: new EntityRegistry(),
-        worldProps: [],
-        kinetic: new KineticSession(),
-        sandbox: new SandboxWorldState(),
-        viewport: { x: 128, y: 128 },
-    };
-    world.fractureEngine = new FractureEngine(world);
-    return world;
+    return createSandboxKineticWorld(32, 32, { viewport: { x: 128, y: 128 } });
 }
 
 describe("spawn shape family defaults", () => {

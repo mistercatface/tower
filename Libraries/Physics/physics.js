@@ -2597,52 +2597,52 @@ export function getConstraintIslands(session) {
     cache.islands = islands;
     return islands;
 }
+export function createKineticSession({ constraintsDirty = false, constraintsVersion = 0, topologyGeneration = 0, nextConstraintId = 1 } = {}) {
+    kineticConstraintStore.count = 0;
+    return { kineticConstraintsDirty: constraintsDirty, kineticConstraintsVersion: constraintsVersion, kineticTopologyGeneration: topologyGeneration, nextConstraintId };
+}
 export function markKineticConstraintsDirty(session) {
     session.kineticConstraintsDirty = true;
-    session.kineticConstraintsVersion = (session.kineticConstraintsVersion ?? 0) + 1;
+    session.kineticConstraintsVersion = session.kineticConstraintsVersion + 1;
     bumpKineticTopologyGeneration(session);
 }
 export function getKineticConstraintsVersion(session) {
-    return session.kineticConstraintsVersion ?? 0;
+    return session.kineticConstraintsVersion;
 }
-export function addDistanceConstraint(session, { bodyA, bodyB, anchorAx = 0, anchorAy = 0, anchorBx = 0, anchorBy = 0, restLength }) {
+function allocConstraintRow(session, type, bodyA, bodyB) {
     const store = kineticConstraintStore;
     if (store.count >= MAX_KINETIC_CONSTRAINTS) throw new Error("kinetic constraint store capacity exceeded");
     const row = store.count++;
     store.id[row] = session.nextConstraintId++;
-    store.type[row] = CONSTRAINT_TYPE_DISTANCE;
+    store.type[row] = type;
     store.bodyAId[row] = bodyA.id;
     store.bodyBId[row] = bodyB.id;
     store.physIdA[row] = bodyA._physId ?? -1;
     store.physIdB[row] = bodyB._physId ?? -1;
+    store.accumulatedImpulse[row] = 0;
+    markKineticConstraintsDirty(session);
+    return row;
+}
+export function addDistanceConstraint(session, { bodyA, bodyB, anchorAx = 0, anchorAy = 0, anchorBx = 0, anchorBy = 0, restLength }) {
+    const row = allocConstraintRow(session, CONSTRAINT_TYPE_DISTANCE, bodyA, bodyB);
+    const store = kineticConstraintStore;
     store.anchorAx[row] = anchorAx;
     store.anchorAy[row] = anchorAy;
     store.anchorBx[row] = anchorBx;
     store.anchorBy[row] = anchorBy;
     store.restLength[row] = restLength;
     store.referenceAngle[row] = 0;
-    store.accumulatedImpulse[row] = 0;
-    markKineticConstraintsDirty(session);
     return row;
 }
 export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
+    const row = allocConstraintRow(session, CONSTRAINT_TYPE_ANGLE, bodyA, bodyB);
     const store = kineticConstraintStore;
-    if (store.count >= MAX_KINETIC_CONSTRAINTS) throw new Error("kinetic constraint store capacity exceeded");
-    const row = store.count++;
-    store.id[row] = session.nextConstraintId++;
-    store.type[row] = CONSTRAINT_TYPE_ANGLE;
-    store.bodyAId[row] = bodyA.id;
-    store.bodyBId[row] = bodyB.id;
-    store.physIdA[row] = bodyA._physId ?? -1;
-    store.physIdB[row] = bodyB._physId ?? -1;
     store.anchorAx[row] = 0;
     store.anchorAy[row] = 0;
     store.anchorBx[row] = 0;
     store.anchorBy[row] = 0;
     store.restLength[row] = 0;
     store.referenceAngle[row] = referenceAngle;
-    store.accumulatedImpulse[row] = 0;
-    markKineticConstraintsDirty(session);
     return row;
 }
 function swapRemoveConstraintRow(store, row) {
@@ -2688,9 +2688,6 @@ export function pruneKineticConstraintsForBody(session, bodyId) {
         }
     if (changed) markKineticConstraintsDirty(session);
 }
-export function constraintCount(session) {
-    return kineticConstraintStore.count;
-}
 export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
     const entries = [];
     const store = kineticConstraintStore;
@@ -2730,7 +2727,7 @@ export function applyKineticConstraintsFromSnapshot(session, entries, propRefsBy
     }
 }
 export function getKineticTopologyGeneration(session) {
-    return session.kineticTopologyGeneration ?? 0;
+    return session.kineticTopologyGeneration;
 }
 export function bumpKineticTopologyGeneration(session) {
     session.kineticTopologyGeneration = getKineticTopologyGeneration(session) + 1;

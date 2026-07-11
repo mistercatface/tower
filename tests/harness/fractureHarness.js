@@ -2,12 +2,12 @@ import { FractureEngine, moduleStores, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F
 import { boxLocalFootprint } from "../../Libraries/Math/math.js";
 import { ENGINE_F32 } from "../../Core/engineMemory.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
-import { KineticSession } from "../../GameState/KineticSession.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { WorldProp } from "../../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../../Libraries/Props/props.js";
 import { assignPhysIdWithPose } from "./kineticTickHarness.js";
+import { createKineticSession } from "../../Libraries/Physics/physics.js";
 
 export function createFractureWorld(overrides = {}) {
     const grid = new WorldObstacleGrid(16);
@@ -16,7 +16,7 @@ export function createFractureWorld(overrides = {}) {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
-        kinetic: new KineticSession(),
+        kinetic: createKineticSession(),
         sandbox: new SandboxWorldState(),
         spatialFrame: { evictKineticProp() {}, admitKineticProps() {} },
         ...overrides,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { createKineticSession } from "../GameState/KineticSession.js";
+import { createKineticSession } from "../Libraries/Physics/physics.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";

@@ -1,6 +1,6 @@
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
-import { KineticSession } from "../../GameState/KineticSession.js";
+import { createKineticSession } from "../../Libraries/Physics/physics.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { createDefaultSandboxBehaviors, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
@@ -13,7 +13,7 @@ export function createSandboxDragTestState() {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
         worldProps: [],
-        kinetic: new KineticSession(),
+        kinetic: createKineticSession(),
         sandbox: new SandboxWorldState(),
         viewport: {
             x: 128,

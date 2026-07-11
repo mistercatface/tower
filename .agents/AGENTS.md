@@ -7,7 +7,7 @@ These rules are project-scoped behavior constraints for all AI agents editing th
 - **KEEP TEST SPECIFIC CODE INSIDE THE TEST FOLDER. DO NOT PUT TEST CODE OUTSIDE THE TEST FOLDER.**
 - **Consolidate Mocks**: Reuse harness files inside `tests/harness/` — not inline mocks in test files when used 2+ times.
 - **No test-only exports in `Libraries/`** — no `*ForTests` symbols, no production branches loosened for test convenience.
-- **Tests adapt to production contracts** — harness builds real wiring (`KineticSession`, `WorldObstacleGrid`, `sandboxDragHarness`, etc.).
+- **Tests adapt to production contracts** — harness builds real wiring (`createKineticSession`, `WorldObstacleGrid`, `sandboxDragHarness`, etc.).
 
 ## 2. Test Execution
 

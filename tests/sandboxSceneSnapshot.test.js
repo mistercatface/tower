@@ -1,30 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EntityRegistry, findLiveWorldProp } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
-import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { findLiveWorldProp } from "../GameState/EntityRegistry.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
+import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
 function createSnapshotTestState(cols = 32, rows = 32) {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, cols * 16, rows * 16);
-    const world = {
-        obstacleGrid: grid,
-        entityRegistry: new EntityRegistry(),
-        worldProps: [],
-        kinetic: new KineticSession(),
-        sandbox: new SandboxWorldState(),
-    };
-    world.fractureEngine = new FractureEngine(world);
-    return world;
+    return createSandboxKineticWorld(cols, rows);
 }
 
 function applyPhysicsSnapshot(state, doc) {

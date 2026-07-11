@@ -1,14 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Libraries/Props/props.js";
-import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckPolygonVsWallSegment, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
-import { resolveBodyAgainstWallSegments, createWallHitBuffer } from "../Libraries/Physics/physics.js";
+import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
+import { satCheckPolygonVsWallSegment, entityFacing, SAT_RESULT, resolveBodyAgainstWallSegments, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
-import { WallCollisionResolver } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { staticWallSegmentSlab } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
@@ -79,7 +73,7 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
         const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => segs, ensureNeighborEids: () => 0, flushScheduledKineticActivations() {} };
-        const session = new KineticSession();
+        const session = createKineticSession();
         const world = {
             worldProps: [bar],
             entityRegistry: { getLive: (id) => (id === bar.id ? bar : null) },

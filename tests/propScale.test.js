@@ -1,31 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getCirclePropRadius, setCirclePropRadius, getPolygonPropBoundingRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
+import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
 const noopDeps = {
     quantizeAngleIndex: (a) => 0,
 };
 
-function createPropScaleTestState() {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, 256, 256);
-    const world = { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
-    world.fractureEngine = new FractureEngine(world);
-    return world;
-}
-
 describe("propScale", () => {
     it("setPropRadius updates shape, radius, and mass", () => {
-        const state = createPropScaleTestState();
+        const state = createSandboxKineticWorld(16, 16);
         const prop = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
         assert.equal(getCirclePropRadius(prop), 4);
         setCirclePropRadius(prop, 2);
@@ -46,7 +34,7 @@ describe("propScale", () => {
     });
 
     it("uses distinct sprite cache keys for quarter-step circle radii", () => {
-        const state = createPropScaleTestState();
+        const state = createSandboxKineticWorld(16, 16);
         const a = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
         const b = spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha");
         setCirclePropRadius(a, 2);

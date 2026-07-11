@@ -5,13 +5,11 @@ import { satCheckCollision, entityFacing, SAT_RESULT } from "../Libraries/Physic
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlapSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
-import { createKineticPairBuffer } from "./harness/kineticBufferHarness.js";
-import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { entityRefs } from "../Core/engineMemory.js";
+import { kineticDynamicSlab, entityRefs, kineticPairBuffer } from "../Core/engineMemory.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 
-const pairBuffer = createKineticPairBuffer();
+const pairBuffer = kineticPairBuffer;
 function separatePairUntilClear(a, b, maxPasses = 8) {
     for (let pass = 0; pass < maxPasses; pass++) {
         const collided = satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);

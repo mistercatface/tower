@@ -1,18 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createKineticSession } from "../GameState/KineticSession.js";
-import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
-import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Physics/physics.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
-import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
-import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
-import { createKineticPairBuffer } from "./harness/kineticBufferHarness.js";
+import { addDistanceConstraint, bakeKineticIslandPlan, shareKineticIsland, advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody, LIBRARY_COLLISION_DEFAULTS, snapshotKineticBodySlab, gatherKineticCandidatePairs, runKineticPhysics, createKineticSession } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, kineticPairBuffer } from "../Core/engineMemory.js";
 import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticIntegrateHooks, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
-import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 
-const pairBuffer = createKineticPairBuffer();
+const pairBuffer = kineticPairBuffer;
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 

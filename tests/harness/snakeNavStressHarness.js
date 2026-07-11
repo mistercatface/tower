@@ -1,5 +1,4 @@
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
-import { createKineticSession } from "../../GameState/KineticSession.js";
 import {
     buildReplanParams,
     buildNavReachableMaskFromSeed,
@@ -12,7 +11,7 @@ import {
     REPLAN_PRIORITY_TARGET,
 } from "../../Libraries/Navigation/navigation.js";
 import { ENGINE_F32, N_OUT_XY } from "../../Core/engineMemory.js";
-import { snapMoveTargetToCellCenter } from "../../Libraries/Physics/physics.js";
+import { snapMoveTargetToCellCenter, createKineticSession } from "../../Libraries/Physics/physics.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../../Libraries/Game/gameLaunch.js";

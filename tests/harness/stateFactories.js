@@ -1,7 +1,8 @@
-import { createKineticSession } from "../../GameState/KineticSession.js";
+import { createKineticSession } from "../../Libraries/Physics/physics.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
+import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { createWorkerNavigation } from "../WorkerNavigationFactory.js";
 
 export function createSandboxSessionState(overrides = {}) {
@@ -46,6 +47,21 @@ export function createSurfaceBakeTestState(overrides = {}) {
 
 export function createKineticAdmitTestState() {
     const world = { entityRegistry: { membershipGen: 1 }, kinetic: createKineticSession() };
+    world.fractureEngine = new FractureEngine(world);
+    return world;
+}
+
+export function createSandboxKineticWorld(cols = 32, rows = 32, overrides = {}) {
+    const grid = new WorldObstacleGrid(16);
+    grid.rebuildFixed(0, 0, cols * 16, rows * 16);
+    const world = {
+        obstacleGrid: grid,
+        entityRegistry: new EntityRegistry(),
+        worldProps: [],
+        kinetic: createKineticSession(),
+        sandbox: new SandboxWorldState(),
+        ...overrides,
+    };
     world.fractureEngine = new FractureEngine(world);
     return world;
 }

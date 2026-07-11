@@ -1,11 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createKineticSession } from "../GameState/KineticSession.js";
-import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { getConnectedBodyIds, CircleShape, createKineticSession } from "../Libraries/Physics/physics.js";
 import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { mockBall, resetMockBallIds } from "./harness/kineticTickHarness.js";
-import { CircleShape } from "../Libraries/Physics/physics.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 
 function createState(props) {

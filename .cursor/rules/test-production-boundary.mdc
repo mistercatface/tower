@@ -21,7 +21,7 @@ node scripts/audit-test-leaks.mjs
 ## No production branches for tests
 
 - No optional constructor modes, null `state` stubs, or `if (test)` paths in production to keep tests easy.
-- Tests must construct real runtime wiring (`KineticSession`, `WorldObstacleGrid`, registry, …) or use harness factories.
+- Tests must construct real runtime wiring (`createKineticSession`, `WorldObstacleGrid`, registry, …) or use harness factories.
 
 See also `no-shims-and-guards.mdc`, `.agents/AGENTS.md`.
 

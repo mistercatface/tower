@@ -1,13 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession } from "../GameState/KineticSession.js";
-import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { growChainSegment, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,
@@ -23,15 +19,13 @@ function stampBlockedCell(grid, col, row) {
 }
 
 function createNarrowCorridorState() {
-    const grid = new WorldObstacleGrid(16);
-    grid.rebuildFixed(0, 0, 32 * 16, 16 * 16);
+    const world = createSandboxKineticWorld(32, 16);
+    const grid = world.obstacleGrid;
     for (let col = 4; col <= 27; col++) {
         stampBlockedCell(grid, col, 6);
         stampBlockedCell(grid, col, 8);
     }
     for (let col = 11; col <= 27; col++) stampBlockedCell(grid, col, 7);
-    const world = { obstacleGrid: grid, entityRegistry: new EntityRegistry(), worldProps: [], kinetic: new KineticSession(), sandbox: new SandboxWorldState() };
-    world.fractureEngine = new FractureEngine(world);
     return world;
 }
 
