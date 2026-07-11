@@ -4,13 +4,12 @@ import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
-import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
+import { drawExtrudedConvexPolygon, drawSphere, createWallChunkDraw } from "../Render/render.js";
 import { traceClosedFlatPolygon } from "../Canvas/canvas.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
-import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
@@ -25,7 +24,7 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 export function createPolygonPrimitive(visuals) {
-    const { colors, world, plankTs, topCross } = visuals;
+    const { colors, world } = visuals;
     return (ctx, prop, viewport, flatPresentation) => {
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
@@ -33,7 +32,6 @@ export function createPolygonPrimitive(visuals) {
         if (!localVerts || localVerts.length < 6) return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
         if (flatPresentation) {
-            const fill = tinted.fill ?? tinted.top ?? tinted.side;
             const facing = readEntityFacing(prop);
             const cos = Math.cos(facing);
             const sin = Math.sin(facing);
@@ -50,51 +48,18 @@ export function createPolygonPrimitive(visuals) {
             }
             ctx.beginPath();
             traceClosedFlatPolygon(ctx, worldVerts, count);
-            ctx.fillStyle = fill;
+            ctx.fillStyle = tinted.top ?? tinted.side;
             ctx.fill();
             return;
         }
         const height = prop.height ?? world?.height ?? 12;
-        fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, plankTs, topCross);
-        if (prop.drawOutline) {
-            sDrawOpts.localVerts = prop.drawOutline;
-            sDrawOpts.faceOrder = "midY";
-            drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
-            return;
-        }
-        if (prop.collisionParts?.length > 1) {
-            const parts = prop.collisionParts;
-            sPartsVerts.length = parts.length;
-            for (let i = 0; i < parts.length; i++) sPartsVerts[i] = parts[i].vertices;
-            sDrawOpts.partsVerts = sPartsVerts;
-            drawExtrudedCompoundPolygon(ctx, prop, viewport, sDrawOpts);
-        } else if (prop.shape?.vertices) {
-            sDrawOpts.localVerts = prop.shape.vertices;
-            sDrawOpts.faceOrder = "convexCull";
-            drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
-        }
+        fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height);
+        sDrawOpts.localVerts = localVerts;
+        drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
     };
 }
 export function createSpherePrimitive(visuals) {
     return (ctx, prop, viewport) => {
-        const shape = prop.shape;
-        if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-            const tinted = resolveVisualOverrideColorTree(prop, NEUTRAL_BOX_COLORS);
-            const height = prop.height ?? 12;
-            fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, null, null);
-            if (prop.collisionParts?.length > 1) {
-                const parts = prop.collisionParts;
-                sPartsVerts.length = parts.length;
-                for (let i = 0; i < parts.length; i++) sPartsVerts[i] = parts[i].vertices;
-                sDrawOpts.partsVerts = sPartsVerts;
-                drawExtrudedCompoundPolygon(ctx, prop, viewport, sDrawOpts);
-            } else if (shape.vertices) {
-                sDrawOpts.localVerts = shape.vertices;
-                sDrawOpts.faceOrder = "convexCull";
-                drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
-            }
-            return;
-        }
         drawSphere(ctx, prop, viewport, { baseRadius: resolveBodyRadius(prop, visuals.defaultRadius ?? 7), panelCount: visuals.panelCount, latBands: visuals.latBands, panelColors: resolveVisualOverridePanels(prop, visuals.panels) });
     };
 }
@@ -193,10 +158,6 @@ export function initWorldPropShape(prop) {
     if (template && vertCount(template) >= 3) {
         const n = template.length;
         writeLivePolygon(prop, template, n);
-        if (prop.strategy.drawOutline === true) {
-            const verts = prop.shape.vertices;
-            ensureDrawOutline(prop, verts.length).set(verts);
-        }
         invalidatePropFootprintKey(prop);
         return;
     }
@@ -252,42 +213,30 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null, crossLength: undefined, crossThickness: undefined };
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null };
 const sFaceColors = { shadow: null, mid: null, highlight: null };
 const sBackFaceColors = { shadow: null, mid: null, highlight: null };
-const sBottomColors = { light: null, mid: null, dark: null };
 const sTopColors = { light: null, mid: null, dark: null };
-const sPartsVerts = [];
-const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, bottomColors: null, topColors: sTopColors, plankTs: null, topCross: null, localVerts: null, partsVerts: null, faceOrder: "convexCull", topHx: null, topHy: null };
-function fillExtrudeDrawOpts(out, prop, tinted, height, plankTs, topCross) {
+const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, topColors: sTopColors, localVerts: null, topHx: null, topHy: null };
+function fillExtrudeDrawOpts(out, prop, tinted, height) {
     out.height = height;
     out.facing = readEntityFacing(prop);
     const side = tinted.side;
     const sideShadow = tinted.sideShadow ?? side;
     sFaceColors.shadow = sideShadow;
     sFaceColors.mid = side;
-    sFaceColors.highlight = tinted.sideHighlight ?? shadeHex(side, -0.12);
+    sFaceColors.highlight = shadeHex(side, -0.12);
     sBackFaceColors.shadow = sideShadow;
     sBackFaceColors.mid = sideShadow;
     sBackFaceColors.highlight = side;
-    if (tinted.bottom) {
-        sBottomColors.light = sideShadow;
-        sBottomColors.mid = tinted.bottom;
-        sBottomColors.dark = sideShadow;
-        out.bottomColors = sBottomColors;
-    } else out.bottomColors = null;
-    sTopColors.light = tinted.topHighlight ?? shadeHex(tinted.top, -0.1);
+    sTopColors.light = shadeHex(tinted.top, -0.1);
     sTopColors.mid = tinted.top;
     sTopColors.dark = sideShadow;
     out.topColors = sTopColors;
-    out.plankTs = plankTs;
-    out.topCross = topCross;
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
     out.topHx = ENGINE_F32[M_VEC_A];
     out.topHy = ENGINE_F32[M_VEC_A + 1];
     out.localVerts = null;
-    out.partsVerts = null;
-    out.faceOrder = "convexCull";
     return out;
 }
 export function resolvePropQuantizeSteps(prop) {
@@ -351,8 +300,6 @@ export function getPropStageBakeState(prop) {
     sStageProp.id = prop.id;
     sStageProp.wallChunkProfileId = prop.wallChunkProfileId;
     sStageProp._wallChunkTextures = prop._wallChunkTextures;
-    sStageProp.crossLength = prop.crossLength;
-    sStageProp.crossThickness = prop.crossThickness;
     return sStageProp;
 }
 export function buildWorldPropStrategyFromAsset(asset) {
@@ -764,6 +711,10 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
 export function registerPropDrawRecipe(asset) {
     if (asset.physics?.renderMode === "none") {
         asset.drawRecipe = () => {};
+        return;
+    }
+    if (asset.draw === "wallChunk") {
+        asset.drawRecipe = createWallChunkDraw(asset.visuals);
         return;
     }
     if (typeof asset.draw === "function") {

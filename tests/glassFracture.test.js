@@ -81,11 +81,9 @@ describe("glass fracture", () => {
         const asset = propCatalog["glass_pane"];
         assert.equal(asset.physics.fracture.mode, "glass");
         assert.ok(asset.sandbox.resizableBox);
-        assert.equal(asset.visuals.flat, undefined);
-        assert.equal(asset.visuals.flatFill, undefined);
-        assert.equal(asset.visuals.lineWidth, undefined);
-        assert.equal(asset.visuals.colors.stroke, undefined);
-        assert.equal(propCatalog["flat_glass_pane"], undefined);
+        assert.equal(asset.visuals.colors.side != null, true);
+        assert.equal(asset.visuals.colors.top != null, true);
+        assert.equal(asset.visuals.world.height, 2);
     });
     it("glass polygon draw recipe uses flat silhouette when flatPresentation", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);

@@ -1,10 +1,11 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
+import { shadeHex } from "../Color/colorMath.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
@@ -19,8 +20,6 @@ const rCapSrc = ENGINE_F32.subarray(R_CAP_SRC, R_CAP_SRC + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rChevron = ENGINE_F32.subarray(R_CHEVRON, R_CHEVRON + 12);
 const rFaceVisible = ENGINE_U8.subarray(R_FACE_VISIBLE, R_FACE_VISIBLE + MAX_PRISM_FACES);
-const rFaceMidY = ENGINE_F32.subarray(R_FACE_MIDY, R_FACE_MIDY + MAX_PRISM_FACES);
-const rFaceOrder = ENGINE_I32.subarray(R_FACE_ORDER, R_FACE_ORDER + MAX_PRISM_FACES);
 /**
  * Draw options for WorldSceneRenderer entry points.
  */
@@ -710,7 +709,7 @@ function fillBoxFootprintInto(out, hx, hy) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, shadow, mid, highlight, plankTs, drawPlanks) {
+function drawSideFaceFlat(ctx, edgeIndex, count, shadow, mid, highlight) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
     const topMidX = (sTopRing[ai] + sTopRing[bi]) * 0.5;
@@ -725,46 +724,15 @@ function drawSideFaceFlat(ctx, edgeIndex, count, shadow, mid, highlight, plankTs
     ctx.beginPath();
     traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
     ctx.fill();
-    if (drawPlanks && plankTs) {
-        ctx.strokeStyle = plankTs.stroke ?? "rgba(0,0,0,0.55)";
-        ctx.lineWidth = plankTs.lineWidth ?? 0.8;
-        for (const t of plankTs.values) {
-            const xA = sTopRing[ai] + (sBaseRing[ai] - sTopRing[ai]) * t;
-            const yA = sTopRing[ai + 1] + (sBaseRing[ai + 1] - sTopRing[ai + 1]) * t;
-            const xB = sTopRing[bi] + (sBaseRing[bi] - sTopRing[bi]) * t;
-            const yB = sTopRing[bi + 1] + (sBaseRing[bi + 1] - sTopRing[bi + 1]) * t;
-            ctx.beginPath();
-            ctx.moveTo(xA, yA);
-            ctx.lineTo(xB, yB);
-            ctx.stroke();
-        }
-    }
 }
-function classifyPrismFaces(count, viewport, cx, cy, faceOrder, localVerts, facing) {
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
+function classifyPrismFaces(count, viewport, cx, cy) {
     for (let i = 0; i < count; i++) {
         const ai = i * 2;
         const bi = ((i + 1) % count) * 2;
         const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
         const edgeMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
-        rFaceMidY[i] = (sBaseRing[ai + 1] + sBaseRing[bi + 1] + sTopRing[ai + 1] + sTopRing[bi + 1]) * 0.25;
-        if (faceOrder === "midY") {
-            const pAx = localVerts[ai];
-            const pAy = localVerts[ai + 1];
-            const pBx = localVerts[bi];
-            const pBy = localVerts[bi + 1];
-            const lx = pBy - pAy;
-            const ly = -(pBx - pAx);
-            const worldNx = lx * cos - ly * sin;
-            const worldNy = lx * sin + ly * cos;
-            const midX = (sBaseRing[ai] + sBaseRing[bi] + sTopRing[ai] + sTopRing[bi]) * 0.25;
-            const midY = rFaceMidY[i];
-            rFaceVisible[i] = isOutwardFaceTowardViewer(midX, midY, worldNx, worldNy, viewport.x, viewport.y) ? 1 : 0;
-        } else rFaceVisible[i] = irFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY) ? 1 : 0;
-        rFaceOrder[i] = i;
+        rFaceVisible[i] = irFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY) ? 1 : 0;
     }
-    if (faceOrder === "midY") rFaceOrder.subarray(0, count).sort((a, b) => rFaceMidY[a] - rFaceMidY[b]);
 }
 function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha, textures) {
     const textureScale = textures.scale;
@@ -811,16 +779,9 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const facing = opts.facing ?? readEntityFacing(prop);
     const faceColors = opts.faceColors;
     const backFaceColors = opts.backFaceColors ?? null;
-    const bottomColors = opts.bottomColors ?? null;
     const topColors = opts.topColors;
-    const plankTs = opts.plankTs;
-    const topCross = opts.topCross;
-    const textures = opts.textures ?? null;
-    const faceOrder = opts.faceOrder ?? "convexCull";
-    const prismPass = opts.prismPass ?? "all";
     const topHx = opts.topHx;
     const topHy = opts.topHy;
-    const baseGradCornerB = opts.baseGradCornerB ?? 1;
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
@@ -831,74 +792,36 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const topX = ENGINE_F32[S_OUT_XY];
     const topY = ENGINE_F32[S_OUT_XY + 1];
     extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, cx, cy, topX, topY, alpha, facing);
-    classifyPrismFaces(count, viewport, cx, cy, faceOrder, localVerts, facing);
+    classifyPrismFaces(count, viewport, cx, cy);
     const backShadow = backFaceColors ? backFaceColors.shadow : faceColors.shadow;
     const backMid = backFaceColors ? backFaceColors.mid : faceColors.shadow;
     const backHighlight = backFaceColors ? backFaceColors.highlight : faceColors.mid;
-    const baseLight = bottomColors ? bottomColors.light : faceColors.shadow;
-    const baseMid = bottomColors ? bottomColors.mid : faceColors.shadow;
-    const baseDark = bottomColors ? bottomColors.dark : faceColors.shadow;
-    const drawBase = prismPass === "all" || prismPass === "base";
-    const drawSides = prismPass === "all" || prismPass === "sides";
-    const drawTop = prismPass === "all" || prismPass === "top";
-    if (textures) {
-        if (drawSides || drawTop) drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha, textures);
-        return;
-    }
-    if (drawBase) {
-        const gradB = Math.min(baseGradCornerB, count - 1);
-        const baseGrad = ctx.createLinearGradient(sBaseRing[0], sBaseRing[1], sBaseRing[gradB * 2], sBaseRing[gradB * 2 + 1]);
-        baseGrad.addColorStop(0.0, baseLight);
-        baseGrad.addColorStop(0.5, baseMid);
-        baseGrad.addColorStop(1.0, baseDark);
-        ctx.fillStyle = baseGrad;
-        ctx.beginPath();
-        traceClosedFlatPolygon(ctx, sBaseRing, count);
-        ctx.fill();
-    }
-    if (drawSides)
-        if (faceOrder === "midY")
-            for (let o = 0; o < count; o++) {
-                const i = rFaceOrder[o];
-                const front = rFaceVisible[i] === 1;
-                const shadow = front ? faceColors.shadow : backShadow;
-                const mid = front ? faceColors.mid : backMid;
-                const highlight = front ? faceColors.highlight : backHighlight;
-                drawSideFaceFlat(ctx, i, count, shadow, mid, highlight, plankTs, front);
-            }
-        else
-            for (let pass = 0; pass < 2; pass++) {
-                const wantFront = pass === 1;
-                for (let i = 0; i < count; i++) {
-                    if ((rFaceVisible[i] === 1) !== wantFront) continue;
-                    const shadow = wantFront ? faceColors.shadow : backShadow;
-                    const mid = wantFront ? faceColors.mid : backMid;
-                    const highlight = wantFront ? faceColors.highlight : backHighlight;
-                    drawSideFaceFlat(ctx, i, count, shadow, mid, highlight, plankTs, wantFront);
-                }
-            }
-    if (drawTop) {
-        let topGrad;
-        if (topHx != null && topHy != null) topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
-        else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-        topGrad.addColorStop(0.0, topColors.light);
-        topGrad.addColorStop(0.5, topColors.mid);
-        topGrad.addColorStop(1.0, topColors.dark);
-        ctx.fillStyle = topGrad;
-        ctx.beginPath();
-        traceClosedFlatPolygon(ctx, sTopRing, count);
-        ctx.fill();
-        if (topCross && count === 4) {
-            ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
-            ctx.lineWidth = topCross.lineWidth ?? 0.8;
-            ctx.beginPath();
-            traceSegment(ctx, sTopRing[0], (sTopRing[1] + sTopRing[5]) / 2, sTopRing[2], (sTopRing[3] + sTopRing[7]) / 2);
-            traceSegment(ctx, (sTopRing[0] + sTopRing[2]) / 2, sTopRing[1], (sTopRing[4] + sTopRing[6]) / 2, sTopRing[5]);
-            ctx.stroke();
+    ctx.fillStyle = faceColors.shadow;
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, sBaseRing, count);
+    ctx.fill();
+    for (let pass = 0; pass < 2; pass++) {
+        const wantFront = pass === 1;
+        for (let i = 0; i < count; i++) {
+            if ((rFaceVisible[i] === 1) !== wantFront) continue;
+            const shadow = wantFront ? faceColors.shadow : backShadow;
+            const mid = wantFront ? faceColors.mid : backMid;
+            const highlight = wantFront ? faceColors.highlight : backHighlight;
+            drawSideFaceFlat(ctx, i, count, shadow, mid, highlight);
         }
     }
+    let topGrad;
+    if (topHx != null && topHy != null) topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
+    else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
+    topGrad.addColorStop(0.0, topColors.light);
+    topGrad.addColorStop(0.5, topColors.mid);
+    topGrad.addColorStop(1.0, topColors.dark);
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, sTopRing, count);
+    ctx.fill();
 }
-const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHx: null, topHy: null, baseGradCornerB: 1 };
+const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, topColors: null, topHx: null, topHy: null };
 const sBeltProp = { x: 0, y: 0, facing: 0 };
 const sBeltHalf = { x: 0, y: 0 };
 const sBeltDrawOpts = { halfSize: sBeltHalf, height: 0, facing: 0, faceColors: null, topColors: null };
@@ -913,33 +836,19 @@ export function drawBox(ctx, prop, viewport, opts) {
     sPrismOpts.facing = opts.facing ?? readEntityFacing(prop);
     sPrismOpts.faceColors = opts.faceColors;
     sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
-    sPrismOpts.bottomColors = opts.bottomColors ?? null;
     sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.plankTs = opts.plankTs;
-    sPrismOpts.topCross = opts.topCross;
-    sPrismOpts.textures = null;
-    sPrismOpts.faceOrder = "convexCull";
-    sPrismOpts.prismPass = "all";
     sPrismOpts.topHx = scaleAtHeight(hx, alpha, 1);
     sPrismOpts.topHy = scaleAtHeight(hy, alpha, 1);
-    sPrismOpts.baseGradCornerB = 2;
     drawExtrudedPrism(ctx, prop, viewport, rBoxFootprint, sPrismOpts);
 }
-function fillPrismOptsFromDraw(opts, prop, textures) {
+function fillPrismOptsFromDraw(opts, prop) {
     sPrismOpts.height = opts.height ?? DEFAULT_PROP_HEIGHT;
     sPrismOpts.facing = opts.facing ?? readEntityFacing(prop);
     sPrismOpts.faceColors = opts.faceColors;
     sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
-    sPrismOpts.bottomColors = opts.bottomColors ?? null;
     sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.plankTs = opts.plankTs;
-    sPrismOpts.topCross = opts.topCross;
-    sPrismOpts.textures = textures;
-    sPrismOpts.faceOrder = opts.faceOrder ?? "convexCull";
-    sPrismOpts.prismPass = opts.prismPass ?? "all";
     sPrismOpts.topHx = opts.topHx ?? null;
     sPrismOpts.topHy = opts.topHy ?? null;
-    sPrismOpts.baseGradCornerB = opts.baseGradCornerB ?? 1;
     return sPrismOpts;
 }
 function scalePrismTopExtents(viewport) {
@@ -949,10 +858,28 @@ function scalePrismTopExtents(viewport) {
     sPrismOpts.topHy = scaleAtHeight(sPrismOpts.topHy, alpha, 1);
 }
 export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {
-    const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
-    fillPrismOptsFromDraw(opts, prop, textures);
+    fillPrismOptsFromDraw(opts, prop);
     scalePrismTopExtents(viewport);
     drawExtrudedPrism(ctx, prop, viewport, opts.localVerts, sPrismOpts);
+}
+export function drawWallChunkTextured(ctx, prop, viewport, localVerts) {
+    const textures = prop._wallChunkTextures;
+    if (!textures?.ready) return false;
+    const count = localVerts.length / 2;
+    if (count < 3) return false;
+    const height = prop.height ?? DEFAULT_PROP_HEIGHT;
+    const facing = readEntityFacing(prop);
+    ensurePrismScratch(count);
+    const cx = prop.x;
+    const cy = prop.y;
+    const alpha = resolveElevationAlpha(height, viewport);
+    projectWorldPoint(ENGINE_F32, S_OUT_XY, cx, cy, height, viewport);
+    const topX = ENGINE_F32[S_OUT_XY];
+    const topY = ENGINE_F32[S_OUT_XY + 1];
+    extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, cx, cy, topX, topY, alpha, facing);
+    classifyPrismFaces(count, viewport, cx, cy);
+    drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha, textures);
+    return true;
 }
 export function getWallChunkSpriteCacheKey(prop) {
     if (!prop.wallChunkProfileId) return "";
@@ -991,25 +918,62 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityF
     for (let i = 1; i < count - 1; i++) drawImageTriangleFlatWithBaseTransform(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1, baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
     ctx.restore();
 }
-export function drawFlatWallChunkProp(ctx, prop) {
-    if (!prop.wallChunkProfileId || !prop._wallChunkTextures?.ready) return false;
-    if (prop.collisionParts?.length > 1) return false;
-    const verts = prop.shape?.vertices;
-    if (!verts || verts.length < 6) return false;
-    drawFlatWallChunkCap(ctx, prop, verts);
-    return true;
-}
-export function drawExtrudedCompoundPolygon(ctx, prop, viewport, opts) {
-    fillPrismOptsFromDraw(opts, prop, null);
-    scalePrismTopExtents(viewport);
-    sPrismOpts.faceOrder = "convexCull";
-    const partsVerts = opts.partsVerts;
-    sPrismOpts.prismPass = "base";
-    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], sPrismOpts);
-    sPrismOpts.prismPass = "sides";
-    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], sPrismOpts);
-    sPrismOpts.prismPass = "top";
-    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], sPrismOpts);
+const sWallFaceColors = { shadow: null, mid: null, highlight: null };
+const sWallBackFaceColors = { shadow: null, mid: null, highlight: null };
+const sWallTopColors = { light: null, mid: null, dark: null };
+const sWallDrawOpts = { height: 0, facing: 0, faceColors: sWallFaceColors, backFaceColors: sWallBackFaceColors, topColors: sWallTopColors, localVerts: null, topHx: null, topHy: null };
+const sWallFlatVerts = new Float32Array(1024);
+export function createWallChunkDraw(visuals) {
+    const { colors, world } = visuals;
+    return (ctx, prop, viewport, flatPresentation) => {
+        const localVerts = prop.drawOutline ?? prop.shape?.vertices;
+        if (!localVerts || localVerts.length < 6) return;
+        if (flatPresentation) {
+            if (prop._wallChunkTextures?.ready) {
+                drawFlatWallChunkCap(ctx, prop, localVerts);
+                return;
+            }
+            const tinted = resolveVisualOverrideColorTree(prop, colors);
+            const facing = readEntityFacing(prop);
+            const cos = Math.cos(facing);
+            const sin = Math.sin(facing);
+            const count = localVerts.length / 2;
+            if (count * 2 > sWallFlatVerts.length) throw new Error("flat wall chunk exceeds scratch capacity");
+            const px = prop.x;
+            const py = prop.y;
+            for (let i = 0; i < count; i++) {
+                const lx = localVerts[i * 2];
+                const ly = localVerts[i * 2 + 1];
+                sWallFlatVerts[i * 2] = px + lx * cos - ly * sin;
+                sWallFlatVerts[i * 2 + 1] = py + lx * sin + ly * cos;
+            }
+            ctx.beginPath();
+            traceClosedFlatPolygon(ctx, sWallFlatVerts, count);
+            ctx.fillStyle = tinted.top ?? tinted.side;
+            ctx.fill();
+            return;
+        }
+        if (drawWallChunkTextured(ctx, prop, viewport, localVerts)) return;
+        const tinted = resolveVisualOverrideColorTree(prop, colors);
+        const height = prop.height ?? world?.height ?? 12;
+        const side = tinted.side;
+        const sideShadow = tinted.sideShadow ?? side;
+        sWallFaceColors.shadow = sideShadow;
+        sWallFaceColors.mid = side;
+        sWallFaceColors.highlight = shadeHex(side, -0.12);
+        sWallBackFaceColors.shadow = sideShadow;
+        sWallBackFaceColors.mid = sideShadow;
+        sWallBackFaceColors.highlight = side;
+        sWallTopColors.light = shadeHex(tinted.top, -0.1);
+        sWallTopColors.mid = tinted.top;
+        sWallTopColors.dark = sideShadow;
+        sWallDrawOpts.height = height;
+        sWallDrawOpts.facing = readEntityFacing(prop);
+        sWallDrawOpts.localVerts = localVerts;
+        sWallDrawOpts.topHx = null;
+        sWallDrawOpts.topHy = null;
+        drawExtrudedConvexPolygon(ctx, prop, viewport, sWallDrawOpts);
+    };
 }
 export const DRAW_KIND_PROP = 1;
 export const DRAW_KIND_VOXEL = 3;
@@ -1795,13 +1759,12 @@ export class WorldSceneRenderer {
         const skipWallCaps = options.skipWallCaps === true;
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
         q.sort();
-        const flatWallChunks = options.flatWallChunks === true;
         const flatProps = options.flatProps === true;
         for (let i = 0; i < q.length; i++) {
             const kind = q.kinds[i];
             const baseIndex = q.baseIndices[i];
             const ref = q.refs[i];
-            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatWallChunks, flatProps });
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatProps });
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);
@@ -1820,7 +1783,6 @@ export class WorldSceneRenderer {
             const draw = propCatalog[renderKey]?.drawRecipe;
             if (!draw) return;
             prepareWallChunkPropTextures(state, prop);
-            if (options.flatWallChunks && drawFlatWallChunkProp(ctx, prop)) return;
             drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, options.flatProps === true);
         } finally {
             if (hasAlpha) ctx.globalAlpha = prevAlpha;

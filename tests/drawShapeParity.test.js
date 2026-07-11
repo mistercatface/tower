@@ -14,7 +14,7 @@ import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/Gam
 import propCatalog from "../Assets/props/index.js";
 const cacheKeyDeps = { quantizeAngleIndex };
 const polygonVisuals = {
-    colors: { side: "#888", sideShadow: "#666", top: "#aaa", bottom: "#444", stroke: "#222" },
+    colors: { side: "#888", sideShadow: "#666", top: "#aaa" },
     world: { height: 10 },
 };
 import { createMockDrawCtx } from "./mockCanvas2d.js";
