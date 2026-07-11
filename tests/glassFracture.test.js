@@ -81,14 +81,32 @@ describe("glass fracture", () => {
         const asset = propCatalog["glass_pane"];
         assert.equal(asset.physics.fracture.mode, "glass");
         assert.ok(asset.sandbox.resizableBox);
+        assert.equal(asset.visuals.flat, undefined);
+        assert.equal(asset.visuals.flatFill, true);
+        assert.equal(propCatalog["flat_glass_pane"], undefined);
     });
-    it("flat_glass_pane asset uses glass fracture and flat visuals", () => {
-        const asset = propCatalog["flat_glass_pane"];
-        assert.equal(asset.physics.fracture.mode, "glass");
-        assert.equal(asset.visuals.flat, true);
-        assert.ok(asset.sandbox.resizableBox);
-        const prop = new WorldProp(0, 0, "flat_glass_pane", 0);
-        assert.ok(FractureEngine.canFracturePropSplit(prop));
+    it("glass polygon draw recipe uses flat silhouette when flatPresentation", () => {
+        const prop = new WorldProp(0, 0, "glass_pane", 0);
+        setupGlassPaneForFracture(prop, 12, 8);
+        const draw = propCatalog["glass_pane"].drawRecipe;
+        const calls = { beginPath: 0, fill: 0, stroke: 0, fillStyle: null };
+        const ctx = {
+            beginPath() { calls.beginPath++; },
+            fill() { calls.fill++; },
+            stroke() { calls.stroke++; },
+            set fillStyle(v) { calls.fillStyle = v; },
+            get fillStyle() { return calls.fillStyle; },
+            strokeStyle: null,
+            lineWidth: 1,
+            moveTo() {},
+            lineTo() {},
+            closePath() {},
+        };
+        draw(ctx, prop, { x: 0, y: 0 }, true);
+        assert.equal(calls.beginPath, 1);
+        assert.equal(calls.fill, 1);
+        assert.ok(calls.fillStyle);
+        assert.equal(calls.stroke, 1);
     });
     it("glass pane init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);

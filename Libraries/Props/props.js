@@ -24,32 +24,32 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 export function createPolygonPrimitive(visuals) {
-    if (visuals.flat === true) {
-        const { colors, lineWidth } = visuals;
-        return (ctx, prop) => {
-            const shape = prop.shape;
-            if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
-            const localVerts = prop.drawOutline ?? shape.vertices;
-            if (!localVerts || localVerts.length < 6) return;
-            const tinted = resolveVisualOverrideColorTree(prop, colors);
-            const fill = tinted.fill;
+    const { colors, world, plankTs, topCross, lineWidth } = visuals;
+    return (ctx, prop, viewport, flatPresentation) => {
+        const shape = prop.shape;
+        if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
+        const localVerts = prop.drawOutline ?? shape.vertices;
+        if (!localVerts || localVerts.length < 6) return;
+        const tinted = resolveVisualOverrideColorTree(prop, colors);
+        if (flatPresentation) {
+            const fill = tinted.fill ?? tinted.top ?? tinted.side;
             const stroke = tinted.stroke;
             const facing = readEntityFacing(prop);
             const cos = Math.cos(facing);
             const sin = Math.sin(facing);
             const count = localVerts.length / 2;
             if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
-            const world = POLYGON_SCALE_SCRATCH;
+            const worldVerts = POLYGON_SCALE_SCRATCH;
             const px = prop.x;
             const py = prop.y;
             for (let i = 0; i < count; i++) {
                 const lx = localVerts[i * 2];
                 const ly = localVerts[i * 2 + 1];
-                world[i * 2] = px + lx * cos - ly * sin;
-                world[i * 2 + 1] = py + lx * sin + ly * cos;
+                worldVerts[i * 2] = px + lx * cos - ly * sin;
+                worldVerts[i * 2 + 1] = py + lx * sin + ly * cos;
             }
             ctx.beginPath();
-            traceClosedFlatPolygon(ctx, world, count);
+            traceClosedFlatPolygon(ctx, worldVerts, count);
             ctx.fillStyle = fill;
             ctx.fill();
             if (stroke) {
@@ -57,13 +57,8 @@ export function createPolygonPrimitive(visuals) {
                 ctx.lineWidth = lineWidth ?? 0.4;
                 ctx.stroke();
             }
-        };
-    }
-    const { colors, world, plankTs, topCross, lineWidth } = visuals;
-    return (ctx, prop, viewport) => {
-        const shape = prop.shape;
-        if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
-        const tinted = resolveVisualOverrideColorTree(prop, colors);
+            return;
+        }
         const height = prop.height ?? world?.height ?? 12;
         const asset = propCatalog[prop.type];
         let scale = 1.0;

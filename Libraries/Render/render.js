@@ -1820,11 +1820,12 @@ export class WorldSceneRenderer {
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
         q.sort();
         const flatWallChunks = options.flatWallChunks === true;
+        const flatProps = options.flatProps === true;
         for (let i = 0; i < q.length; i++) {
             const kind = q.kinds[i];
             const baseIndex = q.baseIndices[i];
             const ref = q.refs[i];
-            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatWallChunks });
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatWallChunks, flatProps });
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);
@@ -1844,7 +1845,7 @@ export class WorldSceneRenderer {
             if (!draw) return;
             prepareWallChunkPropTextures(state, prop);
             if (options.flatWallChunks && drawFlatWallChunkProp(ctx, prop)) return;
-            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw);
+            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, options.flatProps === true);
         } finally {
             if (hasAlpha) ctx.globalAlpha = prevAlpha;
         }

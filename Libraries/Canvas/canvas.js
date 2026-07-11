@@ -677,12 +677,12 @@ export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, modifier = n
     ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
 }
 const PROP_STAGE_PADDING = 40;
-function drawVisualAttachmentList(ctx, attachments, viewport) {
+function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) {
     for (let i = 0; i < attachments.length; i++) {
         const child = attachments[i];
         const childRenderKey = child.getRender3DKey?.() ?? child.strategy?.render3DKey;
         const childDraw = propCatalog[childRenderKey]?.drawRecipe;
-        if (childDraw) childDraw(ctx, child, viewport);
+        if (childDraw) childDraw(ctx, child, viewport, flatPresentation);
     }
 }
 function getPropStaticKey(prop, renderKey) {
@@ -707,7 +707,7 @@ function getPropStaticKey(prop, renderKey) {
     prop._cachedStaticKey = staticKey;
     return staticKey;
 }
-function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
+function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, flatPresentation = false) {
     const px = viewport.x;
     const py = viewport.y;
     const zoom = viewport.zoom ?? 1;
@@ -717,10 +717,11 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     const pixelSize = resolvePropPixelSizeForProp(prop);
     const staticKey = getPropStaticKey(prop, renderKey);
     let key = staticKey;
-    key = (key << 12n) | BigInt(packQuantizedViewBucket(dx, dy, viewStep));
+    key = (key << 12n) | BigInt(flatPresentation ? 0 : packQuantizedViewBucket(dx, dy, viewStep));
     key = (key << 16n) | BigInt(animFrame & 0xffff);
     key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
+    key = (key << 1n) | BigInt(flatPresentation ? 1 : 0);
     return propSpriteCacheSlab.getOrBake(key, () => {
         const parentFacing = quantizeAngle(readEntityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
@@ -739,9 +740,9 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
         ctx.translate(anchorX - prop.x, anchorY - prop.y);
-        drawVisualAttachmentList(ctx, attachments.before, viewport);
-        draw(ctx, stageProp, viewport);
-        drawVisualAttachmentList(ctx, attachments.after, viewport);
+        drawVisualAttachmentList(ctx, attachments.before, viewport, flatPresentation);
+        draw(ctx, stageProp, viewport, flatPresentation);
+        drawVisualAttachmentList(ctx, attachments.after, viewport, flatPresentation);
         ctx.restore();
         writeSpriteBakeOuts(bakeScale, anchorX, anchorY, stageSpan / bakeScale, stageSpan / bakeScale, 1, stageSpan);
         return canvas;
@@ -869,8 +870,8 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
     });
     blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY);
 }
-export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0) {
-    const slot = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
+export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0, flatPresentation = false) {
+    const slot = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame, flatPresentation);
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, prop.x, prop.y, modifier);
 }
